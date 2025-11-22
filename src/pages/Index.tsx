@@ -1,12 +1,47 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { ApplicationForm } from "@/components/ApplicationForm";
+import heroImage from "@/assets/driver-hero.jpg";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <header className="relative h-[400px] overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src={heroImage}
+            alt="Professional truck driver"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/80 to-primary/60" />
+        </div>
+        <div className="relative h-full flex items-center justify-center text-center px-4">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-4">
+              Driver Employment Application
+            </h1>
+            <p className="text-lg md:text-xl text-primary-foreground/90">
+              Join our professional team of drivers. Complete your application online in just a few
+              steps.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* Application Form */}
+      <ApplicationForm />
+
+      {/* Footer */}
+      <footer className="bg-card border-t mt-16 py-8">
+        <div className="max-w-4xl mx-auto px-4 text-center text-muted-foreground text-sm">
+          <p>© 2024 Driver Application System. All rights reserved.</p>
+          <p className="mt-2">
+            Questions? Contact us at{" "}
+            <a href="mailto:hr@example.com" className="text-primary hover:underline">
+              hr@example.com
+            </a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

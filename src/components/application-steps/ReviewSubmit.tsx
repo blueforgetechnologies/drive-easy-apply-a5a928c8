@@ -1,0 +1,173 @@
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ChevronLeft, Check } from "lucide-react";
+import { toast } from "sonner";
+
+interface ReviewSubmitProps {
+  data: any;
+  onBack: () => void;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  onNext?: (data: any) => void;
+}
+
+export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
+  const handleSubmit = () => {
+    // Here you would typically send the data to your backend
+    console.log("Application submitted:", data);
+    toast.success("Application submitted successfully!", {
+      description: "We will review your application and contact you soon.",
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold mb-4 text-foreground">Review & Submit</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Please review your information before submitting. You can go back to edit any section.
+        </p>
+      </div>
+
+      {/* Personal Information */}
+      <Card className="p-6">
+        <h4 className="font-semibold mb-4 text-foreground">Personal Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Name</p>
+            <p className="font-medium">
+              {data?.personalInfo?.firstName} {data?.personalInfo?.middleName}{" "}
+              {data?.personalInfo?.lastName}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Date of Birth</p>
+            <p className="font-medium">{data?.personalInfo?.dob}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Phone</p>
+            <p className="font-medium">{data?.personalInfo?.phone}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Email</p>
+            <p className="font-medium">{data?.personalInfo?.email}</p>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-muted-foreground">Address</p>
+            <p className="font-medium">
+              {data?.personalInfo?.address}, {data?.personalInfo?.city},{" "}
+              {data?.personalInfo?.state} {data?.personalInfo?.zip}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* License Information */}
+      <Card className="p-6">
+        <h4 className="font-semibold mb-4 text-foreground">License Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">License Number</p>
+            <p className="font-medium">{data?.licenseInfo?.licenseNumber}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">State</p>
+            <p className="font-medium">{data?.licenseInfo?.licenseState}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Class</p>
+            <p className="font-medium">{data?.licenseInfo?.licenseClass}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Experience</p>
+            <p className="font-medium">{data?.licenseInfo?.yearsExperience} years</p>
+          </div>
+          {data?.licenseInfo?.endorsements?.length > 0 && (
+            <div className="md:col-span-2">
+              <p className="text-muted-foreground">Endorsements</p>
+              <p className="font-medium">{data?.licenseInfo?.endorsements.join(", ")}</p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Employment History */}
+      <Card className="p-6">
+        <h4 className="font-semibold mb-4 text-foreground">Employment History</h4>
+        <p className="text-sm text-muted-foreground mb-2">
+          {data?.employmentHistory?.length || 0} employer(s) listed
+        </p>
+      </Card>
+
+      {/* Driving History */}
+      <Card className="p-6">
+        <h4 className="font-semibold mb-4 text-foreground">Driving History</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Accidents Reported</p>
+            <p className="font-medium">{data?.drivingHistory?.accidents?.length || 0}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Violations Reported</p>
+            <p className="font-medium">{data?.drivingHistory?.violations?.length || 0}</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Documents */}
+      <Card className="p-6">
+        <h4 className="font-semibold mb-4 text-foreground">Documents Uploaded</h4>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-success" />
+            <span>Social Security Card</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-success" />
+            <span>Driver's License</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-success" />
+            <span>Medical Card</span>
+          </div>
+          {data?.documents?.other?.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-success" />
+              <span>{data?.documents?.other?.length} additional document(s)</span>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Policy Acknowledgment */}
+      <Card className="p-6 bg-success/10 border-success">
+        <div className="flex items-start gap-3">
+          <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="font-semibold mb-2 text-foreground">Drug & Alcohol Policy</h4>
+            <p className="text-sm text-muted-foreground mb-2">
+              Policy acknowledged and signed by {data?.policyAcknowledgment?.signature}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Signed on:{" "}
+              {data?.policyAcknowledgment?.dateSigned
+                ? new Date(data.policyAcknowledgment.dateSigned).toLocaleDateString()
+                : "N/A"}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <div className="flex justify-between pt-4">
+        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <Button onClick={handleSubmit} className="gap-2">
+          <Check className="w-4 h-4" />
+          Submit Application
+        </Button>
+      </div>
+    </div>
+  );
+};
