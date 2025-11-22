@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, Check } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 interface ReviewSubmitProps {
   data: any;
@@ -12,12 +14,37 @@ interface ReviewSubmitProps {
 }
 
 export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
-  const handleSubmit = () => {
-    // Here you would typically send the data to your backend
-    console.log("Application submitted:", data);
-    toast.success("Application submitted successfully!", {
-      description: "We will review your application and contact you soon.",
-    });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      console.log("Submitting application:", data);
+      
+      const { data: response, error } = await supabase.functions.invoke('send-application', {
+        body: data
+      });
+
+      if (error) {
+        console.error("Error sending application:", error);
+        toast.error("Failed to submit application", {
+          description: "Please try again or contact support.",
+        });
+      } else {
+        console.log("Application sent successfully:", response);
+        toast.success("Application submitted successfully!", {
+          description: "We will review your application and contact you soon.",
+        });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to submit application", {
+        description: "Please check your internet connection and try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -30,9 +57,9 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </div>
 
       {/* Personal Information */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h4 className="font-semibold mb-4 text-foreground">Personal Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Name</p>
             <p className="font-medium">
@@ -63,9 +90,9 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </Card>
 
       {/* License Information */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h4 className="font-semibold mb-4 text-foreground">License Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">License Number</p>
             <p className="font-medium">{data?.licenseInfo?.licenseNumber}</p>
@@ -92,7 +119,7 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </Card>
 
       {/* Employment History */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h4 className="font-semibold mb-4 text-foreground">Employment History</h4>
         <p className="text-sm text-muted-foreground mb-2">
           {data?.employmentHistory?.length || 0} employer(s) listed
@@ -100,9 +127,9 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </Card>
 
       {/* Driving History */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h4 className="font-semibold mb-4 text-foreground">Driving History</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Accidents Reported</p>
             <p className="font-medium">{data?.drivingHistory?.accidents?.length || 0}</p>
@@ -115,7 +142,7 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </Card>
 
       {/* Documents */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h4 className="font-semibold mb-4 text-foreground">Documents Uploaded</h4>
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
@@ -140,7 +167,7 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </Card>
 
       {/* Policy Acknowledgment */}
-      <Card className="p-6 bg-success/10 border-success">
+      <Card className="p-4 sm:p-6 bg-success/10 border-success">
         <div className="flex items-start gap-3">
           <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
           <div>
@@ -158,14 +185,24 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         </div>
       </Card>
 
-      <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
+      <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onBack} 
+          className="gap-2 w-full sm:w-auto"
+          disabled={isSubmitting}
+        >
           <ChevronLeft className="w-4 h-4" />
           Back
         </Button>
-        <Button onClick={handleSubmit} className="gap-2">
+        <Button 
+          onClick={handleSubmit} 
+          className="gap-2 w-full sm:w-auto" 
+          disabled={isSubmitting}
+        >
           <Check className="w-4 h-4" />
-          Submit Application
+          {isSubmitting ? "Submitting..." : "Submit Application"}
         </Button>
       </div>
     </div>
