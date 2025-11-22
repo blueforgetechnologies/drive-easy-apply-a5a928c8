@@ -103,7 +103,6 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                       <Label>Date of Accident *</Label>
                       <Input
                         type="date"
-                        required
                         value={accident.date}
                         onChange={(e) => {
                           const updated = [...accidents];
@@ -115,7 +114,6 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                     <div className="space-y-2">
                       <Label>Location *</Label>
                       <Input
-                        required
                         value={accident.location}
                         onChange={(e) => {
                           const updated = [...accidents];
@@ -129,7 +127,6 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                   <div className="space-y-2">
                     <Label>Description *</Label>
                     <Textarea
-                      required
                       value={accident.description}
                       onChange={(e) => {
                         const updated = [...accidents];
@@ -210,7 +207,6 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                       <Label>Date of Violation *</Label>
                       <Input
                         type="date"
-                        required
                         value={violation.date}
                         onChange={(e) => {
                           const updated = [...violations];
@@ -222,7 +218,6 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                     <div className="space-y-2">
                       <Label>Location *</Label>
                       <Input
-                        required
                         value={violation.location}
                         onChange={(e) => {
                           const updated = [...violations];
@@ -235,30 +230,28 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
 
                   <div className="space-y-2">
                     <Label>Type of Violation *</Label>
-                    <Input
-                      required
-                      placeholder="e.g., Speeding, Following too close"
-                      value={violation.violation}
-                      onChange={(e) => {
-                        const updated = [...violations];
-                        updated[index].violation = e.target.value;
-                        setViolations(updated);
-                      }}
-                    />
+                      <Input
+                        placeholder="e.g., Speeding, Following too close"
+                        value={violation.violation}
+                        onChange={(e) => {
+                          const updated = [...violations];
+                          updated[index].violation = e.target.value;
+                          setViolations(updated);
+                        }}
+                      />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Penalty *</Label>
-                    <Input
-                      required
-                      placeholder="e.g., Fine amount, points"
-                      value={violation.penalty}
-                      onChange={(e) => {
-                        const updated = [...violations];
-                        updated[index].penalty = e.target.value;
-                        setViolations(updated);
-                      }}
-                    />
+                      <Input
+                        placeholder="e.g., Fine amount, points"
+                        value={violation.penalty}
+                        onChange={(e) => {
+                          const updated = [...violations];
+                          updated[index].penalty = e.target.value;
+                          setViolations(updated);
+                        }}
+                      />
                   </div>
                 </div>
               </Card>

@@ -21,9 +21,6 @@ export const DrugAlcoholPolicy = ({ data, onNext, onBack }: DrugAlcoholPolicyPro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreed || !signature) {
-      return;
-    }
     onNext({
       policyAcknowledgment: {
         agreedToPolicy: agreed,
@@ -205,7 +202,6 @@ export const DrugAlcoholPolicy = ({ data, onNext, onBack }: DrugAlcoholPolicyPro
               placeholder="Type your full name"
               value={signature}
               onChange={(e) => setSignature(e.target.value)}
-              required
               disabled={!agreed}
             />
             <p className="text-xs text-muted-foreground">
@@ -227,7 +223,7 @@ export const DrugAlcoholPolicy = ({ data, onNext, onBack }: DrugAlcoholPolicyPro
           <ChevronLeft className="w-4 h-4" />
           Back
         </Button>
-        <Button type="submit" disabled={!agreed || !signature} className="gap-2">
+        <Button type="submit" className="gap-2">
           Next
           <ChevronRight className="w-4 h-4" />
         </Button>

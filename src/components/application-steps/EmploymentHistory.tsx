@@ -111,7 +111,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                   <Label htmlFor={`company-${index}`}>Company Name *</Label>
                   <Input
                     id={`company-${index}`}
-                    required
                     value={employment.companyName}
                     onChange={(e) => updateEmployment(index, "companyName", e.target.value)}
                   />
@@ -120,7 +119,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                   <Label htmlFor={`position-${index}`}>Position *</Label>
                   <Input
                     id={`position-${index}`}
-                    required
                     value={employment.position}
                     onChange={(e) => updateEmployment(index, "position", e.target.value)}
                   />
@@ -131,7 +129,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                 <Label htmlFor={`address-${index}`}>Company Address *</Label>
                 <Input
                   id={`address-${index}`}
-                  required
                   value={employment.address}
                   onChange={(e) => updateEmployment(index, "address", e.target.value)}
                 />
@@ -143,7 +140,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                   <Input
                     id={`phone-${index}`}
                     type="tel"
-                    required
                     value={employment.phone}
                     onChange={(e) => updateEmployment(index, "phone", e.target.value)}
                   />
@@ -152,7 +148,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                   <Label htmlFor={`supervisor-${index}`}>Supervisor Name *</Label>
                   <Input
                     id={`supervisor-${index}`}
-                    required
                     value={employment.supervisor}
                     onChange={(e) => updateEmployment(index, "supervisor", e.target.value)}
                   />
@@ -165,7 +160,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                   <Input
                     id={`start-${index}`}
                     type="date"
-                    required
                     value={employment.startDate}
                     onChange={(e) => updateEmployment(index, "startDate", e.target.value)}
                   />
@@ -175,7 +169,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                   <Input
                     id={`end-${index}`}
                     type="date"
-                    required
                     value={employment.endDate}
                     onChange={(e) => updateEmployment(index, "endDate", e.target.value)}
                   />
@@ -186,7 +179,6 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                 <Label htmlFor={`reason-${index}`}>Reason for Leaving *</Label>
                 <Textarea
                   id={`reason-${index}`}
-                  required
                   value={employment.reasonForLeaving}
                   onChange={(e) => updateEmployment(index, "reasonForLeaving", e.target.value)}
                 />

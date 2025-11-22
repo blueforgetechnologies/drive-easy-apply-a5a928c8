@@ -80,13 +80,6 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if at least the required documents are uploaded
-    if (!documents.socialSecurity || !documents.driversLicense || !documents.medicalCard) {
-      toast.error("Please upload all required documents");
-      return;
-    }
-    
     onNext({ documents });
   };
 
