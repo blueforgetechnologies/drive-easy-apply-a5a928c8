@@ -60,7 +60,6 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
           <Label htmlFor="licenseNumber">Driver's License Number *</Label>
           <Input
             id="licenseNumber"
-            required
             value={formData.licenseNumber}
             onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
           />
@@ -69,7 +68,6 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
           <Label htmlFor="licenseState">State Issued *</Label>
           <Input
             id="licenseState"
-            required
             placeholder="XX"
             maxLength={2}
             value={formData.licenseState}
@@ -85,7 +83,6 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
           <Label htmlFor="licenseClass">License Class *</Label>
           <Input
             id="licenseClass"
-            required
             placeholder="e.g., Class A, Class B"
             value={formData.licenseClass}
             onChange={(e) => setFormData({ ...formData, licenseClass: e.target.value })}
@@ -96,7 +93,6 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
           <Input
             id="expirationDate"
             type="date"
-            required
             value={formData.expirationDate}
             onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
           />
@@ -109,7 +105,6 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
           id="yearsExperience"
           type="number"
           min="0"
-          required
           value={formData.yearsExperience}
           onChange={(e) => setFormData({ ...formData, yearsExperience: e.target.value })}
         />

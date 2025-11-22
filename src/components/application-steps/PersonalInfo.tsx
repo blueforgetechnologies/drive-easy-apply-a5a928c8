@@ -46,7 +46,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Label htmlFor="firstName">First Name *</Label>
           <Input
             id="firstName"
-            required
             value={formData.firstName}
             onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
           />
@@ -63,7 +62,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Label htmlFor="lastName">Last Name *</Label>
           <Input
             id="lastName"
-            required
             value={formData.lastName}
             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
           />
@@ -76,7 +74,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Input
             id="ssn"
             type="text"
-            required
             placeholder="XXX-XX-XXXX"
             value={formData.ssn}
             onChange={(e) => setFormData({ ...formData, ssn: e.target.value })}
@@ -87,7 +84,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Input
             id="dob"
             type="date"
-            required
             value={formData.dob}
             onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
           />
@@ -100,7 +96,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Input
             id="phone"
             type="tel"
-            required
             placeholder="(XXX) XXX-XXXX"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -111,7 +106,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Input
             id="email"
             type="email"
-            required
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
@@ -122,7 +116,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
         <Label htmlFor="address">Street Address *</Label>
         <Input
           id="address"
-          required
           value={formData.address}
           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
         />
@@ -133,7 +126,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Label htmlFor="city">City *</Label>
           <Input
             id="city"
-            required
             value={formData.city}
             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
           />
@@ -142,7 +134,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Label htmlFor="state">State *</Label>
           <Input
             id="state"
-            required
             placeholder="XX"
             maxLength={2}
             value={formData.state}
@@ -153,7 +144,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           <Label htmlFor="zip">ZIP Code *</Label>
           <Input
             id="zip"
-            required
             placeholder="XXXXX"
             value={formData.zip}
             onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
