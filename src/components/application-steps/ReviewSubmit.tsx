@@ -39,7 +39,8 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           contractor_agreement: data.contractorAgreement || {},
           direct_deposit: data.directDeposit || {},
           why_hire_you: data.whyHireYou || {},
-          status: 'pending'
+          status: 'pending',
+          driver_status: 'pending'
         });
 
       if (dbError) {

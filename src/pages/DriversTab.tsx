@@ -31,6 +31,8 @@ interface DriverInvite {
   invited_at: string;
   opened_at: string | null;
   application_started_at: string | null;
+  completed?: boolean;
+  application_id?: string;
 }
 
 export default function DriversTab() {
@@ -94,16 +96,40 @@ export default function DriversTab() {
   };
 
   const loadInvitations = async () => {
-    const { data, error } = await supabase
+    const { data: invitesData, error: invitesError } = await supabase
       .from("driver_invites")
       .select("*")
       .order("invited_at", { ascending: false });
 
-    if (error) {
+    if (invitesError) {
       toast.error("Error loading invitations");
       return;
     }
-    setInvites(data || []);
+
+    // Check for completed applications
+    const { data: applicationsData, error: appsError } = await supabase
+      .from("applications")
+      .select("id, personal_info, submitted_at, driver_status")
+      .not("submitted_at", "is", null);
+
+    if (appsError) {
+      console.error("Error loading applications:", appsError);
+    }
+
+    // Match invitations with submitted applications
+    const enrichedInvites = (invitesData || []).map((invite) => {
+      const matchedApp = (applicationsData || []).find(
+        (app: any) => app.personal_info?.email === invite.email
+      );
+      
+      return {
+        ...invite,
+        completed: !!matchedApp,
+        application_id: matchedApp?.id,
+      };
+    });
+
+    setInvites(enrichedInvites);
   };
 
   const loadInactiveDrivers = async () => {
@@ -134,6 +160,21 @@ export default function DriversTab() {
       toast.success("Invitation resent successfully");
     } catch (error: any) {
       toast.error("Failed to resend invitation");
+    }
+  };
+
+  const handleDeleteInvite = async (inviteId: string) => {
+    try {
+      const { error } = await supabase
+        .from("driver_invites")
+        .delete()
+        .eq("id", inviteId);
+
+      if (error) throw error;
+      toast.success("Invitation deleted successfully");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete invitation: " + error.message);
     }
   };
 
@@ -243,6 +284,7 @@ export default function DriversTab() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Invited</TableHead>
+                    <TableHead>Opened</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -256,7 +298,19 @@ export default function DriversTab() {
                         {invite.invited_at ? format(new Date(invite.invited_at), "MMM d, yyyy") : "N/A"}
                       </TableCell>
                       <TableCell>
-                        {invite.application_started_at ? (
+                        {invite.opened_at ? (
+                          <div className="text-sm">
+                            <div>{format(new Date(invite.opened_at), "MMM d, yyyy")}</div>
+                            <div className="text-muted-foreground">{format(new Date(invite.opened_at), "h:mm a")}</div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Not opened</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {invite.completed ? (
+                          <Badge className="bg-green-600 hover:bg-green-700">Completed</Badge>
+                        ) : invite.application_started_at ? (
                           <Badge variant="default">Started</Badge>
                         ) : invite.opened_at ? (
                           <Badge variant="secondary">Opened</Badge>
@@ -265,15 +319,36 @@ export default function DriversTab() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          onClick={() => handleResendInvite(invite)}
-                          size="sm"
-                          variant="outline"
-                          className="gap-2"
-                        >
-                          <RotateCw className="h-4 w-4" />
-                          Resend
-                        </Button>
+                        <div className="flex gap-2">
+                          {invite.completed && invite.application_id ? (
+                            <Button
+                              onClick={() => viewApplication(invite.application_id!)}
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <FileText className="h-4 w-4" />
+                              View
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => handleResendInvite(invite)}
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <RotateCw className="h-4 w-4" />
+                              Resend
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => handleDeleteInvite(invite.id)}
+                            size="sm"
+                            variant="destructive"
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
