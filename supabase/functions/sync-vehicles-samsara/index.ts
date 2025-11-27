@@ -114,17 +114,18 @@ serve(async (req) => {
         updateData.odometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
       }
 
-      // Extract speed from GPS array
+      // Extract speed from GPS array (round to integer)
       if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
-        updateData.speed = samsaraVehicle.gps[0].speedMilesPerHour;
+        updateData.speed = Math.round(samsaraVehicle.gps[0].speedMilesPerHour);
         updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
       }
 
-      // Extract location from GPS array
-      if (samsaraVehicle.gps?.[0]?.reverseGeo?.formattedLocation) {
-        updateData.last_location = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
-      } else if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
-        updateData.last_location = `${samsaraVehicle.gps[0].latitude.toFixed(4)}, ${samsaraVehicle.gps[0].longitude.toFixed(4)}`;
+      // Extract location from GPS array - always store coordinates for map
+      if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
+        const lat = samsaraVehicle.gps[0].latitude;
+        const lng = samsaraVehicle.gps[0].longitude;
+        // Store coordinates in parseable format for map: "lat, lng"
+        updateData.last_location = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       }
 
       // Store Samsara provider info
