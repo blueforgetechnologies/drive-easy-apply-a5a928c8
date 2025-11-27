@@ -1646,6 +1646,7 @@ export type Database = {
           axles: number | null
           bid_as: string | null
           blankets: number | null
+          camera_image_url: string | null
           cargo_coverage_exp_date: string | null
           cargo_coverage_status: string | null
           carrier: string | null
@@ -1732,6 +1733,7 @@ export type Database = {
           axles?: number | null
           bid_as?: string | null
           blankets?: number | null
+          camera_image_url?: string | null
           cargo_coverage_exp_date?: string | null
           cargo_coverage_status?: string | null
           carrier?: string | null
@@ -1818,6 +1820,7 @@ export type Database = {
           axles?: number | null
           bid_as?: string | null
           blankets?: number | null
+          camera_image_url?: string | null
           cargo_coverage_exp_date?: string | null
           cargo_coverage_status?: string | null
           carrier?: string | null

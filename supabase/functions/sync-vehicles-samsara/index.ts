@@ -132,6 +132,39 @@ serve(async (req) => {
       updateData.provider = 'Samsara';
       updateData.provider_id = samsaraVehicle.id;
 
+      // Try to fetch the latest camera image
+      try {
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        
+        const cameraResponse = await fetch(
+          `https://api.samsara.com/fleet/vehicles/${samsaraVehicle.id}/cameras/media/history?startTime=${oneHourAgo.toISOString()}&endTime=${now.toISOString()}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${trimmedKey}`,
+              'Accept': 'application/json',
+            },
+          }
+        );
+
+        if (cameraResponse.ok) {
+          const cameraData = await cameraResponse.json();
+          // Get the most recent front-facing camera image
+          if (cameraData.data?.cameras?.[0]?.images?.length > 0) {
+            const images = cameraData.data.cameras[0].images;
+            const frontFacingImage = images.find((img: any) => 
+              img.imageData?.some((data: any) => data.cameraView === 'frontFacing')
+            );
+            if (frontFacingImage?.imageData?.[0]?.url) {
+              updateData.camera_image_url = frontFacingImage.imageData[0].url;
+            }
+          }
+        }
+      } catch (cameraError) {
+        console.log(`Could not fetch camera image for vehicle ${dbVehicle.vin}:`, cameraError);
+        // Continue without camera image
+      }
+
       // Update vehicle in database
       const { error: updateError } = await supabase
         .from('vehicles')

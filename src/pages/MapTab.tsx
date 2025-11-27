@@ -145,13 +145,86 @@ const MapTab = () => {
         `;
         el.textContent = vehicle.vehicle_number || '?';
 
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div style="padding: 8px;">
-            <h3 style="font-weight: bold; margin-bottom: 4px;">${vehicle.vehicle_number || 'Unknown'}</h3>
-            <p style="margin: 2px 0;"><strong>Status:</strong> ${vehicle.stopped_status || 'Unknown'}</p>
-            <p style="margin: 2px 0;"><strong>Speed:</strong> ${vehicle.speed || 0} mph</p>
-            <p style="margin: 2px 0;"><strong>Location:</strong> ${vehicle.last_location || 'Unknown'}</p>
-            ${vehicle.odometer ? `<p style="margin: 2px 0;"><strong>Odometer:</strong> ${vehicle.odometer.toLocaleString()} mi</p>` : ''}
+        const popup = new mapboxgl.Popup({ 
+          offset: 25,
+          maxWidth: '350px',
+          className: 'vehicle-popup'
+        }).setHTML(`
+          <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 320px;">
+            <!-- Header -->
+            <div style="padding: 12px 16px; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+                  <circle cx="6.5" cy="16.5" r="2.5"/>
+                  <circle cx="16.5" cy="16.5" r="2.5"/>
+                </svg>
+                <span style="font-size: 18px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
+              </div>
+              <div style="background: #10b981; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
+                ${vehicle.speed || 0} MPH
+              </div>
+            </div>
+            
+            <!-- Location Info -->
+            <div style="padding: 12px 16px; background: white; border-bottom: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                ${vehicle.last_location || 'Location unavailable'}
+              </p>
+            </div>
+            
+            ${vehicle.odometer ? `
+            <div style="padding: 8px 16px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span style="color: #374151; font-size: 13px;">
+                <strong>${vehicle.odometer.toLocaleString()}</strong> miles
+              </span>
+            </div>
+            ` : ''}
+            
+            <!-- Camera Image -->
+            ${vehicle.camera_image_url ? `
+            <div style="position: relative; width: 100%; height: 180px; overflow: hidden;">
+              <img 
+                src="${vehicle.camera_image_url}" 
+                alt="Vehicle camera view" 
+                style="width: 100%; height: 100%; object-fit: cover;"
+                onerror="this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; background: #f3f4f6; color: #9ca3af;\\'>Camera image unavailable</div>'"
+              />
+            </div>
+            ` : `
+            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 13px;">
+              <div style="text-align: center;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px;">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <div>Camera view unavailable</div>
+              </div>
+            </div>
+            `}
+            
+            <!-- Action Icons -->
+            <div style="padding: 8px 16px; background: white; display: flex; gap: 16px; border-top: 1px solid #e5e7eb;">
+              <button style="background: none; border: none; padding: 8px; cursor: pointer; color: #6b7280; display: flex; align-items: center; gap: 4px; font-size: 12px;" onmouseover="this.style.color='hsl(var(--primary))'" onmouseout="this.style.color='#6b7280'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                History
+              </button>
+              <button style="background: none; border: none; padding: 8px; cursor: pointer; color: #6b7280; display: flex; align-items: center; gap: 4px; font-size: 12px;" onmouseover="this.style.color='hsl(var(--primary))'" onmouseout="this.style.color='#6b7280'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                </svg>
+                Fullscreen
+              </button>
+            </div>
           </div>
         `);
 
