@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, X, RefreshCw, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { format, formatDistanceToNow } from "date-fns";
 import MaintenanceReminderDialog from "@/components/MaintenanceReminderDialog";
@@ -470,6 +470,14 @@ export default function VehicleDetail() {
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0"
+                          onClick={() => setReminderDialogOpen(true)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
                           onClick={async () => {
                             try {
                               const { error } = await supabase
@@ -499,6 +507,14 @@ export default function VehicleDetail() {
                       <div>{format(new Date(formData.next_service_date), "yyyy-MM-dd")}</div>
                       <div>-</div>
                       <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setReminderDialogOpen(true)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
