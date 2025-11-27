@@ -13,7 +13,7 @@ const MapTab = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [syncing, setSyncing] = useState(false);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
 
   useEffect(() => {
     loadVehicles();
@@ -97,17 +97,37 @@ const MapTab = () => {
     initializeMap();
 
     return () => {
-      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current.forEach(({ marker }) => marker.remove());
       map.current?.remove();
     };
   }, []);
+
+  const handleVehicleClick = (vehicleId: string) => {
+    const markerData = markersRef.current.get(vehicleId);
+    if (!markerData || !map.current) return;
+
+    const { marker, popup } = markerData;
+    
+    // Get marker position
+    const lngLat = marker.getLngLat();
+    
+    // Center map on vehicle
+    map.current.flyTo({
+      center: [lngLat.lng, lngLat.lat],
+      zoom: 12,
+      duration: 1000,
+    });
+    
+    // Open popup
+    popup.addTo(map.current);
+  };
 
   useEffect(() => {
     if (!map.current || vehicles.length === 0) return;
 
     // Clear existing markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
+    markersRef.current.forEach(({ marker }) => marker.remove());
+    markersRef.current.clear();
 
     // Add markers for each vehicle with GPS data
     const bounds = new mapboxgl.LngLatBounds();
@@ -233,13 +253,13 @@ const MapTab = () => {
           .setPopup(popup)
           .addTo(map.current!);
 
-        markersRef.current.push(marker);
+        markersRef.current.set(vehicle.id, { marker, popup });
         bounds.extend([lng, lat]);
       }
     });
 
     // Fit map to show all markers
-    if (markersRef.current.length > 0) {
+    if (markersRef.current.size > 0) {
       map.current.fitBounds(bounds, {
         padding: 50,
         maxZoom: 12,
@@ -262,7 +282,8 @@ const MapTab = () => {
           {vehicles.map((vehicle) => (
             <div
               key={vehicle.id}
-              className="px-4 py-3 border-b hover:bg-muted/30 cursor-pointer"
+              onClick={() => handleVehicleClick(vehicle.id)}
+              className="px-4 py-3 border-b hover:bg-muted/50 cursor-pointer transition-colors"
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="font-medium text-sm">
