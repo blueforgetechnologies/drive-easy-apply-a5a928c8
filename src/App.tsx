@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import VehicleDetail from "./pages/VehicleDetail";
+import LoadDetail from "./pages/LoadDetail";
 import DashboardLayout from "./components/DashboardLayout";
 import DriversTab from "./pages/DriversTab";
 import UsersTab from "./pages/UsersTab";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/dashboard/payees" element={<DashboardLayout><PayeesTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
+          <Route path="/dashboard/load/:id" element={<LoadDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
