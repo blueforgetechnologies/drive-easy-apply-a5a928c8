@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { NavLink } from "@/components/NavLink";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
-import { DriverInvites } from "@/components/DriverInvites";
 import { DraftApplications } from "@/components/DraftApplications";
-import { RotateCw, FileText, Edit } from "lucide-react";
+import { RotateCw, FileText, Edit, Search } from "lucide-react";
 
 interface Application {
   id: string;
@@ -35,11 +34,12 @@ interface DriverInvite {
 
 export default function DriversTab() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [applications, setApplications] = useState<Application[]>([]);
   const [invites, setInvites] = useState<DriverInvite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadData();
@@ -50,6 +50,8 @@ export default function DriversTab() {
     try {
       if (filter === "active") {
         await loadActiveDrivers();
+      } else if (filter === "pending") {
+        await loadPendingDrivers();
       } else if (filter === "invitations") {
         await loadInvitations();
       } else if (filter === "inactive") {
@@ -65,11 +67,26 @@ export default function DriversTab() {
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
-      .eq("status", "pending")
+      .eq("driver_status", "active")
       .order("submitted_at", { ascending: false });
 
     if (error) {
       toast.error("Error loading active drivers");
+      return;
+    }
+    setApplications(data || []);
+  };
+
+  const loadPendingDrivers = async () => {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*")
+      .not("submitted_at", "is", null)
+      .eq("driver_status", "pending")
+      .order("submitted_at", { ascending: false });
+
+    if (error) {
+      toast.error("Error loading pending drivers");
       return;
     }
     setApplications(data || []);
@@ -93,7 +110,7 @@ export default function DriversTab() {
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
-      .neq("status", "pending")
+      .eq("driver_status", "inactive")
       .order("submitted_at", { ascending: false });
 
     if (error) {
@@ -123,88 +140,89 @@ export default function DriversTab() {
     navigate(`/dashboard/application/${id}`);
   };
 
+  const filteredApplications = applications.filter((app) => {
+    const personalInfo = app.personal_info || {};
+    const fullName = `${personalInfo.firstName || ""} ${personalInfo.lastName || ""}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase());
+  });
+
+  const filteredInvites = invites.filter((invite) => {
+    const fullName = `${invite.name || ""}`.toLowerCase();
+    const email = invite.email.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) || email.includes(searchQuery.toLowerCase());
+  });
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Sidebar */}
-      <div className="w-48 flex-shrink-0">
-        <div className="space-y-1">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Filter Drivers</h3>
-          <NavLink
-            to="/dashboard/drivers?filter=active"
-            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
-            activeClassName="bg-muted text-primary font-medium"
-            end
-          >
-            Active Drivers
-          </NavLink>
-          <NavLink
-            to="/dashboard/drivers?filter=invitations"
-            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
-            activeClassName="bg-muted text-primary font-medium"
-            end
-          >
-            Invitations
-          </NavLink>
-          <NavLink
-            to="/dashboard/drivers?filter=inactive"
-            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
-            activeClassName="bg-muted text-primary font-medium"
-            end
-          >
-            Inactive Drivers
-          </NavLink>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Driver Management</h2>
+        <div className="flex gap-2">
+          <AddDriverDialog onDriverAdded={loadData} />
+          <InviteDriverDialog />
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 space-y-6">
-        {/* Filter Buttons */}
-        <div className="flex justify-between items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={() => navigate("/dashboard/drivers?filter=active")}
-            >
-              Reset Filters
-            </Button>
-            <Button 
-              variant={filter === "active" ? "default" : "outline"}
-              size="sm"
-              onClick={() => navigate("/dashboard/drivers?filter=active")}
-            >
-              Active
-            </Button>
-            <Button 
-              variant={filter === "pending" ? "default" : "outline"}
-              size="sm"
-              onClick={() => navigate("/dashboard/drivers?filter=pending")}
-            >
-              Pending
-            </Button>
-            <Button 
-              variant={filter === "inactive" ? "default" : "outline"}
-              size="sm"
-              onClick={() => navigate("/dashboard/drivers?filter=inactive")}
-            >
-              Inactive
-            </Button>
-            <Button 
-              variant="outline"
-              size="sm"
-            >
-              Driver Status
-            </Button>
-          </div>
-          <div className="flex gap-2">
-            <AddDriverDialog onDriverAdded={loadData} />
-            <InviteDriverDialog />
-          </div>
+      {/* Tabs and Search */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={filter === "invitations" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "invitations" });
+              setSearchQuery("");
+            }}
+            className={filter === "invitations" ? "bg-primary text-primary-foreground" : ""}
+          >
+            Invitations
+          </Button>
+          <Button
+            variant={filter === "pending" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "pending" });
+              setSearchQuery("");
+            }}
+            className={filter === "pending" ? "bg-accent text-accent-foreground" : ""}
+          >
+            Pending
+          </Button>
+          <Button
+            variant={filter === "active" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "active" });
+              setSearchQuery("");
+            }}
+            className={filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}
+          >
+            Active
+          </Button>
+          <Button
+            variant={filter === "inactive" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "inactive" });
+              setSearchQuery("");
+            }}
+            className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
+          >
+            Inactive
+          </Button>
         </div>
+
+        {/* Search */}
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       {filter === "invitations" && (
         <Card>
@@ -213,8 +231,10 @@ export default function DriversTab() {
             <CardDescription>Manage and track driver invitation status</CardDescription>
           </CardHeader>
           <CardContent>
-            {invites.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No invitations sent yet</p>
+            {filteredInvites.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                {searchQuery ? "No invitations match your search" : "No invitations sent yet"}
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -227,7 +247,7 @@ export default function DriversTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invites.map((invite) => (
+                  {filteredInvites.map((invite) => (
                     <TableRow key={invite.id}>
                       <TableCell className="font-medium">{invite.name || "N/A"}</TableCell>
                       <TableCell>{invite.email}</TableCell>
@@ -263,12 +283,12 @@ export default function DriversTab() {
         </Card>
       )}
 
-      {(filter === "active" || filter === "inactive") && (
+      {(filter === "active" || filter === "inactive" || filter === "pending") && (
         <Card>
           <CardContent className="p-0">
-            {applications.length === 0 ? (
+            {filteredApplications.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No {filter} drivers found
+                {searchQuery ? "No drivers match your search" : `No ${filter} drivers found`}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -290,7 +310,7 @@ export default function DriversTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {applications.map((app) => {
+                    {filteredApplications.map((app) => {
                       const licenseInfo = app.license_info || {};
                       const personalInfo = app.personal_info || {};
                       const directDeposit = app.direct_deposit || {};
@@ -381,8 +401,7 @@ export default function DriversTab() {
         </Card>
       )}
 
-        {filter === "active" && <DraftApplications />}
-      </div>
+      {filter === "active" && <DraftApplications />}
     </div>
   );
 }
