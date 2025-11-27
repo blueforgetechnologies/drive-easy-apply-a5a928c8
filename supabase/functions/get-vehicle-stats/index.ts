@@ -31,14 +31,14 @@ serve(async (req) => {
       );
     }
 
-    // Get vehicle from database to check if it has a Samsara provider_id
+    // Get vehicle from database to get VIN
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: vehicle, error: dbError } = await supabase
       .from('vehicles')
-      .select('provider_id, vin')
+      .select('vin')
       .eq('id', vehicleId)
       .single();
 
@@ -50,24 +50,21 @@ serve(async (req) => {
       );
     }
 
-    // Use provider_id as Samsara vehicle ID if available
-    const samsaraVehicleId = vehicle.provider_id;
-    
-    if (!samsaraVehicleId) {
+    if (!vehicle.vin) {
       return new Response(
         JSON.stringify({ 
-          error: 'No Samsara vehicle ID configured',
-          message: 'Please set the Provider ID field to the Samsara vehicle ID'
+          error: 'No VIN configured',
+          message: 'Vehicle must have a VIN to fetch Samsara data'
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Fetch vehicle stats from Samsara
-    console.log('Fetching Samsara data for vehicle:', samsaraVehicleId);
+    console.log('Fetching Samsara vehicles for VIN:', vehicle.vin);
     
+    // Fetch all vehicles from Samsara
     const samsaraResponse = await fetch(
-      `https://api.samsara.com/fleet/vehicles/${samsaraVehicleId}/stats`,
+      'https://api.samsara.com/fleet/vehicles/stats',
       {
         headers: {
           'Authorization': `Bearer ${SAMSARA_API_KEY}`,
@@ -90,22 +87,42 @@ serve(async (req) => {
     }
 
     const samsaraData = await samsaraResponse.json();
-    console.log('Samsara data received:', samsaraData);
+    console.log('Samsara vehicles count:', samsaraData.data?.length || 0);
+
+    // Find vehicle by VIN
+    const samsaraVehicle = samsaraData.data?.find((v: any) => v.vin === vehicle.vin);
+
+    if (!samsaraVehicle) {
+      console.log('Vehicle not found in Samsara by VIN:', vehicle.vin);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Vehicle not found in Samsara',
+          message: `No vehicle with VIN ${vehicle.vin} found in your Samsara fleet`
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Found Samsara vehicle:', samsaraVehicle.name);
 
     // Extract relevant fields
     const stats = {
-      odometer: samsaraData.engineStates?.[0]?.odometerMeters 
-        ? (samsaraData.engineStates[0].odometerMeters / 1609.34).toFixed(1) // Convert meters to miles
+      odometer: samsaraVehicle.engineStates?.[0]?.odometerMeters 
+        ? (samsaraVehicle.engineStates[0].odometerMeters / 1609.34).toFixed(1) // Convert meters to miles
         : null,
-      speed: samsaraData.gps?.speedMilesPerHour || 0,
-      stoppedStatus: samsaraData.gps?.speedMilesPerHour === 0 ? 'Stopped' : 'Moving',
-      location: samsaraData.gps?.reverseGeo?.formattedLocation || 
-                `${samsaraData.gps?.latitude?.toFixed(4)}, ${samsaraData.gps?.longitude?.toFixed(4)}`,
-      lastUpdated: samsaraData.gps?.time || samsaraData.time,
-      latitude: samsaraData.gps?.latitude,
-      longitude: samsaraData.gps?.longitude,
-      engineHours: samsaraData.engineStates?.[0]?.engineHours,
-      fuelPercent: samsaraData.fuelPercents?.[0]?.fuelPercent,
+      speed: samsaraVehicle.gps?.speedMilesPerHour || 0,
+      stoppedStatus: samsaraVehicle.gps?.speedMilesPerHour === 0 ? 'Stopped' : 'Moving',
+      location: samsaraVehicle.gps?.reverseGeo?.formattedLocation || 
+                (samsaraVehicle.gps?.latitude && samsaraVehicle.gps?.longitude
+                  ? `${samsaraVehicle.gps.latitude.toFixed(4)}, ${samsaraVehicle.gps.longitude.toFixed(4)}`
+                  : null),
+      lastUpdated: samsaraVehicle.gps?.time || samsaraVehicle.time,
+      latitude: samsaraVehicle.gps?.latitude,
+      longitude: samsaraVehicle.gps?.longitude,
+      engineHours: samsaraVehicle.engineStates?.[0]?.engineHours,
+      fuelPercent: samsaraVehicle.fuelPercents?.[0]?.fuelPercent,
+      samsaraId: samsaraVehicle.id,
+      samsaraName: samsaraVehicle.name,
     };
 
     return new Response(
