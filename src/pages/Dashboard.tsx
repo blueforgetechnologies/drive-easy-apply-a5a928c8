@@ -14,6 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { InviteUserDialog } from "@/components/InviteUserDialog";
+import { PendingInvites } from "@/components/PendingInvites";
 
 interface Application {
   id: string;
@@ -107,7 +109,17 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold">Team Management</h2>
+            <p className="text-muted-foreground">Invite team members to help manage applications</p>
+          </div>
+          <InviteUserDialog />
+        </div>
+
+        <PendingInvites />
+
         <Card>
           <CardHeader>
             <CardTitle>Driver Applications</CardTitle>

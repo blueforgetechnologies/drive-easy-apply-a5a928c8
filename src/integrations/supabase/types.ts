@@ -71,6 +71,30 @@ export type Database = {
         }
         Relationships: []
       }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          email: string
+          id: string
+          invited_at: string | null
+          invited_by: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          email: string
+          id?: string
+          invited_at?: string | null
+          invited_by: string
+        }
+        Update: {
+          accepted_at?: string | null
+          email?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
