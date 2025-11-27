@@ -16,6 +16,8 @@ import UsersTab from "./pages/UsersTab";
 import VehiclesTab from "./pages/VehiclesTab";
 import DispatchersTab from "./pages/DispatchersTab";
 import LoadsTab from "./pages/LoadsTab";
+import CarriersTab from "./pages/CarriersTab";
+import PayeesTab from "./pages/PayeesTab";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,8 @@ const App = () => (
           <Route path="/dashboard/vehicles" element={<DashboardLayout><VehiclesTab /></DashboardLayout>} />
           <Route path="/dashboard/dispatchers" element={<DashboardLayout><DispatchersTab /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
+          <Route path="/dashboard/carriers" element={<DashboardLayout><CarriersTab /></DashboardLayout>} />
+          <Route path="/dashboard/payees" element={<DashboardLayout><PayeesTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
