@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, User } from "lucide-react";
 
 interface Dispatcher {
   id: string;
@@ -18,14 +18,23 @@ interface Dispatcher {
   last_name: string;
   email: string;
   phone: string | null;
+  address: string | null;
   status: string;
   hire_date: string | null;
   termination_date: string | null;
+  pay_percentage: number | null;
+  assigned_trucks: number | null;
+  dob: string | null;
+  license_number: string | null;
+  license_expiration_date: string | null;
+  application_status: string | null;
+  contract_agreement: string | null;
   notes: string | null;
   created_at: string;
 }
 
 export default function DispatchersTab() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
@@ -228,60 +237,105 @@ export default function DispatchersTab() {
               {searchQuery ? "No dispatchers match your search" : "No dispatchers found"}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Hire Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDispatchers.map((dispatcher) => (
-                  <TableRow key={dispatcher.id}>
-                    <TableCell className="font-medium">
-                      {dispatcher.first_name} {dispatcher.last_name}
-                    </TableCell>
-                    <TableCell>{dispatcher.email}</TableCell>
-                    <TableCell>{dispatcher.phone || "N/A"}</TableCell>
-                    <TableCell>
-                      {dispatcher.hire_date
-                        ? format(new Date(dispatcher.hire_date), "MMM d, yyyy")
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          dispatcher.status === "active"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-gray-500 hover:bg-gray-600"
-                        }
-                      >
-                        {dispatcher.status.charAt(0).toUpperCase() + dispatcher.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => handleDeleteDispatcher(dispatcher.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Status</TableHead>
+                    <TableHead>Dispatcher Name</TableHead>
+                    <TableHead>Phone #</TableHead>
+                    <TableHead>Pay Rate %</TableHead>
+                    <TableHead>Assigned Trucks</TableHead>
+                    <TableHead>Physical Address</TableHead>
+                    <TableHead>Email Address</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead>Driver License</TableHead>
+                    <TableHead>DOB</TableHead>
+                    <TableHead>Expiration Date</TableHead>
+                    <TableHead>Application</TableHead>
+                    <TableHead>Direct Deposit</TableHead>
+                    <TableHead>Contract Agreement</TableHead>
+                    <TableHead>Hired Date</TableHead>
+                    <TableHead>Termination Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredDispatchers.map((dispatcher) => {
+                    const age = dispatcher.dob 
+                      ? Math.floor((new Date().getTime() - new Date(dispatcher.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+                      : null;
+                    
+                    return (
+                      <TableRow key={dispatcher.id}>
+                        <TableCell>
+                          <div className={`w-8 h-8 rounded flex items-center justify-center text-white font-bold ${
+                            dispatcher.status === "active" 
+                              ? "bg-green-600" 
+                              : dispatcher.status === "pending"
+                              ? "bg-orange-500"
+                              : "bg-gray-500"
+                          }`}>
+                            {dispatcher.status === "active" ? "0" : dispatcher.status === "pending" ? "0" : "0"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {dispatcher.first_name} {dispatcher.last_name}
+                        </TableCell>
+                        <TableCell>{dispatcher.phone || "-"}</TableCell>
+                        <TableCell>{dispatcher.pay_percentage || "-"}</TableCell>
+                        <TableCell>{dispatcher.assigned_trucks || "0"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{dispatcher.address || "-"}</TableCell>
+                        <TableCell>{dispatcher.email}</TableCell>
+                        <TableCell>{age || "-"}</TableCell>
+                        <TableCell>{dispatcher.license_number || "-"}</TableCell>
+                        <TableCell>
+                          {dispatcher.dob ? format(new Date(dispatcher.dob), "MM/dd/yyyy") : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {dispatcher.license_expiration_date 
+                            ? format(new Date(dispatcher.license_expiration_date), "MM/dd/yyyy") 
+                            : "-"}
+                        </TableCell>
+                        <TableCell>{dispatcher.application_status || "-"}</TableCell>
+                        <TableCell>-</TableCell>
+                        <TableCell>{dispatcher.contract_agreement ? "Yes" : "-"}</TableCell>
+                        <TableCell>
+                          {dispatcher.hire_date
+                            ? format(new Date(dispatcher.hire_date), "MM/dd/yyyy")
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {dispatcher.termination_date
+                            ? format(new Date(dispatcher.termination_date), "MM/dd/yyyy")
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2 justify-end">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8"
+                              onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8"
+                              onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
+                            >
+                              <User className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

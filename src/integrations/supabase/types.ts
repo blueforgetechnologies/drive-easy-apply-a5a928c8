@@ -247,40 +247,88 @@ export type Database = {
       }
       dispatchers: {
         Row: {
+          address: string | null
+          application_status: string | null
+          assigned_trucks: number | null
+          contract_agreement: string | null
           created_at: string | null
+          dob: string | null
           email: string
+          emergency_contact_1_name: string | null
+          emergency_contact_1_phone: string | null
+          emergency_contact_1_relationship: string | null
+          emergency_contact_2_name: string | null
+          emergency_contact_2_phone: string | null
+          emergency_contact_2_relationship: string | null
           first_name: string
           hire_date: string | null
           id: string
           last_name: string
+          license_expiration_date: string | null
+          license_issued_date: string | null
+          license_number: string | null
           notes: string | null
+          pay_percentage: number | null
           phone: string | null
+          role: string | null
           status: string | null
           termination_date: string | null
           updated_at: string | null
         }
         Insert: {
+          address?: string | null
+          application_status?: string | null
+          assigned_trucks?: number | null
+          contract_agreement?: string | null
           created_at?: string | null
+          dob?: string | null
           email: string
+          emergency_contact_1_name?: string | null
+          emergency_contact_1_phone?: string | null
+          emergency_contact_1_relationship?: string | null
+          emergency_contact_2_name?: string | null
+          emergency_contact_2_phone?: string | null
+          emergency_contact_2_relationship?: string | null
           first_name: string
           hire_date?: string | null
           id?: string
           last_name: string
+          license_expiration_date?: string | null
+          license_issued_date?: string | null
+          license_number?: string | null
           notes?: string | null
+          pay_percentage?: number | null
           phone?: string | null
+          role?: string | null
           status?: string | null
           termination_date?: string | null
           updated_at?: string | null
         }
         Update: {
+          address?: string | null
+          application_status?: string | null
+          assigned_trucks?: number | null
+          contract_agreement?: string | null
           created_at?: string | null
+          dob?: string | null
           email?: string
+          emergency_contact_1_name?: string | null
+          emergency_contact_1_phone?: string | null
+          emergency_contact_1_relationship?: string | null
+          emergency_contact_2_name?: string | null
+          emergency_contact_2_phone?: string | null
+          emergency_contact_2_relationship?: string | null
           first_name?: string
           hire_date?: string | null
           id?: string
           last_name?: string
+          license_expiration_date?: string | null
+          license_issued_date?: string | null
+          license_number?: string | null
           notes?: string | null
+          pay_percentage?: number | null
           phone?: string | null
+          role?: string | null
           status?: string | null
           termination_date?: string | null
           updated_at?: string | null
