@@ -20,10 +20,10 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
     setIsSubmitting(true);
     
     try {
-      console.log("Submitting application:", data);
+      console.log("Submitting application for:", data?.personalInfo?.email);
       
       // First, save to database
-      const { data: dbResponse, error: dbError } = await supabase
+      const { error: dbError } = await supabase
         .from('applications')
         .insert({
           personal_info: data.personalInfo,
@@ -40,9 +40,7 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           direct_deposit: data.directDeposit || {},
           why_hire_you: data.whyHireYou || {},
           status: 'pending'
-        })
-        .select()
-        .single();
+        });
 
       if (dbError) {
         console.error("Error saving to database:", dbError);
