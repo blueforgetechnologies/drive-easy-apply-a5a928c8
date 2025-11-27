@@ -31,6 +31,11 @@ serve(async (req) => {
       );
     }
 
+    // Validate API key format
+    const trimmedKey = SAMSARA_API_KEY.trim();
+    console.log('API key length:', trimmedKey.length);
+    console.log('API key starts with:', trimmedKey.substring(0, 12));
+
     // Get vehicle from database to get VIN
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -67,7 +72,7 @@ serve(async (req) => {
       'https://api.samsara.com/fleet/vehicles/stats',
       {
         headers: {
-          'Authorization': `Bearer ${SAMSARA_API_KEY}`,
+          'Authorization': `Bearer ${trimmedKey}`,
           'Accept': 'application/json',
         },
       }
