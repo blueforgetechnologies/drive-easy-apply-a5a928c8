@@ -442,28 +442,84 @@ export default function VehicleDetail() {
                       Add Reminder
                     </Button>
                   </div>
-                  <div className="grid grid-cols-4 gap-2 text-sm font-semibold border-b pb-2">
+                  <div className="grid grid-cols-5 gap-2 text-sm font-semibold border-b pb-2">
                     <div>Type</div>
                     <div>Due by</div>
                     <div>Due</div>
                     <div>Remaining</div>
+                    <div></div>
                   </div>
                   {formData.oil_change_due && (
-                    <div className="grid grid-cols-4 gap-2 text-sm">
+                    <div className="grid grid-cols-5 gap-2 text-sm items-center">
                       <div>Oil Change</div>
                       <div>Miles</div>
                       <div>{formData.oil_change_due}</div>
-                      <div className={formData.oil_change_remaining < 0 ? "text-destructive font-semibold" : ""}>
-                        {formData.oil_change_remaining || "N/A"}
+                      <div className={(() => {
+                        const currentOdo = samsaraStats?.odometer || formData.odometer || 0;
+                        const remaining = formData.oil_change_due - currentOdo;
+                        return remaining < 0 ? "text-destructive font-semibold" : "";
+                      })()}>
+                        {(() => {
+                          const currentOdo = samsaraStats?.odometer || formData.odometer || 0;
+                          const remaining = formData.oil_change_due - currentOdo;
+                          return remaining;
+                        })()} mi
+                      </div>
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={async () => {
+                            try {
+                              const { error } = await supabase
+                                .from("vehicles")
+                                .update({ 
+                                  oil_change_due: null, 
+                                  oil_change_remaining: null 
+                                })
+                                .eq("id", id);
+                              if (error) throw error;
+                              toast.success("Reminder deleted");
+                              loadVehicle();
+                            } catch (error: any) {
+                              toast.error("Failed to delete: " + error.message);
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   )}
                   {formData.next_service_date && (
-                    <div className="grid grid-cols-4 gap-2 text-sm">
+                    <div className="grid grid-cols-5 gap-2 text-sm items-center">
                       <div>Next Service</div>
                       <div>Date</div>
                       <div>{format(new Date(formData.next_service_date), "yyyy-MM-dd")}</div>
                       <div>-</div>
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={async () => {
+                            try {
+                              const { error } = await supabase
+                                .from("vehicles")
+                                .update({ next_service_date: null })
+                                .eq("id", id);
+                              if (error) throw error;
+                              toast.success("Reminder deleted");
+                              loadVehicle();
+                            } catch (error: any) {
+                              toast.error("Failed to delete: " + error.message);
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
