@@ -37,24 +37,36 @@ const MapTab = () => {
   };
 
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    const initializeMap = async () => {
+      if (!mapContainer.current || map.current) return;
 
-    // Initialize map with Mapbox token from environment or user input
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-98, 39], // Center of USA
-      zoom: 4,
-    });
+      // Fetch Mapbox token from backend
+      const { data: tokenData, error: tokenError } = await supabase.functions.invoke('get-mapbox-token');
+      
+      if (tokenError || !tokenData?.token) {
+        console.error('Failed to fetch Mapbox token:', tokenError);
+        return;
+      }
 
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-      }),
-      'top-right'
-    );
+      // Initialize map with token from backend
+      mapboxgl.accessToken = tokenData.token;
+      
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-98, 39], // Center of USA
+        zoom: 4,
+      });
+
+      map.current.addControl(
+        new mapboxgl.NavigationControl({
+          visualizePitch: true,
+        }),
+        'top-right'
+      );
+    };
+
+    initializeMap();
 
     return () => {
       markersRef.current.forEach(marker => marker.remove());
@@ -134,34 +146,6 @@ const MapTab = () => {
     }
   }, [vehicles]);
 
-  if (!import.meta.env.VITE_MAPBOX_TOKEN) {
-    return (
-      <div className="p-6">
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Mapbox Configuration Required</h2>
-          <p className="text-muted-foreground mb-4">
-            To display the vehicle tracking map, you need to add your Mapbox public token.
-          </p>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">Step 1: Get your Mapbox token</h3>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
-                <li>Visit <a href="https://account.mapbox.com/access-tokens/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox Access Tokens</a></li>
-                <li>Sign up or log in to your account</li>
-                <li>Copy your default public token</li>
-              </ol>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">Step 2: Add the token</h3>
-              <p className="text-sm text-muted-foreground ml-4">
-                Contact your administrator to add the <code className="bg-muted px-1 py-0.5 rounded">VITE_MAPBOX_TOKEN</code> to your backend configuration.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="h-[calc(100vh-120px)] relative">
