@@ -62,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite to ${email} from ${inviterName}`);
 
-    const appUrl = "https://9ef0437e-cacf-4544-b852-ae31810ffae0.lovableproject.com";
+    const appUrl = "https://nexustechsolution.com";
     const signupUrl = `${appUrl}/auth`;
 
     const emailResponse = await resend.emails.send({
