@@ -316,59 +316,260 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          air_ride: boolean | null
+          asset_ownership: string | null
+          asset_subtype: string | null
+          asset_type: string | null
           assigned_driver_id: string | null
+          axles: number | null
+          bid_as: string | null
+          blankets: number | null
+          cargo_coverage_exp_date: string | null
+          cargo_coverage_status: string | null
+          carrier: string | null
+          clearance: number | null
           created_at: string | null
+          dash_cam_sn: string | null
+          dimensions_height: number | null
+          dimensions_length: number | null
+          dimensions_width: number | null
+          door_dims_height: number | null
+          door_dims_width: number | null
+          door_sensors: boolean | null
+          door_type: string | null
+          driver_1_id: string | null
+          driver_2_id: string | null
+          eld_device_sn: string | null
+          fuel_per_gallon: number | null
+          has_side_door: boolean | null
+          horizontal_etracks: number | null
           id: string
+          insurance_cost_per_month: number | null
           insurance_expiry: string | null
+          last_location: string | null
           last_service_date: string | null
+          last_updated: string | null
+          liability_coverage_exp_date: string | null
+          liability_coverage_status: string | null
           license_plate: string | null
+          lift_gate: boolean | null
+          lift_gate_capacity: number | null
+          lift_gate_dims: string | null
+          load_bars_etrack: number | null
+          load_bars_non_etrack: number | null
           make: string | null
           mileage: number | null
           model: string | null
           next_service_date: string | null
           notes: string | null
+          odometer: number | null
+          oil_change_due: number | null
+          oil_change_remaining: number | null
+          pallet_jack: boolean | null
+          pallet_jack_capacity: number | null
+          panic_button: boolean | null
+          payee: string | null
+          payload: number | null
+          physical_coverage_exp_date: string | null
+          physical_coverage_status: string | null
+          pickup_date: string | null
+          pickup_odometer: number | null
+          primary_dispatcher_id: string | null
+          provider: string | null
+          provider_id: string | null
+          provider_status: string | null
+          reg_plate: string | null
+          reg_state: string | null
+          registration_exp_date: string | null
           registration_expiry: string | null
+          registration_status: string | null
+          return_date: string | null
+          return_odometer: number | null
+          speed: number | null
           status: string | null
+          stopped_status: string | null
+          straps_count: number | null
+          suspension: string | null
+          team: boolean | null
+          temp_control: boolean | null
+          toll_device_sn: string | null
+          tracking_device_imei: string | null
+          trailer_tracking: boolean | null
           updated_at: string | null
           vehicle_number: string | null
+          vertical_etrack_rows: number | null
           vin: string | null
           year: number | null
         }
         Insert: {
+          air_ride?: boolean | null
+          asset_ownership?: string | null
+          asset_subtype?: string | null
+          asset_type?: string | null
           assigned_driver_id?: string | null
+          axles?: number | null
+          bid_as?: string | null
+          blankets?: number | null
+          cargo_coverage_exp_date?: string | null
+          cargo_coverage_status?: string | null
+          carrier?: string | null
+          clearance?: number | null
           created_at?: string | null
+          dash_cam_sn?: string | null
+          dimensions_height?: number | null
+          dimensions_length?: number | null
+          dimensions_width?: number | null
+          door_dims_height?: number | null
+          door_dims_width?: number | null
+          door_sensors?: boolean | null
+          door_type?: string | null
+          driver_1_id?: string | null
+          driver_2_id?: string | null
+          eld_device_sn?: string | null
+          fuel_per_gallon?: number | null
+          has_side_door?: boolean | null
+          horizontal_etracks?: number | null
           id?: string
+          insurance_cost_per_month?: number | null
           insurance_expiry?: string | null
+          last_location?: string | null
           last_service_date?: string | null
+          last_updated?: string | null
+          liability_coverage_exp_date?: string | null
+          liability_coverage_status?: string | null
           license_plate?: string | null
+          lift_gate?: boolean | null
+          lift_gate_capacity?: number | null
+          lift_gate_dims?: string | null
+          load_bars_etrack?: number | null
+          load_bars_non_etrack?: number | null
           make?: string | null
           mileage?: number | null
           model?: string | null
           next_service_date?: string | null
           notes?: string | null
+          odometer?: number | null
+          oil_change_due?: number | null
+          oil_change_remaining?: number | null
+          pallet_jack?: boolean | null
+          pallet_jack_capacity?: number | null
+          panic_button?: boolean | null
+          payee?: string | null
+          payload?: number | null
+          physical_coverage_exp_date?: string | null
+          physical_coverage_status?: string | null
+          pickup_date?: string | null
+          pickup_odometer?: number | null
+          primary_dispatcher_id?: string | null
+          provider?: string | null
+          provider_id?: string | null
+          provider_status?: string | null
+          reg_plate?: string | null
+          reg_state?: string | null
+          registration_exp_date?: string | null
           registration_expiry?: string | null
+          registration_status?: string | null
+          return_date?: string | null
+          return_odometer?: number | null
+          speed?: number | null
           status?: string | null
+          stopped_status?: string | null
+          straps_count?: number | null
+          suspension?: string | null
+          team?: boolean | null
+          temp_control?: boolean | null
+          toll_device_sn?: string | null
+          tracking_device_imei?: string | null
+          trailer_tracking?: boolean | null
           updated_at?: string | null
           vehicle_number?: string | null
+          vertical_etrack_rows?: number | null
           vin?: string | null
           year?: number | null
         }
         Update: {
+          air_ride?: boolean | null
+          asset_ownership?: string | null
+          asset_subtype?: string | null
+          asset_type?: string | null
           assigned_driver_id?: string | null
+          axles?: number | null
+          bid_as?: string | null
+          blankets?: number | null
+          cargo_coverage_exp_date?: string | null
+          cargo_coverage_status?: string | null
+          carrier?: string | null
+          clearance?: number | null
           created_at?: string | null
+          dash_cam_sn?: string | null
+          dimensions_height?: number | null
+          dimensions_length?: number | null
+          dimensions_width?: number | null
+          door_dims_height?: number | null
+          door_dims_width?: number | null
+          door_sensors?: boolean | null
+          door_type?: string | null
+          driver_1_id?: string | null
+          driver_2_id?: string | null
+          eld_device_sn?: string | null
+          fuel_per_gallon?: number | null
+          has_side_door?: boolean | null
+          horizontal_etracks?: number | null
           id?: string
+          insurance_cost_per_month?: number | null
           insurance_expiry?: string | null
+          last_location?: string | null
           last_service_date?: string | null
+          last_updated?: string | null
+          liability_coverage_exp_date?: string | null
+          liability_coverage_status?: string | null
           license_plate?: string | null
+          lift_gate?: boolean | null
+          lift_gate_capacity?: number | null
+          lift_gate_dims?: string | null
+          load_bars_etrack?: number | null
+          load_bars_non_etrack?: number | null
           make?: string | null
           mileage?: number | null
           model?: string | null
           next_service_date?: string | null
           notes?: string | null
+          odometer?: number | null
+          oil_change_due?: number | null
+          oil_change_remaining?: number | null
+          pallet_jack?: boolean | null
+          pallet_jack_capacity?: number | null
+          panic_button?: boolean | null
+          payee?: string | null
+          payload?: number | null
+          physical_coverage_exp_date?: string | null
+          physical_coverage_status?: string | null
+          pickup_date?: string | null
+          pickup_odometer?: number | null
+          primary_dispatcher_id?: string | null
+          provider?: string | null
+          provider_id?: string | null
+          provider_status?: string | null
+          reg_plate?: string | null
+          reg_state?: string | null
+          registration_exp_date?: string | null
           registration_expiry?: string | null
+          registration_status?: string | null
+          return_date?: string | null
+          return_odometer?: number | null
+          speed?: number | null
           status?: string | null
+          stopped_status?: string | null
+          straps_count?: number | null
+          suspension?: string | null
+          team?: boolean | null
+          temp_control?: boolean | null
+          toll_device_sn?: string | null
+          tracking_device_imei?: string | null
+          trailer_tracking?: boolean | null
           updated_at?: string | null
           vehicle_number?: string | null
+          vertical_etrack_rows?: number | null
           vin?: string | null
           year?: number | null
         }
