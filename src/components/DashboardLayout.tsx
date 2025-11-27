@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt } from "lucide-react";
+import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt, FileText, Building } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    if (tabFromUrl && ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements', 'customers', 'invoices'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [location.pathname]);
@@ -88,6 +88,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <TabsTrigger value="settlements" className="gap-2">
                   <Receipt className="h-4 w-4" />
                   <span className="hidden sm:inline">Settlements</span>
+                </TabsTrigger>
+                <TabsTrigger value="customers" className="gap-2">
+                  <Building className="h-4 w-4" />
+                  <span className="hidden sm:inline">Customers</span>
+                </TabsTrigger>
+                <TabsTrigger value="invoices" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Invoices</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>

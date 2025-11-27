@@ -21,6 +21,9 @@ import CarriersTab from "./pages/CarriersTab";
 import PayeesTab from "./pages/PayeesTab";
 import SettlementsTab from "./pages/SettlementsTab";
 import SettlementDetail from "./pages/SettlementDetail";
+import CustomersTab from "./pages/CustomersTab";
+import InvoicesTab from "./pages/InvoicesTab";
+import InvoiceDetail from "./pages/InvoiceDetail";
 
 const queryClient = new QueryClient();
 
@@ -43,10 +46,13 @@ const App = () => (
           <Route path="/dashboard/carriers" element={<DashboardLayout><CarriersTab /></DashboardLayout>} />
           <Route path="/dashboard/payees" element={<DashboardLayout><PayeesTab /></DashboardLayout>} />
           <Route path="/dashboard/settlements" element={<DashboardLayout><SettlementsTab /></DashboardLayout>} />
+          <Route path="/dashboard/customers" element={<DashboardLayout><CustomersTab /></DashboardLayout>} />
+          <Route path="/dashboard/invoices" element={<DashboardLayout><InvoicesTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
           <Route path="/dashboard/load/:id" element={<LoadDetail />} />
           <Route path="/dashboard/settlement/:id" element={<SettlementDetail />} />
+          <Route path="/dashboard/invoice/:id" element={<InvoiceDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
