@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
+import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DriverInvites } from "@/components/DriverInvites";
 import { DraftApplications } from "@/components/DraftApplications";
 import { RotateCw, FileText, Edit } from "lucide-react";
@@ -199,7 +200,10 @@ export default function DriversTab() {
               Driver Status
             </Button>
           </div>
-          <InviteDriverDialog />
+          <div className="flex gap-2">
+            <AddDriverDialog onDriverAdded={loadData} />
+            <InviteDriverDialog />
+          </div>
         </div>
 
       {filter === "invitations" && (

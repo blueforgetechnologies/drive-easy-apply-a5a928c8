@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
 export default function ApplicationDetail() {
   const { id } = useParams();
@@ -57,9 +58,26 @@ export default function ApplicationDetail() {
       if (error) throw error;
       toast.success("Driver information updated successfully");
     } catch (error: any) {
-      toast.error("Failed to update driver information");
+      toast.error("Failed to update driver information: " + error.message);
+      console.error("Save error:", error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Driver deleted successfully");
+      navigate("/dashboard/drivers?filter=active");
+    } catch (error: any) {
+      toast.error("Failed to delete driver: " + error.message);
+      console.error("Delete error:", error);
     }
   };
 
@@ -100,10 +118,34 @@ export default function ApplicationDetail() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Drivers
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <div className="flex gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Driver
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the driver and all associated data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </header>
 
