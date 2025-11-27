@@ -32,12 +32,23 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
+
+        // Track login
+        if (data.user) {
+          await supabase.from("login_history").insert({
+            user_id: data.user.id,
+            ip_address: null, // Could be populated with actual IP if available
+            user_agent: navigator.userAgent,
+            location: null, // Could be populated with geolocation if available
+          });
+        }
+
         toast.success("Logged in successfully!");
         navigate("/dashboard");
       } else {
