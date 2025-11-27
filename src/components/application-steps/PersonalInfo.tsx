@@ -28,6 +28,9 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
     emergencyContactName: data?.personalInfo?.emergencyContactName || "",
     emergencyContactRelationship: data?.personalInfo?.emergencyContactRelationship || "",
     emergencyContactPhone: data?.personalInfo?.emergencyContactPhone || "",
+    legallyAuthorized: data?.personalInfo?.legallyAuthorized || "",
+    felonyConviction: data?.personalInfo?.felonyConviction || "",
+    felonyDetails: data?.personalInfo?.felonyDetails || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -190,6 +193,59 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
           />
         </div>
       </div>
+
+      <div className="pt-8 border-t mt-8">
+        <h3 className="text-xl font-semibold mb-4 text-foreground">Employment Eligibility & Background</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Required information for employment verification.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="legallyAuthorized">Are you legally authorized to work in the United States as a commercial driver? *</Label>
+          <select
+            id="legallyAuthorized"
+            className="w-full rounded-md border border-input bg-background px-3 py-2"
+            value={formData.legallyAuthorized}
+            onChange={(e) => setFormData({ ...formData, legallyAuthorized: e.target.value })}
+          >
+            <option value="">Select...</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="felonyConviction">Have you ever been convicted of a felony? *</Label>
+          <select
+            id="felonyConviction"
+            className="w-full rounded-md border border-input bg-background px-3 py-2"
+            value={formData.felonyConviction}
+            onChange={(e) => setFormData({ ...formData, felonyConviction: e.target.value })}
+          >
+            <option value="">Select...</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Conviction of a crime is not an automatic bar to employment - all circumstances will be considered.
+          </p>
+        </div>
+      </div>
+
+      {formData.felonyConviction === "yes" && (
+        <div className="space-y-2">
+          <Label htmlFor="felonyDetails">Please explain fully</Label>
+          <textarea
+            id="felonyDetails"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 min-h-[100px]"
+            value={formData.felonyDetails}
+            onChange={(e) => setFormData({ ...formData, felonyDetails: e.target.value })}
+            placeholder="Provide details about your felony conviction"
+          />
+        </div>
+      )}
 
       <div className="flex justify-end pt-4">
         <Button type="submit" className="gap-2">

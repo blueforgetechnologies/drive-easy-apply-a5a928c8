@@ -21,6 +21,9 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
     endorsements: data?.licenseInfo?.endorsements || [],
     expirationDate: data?.licenseInfo?.expirationDate || "",
     yearsExperience: data?.licenseInfo?.yearsExperience || "",
+    deniedLicense: data?.licenseInfo?.deniedLicense || "",
+    suspendedRevoked: data?.licenseInfo?.suspendedRevoked || "",
+    deniedDetails: data?.licenseInfo?.deniedDetails || "",
   });
 
   const endorsementOptions = [
@@ -132,6 +135,52 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="pt-6 border-t mt-6">
+        <h4 className="font-semibold mb-4 text-foreground">License History</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="deniedLicense">Have you ever been denied a license, permit or privilege to operate a motor vehicle? *</Label>
+            <select
+              id="deniedLicense"
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+              value={formData.deniedLicense}
+              onChange={(e) => setFormData({ ...formData, deniedLicense: e.target.value })}
+            >
+              <option value="">Select...</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="suspendedRevoked">Has any license, permit or privilege ever been suspended or revoked? *</Label>
+            <select
+              id="suspendedRevoked"
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+              value={formData.suspendedRevoked}
+              onChange={(e) => setFormData({ ...formData, suspendedRevoked: e.target.value })}
+            >
+              <option value="">Select...</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        {(formData.deniedLicense === "yes" || formData.suspendedRevoked === "yes") && (
+          <div className="space-y-2 mt-4">
+            <Label htmlFor="deniedDetails">Please provide details *</Label>
+            <textarea
+              id="deniedDetails"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 min-h-[100px]"
+              value={formData.deniedDetails}
+              onChange={(e) => setFormData({ ...formData, deniedDetails: e.target.value })}
+              placeholder="Provide details about license denial or suspension/revocation"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between pt-4">
