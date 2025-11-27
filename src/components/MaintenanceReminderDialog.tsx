@@ -42,7 +42,7 @@ export default function MaintenanceReminderDialog({
       
       if (maintenanceType === "oil_change" && dueByMiles) {
         const dueOdometer = parseInt(dueByMiles);
-        const remaining = currentOdometer ? dueOdometer - currentOdometer : null;
+        const remaining = currentOdometer ? Math.round(dueOdometer - currentOdometer) : null;
         
         updateData.oil_change_due = dueOdometer;
         updateData.oil_change_remaining = remaining;
