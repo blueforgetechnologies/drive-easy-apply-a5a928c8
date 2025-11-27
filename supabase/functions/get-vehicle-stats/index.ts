@@ -104,12 +104,14 @@ serve(async (req) => {
 
     if (!samsaraVehicle) {
       console.log('Vehicle not found in Samsara by VIN:', vehicle.vin);
+      // Return a successful response with a notFound flag instead of 404
       return new Response(
         JSON.stringify({ 
-          error: 'Vehicle not found in Samsara',
+          notFound: true,
+          error: null,
           message: `No vehicle with VIN ${vehicle.vin} found in your Samsara fleet`
         }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
