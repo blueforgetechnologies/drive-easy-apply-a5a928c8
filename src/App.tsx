@@ -20,17 +20,15 @@ import DispatcherDetail from "./pages/DispatcherDetail";
 import LoadsTab from "./pages/LoadsTab";
 import CarriersTab from "./pages/CarriersTab";
 import PayeesTab from "./pages/PayeesTab";
-import SettlementsTab from "./pages/SettlementsTab";
 import SettlementDetail from "./pages/SettlementDetail";
 import CustomersTab from "./pages/CustomersTab";
-import InvoicesTab from "./pages/InvoicesTab";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import LocationsTab from "./pages/LocationsTab";
 import LocationDetail from "./pages/LocationDetail";
 import CompanyProfileTab from "./pages/CompanyProfileTab";
-import AuditLogsTab from "./pages/AuditLogsTab";
 import MaintenanceTab from "./pages/MaintenanceTab";
 import MapTab from "./pages/MapTab";
+import AccountingTab from "./pages/AccountingTab";
 
 const queryClient = new QueryClient();
 
@@ -53,13 +51,11 @@ const App = () => (
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
           <Route path="/dashboard/carriers" element={<DashboardLayout><CarriersTab /></DashboardLayout>} />
           <Route path="/dashboard/payees" element={<DashboardLayout><PayeesTab /></DashboardLayout>} />
-          <Route path="/dashboard/settlements" element={<DashboardLayout><SettlementsTab /></DashboardLayout>} />
+          <Route path="/dashboard/accounting" element={<DashboardLayout><AccountingTab /></DashboardLayout>} />
           <Route path="/dashboard/customers" element={<DashboardLayout><CustomersTab /></DashboardLayout>} />
-          <Route path="/dashboard/invoices" element={<DashboardLayout><InvoicesTab /></DashboardLayout>} />
           <Route path="/dashboard/locations" element={<DashboardLayout><LocationsTab /></DashboardLayout>} />
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
-          <Route path="/dashboard/audit-logs" element={<DashboardLayout><AuditLogsTab /></DashboardLayout>} />
           <Route path="/dashboard/company-profile" element={<DashboardLayout><CompanyProfileTab /></DashboardLayout>} />
           <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
