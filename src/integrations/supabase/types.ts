@@ -14,16 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      applications: {
+        Row: {
+          contractor_agreement: Json
+          direct_deposit: Json
+          document_upload: Json
+          driver_dispatch_sheet: Json
+          driving_history: Json
+          drug_alcohol_policy: Json
+          employment_history: Json
+          id: string
+          license_info: Json
+          no_rider_policy: Json
+          payroll_policy: Json
+          personal_info: Json
+          safe_driving_policy: Json
+          status: string | null
+          submitted_at: string | null
+          why_hire_you: Json
+        }
+        Insert: {
+          contractor_agreement: Json
+          direct_deposit: Json
+          document_upload: Json
+          driver_dispatch_sheet: Json
+          driving_history: Json
+          drug_alcohol_policy: Json
+          employment_history: Json
+          id?: string
+          license_info: Json
+          no_rider_policy: Json
+          payroll_policy: Json
+          personal_info: Json
+          safe_driving_policy: Json
+          status?: string | null
+          submitted_at?: string | null
+          why_hire_you: Json
+        }
+        Update: {
+          contractor_agreement?: Json
+          direct_deposit?: Json
+          document_upload?: Json
+          driver_dispatch_sheet?: Json
+          driving_history?: Json
+          drug_alcohol_policy?: Json
+          employment_history?: Json
+          id?: string
+          license_info?: Json
+          no_rider_policy?: Json
+          payroll_policy?: Json
+          personal_info?: Json
+          safe_driving_policy?: Json
+          status?: string | null
+          submitted_at?: string | null
+          why_hire_you?: Json
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +254,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
