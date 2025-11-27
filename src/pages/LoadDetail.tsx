@@ -8,30 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, MapPin, Truck, User, FileText, DollarSign, Clock, Navigation, Upload, X } from "lucide-react";
+import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-
-interface Driver {
-  id: string;
-  personal_info: any;
-}
-
-interface Vehicle {
-  id: string;
-  vehicle_number: string;
-  make: string;
-  model: string;
-}
-
-interface LoadDocument {
-  id: string;
-  document_type: string;
-  file_name: string;
-  file_url: string;
-  uploaded_at: string;
-}
 
 export default function LoadDetail() {
   const { id } = useParams();
@@ -39,10 +21,37 @@ export default function LoadDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [load, setLoad] = useState<any>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [documents, setDocuments] = useState<LoadDocument[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [stops, setStops] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [dispatchers, setDispatchers] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [stopDialogOpen, setStopDialogOpen] = useState(false);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [newStop, setNewStop] = useState({
+    stop_type: "pickup",
+    location_name: "",
+    location_address: "",
+    location_city: "",
+    location_state: "",
+    location_zip: "",
+    contact_name: "",
+    contact_phone: "",
+    scheduled_date: "",
+    scheduled_time_start: "",
+    scheduled_time_end: "",
+    notes: "",
+  });
+  const [newExpense, setNewExpense] = useState({
+    expense_type: "fuel",
+    amount: "",
+    description: "",
+    incurred_date: "",
+    paid_by: "driver",
+    notes: "",
+  });
 
   useEffect(() => {
     if (id) {
@@ -53,37 +62,26 @@ export default function LoadDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load the specific load
-      const { data: loadData, error: loadError } = await supabase
-        .from("loads" as any)
-        .select("*")
-        .eq("id", id)
-        .single();
+      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes] = await Promise.all([
+        supabase.from("loads").select("*").eq("id", id).single(),
+        supabase.from("load_stops").select("*").eq("load_id", id).order("stop_sequence"),
+        supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
+        supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
+        supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
+        supabase.from("vehicles").select("id, vehicle_number, make, model").eq("status", "active"),
+        supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
+        supabase.from("locations").select("*").eq("status", "active"),
+      ]);
 
-      if (loadError) throw loadError;
-      setLoad(loadData);
-
-      // Load available drivers
-      const { data: driversData } = await supabase
-        .from("applications" as any)
-        .select("id, personal_info")
-        .eq("driver_status", "active");
-      setDrivers((driversData as any) || []);
-
-      // Load available vehicles
-      const { data: vehiclesData } = await supabase
-        .from("vehicles" as any)
-        .select("id, vehicle_number, make, model")
-        .eq("status", "active");
-      setVehicles((vehiclesData as any) || []);
-
-      // Load documents
-      const { data: docsData } = await supabase
-        .from("load_documents" as any)
-        .select("*")
-        .eq("load_id", id)
-        .order("uploaded_at", { ascending: false });
-      setDocuments((docsData as any) || []);
+      if (loadRes.error) throw loadRes.error;
+      setLoad(loadRes.data);
+      setStops(stopsRes.data || []);
+      setExpenses(expensesRes.data || []);
+      setDocuments(docsRes.data || []);
+      setDrivers(driversRes.data || []);
+      setVehicles(vehiclesRes.data || []);
+      setDispatchers(dispatchersRes.data || []);
+      setLocations(locationsRes.data || []);
     } catch (error: any) {
       toast.error("Error loading load details");
       console.error(error);
@@ -96,162 +94,350 @@ export default function LoadDetail() {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from("loads" as any)
+        .from("loads")
         .update({
-          ...load,
-          updated_at: new Date().toISOString(),
+          load_number: load.load_number,
+          customer_id: load.customer_id,
+          status: load.status,
+          financial_status: load.financial_status,
+          settlement_status: load.settlement_status,
+          assigned_driver_id: load.assigned_driver_id,
+          assigned_vehicle_id: load.assigned_vehicle_id,
+          assigned_dispatcher_id: load.assigned_dispatcher_id,
+          equipment_type: load.equipment_type,
+          temperature_required: load.temperature_required,
+          hazmat: load.hazmat,
+          team_required: load.team_required,
+          commodity_type: load.commodity_type,
+          cargo_description: load.cargo_description,
+          cargo_weight: load.cargo_weight,
+          cargo_pieces: load.cargo_pieces,
+          rate: load.rate,
+          customer_rate: load.customer_rate,
+          broker_fee: load.broker_fee,
+          fuel_surcharge: load.fuel_surcharge,
+          accessorial_charges: load.accessorial_charges,
+          detention_charges: load.detention_charges,
+          layover_charges: load.layover_charges,
+          other_charges: load.other_charges,
+          estimated_miles: load.estimated_miles,
+          actual_miles: load.actual_miles,
+          special_instructions: load.special_instructions,
+          dispatch_notes: load.dispatch_notes,
+          billing_notes: load.billing_notes,
+          notes: load.notes,
         })
         .eq("id", id);
 
       if (error) throw error;
       toast.success("Load updated successfully");
     } catch (error: any) {
-      toast.error("Failed to update load: " + error.message);
+      toast.error("Failed to update load");
+      console.error(error);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
+  const handleAddStop = async () => {
     try {
-      // Note: This requires storage bucket setup. For now, we'll simulate the upload.
-      // In production, upload to Supabase Storage and store the URL
-      const { error } = await supabase
-        .from("load_documents" as any)
-        .insert({
-          load_id: id,
-          document_type: docType,
-          file_name: file.name,
-          file_url: `uploads/${file.name}`, // Placeholder
-          file_size: file.size,
-        });
-
+      const maxSequence = stops.length > 0 ? Math.max(...stops.map(s => s.stop_sequence)) : 0;
+      const { error } = await supabase.from("load_stops").insert([{
+        load_id: id,
+        stop_sequence: maxSequence + 1,
+        ...newStop,
+      }]);
+      
       if (error) throw error;
-      toast.success("Document uploaded successfully");
+      toast.success("Stop added successfully");
+      setStopDialogOpen(false);
+      setNewStop({
+        stop_type: "pickup",
+        location_name: "",
+        location_address: "",
+        location_city: "",
+        location_state: "",
+        location_zip: "",
+        contact_name: "",
+        contact_phone: "",
+        scheduled_date: "",
+        scheduled_time_start: "",
+        scheduled_time_end: "",
+        notes: "",
+      });
       loadData();
     } catch (error: any) {
-      toast.error("Failed to upload document: " + error.message);
-    } finally {
-      setUploading(false);
+      toast.error("Failed to add stop");
+      console.error(error);
     }
   };
 
-  const handleDeleteDocument = async (docId: string) => {
+  const handleDeleteStop = async (stopId: string) => {
+    if (!confirm("Are you sure you want to delete this stop?")) return;
+    
     try {
-      const { error } = await supabase
-        .from("load_documents" as any)
-        .delete()
-        .eq("id", docId);
-
+      const { error } = await supabase.from("load_stops").delete().eq("id", stopId);
       if (error) throw error;
-      toast.success("Document deleted successfully");
+      toast.success("Stop deleted successfully");
       loadData();
     } catch (error: any) {
-      toast.error("Failed to delete document: " + error.message);
+      toast.error("Failed to delete stop");
+      console.error(error);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const configs: Record<string, { label: string; className: string }> = {
-      pending: { label: "Pending", className: "bg-yellow-500 hover:bg-yellow-600" },
-      dispatched: { label: "Dispatched", className: "bg-blue-500 hover:bg-blue-600" },
-      in_transit: { label: "In Transit", className: "bg-purple-500 hover:bg-purple-600" },
-      delivered: { label: "Delivered", className: "bg-green-600 hover:bg-green-700" },
-      completed: { label: "Completed", className: "bg-green-800 hover:bg-green-900" },
-      cancelled: { label: "Cancelled", className: "bg-red-500 hover:bg-red-600" },
-    };
-    const config = configs[status] || configs.pending;
-    return <Badge className={config.className}>{config.label}</Badge>;
+  const handleUpdateStopStatus = async (stopId: string, newStatus: string) => {
+    try {
+      const updateData: any = { status: newStatus };
+      
+      if (newStatus === "arrived") {
+        updateData.actual_arrival = new Date().toISOString();
+      } else if (newStatus === "departed") {
+        updateData.actual_departure = new Date().toISOString();
+      }
+      
+      const { error } = await supabase
+        .from("load_stops")
+        .update(updateData)
+        .eq("id", stopId);
+      
+      if (error) throw error;
+      toast.success("Stop status updated");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update stop status");
+      console.error(error);
+    }
+  };
+
+  const handleAddExpense = async () => {
+    try {
+      const { error } = await supabase.from("load_expenses").insert([{
+        load_id: id,
+        ...newExpense,
+        amount: parseFloat(newExpense.amount),
+      }]);
+      
+      if (error) throw error;
+      toast.success("Expense added successfully");
+      setExpenseDialogOpen(false);
+      setNewExpense({
+        expense_type: "fuel",
+        amount: "",
+        description: "",
+        incurred_date: "",
+        paid_by: "driver",
+        notes: "",
+      });
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to add expense");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+    
+    try {
+      const { error } = await supabase.from("load_expenses").delete().eq("id", expenseId);
+      if (error) throw error;
+      toast.success("Expense deleted successfully");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete expense");
+      console.error(error);
+    }
+  };
+
+  const updateField = (field: string, value: any) => {
+    setLoad((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "draft": return "bg-gray-500";
+      case "booked": return "bg-blue-500";
+      case "dispatched": return "bg-purple-500";
+      case "loaded": return "bg-yellow-500";
+      case "in_transit": return "bg-orange-500";
+      case "delivered": return "bg-green-500";
+      case "completed": return "bg-green-700";
+      case "cancelled": return "bg-red-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const getStopStatusColor = (status: string) => {
+    switch (status) {
+      case "scheduled": return "bg-blue-500";
+      case "arrived": return "bg-yellow-500";
+      case "loading": case "unloading": return "bg-orange-500";
+      case "departed": return "bg-purple-500";
+      case "completed": return "bg-green-500";
+      default: return "bg-gray-500";
+    }
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <div className="flex items-center justify-center h-full">Loading...</div>;
   }
 
   if (!load) {
-    return <div className="text-center py-8">Load not found</div>;
+    return <div className="flex items-center justify-center h-full">Load not found</div>;
   }
 
-  return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/dashboard/loads")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Load {load.load_number}</h1>
-              <p className="text-muted-foreground">View and manage load details</p>
-            </div>
-          </div>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
+  const totalExpenses = expenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+  const totalRevenue = (parseFloat(load.customer_rate) || 0) + 
+                       (parseFloat(load.fuel_surcharge) || 0) + 
+                       (parseFloat(load.accessorial_charges) || 0) +
+                       (parseFloat(load.detention_charges) || 0) +
+                       (parseFloat(load.layover_charges) || 0) +
+                       (parseFloat(load.other_charges) || 0);
+  const netProfit = totalRevenue - totalExpenses - (parseFloat(load.rate) || 0);
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content - Left Side */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Status and Assignment */}
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/loads")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">Load #{load.load_number}</h1>
+              <Badge className={getStatusColor(load.status)}>{load.status}</Badge>
+            </div>
+            <p className="text-muted-foreground">Load Details & Management</p>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="stops">Stops ({stops.length})</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+          <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
+          <TabsTrigger value="financials">Financials</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Load Status & Assignment
-                </CardTitle>
+                <CardTitle>Load Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <Label>Load Number</Label>
+                  <Input value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
+                </div>
+
+                <div>
+                  <Label>Status</Label>
+                  <Select value={load.status || "draft"} onValueChange={(value) => updateField("status", value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="booked">Booked</SelectItem>
+                      <SelectItem value="dispatched">Dispatched</SelectItem>
+                      <SelectItem value="loaded">Loaded</SelectItem>
+                      <SelectItem value="in_transit">In Transit</SelectItem>
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Status</Label>
-                    <Select value={load.status} onValueChange={(value) => setLoad({ ...load, status: value })}>
+                    <Label>Financial Status</Label>
+                    <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="dispatched">Dispatched</SelectItem>
-                        <SelectItem value="in_transit">In Transit</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="billed">Billed</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div>
-                    <Label>Load Type</Label>
-                    <Select value={load.load_type || ""} onValueChange={(value) => setLoad({ ...load, load_type: value })}>
+                    <Label>Settlement Status</Label>
+                    <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="internal">Internal</SelectItem>
-                        <SelectItem value="broker">Broker</SelectItem>
-                        <SelectItem value="load_board">Load Board</SelectItem>
+                        <SelectItem value="unsettled">Unsettled</SelectItem>
+                        <SelectItem value="included">Included</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="driver">Assigned Driver</Label>
-                  <Select 
-                    value={load.assigned_driver_id || "unassigned"} 
-                    onValueChange={(value) => setLoad({ ...load, assigned_driver_id: value === "unassigned" ? null : value })}
-                  >
+                  <Label>Equipment Type</Label>
+                  <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select equipment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dry_van">Dry Van</SelectItem>
+                      <SelectItem value="reefer">Reefer</SelectItem>
+                      <SelectItem value="flatbed">Flatbed</SelectItem>
+                      <SelectItem value="step_deck">Step Deck</SelectItem>
+                      <SelectItem value="box_truck">Box Truck</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={load.hazmat || false}
+                      onChange={(e) => updateField("hazmat", e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label>Hazmat</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={load.team_required || false}
+                      onChange={(e) => updateField("team_required", e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label>Team Required</Label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Assignment</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Assigned Driver</Label>
+                  <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select driver" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {drivers.map((driver) => (
                         <SelectItem key={driver.id} value={driver.id}>
                           {driver.personal_info?.firstName} {driver.personal_info?.lastName}
@@ -260,17 +446,14 @@ export default function LoadDetail() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
-                  <Label htmlFor="vehicle">Assigned Vehicle</Label>
-                  <Select 
-                    value={load.assigned_vehicle_id || "unassigned"} 
-                    onValueChange={(value) => setLoad({ ...load, assigned_vehicle_id: value === "unassigned" ? null : value })}
-                  >
+                  <Label>Assigned Vehicle</Label>
+                  <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select vehicle" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {vehicles.map((vehicle) => (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
                           {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
@@ -279,457 +462,569 @@ export default function LoadDetail() {
                     </SelectContent>
                   </Select>
                 </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Route Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Route Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Pickup */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase">Pickup Location</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label>Location</Label>
-                      <Input 
-                        value={load.pickup_location || ""} 
-                        onChange={(e) => setLoad({ ...load, pickup_location: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>City</Label>
-                      <Input 
-                        value={load.pickup_city || ""} 
-                        onChange={(e) => setLoad({ ...load, pickup_city: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>State</Label>
-                      <Input 
-                        value={load.pickup_state || ""} 
-                        onChange={(e) => setLoad({ ...load, pickup_state: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Pickup Date/Time</Label>
-                      <Input 
-                        type="datetime-local"
-                        value={load.pickup_date ? format(new Date(load.pickup_date), "yyyy-MM-dd'T'HH:mm") : ""} 
-                        onChange={(e) => setLoad({ ...load, pickup_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Actual Pickup</Label>
-                      <Input 
-                        type="datetime-local"
-                        value={load.actual_pickup_date ? format(new Date(load.actual_pickup_date), "yyyy-MM-dd'T'HH:mm") : ""} 
-                        onChange={(e) => setLoad({ ...load, actual_pickup_date: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Delivery */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase">Delivery Location</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label>Location</Label>
-                      <Input 
-                        value={load.delivery_location || ""} 
-                        onChange={(e) => setLoad({ ...load, delivery_location: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>City</Label>
-                      <Input 
-                        value={load.delivery_city || ""} 
-                        onChange={(e) => setLoad({ ...load, delivery_city: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>State</Label>
-                      <Input 
-                        value={load.delivery_state || ""} 
-                        onChange={(e) => setLoad({ ...load, delivery_state: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Delivery Date/Time</Label>
-                      <Input 
-                        type="datetime-local"
-                        value={load.delivery_date ? format(new Date(load.delivery_date), "yyyy-MM-dd'T'HH:mm") : ""} 
-                        onChange={(e) => setLoad({ ...load, delivery_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Actual Delivery</Label>
-                      <Input 
-                        type="datetime-local"
-                        value={load.actual_delivery_date ? format(new Date(load.actual_delivery_date), "yyyy-MM-dd'T'HH:mm") : ""} 
-                        onChange={(e) => setLoad({ ...load, actual_delivery_date: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Current Location */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase flex items-center gap-2">
-                    <Navigation className="h-4 w-4" />
-                    Real-Time Location
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label>Current Location</Label>
-                      <Input 
-                        value={load.current_location || ""} 
-                        onChange={(e) => setLoad({ ...load, current_location: e.target.value })}
-                        placeholder="Enter current location or coordinates"
-                      />
-                    </div>
-                    <div>
-                      <Label>ETA</Label>
-                      <Input 
-                        type="datetime-local"
-                        value={load.eta ? format(new Date(load.eta), "yyyy-MM-dd'T'HH:mm") : ""} 
-                        onChange={(e) => setLoad({ ...load, eta: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Shipper Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Shipper Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label>Company Name</Label>
-                    <Input 
-                      value={load.shipper_name || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Address</Label>
-                    <Input 
-                      value={load.shipper_address || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_address: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>City</Label>
-                    <Input 
-                      value={load.shipper_city || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_city: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>State</Label>
-                    <Input 
-                      value={load.shipper_state || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_state: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>ZIP</Label>
-                    <Input 
-                      value={load.shipper_zip || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_zip: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Contact Name</Label>
-                    <Input 
-                      value={load.shipper_contact || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_contact: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Phone</Label>
-                    <Input 
-                      value={load.shipper_phone || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_phone: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Email</Label>
-                    <Input 
-                      value={load.shipper_email || ""} 
-                      onChange={(e) => setLoad({ ...load, shipper_email: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Receiver Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Receiver Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label>Company Name</Label>
-                    <Input 
-                      value={load.receiver_name || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Address</Label>
-                    <Input 
-                      value={load.receiver_address || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_address: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>City</Label>
-                    <Input 
-                      value={load.receiver_city || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_city: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>State</Label>
-                    <Input 
-                      value={load.receiver_state || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_state: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>ZIP</Label>
-                    <Input 
-                      value={load.receiver_zip || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_zip: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Contact Name</Label>
-                    <Input 
-                      value={load.receiver_contact || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_contact: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Phone</Label>
-                    <Input 
-                      value={load.receiver_phone || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_phone: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Email</Label>
-                    <Input 
-                      value={load.receiver_email || ""} 
-                      onChange={(e) => setLoad({ ...load, receiver_email: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Cargo Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Cargo Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <div>
-                  <Label>Cargo Description</Label>
-                  <Textarea 
-                    value={load.cargo_description || ""} 
-                    onChange={(e) => setLoad({ ...load, cargo_description: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label>Weight (lbs)</Label>
-                    <Input 
-                      type="number"
-                      value={load.cargo_weight || ""} 
-                      onChange={(e) => setLoad({ ...load, cargo_weight: parseFloat(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Pieces</Label>
-                    <Input 
-                      type="number"
-                      value={load.cargo_pieces || ""} 
-                      onChange={(e) => setLoad({ ...load, cargo_pieces: parseInt(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Commodity Type</Label>
-                    <Input 
-                      value={load.commodity_type || ""} 
-                      onChange={(e) => setLoad({ ...load, commodity_type: e.target.value })}
-                    />
-                  </div>
+                  <Label>Assigned Dispatcher</Label>
+                  <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select dispatcher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dispatchers.map((dispatcher) => (
+                        <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                          {dispatcher.first_name} {dispatcher.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar - Right Side */}
-          <div className="space-y-6">
-            {/* Quick Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Cargo Information</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>Commodity Type</Label>
+                <Input value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Input value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Weight (lbs)</Label>
+                <Input type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Pieces</Label>
+                <Input type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Temperature (if reefer)</Label>
+                <Input value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 34-38°F" />
+              </div>
+
+              <div>
+                <Label>Estimated Miles</Label>
+                <Input type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Actual Miles</Label>
+                <Input type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Notes & Instructions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Special Instructions</Label>
+                <Textarea
+                  value={load.special_instructions || ""}
+                  onChange={(e) => updateField("special_instructions", e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Dispatch Notes</Label>
+                <Textarea
+                  value={load.dispatch_notes || ""}
+                  onChange={(e) => updateField("dispatch_notes", e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Billing Notes</Label>
+                <Textarea
+                  value={load.billing_notes || ""}
+                  onChange={(e) => updateField("billing_notes", e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="stops" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Load Stops</h3>
+            <Dialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" /> Add Stop</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add Stop</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div>
+                    <Label>Stop Type</Label>
+                    <Select value={newStop.stop_type} onValueChange={(value) => setNewStop({ ...newStop, stop_type: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pickup">Pickup</SelectItem>
+                        <SelectItem value="delivery">Delivery</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Location Name</Label>
+                    <Input
+                      value={newStop.location_name}
+                      onChange={(e) => setNewStop({ ...newStop, location_name: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Address</Label>
+                    <Input
+                      value={newStop.location_address}
+                      onChange={(e) => setNewStop({ ...newStop, location_address: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>City</Label>
+                      <Input
+                        value={newStop.location_city}
+                        onChange={(e) => setNewStop({ ...newStop, location_city: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>State</Label>
+                      <Input
+                        value={newStop.location_state}
+                        onChange={(e) => setNewStop({ ...newStop, location_state: e.target.value })}
+                        maxLength={2}
+                      />
+                    </div>
+                    <div>
+                      <Label>ZIP</Label>
+                      <Input
+                        value={newStop.location_zip}
+                        onChange={(e) => setNewStop({ ...newStop, location_zip: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Contact Name</Label>
+                      <Input
+                        value={newStop.contact_name}
+                        onChange={(e) => setNewStop({ ...newStop, contact_name: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Contact Phone</Label>
+                      <Input
+                        value={newStop.contact_phone}
+                        onChange={(e) => setNewStop({ ...newStop, contact_phone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>Scheduled Date</Label>
+                      <Input
+                        type="date"
+                        value={newStop.scheduled_date}
+                        onChange={(e) => setNewStop({ ...newStop, scheduled_date: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Time Start</Label>
+                      <Input
+                        type="time"
+                        value={newStop.scheduled_time_start}
+                        onChange={(e) => setNewStop({ ...newStop, scheduled_time_start: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Time End</Label>
+                      <Input
+                        type="time"
+                        value={newStop.scheduled_time_end}
+                        onChange={(e) => setNewStop({ ...newStop, scheduled_time_end: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={newStop.notes}
+                      onChange={(e) => setNewStop({ ...newStop, notes: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleAddStop} className="w-full">Add Stop</Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="space-y-3">
+            {stops.map((stop, index) => (
+              <Card key={stop.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline">Stop {index + 1}</Badge>
+                      <Badge className={stop.stop_type === "pickup" ? "bg-blue-500" : "bg-green-500"}>
+                        {stop.stop_type}
+                      </Badge>
+                      <Badge className={getStopStatusColor(stop.status)}>
+                        {stop.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={stop.status}
+                        onValueChange={(value) => handleUpdateStopStatus(stop.id, value)}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="arrived">Arrived</SelectItem>
+                          <SelectItem value="loading">Loading</SelectItem>
+                          <SelectItem value="unloading">Unloading</SelectItem>
+                          <SelectItem value="departed">Departed</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteStop(stop.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="font-semibold">{stop.location_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {stop.location_address}, {stop.location_city}, {stop.location_state} {stop.location_zip}
+                    </p>
+                  </div>
+
+                  {stop.contact_name && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Contact: </span>
+                      {stop.contact_name} {stop.contact_phone && `• ${stop.contact_phone}`}
+                    </div>
+                  )}
+
+                  {stop.scheduled_date && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Scheduled: </span>
+                      {format(new Date(stop.scheduled_date), "MMM d, yyyy")}
+                      {stop.scheduled_time_start && ` ${stop.scheduled_time_start}`}
+                      {stop.scheduled_time_end && ` - ${stop.scheduled_time_end}`}
+                    </div>
+                  )}
+
+                  {stop.actual_arrival && (
+                    <div className="text-sm flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-muted-foreground">Arrived: </span>
+                      {format(new Date(stop.actual_arrival), "MMM d, yyyy h:mm a")}
+                    </div>
+                  )}
+
+                  {stop.actual_departure && (
+                    <div className="text-sm flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-muted-foreground">Departed: </span>
+                      {format(new Date(stop.actual_departure), "MMM d, yyyy h:mm a")}
+                    </div>
+                  )}
+
+                  {stop.notes && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Notes: </span>
+                      {stop.notes}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {stops.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              No stops added yet. Click "Add Stop" to create pickup and delivery stops.
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="expenses" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Load Expenses</h3>
+              <p className="text-sm text-muted-foreground">Total: ${totalExpenses.toFixed(2)}</p>
+            </div>
+            <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" /> Add Expense</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Expense</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div>
+                    <Label>Expense Type</Label>
+                    <Select value={newExpense.expense_type} onValueChange={(value) => setNewExpense({ ...newExpense, expense_type: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fuel">Fuel</SelectItem>
+                        <SelectItem value="tolls">Tolls</SelectItem>
+                        <SelectItem value="lumper">Lumper</SelectItem>
+                        <SelectItem value="detention">Detention</SelectItem>
+                        <SelectItem value="layover">Layover</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Amount</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={newExpense.amount}
+                      onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Description</Label>
+                    <Input
+                      value={newExpense.description}
+                      onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Date</Label>
+                    <Input
+                      type="date"
+                      value={newExpense.incurred_date}
+                      onChange={(e) => setNewExpense({ ...newExpense, incurred_date: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Paid By</Label>
+                    <Select value={newExpense.paid_by} onValueChange={(value) => setNewExpense({ ...newExpense, paid_by: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="driver">Driver</SelectItem>
+                        <SelectItem value="company">Company</SelectItem>
+                        <SelectItem value="carrier">Carrier</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={handleAddExpense} className="w-full">Add Expense</Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="space-y-3">
+            {expenses.map((expense) => (
+              <Card key={expense.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">{expense.expense_type}</Badge>
+                        <span className="font-semibold">${parseFloat(expense.amount).toFixed(2)}</span>
+                        <span className="text-sm text-muted-foreground">• Paid by {expense.paid_by}</span>
+                      </div>
+                      {expense.description && <p className="text-sm">{expense.description}</p>}
+                      {expense.incurred_date && (
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(expense.incurred_date), "MMM d, yyyy")}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteExpense(expense.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {expenses.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              No expenses recorded yet
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-4">
+          <div className="text-center py-12 text-muted-foreground">
+            Document upload feature coming soon
+          </div>
+        </TabsContent>
+
+        <TabsContent value="financials" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Quick Info</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  {getStatusBadge(load.status)}
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Created</span>
-                  <span className="text-sm font-medium">{format(new Date(load.created_at), "MMM d, yyyy")}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Estimated Miles</span>
-                  <span className="text-sm font-medium">{load.estimated_miles || "—"}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Actual Miles</span>
-                  <span className="text-sm font-medium">{load.actual_miles || "—"}</span>
-                </div>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">${totalRevenue.toFixed(2)}</div>
               </CardContent>
             </Card>
 
-            {/* Financial */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <DollarSign className="h-4 w-4" />
-                  Financial
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Net Profit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${netProfit.toFixed(2)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Rate</Label>
-                  <Input 
+                  <Label>Customer Rate</Label>
+                  <Input
                     type="number"
                     step="0.01"
-                    value={load.rate || ""} 
-                    onChange={(e) => setLoad({ ...load, rate: parseFloat(e.target.value) })}
+                    value={load.customer_rate || ""}
+                    onChange={(e) => updateField("customer_rate", e.target.value)}
                   />
                 </div>
+
                 <div>
-                  <Label>Total Revenue</Label>
-                  <Input 
+                  <Label>Driver/Carrier Rate</Label>
+                  <Input
                     type="number"
                     step="0.01"
-                    value={load.total_revenue || ""} 
-                    onChange={(e) => setLoad({ ...load, total_revenue: parseFloat(e.target.value) })}
+                    value={load.rate || ""}
+                    onChange={(e) => updateField("rate", e.target.value)}
                   />
                 </div>
+
                 <div>
                   <Label>Broker Fee</Label>
-                  <Input 
+                  <Input
                     type="number"
                     step="0.01"
-                    value={load.broker_fee || ""} 
-                    onChange={(e) => setLoad({ ...load, broker_fee: parseFloat(e.target.value) })}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Documents */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4" />
-                  Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bol-upload">Bill of Lading</Label>
-                  <Input 
-                    id="bol-upload"
-                    type="file"
-                    onChange={(e) => handleFileUpload(e, "BOL")}
-                    disabled={uploading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pod-upload">Proof of Delivery</Label>
-                  <Input 
-                    id="pod-upload"
-                    type="file"
-                    onChange={(e) => handleFileUpload(e, "POD")}
-                    disabled={uploading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="other-upload">Other Documents</Label>
-                  <Input 
-                    id="other-upload"
-                    type="file"
-                    onChange={(e) => handleFileUpload(e, "Other")}
-                    disabled={uploading}
+                    value={load.broker_fee || ""}
+                    onChange={(e) => updateField("broker_fee", e.target.value)}
                   />
                 </div>
 
-                {documents.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">Uploaded Documents</h4>
-                      {documents.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-2 border rounded">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                            <p className="text-xs text-muted-foreground">{doc.document_type}</p>
-                          </div>
-                          <Button 
-                            size="icon" 
-                            variant="ghost"
-                            onClick={() => handleDeleteDocument(doc.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+                <div>
+                  <Label>Fuel Surcharge</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.fuel_surcharge || ""}
+                    onChange={(e) => updateField("fuel_surcharge", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Accessorial Charges</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.accessorial_charges || ""}
+                    onChange={(e) => updateField("accessorial_charges", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Detention Charges</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.detention_charges || ""}
+                    onChange={(e) => updateField("detention_charges", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Layover Charges</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.layover_charges || ""}
+                    onChange={(e) => updateField("layover_charges", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Other Charges</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.other_charges || ""}
+                    onChange={(e) => updateField("other_charges", e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
