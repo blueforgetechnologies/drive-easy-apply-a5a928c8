@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
 
 interface Vehicle {
   id: string;
@@ -46,6 +46,7 @@ export default function VehiclesTab() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [formData, setFormData] = useState({
     vehicle_number: "",
     carrier: "",
@@ -128,6 +129,31 @@ export default function VehiclesTab() {
     navigate(`/dashboard/vehicle/${id}`);
   };
 
+  const handleSyncSamsara = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara');
+
+      if (error) {
+        console.error('Sync error:', error);
+        toast.error('Failed to sync with Samsara: ' + error.message);
+        return;
+      }
+
+      if (data.success) {
+        toast.success(data.message);
+        loadData(); // Reload the vehicles list
+      } else {
+        toast.error('Sync failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast.error('Failed to sync with Samsara');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const filteredVehicles = vehicles.filter((vehicle) => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -150,13 +176,23 @@ export default function VehiclesTab() {
       {/* Header Section */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Asset Management</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Asset
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2" 
+            onClick={handleSyncSamsara}
+            disabled={syncing}
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync Samsara'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Asset
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Asset</DialogTitle>
@@ -229,6 +265,7 @@ export default function VehiclesTab() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Tabs and Search */}
