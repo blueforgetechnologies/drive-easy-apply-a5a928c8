@@ -241,44 +241,44 @@ export default function LoadDetail() {
                 <Separator />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="driver">Assigned Driver</Label>
-                    <Select 
-                      value={load.assigned_driver_id || ""} 
-                      onValueChange={(value) => setLoad({ ...load, assigned_driver_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select driver" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
-                        {drivers.map((driver) => (
-                          <SelectItem key={driver.id} value={driver.id}>
-                            {driver.personal_info?.firstName} {driver.personal_info?.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="vehicle">Assigned Vehicle</Label>
-                    <Select 
-                      value={load.assigned_vehicle_id || ""} 
-                      onValueChange={(value) => setLoad({ ...load, assigned_vehicle_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select vehicle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
-                        {vehicles.map((vehicle) => (
-                          <SelectItem key={vehicle.id} value={vehicle.id}>
-                            {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label htmlFor="driver">Assigned Driver</Label>
+                  <Select 
+                    value={load.assigned_driver_id || "unassigned"} 
+                    onValueChange={(value) => setLoad({ ...load, assigned_driver_id: value === "unassigned" ? null : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select driver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {drivers.map((driver) => (
+                        <SelectItem key={driver.id} value={driver.id}>
+                          {driver.personal_info?.firstName} {driver.personal_info?.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="vehicle">Assigned Vehicle</Label>
+                  <Select 
+                    value={load.assigned_vehicle_id || "unassigned"} 
+                    onValueChange={(value) => setLoad({ ...load, assigned_vehicle_id: value === "unassigned" ? null : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select vehicle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {vehicles.map((vehicle) => (
+                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                          {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 </div>
               </CardContent>
             </Card>
