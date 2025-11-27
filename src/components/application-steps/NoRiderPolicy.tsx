@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
-interface NoRyderPolicyProps {
+interface NoRiderPolicyProps {
   data: any;
   onNext: (data: any) => void;
   onBack: () => void;
@@ -14,25 +14,25 @@ interface NoRyderPolicyProps {
   isLastStep: boolean;
 }
 
-export const NoRyderPolicy = ({ data, onNext, onBack }: NoRyderPolicyProps) => {
+export const NoRiderPolicy = ({ data, onNext, onBack }: NoRiderPolicyProps) => {
   const [formData, setFormData] = useState({
-    agreed: data?.noRyderPolicy?.agreed || false,
-    employeeName: data?.noRyderPolicy?.employeeName || "",
-    signature: data?.noRyderPolicy?.signature || "",
-    date: data?.noRyderPolicy?.date || new Date().toISOString().split('T')[0],
+    agreed: data?.noRiderPolicy?.agreed || false,
+    employeeName: data?.noRiderPolicy?.employeeName || "",
+    signature: data?.noRiderPolicy?.signature || "",
+    date: data?.noRiderPolicy?.date || new Date().toISOString().split('T')[0],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onNext({ noRyderPolicy: formData });
+    onNext({ noRiderPolicy: formData });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h3 className="text-xl font-semibold mb-4 text-foreground">No Ryder Policy</h3>
+        <h3 className="text-xl font-semibold mb-4 text-foreground">No Rider Policy</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Please review and acknowledge the company's No Ryder Policy.
+          Please review and acknowledge the company's No Rider Policy.
         </p>
       </div>
 
@@ -55,7 +55,7 @@ export const NoRyderPolicy = ({ data, onNext, onBack }: NoRyderPolicyProps) => {
           <h4 className="font-semibold mb-2 text-foreground">3. Policy</h4>
           <div className="space-y-3 text-sm text-muted-foreground">
             <div>
-              <p className="font-medium text-foreground mb-1">3.1 Ryder Prohibition</p>
+              <p className="font-medium text-foreground mb-1">3.1 Rider Prohibition</p>
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>No person, other than an employee or authorized contractor, is permitted to operate or ride in Company Assets</li>
                 <li>Employees and contractors are strictly prohibited from allowing any unauthorized person to operate or ride in Company Assets</li>
@@ -104,7 +104,7 @@ export const NoRyderPolicy = ({ data, onNext, onBack }: NoRyderPolicyProps) => {
             htmlFor="agreed"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
           >
-            I affirm my understanding and commitment to complying with the No Ryder Policy
+            I affirm my understanding and commitment to complying with the No Rider Policy
           </Label>
         </div>
       </div>

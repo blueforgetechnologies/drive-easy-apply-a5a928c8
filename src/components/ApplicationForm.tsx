@@ -11,9 +11,10 @@ import { DocumentUpload } from "./application-steps/DocumentUpload";
 import { DrugAlcoholPolicy } from "./application-steps/DrugAlcoholPolicy";
 import { DirectDeposit } from "./application-steps/DirectDeposit";
 import { DriverDispatchSheet } from "./application-steps/DriverDispatchSheet";
-import { NoRyderPolicy } from "./application-steps/NoRyderPolicy";
+import { NoRiderPolicy } from "./application-steps/NoRiderPolicy";
 import SafeDrivingPolicy from "./application-steps/SafeDrivingPolicy";
 import { ContractorAgreement } from "./application-steps/ContractorAgreement";
+import { WhyHireYou } from "./application-steps/WhyHireYou";
 import { ReviewSubmit } from "./application-steps/ReviewSubmit";
 import { Check } from "lucide-react";
 
@@ -106,11 +107,14 @@ export interface ApplicationData {
     signature: string;
     date: string;
   };
-  noRyderPolicy: {
+  noRiderPolicy: {
     agreed: boolean;
     employeeName: string;
     signature: string;
     date: string;
+  };
+  whyHireYou?: {
+    statement: string;
   };
   safeDrivingPolicy?: {
     printName: string;
@@ -136,10 +140,11 @@ const steps = [
   { id: 7, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
   { id: 8, name: "Direct Deposit", component: DirectDeposit },
   { id: 9, name: "Dispatch Sheet", component: DriverDispatchSheet },
-  { id: 10, name: "No Ryder Policy", component: NoRyderPolicy },
+  { id: 10, name: "No Rider Policy", component: NoRiderPolicy },
   { id: 11, name: "Safe Driving", component: SafeDrivingPolicy },
   { id: 12, name: "Contractor Agreement", component: ContractorAgreement },
-  { id: 13, name: "Review & Submit", component: ReviewSubmit },
+  { id: 13, name: "Why Hire You", component: WhyHireYou },
+  { id: 14, name: "Review & Submit", component: ReviewSubmit },
 ];
 
 export const ApplicationForm = () => {
