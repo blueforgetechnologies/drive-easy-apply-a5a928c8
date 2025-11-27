@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
     const greeting = name ? `Hi ${name},` : "Hello,";
 
     const emailResponse = await resend.emails.send({
-      from: "Driver Application <onboarding@resend.dev>",
+      from: "Driver Application <noreply@nexustechsolution.com>",
       to: [email],
       subject: "Complete Your Driver Employment Application",
       html: `
