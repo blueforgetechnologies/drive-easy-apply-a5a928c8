@@ -59,62 +59,58 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen w-full bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <div className="container mx-auto px-3 py-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-foreground">TMS</h1>
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList>
-                <TabsTrigger value="business" className="gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  <span className="hidden sm:inline">Business Manager</span>
+              <TabsList className="h-7">
+                <TabsTrigger value="business" className="gap-1 text-xs px-2">
+                  <Briefcase className="h-3 w-3" />
+                  <span className="hidden sm:inline">Business</span>
                 </TabsTrigger>
-                <TabsTrigger value="users" className="gap-2">
-                  <Users className="h-4 w-4" />
+                <TabsTrigger value="users" className="gap-1 text-xs px-2">
+                  <Users className="h-3 w-3" />
                   <span className="hidden sm:inline">Users</span>
                 </TabsTrigger>
-                <TabsTrigger value="loads" className="gap-2">
-                  <Package className="h-4 w-4" />
+                <TabsTrigger value="loads" className="gap-1 text-xs px-2">
+                  <Package className="h-3 w-3" />
                   <span className="hidden sm:inline">Loads</span>
                 </TabsTrigger>
-                <TabsTrigger value="accounting" className="gap-2">
-                  <Calculator className="h-4 w-4" />
+                <TabsTrigger value="accounting" className="gap-1 text-xs px-2">
+                  <Calculator className="h-3 w-3" />
                   <span className="hidden sm:inline">Accounting</span>
                 </TabsTrigger>
-                <TabsTrigger value="locations" className="gap-2">
-                  <MapPin className="h-4 w-4" />
+                <TabsTrigger value="locations" className="gap-1 text-xs px-2">
+                  <MapPin className="h-3 w-3" />
                   <span className="hidden sm:inline">Locations</span>
                 </TabsTrigger>
-                <TabsTrigger value="maintenance" className="gap-2">
-                  <Wrench className="h-4 w-4" />
+                <TabsTrigger value="maintenance" className="gap-1 text-xs px-2">
+                  <Wrench className="h-3 w-3" />
                   <span className="hidden sm:inline">Maintenance</span>
                 </TabsTrigger>
-                <TabsTrigger value="company-profile" className="gap-2">
-                  <Settings className="h-4 w-4" />
+                <TabsTrigger value="company-profile" className="gap-1 text-xs px-2">
+                  <Settings className="h-3 w-3" />
                   <span className="hidden sm:inline">Company</span>
                 </TabsTrigger>
-                <TabsTrigger value="map" className="gap-2">
-                  <Map className="h-4 w-4" />
-                  <span className="hidden sm:inline">Map</span>
-                </TabsTrigger>
-                <TabsTrigger value="map" className="gap-2">
-                  <Map className="h-4 w-4" />
+                <TabsTrigger value="map" className="gap-1 text-xs px-2">
+                  <Map className="h-3 w-3" />
                   <span className="hidden sm:inline">Map</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Signed in as: <span className="font-medium text-foreground">{userName}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {userName}
             </span>
-            <Button onClick={handleLogout} variant="outline" size="sm">
+            <Button onClick={handleLogout} variant="outline" size="sm" className="h-7 text-xs px-2">
               Logout
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-3 py-3">
         {children}
       </main>
     </div>
