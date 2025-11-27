@@ -87,7 +87,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(/https:\/\/([^.]+)\.supabase\.co/, "https://$1.lovable.app") || "";
+    // Use the production app URL
+    const appUrl = "https://9ef0437e-cacf-4544-b852-ae31810ffae0.lovableproject.com";
     const applicationUrl = `${appUrl}/?invite=${inviteData.id}`;
 
     const greeting = name ? `Hi ${name},` : "Hello,";
