@@ -149,6 +149,48 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatchers: {
+        Row: {
+          created_at: string | null
+          email: string
+          first_name: string
+          hire_date: string | null
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string | null
+          status: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          first_name: string
+          hire_date?: string | null
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          hire_date?: string | null
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       driver_invites: {
         Row: {
           application_started_at: string | null
@@ -269,6 +311,66 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          assigned_driver_id: string | null
+          created_at: string | null
+          id: string
+          insurance_expiry: string | null
+          last_service_date: string | null
+          license_plate: string | null
+          make: string | null
+          mileage: number | null
+          model: string | null
+          next_service_date: string | null
+          notes: string | null
+          registration_expiry: string | null
+          status: string | null
+          updated_at: string | null
+          vehicle_number: string | null
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          assigned_driver_id?: string | null
+          created_at?: string | null
+          id?: string
+          insurance_expiry?: string | null
+          last_service_date?: string | null
+          license_plate?: string | null
+          make?: string | null
+          mileage?: number | null
+          model?: string | null
+          next_service_date?: string | null
+          notes?: string | null
+          registration_expiry?: string | null
+          status?: string | null
+          updated_at?: string | null
+          vehicle_number?: string | null
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          assigned_driver_id?: string | null
+          created_at?: string | null
+          id?: string
+          insurance_expiry?: string | null
+          last_service_date?: string | null
+          license_plate?: string | null
+          make?: string | null
+          mileage?: number | null
+          model?: string | null
+          next_service_date?: string | null
+          notes?: string | null
+          registration_expiry?: string | null
+          status?: string | null
+          updated_at?: string | null
+          vehicle_number?: string | null
+          vin?: string | null
+          year?: number | null
         }
         Relationships: []
       }

@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { NavLink } from "@/components/NavLink";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
-import { PendingInvites } from "@/components/PendingInvites";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Search, Trash2 } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -39,12 +38,13 @@ interface LoginHistory {
 }
 
 export default function UsersTab() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [users, setUsers] = useState<Profile[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadData();
@@ -85,7 +85,6 @@ export default function UsersTab() {
     const activeUsers = profilesData?.filter((p) => adminIds.has(p.id)) || [];
     setUsers(activeUsers);
 
-    // Load login history for active users
     const { data: historyData } = await supabase
       .from("login_history")
       .select("*")
@@ -148,49 +147,90 @@ export default function UsersTab() {
     }
   };
 
+  const handleDeleteInvite = async (inviteId: string) => {
+    try {
+      const { error } = await supabase
+        .from("invites")
+        .delete()
+        .eq("id", inviteId);
+
+      if (error) throw error;
+      toast.success("Invitation deleted successfully");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete invitation: " + error.message);
+    }
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const fullName = (user.full_name || "").toLowerCase();
+    const email = user.email.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) || email.includes(searchQuery.toLowerCase());
+  });
+
+  const filteredInvites = invites.filter((invite) => {
+    const email = invite.email.toLowerCase();
+    return email.includes(searchQuery.toLowerCase());
+  });
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Sidebar */}
-      <div className="w-48 flex-shrink-0">
-        <div className="space-y-1">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Filter Users</h3>
-          <NavLink
-            to="/dashboard/users?filter=invitations"
-            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
-            activeClassName="bg-muted text-primary font-medium"
-            end
-          >
-            Invitations
-          </NavLink>
-          <NavLink
-            to="/dashboard/users?filter=active"
-            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
-            activeClassName="bg-muted text-primary font-medium"
-            end
-          >
-            Active Users
-          </NavLink>
-          <NavLink
-            to="/dashboard/users?filter=inactive"
-            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
-            activeClassName="bg-muted text-primary font-medium"
-            end
-          >
-            Inactive Users
-          </NavLink>
-        </div>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">User Management</h2>
+        <InviteUserDialog />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-3xl font-bold">Users Management</h2>
-          {filter !== "invitations" && <InviteUserDialog />}
+      {/* Tabs and Search */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={filter === "invitations" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "invitations" });
+              setSearchQuery("");
+            }}
+            className={filter === "invitations" ? "bg-primary text-primary-foreground" : ""}
+          >
+            Invitations
+          </Button>
+          <Button
+            variant={filter === "active" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "active" });
+              setSearchQuery("");
+            }}
+            className={filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}
+          >
+            Active Users
+          </Button>
+          <Button
+            variant={filter === "inactive" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "inactive" });
+              setSearchQuery("");
+            }}
+            className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
+          >
+            Inactive Users
+          </Button>
         </div>
+
+        {/* Search */}
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       {filter === "invitations" && (
         <Card>
@@ -199,8 +239,10 @@ export default function UsersTab() {
             <CardDescription>Manage team member invitations</CardDescription>
           </CardHeader>
           <CardContent>
-            {invites.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No invitations sent yet</p>
+            {filteredInvites.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                {searchQuery ? "No invitations match your search" : "No invitations sent yet"}
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -212,7 +254,7 @@ export default function UsersTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invites.map((invite) => (
+                  {filteredInvites.map((invite) => (
                     <TableRow key={invite.id}>
                       <TableCell className="font-medium">{invite.email}</TableCell>
                       <TableCell>
@@ -220,22 +262,32 @@ export default function UsersTab() {
                       </TableCell>
                       <TableCell>
                         {invite.accepted_at ? (
-                          <Badge variant="default">Accepted</Badge>
+                          <Badge className="bg-green-600 hover:bg-green-700">Accepted</Badge>
                         ) : (
                           <Badge variant="secondary">Pending</Badge>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          onClick={() => handleResendInvite(invite)}
-                          size="sm"
-                          variant="outline"
-                          className="gap-2"
-                          disabled={!!invite.accepted_at}
-                        >
-                          <RotateCw className="h-4 w-4" />
-                          Resend
-                        </Button>
+                        <div className="flex gap-2">
+                          {!invite.accepted_at && (
+                            <Button
+                              onClick={() => handleResendInvite(invite)}
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <RotateCw className="h-4 w-4" />
+                              Resend
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => handleDeleteInvite(invite.id)}
+                            size="sm"
+                            variant="destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -256,9 +308,9 @@ export default function UsersTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  No {filter} users found
+                  {searchQuery ? "No users match your search" : `No ${filter} users found`}
                 </p>
               ) : (
                 <Table>
@@ -267,15 +319,23 @@ export default function UsersTab() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Joined</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
+                    {filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
                           {format(new Date(user.created_at), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            className={filter === "active" ? "bg-green-600 hover:bg-green-700" : "bg-gray-500 hover:bg-gray-600"}
+                          >
+                            {filter === "active" ? "Active" : "Inactive"}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -310,7 +370,7 @@ export default function UsersTab() {
                         </TableCell>
                         <TableCell>{log.profile?.email || "N/A"}</TableCell>
                         <TableCell>
-                          {format(new Date(log.logged_in_at), "MMM d, yyyy HH:mm")}
+                          {format(new Date(log.logged_in_at), "MMM d, yyyy h:mm a")}
                         </TableCell>
                         <TableCell>{log.ip_address || "N/A"}</TableCell>
                         <TableCell>{log.location || "N/A"}</TableCell>
@@ -323,7 +383,6 @@ export default function UsersTab() {
           )}
         </>
       )}
-      </div>
     </div>
   );
 }

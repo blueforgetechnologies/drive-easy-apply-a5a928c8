@@ -12,7 +12,9 @@ import ApplicationDetail from "./pages/ApplicationDetail";
 import DashboardLayout from "./components/DashboardLayout";
 import DriversTab from "./pages/DriversTab";
 import UsersTab from "./pages/UsersTab";
-import PlaceholderTab from "./pages/PlaceholderTab";
+import VehiclesTab from "./pages/VehiclesTab";
+import DispatchersTab from "./pages/DispatchersTab";
+import LoadsTab from "./pages/LoadsTab";
 
 const queryClient = new QueryClient();
 
@@ -29,9 +31,9 @@ const App = () => (
           <Route path="/dashboard" element={<Navigate to="/dashboard/drivers?filter=active" replace />} />
           <Route path="/dashboard/drivers" element={<DashboardLayout><DriversTab /></DashboardLayout>} />
           <Route path="/dashboard/users" element={<DashboardLayout><UsersTab /></DashboardLayout>} />
-          <Route path="/dashboard/vehicles" element={<DashboardLayout><PlaceholderTab title="Vehicles" description="Manage your fleet of vehicles" /></DashboardLayout>} />
-          <Route path="/dashboard/dispatchers" element={<DashboardLayout><PlaceholderTab title="Dispatchers" description="Manage dispatch operations" /></DashboardLayout>} />
-          <Route path="/dashboard/loads" element={<DashboardLayout><PlaceholderTab title="Loads" description="Track and manage loads" /></DashboardLayout>} />
+          <Route path="/dashboard/vehicles" element={<DashboardLayout><VehiclesTab /></DashboardLayout>} />
+          <Route path="/dashboard/dispatchers" element={<DashboardLayout><DispatchersTab /></DashboardLayout>} />
+          <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
