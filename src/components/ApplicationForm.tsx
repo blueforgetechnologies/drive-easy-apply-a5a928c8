@@ -8,6 +8,10 @@ import { EmploymentHistory } from "./application-steps/EmploymentHistory";
 import { DrivingHistory } from "./application-steps/DrivingHistory";
 import { DocumentUpload } from "./application-steps/DocumentUpload";
 import { DrugAlcoholPolicy } from "./application-steps/DrugAlcoholPolicy";
+import { DirectDeposit } from "./application-steps/DirectDeposit";
+import { DriverDispatchSheet } from "./application-steps/DriverDispatchSheet";
+import { NoRyderPolicy } from "./application-steps/NoRyderPolicy";
+import { ContractorAgreement } from "./application-steps/ContractorAgreement";
 import { ReviewSubmit } from "./application-steps/ReviewSubmit";
 import { Check } from "lucide-react";
 
@@ -24,6 +28,9 @@ export interface ApplicationData {
     city: string;
     state: string;
     zip: string;
+    emergencyContactName: string;
+    emergencyContactRelationship: string;
+    emergencyContactPhone: string;
   };
   licenseInfo: {
     licenseNumber: string;
@@ -69,6 +76,36 @@ export interface ApplicationData {
     signature: string;
     dateSigned: string;
   };
+  directDeposit: {
+    firstName: string;
+    lastName: string;
+    businessName?: string;
+    email: string;
+    bankName: string;
+    routingNumber: string;
+    checkingNumber: string;
+    cashAppCashtag?: string;
+    accountType: string;
+  };
+  driverDispatchSheet: {
+    agreed: boolean;
+    driverFullName: string;
+    signature: string;
+    date: string;
+  };
+  noRyderPolicy: {
+    agreed: boolean;
+    employeeName: string;
+    signature: string;
+    date: string;
+  };
+  contractorAgreement: {
+    agreed: boolean;
+    contractorName: string;
+    signature: string;
+    date: string;
+    initials: string;
+  };
 }
 
 const steps = [
@@ -78,7 +115,11 @@ const steps = [
   { id: 4, name: "Driving History", component: DrivingHistory },
   { id: 5, name: "Documents", component: DocumentUpload },
   { id: 6, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
-  { id: 7, name: "Review & Submit", component: ReviewSubmit },
+  { id: 7, name: "Direct Deposit", component: DirectDeposit },
+  { id: 8, name: "Dispatch Sheet", component: DriverDispatchSheet },
+  { id: 9, name: "No Ryder Policy", component: NoRyderPolicy },
+  { id: 10, name: "Contractor Agreement", component: ContractorAgreement },
+  { id: 11, name: "Review & Submit", component: ReviewSubmit },
 ];
 
 export const ApplicationForm = () => {
