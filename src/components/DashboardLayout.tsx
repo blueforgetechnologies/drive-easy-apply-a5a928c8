@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt, FileText, Building, MapPin, Wrench, History, Settings } from "lucide-react";
+import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt, FileText, Building, MapPin, Wrench, History, Settings, Map } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements', 'customers', 'invoices', 'locations', 'maintenance', 'audit-logs', 'company-profile'];
+    const validTabs = ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements', 'customers', 'invoices', 'locations', 'maintenance', 'audit-logs', 'company-profile', 'map'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -113,6 +113,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <TabsTrigger value="company-profile" className="gap-2">
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Company</span>
+                </TabsTrigger>
+                <TabsTrigger value="map" className="gap-2">
+                  <Map className="h-4 w-4" />
+                  <span className="hidden sm:inline">Map</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
