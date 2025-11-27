@@ -8,10 +8,20 @@ const MapTab = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     loadVehicles();
+    
+    // Auto-refresh vehicle positions every 30 seconds
+    const refreshInterval = setInterval(() => {
+      loadVehicles();
+    }, 30000);
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const loadVehicles = async () => {
@@ -22,6 +32,7 @@ const MapTab = () => {
 
     if (!error && data) {
       setVehicles(data);
+      setLastUpdate(new Date());
     }
   };
 
@@ -159,6 +170,12 @@ const MapTab = () => {
         <h3 className="font-semibold mb-2">Fleet Overview</h3>
         <p className="text-sm text-muted-foreground">
           {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} tracked
+        </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Last updated: {lastUpdate.toLocaleTimeString()}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Auto-refresh: every 30s
         </p>
       </div>
     </div>
