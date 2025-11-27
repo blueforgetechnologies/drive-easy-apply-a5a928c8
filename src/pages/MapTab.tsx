@@ -3,12 +3,16 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 const MapTab = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [syncing, setSyncing] = useState(false);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
@@ -33,6 +37,30 @@ const MapTab = () => {
     if (!error && data) {
       setVehicles(data);
       setLastUpdate(new Date());
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara');
+
+      if (error) {
+        console.error('Sync error:', error);
+        toast.error('Failed to sync vehicles with Samsara');
+        return;
+      }
+
+      if (data?.success) {
+        toast.success(`Successfully synced ${data.results.updated} vehicles`);
+        // Reload vehicles after sync
+        await loadVehicles();
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error('Failed to sync vehicles');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -158,9 +186,18 @@ const MapTab = () => {
         <p className="text-xs text-muted-foreground mt-2">
           Last updated: {lastUpdate.toLocaleTimeString()}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mb-3">
           Auto-refresh: every 30s
         </p>
+        <Button 
+          onClick={handleSync} 
+          disabled={syncing}
+          size="sm"
+          className="w-full"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+          {syncing ? 'Syncing...' : 'Sync with Samsara'}
+        </Button>
       </div>
     </div>
   );
