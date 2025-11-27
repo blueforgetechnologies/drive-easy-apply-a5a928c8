@@ -93,6 +93,9 @@ serve(async (req) => {
 
     const samsaraData = await samsaraResponse.json();
     console.log('Samsara vehicles count:', samsaraData.data?.length || 0);
+    if (samsaraData.data && samsaraData.data.length > 0) {
+      console.log('Sample Samsara vehicle:', JSON.stringify(samsaraData.data[0], null, 2));
+    }
     
     // Log all available VINs for debugging
     const availableVins = samsaraData.data?.map((v: any) => v.vin).filter(Boolean) || [];
