@@ -88,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Use the production app URL
-    const appUrl = "https://9ef0437e-cacf-4544-b852-ae31810ffae0.lovableproject.com";
+    const appUrl = "https://nexustechsolution.com";
     const applicationUrl = `${appUrl}/?invite=${inviteData.id}`;
 
     const greeting = name ? `Hi ${name},` : "Hello,";
