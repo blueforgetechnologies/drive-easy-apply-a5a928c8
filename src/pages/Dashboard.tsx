@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
 import { PendingInvites } from "@/components/PendingInvites";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
+import { DriverInvites } from "@/components/DriverInvites";
+import { DraftApplications } from "@/components/DraftApplications";
 
 interface Application {
   id: string;
@@ -73,6 +75,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("applications")
         .select("*")
+        .not("submitted_at", "is", null)
         .order("submitted_at", { ascending: false });
 
       if (error) throw error;
@@ -123,6 +126,10 @@ export default function Dashboard() {
         </div>
 
         <PendingInvites />
+
+        <DriverInvites />
+
+        <DraftApplications />
 
         <Card>
           <CardHeader>

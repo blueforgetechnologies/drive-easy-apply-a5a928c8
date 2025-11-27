@@ -11,7 +11,7 @@ const corsHeaders = {
 
 interface DriverInviteRequest {
   email: string;
-  driverName?: string;
+  name?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -51,7 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, driverName }: DriverInviteRequest = await req.json();
+    const { email, name }: DriverInviteRequest = await req.json();
 
     if (!email) {
       return new Response(
@@ -62,10 +62,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending driver application invite to ${email}`);
 
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(/https:\/\/([^.]+)\.supabase\.co/, "https://$1.lovable.app") || "";
-    const applicationUrl = `${appUrl}/`;
+    // Insert invite record into database
+    const { data: inviteData, error: inviteError } = await supabase
+      .from('driver_invites')
+      .insert({
+        email,
+        name,
+        invited_by: user.id,
+      })
+      .select()
+      .single();
 
-    const greeting = driverName ? `Hi ${driverName},` : "Hello,";
+    if (inviteError) {
+      console.error('Error creating invite record:', inviteError);
+      return new Response(JSON.stringify({ error: 'Failed to create invite record' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(/https:\/\/([^.]+)\.supabase\.co/, "https://$1.lovable.app") || "";
+    const applicationUrl = `${appUrl}/?invite=${inviteData.id}`;
+
+    const greeting = name ? `Hi ${name},` : "Hello,";
 
     const emailResponse = await resend.emails.send({
       from: "Driver Application <onboarding@resend.dev>",

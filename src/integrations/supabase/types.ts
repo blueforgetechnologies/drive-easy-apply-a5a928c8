@@ -71,6 +71,36 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_invites: {
+        Row: {
+          application_started_at: string | null
+          email: string
+          id: string
+          invited_at: string | null
+          invited_by: string
+          name: string | null
+          opened_at: string | null
+        }
+        Insert: {
+          application_started_at?: string | null
+          email: string
+          id?: string
+          invited_at?: string | null
+          invited_by: string
+          name?: string | null
+          opened_at?: string | null
+        }
+        Update: {
+          application_started_at?: string | null
+          email?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string
+          name?: string | null
+          opened_at?: string | null
+        }
+        Relationships: []
+      }
       invites: {
         Row: {
           accepted_at: string | null
