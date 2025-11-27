@@ -30,6 +30,7 @@ import LocationDetail from "./pages/LocationDetail";
 import CompanyProfileTab from "./pages/CompanyProfileTab";
 import AuditLogsTab from "./pages/AuditLogsTab";
 import MaintenanceTab from "./pages/MaintenanceTab";
+import MapTab from "./pages/MapTab";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/audit-logs" element={<DashboardLayout><AuditLogsTab /></DashboardLayout>} />
           <Route path="/dashboard/company-profile" element={<DashboardLayout><CompanyProfileTab /></DashboardLayout>} />
+          <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
           <Route path="/dashboard/load/:id" element={<LoadDetail />} />
