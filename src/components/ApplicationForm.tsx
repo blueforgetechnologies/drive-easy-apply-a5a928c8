@@ -15,6 +15,7 @@ import { NoRiderPolicy } from "./application-steps/NoRiderPolicy";
 import SafeDrivingPolicy from "./application-steps/SafeDrivingPolicy";
 import { ContractorAgreement } from "./application-steps/ContractorAgreement";
 import { WhyHireYou } from "./application-steps/WhyHireYou";
+import { EmergencyContact } from "./application-steps/EmergencyContact";
 import { ReviewSubmit } from "./application-steps/ReviewSubmit";
 import { Check } from "lucide-react";
 
@@ -128,6 +129,13 @@ export interface ApplicationData {
     date: string;
     initials: string;
   };
+  emergencyContacts?: Array<{
+    firstName: string;
+    lastName: string;
+    phone: string;
+    address: string;
+    relationship: string;
+  }>;
 }
 
 const steps = [
@@ -136,15 +144,16 @@ const steps = [
   { id: 3, name: "License Info", component: LicenseInfo },
   { id: 4, name: "Employment History", component: EmploymentHistory },
   { id: 5, name: "Driving History", component: DrivingHistory },
-  { id: 6, name: "Documents", component: DocumentUpload },
-  { id: 7, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
-  { id: 8, name: "Direct Deposit", component: DirectDeposit },
-  { id: 9, name: "Dispatch Sheet", component: DriverDispatchSheet },
-  { id: 10, name: "No Rider Policy", component: NoRiderPolicy },
-  { id: 11, name: "Safe Driving", component: SafeDrivingPolicy },
-  { id: 12, name: "Contractor Agreement", component: ContractorAgreement },
-  { id: 13, name: "Why Hire You", component: WhyHireYou },
-  { id: 14, name: "Review & Submit", component: ReviewSubmit },
+  { id: 6, name: "Emergency Contacts", component: EmergencyContact },
+  { id: 7, name: "Documents", component: DocumentUpload },
+  { id: 8, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
+  { id: 9, name: "Direct Deposit", component: DirectDeposit },
+  { id: 10, name: "Dispatch Sheet", component: DriverDispatchSheet },
+  { id: 11, name: "No Rider Policy", component: NoRiderPolicy },
+  { id: 12, name: "Safe Driving", component: SafeDrivingPolicy },
+  { id: 13, name: "Contractor Agreement", component: ContractorAgreement },
+  { id: 14, name: "Why Hire You", component: WhyHireYou },
+  { id: 15, name: "Review & Submit", component: ReviewSubmit },
 ];
 
 export const ApplicationForm = () => {

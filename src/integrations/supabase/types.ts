@@ -16,58 +16,136 @@ export type Database = {
     Tables: {
       applications: {
         Row: {
+          account_name: string | null
+          account_type: string | null
+          application_date: string | null
+          bank_name: string | null
+          cell_phone: string | null
+          checking_number: string | null
           contractor_agreement: Json
           direct_deposit: Json
           document_upload: Json
+          driver_address: string | null
           driver_dispatch_sheet: Json
+          driver_password: string | null
+          driver_record_expiry: string | null
+          driver_salary: string | null
+          driver_status: string | null
           driving_history: Json
           drug_alcohol_policy: Json
+          emergency_contacts: Json | null
           employment_history: Json
+          green_card_expiry: string | null
+          hired_date: string | null
+          home_phone: string | null
           id: string
           license_info: Json
+          medical_card_expiry: string | null
+          national_registry: string | null
           no_rider_policy: Json
+          pay_method: string | null
+          pay_per_mile: number | null
           payroll_policy: Json
           personal_info: Json
+          restrictions: string | null
+          routing_number: string | null
           safe_driving_policy: Json
+          score_card: string | null
           status: string | null
           submitted_at: string | null
+          termination_date: string | null
+          vehicle_note: string | null
+          weekly_salary: number | null
           why_hire_you: Json
+          work_permit_expiry: string | null
         }
         Insert: {
+          account_name?: string | null
+          account_type?: string | null
+          application_date?: string | null
+          bank_name?: string | null
+          cell_phone?: string | null
+          checking_number?: string | null
           contractor_agreement: Json
           direct_deposit: Json
           document_upload: Json
+          driver_address?: string | null
           driver_dispatch_sheet: Json
+          driver_password?: string | null
+          driver_record_expiry?: string | null
+          driver_salary?: string | null
+          driver_status?: string | null
           driving_history: Json
           drug_alcohol_policy: Json
+          emergency_contacts?: Json | null
           employment_history: Json
+          green_card_expiry?: string | null
+          hired_date?: string | null
+          home_phone?: string | null
           id?: string
           license_info: Json
+          medical_card_expiry?: string | null
+          national_registry?: string | null
           no_rider_policy: Json
+          pay_method?: string | null
+          pay_per_mile?: number | null
           payroll_policy: Json
           personal_info: Json
+          restrictions?: string | null
+          routing_number?: string | null
           safe_driving_policy: Json
+          score_card?: string | null
           status?: string | null
           submitted_at?: string | null
+          termination_date?: string | null
+          vehicle_note?: string | null
+          weekly_salary?: number | null
           why_hire_you: Json
+          work_permit_expiry?: string | null
         }
         Update: {
+          account_name?: string | null
+          account_type?: string | null
+          application_date?: string | null
+          bank_name?: string | null
+          cell_phone?: string | null
+          checking_number?: string | null
           contractor_agreement?: Json
           direct_deposit?: Json
           document_upload?: Json
+          driver_address?: string | null
           driver_dispatch_sheet?: Json
+          driver_password?: string | null
+          driver_record_expiry?: string | null
+          driver_salary?: string | null
+          driver_status?: string | null
           driving_history?: Json
           drug_alcohol_policy?: Json
+          emergency_contacts?: Json | null
           employment_history?: Json
+          green_card_expiry?: string | null
+          hired_date?: string | null
+          home_phone?: string | null
           id?: string
           license_info?: Json
+          medical_card_expiry?: string | null
+          national_registry?: string | null
           no_rider_policy?: Json
+          pay_method?: string | null
+          pay_per_mile?: number | null
           payroll_policy?: Json
           personal_info?: Json
+          restrictions?: string | null
+          routing_number?: string | null
           safe_driving_policy?: Json
+          score_card?: string | null
           status?: string | null
           submitted_at?: string | null
+          termination_date?: string | null
+          vehicle_note?: string | null
+          weekly_salary?: number | null
           why_hire_you?: Json
+          work_permit_expiry?: string | null
         }
         Relationships: []
       }
