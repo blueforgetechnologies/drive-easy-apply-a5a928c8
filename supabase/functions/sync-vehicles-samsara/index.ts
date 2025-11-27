@@ -78,8 +78,9 @@ serve(async (req) => {
     // Create VIN to Samsara vehicle map for quick lookup
     const samsaraByVin = new Map();
     samsaraVehicles.forEach((v: any) => {
-      if (v.vin) {
-        samsaraByVin.set(v.vin, v);
+      const vin = v.externalIds?.["samsara.vin"];
+      if (vin) {
+        samsaraByVin.set(vin, v);
       }
     });
 
@@ -108,22 +109,18 @@ serve(async (req) => {
         last_updated: new Date().toISOString(),
       };
 
-      // Extract odometer (convert meters to miles)
-      if (samsaraVehicle.engineStates?.[0]?.odometerMeters) {
-        updateData.odometer = Math.round(samsaraVehicle.engineStates[0].odometerMeters / 1609.34);
+      // Note: /feed endpoint doesn't provide odometer directly
+      // Extract speed from GPS array
+      if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
+        updateData.speed = samsaraVehicle.gps[0].speedMilesPerHour;
+        updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
       }
 
-      // Extract speed
-      if (samsaraVehicle.gps?.speedMilesPerHour !== undefined) {
-        updateData.speed = samsaraVehicle.gps.speedMilesPerHour;
-        updateData.stopped_status = samsaraVehicle.gps.speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
-      }
-
-      // Extract location
-      if (samsaraVehicle.gps?.reverseGeo?.formattedLocation) {
-        updateData.last_location = samsaraVehicle.gps.reverseGeo.formattedLocation;
-      } else if (samsaraVehicle.gps?.latitude && samsaraVehicle.gps?.longitude) {
-        updateData.last_location = `${samsaraVehicle.gps.latitude.toFixed(4)}, ${samsaraVehicle.gps.longitude.toFixed(4)}`;
+      // Extract location from GPS array
+      if (samsaraVehicle.gps?.[0]?.reverseGeo?.formattedLocation) {
+        updateData.last_location = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
+      } else if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
+        updateData.last_location = `${samsaraVehicle.gps[0].latitude.toFixed(4)}, ${samsaraVehicle.gps[0].longitude.toFixed(4)}`;
       }
 
       // Store Samsara provider info
