@@ -47,9 +47,9 @@ serve(async (req) => {
 
     console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs in database`);
 
-    // Fetch all vehicles from Samsara
+    // Fetch vehicle stats from Samsara with required types parameter
     const samsaraResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,engineStates,fuelPercents',
       {
         headers: {
           'Authorization': `Bearer ${trimmedKey}`,
