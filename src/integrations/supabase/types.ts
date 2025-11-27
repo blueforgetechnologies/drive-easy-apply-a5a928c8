@@ -149,6 +149,51 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          entity_id: string
+          entity_type: string
+          field_name: string | null
+          id: string
+          ip_address: string | null
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+          timestamp: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          entity_id: string
+          entity_type: string
+          field_name?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          entity_id?: string
+          entity_type?: string
+          field_name?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       carriers: {
         Row: {
           address: string | null
@@ -187,6 +232,120 @@ export type Database = {
           name?: string
           phone?: string | null
           status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      company_profile: {
+        Row: {
+          address: string | null
+          billing_terms: string | null
+          city: string | null
+          company_name: string
+          country: string | null
+          created_at: string | null
+          default_currency: string | null
+          default_timezone: string | null
+          dot_number: string | null
+          email: string | null
+          id: string
+          legal_name: string | null
+          logo_url: string | null
+          mc_number: string | null
+          phone: string | null
+          remittance_info: string | null
+          state: string | null
+          tax_id: string | null
+          updated_at: string | null
+          website: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          billing_terms?: string | null
+          city?: string | null
+          company_name: string
+          country?: string | null
+          created_at?: string | null
+          default_currency?: string | null
+          default_timezone?: string | null
+          dot_number?: string | null
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          logo_url?: string | null
+          mc_number?: string | null
+          phone?: string | null
+          remittance_info?: string | null
+          state?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          billing_terms?: string | null
+          city?: string | null
+          company_name?: string
+          country?: string | null
+          created_at?: string | null
+          default_currency?: string | null
+          default_timezone?: string | null
+          dot_number?: string | null
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          logo_url?: string | null
+          mc_number?: string | null
+          phone?: string | null
+          remittance_info?: string | null
+          state?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zip?: string | null
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          is_primary: boolean | null
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -636,6 +795,155 @@ export type Database = {
           },
         ]
       }
+      load_expenses: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          expense_type: string
+          id: string
+          incurred_date: string | null
+          load_id: string | null
+          notes: string | null
+          paid_by: string | null
+          receipt_url: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expense_type: string
+          id?: string
+          incurred_date?: string | null
+          load_id?: string | null
+          notes?: string | null
+          paid_by?: string | null
+          receipt_url?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expense_type?: string
+          id?: string
+          incurred_date?: string | null
+          load_id?: string | null
+          notes?: string | null
+          paid_by?: string | null
+          receipt_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_expenses_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      load_stops: {
+        Row: {
+          actual_arrival: string | null
+          actual_departure: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          detention_end: string | null
+          detention_start: string | null
+          id: string
+          load_id: string | null
+          location_address: string | null
+          location_city: string | null
+          location_id: string | null
+          location_name: string | null
+          location_state: string | null
+          location_zip: string | null
+          notes: string | null
+          reference_numbers: string | null
+          required_documents: string[] | null
+          scheduled_date: string | null
+          scheduled_time_end: string | null
+          scheduled_time_start: string | null
+          status: string | null
+          stop_sequence: number
+          stop_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_arrival?: string | null
+          actual_departure?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          detention_end?: string | null
+          detention_start?: string | null
+          id?: string
+          load_id?: string | null
+          location_address?: string | null
+          location_city?: string | null
+          location_id?: string | null
+          location_name?: string | null
+          location_state?: string | null
+          location_zip?: string | null
+          notes?: string | null
+          reference_numbers?: string | null
+          required_documents?: string[] | null
+          scheduled_date?: string | null
+          scheduled_time_end?: string | null
+          scheduled_time_start?: string | null
+          status?: string | null
+          stop_sequence: number
+          stop_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_arrival?: string | null
+          actual_departure?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          detention_end?: string | null
+          detention_start?: string | null
+          id?: string
+          load_id?: string | null
+          location_address?: string | null
+          location_city?: string | null
+          location_id?: string | null
+          location_name?: string | null
+          location_state?: string | null
+          location_zip?: string | null
+          notes?: string | null
+          reference_numbers?: string | null
+          required_documents?: string[] | null
+          scheduled_date?: string | null
+          scheduled_time_end?: string | null
+          scheduled_time_start?: string | null
+          status?: string | null
+          stop_sequence?: number
+          stop_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_stops_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_stops_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loads: {
         Row: {
           accessorial_charges: number | null
@@ -645,6 +953,7 @@ export type Database = {
           assigned_dispatcher_id: string | null
           assigned_driver_id: string | null
           assigned_vehicle_id: string | null
+          billing_notes: string | null
           bol_number: string | null
           broker_contact: string | null
           broker_email: string | null
@@ -673,14 +982,21 @@ export type Database = {
           delivery_state: string | null
           delivery_time: string | null
           delivery_zip: string | null
+          detention_charges: number | null
+          dispatch_notes: string | null
+          equipment_type: string | null
           estimated_miles: number | null
           eta: string | null
+          financial_status: string | null
           fuel_surcharge: number | null
+          hazmat: boolean | null
           id: string
           last_updated_location: string | null
+          layover_charges: number | null
           load_number: string
           load_type: string | null
           notes: string | null
+          other_charges: number | null
           pickup_address: string | null
           pickup_city: string | null
           pickup_contact: string | null
@@ -705,6 +1021,7 @@ export type Database = {
           receiver_zip: string | null
           reference_number: string | null
           route_notes: string | null
+          settlement_status: string | null
           shipper_address: string | null
           shipper_city: string | null
           shipper_contact: string | null
@@ -715,6 +1032,9 @@ export type Database = {
           shipper_zip: string | null
           special_instructions: string | null
           status: string | null
+          team_required: boolean | null
+          temperature_required: string | null
+          total_charges: number | null
           total_cost: number | null
           total_revenue: number | null
           updated_at: string | null
@@ -727,6 +1047,7 @@ export type Database = {
           assigned_dispatcher_id?: string | null
           assigned_driver_id?: string | null
           assigned_vehicle_id?: string | null
+          billing_notes?: string | null
           bol_number?: string | null
           broker_contact?: string | null
           broker_email?: string | null
@@ -755,14 +1076,21 @@ export type Database = {
           delivery_state?: string | null
           delivery_time?: string | null
           delivery_zip?: string | null
+          detention_charges?: number | null
+          dispatch_notes?: string | null
+          equipment_type?: string | null
           estimated_miles?: number | null
           eta?: string | null
+          financial_status?: string | null
           fuel_surcharge?: number | null
+          hazmat?: boolean | null
           id?: string
           last_updated_location?: string | null
+          layover_charges?: number | null
           load_number: string
           load_type?: string | null
           notes?: string | null
+          other_charges?: number | null
           pickup_address?: string | null
           pickup_city?: string | null
           pickup_contact?: string | null
@@ -787,6 +1115,7 @@ export type Database = {
           receiver_zip?: string | null
           reference_number?: string | null
           route_notes?: string | null
+          settlement_status?: string | null
           shipper_address?: string | null
           shipper_city?: string | null
           shipper_contact?: string | null
@@ -797,6 +1126,9 @@ export type Database = {
           shipper_zip?: string | null
           special_instructions?: string | null
           status?: string | null
+          team_required?: boolean | null
+          temperature_required?: string | null
+          total_charges?: number | null
           total_cost?: number | null
           total_revenue?: number | null
           updated_at?: string | null
@@ -809,6 +1141,7 @@ export type Database = {
           assigned_dispatcher_id?: string | null
           assigned_driver_id?: string | null
           assigned_vehicle_id?: string | null
+          billing_notes?: string | null
           bol_number?: string | null
           broker_contact?: string | null
           broker_email?: string | null
@@ -837,14 +1170,21 @@ export type Database = {
           delivery_state?: string | null
           delivery_time?: string | null
           delivery_zip?: string | null
+          detention_charges?: number | null
+          dispatch_notes?: string | null
+          equipment_type?: string | null
           estimated_miles?: number | null
           eta?: string | null
+          financial_status?: string | null
           fuel_surcharge?: number | null
+          hazmat?: boolean | null
           id?: string
           last_updated_location?: string | null
+          layover_charges?: number | null
           load_number?: string
           load_type?: string | null
           notes?: string | null
+          other_charges?: number | null
           pickup_address?: string | null
           pickup_city?: string | null
           pickup_contact?: string | null
@@ -869,6 +1209,7 @@ export type Database = {
           receiver_zip?: string | null
           reference_number?: string | null
           route_notes?: string | null
+          settlement_status?: string | null
           shipper_address?: string | null
           shipper_city?: string | null
           shipper_contact?: string | null
@@ -879,9 +1220,72 @@ export type Database = {
           shipper_zip?: string | null
           special_instructions?: string | null
           status?: string | null
+          team_required?: boolean | null
+          temperature_required?: string | null
+          total_charges?: number | null
           total_cost?: number | null
           total_revenue?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      locations: {
+        Row: {
+          address: string | null
+          city: string | null
+          country: string | null
+          created_at: string | null
+          delivery_instructions: string | null
+          hours: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          notes: string | null
+          pickup_instructions: string | null
+          state: string | null
+          status: string | null
+          type: string | null
+          updated_at: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          delivery_instructions?: string | null
+          hours?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          notes?: string | null
+          pickup_instructions?: string | null
+          state?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          delivery_instructions?: string | null
+          hours?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          notes?: string | null
+          pickup_instructions?: string | null
+          state?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+          zip?: string | null
         }
         Relationships: []
       }
@@ -911,6 +1315,80 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      maintenance_records: {
+        Row: {
+          asset_id: string | null
+          cost: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          downtime_hours: number | null
+          engine_hours: number | null
+          id: string
+          invoice_number: string | null
+          invoice_url: string | null
+          maintenance_type: string
+          next_service_date: string | null
+          next_service_odometer: number | null
+          notes: string | null
+          odometer: number | null
+          performed_by: string | null
+          service_date: string
+          status: string | null
+          vendor: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          downtime_hours?: number | null
+          engine_hours?: number | null
+          id?: string
+          invoice_number?: string | null
+          invoice_url?: string | null
+          maintenance_type: string
+          next_service_date?: string | null
+          next_service_odometer?: number | null
+          notes?: string | null
+          odometer?: number | null
+          performed_by?: string | null
+          service_date: string
+          status?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          downtime_hours?: number | null
+          engine_hours?: number | null
+          id?: string
+          invoice_number?: string | null
+          invoice_url?: string | null
+          maintenance_type?: string
+          next_service_date?: string | null
+          next_service_odometer?: number | null
+          notes?: string | null
+          odometer?: number | null
+          performed_by?: string | null
+          service_date?: string
+          status?: string | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_records_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payees: {
         Row: {
@@ -1028,20 +1506,28 @@ export type Database = {
       }
       settlements: {
         Row: {
+          accessorial_pay: number | null
+          advance_deduction: number | null
           approved_at: string | null
           approved_by: string | null
           base_rate: number | null
+          bonus_pay: number | null
           created_at: string | null
+          detention_pay: number | null
           driver_id: string | null
           equipment_lease: number | null
+          escrow_deduction: number | null
           fuel_advance: number | null
+          fuel_deduction: number | null
           gross_pay: number | null
           id: string
           insurance_deduction: number | null
+          layover_pay: number | null
           maintenance_deduction: number | null
           net_pay: number | null
           notes: string | null
           other_deductions: number | null
+          other_earnings: number | null
           payee_id: string | null
           payment_date: string | null
           payment_method: string | null
@@ -1049,6 +1535,7 @@ export type Database = {
           period_end: string | null
           period_start: string | null
           settlement_number: string
+          settlement_type: string | null
           status: string | null
           total_deductions: number | null
           total_loads: number | null
@@ -1056,20 +1543,28 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          accessorial_pay?: number | null
+          advance_deduction?: number | null
           approved_at?: string | null
           approved_by?: string | null
           base_rate?: number | null
+          bonus_pay?: number | null
           created_at?: string | null
+          detention_pay?: number | null
           driver_id?: string | null
           equipment_lease?: number | null
+          escrow_deduction?: number | null
           fuel_advance?: number | null
+          fuel_deduction?: number | null
           gross_pay?: number | null
           id?: string
           insurance_deduction?: number | null
+          layover_pay?: number | null
           maintenance_deduction?: number | null
           net_pay?: number | null
           notes?: string | null
           other_deductions?: number | null
+          other_earnings?: number | null
           payee_id?: string | null
           payment_date?: string | null
           payment_method?: string | null
@@ -1077,6 +1572,7 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           settlement_number: string
+          settlement_type?: string | null
           status?: string | null
           total_deductions?: number | null
           total_loads?: number | null
@@ -1084,20 +1580,28 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          accessorial_pay?: number | null
+          advance_deduction?: number | null
           approved_at?: string | null
           approved_by?: string | null
           base_rate?: number | null
+          bonus_pay?: number | null
           created_at?: string | null
+          detention_pay?: number | null
           driver_id?: string | null
           equipment_lease?: number | null
+          escrow_deduction?: number | null
           fuel_advance?: number | null
+          fuel_deduction?: number | null
           gross_pay?: number | null
           id?: string
           insurance_deduction?: number | null
+          layover_pay?: number | null
           maintenance_deduction?: number | null
           net_pay?: number | null
           notes?: string | null
           other_deductions?: number | null
+          other_earnings?: number | null
           payee_id?: string | null
           payment_date?: string | null
           payment_method?: string | null
@@ -1105,6 +1609,7 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           settlement_number?: string
+          settlement_type?: string | null
           status?: string | null
           total_deductions?: number | null
           total_loads?: number | null

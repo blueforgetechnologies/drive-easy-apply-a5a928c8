@@ -25,6 +25,11 @@ import SettlementDetail from "./pages/SettlementDetail";
 import CustomersTab from "./pages/CustomersTab";
 import InvoicesTab from "./pages/InvoicesTab";
 import InvoiceDetail from "./pages/InvoiceDetail";
+import LocationsTab from "./pages/LocationsTab";
+import LocationDetail from "./pages/LocationDetail";
+import CompanyProfileTab from "./pages/CompanyProfileTab";
+import AuditLogsTab from "./pages/AuditLogsTab";
+import MaintenanceTab from "./pages/MaintenanceTab";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +55,11 @@ const App = () => (
           <Route path="/dashboard/settlements" element={<DashboardLayout><SettlementsTab /></DashboardLayout>} />
           <Route path="/dashboard/customers" element={<DashboardLayout><CustomersTab /></DashboardLayout>} />
           <Route path="/dashboard/invoices" element={<DashboardLayout><InvoicesTab /></DashboardLayout>} />
+          <Route path="/dashboard/locations" element={<DashboardLayout><LocationsTab /></DashboardLayout>} />
+          <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
+          <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
+          <Route path="/dashboard/audit-logs" element={<DashboardLayout><AuditLogsTab /></DashboardLayout>} />
+          <Route path="/dashboard/company-profile" element={<DashboardLayout><CompanyProfileTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
           <Route path="/dashboard/load/:id" element={<LoadDetail />} />
