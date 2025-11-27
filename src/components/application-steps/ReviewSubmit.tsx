@@ -22,17 +22,49 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
     try {
       console.log("Submitting application:", data);
       
-      const { data: response, error } = await supabase.functions.invoke('send-application', {
+      // First, save to database
+      const { data: dbResponse, error: dbError } = await supabase
+        .from('applications')
+        .insert({
+          personal_info: data.personalInfo,
+          payroll_policy: data.payrollPolicy || {},
+          license_info: data.licenseInfo,
+          driving_history: data.drivingHistory || {},
+          employment_history: data.employmentHistory || {},
+          document_upload: data.documents || {},
+          drug_alcohol_policy: data.policyAcknowledgment || {},
+          driver_dispatch_sheet: data.driverDispatchSheet || {},
+          no_rider_policy: data.noRiderPolicy || {},
+          safe_driving_policy: data.safeDrivingPolicy || {},
+          contractor_agreement: data.contractorAgreement || {},
+          direct_deposit: data.directDeposit || {},
+          why_hire_you: data.whyHireYou || {},
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error("Error saving to database:", dbError);
+        toast.error("Failed to save application", {
+          description: "Please try again or contact support.",
+        });
+        return;
+      }
+
+      // Then send email notification
+      const { error: emailError } = await supabase.functions.invoke('send-application', {
         body: data
       });
 
-      if (error) {
-        console.error("Error sending application:", error);
-        toast.error("Failed to submit application", {
-          description: "Please try again or contact support.",
+      if (emailError) {
+        console.error("Error sending email:", emailError);
+        // Application is saved but email failed - still show success
+        toast.success("Application submitted successfully!", {
+          description: "Your application has been saved. Email notification may be delayed.",
         });
       } else {
-        console.log("Application sent successfully:", response);
+        console.log("Application sent successfully");
         toast.success("Application submitted successfully!", {
           description: "We will review your application and contact you soon.",
         });
