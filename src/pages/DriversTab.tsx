@@ -18,6 +18,7 @@ interface Application {
   personal_info: any;
   submitted_at: string;
   status: string;
+  driver_status?: string;
   license_info?: any;
   direct_deposit?: any;
   payroll_policy?: any;
@@ -319,11 +320,28 @@ export default function DriversTab() {
                         <TableRow key={app.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded bg-green-500 text-white flex items-center justify-center font-bold text-xs">
+                              <div 
+                                className={`w-8 h-8 rounded flex items-center justify-center font-bold text-xs text-white ${
+                                  app.driver_status === "active" 
+                                    ? "bg-green-600" 
+                                    : app.driver_status === "pending"
+                                    ? "bg-orange-500"
+                                    : "bg-gray-500"
+                                }`}
+                              >
                                 0
                               </div>
-                              <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
-                                Active
+                              <Badge 
+                                variant="secondary" 
+                                className={`${
+                                  app.driver_status === "active"
+                                    ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                    : app.driver_status === "pending"
+                                    ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                                }`}
+                              >
+                                {app.driver_status ? app.driver_status.charAt(0).toUpperCase() + app.driver_status.slice(1) : "Unknown"}
                               </Badge>
                             </div>
                           </TableCell>
