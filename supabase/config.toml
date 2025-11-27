@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-invite]
 verify_jwt = true
+
+[functions.send-driver-invite]
+verify_jwt = true
