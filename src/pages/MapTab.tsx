@@ -249,28 +249,58 @@ const MapTab = () => {
 
 
   return (
-    <div className="h-[calc(100vh-120px)] relative">
-      <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
-      <div className="absolute top-4 left-4 bg-background/95 backdrop-blur p-4 rounded-lg shadow-lg">
-        <h3 className="font-semibold mb-2">Fleet Overview</h3>
-        <p className="text-sm text-muted-foreground">
-          {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} tracked
-        </p>
-        <p className="text-xs text-muted-foreground mt-2">
-          Last updated: {lastUpdate.toLocaleTimeString()}
-        </p>
-        <p className="text-xs text-muted-foreground mb-3">
-          Auto-refresh: every 30s
-        </p>
-        <Button 
-          onClick={handleSync} 
-          disabled={syncing}
-          size="sm"
-          className="w-full"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync with Samsara'}
-        </Button>
+    <div className="h-[calc(100vh-120px)] flex gap-4">
+      {/* Sidebar with asset list */}
+      <aside className="w-80 max-w-sm bg-background/95 backdrop-blur border rounded-lg shadow-lg overflow-hidden flex flex-col">
+        <div className="px-4 py-3 border-b">
+          <h3 className="font-semibold">Assets</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} with live location
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {vehicles.map((vehicle) => (
+            <div
+              key={vehicle.id}
+              className="px-4 py-3 border-b hover:bg-muted/30 cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="font-medium text-sm">
+                  {vehicle.vehicle_number || 'Unknown'}
+                </div>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                  {vehicle.speed || 0} MPH
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground truncate">
+                {vehicle.last_location || 'Location unavailable'}
+              </div>
+            </div>
+          ))}
+          {vehicles.length === 0 && (
+            <div className="px-4 py-6 text-xs text-muted-foreground text-center">
+              No assets with GPS location yet. Try syncing with Samsara.
+            </div>
+          )}
+        </div>
+        <div className="px-4 py-3 border-t text-xs text-muted-foreground space-y-1">
+          <div>Last updated: {lastUpdate.toLocaleTimeString()}</div>
+          <div>Auto-refresh: every 30s</div>
+          <Button 
+            onClick={handleSync} 
+            disabled={syncing}
+            size="sm"
+            className="w-full mt-2"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync with Samsara'}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Map container */}
+      <div className="relative flex-1">
+        <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
       </div>
     </div>
   );
