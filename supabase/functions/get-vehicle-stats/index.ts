@@ -93,17 +93,14 @@ serve(async (req) => {
 
     const samsaraData = await samsaraResponse.json();
     console.log('Samsara vehicles count:', samsaraData.data?.length || 0);
-    if (samsaraData.data && samsaraData.data.length > 0) {
-      console.log('Sample Samsara vehicle:', JSON.stringify(samsaraData.data[0], null, 2));
-    }
     
-    // Log all available VINs for debugging
-    const availableVins = samsaraData.data?.map((v: any) => v.vin).filter(Boolean) || [];
-    console.log('Available VINs in Samsara:', availableVins);
+    // Find vehicle by VIN in externalIds
+    const samsaraVehicle = samsaraData.data?.find((v: any) => 
+      v.externalIds?.["samsara.vin"] === vehicle.vin
+    );
+    
     console.log('Looking for VIN:', vehicle.vin);
-
-    // Find vehicle by VIN
-    const samsaraVehicle = samsaraData.data?.find((v: any) => v.vin === vehicle.vin);
+    console.log('Vehicle found:', samsaraVehicle ? 'Yes' : 'No');
 
     if (!samsaraVehicle) {
       console.log('Vehicle not found in Samsara by VIN:', vehicle.vin);
@@ -120,22 +117,21 @@ serve(async (req) => {
 
     console.log('Found Samsara vehicle:', samsaraVehicle.name);
 
-    // Extract relevant fields
+    // Extract relevant fields from feed data
     const stats = {
-      odometer: samsaraVehicle.engineStates?.[0]?.odometerMeters 
-        ? (samsaraVehicle.engineStates[0].odometerMeters / 1609.34).toFixed(1) // Convert meters to miles
-        : null,
-      speed: samsaraVehicle.gps?.speedMilesPerHour || 0,
-      stoppedStatus: samsaraVehicle.gps?.speedMilesPerHour === 0 ? 'Stopped' : 'Moving',
-      location: samsaraVehicle.gps?.reverseGeo?.formattedLocation || 
-                (samsaraVehicle.gps?.latitude && samsaraVehicle.gps?.longitude
-                  ? `${samsaraVehicle.gps.latitude.toFixed(4)}, ${samsaraVehicle.gps.longitude.toFixed(4)}`
+      // Get latest GPS data
+      odometer: null, // Feed endpoint doesn't provide odometer directly
+      speed: samsaraVehicle.gps?.[0]?.speedMilesPerHour || 0,
+      stoppedStatus: (samsaraVehicle.gps?.[0]?.speedMilesPerHour || 0) === 0 ? 'Stopped' : 'Moving',
+      location: samsaraVehicle.gps?.[0]?.reverseGeo?.formattedLocation || 
+                (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude
+                  ? `${samsaraVehicle.gps[0].latitude.toFixed(4)}, ${samsaraVehicle.gps[0].longitude.toFixed(4)}`
                   : null),
-      lastUpdated: samsaraVehicle.gps?.time || samsaraVehicle.time,
-      latitude: samsaraVehicle.gps?.latitude,
-      longitude: samsaraVehicle.gps?.longitude,
-      engineHours: samsaraVehicle.engineStates?.[0]?.engineHours,
-      fuelPercent: samsaraVehicle.fuelPercents?.[0]?.fuelPercent,
+      lastUpdated: samsaraVehicle.gps?.[0]?.time || samsaraVehicle.engineStates?.[0]?.time,
+      latitude: samsaraVehicle.gps?.[0]?.latitude,
+      longitude: samsaraVehicle.gps?.[0]?.longitude,
+      engineState: samsaraVehicle.engineStates?.[0]?.value,
+      fuelPercent: samsaraVehicle.fuelPercents?.[0]?.value,
       samsaraId: samsaraVehicle.id,
       samsaraName: samsaraVehicle.name,
     };
