@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt, FileText, Building } from "lucide-react";
+import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt, FileText, Building, MapPin, Wrench, History, Settings } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,7 +21,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    if (tabFromUrl && ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements', 'customers', 'invoices'].includes(tabFromUrl)) {
+    const validTabs = ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements', 'customers', 'invoices', 'locations', 'maintenance', 'audit-logs', 'company-profile'];
+    if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [location.pathname]);
@@ -96,6 +97,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <TabsTrigger value="invoices" className="gap-2">
                   <FileText className="h-4 w-4" />
                   <span className="hidden sm:inline">Invoices</span>
+                </TabsTrigger>
+                <TabsTrigger value="locations" className="gap-2">
+                  <MapPin className="h-4 w-4" />
+                  <span className="hidden sm:inline">Locations</span>
+                </TabsTrigger>
+                <TabsTrigger value="maintenance" className="gap-2">
+                  <Wrench className="h-4 w-4" />
+                  <span className="hidden sm:inline">Maintenance</span>
+                </TabsTrigger>
+                <TabsTrigger value="audit-logs" className="gap-2">
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">Audit</span>
+                </TabsTrigger>
+                <TabsTrigger value="company-profile" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Company</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
