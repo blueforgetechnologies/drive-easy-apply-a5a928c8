@@ -22,6 +22,10 @@ serve(async (req) => {
       );
     }
 
+    // Validate and trim API key
+    const trimmedKey = SAMSARA_API_KEY.trim();
+    console.log('Starting Samsara sync with API key length:', trimmedKey.length);
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -48,7 +52,7 @@ serve(async (req) => {
       'https://api.samsara.com/fleet/vehicles/stats',
       {
         headers: {
-          'Authorization': `Bearer ${SAMSARA_API_KEY}`,
+          'Authorization': `Bearer ${trimmedKey}`,
           'Accept': 'application/json',
         },
       }
