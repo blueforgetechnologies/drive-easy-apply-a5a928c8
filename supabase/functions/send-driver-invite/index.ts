@@ -62,8 +62,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending driver application invite to ${email}`);
 
+    // Create service role client for inserting invite record
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     // Insert invite record into database
-    const { data: inviteData, error: inviteError } = await supabase
+    const { data: inviteData, error: inviteError } = await supabaseService
       .from('driver_invites')
       .insert({
         email,
