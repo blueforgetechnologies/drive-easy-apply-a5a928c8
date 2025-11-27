@@ -15,6 +15,10 @@ interface ApplicationData {
   drivingHistory: any;
   documents: any;
   policyAcknowledgment: any;
+  directDeposit: any;
+  driverDispatchSheet: any;
+  noRyderPolicy: any;
+  contractorAgreement: any;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -41,6 +45,13 @@ const handler = async (req: Request): Promise<Response> => {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.phone || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.email || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Address:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.address || ''}, ${applicationData.personalInfo?.city || ''}, ${applicationData.personalInfo?.state || ''} ${applicationData.personalInfo?.zip || ''}</td></tr>
+        </table>
+
+        <h3 style="color: #1e40af; margin-top: 20px;">Emergency Contact</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Relationship:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactRelationship || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactPhone || ''}</td></tr>
         </table>
 
         <h2 style="color: #1e40af; margin-top: 30px;">License Information</h2>
@@ -72,11 +83,50 @@ const handler = async (req: Request): Promise<Response> => {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Violations Reported:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.drivingHistory?.violations?.length || 0}</td></tr>
         </table>
 
-        <h2 style="color: #1e40af; margin-top: 30px;">Drug & Alcohol Policy</h2>
+        <h2 style="color: #1e40af; margin-top: 30px;">Direct Deposit Information</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.firstName || ''} ${applicationData.directDeposit?.lastName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Business Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.businessName || 'N/A'}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.email || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Bank Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.bankName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Routing Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.routingNumber || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Account Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.checkingNumber || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Account Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.accountType?.replace('-', ' ') || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>CashApp Cashtag:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.cashAppCashtag || 'N/A'}</td></tr>
+        </table>
+
+        <h2 style="color: #1e40af; margin-top: 30px;">Policies & Agreements</h2>
+        
+        <h3 style="color: #374151; margin-top: 20px;">Drug & Alcohol Policy</h3>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Policy Acknowledged:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.policyAcknowledgment?.agreedToPolicy ? 'Yes' : 'No'}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.policyAcknowledgment?.signature || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date Signed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.policyAcknowledgment?.dateSigned || ''}</td></tr>
+        </table>
+
+        <h3 style="color: #374151; margin-top: 20px;">Driver Dispatch Sheet</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Agreed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.agreed ? 'Yes' : 'No'}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Driver Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.driverFullName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.signature || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.date || ''}</td></tr>
+        </table>
+
+        <h3 style="color: #374151; margin-top: 20px;">No Ryder Policy</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Agreed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.agreed ? 'Yes' : 'No'}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Employee Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.employeeName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.signature || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.date || ''}</td></tr>
+        </table>
+
+        <h3 style="color: #374151; margin-top: 20px;">Contractor Agreement</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Agreed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.agreed ? 'Yes' : 'No'}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Contractor Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.contractorName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Initials:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.initials || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.signature || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.date || ''}</td></tr>
         </table>
 
         <div style="margin-top: 40px; padding: 20px; background-color: #eff6ff; border-left: 4px solid #2563eb;">

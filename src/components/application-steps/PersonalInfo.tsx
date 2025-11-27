@@ -25,6 +25,9 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
     city: data?.personalInfo?.city || "",
     state: data?.personalInfo?.state || "",
     zip: data?.personalInfo?.zip || "",
+    emergencyContactName: data?.personalInfo?.emergencyContactName || "",
+    emergencyContactRelationship: data?.personalInfo?.emergencyContactRelationship || "",
+    emergencyContactPhone: data?.personalInfo?.emergencyContactPhone || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -147,6 +150,43 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
             placeholder="XXXXX"
             value={formData.zip}
             onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-semibold mb-4 text-foreground mt-8">Emergency Contact</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Please provide an emergency contact person who can be reached in case of an emergency.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="emergencyContactName">Full Name *</Label>
+          <Input
+            id="emergencyContactName"
+            value={formData.emergencyContactName}
+            onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="emergencyContactRelationship">Relationship *</Label>
+          <Input
+            id="emergencyContactRelationship"
+            placeholder="e.g., Spouse, Parent, Sibling"
+            value={formData.emergencyContactRelationship}
+            onChange={(e) => setFormData({ ...formData, emergencyContactRelationship: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="emergencyContactPhone">Phone Number *</Label>
+          <Input
+            id="emergencyContactPhone"
+            type="tel"
+            placeholder="(XXX) XXX-XXXX"
+            value={formData.emergencyContactPhone}
+            onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
           />
         </div>
       </div>

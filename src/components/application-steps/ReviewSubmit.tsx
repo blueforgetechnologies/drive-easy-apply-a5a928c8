@@ -86,6 +86,23 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
               {data?.personalInfo?.state} {data?.personalInfo?.zip}
             </p>
           </div>
+          <div className="md:col-span-2 pt-2 border-t">
+            <p className="text-muted-foreground font-medium mb-2">Emergency Contact</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Name</p>
+                <p className="font-medium">{data?.personalInfo?.emergencyContactName}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Relationship</p>
+                <p className="font-medium">{data?.personalInfo?.emergencyContactRelationship}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="font-medium">{data?.personalInfo?.emergencyContactPhone}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -166,21 +183,76 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         </div>
       </Card>
 
-      {/* Policy Acknowledgment */}
-      <Card className="p-4 sm:p-6 bg-success/10 border-success">
-        <div className="flex items-start gap-3">
-          <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+      {/* Direct Deposit */}
+      <Card className="p-4 sm:p-6">
+        <h4 className="font-semibold mb-4 text-foreground">Direct Deposit Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-sm">
           <div>
-            <h4 className="font-semibold mb-2 text-foreground">Drug & Alcohol Policy</h4>
-            <p className="text-sm text-muted-foreground mb-2">
-              Policy acknowledged and signed by {data?.policyAcknowledgment?.signature}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Signed on:{" "}
-              {data?.policyAcknowledgment?.dateSigned
-                ? new Date(data.policyAcknowledgment.dateSigned).toLocaleDateString()
-                : "N/A"}
-            </p>
+            <p className="text-muted-foreground">Name</p>
+            <p className="font-medium">{data?.directDeposit?.firstName} {data?.directDeposit?.lastName}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Bank</p>
+            <p className="font-medium">{data?.directDeposit?.bankName}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Account Type</p>
+            <p className="font-medium capitalize">{data?.directDeposit?.accountType?.replace('-', ' ')}</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Policy Acknowledgments */}
+      <Card className="p-4 sm:p-6 bg-success/10 border-success">
+        <h4 className="font-semibold mb-4 text-foreground">Policies & Agreements Acknowledged</h4>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-foreground">Drug & Alcohol Policy</p>
+              <p className="text-xs text-muted-foreground">
+                Signed by {data?.policyAcknowledgment?.signature} on{" "}
+                {data?.policyAcknowledgment?.dateSigned
+                  ? new Date(data.policyAcknowledgment.dateSigned).toLocaleDateString()
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-foreground">Driver Dispatch Sheet</p>
+              <p className="text-xs text-muted-foreground">
+                Signed by {data?.driverDispatchSheet?.signature} on{" "}
+                {data?.driverDispatchSheet?.date
+                  ? new Date(data.driverDispatchSheet.date).toLocaleDateString()
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-foreground">No Ryder Policy</p>
+              <p className="text-xs text-muted-foreground">
+                Signed by {data?.noRyderPolicy?.signature} on{" "}
+                {data?.noRyderPolicy?.date
+                  ? new Date(data.noRyderPolicy.date).toLocaleDateString()
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-foreground">Contractor Agreement</p>
+              <p className="text-xs text-muted-foreground">
+                Signed by {data?.contractorAgreement?.signature} (Initials: {data?.contractorAgreement?.initials}) on{" "}
+                {data?.contractorAgreement?.date
+                  ? new Date(data.contractorAgreement.date).toLocaleDateString()
+                  : "N/A"}
+              </p>
+            </div>
           </div>
         </div>
       </Card>
