@@ -67,9 +67,9 @@ serve(async (req) => {
 
     console.log('Fetching Samsara vehicles for VIN:', vehicle.vin);
     
-    // Fetch vehicle stats from Samsara with required types parameter
+    // Fetch vehicle stats from Samsara with required types parameter including odometer
     const samsaraResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,engineStates,fuelPercents',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
       {
         headers: {
           'Authorization': `Bearer ${trimmedKey}`,
@@ -119,18 +119,19 @@ serve(async (req) => {
 
     // Extract relevant fields from feed data
     const stats = {
-      // Get latest GPS data
-      odometer: null, // Feed endpoint doesn't provide odometer directly
+      // Get odometer from obdOdometerMeters array (convert meters to miles)
+      odometer: samsaraVehicle.obdOdometerMeters?.[0]?.value 
+        ? (samsaraVehicle.obdOdometerMeters[0].value / 1609.34).toFixed(1)
+        : null,
       speed: samsaraVehicle.gps?.[0]?.speedMilesPerHour || 0,
       stoppedStatus: (samsaraVehicle.gps?.[0]?.speedMilesPerHour || 0) === 0 ? 'Stopped' : 'Moving',
       location: samsaraVehicle.gps?.[0]?.reverseGeo?.formattedLocation || 
                 (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude
                   ? `${samsaraVehicle.gps[0].latitude.toFixed(4)}, ${samsaraVehicle.gps[0].longitude.toFixed(4)}`
                   : null),
-      lastUpdated: samsaraVehicle.gps?.[0]?.time || samsaraVehicle.engineStates?.[0]?.time,
+      lastUpdated: samsaraVehicle.gps?.[0]?.time || samsaraVehicle.obdOdometerMeters?.[0]?.time,
       latitude: samsaraVehicle.gps?.[0]?.latitude,
       longitude: samsaraVehicle.gps?.[0]?.longitude,
-      engineState: samsaraVehicle.engineStates?.[0]?.value,
       fuelPercent: samsaraVehicle.fuelPercents?.[0]?.value,
       samsaraId: samsaraVehicle.id,
       samsaraName: samsaraVehicle.name,

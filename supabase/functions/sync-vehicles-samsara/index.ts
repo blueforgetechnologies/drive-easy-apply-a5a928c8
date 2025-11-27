@@ -47,9 +47,9 @@ serve(async (req) => {
 
     console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs in database`);
 
-    // Fetch vehicle stats from Samsara with required types parameter
+    // Fetch vehicle stats from Samsara with required types parameter including odometer
     const samsaraResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,engineStates,fuelPercents',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
       {
         headers: {
           'Authorization': `Bearer ${trimmedKey}`,
@@ -109,7 +109,11 @@ serve(async (req) => {
         last_updated: new Date().toISOString(),
       };
 
-      // Note: /feed endpoint doesn't provide odometer directly
+      // Extract odometer from obdOdometerMeters array (convert meters to miles)
+      if (samsaraVehicle.obdOdometerMeters?.[0]?.value) {
+        updateData.odometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
+      }
+
       // Extract speed from GPS array
       if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
         updateData.speed = samsaraVehicle.gps[0].speedMilesPerHour;
