@@ -1,9 +1,22 @@
 import { ApplicationForm } from "@/components/ApplicationForm";
 import heroImage from "@/assets/driver-hero.jpg";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  const [searchParams] = useSearchParams();
+  const inviteId = searchParams.get("invite");
+
+  useEffect(() => {
+    if (inviteId) {
+      // Track that the invite link was opened
+      supabase.functions.invoke("track-invite-open", {
+        body: { inviteId },
+      }).catch(console.error);
+    }
+  }, [inviteId]);
   return (
     <div className="min-h-screen bg-background">
       {/* Admin Link */}
