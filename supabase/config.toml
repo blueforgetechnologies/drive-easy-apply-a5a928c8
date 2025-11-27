@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.track-invite-open]
 verify_jwt = false
+
+[functions.get-vehicle-stats]
+verify_jwt = true

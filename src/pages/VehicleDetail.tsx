@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, X } from "lucide-react";
+import { ArrowLeft, Save, X, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDistanceToNow } from "date-fns";
 
 export default function VehicleDetail() {
   const { id } = useParams();
@@ -18,9 +19,12 @@ export default function VehicleDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [samsaraStats, setSamsaraStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     loadVehicle();
+    loadSamsaraStats();
   }, [id]);
 
   const loadVehicle = async () => {
@@ -84,6 +88,31 @@ export default function VehicleDetail() {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  const loadSamsaraStats = async () => {
+    setLoadingStats(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-vehicle-stats', {
+        body: { vehicleId: id }
+      });
+
+      if (error) {
+        console.error('Error loading Samsara stats:', error);
+        if (error.message?.includes('Provider ID')) {
+          // Silent fail if no Samsara ID configured
+          return;
+        }
+        toast.error('Failed to load live vehicle data');
+        return;
+      }
+
+      setSamsaraStats(data);
+    } catch (error: any) {
+      console.error('Error loading Samsara stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -118,23 +147,44 @@ export default function VehicleDetail() {
               <div className="flex flex-col text-sm">
                 <div className="flex gap-4">
                   <span className="text-muted-foreground">Odometer</span>
-                  <span className="font-medium">{formData.odometer || '231982.2'}</span>
+                  <span className="font-medium">
+                    {loadingStats ? '...' : (samsaraStats?.odometer || formData.odometer || 'N/A')}
+                  </span>
                 </div>
                 <div className="flex gap-4">
                   <span className="text-muted-foreground">Location</span>
-                  <span className="font-medium">{formData.last_location || 'Goldsboro, NC'}</span>
+                  <span className="font-medium">
+                    {loadingStats ? '...' : (samsaraStats?.location || formData.last_location || 'N/A')}
+                  </span>
                 </div>
               </div>
               <div className="flex flex-col text-sm">
                 <div className="flex gap-4">
                   <span className="text-muted-foreground">Speed</span>
-                  <span className="font-medium">{formData.stopped_status || 'Stopped'}</span>
+                  <span className="font-medium">
+                    {loadingStats ? '...' : (samsaraStats?.stoppedStatus || formData.stopped_status || 'N/A')}
+                  </span>
                 </div>
                 <div className="flex gap-4">
                   <span className="text-muted-foreground">Last Updated</span>
-                  <span className="font-medium">338d 2h ago</span>
+                  <span className="font-medium">
+                    {loadingStats ? '...' : (
+                      samsaraStats?.lastUpdated 
+                        ? formatDistanceToNow(new Date(samsaraStats.lastUpdated), { addSuffix: true })
+                        : 'N/A'
+                    )}
+                  </span>
                 </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={loadSamsaraStats}
+                disabled={loadingStats}
+                className="h-8"
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingStats ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
           </div>
           <div className="flex gap-2">
