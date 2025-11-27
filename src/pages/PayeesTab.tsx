@@ -56,7 +56,7 @@ export default function PayeesTab() {
       const statusFilter = filter === "active" ? "active" : "inactive";
       
       const { data, error } = await supabase
-        .from("payees")
+        .from("payees" as any)
         .select("*")
         .eq("status", statusFilter)
         .order("created_at", { ascending: false });
@@ -65,7 +65,7 @@ export default function PayeesTab() {
         toast.error("Error loading payees");
         return;
       }
-      setPayees(data || []);
+      setPayees((data as any) || []);
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export default function PayeesTab() {
     e.preventDefault();
     try {
       const { error } = await supabase
-        .from("payees")
+        .from("payees" as any)
         .insert({
           ...formData,
           status: "active",
@@ -104,7 +104,7 @@ export default function PayeesTab() {
   const handleDeletePayee = async (id: string) => {
     try {
       const { error } = await supabase
-        .from("payees")
+        .from("payees" as any)
         .delete()
         .eq("id", id);
 

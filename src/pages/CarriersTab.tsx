@@ -52,7 +52,7 @@ export default function CarriersTab() {
       const statusFilter = filter === "active" ? "active" : "inactive";
       
       const { data, error } = await supabase
-        .from("carriers")
+        .from("carriers" as any)
         .select("*")
         .eq("status", statusFilter)
         .order("created_at", { ascending: false });
@@ -61,7 +61,7 @@ export default function CarriersTab() {
         toast.error("Error loading carriers");
         return;
       }
-      setCarriers(data || []);
+      setCarriers((data as any) || []);
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ export default function CarriersTab() {
     e.preventDefault();
     try {
       const { error } = await supabase
-        .from("carriers")
+        .from("carriers" as any)
         .insert({
           ...formData,
           status: "active",
@@ -98,7 +98,7 @@ export default function CarriersTab() {
   const handleDeleteCarrier = async (id: string) => {
     try {
       const { error } = await supabase
-        .from("carriers")
+        .from("carriers" as any)
         .delete()
         .eq("id", id);
 
