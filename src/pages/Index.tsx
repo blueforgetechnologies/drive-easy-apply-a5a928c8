@@ -1,9 +1,20 @@
 import { ApplicationForm } from "@/components/ApplicationForm";
 import heroImage from "@/assets/driver-hero.jpg";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Link */}
+      <div className="absolute top-4 right-4 z-10">
+        <Link to="/auth">
+          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
+            Admin Login
+          </Button>
+        </Link>
+      </div>
+
       {/* Hero Section */}
       <header className="relative h-[400px] overflow-hidden">
         <div className="absolute inset-0">
