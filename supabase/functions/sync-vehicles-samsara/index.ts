@@ -135,10 +135,11 @@ serve(async (req) => {
       // Try to fetch the latest camera image
       try {
         const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         
+        console.log(`Fetching camera images for vehicle ${samsaraVehicle.id}...`);
         const cameraResponse = await fetch(
-          `https://api.samsara.com/fleet/vehicles/${samsaraVehicle.id}/cameras/media/history?startTime=${oneHourAgo.toISOString()}&endTime=${now.toISOString()}`,
+          `https://api.samsara.com/fleet/vehicles/cameras/media/history?vehicleIds=${samsaraVehicle.id}&startTime=${twentyFourHoursAgo.toISOString()}&endTime=${now.toISOString()}`,
           {
             headers: {
               'Authorization': `Bearer ${trimmedKey}`,
@@ -149,16 +150,31 @@ serve(async (req) => {
 
         if (cameraResponse.ok) {
           const cameraData = await cameraResponse.json();
+          console.log(`Camera response for ${dbVehicle.vehicle_number}:`, JSON.stringify(cameraData).substring(0, 200));
+          
           // Get the most recent front-facing camera image
-          if (cameraData.data?.cameras?.[0]?.images?.length > 0) {
-            const images = cameraData.data.cameras[0].images;
-            const frontFacingImage = images.find((img: any) => 
-              img.imageData?.some((data: any) => data.cameraView === 'frontFacing')
+          if (cameraData.data?.[0]?.cameras?.[0]?.images?.length > 0) {
+            const images = cameraData.data[0].cameras[0].images;
+            // Sort by capture time to get the most recent
+            images.sort((a: any, b: any) => 
+              new Date(b.captureTime).getTime() - new Date(a.captureTime).getTime()
             );
-            if (frontFacingImage?.imageData?.[0]?.url) {
-              updateData.camera_image_url = frontFacingImage.imageData[0].url;
+            
+            // Find front-facing image
+            for (const image of images) {
+              const frontFacingData = image.imageData?.find((data: any) => data.cameraView === 'frontFacing');
+              if (frontFacingData?.url) {
+                updateData.camera_image_url = frontFacingData.url;
+                console.log(`Found camera image for ${dbVehicle.vehicle_number}`);
+                break;
+              }
             }
+          } else {
+            console.log(`No camera images found for vehicle ${dbVehicle.vehicle_number}`);
           }
+        } else {
+          const errorText = await cameraResponse.text();
+          console.log(`Camera API error for ${dbVehicle.vehicle_number}:`, cameraResponse.status, errorText.substring(0, 200));
         }
       } catch (cameraError) {
         console.log(`Could not fetch camera image for vehicle ${dbVehicle.vin}:`, cameraError);
