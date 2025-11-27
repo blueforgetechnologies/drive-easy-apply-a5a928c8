@@ -62,11 +62,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite to ${email} from ${inviterName}`);
 
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(/https:\/\/([^.]+)\.supabase\.co/, "https://$1.lovable.app") || "";
+    const appUrl = "https://9ef0437e-cacf-4544-b852-ae31810ffae0.lovableproject.com";
     const signupUrl = `${appUrl}/auth`;
 
     const emailResponse = await resend.emails.send({
-      from: "Driver Application <onboarding@resend.dev>",
+      from: "Driver Application <noreply@nexustechsolution.com>",
       to: [email],
       subject: `You've been invited to join the admin team`,
       html: `
