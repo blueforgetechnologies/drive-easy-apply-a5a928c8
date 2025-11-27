@@ -409,15 +409,17 @@ export default function VehiclesTab() {
                         <div className="text-sm text-muted-foreground">Dock High</div>
                       </TableCell>
                       <TableCell>
-                        <div className={`text-sm font-semibold ${
-                          vehicle.oil_change_remaining && vehicle.oil_change_remaining < 0 
-                            ? "text-destructive" 
-                            : ""
-                        }`}>
-                          {vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined 
-                            ? vehicle.oil_change_remaining 
-                            : "N/A"}
-                        </div>
+                        {vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined ? (
+                          <div className={`text-sm font-semibold ${
+                            vehicle.oil_change_remaining < 0 
+                              ? "text-destructive" 
+                              : ""
+                          }`}>
+                            {vehicle.oil_change_remaining} mi
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">N/A</div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {vehicle.registration_exp_date 
