@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 
 export default function ApplicationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [application, setApplication] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     loadApplication();
@@ -33,13 +37,41 @@ export default function ApplicationDetail() {
         .single();
 
       if (error) throw error;
-      setApplication(data);
+      setFormData(data);
     } catch (error: any) {
       toast.error("Error loading application");
       navigate("/dashboard");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update(formData)
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Driver information updated successfully");
+    } catch (error: any) {
+      toast.error("Failed to update driver information");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateField = (field: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const updateNestedField = (parent: string, field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      [parent]: { ...prev[parent], [field]: value }
+    }));
   };
 
   if (loading) {
@@ -50,112 +82,468 @@ export default function ApplicationDetail() {
     );
   }
 
-  if (!application) {
+  if (!formData) {
     return null;
   }
 
-  const { personal_info, license_info, employment_history, submitted_at } = application;
+  const personalInfo = formData.personal_info || {};
+  const licenseInfo = formData.license_info || {};
+  const directDeposit = formData.direct_deposit || {};
+  const emergencyContacts = formData.emergency_contacts || [];
+  const primaryContact = emergencyContacts[0] || {};
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Button onClick={() => navigate("/dashboard")} variant="ghost" size="sm">
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <Button onClick={() => navigate("/dashboard/drivers?filter=active")} variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back to Drivers
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {personal_info.firstName} {personal_info.lastName}
-          </h1>
-          <p className="text-muted-foreground">
-            Submitted on {format(new Date(submitted_at), "MMMM d, yyyy 'at' h:mm a")}
-          </p>
+      <main className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column */}
+          <div className="space-y-4">
+            {/* Status */}
+            <div className="space-y-2">
+              <Label>Status:</Label>
+              <Select 
+                value={formData.driver_status || 'pending'} 
+                onValueChange={(value) => updateField('driver_status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Driver Names */}
+            <div className="space-y-2">
+              <Label>Driver First Name:</Label>
+              <Input 
+                value={personalInfo.firstName || ''} 
+                onChange={(e) => updateNestedField('personal_info', 'firstName', e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Driver Last Name:</Label>
+              <Input 
+                value={personalInfo.lastName || ''} 
+                onChange={(e) => updateNestedField('personal_info', 'lastName', e.target.value)}
+              />
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <Label>Address:</Label>
+              <Input 
+                value={formData.driver_address || personalInfo.address || ''} 
+                onChange={(e) => updateField('driver_address', e.target.value)}
+              />
+            </div>
+
+            {/* Phones */}
+            <div className="space-y-2">
+              <Label>Home Phone:</Label>
+              <Input 
+                value={formData.home_phone || ''} 
+                onChange={(e) => updateField('home_phone', e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cell Phone:</Label>
+              <Input 
+                value={formData.cell_phone || personalInfo.phone || ''} 
+                onChange={(e) => updateField('cell_phone', e.target.value)}
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label>Email:</Label>
+              <Input 
+                type="email"
+                value={personalInfo.email || ''} 
+                onChange={(e) => updateNestedField('personal_info', 'email', e.target.value)}
+              />
+            </div>
+
+            {/* DOB & Age */}
+            <div className="space-y-2">
+              <Label>DOB:</Label>
+              <Input 
+                type="date"
+                value={personalInfo.dateOfBirth || ''} 
+                onChange={(e) => updateNestedField('personal_info', 'dateOfBirth', e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Age:</Label>
+              <Input 
+                value={personalInfo.age || ''} 
+                onChange={(e) => updateNestedField('personal_info', 'age', e.target.value)}
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+
+            {/* Emergency Contact */}
+            <div className="pt-4">
+              <h3 className="font-semibold mb-3">Emergency Contact</h3>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Contact Name 1:</Label>
+                  <Input 
+                    value={`${primaryContact.firstName || ''} ${primaryContact.lastName || ''}`.trim()} 
+                    onChange={(e) => {
+                      const [firstName, ...lastNameParts] = e.target.value.split(' ');
+                      const updatedContacts = [...emergencyContacts];
+                      updatedContacts[0] = {
+                        ...updatedContacts[0],
+                        firstName: firstName || '',
+                        lastName: lastNameParts.join(' ') || ''
+                      };
+                      updateField('emergency_contacts', updatedContacts);
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Phone:</Label>
+                  <Input 
+                    value={primaryContact.phone || ''} 
+                    onChange={(e) => {
+                      const updatedContacts = [...emergencyContacts];
+                      updatedContacts[0] = { ...updatedContacts[0], phone: e.target.value };
+                      updateField('emergency_contacts', updatedContacts);
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>RelationShip:</Label>
+                  <Input 
+                    value={primaryContact.relationship || ''} 
+                    onChange={(e) => {
+                      const updatedContacts = [...emergencyContacts];
+                      updatedContacts[0] = { ...updatedContacts[0], relationship: e.target.value };
+                      updateField('emergency_contacts', updatedContacts);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Login Info */}
+            <div className="pt-4">
+              <h3 className="font-semibold mb-3">Login Info</h3>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input 
+                  type="password"
+                  value={formData.driver_password || ''} 
+                  onChange={(e) => updateField('driver_password', e.target.value)}
+                  placeholder="Enter password"
+                />
+              </div>
+            </div>
+
+            {/* Score Card */}
+            <div className="space-y-2">
+              <Label>Score Card</Label>
+              <Input 
+                value={formData.score_card || ''} 
+                onChange={(e) => updateField('score_card', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Middle Column */}
+          <div className="space-y-4">
+            {/* Driver License */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">Driver Licence</h3>
+              <div className="space-y-3">
+                <Button variant="link" className="p-0 h-auto text-destructive">Upload</Button>
+                
+                <div className="space-y-2">
+                  <Label>License #</Label>
+                  <Input 
+                    value={licenseInfo.licenseNumber || ''} 
+                    onChange={(e) => updateNestedField('license_info', 'licenseNumber', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Class:</Label>
+                  <Input 
+                    value={licenseInfo.class || ''} 
+                    onChange={(e) => updateNestedField('license_info', 'class', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Endorcements:</Label>
+                  <Input 
+                    value={licenseInfo.endorsements || ''} 
+                    onChange={(e) => updateNestedField('license_info', 'endorsements', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Issued Date:</Label>
+                  <Input 
+                    type="date"
+                    value={licenseInfo.issuedDate || ''} 
+                    onChange={(e) => updateNestedField('license_info', 'issuedDate', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Expiration Date:</Label>
+                  <Input 
+                    type="date"
+                    value={licenseInfo.expirationDate || ''} 
+                    onChange={(e) => updateNestedField('license_info', 'expirationDate', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Issued State:</Label>
+                  <Input 
+                    value={licenseInfo.state || ''} 
+                    onChange={(e) => updateNestedField('license_info', 'state', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Social Security Card */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Social Security Card</h3>
+              <Button variant="link" className="p-0 h-auto text-primary">View</Button>
+              <div className="space-y-2">
+                <Label>SS#</Label>
+                <Input 
+                  value={personalInfo.ssn || ''} 
+                  onChange={(e) => updateNestedField('personal_info', 'ssn', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Driver Record */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Driver Record</h3>
+              <Button variant="link" className="p-0 h-auto text-destructive">Upload</Button>
+              <div className="space-y-2">
+                <Label>Expiration Date:</Label>
+                <Input 
+                  type="date"
+                  value={formData.driver_record_expiry || ''} 
+                  onChange={(e) => updateField('driver_record_expiry', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Medical Card */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Medical Card:</h3>
+              <Button variant="link" className="p-0 h-auto text-primary">View</Button>
+              <div className="space-y-2">
+                <Label>Expiration Date:</Label>
+                <Input 
+                  type="date"
+                  value={formData.medical_card_expiry || licenseInfo.dotCardExpiration || ''} 
+                  onChange={(e) => updateField('medical_card_expiry', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Restrictions */}
+            <div className="space-y-2">
+              <Label>Restrictions:</Label>
+              <Input 
+                value={formData.restrictions || ''} 
+                onChange={(e) => updateField('restrictions', e.target.value)}
+              />
+            </div>
+
+            {/* National Registry */}
+            <div className="space-y-2">
+              <Label>National Registry</Label>
+              <Input 
+                value={formData.national_registry || ''} 
+                onChange={(e) => updateField('national_registry', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-4">
+            {/* Bank Information */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-3">Banking Information</h3>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Bank Name</Label>
+                  <Input 
+                    value={formData.bank_name || directDeposit.bankName || ''} 
+                    onChange={(e) => updateField('bank_name', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Name on the account</Label>
+                  <Input 
+                    value={formData.account_name || `${directDeposit.firstName} ${directDeposit.lastName}`.trim() || ''} 
+                    onChange={(e) => updateField('account_name', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Routing #</Label>
+                  <Input 
+                    value={formData.routing_number || directDeposit.routingNumber || ''} 
+                    onChange={(e) => updateField('routing_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Checking #</Label>
+                  <Input 
+                    value={formData.checking_number || directDeposit.checkingNumber || ''} 
+                    onChange={(e) => updateField('checking_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Business/Personal</Label>
+                  <Input 
+                    value={formData.account_type || directDeposit.accountType || ''} 
+                    onChange={(e) => updateField('account_type', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pay Method */}
+            <div className="space-y-3">
+              <Label>Pay Method</Label>
+              <RadioGroup 
+                value={formData.pay_method || 'salary'} 
+                onValueChange={(value) => updateField('pay_method', value)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="salary" id="salary" />
+                  <Label htmlFor="salary">Salary</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="mileage" id="mileage" />
+                  <Label htmlFor="mileage">Mileage</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Pay Per Mile:</Label>
+              <Input 
+                type="number"
+                step="0.01"
+                value={formData.pay_per_mile || ''} 
+                onChange={(e) => updateField('pay_per_mile', e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Weekly Salary:</Label>
+              <Input 
+                type="number"
+                step="0.01"
+                value={formData.weekly_salary || ''} 
+                onChange={(e) => updateField('weekly_salary', e.target.value)}
+              />
+            </div>
+
+            {/* Work Permit */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Work Permit</h3>
+              <Button variant="link" className="p-0 h-auto text-primary">View</Button>
+              <div className="space-y-2">
+                <Label>Expiration Date:</Label>
+                <Input 
+                  type="date"
+                  value={formData.work_permit_expiry || ''} 
+                  onChange={(e) => updateField('work_permit_expiry', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Green Card */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Green Card</h3>
+              <Button variant="link" className="p-0 h-auto text-primary">View</Button>
+              <div className="space-y-2">
+                <Label>Expiration Date:</Label>
+                <Input 
+                  type="date"
+                  value={formData.green_card_expiry || ''} 
+                  onChange={(e) => updateField('green_card_expiry', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Job Application */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Job Application</h3>
+              <Button variant="link" className="p-0 h-auto text-primary">View</Button>
+              
+              <div className="space-y-2">
+                <Label>Application Date</Label>
+                <Input 
+                  type="date"
+                  value={formData.application_date || formData.submitted_at?.split('T')[0] || ''} 
+                  onChange={(e) => updateField('application_date', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Hired Date:</Label>
+                <Input 
+                  type="date"
+                  value={formData.hired_date || ''} 
+                  onChange={(e) => updateField('hired_date', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Vehicle Note */}
+            <div className="space-y-2">
+              <Label className="text-primary">Vehicle Note</Label>
+              <Textarea 
+                value={formData.vehicle_note || ''} 
+                onChange={(e) => updateField('vehicle_note', e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Name</p>
-                <p>{personal_info.firstName} {personal_info.middleName} {personal_info.lastName}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
-                <p>{personal_info.dob}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Email</p>
-                <p>{personal_info.email}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                <p>{personal_info.phone}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-sm font-medium text-muted-foreground">Address</p>
-                <p>{personal_info.address}, {personal_info.city}, {personal_info.state} {personal_info.zipCode}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>License Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">License Number</p>
-                <p>{license_info.licenseNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">State</p>
-                <p>{license_info.state}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Expiration Date</p>
-                <p>{license_info.expirationDate}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Class</p>
-                <p>{license_info.class}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Employment History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {employment_history.employers?.map((employer: any, index: number) => (
-              <div key={index} className="mb-4 pb-4 border-b last:border-0">
-                <p className="font-medium">{employer.companyName}</p>
-                <p className="text-sm text-muted-foreground">{employer.position}</p>
-                <p className="text-sm">{employer.startDate} - {employer.endDate}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Why Should We Hire You?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap">{application.why_hire_you.statement}</p>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
