@@ -86,6 +86,20 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
               {data?.personalInfo?.state} {data?.personalInfo?.zip}
             </p>
           </div>
+          <div>
+            <p className="text-muted-foreground">Legally Authorized to Work</p>
+            <p className="font-medium capitalize">{data?.personalInfo?.legallyAuthorized}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Felony Conviction</p>
+            <p className="font-medium capitalize">{data?.personalInfo?.felonyConviction}</p>
+          </div>
+          {data?.personalInfo?.felonyDetails && (
+            <div className="md:col-span-2">
+              <p className="text-muted-foreground">Felony Details</p>
+              <p className="font-medium text-sm">{data?.personalInfo?.felonyDetails}</p>
+            </div>
+          )}
           <div className="md:col-span-2 pt-2 border-t">
             <p className="text-muted-foreground font-medium mb-2">Emergency Contact</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -105,6 +119,27 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           </div>
         </div>
       </Card>
+
+      {/* Payroll Policy */}
+      {data?.payrollPolicy && (
+        <Card className="p-4 sm:p-6">
+          <h4 className="font-semibold mb-4 text-foreground">Payroll Policy Acknowledgment</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Name</p>
+              <p className="font-medium">{data?.payrollPolicy?.agreedName}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Signature</p>
+              <p className="font-medium">{data?.payrollPolicy?.signature}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Date</p>
+              <p className="font-medium">{data?.payrollPolicy?.date ? new Date(data.payrollPolicy.date).toLocaleDateString() : "N/A"}</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* License Information */}
       <Card className="p-4 sm:p-6">
@@ -130,6 +165,20 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
             <div className="md:col-span-2">
               <p className="text-muted-foreground">Endorsements</p>
               <p className="font-medium">{data?.licenseInfo?.endorsements.join(", ")}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-muted-foreground">License Denied</p>
+            <p className="font-medium capitalize">{data?.licenseInfo?.deniedLicense}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">License Suspended/Revoked</p>
+            <p className="font-medium capitalize">{data?.licenseInfo?.suspendedRevoked}</p>
+          </div>
+          {data?.licenseInfo?.deniedDetails && (
+            <div className="md:col-span-2">
+              <p className="text-muted-foreground">Details</p>
+              <p className="font-medium text-sm">{data?.licenseInfo?.deniedDetails}</p>
             </div>
           )}
         </div>
@@ -242,6 +291,20 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
               </p>
             </div>
           </div>
+          {data?.safeDrivingPolicy && (
+            <div className="flex items-start gap-3">
+              <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground">Safe Driving Policy</p>
+                <p className="text-xs text-muted-foreground">
+                  Signed by {data?.safeDrivingPolicy?.signature} on{" "}
+                  {data?.safeDrivingPolicy?.date
+                    ? new Date(data.safeDrivingPolicy.date).toLocaleDateString()
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-start gap-3">
             <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
             <div>

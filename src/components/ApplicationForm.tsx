@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { PersonalInfo } from "./application-steps/PersonalInfo";
+import PayrollPolicy from "./application-steps/PayrollPolicy";
 import { LicenseInfo } from "./application-steps/LicenseInfo";
 import { EmploymentHistory } from "./application-steps/EmploymentHistory";
 import { DrivingHistory } from "./application-steps/DrivingHistory";
@@ -11,6 +12,7 @@ import { DrugAlcoholPolicy } from "./application-steps/DrugAlcoholPolicy";
 import { DirectDeposit } from "./application-steps/DirectDeposit";
 import { DriverDispatchSheet } from "./application-steps/DriverDispatchSheet";
 import { NoRyderPolicy } from "./application-steps/NoRyderPolicy";
+import SafeDrivingPolicy from "./application-steps/SafeDrivingPolicy";
 import { ContractorAgreement } from "./application-steps/ContractorAgreement";
 import { ReviewSubmit } from "./application-steps/ReviewSubmit";
 import { Check } from "lucide-react";
@@ -31,6 +33,14 @@ export interface ApplicationData {
     emergencyContactName: string;
     emergencyContactRelationship: string;
     emergencyContactPhone: string;
+    legallyAuthorized: string;
+    felonyConviction: string;
+    felonyDetails?: string;
+  };
+  payrollPolicy?: {
+    agreedName: string;
+    signature: string;
+    date: string;
   };
   licenseInfo: {
     licenseNumber: string;
@@ -39,6 +49,9 @@ export interface ApplicationData {
     endorsements: string[];
     expirationDate: string;
     yearsExperience: number;
+    deniedLicense: string;
+    suspendedRevoked: string;
+    deniedDetails?: string;
   };
   employmentHistory: Array<{
     companyName: string;
@@ -99,6 +112,11 @@ export interface ApplicationData {
     signature: string;
     date: string;
   };
+  safeDrivingPolicy?: {
+    printName: string;
+    signature: string;
+    date: string;
+  };
   contractorAgreement: {
     agreed: boolean;
     contractorName: string;
@@ -110,16 +128,18 @@ export interface ApplicationData {
 
 const steps = [
   { id: 1, name: "Personal Info", component: PersonalInfo },
-  { id: 2, name: "License Info", component: LicenseInfo },
-  { id: 3, name: "Employment History", component: EmploymentHistory },
-  { id: 4, name: "Driving History", component: DrivingHistory },
-  { id: 5, name: "Documents", component: DocumentUpload },
-  { id: 6, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
-  { id: 7, name: "Direct Deposit", component: DirectDeposit },
-  { id: 8, name: "Dispatch Sheet", component: DriverDispatchSheet },
-  { id: 9, name: "No Ryder Policy", component: NoRyderPolicy },
-  { id: 10, name: "Contractor Agreement", component: ContractorAgreement },
-  { id: 11, name: "Review & Submit", component: ReviewSubmit },
+  { id: 2, name: "Payroll Policy", component: PayrollPolicy },
+  { id: 3, name: "License Info", component: LicenseInfo },
+  { id: 4, name: "Employment History", component: EmploymentHistory },
+  { id: 5, name: "Driving History", component: DrivingHistory },
+  { id: 6, name: "Documents", component: DocumentUpload },
+  { id: 7, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
+  { id: 8, name: "Direct Deposit", component: DirectDeposit },
+  { id: 9, name: "Dispatch Sheet", component: DriverDispatchSheet },
+  { id: 10, name: "No Ryder Policy", component: NoRyderPolicy },
+  { id: 11, name: "Safe Driving", component: SafeDrivingPolicy },
+  { id: 12, name: "Contractor Agreement", component: ContractorAgreement },
+  { id: 13, name: "Review & Submit", component: ReviewSubmit },
 ];
 
 export const ApplicationForm = () => {

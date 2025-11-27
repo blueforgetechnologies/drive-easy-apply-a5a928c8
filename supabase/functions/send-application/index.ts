@@ -10,6 +10,7 @@ const corsHeaders = {
 
 interface ApplicationData {
   personalInfo: any;
+  payrollPolicy?: any;
   licenseInfo: any;
   employmentHistory: any[];
   drivingHistory: any;
@@ -18,6 +19,7 @@ interface ApplicationData {
   directDeposit: any;
   driverDispatchSheet: any;
   noRyderPolicy: any;
+  safeDrivingPolicy?: any;
   contractorAgreement: any;
 }
 
@@ -45,6 +47,9 @@ const handler = async (req: Request): Promise<Response> => {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.phone || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.email || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Address:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.address || ''}, ${applicationData.personalInfo?.city || ''}, ${applicationData.personalInfo?.state || ''} ${applicationData.personalInfo?.zip || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Legally Authorized to Work:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.legallyAuthorized || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Felony Conviction:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.felonyConviction || ''}</td></tr>
+          ${applicationData.personalInfo?.felonyDetails ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Felony Details:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo.felonyDetails}</td></tr>` : ''}
         </table>
 
         <h3 style="color: #1e40af; margin-top: 20px;">Emergency Contact</h3>
@@ -54,6 +59,15 @@ const handler = async (req: Request): Promise<Response> => {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactPhone || ''}</td></tr>
         </table>
 
+        ${applicationData.payrollPolicy ? `
+        <h2 style="color: #1e40af; margin-top: 30px;">Payroll Policy Acknowledgment</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.payrollPolicy.agreedName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.payrollPolicy.signature || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.payrollPolicy.date || ''}</td></tr>
+        </table>
+        ` : ''}
+
         <h2 style="color: #1e40af; margin-top: 30px;">License Information</h2>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>License Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.licenseNumber || ''}</td></tr>
@@ -61,6 +75,9 @@ const handler = async (req: Request): Promise<Response> => {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Class:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.licenseClass || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Years of Experience:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.yearsExperience || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Endorsements:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.endorsements?.join(', ') || 'None'}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>License Denied:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.deniedLicense || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>License Suspended/Revoked:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.suspendedRevoked || ''}</td></tr>
+          ${applicationData.licenseInfo?.deniedDetails ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Details:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo.deniedDetails}</td></tr>` : ''}
         </table>
 
         <h2 style="color: #1e40af; margin-top: 30px;">Employment History</h2>
@@ -119,6 +136,15 @@ const handler = async (req: Request): Promise<Response> => {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.signature || ''}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.date || ''}</td></tr>
         </table>
+
+        ${applicationData.safeDrivingPolicy ? `
+        <h3 style="color: #374151; margin-top: 20px;">Safe Driving Policy</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Print Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.safeDrivingPolicy.printName || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.safeDrivingPolicy.signature || ''}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.safeDrivingPolicy.date || ''}</td></tr>
+        </table>
+        ` : ''}
 
         <h3 style="color: #374151; margin-top: 20px;">Contractor Agreement</h3>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
