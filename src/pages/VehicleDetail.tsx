@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { ArrowLeft, Save, X, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import MaintenanceReminderDialog from "@/components/MaintenanceReminderDialog";
 
 export default function VehicleDetail() {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function VehicleDetail() {
   const [formData, setFormData] = useState<any>({});
   const [samsaraStats, setSamsaraStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
 
   useEffect(() => {
     loadVehicle();
@@ -439,7 +441,12 @@ export default function VehicleDetail() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold">Maintenance Type</h3>
-                    <Button variant="default" size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black">
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                      onClick={() => setReminderDialogOpen(true)}
+                    >
                       Add Reminder
                     </Button>
                   </div>
@@ -449,9 +456,35 @@ export default function VehicleDetail() {
                     <div>Due</div>
                     <div>Remaining</div>
                   </div>
+                  {formData.oil_change_due && (
+                    <div className="grid grid-cols-4 gap-2 text-sm">
+                      <div>Oil Change</div>
+                      <div>Miles</div>
+                      <div>{formData.oil_change_due}</div>
+                      <div className={formData.oil_change_remaining < 0 ? "text-destructive font-semibold" : ""}>
+                        {formData.oil_change_remaining || "N/A"}
+                      </div>
+                    </div>
+                  )}
+                  {formData.next_service_date && (
+                    <div className="grid grid-cols-4 gap-2 text-sm">
+                      <div>Next Service</div>
+                      <div>Date</div>
+                      <div>{format(new Date(formData.next_service_date), "yyyy-MM-dd")}</div>
+                      <div>-</div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
+            
+            <MaintenanceReminderDialog
+              open={reminderDialogOpen}
+              onOpenChange={setReminderDialogOpen}
+              vehicleId={id!}
+              currentOdometer={samsaraStats?.odometer || formData.odometer}
+              onSuccess={loadVehicle}
+            />
           </div>
 
           {/* Right Column */}
