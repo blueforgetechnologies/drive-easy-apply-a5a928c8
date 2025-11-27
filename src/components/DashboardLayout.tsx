@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Building, MapPin, Wrench, Settings, Map, Calculator } from "lucide-react";
+import { Users, Package, Briefcase, MapPin, Wrench, Settings, Map, Calculator } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'accounting', 'customers', 'locations', 'maintenance', 'company-profile', 'map'];
+    const validTabs = ['business', 'users', 'loads', 'accounting', 'locations', 'maintenance', 'company-profile', 'map'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -49,6 +49,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setActiveTab(value);
     if (value === 'accounting') {
       navigate(`/dashboard/${value}?subtab=invoices`);
+    } else if (value === 'business') {
+      navigate(`/dashboard/${value}?subtab=assets`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
     }
@@ -62,41 +64,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList>
-                <TabsTrigger value="drivers" className="gap-2">
-                  <Truck className="h-4 w-4" />
-                  <span className="hidden sm:inline">Drivers</span>
+                <TabsTrigger value="business" className="gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  <span className="hidden sm:inline">Business Manager</span>
                 </TabsTrigger>
                 <TabsTrigger value="users" className="gap-2">
                   <Users className="h-4 w-4" />
                   <span className="hidden sm:inline">Users</span>
                 </TabsTrigger>
-                <TabsTrigger value="vehicles" className="gap-2">
-                  <Car className="h-4 w-4" />
-                  <span className="hidden sm:inline">ASSETS</span>
-                </TabsTrigger>
-                <TabsTrigger value="dispatchers" className="gap-2">
-                  <UserCog className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dispatchers</span>
-                </TabsTrigger>
                 <TabsTrigger value="loads" className="gap-2">
                   <Package className="h-4 w-4" />
                   <span className="hidden sm:inline">Loads</span>
                 </TabsTrigger>
-                <TabsTrigger value="carriers" className="gap-2">
-                  <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Carriers</span>
-                </TabsTrigger>
-                <TabsTrigger value="payees" className="gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="hidden sm:inline">Payees</span>
-                </TabsTrigger>
                 <TabsTrigger value="accounting" className="gap-2">
                   <Calculator className="h-4 w-4" />
                   <span className="hidden sm:inline">Accounting</span>
-                </TabsTrigger>
-                <TabsTrigger value="customers" className="gap-2">
-                  <Building className="h-4 w-4" />
-                  <span className="hidden sm:inline">Customers</span>
                 </TabsTrigger>
                 <TabsTrigger value="locations" className="gap-2">
                   <MapPin className="h-4 w-4" />
@@ -109,6 +91,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <TabsTrigger value="company-profile" className="gap-2">
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Company</span>
+                </TabsTrigger>
+                <TabsTrigger value="map" className="gap-2">
+                  <Map className="h-4 w-4" />
+                  <span className="hidden sm:inline">Map</span>
                 </TabsTrigger>
                 <TabsTrigger value="map" className="gap-2">
                   <Map className="h-4 w-4" />

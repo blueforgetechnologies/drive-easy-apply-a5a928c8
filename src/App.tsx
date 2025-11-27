@@ -12,16 +12,10 @@ import ApplicationDetail from "./pages/ApplicationDetail";
 import VehicleDetail from "./pages/VehicleDetail";
 import LoadDetail from "./pages/LoadDetail";
 import DashboardLayout from "./components/DashboardLayout";
-import DriversTab from "./pages/DriversTab";
 import UsersTab from "./pages/UsersTab";
-import VehiclesTab from "./pages/VehiclesTab";
-import DispatchersTab from "./pages/DispatchersTab";
 import DispatcherDetail from "./pages/DispatcherDetail";
 import LoadsTab from "./pages/LoadsTab";
-import CarriersTab from "./pages/CarriersTab";
-import PayeesTab from "./pages/PayeesTab";
 import SettlementDetail from "./pages/SettlementDetail";
-import CustomersTab from "./pages/CustomersTab";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import LocationsTab from "./pages/LocationsTab";
 import LocationDetail from "./pages/LocationDetail";
@@ -29,6 +23,7 @@ import CompanyProfileTab from "./pages/CompanyProfileTab";
 import MaintenanceTab from "./pages/MaintenanceTab";
 import MapTab from "./pages/MapTab";
 import AccountingTab from "./pages/AccountingTab";
+import BusinessManagerTab from "./pages/BusinessManagerTab";
 
 const queryClient = new QueryClient();
 
@@ -42,21 +37,17 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/install" element={<Install />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Navigate to="/dashboard/drivers?filter=active" replace />} />
-          <Route path="/dashboard/drivers" element={<DashboardLayout><DriversTab /></DashboardLayout>} />
+          <Route path="/dashboard" element={<Navigate to="/dashboard/business?subtab=assets" replace />} />
+          <Route path="/dashboard/business" element={<DashboardLayout><BusinessManagerTab /></DashboardLayout>} />
           <Route path="/dashboard/users" element={<DashboardLayout><UsersTab /></DashboardLayout>} />
-          <Route path="/dashboard/vehicles" element={<DashboardLayout><VehiclesTab /></DashboardLayout>} />
-          <Route path="/dashboard/dispatchers" element={<DashboardLayout><DispatchersTab /></DashboardLayout>} />
           <Route path="/dashboard/dispatchers/:id" element={<DashboardLayout><DispatcherDetail /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
-          <Route path="/dashboard/carriers" element={<DashboardLayout><CarriersTab /></DashboardLayout>} />
-          <Route path="/dashboard/payees" element={<DashboardLayout><PayeesTab /></DashboardLayout>} />
           <Route path="/dashboard/accounting" element={<DashboardLayout><AccountingTab /></DashboardLayout>} />
-          <Route path="/dashboard/customers" element={<DashboardLayout><CustomersTab /></DashboardLayout>} />
           <Route path="/dashboard/locations" element={<DashboardLayout><LocationsTab /></DashboardLayout>} />
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/company-profile" element={<DashboardLayout><CompanyProfileTab /></DashboardLayout>} />
+          <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
           <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
           <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
