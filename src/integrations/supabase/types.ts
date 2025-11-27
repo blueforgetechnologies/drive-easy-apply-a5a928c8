@@ -149,6 +149,48 @@ export type Database = {
         }
         Relationships: []
       }
+      carriers: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          created_at: string | null
+          dot_number: string | null
+          email: string | null
+          id: string
+          mc_number: string | null
+          name: string
+          phone: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          dot_number?: string | null
+          email?: string | null
+          id?: string
+          mc_number?: string | null
+          name: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          dot_number?: string | null
+          email?: string | null
+          id?: string
+          mc_number?: string | null
+          name?: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       dispatchers: {
         Row: {
           created_at: string | null
@@ -269,6 +311,54 @@ export type Database = {
           logged_in_at?: string
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      payees: {
+        Row: {
+          account_number: string | null
+          address: string | null
+          bank_name: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          payment_method: string | null
+          phone: string | null
+          routing_number: string | null
+          status: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          address?: string | null
+          bank_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          payment_method?: string | null
+          phone?: string | null
+          routing_number?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          address?: string | null
+          bank_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          payment_method?: string | null
+          phone?: string | null
+          routing_number?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
