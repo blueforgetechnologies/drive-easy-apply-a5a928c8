@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import jsPDF from "https://esm.sh/jspdf@2.5.1";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -23,8 +24,199 @@ interface ApplicationData {
   contractorAgreement: any;
 }
 
+const generatePDF = (applicationData: ApplicationData): Uint8Array => {
+  const doc = new jsPDF();
+  let yPos = 20;
+  const lineHeight = 7;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 20;
+
+  const checkPageBreak = (requiredSpace = 20) => {
+    if (yPos + requiredSpace > pageHeight - margin) {
+      doc.addPage();
+      yPos = 20;
+    }
+  };
+
+  const addTitle = (title: string) => {
+    checkPageBreak(15);
+    doc.setFontSize(16);
+    doc.setTextColor(37, 99, 235);
+    doc.text(title, margin, yPos);
+    yPos += 3;
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, 190, yPos);
+    yPos += 10;
+    doc.setTextColor(0, 0, 0);
+  };
+
+  const addSection = (title: string) => {
+    checkPageBreak(12);
+    doc.setFontSize(12);
+    doc.setTextColor(30, 64, 175);
+    doc.text(title, margin, yPos);
+    yPos += lineHeight;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+  };
+
+  const addField = (label: string, value: string) => {
+    checkPageBreak(lineHeight + 2);
+    doc.setFont(undefined, 'bold');
+    doc.text(label, margin, yPos);
+    doc.setFont(undefined, 'normal');
+    const splitValue = doc.splitTextToSize(value || 'N/A', 120);
+    doc.text(splitValue, margin + 60, yPos);
+    yPos += lineHeight * splitValue.length;
+  };
+
+  // Title Page
+  addTitle("DRIVER EMPLOYMENT APPLICATION");
+  doc.setFontSize(10);
+  doc.text(`Submitted: ${new Date().toLocaleString()}`, margin, yPos);
+  yPos += 15;
+
+  // Personal Information
+  addSection("PERSONAL INFORMATION");
+  addField("Full Name:", `${applicationData.personalInfo?.firstName || ''} ${applicationData.personalInfo?.middleName || ''} ${applicationData.personalInfo?.lastName || ''}`);
+  addField("Date of Birth:", applicationData.personalInfo?.dob || '');
+  addField("Social Security Number:", applicationData.personalInfo?.ssn || '');
+  addField("Phone:", applicationData.personalInfo?.phone || '');
+  addField("Email:", applicationData.personalInfo?.email || '');
+  addField("Address:", `${applicationData.personalInfo?.address || ''}, ${applicationData.personalInfo?.city || ''}, ${applicationData.personalInfo?.state || ''} ${applicationData.personalInfo?.zip || ''}`);
+  addField("Legally Authorized to Work:", applicationData.personalInfo?.legallyAuthorized || '');
+  addField("Felony Conviction:", applicationData.personalInfo?.felonyConviction || '');
+  if (applicationData.personalInfo?.felonyDetails) {
+    addField("Felony Details:", applicationData.personalInfo.felonyDetails);
+  }
+  yPos += 5;
+
+  // Emergency Contact
+  addSection("EMERGENCY CONTACT");
+  addField("Name:", applicationData.personalInfo?.emergencyContactName || '');
+  addField("Relationship:", applicationData.personalInfo?.emergencyContactRelationship || '');
+  addField("Phone:", applicationData.personalInfo?.emergencyContactPhone || '');
+  yPos += 5;
+
+  // Payroll Policy
+  if (applicationData.payrollPolicy) {
+    checkPageBreak(30);
+    addSection("PAYROLL POLICY ACKNOWLEDGMENT");
+    addField("Name:", applicationData.payrollPolicy.agreedName || '');
+    addField("Signature:", applicationData.payrollPolicy.signature || '');
+    addField("Date:", applicationData.payrollPolicy.date || '');
+    yPos += 5;
+  }
+
+  // License Information
+  addSection("LICENSE INFORMATION");
+  addField("License Number:", applicationData.licenseInfo?.licenseNumber || '');
+  addField("State:", applicationData.licenseInfo?.licenseState || '');
+  addField("Class:", applicationData.licenseInfo?.licenseClass || '');
+  addField("Years of Experience:", applicationData.licenseInfo?.yearsExperience || '');
+  addField("Endorsements:", applicationData.licenseInfo?.endorsements?.join(', ') || 'None');
+  addField("Expiration Date:", applicationData.licenseInfo?.expirationDate || '');
+  addField("License Ever Denied:", applicationData.licenseInfo?.deniedLicense || '');
+  addField("License Suspended/Revoked:", applicationData.licenseInfo?.suspendedRevoked || '');
+  if (applicationData.licenseInfo?.deniedDetails) {
+    addField("Details:", applicationData.licenseInfo.deniedDetails);
+  }
+  yPos += 5;
+
+  // Employment History
+  checkPageBreak(30);
+  addSection("EMPLOYMENT HISTORY");
+  if (applicationData.employmentHistory && applicationData.employmentHistory.length > 0) {
+    applicationData.employmentHistory.forEach((emp: any, index: number) => {
+      checkPageBreak(50);
+      doc.setFont(undefined, 'bold');
+      doc.text(`Employer ${index + 1}:`, margin, yPos);
+      doc.setFont(undefined, 'normal');
+      yPos += lineHeight;
+      addField("  Company:", emp.companyName || '');
+      addField("  Position:", emp.position || '');
+      addField("  Address:", emp.address || '');
+      addField("  Phone:", emp.phone || '');
+      addField("  Supervisor:", emp.supervisor || '');
+      addField("  Start Date:", emp.startDate || '');
+      addField("  End Date:", emp.endDate || '');
+      addField("  Reason for Leaving:", emp.reasonForLeaving || '');
+      yPos += 3;
+    });
+  } else {
+    doc.text("No employment history provided", margin, yPos);
+    yPos += lineHeight;
+  }
+  yPos += 5;
+
+  // Driving History
+  checkPageBreak(20);
+  addSection("DRIVING HISTORY");
+  addField("Accidents Reported:", `${applicationData.drivingHistory?.accidents?.length || 0}`);
+  addField("Violations Reported:", `${applicationData.drivingHistory?.violations?.length || 0}`);
+  yPos += 5;
+
+  // Direct Deposit
+  checkPageBreak(40);
+  addSection("DIRECT DEPOSIT INFORMATION");
+  addField("Name:", `${applicationData.directDeposit?.firstName || ''} ${applicationData.directDeposit?.lastName || ''}`);
+  addField("Business Name:", applicationData.directDeposit?.businessName || 'N/A');
+  addField("Email:", applicationData.directDeposit?.email || '');
+  addField("Bank Name:", applicationData.directDeposit?.bankName || '');
+  addField("Routing Number:", applicationData.directDeposit?.routingNumber || '');
+  addField("Account Number:", applicationData.directDeposit?.checkingNumber || '');
+  addField("Account Type:", applicationData.directDeposit?.accountType?.replace('-', ' ') || '');
+  addField("CashApp Cashtag:", applicationData.directDeposit?.cashAppCashtag || 'N/A');
+  yPos += 5;
+
+  // Policies & Agreements
+  checkPageBreak(30);
+  addTitle("POLICIES & AGREEMENTS");
+
+  addSection("Drug & Alcohol Policy");
+  addField("Policy Acknowledged:", applicationData.policyAcknowledgment?.agreedToPolicy ? 'Yes' : 'No');
+  addField("Signature:", applicationData.policyAcknowledgment?.signature || '');
+  addField("Date Signed:", applicationData.policyAcknowledgment?.dateSigned || '');
+  yPos += 5;
+
+  checkPageBreak(25);
+  addSection("Driver Dispatch Sheet");
+  addField("Agreed:", applicationData.driverDispatchSheet?.agreed ? 'Yes' : 'No');
+  addField("Driver Name:", applicationData.driverDispatchSheet?.driverFullName || '');
+  addField("Signature:", applicationData.driverDispatchSheet?.signature || '');
+  addField("Date:", applicationData.driverDispatchSheet?.date || '');
+  yPos += 5;
+
+  checkPageBreak(25);
+  addSection("No Ryder Policy");
+  addField("Agreed:", applicationData.noRyderPolicy?.agreed ? 'Yes' : 'No');
+  addField("Employee Name:", applicationData.noRyderPolicy?.employeeName || '');
+  addField("Signature:", applicationData.noRyderPolicy?.signature || '');
+  addField("Date:", applicationData.noRyderPolicy?.date || '');
+  yPos += 5;
+
+  if (applicationData.safeDrivingPolicy) {
+    checkPageBreak(25);
+    addSection("Safe Driving Policy");
+    addField("Print Name:", applicationData.safeDrivingPolicy.printName || '');
+    addField("Signature:", applicationData.safeDrivingPolicy.signature || '');
+    addField("Date:", applicationData.safeDrivingPolicy.date || '');
+    yPos += 5;
+  }
+
+  checkPageBreak(30);
+  addSection("Contractor Agreement");
+  addField("Agreed:", applicationData.contractorAgreement?.agreed ? 'Yes' : 'No');
+  addField("Contractor Name:", applicationData.contractorAgreement?.contractorName || '');
+  addField("Initials:", applicationData.contractorAgreement?.initials || '');
+  addField("Signature:", applicationData.contractorAgreement?.signature || '');
+  addField("Date:", applicationData.contractorAgreement?.date || '');
+
+  return doc.output('arraybuffer');
+};
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -34,138 +226,34 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Received application data:", applicationData);
 
-    // Format the application data as HTML
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #2563eb; border-bottom: 3px solid #2563eb; padding-bottom: 10px;">Driver Employment Application</h1>
-        
-        <h2 style="color: #1e40af; margin-top: 30px;">Personal Information</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.firstName || ''} ${applicationData.personalInfo?.middleName || ''} ${applicationData.personalInfo?.lastName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date of Birth:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.dob || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>SSN:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.ssn || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.phone || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.email || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Address:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.address || ''}, ${applicationData.personalInfo?.city || ''}, ${applicationData.personalInfo?.state || ''} ${applicationData.personalInfo?.zip || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Legally Authorized to Work:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.legallyAuthorized || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Felony Conviction:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.felonyConviction || ''}</td></tr>
-          ${applicationData.personalInfo?.felonyDetails ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Felony Details:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo.felonyDetails}</td></tr>` : ''}
-        </table>
+    // Generate PDF
+    const pdfBuffer = generatePDF(applicationData);
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
-        <h3 style="color: #1e40af; margin-top: 20px;">Emergency Contact</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Relationship:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactRelationship || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.personalInfo?.emergencyContactPhone || ''}</td></tr>
-        </table>
-
-        ${applicationData.payrollPolicy ? `
-        <h2 style="color: #1e40af; margin-top: 30px;">Payroll Policy Acknowledgment</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.payrollPolicy.agreedName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.payrollPolicy.signature || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.payrollPolicy.date || ''}</td></tr>
-        </table>
-        ` : ''}
-
-        <h2 style="color: #1e40af; margin-top: 30px;">License Information</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>License Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.licenseNumber || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>State:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.licenseState || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Class:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.licenseClass || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Years of Experience:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.yearsExperience || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Endorsements:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.endorsements?.join(', ') || 'None'}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>License Denied:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.deniedLicense || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>License Suspended/Revoked:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo?.suspendedRevoked || ''}</td></tr>
-          ${applicationData.licenseInfo?.deniedDetails ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Details:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.licenseInfo.deniedDetails}</td></tr>` : ''}
-        </table>
-
-        <h2 style="color: #1e40af; margin-top: 30px;">Employment History</h2>
-        <p style="color: #6b7280; margin-bottom: 15px;">${applicationData.employmentHistory?.length || 0} employer(s) listed</p>
-        ${applicationData.employmentHistory?.map((emp: any, index: number) => `
-          <div style="background-color: #f9fafb; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
-            <h3 style="margin-top: 0; color: #1e40af;">Employer ${index + 1}</h3>
-            <p><strong>Company:</strong> ${emp.companyName || ''}</p>
-            <p><strong>Position:</strong> ${emp.position || ''}</p>
-            <p><strong>Dates:</strong> ${emp.startDate || ''} to ${emp.endDate || ''}</p>
-            <p><strong>Supervisor:</strong> ${emp.supervisor || ''}</p>
-            <p><strong>Phone:</strong> ${emp.phone || ''}</p>
-            <p><strong>Reason for Leaving:</strong> ${emp.reasonForLeaving || ''}</p>
-          </div>
-        `).join('') || '<p>No employment history provided</p>'}
-
-        <h2 style="color: #1e40af; margin-top: 30px;">Driving History</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Accidents Reported:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.drivingHistory?.accidents?.length || 0}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Violations Reported:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.drivingHistory?.violations?.length || 0}</td></tr>
-        </table>
-
-        <h2 style="color: #1e40af; margin-top: 30px;">Direct Deposit Information</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.firstName || ''} ${applicationData.directDeposit?.lastName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Business Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.businessName || 'N/A'}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.email || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Bank Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.bankName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Routing Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.routingNumber || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Account Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.checkingNumber || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Account Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.accountType?.replace('-', ' ') || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>CashApp Cashtag:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.directDeposit?.cashAppCashtag || 'N/A'}</td></tr>
-        </table>
-
-        <h2 style="color: #1e40af; margin-top: 30px;">Policies & Agreements</h2>
-        
-        <h3 style="color: #374151; margin-top: 20px;">Drug & Alcohol Policy</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Policy Acknowledged:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.policyAcknowledgment?.agreedToPolicy ? 'Yes' : 'No'}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.policyAcknowledgment?.signature || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date Signed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.policyAcknowledgment?.dateSigned || ''}</td></tr>
-        </table>
-
-        <h3 style="color: #374151; margin-top: 20px;">Driver Dispatch Sheet</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Agreed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.agreed ? 'Yes' : 'No'}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Driver Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.driverFullName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.signature || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.driverDispatchSheet?.date || ''}</td></tr>
-        </table>
-
-        <h3 style="color: #374151; margin-top: 20px;">No Ryder Policy</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Agreed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.agreed ? 'Yes' : 'No'}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Employee Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.employeeName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.signature || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.noRyderPolicy?.date || ''}</td></tr>
-        </table>
-
-        ${applicationData.safeDrivingPolicy ? `
-        <h3 style="color: #374151; margin-top: 20px;">Safe Driving Policy</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Print Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.safeDrivingPolicy.printName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.safeDrivingPolicy.signature || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.safeDrivingPolicy.date || ''}</td></tr>
-        </table>
-        ` : ''}
-
-        <h3 style="color: #374151; margin-top: 20px;">Contractor Agreement</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Agreed:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.agreed ? 'Yes' : 'No'}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Contractor Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.contractorName || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Initials:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.initials || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Signature:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.signature || ''}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${applicationData.contractorAgreement?.date || ''}</td></tr>
-        </table>
-
-        <div style="margin-top: 40px; padding: 20px; background-color: #eff6ff; border-left: 4px solid #2563eb;">
-          <p style="margin: 0; color: #1e40af;"><strong>Note:</strong> This application was submitted on ${new Date().toLocaleString()}</p>
-        </div>
-      </div>
-    `;
+    const applicantName = `${applicationData.personalInfo?.firstName || 'Unknown'}_${applicationData.personalInfo?.lastName || 'Applicant'}`;
+    const filename = `Driver_Application_${applicantName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
     const emailResponse = await resend.emails.send({
       from: "Driver Application <onboarding@resend.dev>",
       to: ["ben@nexustechsolution.com"],
       subject: `New Driver Application - ${applicationData.personalInfo?.firstName} ${applicationData.personalInfo?.lastName}`,
-      html: emailHtml,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">New Driver Application Received</h1>
+          <p>A new driver application has been submitted.</p>
+          <p><strong>Applicant Name:</strong> ${applicationData.personalInfo?.firstName || ''} ${applicationData.personalInfo?.lastName || ''}</p>
+          <p><strong>Email:</strong> ${applicationData.personalInfo?.email || ''}</p>
+          <p><strong>Phone:</strong> ${applicationData.personalInfo?.phone || ''}</p>
+          <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+          <p>Please see the attached PDF for the complete application.</p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: filename,
+          content: pdfBase64,
+        },
+      ],
     });
 
     console.log("Email sent successfully:", emailResponse);
