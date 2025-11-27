@@ -1,31 +1,520 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+
+interface Load {
+  id: string;
+  load_number: string;
+  status: string;
+  load_type: string | null;
+  pickup_location: string | null;
+  pickup_city: string | null;
+  pickup_state: string | null;
+  pickup_date: string | null;
+  delivery_location: string | null;
+  delivery_city: string | null;
+  delivery_state: string | null;
+  delivery_date: string | null;
+  assigned_driver_id: string | null;
+  assigned_vehicle_id: string | null;
+  rate: number | null;
+  total_revenue: number | null;
+  estimated_miles: number | null;
+  cargo_weight: number | null;
+  cargo_description: string | null;
+  customer_id: string | null;
+  broker_name: string | null;
+  created_at: string;
+}
 
 export default function LoadsTab() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = searchParams.get("filter") || "pending";
+  const [loads, setLoads] = useState<Load[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    load_number: `LD${Date.now()}`,
+    load_type: "internal",
+    pickup_location: "",
+    pickup_city: "",
+    pickup_state: "",
+    pickup_date: "",
+    delivery_location: "",
+    delivery_city: "",
+    delivery_state: "",
+    delivery_date: "",
+    cargo_description: "",
+    cargo_weight: "",
+    estimated_miles: "",
+    rate: "",
+  });
+
+  useEffect(() => {
+    loadData();
+  }, [filter]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("loads" as any)
+        .select("*")
+        .eq("status", filter)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast.error("Error loading loads");
+        return;
+      }
+      setLoads((data as any) || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddLoad = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { error } = await supabase
+        .from("loads" as any)
+        .insert({
+          ...formData,
+          status: "pending",
+          cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
+          estimated_miles: formData.estimated_miles ? parseFloat(formData.estimated_miles) : null,
+          rate: formData.rate ? parseFloat(formData.rate) : null,
+        });
+
+      if (error) throw error;
+      toast.success("Load created successfully");
+      setDialogOpen(false);
+      setFormData({
+        load_number: `LD${Date.now()}`,
+        load_type: "internal",
+        pickup_location: "",
+        pickup_city: "",
+        pickup_state: "",
+        pickup_date: "",
+        delivery_location: "",
+        delivery_city: "",
+        delivery_state: "",
+        delivery_date: "",
+        cargo_description: "",
+        cargo_weight: "",
+        estimated_miles: "",
+        rate: "",
+      });
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to create load: " + error.message);
+    }
+  };
+
+  const handleDeleteLoad = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("loads" as any)
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Load deleted successfully");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete load: " + error.message);
+    }
+  };
+
+  const viewLoadDetail = (id: string) => {
+    navigate(`/dashboard/load/${id}`);
+  };
+
+  const filteredLoads = loads.filter((load) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (load.load_number || "").toLowerCase().includes(searchLower) ||
+      (load.pickup_location || "").toLowerCase().includes(searchLower) ||
+      (load.delivery_location || "").toLowerCase().includes(searchLower) ||
+      (load.broker_name || "").toLowerCase().includes(searchLower)
+    );
+  });
+
+  const getStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "bg-yellow-500 hover:bg-yellow-600",
+      dispatched: "bg-blue-500 hover:bg-blue-600",
+      in_transit: "bg-purple-500 hover:bg-purple-600",
+      delivered: "bg-green-600 hover:bg-green-700",
+      completed: "bg-green-800 hover:bg-green-900",
+      cancelled: "bg-red-500 hover:bg-red-600",
+    };
+    return colors[status] || "bg-gray-500 hover:bg-gray-600";
+  };
+
+  if (loading) {
+    return <div className="text-center py-8">Loading...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Loads Management</h2>
+        <h2 className="text-2xl font-bold">Load Management</h2>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Load
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Load</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAddLoad} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="load_number">Load Number</Label>
+                  <Input
+                    id="load_number"
+                    value={formData.load_number}
+                    onChange={(e) => setFormData({ ...formData, load_number: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="load_type">Load Type</Label>
+                  <Select value={formData.load_type} onValueChange={(value) => setFormData({ ...formData, load_type: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="internal">Internal</SelectItem>
+                      <SelectItem value="broker">Broker</SelectItem>
+                      <SelectItem value="load_board">Load Board</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Pickup Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="pickup_location">Pickup Location</Label>
+                    <Input
+                      id="pickup_location"
+                      value={formData.pickup_location}
+                      onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
+                      placeholder="Company name or location"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pickup_city">City</Label>
+                    <Input
+                      id="pickup_city"
+                      value={formData.pickup_city}
+                      onChange={(e) => setFormData({ ...formData, pickup_city: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pickup_state">State</Label>
+                    <Input
+                      id="pickup_state"
+                      value={formData.pickup_state}
+                      onChange={(e) => setFormData({ ...formData, pickup_state: e.target.value })}
+                      placeholder="e.g., CA"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pickup_date">Pickup Date</Label>
+                    <Input
+                      id="pickup_date"
+                      type="datetime-local"
+                      value={formData.pickup_date}
+                      onChange={(e) => setFormData({ ...formData, pickup_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Delivery Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="delivery_location">Delivery Location</Label>
+                    <Input
+                      id="delivery_location"
+                      value={formData.delivery_location}
+                      onChange={(e) => setFormData({ ...formData, delivery_location: e.target.value })}
+                      placeholder="Company name or location"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="delivery_city">City</Label>
+                    <Input
+                      id="delivery_city"
+                      value={formData.delivery_city}
+                      onChange={(e) => setFormData({ ...formData, delivery_city: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="delivery_state">State</Label>
+                    <Input
+                      id="delivery_state"
+                      value={formData.delivery_state}
+                      onChange={(e) => setFormData({ ...formData, delivery_state: e.target.value })}
+                      placeholder="e.g., NY"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="delivery_date">Delivery Date</Label>
+                    <Input
+                      id="delivery_date"
+                      type="datetime-local"
+                      value={formData.delivery_date}
+                      onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Truck className="h-4 w-4" />
+                  Cargo Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="cargo_description">Cargo Description</Label>
+                    <Textarea
+                      id="cargo_description"
+                      value={formData.cargo_description}
+                      onChange={(e) => setFormData({ ...formData, cargo_description: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cargo_weight">Weight (lbs)</Label>
+                    <Input
+                      id="cargo_weight"
+                      type="number"
+                      value={formData.cargo_weight}
+                      onChange={(e) => setFormData({ ...formData, cargo_weight: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="estimated_miles">Estimated Miles</Label>
+                    <Input
+                      id="estimated_miles"
+                      type="number"
+                      value={formData.estimated_miles}
+                      onChange={(e) => setFormData({ ...formData, estimated_miles: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Financial
+                </h3>
+                <div>
+                  <Label htmlFor="rate">Rate ($)</Label>
+                  <Input
+                    id="rate"
+                    type="number"
+                    step="0.01"
+                    value={formData.rate}
+                    onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">Create Load</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={filter === "pending" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "pending" });
+              setSearchQuery("");
+            }}
+            className={filter === "pending" ? "bg-yellow-500 text-white hover:bg-yellow-600" : ""}
+          >
+            Pending
+          </Button>
+          <Button
+            variant={filter === "dispatched" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "dispatched" });
+              setSearchQuery("");
+            }}
+            className={filter === "dispatched" ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
+          >
+            Dispatched
+          </Button>
+          <Button
+            variant={filter === "in_transit" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "in_transit" });
+              setSearchQuery("");
+            }}
+            className={filter === "in_transit" ? "bg-purple-500 text-white hover:bg-purple-600" : ""}
+          >
+            In Transit
+          </Button>
+          <Button
+            variant={filter === "delivered" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "delivered" });
+              setSearchQuery("");
+            }}
+            className={filter === "delivered" ? "bg-green-600 text-white hover:bg-green-700" : ""}
+          >
+            Delivered
+          </Button>
+          <Button
+            variant={filter === "completed" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "completed" });
+              setSearchQuery("");
+            }}
+            className={filter === "completed" ? "bg-green-800 text-white hover:bg-green-900" : ""}
+          >
+            Completed
+          </Button>
+        </div>
+
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search loads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Loads Section
-          </CardTitle>
-          <CardDescription>
-            Manage your shipping loads and dispatches
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12">
-            <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
-            <p className="text-muted-foreground">
-              Loads management features will be available here
+        <CardContent className="p-0">
+          {filteredLoads.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {searchQuery ? "No loads match your search" : `No ${filter} loads found`}
             </p>
-          </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Load #</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Pickup</TableHead>
+                    <TableHead>Delivery</TableHead>
+                    <TableHead>Pickup Date</TableHead>
+                    <TableHead>Delivery Date</TableHead>
+                    <TableHead>Miles</TableHead>
+                    <TableHead>Rate</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLoads.map((load) => (
+                    <TableRow key={load.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewLoadDetail(load.id)}>
+                      <TableCell className="font-medium">{load.load_number}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{load.load_type || "N/A"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div>{load.pickup_city}, {load.pickup_state}</div>
+                        <div className="text-xs text-muted-foreground">{load.pickup_location}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>{load.delivery_city}, {load.delivery_state}</div>
+                        <div className="text-xs text-muted-foreground">{load.delivery_location}</div>
+                      </TableCell>
+                      <TableCell>
+                        {load.pickup_date ? format(new Date(load.pickup_date), "MMM d, yyyy h:mm a") : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {load.delivery_date ? format(new Date(load.delivery_date), "MMM d, yyyy h:mm a") : "N/A"}
+                      </TableCell>
+                      <TableCell>{load.estimated_miles || "N/A"}</TableCell>
+                      <TableCell className="font-medium text-green-600">
+                        {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadge(load.status)}>
+                          {load.status.charAt(0).toUpperCase() + load.status.slice(1).replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => viewLoadDetail(load.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => handleDeleteLoad(load.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

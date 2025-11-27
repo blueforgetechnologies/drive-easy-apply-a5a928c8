@@ -191,6 +191,60 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_name: string | null
+          created_at: string | null
+          credit_limit: number | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          phone: string | null
+          state: string | null
+          status: string | null
+          updated_at: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+          zip?: string | null
+        }
+        Relationships: []
+      }
       dispatchers: {
         Row: {
           created_at: string | null
@@ -263,6 +317,92 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          driver_id: string | null
+          expense_date: string | null
+          id: string
+          load_id: string | null
+          notes: string | null
+          payee: string | null
+          payment_method: string | null
+          receipt_url: string | null
+          status: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          driver_id?: string | null
+          expense_date?: string | null
+          id?: string
+          load_id?: string | null
+          notes?: string | null
+          payee?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          status?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          driver_id?: string | null
+          expense_date?: string | null
+          id?: string
+          load_id?: string | null
+          notes?: string | null
+          payee?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          status?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           accepted_at: string | null
@@ -284,6 +424,368 @@ export type Database = {
           id?: string
           invited_at?: string | null
           invited_by?: string
+        }
+        Relationships: []
+      }
+      invoice_loads: {
+        Row: {
+          amount: number | null
+          description: string | null
+          id: string
+          invoice_id: string | null
+          load_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          load_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          load_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_loads_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_loads_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          amount_paid: number | null
+          balance_due: number | null
+          created_at: string | null
+          customer_address: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          due_date: string | null
+          id: string
+          invoice_date: string | null
+          invoice_number: string
+          notes: string | null
+          paid_at: string | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          payment_terms: string | null
+          sent_at: string | null
+          status: string | null
+          subtotal: number | null
+          tax: number | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount_paid?: number | null
+          balance_due?: number | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_terms?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount_paid?: number | null
+          balance_due?: number | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_terms?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      load_documents: {
+        Row: {
+          document_type: string | null
+          file_name: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          load_id: string | null
+          notes: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          document_type?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          load_id?: string | null
+          notes?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          document_type?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          load_id?: string | null
+          notes?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_documents_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loads: {
+        Row: {
+          accessorial_charges: number | null
+          actual_delivery_date: string | null
+          actual_miles: number | null
+          actual_pickup_date: string | null
+          assigned_dispatcher_id: string | null
+          assigned_driver_id: string | null
+          assigned_vehicle_id: string | null
+          bol_number: string | null
+          broker_contact: string | null
+          broker_email: string | null
+          broker_fee: number | null
+          broker_name: string | null
+          broker_phone: string | null
+          cancelled_at: string | null
+          cargo_description: string | null
+          cargo_pieces: number | null
+          cargo_weight: number | null
+          carrier_id: string | null
+          commodity_type: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          current_location: string | null
+          customer_id: string | null
+          customer_rate: number | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_contact: string | null
+          delivery_date: string | null
+          delivery_location: string | null
+          delivery_notes: string | null
+          delivery_phone: string | null
+          delivery_state: string | null
+          delivery_time: string | null
+          delivery_zip: string | null
+          estimated_miles: number | null
+          eta: string | null
+          fuel_surcharge: number | null
+          id: string
+          last_updated_location: string | null
+          load_number: string
+          load_type: string | null
+          notes: string | null
+          pickup_address: string | null
+          pickup_city: string | null
+          pickup_contact: string | null
+          pickup_date: string | null
+          pickup_location: string | null
+          pickup_notes: string | null
+          pickup_phone: string | null
+          pickup_state: string | null
+          pickup_time: string | null
+          pickup_zip: string | null
+          po_number: string | null
+          pro_number: string | null
+          profit_margin: number | null
+          rate: number | null
+          reference_number: string | null
+          route_notes: string | null
+          special_instructions: string | null
+          status: string | null
+          total_cost: number | null
+          total_revenue: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          accessorial_charges?: number | null
+          actual_delivery_date?: string | null
+          actual_miles?: number | null
+          actual_pickup_date?: string | null
+          assigned_dispatcher_id?: string | null
+          assigned_driver_id?: string | null
+          assigned_vehicle_id?: string | null
+          bol_number?: string | null
+          broker_contact?: string | null
+          broker_email?: string | null
+          broker_fee?: number | null
+          broker_name?: string | null
+          broker_phone?: string | null
+          cancelled_at?: string | null
+          cargo_description?: string | null
+          cargo_pieces?: number | null
+          cargo_weight?: number | null
+          carrier_id?: string | null
+          commodity_type?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_location?: string | null
+          customer_id?: string | null
+          customer_rate?: number | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_contact?: string | null
+          delivery_date?: string | null
+          delivery_location?: string | null
+          delivery_notes?: string | null
+          delivery_phone?: string | null
+          delivery_state?: string | null
+          delivery_time?: string | null
+          delivery_zip?: string | null
+          estimated_miles?: number | null
+          eta?: string | null
+          fuel_surcharge?: number | null
+          id?: string
+          last_updated_location?: string | null
+          load_number: string
+          load_type?: string | null
+          notes?: string | null
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_contact?: string | null
+          pickup_date?: string | null
+          pickup_location?: string | null
+          pickup_notes?: string | null
+          pickup_phone?: string | null
+          pickup_state?: string | null
+          pickup_time?: string | null
+          pickup_zip?: string | null
+          po_number?: string | null
+          pro_number?: string | null
+          profit_margin?: number | null
+          rate?: number | null
+          reference_number?: string | null
+          route_notes?: string | null
+          special_instructions?: string | null
+          status?: string | null
+          total_cost?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          accessorial_charges?: number | null
+          actual_delivery_date?: string | null
+          actual_miles?: number | null
+          actual_pickup_date?: string | null
+          assigned_dispatcher_id?: string | null
+          assigned_driver_id?: string | null
+          assigned_vehicle_id?: string | null
+          bol_number?: string | null
+          broker_contact?: string | null
+          broker_email?: string | null
+          broker_fee?: number | null
+          broker_name?: string | null
+          broker_phone?: string | null
+          cancelled_at?: string | null
+          cargo_description?: string | null
+          cargo_pieces?: number | null
+          cargo_weight?: number | null
+          carrier_id?: string | null
+          commodity_type?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_location?: string | null
+          customer_id?: string | null
+          customer_rate?: number | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_contact?: string | null
+          delivery_date?: string | null
+          delivery_location?: string | null
+          delivery_notes?: string | null
+          delivery_phone?: string | null
+          delivery_state?: string | null
+          delivery_time?: string | null
+          delivery_zip?: string | null
+          estimated_miles?: number | null
+          eta?: string | null
+          fuel_surcharge?: number | null
+          id?: string
+          last_updated_location?: string | null
+          load_number?: string
+          load_type?: string | null
+          notes?: string | null
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_contact?: string | null
+          pickup_date?: string | null
+          pickup_location?: string | null
+          pickup_notes?: string | null
+          pickup_phone?: string | null
+          pickup_state?: string | null
+          pickup_time?: string | null
+          pickup_zip?: string | null
+          po_number?: string | null
+          pro_number?: string | null
+          profit_margin?: number | null
+          rate?: number | null
+          reference_number?: string | null
+          route_notes?: string | null
+          special_instructions?: string | null
+          status?: string | null
+          total_cost?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -382,6 +884,135 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      settlement_loads: {
+        Row: {
+          driver_pay: number | null
+          id: string
+          load_id: string | null
+          miles: number | null
+          rate: number | null
+          settlement_id: string | null
+        }
+        Insert: {
+          driver_pay?: number | null
+          id?: string
+          load_id?: string | null
+          miles?: number | null
+          rate?: number | null
+          settlement_id?: string | null
+        }
+        Update: {
+          driver_pay?: number | null
+          id?: string
+          load_id?: string | null
+          miles?: number | null
+          rate?: number | null
+          settlement_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_loads_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlement_loads_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settlements: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          base_rate: number | null
+          created_at: string | null
+          driver_id: string | null
+          equipment_lease: number | null
+          fuel_advance: number | null
+          gross_pay: number | null
+          id: string
+          insurance_deduction: number | null
+          maintenance_deduction: number | null
+          net_pay: number | null
+          notes: string | null
+          other_deductions: number | null
+          payee_id: string | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          period_end: string | null
+          period_start: string | null
+          settlement_number: string
+          status: string | null
+          total_deductions: number | null
+          total_loads: number | null
+          total_miles: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          base_rate?: number | null
+          created_at?: string | null
+          driver_id?: string | null
+          equipment_lease?: number | null
+          fuel_advance?: number | null
+          gross_pay?: number | null
+          id?: string
+          insurance_deduction?: number | null
+          maintenance_deduction?: number | null
+          net_pay?: number | null
+          notes?: string | null
+          other_deductions?: number | null
+          payee_id?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          settlement_number: string
+          status?: string | null
+          total_deductions?: number | null
+          total_loads?: number | null
+          total_miles?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          base_rate?: number | null
+          created_at?: string | null
+          driver_id?: string | null
+          equipment_lease?: number | null
+          fuel_advance?: number | null
+          gross_pay?: number | null
+          id?: string
+          insurance_deduction?: number | null
+          maintenance_deduction?: number | null
+          net_pay?: number | null
+          notes?: string | null
+          other_deductions?: number | null
+          payee_id?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          settlement_number?: string
+          status?: string | null
+          total_deductions?: number | null
+          total_loads?: number | null
+          total_miles?: number | null
           updated_at?: string | null
         }
         Relationships: []
