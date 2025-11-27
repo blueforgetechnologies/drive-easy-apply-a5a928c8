@@ -50,10 +50,26 @@ export default function LoadsTab() {
   const [formData, setFormData] = useState({
     load_number: `LD${Date.now()}`,
     load_type: "internal",
+    shipper_name: "",
+    shipper_address: "",
+    shipper_city: "",
+    shipper_state: "",
+    shipper_zip: "",
+    shipper_contact: "",
+    shipper_phone: "",
+    shipper_email: "",
     pickup_location: "",
     pickup_city: "",
     pickup_state: "",
     pickup_date: "",
+    receiver_name: "",
+    receiver_address: "",
+    receiver_city: "",
+    receiver_state: "",
+    receiver_zip: "",
+    receiver_contact: "",
+    receiver_phone: "",
+    receiver_email: "",
     delivery_location: "",
     delivery_city: "",
     delivery_state: "",
@@ -106,10 +122,26 @@ export default function LoadsTab() {
       setFormData({
         load_number: `LD${Date.now()}`,
         load_type: "internal",
+        shipper_name: "",
+        shipper_address: "",
+        shipper_city: "",
+        shipper_state: "",
+        shipper_zip: "",
+        shipper_contact: "",
+        shipper_phone: "",
+        shipper_email: "",
         pickup_location: "",
         pickup_city: "",
         pickup_state: "",
         pickup_date: "",
+        receiver_name: "",
+        receiver_address: "",
+        receiver_city: "",
+        receiver_state: "",
+        receiver_zip: "",
+        receiver_contact: "",
+        receiver_phone: "",
+        receiver_email: "",
         delivery_location: "",
         delivery_city: "",
         delivery_state: "",
@@ -214,6 +246,83 @@ export default function LoadsTab() {
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
+                  Shipper Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="shipper_name">Shipper Company Name</Label>
+                    <Input
+                      id="shipper_name"
+                      value={formData.shipper_name}
+                      onChange={(e) => setFormData({ ...formData, shipper_name: e.target.value })}
+                      placeholder="Company name"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="shipper_address">Address</Label>
+                    <Input
+                      id="shipper_address"
+                      value={formData.shipper_address}
+                      onChange={(e) => setFormData({ ...formData, shipper_address: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipper_city">City</Label>
+                    <Input
+                      id="shipper_city"
+                      value={formData.shipper_city}
+                      onChange={(e) => setFormData({ ...formData, shipper_city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipper_state">State</Label>
+                    <Input
+                      id="shipper_state"
+                      value={formData.shipper_state}
+                      onChange={(e) => setFormData({ ...formData, shipper_state: e.target.value })}
+                      placeholder="e.g., CA"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipper_zip">ZIP</Label>
+                    <Input
+                      id="shipper_zip"
+                      value={formData.shipper_zip}
+                      onChange={(e) => setFormData({ ...formData, shipper_zip: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipper_contact">Contact Name</Label>
+                    <Input
+                      id="shipper_contact"
+                      value={formData.shipper_contact}
+                      onChange={(e) => setFormData({ ...formData, shipper_contact: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipper_phone">Phone</Label>
+                    <Input
+                      id="shipper_phone"
+                      type="tel"
+                      value={formData.shipper_phone}
+                      onChange={(e) => setFormData({ ...formData, shipper_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipper_email">Email</Label>
+                    <Input
+                      id="shipper_email"
+                      type="email"
+                      value={formData.shipper_email}
+                      onChange={(e) => setFormData({ ...formData, shipper_email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
                   Pickup Information
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -302,6 +411,83 @@ export default function LoadsTab() {
                       value={formData.delivery_date}
                       onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
                       required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Receiver Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="receiver_name">Receiver Company Name</Label>
+                    <Input
+                      id="receiver_name"
+                      value={formData.receiver_name}
+                      onChange={(e) => setFormData({ ...formData, receiver_name: e.target.value })}
+                      placeholder="Company name"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="receiver_address">Address</Label>
+                    <Input
+                      id="receiver_address"
+                      value={formData.receiver_address}
+                      onChange={(e) => setFormData({ ...formData, receiver_address: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="receiver_city">City</Label>
+                    <Input
+                      id="receiver_city"
+                      value={formData.receiver_city}
+                      onChange={(e) => setFormData({ ...formData, receiver_city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="receiver_state">State</Label>
+                    <Input
+                      id="receiver_state"
+                      value={formData.receiver_state}
+                      onChange={(e) => setFormData({ ...formData, receiver_state: e.target.value })}
+                      placeholder="e.g., NY"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="receiver_zip">ZIP</Label>
+                    <Input
+                      id="receiver_zip"
+                      value={formData.receiver_zip}
+                      onChange={(e) => setFormData({ ...formData, receiver_zip: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="receiver_contact">Contact Name</Label>
+                    <Input
+                      id="receiver_contact"
+                      value={formData.receiver_contact}
+                      onChange={(e) => setFormData({ ...formData, receiver_contact: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="receiver_phone">Phone</Label>
+                    <Input
+                      id="receiver_phone"
+                      type="tel"
+                      value={formData.receiver_phone}
+                      onChange={(e) => setFormData({ ...formData, receiver_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="receiver_email">Email</Label>
+                    <Input
+                      id="receiver_email"
+                      type="email"
+                      value={formData.receiver_email}
+                      onChange={(e) => setFormData({ ...formData, receiver_email: e.target.value })}
                     />
                   </div>
                 </div>

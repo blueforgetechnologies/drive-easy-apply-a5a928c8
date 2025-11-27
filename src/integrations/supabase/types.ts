@@ -647,8 +647,24 @@ export type Database = {
           pro_number: string | null
           profit_margin: number | null
           rate: number | null
+          receiver_address: string | null
+          receiver_city: string | null
+          receiver_contact: string | null
+          receiver_email: string | null
+          receiver_name: string | null
+          receiver_phone: string | null
+          receiver_state: string | null
+          receiver_zip: string | null
           reference_number: string | null
           route_notes: string | null
+          shipper_address: string | null
+          shipper_city: string | null
+          shipper_contact: string | null
+          shipper_email: string | null
+          shipper_name: string | null
+          shipper_phone: string | null
+          shipper_state: string | null
+          shipper_zip: string | null
           special_instructions: string | null
           status: string | null
           total_cost: number | null
@@ -713,8 +729,24 @@ export type Database = {
           pro_number?: string | null
           profit_margin?: number | null
           rate?: number | null
+          receiver_address?: string | null
+          receiver_city?: string | null
+          receiver_contact?: string | null
+          receiver_email?: string | null
+          receiver_name?: string | null
+          receiver_phone?: string | null
+          receiver_state?: string | null
+          receiver_zip?: string | null
           reference_number?: string | null
           route_notes?: string | null
+          shipper_address?: string | null
+          shipper_city?: string | null
+          shipper_contact?: string | null
+          shipper_email?: string | null
+          shipper_name?: string | null
+          shipper_phone?: string | null
+          shipper_state?: string | null
+          shipper_zip?: string | null
           special_instructions?: string | null
           status?: string | null
           total_cost?: number | null
@@ -779,8 +811,24 @@ export type Database = {
           pro_number?: string | null
           profit_margin?: number | null
           rate?: number | null
+          receiver_address?: string | null
+          receiver_city?: string | null
+          receiver_contact?: string | null
+          receiver_email?: string | null
+          receiver_name?: string | null
+          receiver_phone?: string | null
+          receiver_state?: string | null
+          receiver_zip?: string | null
           reference_number?: string | null
           route_notes?: string | null
+          shipper_address?: string | null
+          shipper_city?: string | null
+          shipper_contact?: string | null
+          shipper_email?: string | null
+          shipper_name?: string | null
+          shipper_phone?: string | null
+          shipper_state?: string | null
+          shipper_zip?: string | null
           special_instructions?: string | null
           status?: string | null
           total_cost?: number | null

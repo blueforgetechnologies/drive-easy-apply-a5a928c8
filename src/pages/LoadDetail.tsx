@@ -412,6 +412,146 @@ export default function LoadDetail() {
               </CardContent>
             </Card>
 
+            {/* Shipper Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Shipper Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label>Company Name</Label>
+                    <Input 
+                      value={load.shipper_name || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Address</Label>
+                    <Input 
+                      value={load.shipper_address || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_address: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>City</Label>
+                    <Input 
+                      value={load.shipper_city || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>State</Label>
+                    <Input 
+                      value={load.shipper_state || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_state: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>ZIP</Label>
+                    <Input 
+                      value={load.shipper_zip || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_zip: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Contact Name</Label>
+                    <Input 
+                      value={load.shipper_contact || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_contact: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input 
+                      value={load.shipper_phone || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input 
+                      value={load.shipper_email || ""} 
+                      onChange={(e) => setLoad({ ...load, shipper_email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Receiver Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Receiver Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label>Company Name</Label>
+                    <Input 
+                      value={load.receiver_name || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Address</Label>
+                    <Input 
+                      value={load.receiver_address || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_address: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>City</Label>
+                    <Input 
+                      value={load.receiver_city || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>State</Label>
+                    <Input 
+                      value={load.receiver_state || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_state: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>ZIP</Label>
+                    <Input 
+                      value={load.receiver_zip || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_zip: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Contact Name</Label>
+                    <Input 
+                      value={load.receiver_contact || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_contact: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input 
+                      value={load.receiver_phone || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input 
+                      value={load.receiver_email || ""} 
+                      onChange={(e) => setLoad({ ...load, receiver_email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Cargo Details */}
             <Card>
               <CardHeader>
