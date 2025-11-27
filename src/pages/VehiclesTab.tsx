@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,23 +15,31 @@ import { Search, Plus, Edit, Trash2 } from "lucide-react";
 interface Vehicle {
   id: string;
   vehicle_number: string | null;
+  carrier: string | null;
+  payee: string | null;
+  driver_1_id: string | null;
+  driver_2_id: string | null;
+  primary_dispatcher_id: string | null;
+  asset_type: string | null;
+  dimensions_length: number | null;
+  dimensions_width: number | null;
+  dimensions_height: number | null;
+  payload: number | null;
+  lift_gate: boolean;
+  oil_change_remaining: number | null;
+  registration_exp_date: string | null;
+  insurance_expiry: string | null;
+  status: string;
   make: string | null;
   model: string | null;
   year: number | null;
   vin: string | null;
   license_plate: string | null;
-  status: string;
-  assigned_driver_id: string | null;
-  mileage: number | null;
-  last_service_date: string | null;
-  next_service_date: string | null;
-  insurance_expiry: string | null;
-  registration_expiry: string | null;
-  notes: string | null;
   created_at: string;
 }
 
 export default function VehiclesTab() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -40,6 +48,7 @@ export default function VehiclesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     vehicle_number: "",
+    carrier: "",
     make: "",
     model: "",
     year: new Date().getFullYear(),
@@ -54,7 +63,7 @@ export default function VehiclesTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const statusFilter = filter === "active" ? "active" : filter === "inactive" ? "inactive" : "maintenance";
+      const statusFilter = filter === "active" ? "active" : filter === "inactive" ? "inactive" : filter === "pending" ? "pending" : "active";
       
       const { data, error } = await supabase
         .from("vehicles")
@@ -63,7 +72,7 @@ export default function VehiclesTab() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast.error("Error loading vehicles");
+        toast.error("Error loading assets");
         return;
       }
       setVehicles(data || []);
@@ -83,10 +92,11 @@ export default function VehiclesTab() {
         });
 
       if (error) throw error;
-      toast.success("Vehicle added successfully");
+      toast.success("Asset added successfully");
       setDialogOpen(false);
       setFormData({
         vehicle_number: "",
+        carrier: "",
         make: "",
         model: "",
         year: new Date().getFullYear(),
@@ -95,7 +105,7 @@ export default function VehiclesTab() {
       });
       loadData();
     } catch (error: any) {
-      toast.error("Failed to add vehicle: " + error.message);
+      toast.error("Failed to add asset: " + error.message);
     }
   };
 
@@ -107,17 +117,23 @@ export default function VehiclesTab() {
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Vehicle deleted successfully");
+      toast.success("Asset deleted successfully");
       loadData();
     } catch (error: any) {
-      toast.error("Failed to delete vehicle: " + error.message);
+      toast.error("Failed to delete asset: " + error.message);
     }
+  };
+
+  const viewVehicle = (id: string) => {
+    navigate(`/dashboard/vehicle/${id}`);
   };
 
   const filteredVehicles = vehicles.filter((vehicle) => {
     const searchLower = searchQuery.toLowerCase();
     return (
       (vehicle.vehicle_number || "").toLowerCase().includes(searchLower) ||
+      (vehicle.carrier || "").toLowerCase().includes(searchLower) ||
+      (vehicle.payee || "").toLowerCase().includes(searchLower) ||
       (vehicle.make || "").toLowerCase().includes(searchLower) ||
       (vehicle.model || "").toLowerCase().includes(searchLower) ||
       (vehicle.vin || "").toLowerCase().includes(searchLower) ||
@@ -133,26 +149,34 @@ export default function VehiclesTab() {
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Vehicle Management</h2>
+        <h2 className="text-2xl font-bold">Asset Management</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Vehicle
+              Add Asset
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Vehicle</DialogTitle>
+              <DialogTitle>Add New Asset</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddVehicle} className="space-y-4">
               <div>
-                <Label htmlFor="vehicle_number">Vehicle Number</Label>
+                <Label htmlFor="vehicle_number">Unit ID</Label>
                 <Input
                   id="vehicle_number"
                   value={formData.vehicle_number}
                   onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
                   required
+                />
+              </div>
+              <div>
+                <Label htmlFor="carrier">Carrier</Label>
+                <Input
+                  id="carrier"
+                  value={formData.carrier}
+                  onChange={(e) => setFormData({ ...formData, carrier: e.target.value })}
                 />
               </div>
               <div>
@@ -201,7 +225,7 @@ export default function VehiclesTab() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">Add Vehicle</Button>
+              <Button type="submit" className="w-full">Add Asset</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -221,14 +245,14 @@ export default function VehiclesTab() {
             Active
           </Button>
           <Button
-            variant={filter === "maintenance" ? "default" : "outline"}
+            variant={filter === "pending" ? "default" : "outline"}
             onClick={() => {
-              setSearchParams({ filter: "maintenance" });
+              setSearchParams({ filter: "pending" });
               setSearchQuery("");
             }}
-            className={filter === "maintenance" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}
+            className={filter === "pending" ? "bg-accent text-accent-foreground" : ""}
           >
-            Maintenance
+            Pending
           </Button>
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
@@ -246,7 +270,7 @@ export default function VehiclesTab() {
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search vehicles..."
+            placeholder="Search assets..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -255,68 +279,138 @@ export default function VehiclesTab() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Vehicles</CardTitle>
-          <CardDescription>Manage your fleet vehicles</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredVehicles.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              {searchQuery ? "No vehicles match your search" : "No vehicles found"}
+              {searchQuery ? "No assets match your search" : "No assets found"}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vehicle #</TableHead>
-                  <TableHead>Make/Model</TableHead>
-                  <TableHead>Year</TableHead>
-                  <TableHead>VIN</TableHead>
-                  <TableHead>License Plate</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredVehicles.map((vehicle) => (
-                  <TableRow key={vehicle.id}>
-                    <TableCell className="font-medium">{vehicle.vehicle_number}</TableCell>
-                    <TableCell>{vehicle.make} {vehicle.model}</TableCell>
-                    <TableCell>{vehicle.year}</TableCell>
-                    <TableCell>{vehicle.vin}</TableCell>
-                    <TableCell>{vehicle.license_plate}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          vehicle.status === "active"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : vehicle.status === "maintenance"
-                            ? "bg-orange-500 hover:bg-orange-600"
-                            : "bg-gray-500 hover:bg-gray-600"
-                        }
-                      >
-                        {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => handleDeleteVehicle(vehicle.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[80px]">Asset Status</TableHead>
+                    <TableHead>Unit ID<br/>Leased ID</TableHead>
+                    <TableHead>Carrier<br/>Payee</TableHead>
+                    <TableHead>Drivers</TableHead>
+                    <TableHead>Primary<br/>Dispatcher</TableHead>
+                    <TableHead>Asset Type<br/>Susp</TableHead>
+                    <TableHead>Dimensions<br/>Door Dims</TableHead>
+                    <TableHead>Payload<br/>Clearance</TableHead>
+                    <TableHead>Lift-Gate<br/>Dock High</TableHead>
+                    <TableHead>Oil Change</TableHead>
+                    <TableHead>Registration<br/>Renewal</TableHead>
+                    <TableHead>Insurance<br/>Renewal</TableHead>
+                    <TableHead className="w-[120px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredVehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewVehicle(vehicle.id)}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className={`w-8 h-8 rounded flex items-center justify-center font-bold text-xs text-white ${
+                              vehicle.status === "active" 
+                                ? "bg-green-600" 
+                                : vehicle.status === "pending"
+                                ? "bg-orange-500"
+                                : "bg-gray-500"
+                            }`}
+                          >
+                            0
+                          </div>
+                          <Badge 
+                            variant="secondary" 
+                            className={`${
+                              vehicle.status === "active"
+                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                : vehicle.status === "pending"
+                                ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                                : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                            }`}
+                          >
+                            {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div>{vehicle.vehicle_number || "N/A"}</div>
+                        <div className="text-sm text-muted-foreground">0</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>{vehicle.carrier || "N/A"}</div>
+                        <div className="text-sm text-muted-foreground">{vehicle.payee || "N/A"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div className="text-primary underline">Assign Driver</div>
+                          <div className="text-primary underline">Assign Driver</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-primary underline">Assign Dispatcher</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>{vehicle.asset_type || "N/A"}</div>
+                        <div className="text-sm text-muted-foreground">Air Ride</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          {vehicle.dimensions_length && vehicle.dimensions_width && vehicle.dimensions_height
+                            ? `${vehicle.dimensions_length}L x ${vehicle.dimensions_width}W x ${vehicle.dimensions_height}H`
+                            : "N/A"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">96H x 94W</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>{vehicle.payload ? `${vehicle.payload}` : "N/A"}</div>
+                        <div className="text-sm text-muted-foreground">13"</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>{vehicle.lift_gate ? "Yes" : "No"}</div>
+                        <div className="text-sm text-muted-foreground">Dock High</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {vehicle.oil_change_remaining ? `${vehicle.oil_change_remaining}` : "N/A"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {vehicle.registration_exp_date 
+                          ? format(new Date(vehicle.registration_exp_date), "yyyy-MM-dd") 
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {vehicle.insurance_expiry 
+                          ? format(new Date(vehicle.insurance_expiry), "yyyy-MM-dd") 
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8"
+                            onClick={() => viewVehicle(vehicle.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => handleDeleteVehicle(vehicle.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

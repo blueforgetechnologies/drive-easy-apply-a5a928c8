@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ApplicationDetail from "./pages/ApplicationDetail";
+import VehicleDetail from "./pages/VehicleDetail";
 import DashboardLayout from "./components/DashboardLayout";
 import DriversTab from "./pages/DriversTab";
 import UsersTab from "./pages/UsersTab";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/dashboard/dispatchers" element={<DashboardLayout><DispatchersTab /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
+          <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

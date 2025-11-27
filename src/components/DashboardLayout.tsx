@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </TabsTrigger>
                 <TabsTrigger value="vehicles" className="gap-2">
                   <Car className="h-4 w-4" />
-                  <span className="hidden sm:inline">Vehicles</span>
+                  <span className="hidden sm:inline">ASSETS</span>
                 </TabsTrigger>
                 <TabsTrigger value="dispatchers" className="gap-2">
                   <UserCog className="h-4 w-4" />
