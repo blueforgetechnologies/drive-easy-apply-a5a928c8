@@ -93,6 +93,11 @@ serve(async (req) => {
 
     const samsaraData = await samsaraResponse.json();
     console.log('Samsara vehicles count:', samsaraData.data?.length || 0);
+    
+    // Log all available VINs for debugging
+    const availableVins = samsaraData.data?.map((v: any) => v.vin).filter(Boolean) || [];
+    console.log('Available VINs in Samsara:', availableVins);
+    console.log('Looking for VIN:', vehicle.vin);
 
     // Find vehicle by VIN
     const samsaraVehicle = samsaraData.data?.find((v: any) => v.vin === vehicle.vin);
