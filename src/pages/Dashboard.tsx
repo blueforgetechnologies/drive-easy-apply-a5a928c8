@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
 import { PendingInvites } from "@/components/PendingInvites";
+import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 
 interface Application {
   id: string;
@@ -110,12 +111,15 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h2 className="text-3xl font-bold">Team Management</h2>
             <p className="text-muted-foreground">Invite team members to help manage applications</p>
           </div>
-          <InviteUserDialog />
+          <div className="flex gap-2">
+            <InviteDriverDialog />
+            <InviteUserDialog />
+          </div>
         </div>
 
         <PendingInvites />
