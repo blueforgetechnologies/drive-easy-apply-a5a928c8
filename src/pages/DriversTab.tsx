@@ -11,13 +11,16 @@ import { format } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { DriverInvites } from "@/components/DriverInvites";
 import { DraftApplications } from "@/components/DraftApplications";
-import { RotateCw } from "lucide-react";
+import { RotateCw, FileText, Edit } from "lucide-react";
 
 interface Application {
   id: string;
   personal_info: any;
   submitted_at: string;
   status: string;
+  license_info?: any;
+  direct_deposit?: any;
+  payroll_policy?: any;
 }
 
 interface DriverInvite {
@@ -158,9 +161,45 @@ export default function DriversTab() {
 
       {/* Main Content */}
       <div className="flex-1 space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-3xl font-bold">Drivers Management</h2>
-          {filter !== "invitations" && <InviteDriverDialog />}
+        {/* Filter Buttons */}
+        <div className="flex justify-between items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => navigate("/dashboard/drivers?filter=active")}
+            >
+              Reset Filters
+            </Button>
+            <Button 
+              variant={filter === "active" ? "default" : "outline"}
+              size="sm"
+              onClick={() => navigate("/dashboard/drivers?filter=active")}
+            >
+              Active
+            </Button>
+            <Button 
+              variant={filter === "pending" ? "default" : "outline"}
+              size="sm"
+              onClick={() => navigate("/dashboard/drivers?filter=pending")}
+            >
+              Pending
+            </Button>
+            <Button 
+              variant={filter === "inactive" ? "default" : "outline"}
+              size="sm"
+              onClick={() => navigate("/dashboard/drivers?filter=inactive")}
+            >
+              Inactive
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+            >
+              Driver Status
+            </Button>
+          </div>
+          <InviteDriverDialog />
         </div>
 
       {filter === "invitations" && (
@@ -222,58 +261,117 @@ export default function DriversTab() {
 
       {(filter === "active" || filter === "inactive") && (
         <Card>
-          <CardHeader>
-            <CardTitle>{filter === "active" ? "Active" : "Inactive"} Drivers</CardTitle>
-            <CardDescription>
-              View and manage {filter} driver applications
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {applications.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 No {filter} drivers found
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Submitted</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {applications.map((app) => (
-                    <TableRow key={app.id}>
-                      <TableCell className="font-medium">
-                        {app.personal_info.firstName} {app.personal_info.lastName}
-                      </TableCell>
-                      <TableCell>{app.personal_info.email}</TableCell>
-                      <TableCell>{app.personal_info.phone}</TableCell>
-                      <TableCell>
-                        {format(new Date(app.submitted_at), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={app.status === "pending" ? "secondary" : "default"}>
-                          {app.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          onClick={() => viewApplication(app.id)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          View
-                        </Button>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[80px]">Status</TableHead>
+                      <TableHead>Driver Name<br/>Phone</TableHead>
+                      <TableHead>Driver Salary</TableHead>
+                      <TableHead>Age<br/>DOB</TableHead>
+                      <TableHead>DL Class<br/>Endorsements</TableHead>
+                      <TableHead>Driver's License<br/>Expiration Date</TableHead>
+                      <TableHead>DOT Card<br/>Expiration Date</TableHead>
+                      <TableHead>Driver Record<br/>Expiry Date</TableHead>
+                      <TableHead>SS Card<br/>SS#</TableHead>
+                      <TableHead>Application<br/>Direct Deposit</TableHead>
+                      <TableHead>Hired Date<br/>Termination Date</TableHead>
+                      <TableHead className="w-[120px]">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {applications.map((app) => {
+                      const licenseInfo = app.license_info || {};
+                      const personalInfo = app.personal_info || {};
+                      const directDeposit = app.direct_deposit || {};
+                      
+                      return (
+                        <TableRow key={app.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-green-500 text-white flex items-center justify-center font-bold text-xs">
+                                0
+                              </div>
+                              <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+                                Active
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div>{personalInfo.firstName} {personalInfo.lastName}</div>
+                            <div className="text-sm text-muted-foreground">{personalInfo.phone}</div>
+                          </TableCell>
+                          <TableCell className="text-destructive font-medium">
+                            {app.payroll_policy?.salary || "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <div>{personalInfo.age || "N/A"}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {personalInfo.dateOfBirth ? format(new Date(personalInfo.dateOfBirth), "yyyy-MM-dd") : "N/A"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>{licenseInfo.class || "N/A"}</div>
+                            <div className="text-sm text-muted-foreground">{licenseInfo.endorsements || "None"}</div>
+                          </TableCell>
+                          <TableCell>
+                            {licenseInfo.expirationDate ? format(new Date(licenseInfo.expirationDate), "yyyy-MM-dd") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {licenseInfo.dotCardExpiration ? format(new Date(licenseInfo.dotCardExpiration), "yyyy-MM-dd") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {licenseInfo.driverRecordExpiry ? format(new Date(licenseInfo.driverRecordExpiry), "yyyy-MM-dd") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{personalInfo.ssCard ? "Yes" : "No"}</div>
+                            <div className="text-sm text-muted-foreground">{personalInfo.ssn || "N/A"}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {app.submitted_at ? format(new Date(app.submitted_at), "yyyy-MM-dd'T'HH:mm:ss.SSS'-'SS':'SS") : "N/A"}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {directDeposit.accountNumber ? "Yes" : "No"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {app.submitted_at ? format(new Date(app.submitted_at), "yyyy-MM-dd") : "N/A"}
+                            </div>
+                            <div className="text-sm text-muted-foreground">N/A</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => viewApplication(app.id)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
