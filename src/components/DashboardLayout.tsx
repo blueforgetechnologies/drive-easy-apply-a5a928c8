@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Receipt, FileText, Building, MapPin, Wrench, History, Settings, Map } from "lucide-react";
+import { Users, Car, Package, UserCog, Truck, Building2, DollarSign, Building, MapPin, Wrench, Settings, Map, Calculator } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'settlements', 'customers', 'invoices', 'locations', 'maintenance', 'audit-logs', 'company-profile', 'map'];
+    const validTabs = ['drivers', 'users', 'vehicles', 'dispatchers', 'loads', 'carriers', 'payees', 'accounting', 'customers', 'locations', 'maintenance', 'company-profile', 'map'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -47,7 +47,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    navigate(`/dashboard/${value}?filter=active`);
+    if (value === 'accounting') {
+      navigate(`/dashboard/${value}?subtab=invoices`);
+    } else {
+      navigate(`/dashboard/${value}?filter=active`);
+    }
   };
 
   return (
@@ -86,17 +90,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <DollarSign className="h-4 w-4" />
                   <span className="hidden sm:inline">Payees</span>
                 </TabsTrigger>
-                <TabsTrigger value="settlements" className="gap-2">
-                  <Receipt className="h-4 w-4" />
-                  <span className="hidden sm:inline">Settlements</span>
+                <TabsTrigger value="accounting" className="gap-2">
+                  <Calculator className="h-4 w-4" />
+                  <span className="hidden sm:inline">Accounting</span>
                 </TabsTrigger>
                 <TabsTrigger value="customers" className="gap-2">
                   <Building className="h-4 w-4" />
                   <span className="hidden sm:inline">Customers</span>
-                </TabsTrigger>
-                <TabsTrigger value="invoices" className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Invoices</span>
                 </TabsTrigger>
                 <TabsTrigger value="locations" className="gap-2">
                   <MapPin className="h-4 w-4" />
@@ -105,10 +105,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <TabsTrigger value="maintenance" className="gap-2">
                   <Wrench className="h-4 w-4" />
                   <span className="hidden sm:inline">Maintenance</span>
-                </TabsTrigger>
-                <TabsTrigger value="audit-logs" className="gap-2">
-                  <History className="h-4 w-4" />
-                  <span className="hidden sm:inline">Audit</span>
                 </TabsTrigger>
                 <TabsTrigger value="company-profile" className="gap-2">
                   <Settings className="h-4 w-4" />
