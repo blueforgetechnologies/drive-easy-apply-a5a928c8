@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { NavLink } from "@/components/NavLink";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -152,11 +153,44 @@ export default function UsersTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Users Management</h2>
-        {filter !== "invitations" && <InviteUserDialog />}
+    <div className="flex gap-6">
+      {/* Sidebar */}
+      <div className="w-48 flex-shrink-0">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">Filter Users</h3>
+          <NavLink
+            to="/dashboard/users?filter=invitations"
+            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
+            activeClassName="bg-muted text-primary font-medium"
+            end
+          >
+            Invitations
+          </NavLink>
+          <NavLink
+            to="/dashboard/users?filter=active"
+            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
+            activeClassName="bg-muted text-primary font-medium"
+            end
+          >
+            Active Users
+          </NavLink>
+          <NavLink
+            to="/dashboard/users?filter=inactive"
+            className="block px-3 py-2 text-sm rounded-md hover:bg-muted"
+            activeClassName="bg-muted text-primary font-medium"
+            end
+          >
+            Inactive Users
+          </NavLink>
+        </div>
       </div>
+
+      {/* Main Content */}
+      <div className="flex-1 space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold">Users Management</h2>
+          {filter !== "invitations" && <InviteUserDialog />}
+        </div>
 
       {filter === "invitations" && (
         <Card>
@@ -289,6 +323,7 @@ export default function UsersTab() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Users, Car, Package, UserCog, Truck } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -13,10 +12,8 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const [userName, setUserName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("drivers");
-  const currentFilter = searchParams.get("filter") || "active";
 
   useEffect(() => {
     loadUserProfile();
@@ -50,11 +47,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     navigate(`/dashboard/${value}?filter=active`);
-  };
-
-  const handleFilterChange = (filter: string) => {
-    const currentPath = location.pathname;
-    navigate(`${currentPath}?filter=${filter}`);
   };
 
   return (
@@ -99,85 +91,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <Sidebar>
-            <SidebarContent>
-              {activeTab === "drivers" && (
-                <SidebarGroup>
-                  <SidebarGroupLabel>Filter Drivers</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={currentFilter === "active"}
-                          onClick={() => handleFilterChange("active")}
-                        >
-                          Active Drivers
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={currentFilter === "invitations"}
-                          onClick={() => handleFilterChange("invitations")}
-                        >
-                          Invitations
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={currentFilter === "inactive"}
-                          onClick={() => handleFilterChange("inactive")}
-                        >
-                          Inactive Drivers
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              )}
-
-              {activeTab === "users" && (
-                <SidebarGroup>
-                  <SidebarGroupLabel>Filter Users</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={currentFilter === "invitations"}
-                          onClick={() => handleFilterChange("invitations")}
-                        >
-                          Invitations
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={currentFilter === "active"}
-                          onClick={() => handleFilterChange("active")}
-                        >
-                          Active Users
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={currentFilter === "inactive"}
-                          onClick={() => handleFilterChange("inactive")}
-                        >
-                          Inactive Users
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              )}
-            </SidebarContent>
-          </Sidebar>
-
-          <main className="flex-1 p-6">
-            {children}
-          </main>
-        </div>
-      </SidebarProvider>
+      <main className="container mx-auto px-4 py-6">
+        {children}
+      </main>
     </div>
   );
 }
