@@ -163,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "Driver Application <onboarding@resend.dev>",
-      to: ["PODontime@gmail.com"],
+      to: ["ben@nexustechsolution.com"],
       subject: `New Driver Application - ${applicationData.personalInfo?.firstName} ${applicationData.personalInfo?.lastName}`,
       html: emailHtml,
     });
