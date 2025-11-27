@@ -127,15 +127,26 @@ const MapTab = () => {
     return (
       <div className="p-6">
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Mapbox Token Required</h2>
+          <h2 className="text-xl font-semibold mb-4">Mapbox Configuration Required</h2>
           <p className="text-muted-foreground mb-4">
-            To display the vehicle map, you need to add your Mapbox public token to the environment variables.
+            To display the vehicle tracking map, you need to add your Mapbox public token.
           </p>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>Go to <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">mapbox.com</a> and create an account</li>
-            <li>Get your public access token from the Mapbox dashboard</li>
-            <li>Add VITE_MAPBOX_TOKEN to your environment variables</li>
-          </ol>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium mb-2">Step 1: Get your Mapbox token</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
+                <li>Visit <a href="https://account.mapbox.com/access-tokens/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox Access Tokens</a></li>
+                <li>Sign up or log in to your account</li>
+                <li>Copy your default public token</li>
+              </ol>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2">Step 2: Add the token</h3>
+              <p className="text-sm text-muted-foreground ml-4">
+                Contact your administrator to add the <code className="bg-muted px-1 py-0.5 rounded">VITE_MAPBOX_TOKEN</code> to your backend configuration.
+              </p>
+            </div>
+          </div>
         </Card>
       </div>
     );
