@@ -22,30 +22,30 @@ export default function AccountingTab() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold">Accounting</h2>
-        <p className="text-xs text-muted-foreground">
+        <h2 className="text-xl font-bold">Accounting</h2>
+        <p className="text-sm text-muted-foreground">
           Manage invoices, settlements, and audit logs
         </p>
       </div>
 
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
-        <TabsList className="h-7">
-          <TabsTrigger value="invoices" className="text-xs px-2">Invoices</TabsTrigger>
-          <TabsTrigger value="settlements" className="text-xs px-2">Settlements</TabsTrigger>
-          <TabsTrigger value="audit" className="text-xs px-2">Audit Logs</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="settlements">Settlements</TabsTrigger>
+          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="invoices" className="mt-3">
+        <TabsContent value="invoices" className="mt-4">
           <InvoicesTab />
         </TabsContent>
 
-        <TabsContent value="settlements" className="mt-3">
+        <TabsContent value="settlements" className="mt-4">
           <SettlementsTab />
         </TabsContent>
 
-        <TabsContent value="audit" className="mt-3">
+        <TabsContent value="audit" className="mt-4">
           <AuditLogsTab />
         </TabsContent>
       </Tabs>

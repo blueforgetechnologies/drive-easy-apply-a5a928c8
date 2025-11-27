@@ -116,14 +116,14 @@ All colors MUST be HSL.
   }
 
   /* Compact, modern styling */
-  h1 { @apply text-2xl font-bold; }
-  h2 { @apply text-xl font-semibold; }
-  h3 { @apply text-lg font-semibold; }
+  h1 { @apply text-xl font-bold; }
+  h2 { @apply text-lg font-semibold; }
+  h3 { @apply text-base font-semibold; }
   
   .compact-card { @apply rounded-lg border bg-card shadow-sm; }
-  .compact-table th { @apply h-9 px-3 text-xs; }
-  .compact-table td { @apply p-2 text-sm; }
+  .compact-table th { @apply h-10 px-3 text-sm; }
+  .compact-table td { @apply p-2.5 text-sm; }
   .compact-header { @apply py-3 px-4; }
-  .compact-input { @apply h-8 text-sm; }
-  .compact-button { @apply h-8 px-3 text-sm; }
+  .compact-input { @apply h-9 text-sm; }
+  .compact-button { @apply h-9 px-3 text-sm; }
 }

@@ -27,50 +27,50 @@ export default function BusinessManagerTab() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold">Business Manager</h2>
-        <p className="text-xs text-muted-foreground">
+        <h2 className="text-xl font-bold">Business Manager</h2>
+        <p className="text-sm text-muted-foreground">
           Manage assets, carriers, payees, drivers, dispatchers, customers, and permissions
         </p>
       </div>
 
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
-        <TabsList className="h-7">
-          <TabsTrigger value="assets" className="text-xs px-2">Assets</TabsTrigger>
-          <TabsTrigger value="carriers" className="text-xs px-2">Carriers</TabsTrigger>
-          <TabsTrigger value="payees" className="text-xs px-2">Payees</TabsTrigger>
-          <TabsTrigger value="drivers" className="text-xs px-2">Drivers</TabsTrigger>
-          <TabsTrigger value="dispatchers" className="text-xs px-2">Dispatchers</TabsTrigger>
-          <TabsTrigger value="customers" className="text-xs px-2">Customers</TabsTrigger>
-          <TabsTrigger value="roles" className="text-xs px-2">Roles</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="assets">Assets</TabsTrigger>
+          <TabsTrigger value="carriers">Carriers</TabsTrigger>
+          <TabsTrigger value="payees">Payees</TabsTrigger>
+          <TabsTrigger value="drivers">Drivers</TabsTrigger>
+          <TabsTrigger value="dispatchers">Dispatchers</TabsTrigger>
+          <TabsTrigger value="customers">Customers</TabsTrigger>
+          <TabsTrigger value="roles">Roles</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="assets" className="mt-3">
+        <TabsContent value="assets" className="mt-4">
           <VehiclesTab />
         </TabsContent>
 
-        <TabsContent value="carriers" className="mt-3">
+        <TabsContent value="carriers" className="mt-4">
           <CarriersTab />
         </TabsContent>
 
-        <TabsContent value="payees" className="mt-3">
+        <TabsContent value="payees" className="mt-4">
           <PayeesTab />
         </TabsContent>
 
-        <TabsContent value="drivers" className="mt-3">
+        <TabsContent value="drivers" className="mt-4">
           <DriversTab />
         </TabsContent>
 
-        <TabsContent value="dispatchers" className="mt-3">
+        <TabsContent value="dispatchers" className="mt-4">
           <DispatchersTab />
         </TabsContent>
 
-        <TabsContent value="customers" className="mt-3">
+        <TabsContent value="customers" className="mt-4">
           <CustomersTab />
         </TabsContent>
 
-        <TabsContent value="roles" className="mt-3">
+        <TabsContent value="roles" className="mt-4">
           <PlaceholderTab 
             title="Roles & Permissions"
             description="Manage user roles and permissions for system access control"
