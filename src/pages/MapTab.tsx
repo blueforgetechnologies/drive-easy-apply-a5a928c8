@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Droplet } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MapTab = () => {
@@ -340,8 +340,8 @@ const MapTab = () => {
                       {statusIcon}
                     </span>
                     {oilChangeDue && (
-                      <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title="Oil change due">
-                        🔧
+                      <span className="flex items-center justify-center w-5 h-5 rounded bg-orange-500 text-white" title="Oil change due">
+                        <Droplet className="h-3 w-3" fill="white" />
                       </span>
                     )}
                     <div className="font-medium text-sm">
