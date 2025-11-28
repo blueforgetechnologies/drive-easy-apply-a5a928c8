@@ -87,18 +87,27 @@ serve(async (req) => {
       console.log('Found MC Number:', carrierData.mc_number);
     }
 
-    // Extract Operating Status (Safer Status)
-    const operatingStatusMatch = html.match(/Operating Status:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    // Extract Operating Authority Status (Safer Status)
+    // The pattern is: Operating Authority Status:</a></th>...<td>...<b>STATUS_HERE</b>
+    const operatingStatusMatch = html.match(/Operating\s+Authority\s+Status:<\/a><\/th>[\s\S]{0,300}?<b>(.*?)<\/b>/i);
     if (operatingStatusMatch) {
-      carrierData.safer_status = operatingStatusMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
-      console.log('Found Operating Status (Safer Status):', carrierData.safer_status);
+      carrierData.safer_status = operatingStatusMatch[1].trim().replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+      console.log('Found Operating Authority Status (Safer Status):', carrierData.safer_status);
+    } else {
+      console.log('Operating Authority Status pattern did not match');
     }
 
     // Extract Safety Rating
-    const safetyRatingMatch = html.match(/Safety Rating:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    // The pattern is in a table: Rating:</th>...<td>...RATING_TEXT...
+    const safetyRatingMatch = html.match(/Rating:<\/[^>]+>[\s\S]{0,200}?<td[^>]*>[\s\S]{0,100}?([^<\n]+)/i);
     if (safetyRatingMatch) {
-      carrierData.safety_rating = safetyRatingMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
-      console.log('Found Safety Rating:', carrierData.safety_rating);
+      const rating = safetyRatingMatch[1].trim().replace(/&nbsp;/g, ' ').replace(/\|/g, '').replace(/\s+/g, ' ').trim();
+      if (rating && rating.length > 0 && rating !== '') {
+        carrierData.safety_rating = rating;
+        console.log('Found Safety Rating:', carrierData.safety_rating);
+      }
+    } else {
+      console.log('Safety Rating pattern did not match');
     }
 
     // Check if carrier was found - at least one field should be populated
