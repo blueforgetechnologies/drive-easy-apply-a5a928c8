@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface Carrier {
   id: string;
@@ -45,10 +45,16 @@ export default function CarriersTab() {
   });
   const [usdotLookup, setUsdotLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
     loadData();
   }, [filter]);
+
+  useEffect(() => {
+    calculateAlertCount();
+  }, [carriers]);
 
   const loadData = async () => {
     setLoading(true);
@@ -117,6 +123,42 @@ export default function CarriersTab() {
     }
   };
 
+  const calculateAlertCount = () => {
+    const count = carriers.filter(
+      (carrier) =>
+        (carrier.status === 'active' || carrier.status === 'pending') &&
+        carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED')
+    ).length;
+    setAlertCount(count);
+  };
+
+  const handleSyncAllCarriers = async () => {
+    setSyncLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-carriers-fmcsa`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to sync carriers');
+      }
+
+      const result = await response.json();
+      toast.success(`Synced ${result.successCount} carriers successfully`);
+      loadData(); // Reload data to show updated status
+    } catch (error: any) {
+      toast.error('Failed to sync carriers: ' + error.message);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   const handleUsdotLookup = async () => {
     if (!usdotLookup.trim()) {
       toast.error("Please enter a USDOT number");
@@ -178,14 +220,32 @@ export default function CarriersTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Carrier Management</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Carrier
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">Carrier Management</h2>
+          {alertCount > 0 && (
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              {alertCount} Alert{alertCount !== 1 ? 's' : ''}
+            </Badge>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleSyncAllCarriers}
+            disabled={syncLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${syncLoading ? 'animate-spin' : ''}`} />
+            {syncLoading ? 'Syncing...' : 'Sync FMCSA'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Carrier
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Carrier</DialogTitle>
@@ -274,7 +334,8 @@ export default function CarriersTab() {
               <Button type="submit" className="w-full">Add Carrier</Button>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
