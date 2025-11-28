@@ -149,8 +149,8 @@ const MapTab = () => {
       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
         const speed = vehicle.speed || 0;
         const stoppedStatus = vehicle.stopped_status;
-        // Show oil change indicator if remaining miles is less than 10000 or negative (overdue)
-        const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining < 10000;
+        // Show oil change indicator only when due (0 or negative miles remaining)
+        const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
         
         // Determine marker style based on vehicle status
         let markerHTML = '';
@@ -325,8 +325,8 @@ const MapTab = () => {
               statusColor = 'bg-emerald-500';
             }
             
-            // Check if oil change is due (less than 10000 miles remaining)
-            const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining < 10000;
+            // Check if oil change is due (0 or negative miles remaining)
+            const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
             
             return (
               <div
