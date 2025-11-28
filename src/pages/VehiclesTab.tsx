@@ -70,7 +70,7 @@ export default function VehiclesTab() {
         .from("vehicles")
         .select("*")
         .eq("status", statusFilter)
-        .order("created_at", { ascending: false });
+        .order("vehicle_number", { ascending: true, nullsFirst: false });
 
       if (error) {
         toast.error("Error loading assets");
