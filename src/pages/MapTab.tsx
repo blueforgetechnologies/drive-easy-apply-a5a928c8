@@ -4,7 +4,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Droplet } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import oilChangeIcon from '@/assets/oil-change-icon.png';
 import { toast } from 'sonner';
 
 const MapTab = () => {
@@ -161,7 +162,7 @@ const MapTab = () => {
             <svg width="40" height="40" viewBox="0 0 40 40">
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              ${oilChangeDue ? '<circle cx="32" cy="8" r="7" fill="#f97316" stroke="white" stroke-width="2"/><path d="M29 6 L29 10 M31 6 L31 10 M33 6 L33 10 M35 6 L35 10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>' : ''}
+              ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
             </svg>
           `;
         } else if (stoppedStatus === 'stopped' || speed === 0) {
@@ -170,7 +171,7 @@ const MapTab = () => {
             <svg width="40" height="40" viewBox="0 0 40 40">
               <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
               <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
-              ${oilChangeDue ? '<circle cx="32" cy="8" r="7" fill="#f97316" stroke="white" stroke-width="2"/><path d="M29 6 L29 10 M31 6 L31 10 M33 6 L33 10 M35 6 L35 10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>' : ''}
+              ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
             </svg>
           `;
         } else {
@@ -180,7 +181,7 @@ const MapTab = () => {
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
               <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
-              ${oilChangeDue ? '<circle cx="32" cy="8" r="7" fill="#f97316" stroke="white" stroke-width="2"/><path d="M29 6 L29 10 M31 6 L31 10 M33 6 L33 10 M35 6 L35 10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>' : ''}
+              ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
             </svg>
           `;
         }
@@ -340,8 +341,8 @@ const MapTab = () => {
                       {statusIcon}
                     </span>
                     {oilChangeDue && (
-                      <span className="flex items-center justify-center w-5 h-5 rounded bg-orange-500 text-white" title="Oil change due">
-                        <Droplet className="h-3 w-3" fill="white" />
+                      <span className="flex items-center justify-center w-5 h-5 rounded" title="Oil change due">
+                        <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
                       </span>
                     )}
                     <div className="font-medium text-sm">
