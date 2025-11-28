@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, MapIcon, Satellite } from 'lucide-react';
+import { RefreshCw, MapIcon, Satellite, Cloud } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ const MapTab = () => {
   const [syncing, setSyncing] = useState(false);
   const [weatherCache, setWeatherCache] = useState<Record<string, any>>({});
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
+  const [showWeatherLayer, setShowWeatherLayer] = useState(false);
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
 
   useEffect(() => {
@@ -121,6 +122,13 @@ const MapTab = () => {
         }),
         'top-right'
       );
+
+      // Add weather layer when map loads
+      map.current.on('load', () => {
+        if (showWeatherLayer) {
+          addWeatherLayer();
+        }
+      });
     };
 
     initializeMap();
@@ -130,6 +138,57 @@ const MapTab = () => {
       map.current?.remove();
     };
   }, [mapStyle]);
+
+  useEffect(() => {
+    if (!map.current) return;
+    
+    if (showWeatherLayer) {
+      addWeatherLayer();
+    } else {
+      removeWeatherLayer();
+    }
+  }, [showWeatherLayer]);
+
+  const addWeatherLayer = () => {
+    if (!map.current) return;
+    
+    // Remove existing layer if present
+    if (map.current.getLayer('rain-layer')) {
+      map.current.removeLayer('rain-layer');
+    }
+    if (map.current.getSource('rain-source')) {
+      map.current.removeSource('rain-source');
+    }
+
+    // Add RainViewer radar overlay
+    map.current.addSource('rain-source', {
+      type: 'raster',
+      tiles: [
+        'https://tilecache.rainviewer.com/v2/radar/0/{z}/{x}/{y}/256/1_1.png'
+      ],
+      tileSize: 256,
+    });
+
+    map.current.addLayer({
+      id: 'rain-layer',
+      type: 'raster',
+      source: 'rain-source',
+      paint: {
+        'raster-opacity': 0.6,
+      },
+    });
+  };
+
+  const removeWeatherLayer = () => {
+    if (!map.current) return;
+    
+    if (map.current.getLayer('rain-layer')) {
+      map.current.removeLayer('rain-layer');
+    }
+    if (map.current.getSource('rain-source')) {
+      map.current.removeSource('rain-source');
+    }
+  };
 
   const toggleMapStyle = () => {
     if (!map.current) return;
@@ -466,8 +525,8 @@ const MapTab = () => {
       <div className="relative flex-1">
         <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
         
-        {/* Map style toggle button */}
-        <div className="absolute top-4 right-4 z-10">
+        {/* Map controls */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
           <Button
             onClick={toggleMapStyle}
             size="sm"
@@ -485,6 +544,15 @@ const MapTab = () => {
                 Streets
               </>
             )}
+          </Button>
+          <Button
+            onClick={() => setShowWeatherLayer(!showWeatherLayer)}
+            size="sm"
+            variant={showWeatherLayer ? "default" : "secondary"}
+            className="shadow-lg"
+          >
+            <Cloud className="h-4 w-4 mr-2" />
+            Weather
           </Button>
         </div>
       </div>
