@@ -120,20 +120,27 @@ export default function CarriersTab() {
 
     setLookupLoading(true);
     try {
-      const response = await fetch(`https://saferwebapi.com/v1/snapshots/${usdotLookup}`);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ usdot: usdotLookup }),
+        }
+      );
       
       if (!response.ok) {
-        throw new Error("Carrier not found");
+        const error = await response.json();
+        throw new Error(error.error || "Carrier not found");
       }
 
       const data = await response.json();
       
-      // Extract MC number from mc_mx_ff_numbers (format: "MC-146894")
-      const mcNumber = data.mc_mx_ff_numbers?.match(/MC-(\d+)/)?.[1] || "";
-      
       setFormData({
-        name: data.dba_name || data.legal_name || "",
-        mc_number: mcNumber,
+        name: data.dba_name || data.name || "",
+        mc_number: data.mc_number || "",
         dot_number: data.usdot || usdotLookup,
         contact_name: "",
         email: "",
