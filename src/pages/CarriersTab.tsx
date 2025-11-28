@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
 
 interface Carrier {
   id: string;
@@ -21,6 +21,8 @@ interface Carrier {
   phone: string | null;
   address: string | null;
   status: string;
+  safer_status: string | null;
+  safety_rating: string | null;
   created_at: string;
 }
 
@@ -51,13 +53,16 @@ export default function CarriersTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const statusFilter = filter === "active" ? "active" : "inactive";
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from("carriers" as any)
         .select("*")
-        .eq("status", statusFilter)
         .order("created_at", { ascending: false });
+      
+      if (filter !== "all") {
+        query = query.eq("status", filter);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         toast.error("Error loading carriers");
@@ -285,6 +290,16 @@ export default function CarriersTab() {
             Active
           </Button>
           <Button
+            variant={filter === "pending" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "pending" });
+              setSearchQuery("");
+            }}
+            className={filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}
+          >
+            Pending
+          </Button>
+          <Button
             variant={filter === "inactive" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "inactive" });
@@ -318,71 +333,136 @@ export default function CarriersTab() {
               {searchQuery ? "No carriers match your search" : "No carriers found"}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Carrier Name</TableHead>
-                  <TableHead>MC Number</TableHead>
-                  <TableHead>DOT Number</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCarriers.map((carrier) => (
-                  <TableRow 
-                    key={carrier.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
-                  >
-                    <TableCell className="font-medium">{carrier.name}</TableCell>
-                    <TableCell>{carrier.mc_number || "N/A"}</TableCell>
-                    <TableCell>{carrier.dot_number || "N/A"}</TableCell>
-                    <TableCell>{carrier.contact_name || "N/A"}</TableCell>
-                    <TableCell>{carrier.phone || "N/A"}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          carrier.status === "active"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-gray-500 hover:bg-gray-600"
-                        }
-                      >
-                        {carrier.status.charAt(0).toUpperCase() + carrier.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard/carrier/${carrier.id}`);
-                          }}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="w-[80px]">Status</TableHead>
+                    <TableHead className="min-w-[180px]">
+                      <div>Carrier Name</div>
+                      <div className="text-xs font-normal text-muted-foreground">USDOT #</div>
+                    </TableHead>
+                    <TableHead className="min-w-[150px]">
+                      <div>Contact</div>
+                      <div className="text-xs font-normal text-muted-foreground">Phone</div>
+                    </TableHead>
+                    <TableHead className="min-w-[200px]">
+                      <div>Physical Address</div>
+                      <div className="text-xs font-normal text-muted-foreground">Email Address</div>
+                    </TableHead>
+                    <TableHead className="min-w-[120px]">
+                      <div>W9</div>
+                      <div className="text-xs font-normal text-muted-foreground">EIN</div>
+                    </TableHead>
+                    <TableHead className="min-w-[140px]">
+                      <div>Insurance</div>
+                      <div className="text-xs font-normal text-muted-foreground">Expiration Date</div>
+                    </TableHead>
+                    <TableHead className="min-w-[160px]">
+                      <div>Workman Compensation</div>
+                      <div className="text-xs font-normal text-muted-foreground">Expiration Date</div>
+                    </TableHead>
+                    <TableHead className="min-w-[140px]">
+                      <div>Carrier Agreement</div>
+                      <div className="text-xs font-normal text-muted-foreground">Direct Deposit</div>
+                    </TableHead>
+                    <TableHead className="min-w-[160px]">
+                      <div>Authority status</div>
+                      <div className="text-xs font-normal text-muted-foreground">Safer Rating Check</div>
+                    </TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCarriers.map((carrier) => (
+                    <TableRow 
+                      key={carrier.id} 
+                      className="cursor-pointer hover:bg-muted/30"
+                      onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                    >
+                      <TableCell>
+                        <Badge
+                          variant={
+                            carrier.status === "active"
+                              ? "default"
+                              : carrier.status === "pending"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className={`w-full justify-center ${
+                            carrier.status === "active"
+                              ? "bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
+                              : carrier.status === "pending"
+                              ? "bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200"
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200"
+                          }`}
                         >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                          <span className="mr-1">0</span>
+                          {carrier.status.charAt(0).toUpperCase() + carrier.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium text-blue-600 hover:underline">{carrier.name}</div>
+                        <div className="text-xs text-muted-foreground">{carrier.dot_number || ""}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{carrier.contact_name || ""}</div>
+                        <div className="text-xs text-muted-foreground">{carrier.phone || ""}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{carrier.address || ""}</div>
+                        <div className="text-xs text-muted-foreground">{carrier.email || ""}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">—</div>
+                        <div className="text-xs text-muted-foreground">—</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">—</div>
+                        <div className="text-xs text-muted-foreground">—</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">—</div>
+                        <div className="text-xs text-muted-foreground">—</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">—</div>
+                        <div className="text-xs text-muted-foreground">—</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ? (
+                            <span className="text-destructive font-medium">{carrier.safer_status}</span>
+                          ) : (
+                            <span className="text-green-700 font-medium">{carrier.safer_status || "AUTHORIZED FOR Property"}</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {carrier.safety_rating?.toUpperCase() === 'CONDITIONAL' ? (
+                            <span className="text-destructive">{carrier.safety_rating}</span>
+                          ) : (
+                            <span>{carrier.safety_rating || "None"}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteCarrier(carrier.id);
+                            navigate(`/dashboard/carrier/${carrier.id}`);
                           }}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
