@@ -145,6 +145,8 @@ export default function CarrierDetail() {
           dot_number: data.usdot || usdotLookup,
           phone: data.phone || carrier.phone,
           address: data.physical_address || carrier.address,
+          safer_status: data.safer_status || carrier.safer_status,
+          safety_rating: data.safety_rating || carrier.safety_rating,
         });
       }
       

@@ -87,11 +87,11 @@ serve(async (req) => {
       console.log('Found MC Number:', carrierData.mc_number);
     }
 
-    // Extract Safer Status
-    const saferStatusMatch = html.match(/Entity Type:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
-    if (saferStatusMatch) {
-      carrierData.safer_status = saferStatusMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
-      console.log('Found Safer Status:', carrierData.safer_status);
+    // Extract Operating Status (Safer Status)
+    const operatingStatusMatch = html.match(/Operating Status:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (operatingStatusMatch) {
+      carrierData.safer_status = operatingStatusMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      console.log('Found Operating Status (Safer Status):', carrierData.safer_status);
     }
 
     // Extract Safety Rating
