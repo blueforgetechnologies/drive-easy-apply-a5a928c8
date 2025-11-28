@@ -7,7 +7,6 @@ import PayeesTab from "./PayeesTab";
 import DriversTab from "./DriversTab";
 import DispatchersTab from "./DispatchersTab";
 import CustomersTab from "./CustomersTab";
-import PlaceholderTab from "./PlaceholderTab";
 
 export default function BusinessManagerTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -15,7 +14,7 @@ export default function BusinessManagerTab() {
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
-    const validSubTabs = ["assets", "carriers", "payees", "drivers", "dispatchers", "customers", "roles"];
+    const validSubTabs = ["assets", "carriers", "payees", "drivers", "dispatchers", "customers"];
     if (subTab && validSubTabs.includes(subTab)) {
       setActiveSubTab(subTab);
     }
@@ -31,7 +30,7 @@ export default function BusinessManagerTab() {
       <div>
         <h2 className="text-xl font-bold">Business Manager</h2>
         <p className="text-sm text-muted-foreground">
-          Manage assets, carriers, payees, drivers, dispatchers, customers, and permissions
+          Manage assets, carriers, payees, drivers, dispatchers, and customers
         </p>
       </div>
 
@@ -43,7 +42,6 @@ export default function BusinessManagerTab() {
           <TabsTrigger value="drivers">Drivers</TabsTrigger>
           <TabsTrigger value="dispatchers">Dispatchers</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
-          <TabsTrigger value="roles">Roles</TabsTrigger>
         </TabsList>
 
         <TabsContent value="assets" className="mt-4">
@@ -68,13 +66,6 @@ export default function BusinessManagerTab() {
 
         <TabsContent value="customers" className="mt-4">
           <CustomersTab />
-        </TabsContent>
-
-        <TabsContent value="roles" className="mt-4">
-          <PlaceholderTab 
-            title="Roles & Permissions"
-            description="Manage user roles and permissions for system access control"
-          />
         </TabsContent>
       </Tabs>
     </div>
