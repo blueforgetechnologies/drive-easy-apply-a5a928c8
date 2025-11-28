@@ -215,11 +215,11 @@ const MapTab = () => {
                 <span style="font-size: 18px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
+                ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 20px; height: 20px;" />` : ''}
+                ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 20px; height: 20px;" />` : ''}
                 <div style="background: #10b981; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
                   ${vehicle.speed || 0} MPH
                 </div>
-                ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 20px; height: 20px;" />` : ''}
-                ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 20px; height: 20px;" />` : ''}
               </div>
             </div>
             
@@ -354,9 +354,6 @@ const MapTab = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                      {speed} MPH
-                    </span>
                     {oilChangeDue && (
                       <span className="flex items-center justify-center w-5 h-5 rounded" title="Oil change due">
                         <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
@@ -367,6 +364,9 @@ const MapTab = () => {
                         <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
                       </span>
                     )}
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {speed} MPH
+                    </span>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
