@@ -197,7 +197,12 @@ export default function CarrierDetail() {
               <div>
                 <Label className="text-sm text-muted-foreground">Safer Status:</Label>
                 <Badge 
-                  className="mt-2 w-full justify-center py-2 text-sm font-medium bg-green-600 hover:bg-green-700"
+                  variant={
+                    carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') 
+                      ? 'destructive' 
+                      : 'default'
+                  }
+                  className="mt-2 w-full justify-center py-2 text-sm font-medium"
                 >
                   {carrier.safer_status || "AUTHORIZED FOR PROPERTY"}
                 </Badge>
@@ -206,7 +211,12 @@ export default function CarrierDetail() {
               <div>
                 <Label className="text-sm text-muted-foreground">Safer Rating Check:</Label>
                 <Badge 
-                  className="mt-2 w-full justify-center py-2 text-sm font-medium bg-green-600 hover:bg-green-700"
+                  variant={
+                    carrier.safety_rating?.toUpperCase() === 'CONDITIONAL'
+                      ? 'destructive'
+                      : 'default'
+                  }
+                  className="mt-2 w-full justify-center py-2 text-sm font-medium"
                 >
                   {carrier.safety_rating || "NONE"}
                 </Badge>
