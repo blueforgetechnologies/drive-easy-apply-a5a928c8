@@ -13,7 +13,9 @@ const MapTab = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [syncing, setSyncing] = useState(false);
+  const [mapboxToken, setMapboxToken] = useState<string>('');
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
+  const addressCacheRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     loadVehicles();
@@ -26,7 +28,35 @@ const MapTab = () => {
     return () => {
       clearInterval(refreshInterval);
     };
-  }, []);
+  }, [mapboxToken]); // Reload when token is available
+
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    const coordKey = `${lat},${lng}`;
+    
+    // Check cache first
+    if (addressCacheRef.current.has(coordKey)) {
+      return addressCacheRef.current.get(coordKey)!;
+    }
+
+    if (!mapboxToken) return `${lat}, ${lng}`;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const address = data.features[0].place_name;
+        addressCacheRef.current.set(coordKey, address);
+        return address;
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+    }
+
+    return `${lat}, ${lng}`;
+  };
 
   const loadVehicles = async () => {
     const { data, error } = await supabase
@@ -35,7 +65,23 @@ const MapTab = () => {
       .not('last_location', 'is', null);
 
     if (!error && data) {
-      setVehicles(data);
+      // Geocode addresses for all vehicles
+      const vehiclesWithAddresses = await Promise.all(
+        data.map(async (vehicle) => {
+          if (vehicle.last_location) {
+            const coordMatch = vehicle.last_location.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+            if (coordMatch) {
+              const lat = parseFloat(coordMatch[1]);
+              const lng = parseFloat(coordMatch[2]);
+              const address = await reverseGeocode(lat, lng);
+              return { ...vehicle, formatted_address: address };
+            }
+          }
+          return vehicle;
+        })
+      );
+      
+      setVehicles(vehiclesWithAddresses);
       setLastUpdate(new Date());
     }
   };
@@ -75,6 +121,9 @@ const MapTab = () => {
         console.error('Failed to fetch Mapbox token:', tokenError);
         return;
       }
+
+      // Store token for geocoding
+      setMapboxToken(tokenData.token);
 
       // Initialize map with token from backend
       mapboxgl.accessToken = tokenData.token;
@@ -218,7 +267,7 @@ const MapTab = () => {
             <!-- Location Info -->
             <div style="padding: 12px 16px; background: white; border-bottom: 1px solid #e5e7eb;">
               <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
-                ${vehicle.last_location || 'Location unavailable'}
+                ${vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
               </p>
             </div>
             
@@ -353,7 +402,7 @@ const MapTab = () => {
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {vehicle.last_location || 'Location unavailable'}
+                  {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
                 </div>
               </div>
             );
