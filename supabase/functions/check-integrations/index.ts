@@ -149,16 +149,18 @@ serve(async (req) => {
 
     // Check Mapbox (using token from edge function)
     try {
-      const { data: tokenData, error: tokenError } = await (await fetch(
+      const tokenResponse = await fetch(
         `${Deno.env.get('SUPABASE_URL')}/functions/v1/get-mapbox-token`,
         {
           headers: {
             'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
           },
         }
-      )).json();
+      );
 
-      if (tokenError || !tokenData?.token) {
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok || !tokenData?.token) {
         integrations.push({
           id: "mapbox",
           name: "Mapbox",
