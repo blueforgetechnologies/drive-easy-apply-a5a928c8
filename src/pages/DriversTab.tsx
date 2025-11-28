@@ -51,7 +51,9 @@ export default function DriversTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      if (filter === "active") {
+      if (filter === "all") {
+        await loadAllDrivers();
+      } else if (filter === "active") {
         await loadActiveDrivers();
       } else if (filter === "pending") {
         await loadPendingDrivers();
@@ -63,6 +65,20 @@ export default function DriversTab() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAllDrivers = async () => {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*")
+      .not("submitted_at", "is", null)
+      .order("submitted_at", { ascending: false });
+
+    if (error) {
+      toast.error("Error loading drivers");
+      return;
+    }
+    setApplications(data || []);
   };
 
   const loadActiveDrivers = async () => {
@@ -251,6 +267,16 @@ export default function DriversTab() {
             className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
           >
             Inactive
+          </Button>
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+          >
+            All
           </Button>
         </div>
 

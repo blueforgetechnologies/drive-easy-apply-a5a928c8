@@ -343,6 +343,16 @@ export default function CarriersTab() {
           >
             Inactive
           </Button>
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+          >
+            All
+          </Button>
         </div>
 
         <div className="relative w-full sm:w-64">

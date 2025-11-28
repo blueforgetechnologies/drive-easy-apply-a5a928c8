@@ -47,6 +47,8 @@ export default function VehiclesTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showServiceDue, setShowServiceDue] = useState(false);
   const [formData, setFormData] = useState({
     vehicle_number: "",
     carrier: "",
@@ -59,18 +61,23 @@ export default function VehiclesTab() {
 
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, [filter, sortOrder]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const statusFilter = filter === "active" ? "active" : filter === "inactive" ? "inactive" : filter === "pending" ? "pending" : "active";
+      let query = supabase.from("vehicles").select("*");
       
-      const { data, error } = await supabase
-        .from("vehicles")
-        .select("*")
-        .eq("status", statusFilter)
-        .order("vehicle_number", { ascending: true, nullsFirst: false });
+      // Apply status filter (if not "all")
+      if (filter !== "all") {
+        const statusFilter = filter === "active" ? "active" : filter === "inactive" ? "inactive" : filter === "pending" ? "pending" : "active";
+        query = query.eq("status", statusFilter);
+      }
+      
+      // Apply sorting
+      query = query.order("vehicle_number", { ascending: sortOrder === "asc", nullsFirst: false });
+
+      const { data, error } = await query;
 
       if (error) {
         toast.error("Error loading assets");
@@ -165,6 +172,20 @@ export default function VehiclesTab() {
       (vehicle.vin || "").toLowerCase().includes(searchLower) ||
       (vehicle.license_plate || "").toLowerCase().includes(searchLower)
     );
+  }).sort((a, b) => {
+    // If showServiceDue is active, prioritize vehicles needing service
+    if (showServiceDue) {
+      const aDue = (a.oil_change_remaining !== null && a.oil_change_remaining <= 0) ||
+                    (a.registration_exp_date && new Date(a.registration_exp_date) < new Date()) ||
+                    (a.insurance_expiry && new Date(a.insurance_expiry) < new Date());
+      const bDue = (b.oil_change_remaining !== null && b.oil_change_remaining <= 0) ||
+                    (b.registration_exp_date && new Date(b.registration_exp_date) < new Date()) ||
+                    (b.insurance_expiry && new Date(b.insurance_expiry) < new Date());
+      
+      if (aDue && !bDue) return -1;
+      if (!aDue && bDue) return 1;
+    }
+    return 0;
   });
 
   if (loading) {
@@ -281,6 +302,16 @@ export default function VehiclesTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-wrap gap-2">
           <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+          >
+            All
+          </Button>
+          <Button
             variant={filter === "active" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "active" });
@@ -309,6 +340,20 @@ export default function VehiclesTab() {
             className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
           >
             Inactive
+          </Button>
+          <Button
+            variant={showServiceDue ? "default" : "outline"}
+            onClick={() => setShowServiceDue(!showServiceDue)}
+            className={showServiceDue ? "bg-red-600 text-white hover:bg-red-700" : ""}
+          >
+            Service Due
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="gap-2"
+          >
+            Unit # {sortOrder === "asc" ? "↑" : "↓"}
           </Button>
         </div>
 
