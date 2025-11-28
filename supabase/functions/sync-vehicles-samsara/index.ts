@@ -120,12 +120,17 @@ serve(async (req) => {
         updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
       }
 
-      // Extract location from GPS array - always store coordinates for map
+      // Extract location from GPS array - store both coordinates and address
       if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
         const lat = samsaraVehicle.gps[0].latitude;
         const lng = samsaraVehicle.gps[0].longitude;
         // Store coordinates in parseable format for map: "lat, lng"
         updateData.last_location = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        
+        // Store reverse geocoded address from Samsara if available
+        if (samsaraVehicle.gps[0].reverseGeo?.formattedLocation) {
+          updateData.last_location = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
+        }
       }
 
       // Store Samsara provider info
