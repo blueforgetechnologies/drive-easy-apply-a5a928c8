@@ -55,13 +55,17 @@ export default function DispatchersTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const statusFilter = filter === "active" ? "active" : "inactive";
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from("dispatchers")
         .select("*")
-        .eq("status", statusFilter)
         .order("created_at", { ascending: false });
+      
+      if (filter !== "all") {
+        const statusFilter = filter === "active" ? "active" : "inactive";
+        query = query.eq("status", statusFilter);
+      }
+      
+      const { data, error } = await query;
 
       if (error) {
         toast.error("Error loading dispatchers");
@@ -211,6 +215,16 @@ export default function DispatchersTab() {
             className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
           >
             Inactive
+          </Button>
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+          >
+            All
           </Button>
         </div>
 

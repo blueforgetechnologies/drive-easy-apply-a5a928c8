@@ -57,11 +57,16 @@ export default function CustomersTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("customers" as any)
         .select("*")
-        .eq("status", filter)
         .order("name", { ascending: true });
+      
+      if (filter !== "all") {
+        query = query.eq("status", filter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setCustomers((data as any) || []);
@@ -316,6 +321,16 @@ export default function CustomersTab() {
             className={filter === "inactive" ? "bg-gray-500 text-white hover:bg-gray-600" : ""}
           >
             Inactive
+          </Button>
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+          >
+            All
           </Button>
         </div>
 
