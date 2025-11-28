@@ -128,9 +128,9 @@ export default function VehicleDetail() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex gap-4">
-            <Button onClick={() => navigate("/dashboard/vehicles?filter=active")} variant="outline" size="sm">
-              Go To Basic
-            </Button>
+          <Button onClick={() => navigate(-1)} variant="outline" size="sm">
+            Back
+          </Button>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">Vehicle Status</span>
               <Select 
