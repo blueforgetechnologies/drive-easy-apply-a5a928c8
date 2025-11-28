@@ -181,12 +181,10 @@ export default function CarrierDetail() {
             Back to Carriers
           </Button>
           <h1 className="text-3xl font-bold">{carrier.name}</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
             <Label className="text-sm font-semibold">Status:</Label>
             <Select value={carrier.status} onValueChange={(value) => updateField("status", value)}>
-              <SelectTrigger className="w-[180px] bg-background">
+              <SelectTrigger className="w-[140px] bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-background z-50">
@@ -196,11 +194,11 @@ export default function CarrierDetail() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
         </div>
+        <Button onClick={handleSave} disabled={saving}>
+          <Save className="h-4 w-4 mr-2" />
+          {saving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
