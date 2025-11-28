@@ -127,7 +127,7 @@ export default function VehicleDetail() {
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-3 py-2 flex justify-between items-center">
         <div className="flex gap-2 items-center">
-          <Button onClick={() => navigate(-1)} variant="ghost" size="sm" className="gap-2">
+          <Button onClick={() => navigate(-1)} variant="outline" size="sm" className="gap-2 bg-primary/10 hover:bg-primary/20 border-primary/20">
             <ArrowLeft className="h-4 w-4" />
             <span className="font-semibold">Asset Management</span>
           </Button>
