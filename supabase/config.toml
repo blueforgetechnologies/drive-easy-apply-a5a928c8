@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.sync-carriers-fmcsa]
 verify_jwt = true
+
+[functions.samsara-webhook]
+verify_jwt = false
