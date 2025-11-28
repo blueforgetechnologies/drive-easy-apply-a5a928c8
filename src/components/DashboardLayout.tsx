@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Package, Briefcase, MapPin, Wrench, Settings, Map, Calculator } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['business', 'users', 'loads', 'accounting', 'locations', 'maintenance', 'company-profile', 'map'];
+    const validTabs = ['business', 'loads', 'accounting', 'maintenance', 'settings', 'map'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -51,6 +51,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=invoices`);
     } else if (value === 'business') {
       navigate(`/dashboard/${value}?subtab=assets`);
+    } else if (value === 'settings') {
+      navigate(`/dashboard/${value}?subtab=users`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
     }
@@ -68,10 +70,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Briefcase className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Business</span>
                 </TabsTrigger>
-                <TabsTrigger value="users" className="gap-1.5">
-                  <Users className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Users</span>
-                </TabsTrigger>
                 <TabsTrigger value="loads" className="gap-1.5">
                   <Package className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Loads</span>
@@ -80,21 +78,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Calculator className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Accounting</span>
                 </TabsTrigger>
-                <TabsTrigger value="locations" className="gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Locations</span>
-                </TabsTrigger>
                 <TabsTrigger value="maintenance" className="gap-1.5">
                   <Wrench className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Maintenance</span>
                 </TabsTrigger>
-                <TabsTrigger value="company-profile" className="gap-1.5">
-                  <Settings className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Company</span>
-                </TabsTrigger>
                 <TabsTrigger value="map" className="gap-1.5">
                   <Map className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Map</span>
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="gap-1.5">
+                  <Settings className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Settings</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
