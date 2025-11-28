@@ -47,9 +47,9 @@ serve(async (req) => {
 
     console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs in database`);
 
-    // Fetch vehicle stats from Samsara with required types parameter including odometer and fault codes
+    // Fetch vehicle stats from Samsara with required types parameter including odometer
     const samsaraResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents,obdEngineStates',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
       {
         headers: {
           'Authorization': `Bearer ${trimmedKey}`,
@@ -133,12 +133,10 @@ serve(async (req) => {
         }
       }
 
-      // Extract fault codes from obdEngineStates array
-      if (samsaraVehicle.obdEngineStates?.[0]?.diagnosticTroubleCodes) {
-        updateData.fault_codes = samsaraVehicle.obdEngineStates[0].diagnosticTroubleCodes;
-      } else {
-        updateData.fault_codes = [];
-      }
+      // Note: Fault codes are not available through stats/feed endpoint
+      // They require Samsara webhooks (EngineFaultOn events) or a separate API endpoint
+      // For now, clear any existing fault codes
+      updateData.fault_codes = [];
 
       // Store Samsara provider info
       updateData.provider = 'Samsara';
