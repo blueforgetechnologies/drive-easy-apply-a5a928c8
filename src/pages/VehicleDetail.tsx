@@ -222,7 +222,7 @@ export default function VehicleDetail() {
       </header>
 
       <main className="container mx-auto px-3 py-3">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Left Column */}
           <div className="space-y-3">
             <Card>
@@ -373,7 +373,10 @@ export default function VehicleDetail() {
                 </div>
               </CardContent>
             </Card>
+          </div>
 
+          {/* Middle Column */}
+          <div className="space-y-3">
             {/* Coverage Table */}
             <Card>
               <CardContent className="pt-3">
@@ -550,6 +553,194 @@ export default function VehicleDetail() {
               currentOdometer={samsaraStats?.odometer || formData.odometer}
               onSuccess={loadVehicle}
             />
+
+            {/* Provider Section */}
+            <Card>
+              <CardContent className="pt-3 space-y-3">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold text-sm">Provider</h3>
+                  <Button variant="default" size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black h-7 text-xs">
+                    Add Tracker
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Toll device S/N</Label>
+                    <Input value={formData.toll_device_sn || ''} onChange={(e) => updateField('toll_device_sn', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Id</Label>
+                    <Input value={formData.provider_id || ''} onChange={(e) => updateField('provider_id', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Status</Label>
+                    <Input value={formData.provider_status || ''} onChange={(e) => updateField('provider_status', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tracking device IMEI</Label>
+                  <Input value={formData.tracking_device_imei || ''} onChange={(e) => updateField('tracking_device_imei', e.target.value)} className="h-8 text-sm" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">ELD device S/N</Label>
+                  <Input value={formData.eld_device_sn || ''} onChange={(e) => updateField('eld_device_sn', e.target.value)} className="h-8 text-sm" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Dash Cam S/N</Label>
+                  <Input value={formData.dash_cam_sn || ''} onChange={(e) => updateField('dash_cam_sn', e.target.value)} className="h-8 text-sm" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Straps Count</Label>
+                    <Input type="number" value={formData.straps_count || '10'} onChange={(e) => updateField('straps_count', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Blankets</Label>
+                    <Input type="number" value={formData.blankets || '10'} onChange={(e) => updateField('blankets', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Pallet Jack</Label>
+                  <RadioGroup value={formData.pallet_jack ? 'yes' : 'no'} onValueChange={(value) => updateField('pallet_jack', value === 'yes')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="yes" id="pj-yes" className="h-3.5 w-3.5" />
+                        <Label htmlFor="pj-yes" className="text-xs">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="no" id="pj-no" className="h-3.5 w-3.5" />
+                        <Label htmlFor="pj-no" className="text-xs">No</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Pallet Jack Capacity</Label>
+                  <Input type="number" value={formData.pallet_jack_capacity || ''} onChange={(e) => updateField('pallet_jack_capacity', e.target.value)} className="h-8 text-sm" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Load bars (E-Track)</Label>
+                    <Input type="number" value={formData.load_bars_etrack || '2'} onChange={(e) => updateField('load_bars_etrack', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Load bars (Non E-Track)</Label>
+                    <Input type="number" value={formData.load_bars_non_etrack || ''} onChange={(e) => updateField('load_bars_non_etrack', e.target.value)} className="h-8 text-sm" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Trailer Tracking</Label>
+                  <RadioGroup value={formData.trailer_tracking ? 'yes' : 'no'} onValueChange={(value) => updateField('trailer_tracking', value === 'yes')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="yes" id="tt-yes" className="h-3.5 w-3.5" />
+                        <Label htmlFor="tt-yes" className="text-xs">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="no" id="tt-no" className="h-3.5 w-3.5" />
+                        <Label htmlFor="tt-no" className="text-xs">No</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Door Sensors</Label>
+                  <RadioGroup value={formData.door_sensors ? 'yes' : 'no'} onValueChange={(value) => updateField('door_sensors', value === 'yes')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="yes" id="ds-yes" className="h-3.5 w-3.5" />
+                        <Label htmlFor="ds-yes" className="text-xs">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="no" id="ds-no" className="h-3.5 w-3.5" />
+                        <Label htmlFor="ds-no" className="text-xs">No</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Temp Control</Label>
+                  <RadioGroup value={formData.temp_control ? 'yes' : 'no'} onValueChange={(value) => updateField('temp_control', value === 'yes')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="yes" id="tc-yes" className="h-3.5 w-3.5" />
+                        <Label htmlFor="tc-yes" className="text-xs">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="no" id="tc-no" className="h-3.5 w-3.5" />
+                        <Label htmlFor="tc-no" className="text-xs">No</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Panic Button</Label>
+                  <RadioGroup value={formData.panic_button ? 'yes' : 'no'} onValueChange={(value) => updateField('panic_button', value === 'yes')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="yes" id="pb-yes" className="h-3.5 w-3.5" />
+                        <Label htmlFor="pb-yes" className="text-xs">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="no" id="pb-no" className="h-3.5 w-3.5" />
+                        <Label htmlFor="pb-no" className="text-xs">No</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Team</Label>
+                  <RadioGroup value={formData.team ? 'yes' : 'no'} onValueChange={(value) => updateField('team', value === 'yes')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="yes" id="team-yes" className="h-3.5 w-3.5" />
+                        <Label htmlFor="team-yes" className="text-xs">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="no" id="team-no" className="h-3.5 w-3.5" />
+                        <Label htmlFor="team-no" className="text-xs">No</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Vehicle Note */}
+            <Card>
+              <CardContent className="pt-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-sm">Vehicle Note</h3>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <X className="h-3 w-3 text-destructive" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Save className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  value={formData.notes || 'send home for thanksgiving'}
+                  onChange={(e) => updateField('notes', e.target.value)}
+                  rows={2}
+                  className="text-sm"
+                />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right Column */}
@@ -751,194 +942,6 @@ export default function VehicleDetail() {
                   <Label className="text-xs">Lift Gate Dims</Label>
                   <Input value={formData.lift_gate_dims || ''} onChange={(e) => updateField('lift_gate_dims', e.target.value)} className="h-8 text-sm" />
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Provider Section */}
-            <Card>
-              <CardContent className="pt-3 space-y-3">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-semibold text-sm">Provider</h3>
-                  <Button variant="default" size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black h-7 text-xs">
-                    Add Tracker
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Toll device S/N</Label>
-                    <Input value={formData.toll_device_sn || ''} onChange={(e) => updateField('toll_device_sn', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Id</Label>
-                    <Input value={formData.provider_id || ''} onChange={(e) => updateField('provider_id', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Status</Label>
-                    <Input value={formData.provider_status || ''} onChange={(e) => updateField('provider_status', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Tracking device IMEI</Label>
-                  <Input value={formData.tracking_device_imei || ''} onChange={(e) => updateField('tracking_device_imei', e.target.value)} className="h-8 text-sm" />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">ELD device S/N</Label>
-                  <Input value={formData.eld_device_sn || ''} onChange={(e) => updateField('eld_device_sn', e.target.value)} className="h-8 text-sm" />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Dash Cam S/N</Label>
-                  <Input value={formData.dash_cam_sn || ''} onChange={(e) => updateField('dash_cam_sn', e.target.value)} className="h-8 text-sm" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Straps Count</Label>
-                    <Input type="number" value={formData.straps_count || '10'} onChange={(e) => updateField('straps_count', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Blankets</Label>
-                    <Input type="number" value={formData.blankets || '10'} onChange={(e) => updateField('blankets', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Pallet Jack</Label>
-                  <RadioGroup value={formData.pallet_jack ? 'yes' : 'no'} onValueChange={(value) => updateField('pallet_jack', value === 'yes')}>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="yes" id="pj-yes" className="h-3.5 w-3.5" />
-                        <Label htmlFor="pj-yes" className="text-xs">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="no" id="pj-no" className="h-3.5 w-3.5" />
-                        <Label htmlFor="pj-no" className="text-xs">No</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Pallet Jack Capacity</Label>
-                  <Input type="number" value={formData.pallet_jack_capacity || ''} onChange={(e) => updateField('pallet_jack_capacity', e.target.value)} className="h-8 text-sm" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Load bars (E-Track)</Label>
-                    <Input type="number" value={formData.load_bars_etrack || '2'} onChange={(e) => updateField('load_bars_etrack', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Load bars (Non E-Track)</Label>
-                    <Input type="number" value={formData.load_bars_non_etrack || ''} onChange={(e) => updateField('load_bars_non_etrack', e.target.value)} className="h-8 text-sm" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Trailer Tracking</Label>
-                  <RadioGroup value={formData.trailer_tracking ? 'yes' : 'no'} onValueChange={(value) => updateField('trailer_tracking', value === 'yes')}>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="yes" id="tt-yes" className="h-3.5 w-3.5" />
-                        <Label htmlFor="tt-yes" className="text-xs">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="no" id="tt-no" className="h-3.5 w-3.5" />
-                        <Label htmlFor="tt-no" className="text-xs">No</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Door Sensors</Label>
-                  <RadioGroup value={formData.door_sensors ? 'yes' : 'no'} onValueChange={(value) => updateField('door_sensors', value === 'yes')}>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="yes" id="ds-yes" className="h-3.5 w-3.5" />
-                        <Label htmlFor="ds-yes" className="text-xs">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="no" id="ds-no" className="h-3.5 w-3.5" />
-                        <Label htmlFor="ds-no" className="text-xs">No</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Temp Control</Label>
-                  <RadioGroup value={formData.temp_control ? 'yes' : 'no'} onValueChange={(value) => updateField('temp_control', value === 'yes')}>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="yes" id="tc-yes" className="h-3.5 w-3.5" />
-                        <Label htmlFor="tc-yes" className="text-xs">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="no" id="tc-no" className="h-3.5 w-3.5" />
-                        <Label htmlFor="tc-no" className="text-xs">No</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Panic Button</Label>
-                  <RadioGroup value={formData.panic_button ? 'yes' : 'no'} onValueChange={(value) => updateField('panic_button', value === 'yes')}>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="yes" id="pb-yes" className="h-3.5 w-3.5" />
-                        <Label htmlFor="pb-yes" className="text-xs">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="no" id="pb-no" className="h-3.5 w-3.5" />
-                        <Label htmlFor="pb-no" className="text-xs">No</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Team</Label>
-                  <RadioGroup value={formData.team ? 'yes' : 'no'} onValueChange={(value) => updateField('team', value === 'yes')}>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="yes" id="team-yes" className="h-3.5 w-3.5" />
-                        <Label htmlFor="team-yes" className="text-xs">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <RadioGroupItem value="no" id="team-no" className="h-3.5 w-3.5" />
-                        <Label htmlFor="team-no" className="text-xs">No</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Vehicle Note */}
-            <Card>
-              <CardContent className="pt-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold text-sm">Vehicle Note</h3>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                      <X className="h-3 w-3 text-destructive" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                      <Save className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-                <Textarea
-                  value={formData.notes || 'send home for thanksgiving'}
-                  onChange={(e) => updateField('notes', e.target.value)}
-                  rows={2}
-                  className="text-sm"
-                />
               </CardContent>
             </Card>
           </div>
