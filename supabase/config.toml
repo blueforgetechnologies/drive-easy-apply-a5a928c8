@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.get-weather]
 verify_jwt = true
+
+[functions.check-integrations]
+verify_jwt = true
