@@ -40,38 +40,54 @@ serve(async (req) => {
       mc_number: '',
     };
 
-    // Extract Legal Name
-    const legalNameMatch = html.match(/<th[^>]*>Legal Name:<\/th>\s*<td[^>]*>(.*?)<\/td>/i);
+    console.log('Fetched HTML length:', html.length);
+
+    // Extract Legal Name - looking for the pattern after "Legal Name:" label
+    const legalNameMatch = html.match(/Legal Name:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
     if (legalNameMatch) {
-      carrierData.name = legalNameMatch[1].trim().replace(/<[^>]*>/g, '');
+      carrierData.name = legalNameMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      console.log('Found Legal Name:', carrierData.name);
     }
 
     // Extract DBA Name
-    const dbaNameMatch = html.match(/<th[^>]*>DBA Name:<\/th>\s*<td[^>]*>(.*?)<\/td>/i);
+    const dbaNameMatch = html.match(/DBA Name:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
     if (dbaNameMatch) {
-      carrierData.dba_name = dbaNameMatch[1].trim().replace(/<[^>]*>/g, '');
+      const dbaText = dbaNameMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      if (dbaText) {
+        carrierData.dba_name = dbaText;
+        console.log('Found DBA Name:', carrierData.dba_name);
+      }
     }
 
     // Extract Physical Address
-    const physicalAddressMatch = html.match(/<th[^>]*>Physical Address:<\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    const physicalAddressMatch = html.match(/Physical Address:<\/a><\/th>\s*<td[^>]*id="physicaladdressvalue"[^>]*>(.*?)<\/td>/is);
     if (physicalAddressMatch) {
-      carrierData.physical_address = physicalAddressMatch[1].trim().replace(/<[^>]*>/g, '').replace(/\s+/g, ' ');
+      carrierData.physical_address = physicalAddressMatch[1]
+        .replace(/<br>/gi, ' ')
+        .replace(/&nbsp;/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      console.log('Found Physical Address:', carrierData.physical_address);
     }
 
     // Extract Phone
-    const phoneMatch = html.match(/<th[^>]*>Phone:<\/th>\s*<td[^>]*>(.*?)<\/td>/i);
+    const phoneMatch = html.match(/Phone:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
     if (phoneMatch) {
-      carrierData.phone = phoneMatch[1].trim().replace(/<[^>]*>/g, '');
+      carrierData.phone = phoneMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      console.log('Found Phone:', carrierData.phone);
     }
 
     // Extract MC Number
     const mcNumberMatch = html.match(/MC-(\d+)/i);
     if (mcNumberMatch) {
       carrierData.mc_number = mcNumberMatch[1];
+      console.log('Found MC Number:', carrierData.mc_number);
     }
 
-    // Check if carrier was found
-    if (!carrierData.name && !carrierData.dba_name) {
+    // Check if carrier was found - at least one field should be populated
+    if (!carrierData.name && !carrierData.dba_name && !carrierData.physical_address) {
+      console.log('No carrier data found in HTML');
       return new Response(
         JSON.stringify({ error: 'Carrier not found with this USDOT number' }),
         { 
@@ -80,6 +96,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log('Successfully parsed carrier data:', carrierData);
 
     return new Response(
       JSON.stringify(carrierData),
