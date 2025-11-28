@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
+import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
 
 const MapTab = () => {
@@ -152,6 +153,8 @@ const MapTab = () => {
         const stoppedStatus = vehicle.stopped_status;
         // Show oil change indicator only when due (0 or negative miles remaining)
         const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+        // Show check engine indicator if vehicle has fault codes
+        const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
         
         // Determine marker style based on vehicle status
         let markerHTML = '';
@@ -163,6 +166,7 @@ const MapTab = () => {
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
               ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
+              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="17" width="14" height="14"/>` : ''}
             </svg>
           `;
         } else if (stoppedStatus === 'stopped' || speed === 0) {
@@ -172,6 +176,7 @@ const MapTab = () => {
               <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
               <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
               ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
+              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="17" width="14" height="14"/>` : ''}
             </svg>
           `;
         } else {
@@ -182,6 +187,7 @@ const MapTab = () => {
               <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
               <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
               ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
+              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="17" width="14" height="14"/>` : ''}
             </svg>
           `;
         }
@@ -328,6 +334,8 @@ const MapTab = () => {
             
             // Check if oil change is due (0 or negative miles remaining)
             const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+            // Check if vehicle has fault codes
+            const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
             
             return (
               <div
@@ -343,6 +351,11 @@ const MapTab = () => {
                     {oilChangeDue && (
                       <span className="flex items-center justify-center w-5 h-5 rounded" title="Oil change due">
                         <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
+                      </span>
+                    )}
+                    {hasFaultCodes && (
+                      <span className="flex items-center justify-center w-5 h-5 rounded" title={`${vehicle.fault_codes.length} fault code(s)`}>
+                        <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
                       </span>
                     )}
                     <div className="font-medium text-sm">

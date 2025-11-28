@@ -47,9 +47,9 @@ serve(async (req) => {
 
     console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs in database`);
 
-    // Fetch vehicle stats from Samsara with required types parameter including odometer
+    // Fetch vehicle stats from Samsara with required types parameter including odometer and fault codes
     const samsaraResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents,obdEngineStates',
       {
         headers: {
           'Authorization': `Bearer ${trimmedKey}`,
@@ -131,6 +131,13 @@ serve(async (req) => {
         if (samsaraVehicle.gps[0].reverseGeo?.formattedLocation) {
           updateData.formatted_address = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
         }
+      }
+
+      // Extract fault codes from obdEngineStates array
+      if (samsaraVehicle.obdEngineStates?.[0]?.diagnosticTroubleCodes) {
+        updateData.fault_codes = samsaraVehicle.obdEngineStates[0].diagnosticTroubleCodes;
+      } else {
+        updateData.fault_codes = [];
       }
 
       // Store Samsara provider info

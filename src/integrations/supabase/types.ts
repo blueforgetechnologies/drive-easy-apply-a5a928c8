@@ -1705,6 +1705,7 @@ export type Database = {
           driver_1_id: string | null
           driver_2_id: string | null
           eld_device_sn: string | null
+          fault_codes: Json | null
           formatted_address: string | null
           fuel_per_gallon: number | null
           has_side_door: boolean | null
@@ -1793,6 +1794,7 @@ export type Database = {
           driver_1_id?: string | null
           driver_2_id?: string | null
           eld_device_sn?: string | null
+          fault_codes?: Json | null
           formatted_address?: string | null
           fuel_per_gallon?: number | null
           has_side_door?: boolean | null
@@ -1881,6 +1883,7 @@ export type Database = {
           driver_1_id?: string | null
           driver_2_id?: string | null
           eld_device_sn?: string | null
+          fault_codes?: Json | null
           formatted_address?: string | null
           fuel_per_gallon?: number | null
           has_side_door?: boolean | null
