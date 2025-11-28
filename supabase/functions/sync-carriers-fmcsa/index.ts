@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     // Get all active and pending carriers with DOT numbers
     const { data: carriers, error: fetchError } = await supabaseClient
       .from('carriers')
-      .select('id, name, dot_number, status')
+      .select('id, name, dot_number, mc_number, phone, address, status')
       .in('status', ['active', 'pending'])
       .not('dot_number', 'is', null)
       .neq('dot_number', '');
