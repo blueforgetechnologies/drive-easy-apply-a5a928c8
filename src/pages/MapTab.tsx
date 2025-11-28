@@ -149,6 +149,7 @@ const MapTab = () => {
       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
         const speed = vehicle.speed || 0;
         const stoppedStatus = vehicle.stopped_status;
+        const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
         
         // Determine marker style based on vehicle status
         let markerHTML = '';
@@ -159,6 +160,7 @@ const MapTab = () => {
             <svg width="40" height="40" viewBox="0 0 40 40">
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              ${oilChangeDue ? '<circle cx="32" cy="8" r="6" fill="#f97316" stroke="white" stroke-width="2"/><text x="32" y="11" text-anchor="middle" font-size="8" fill="white" font-weight="bold">🔧</text>' : ''}
             </svg>
           `;
         } else if (stoppedStatus === 'stopped' || speed === 0) {
@@ -167,6 +169,7 @@ const MapTab = () => {
             <svg width="40" height="40" viewBox="0 0 40 40">
               <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
               <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
+              ${oilChangeDue ? '<circle cx="32" cy="8" r="6" fill="#f97316" stroke="white" stroke-width="2"/><text x="32" y="11" text-anchor="middle" font-size="8" fill="white" font-weight="bold">🔧</text>' : ''}
             </svg>
           `;
         } else {
@@ -176,6 +179,7 @@ const MapTab = () => {
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
               <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
+              ${oilChangeDue ? '<circle cx="32" cy="8" r="6" fill="#f97316" stroke="white" stroke-width="2"/><text x="32" y="11" text-anchor="middle" font-size="8" fill="white" font-weight="bold">🔧</text>' : ''}
             </svg>
           `;
         }
@@ -320,6 +324,9 @@ const MapTab = () => {
               statusColor = 'bg-emerald-500';
             }
             
+            // Check if oil change is due
+            const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+            
             return (
               <div
                 key={vehicle.id}
@@ -331,6 +338,11 @@ const MapTab = () => {
                     <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${statusColor} text-white`}>
                       {statusIcon}
                     </span>
+                    {oilChangeDue && (
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title="Oil change due">
+                        🔧
+                      </span>
+                    )}
                     <div className="font-medium text-sm">
                       {vehicle.vehicle_number || 'Unknown'}
                     </div>
