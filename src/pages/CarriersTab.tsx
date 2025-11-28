@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText, RefreshCw, AlertTriangle } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw } from "lucide-react";
 
 interface Carrier {
   id: string;
@@ -46,15 +46,10 @@ export default function CarriersTab() {
   const [usdotLookup, setUsdotLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
-  const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
     loadData();
   }, [filter]);
-
-  useEffect(() => {
-    calculateAlertCount();
-  }, [carriers]);
 
   const loadData = async () => {
     setLoading(true);
@@ -121,15 +116,6 @@ export default function CarriersTab() {
     } catch (error: any) {
       toast.error("Failed to delete carrier: " + error.message);
     }
-  };
-
-  const calculateAlertCount = () => {
-    const count = carriers.filter(
-      (carrier) =>
-        (carrier.status === 'active' || carrier.status === 'pending') &&
-        carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED')
-    ).length;
-    setAlertCount(count);
   };
 
   const handleSyncAllCarriers = async () => {
@@ -222,12 +208,6 @@ export default function CarriersTab() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Carrier Management</h2>
-          {alertCount > 0 && (
-            <Badge variant="destructive" className="flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              {alertCount} Alert{alertCount !== 1 ? 's' : ''}
-            </Badge>
-          )}
         </div>
         <div className="flex gap-2">
           <Button 
