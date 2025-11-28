@@ -197,40 +197,82 @@ export type Database = {
       carriers: {
         Row: {
           address: string | null
+          after_hours_phone: string | null
+          carrier_symbol: string | null
           contact_name: string | null
           created_at: string | null
+          dispatch_email: string | null
+          dispatch_name: string | null
+          dispatch_phone: string | null
           dot_number: string | null
+          dun_bradstreet: string | null
           email: string | null
+          emergency_contact_cell_phone: string | null
+          emergency_contact_email: string | null
+          emergency_contact_home_phone: string | null
+          emergency_contact_name: string | null
+          emergency_contact_title: string | null
           id: string
           mc_number: string | null
           name: string
+          personal_business: string | null
           phone: string | null
+          safer_status: string | null
+          safety_rating: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
           address?: string | null
+          after_hours_phone?: string | null
+          carrier_symbol?: string | null
           contact_name?: string | null
           created_at?: string | null
+          dispatch_email?: string | null
+          dispatch_name?: string | null
+          dispatch_phone?: string | null
           dot_number?: string | null
+          dun_bradstreet?: string | null
           email?: string | null
+          emergency_contact_cell_phone?: string | null
+          emergency_contact_email?: string | null
+          emergency_contact_home_phone?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_title?: string | null
           id?: string
           mc_number?: string | null
           name: string
+          personal_business?: string | null
           phone?: string | null
+          safer_status?: string | null
+          safety_rating?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
           address?: string | null
+          after_hours_phone?: string | null
+          carrier_symbol?: string | null
           contact_name?: string | null
           created_at?: string | null
+          dispatch_email?: string | null
+          dispatch_name?: string | null
+          dispatch_phone?: string | null
           dot_number?: string | null
+          dun_bradstreet?: string | null
           email?: string | null
+          emergency_contact_cell_phone?: string | null
+          emergency_contact_email?: string | null
+          emergency_contact_home_phone?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_title?: string | null
           id?: string
           mc_number?: string | null
           name?: string
+          personal_business?: string | null
           phone?: string | null
+          safer_status?: string | null
+          safety_rating?: string | null
           status?: string | null
           updated_at?: string | null
         }

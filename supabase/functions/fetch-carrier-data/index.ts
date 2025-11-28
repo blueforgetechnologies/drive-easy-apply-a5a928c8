@@ -38,6 +38,8 @@ serve(async (req) => {
       physical_address: '',
       phone: '',
       mc_number: '',
+      safer_status: '',
+      safety_rating: '',
     };
 
     console.log('Fetched HTML length:', html.length);
@@ -83,6 +85,20 @@ serve(async (req) => {
     if (mcNumberMatch) {
       carrierData.mc_number = mcNumberMatch[1];
       console.log('Found MC Number:', carrierData.mc_number);
+    }
+
+    // Extract Safer Status
+    const saferStatusMatch = html.match(/Entity Type:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (saferStatusMatch) {
+      carrierData.safer_status = saferStatusMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      console.log('Found Safer Status:', carrierData.safer_status);
+    }
+
+    // Extract Safety Rating
+    const safetyRatingMatch = html.match(/Safety Rating:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (safetyRatingMatch) {
+      carrierData.safety_rating = safetyRatingMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      console.log('Found Safety Rating:', carrierData.safety_rating);
     }
 
     // Check if carrier was found - at least one field should be populated
