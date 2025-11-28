@@ -125,104 +125,101 @@ export default function VehicleDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-3 py-2 flex justify-between items-center">
-          <div className="flex gap-2 items-center">
+      <div className="border-b bg-card px-3 py-2 flex justify-between items-center">
+        <div className="flex gap-2 items-center">
           <Button onClick={() => navigate(-1)} variant="outline" size="sm">
             Back
           </Button>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">Status</span>
-              <Select 
-                value={formData.status || 'active'} 
-                onValueChange={(value) => updateField('status', value)}
-              >
-                <SelectTrigger className="w-28 h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex flex-col text-xs gap-1">
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground w-16">Odometer</span>
-                  <span className="font-medium">
-                    {loadingStats ? '...' : (samsaraStats?.odometer || formData.odometer || 'N/A')}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground w-16">Location</span>
-                  <span className="font-medium truncate max-w-[150px]">
-                    {loadingStats ? '...' : (samsaraStats?.location || formData.last_location || 'N/A')}
-                  </span>
-                </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">Status</span>
+            <Select 
+              value={formData.status || 'active'} 
+              onValueChange={(value) => updateField('status', value)}
+            >
+              <SelectTrigger className="w-28 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex flex-col text-xs gap-1">
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-16">Odometer</span>
+                <span className="font-medium">
+                  {loadingStats ? '...' : (samsaraStats?.odometer || formData.odometer || 'N/A')}
+                </span>
               </div>
-              <div className="flex flex-col text-xs gap-1">
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground w-20">Speed</span>
-                  <span className="font-medium">
-                    {loadingStats ? '...' : (samsaraStats?.stoppedStatus || formData.stopped_status || 'N/A')}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground w-20">Updated</span>
-                  <span className="font-medium">
-                    {loadingStats ? '...' : (
-                      samsaraStats?.lastUpdated 
-                        ? formatDistanceToNow(new Date(samsaraStats.lastUpdated), { addSuffix: true })
-                        : 'N/A'
-                    )}
-                  </span>
-                </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-16">Location</span>
+                <span className="font-medium truncate max-w-[150px]">
+                  {loadingStats ? '...' : (samsaraStats?.location || formData.last_location || 'N/A')}
+                </span>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={loadSamsaraStats}
-                disabled={loadingStats}
-                className="h-7 w-7 p-0"
-              >
-                <RefreshCw className={`h-3 w-3 ${loadingStats ? 'animate-spin' : ''}`} />
-              </Button>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  DELETE
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the asset.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>CANCEL</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    DELETE
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Button variant="outline" onClick={() => navigate("/dashboard/vehicles?filter=active")}>
-              CANCEL
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "SAVING..." : "SUBMIT"}
+            <div className="flex flex-col text-xs gap-1">
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-20">Speed</span>
+                <span className="font-medium">
+                  {loadingStats ? '...' : (samsaraStats?.stoppedStatus || formData.stopped_status || 'N/A')}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground w-20">Updated</span>
+                <span className="font-medium">
+                  {loadingStats ? '...' : (
+                    samsaraStats?.lastUpdated 
+                      ? formatDistanceToNow(new Date(samsaraStats.lastUpdated), { addSuffix: true })
+                      : 'N/A'
+                  )}
+                </span>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadSamsaraStats}
+              disabled={loadingStats}
+              className="h-7 w-7 p-0"
+            >
+              <RefreshCw className={`h-3 w-3 ${loadingStats ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
-      </header>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                DELETE
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the asset.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>CANCEL</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  DELETE
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button variant="outline" onClick={() => navigate("/dashboard/business?subtab=assets")}>
+            CANCEL
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "SAVING..." : "SUBMIT"}
+          </Button>
+        </div>
+      </div>
 
-      <main className="container mx-auto px-2 py-2">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
           {/* Left Column - Update Vehicle + Coverage + Maintenance */}
           <div className="space-y-2">
             <Card>
@@ -874,7 +871,6 @@ export default function VehicleDetail() {
             </Card>
           </div>
         </div>
-      </main>
     </div>
   );
 }

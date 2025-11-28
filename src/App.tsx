@@ -44,11 +44,11 @@ const App = () => (
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
           <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
-          <Route path="/dashboard/application/:id" element={<ApplicationDetail />} />
-          <Route path="/dashboard/vehicle/:id" element={<VehicleDetail />} />
-          <Route path="/dashboard/load/:id" element={<LoadDetail />} />
-          <Route path="/dashboard/settlement/:id" element={<SettlementDetail />} />
-          <Route path="/dashboard/invoice/:id" element={<InvoiceDetail />} />
+          <Route path="/dashboard/application/:id" element={<DashboardLayout><ApplicationDetail /></DashboardLayout>} />
+          <Route path="/dashboard/vehicle/:id" element={<DashboardLayout><VehicleDetail /></DashboardLayout>} />
+          <Route path="/dashboard/load/:id" element={<DashboardLayout><LoadDetail /></DashboardLayout>} />
+          <Route path="/dashboard/settlement/:id" element={<DashboardLayout><SettlementDetail /></DashboardLayout>} />
+          <Route path="/dashboard/invoice/:id" element={<DashboardLayout><InvoiceDetail /></DashboardLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
