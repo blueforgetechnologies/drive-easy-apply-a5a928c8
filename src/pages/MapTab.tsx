@@ -165,8 +165,7 @@ const MapTab = () => {
             <svg width="40" height="40" viewBox="0 0 40 40">
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
-              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="17" width="14" height="14"/>` : ''}
+              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
             </svg>
           `;
         } else if (stoppedStatus === 'stopped' || speed === 0) {
@@ -175,8 +174,7 @@ const MapTab = () => {
             <svg width="40" height="40" viewBox="0 0 40 40">
               <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
               <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
-              ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
-              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="17" width="14" height="14"/>` : ''}
+              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
             </svg>
           `;
         } else {
@@ -186,8 +184,7 @@ const MapTab = () => {
               <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
               <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
               <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
-              ${oilChangeDue ? `<image href="${oilChangeIcon}" x="25" y="1" width="14" height="14"/>` : ''}
-              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="17" width="14" height="14"/>` : ''}
+              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
             </svg>
           `;
         }
@@ -217,8 +214,12 @@ const MapTab = () => {
                 </svg>
                 <span style="font-size: 18px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
               </div>
-              <div style="background: #10b981; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
-                ${vehicle.speed || 0} MPH
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="background: #10b981; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
+                  ${vehicle.speed || 0} MPH
+                </div>
+                ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 20px; height: 20px;" />` : ''}
+                ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 20px; height: 20px;" />` : ''}
               </div>
             </div>
             
@@ -348,6 +349,14 @@ const MapTab = () => {
                     <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${statusColor} text-white`}>
                       {statusIcon}
                     </span>
+                    <div className="font-medium text-sm">
+                      {vehicle.vehicle_number || 'Unknown'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {speed} MPH
+                    </span>
                     {oilChangeDue && (
                       <span className="flex items-center justify-center w-5 h-5 rounded" title="Oil change due">
                         <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
@@ -358,13 +367,7 @@ const MapTab = () => {
                         <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
                       </span>
                     )}
-                    <div className="font-medium text-sm">
-                      {vehicle.vehicle_number || 'Unknown'}
-                    </div>
                   </div>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {speed} MPH
-                  </span>
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
