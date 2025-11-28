@@ -147,23 +147,47 @@ const MapTab = () => {
 
       // If we have valid coordinates, add marker
       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        const speed = vehicle.speed || 0;
+        const stoppedStatus = vehicle.stopped_status;
+        
+        // Determine marker style based on vehicle status
+        let markerHTML = '';
+        
+        if (speed > 0) {
+          // Moving Vehicle - Green circle with arrow
+          markerHTML = `
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
+              <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          `;
+        } else if (stoppedStatus === 'stopped' || speed === 0) {
+          // Stopped - Red square
+          markerHTML = `
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
+              <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
+            </svg>
+          `;
+        } else {
+          // Idling - Green circle with pause icon
+          markerHTML = `
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
+              <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
+              <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
+            </svg>
+          `;
+        }
+        
         const el = document.createElement('div');
         el.className = 'vehicle-marker';
         el.style.cssText = `
-          background-color: hsl(var(--primary));
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          border: 3px solid hsl(var(--background));
           cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          color: hsl(var(--primary-foreground));
-          font-size: 12px;
+          width: 40px;
+          height: 40px;
         `;
-        el.textContent = vehicle.vehicle_number || '?';
+        el.innerHTML = markerHTML;
 
         const popup = new mapboxgl.Popup({ 
           offset: 25,
@@ -279,25 +303,48 @@ const MapTab = () => {
           </p>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {vehicles.map((vehicle) => (
-            <div
-              key={vehicle.id}
-              onClick={() => handleVehicleClick(vehicle.id)}
-              className="px-4 py-3 border-b hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <div className="font-medium text-sm">
-                  {vehicle.vehicle_number || 'Unknown'}
+          {vehicles.map((vehicle) => {
+            const speed = vehicle.speed || 0;
+            const stoppedStatus = vehicle.stopped_status;
+            let statusIcon = '';
+            let statusColor = '';
+            
+            if (speed > 0) {
+              statusIcon = '↑'; // Moving
+              statusColor = 'bg-emerald-500';
+            } else if (stoppedStatus === 'stopped' || speed === 0) {
+              statusIcon = '■'; // Stopped
+              statusColor = 'bg-red-500';
+            } else {
+              statusIcon = '‖'; // Idling
+              statusColor = 'bg-emerald-500';
+            }
+            
+            return (
+              <div
+                key={vehicle.id}
+                onClick={() => handleVehicleClick(vehicle.id)}
+                className="px-4 py-3 border-b hover:bg-muted/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${statusColor} text-white`}>
+                      {statusIcon}
+                    </span>
+                    <div className="font-medium text-sm">
+                      {vehicle.vehicle_number || 'Unknown'}
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {speed} MPH
+                  </span>
                 </div>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500 text-white">
-                  {vehicle.speed || 0} MPH
-                </span>
+                <div className="text-xs text-muted-foreground truncate">
+                  {vehicle.last_location || 'Location unavailable'}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground truncate">
-                {vehicle.last_location || 'Location unavailable'}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {vehicles.length === 0 && (
             <div className="px-4 py-6 text-xs text-muted-foreground text-center">
               No assets with GPS location yet. Try syncing with Samsara.
