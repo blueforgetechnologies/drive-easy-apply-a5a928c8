@@ -15,6 +15,7 @@ const MapTab = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [syncing, setSyncing] = useState(false);
+  const [weatherCache, setWeatherCache] = useState<Record<string, any>>({});
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
 
   useEffect(() => {
@@ -39,6 +40,31 @@ const MapTab = () => {
     if (!error && data) {
       setVehicles(data);
       setLastUpdate(new Date());
+    }
+  };
+
+  const fetchWeather = async (lat: number, lng: number): Promise<any> => {
+    const cacheKey = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+    
+    if (weatherCache[cacheKey]) {
+      return weatherCache[cacheKey];
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('get-weather', {
+        body: { latitude: lat, longitude: lng }
+      });
+
+      if (error) {
+        console.error('Weather fetch error:', error);
+        return null;
+      }
+      
+      setWeatherCache(prev => ({ ...prev, [cacheKey]: data }));
+      return data;
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+      return null;
     }
   };
 
@@ -127,182 +153,208 @@ const MapTab = () => {
   useEffect(() => {
     if (!map.current || vehicles.length === 0) return;
 
-    // Clear existing markers
-    markersRef.current.forEach(({ marker }) => marker.remove());
-    markersRef.current.clear();
+    const updateMarkers = async () => {
+      // Clear existing markers
+      markersRef.current.forEach(({ marker }) => marker.remove());
+      markersRef.current.clear();
 
-    // Add markers for each vehicle with GPS data
-    const bounds = new mapboxgl.LngLatBounds();
-    
-    vehicles.forEach(vehicle => {
-      // Parse location from last_location field or use direct lat/lng if available
-      let lat, lng;
+      // Add markers for each vehicle with GPS data
+      const bounds = new mapboxgl.LngLatBounds();
       
-      if (vehicle.last_location) {
-        // Try to parse coordinates from location string
-        const coordMatch = vehicle.last_location.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-        if (coordMatch) {
-          lat = parseFloat(coordMatch[1]);
-          lng = parseFloat(coordMatch[2]);
+      for (const vehicle of vehicles) {
+        // Parse location from last_location field or use direct lat/lng if available
+        let lat, lng;
+        
+        if (vehicle.last_location) {
+          // Try to parse coordinates from location string
+          const coordMatch = vehicle.last_location.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+          if (coordMatch) {
+            lat = parseFloat(coordMatch[1]);
+            lng = parseFloat(coordMatch[2]);
+          }
         }
-      }
 
-      // If we have valid coordinates, add marker
-      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-        const speed = vehicle.speed || 0;
-        const stoppedStatus = vehicle.stopped_status;
-        // Show oil change indicator only when due (0 or negative miles remaining)
-        const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
-        // Show check engine indicator if vehicle has fault codes
-        const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
-        
-        // Determine marker style based on vehicle status
-        let markerHTML = '';
-        
-        if (speed > 0) {
-          // Moving Vehicle - Green circle with arrow
-          markerHTML = `
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
-              <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
-            </svg>
+        // If we have valid coordinates, add marker
+        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          // Fetch weather for this location
+          const weather = await fetchWeather(lat, lng);
+          const speed = vehicle.speed || 0;
+          const stoppedStatus = vehicle.stopped_status;
+          // Show oil change indicator only when due (0 or negative miles remaining)
+          const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+          // Show check engine indicator if vehicle has fault codes
+          const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
+          
+          // Determine marker style based on vehicle status
+          let markerHTML = '';
+          
+          if (speed > 0) {
+            // Moving Vehicle - Green circle with arrow
+            markerHTML = `
+              <svg width="40" height="40" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
+                <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
+              </svg>
+            `;
+          } else if (stoppedStatus === 'stopped' || speed === 0) {
+            // Stopped - Red square
+            markerHTML = `
+              <svg width="40" height="40" viewBox="0 0 40 40">
+                <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
+                <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
+                ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
+              </svg>
+            `;
+          } else {
+            // Idling - Green circle with pause icon
+            markerHTML = `
+              <svg width="40" height="40" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
+                <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
+                <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
+                ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
+              </svg>
+            `;
+          }
+          
+          const el = document.createElement('div');
+          el.className = 'vehicle-marker';
+          el.style.cssText = `
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
           `;
-        } else if (stoppedStatus === 'stopped' || speed === 0) {
-          // Stopped - Red square
-          markerHTML = `
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
-              <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
-              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
-            </svg>
-          `;
-        } else {
-          // Idling - Green circle with pause icon
-          markerHTML = `
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
-              <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
-              <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
-              ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
-            </svg>
-          `;
-        }
-        
-        const el = document.createElement('div');
-        el.className = 'vehicle-marker';
-        el.style.cssText = `
-          cursor: pointer;
-          width: 40px;
-          height: 40px;
-        `;
-        el.innerHTML = markerHTML;
+          el.innerHTML = markerHTML;
 
-        const popup = new mapboxgl.Popup({ 
-          offset: 25,
-          maxWidth: '350px',
-          className: 'vehicle-popup'
-        }).setHTML(`
-          <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 320px;">
-            <!-- Header -->
-            <div style="padding: 12px 16px; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
-                  <circle cx="6.5" cy="16.5" r="2.5"/>
-                  <circle cx="16.5" cy="16.5" r="2.5"/>
-                </svg>
-                <span style="font-size: 18px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
-              </div>
+          const weatherHtml = weather ? `
+            <!-- Weather Info -->
+            <div style="padding: 12px 16px; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2563eb;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 20px; height: 20px;" />` : ''}
-                ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 20px; height: 20px;" />` : ''}
-                <div style="background: #10b981; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
-                  ${vehicle.speed || 0} MPH
+                <img src="https:${weather.icon}" alt="${weather.condition}" style="width: 40px; height: 40px;" />
+                <div>
+                  <div style="font-size: 24px; font-weight: 700;">${Math.round(weather.temperature)}°F</div>
+                  <div style="font-size: 12px; opacity: 0.9;">${weather.condition}</div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Location Info -->
-            <div style="padding: 12px 16px; background: white; border-bottom: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
-                ${vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
-              </p>
-            </div>
-            
-            ${vehicle.odometer ? `
-            <div style="padding: 8px 16px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-              <span style="color: #374151; font-size: 13px;">
-                <strong>${vehicle.odometer.toLocaleString()}</strong> miles
-              </span>
-            </div>
-            ` : ''}
-            
-            <!-- Camera Image -->
-            ${vehicle.camera_image_url ? `
-            <div style="position: relative; width: 100%; height: 180px; overflow: hidden;">
-              <img 
-                src="${vehicle.camera_image_url}" 
-                alt="Vehicle camera view" 
-                style="width: 100%; height: 100%; object-fit: cover;"
-                onerror="this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; background: #f3f4f6; color: #9ca3af;\\'>Camera image unavailable</div>'"
-              />
-            </div>
-            ` : `
-            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 13px;">
-              <div style="text-align: center;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px;">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-                <div>Camera view unavailable</div>
+              <div style="text-align: right; font-size: 11px; opacity: 0.9;">
+                <div>Feels ${Math.round(weather.feelslike_f)}°F</div>
+                <div>${weather.humidity}% humidity</div>
+                <div>${Math.round(weather.wind_mph)} mph wind</div>
               </div>
             </div>
-            `}
-            
-            <!-- Action Icons -->
-            <div style="padding: 8px 16px; background: white; display: flex; gap: 16px; border-top: 1px solid #e5e7eb;">
-              <button style="background: none; border: none; padding: 8px; cursor: pointer; color: #6b7280; display: flex; align-items: center; gap: 4px; font-size: 12px;" onmouseover="this.style.color='hsl(var(--primary))'" onmouseout="this.style.color='#6b7280'">
+          ` : '';
+
+          const popup = new mapboxgl.Popup({ 
+            offset: 25,
+            maxWidth: '350px',
+            className: 'vehicle-popup'
+          }).setHTML(`
+            <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 320px;">
+              <!-- Header -->
+              <div style="padding: 12px 16px; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+                    <circle cx="6.5" cy="16.5" r="2.5"/>
+                    <circle cx="16.5" cy="16.5" r="2.5"/>
+                  </svg>
+                  <span style="font-size: 18px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 20px; height: 20px;" />` : ''}
+                  ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 20px; height: 20px;" />` : ''}
+                  <div style="background: #10b981; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
+                    ${vehicle.speed || 0} MPH
+                  </div>
+                </div>
+              </div>
+              
+              ${weatherHtml}
+              
+              <!-- Location Info -->
+              <div style="padding: 12px 16px; background: white; border-bottom: 1px solid #e5e7eb;">
+                <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                  ${vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
+                </p>
+              </div>
+              
+              ${vehicle.odometer ? `
+              <div style="padding: 8px 16px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
+                  <path d="M12 6v6l4 2"/>
                 </svg>
-                History
-              </button>
-              <button style="background: none; border: none; padding: 8px; cursor: pointer; color: #6b7280; display: flex; align-items: center; gap: 4px; font-size: 12px;" onmouseover="this.style.color='hsl(var(--primary))'" onmouseout="this.style.color='#6b7280'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="9" y1="9" x2="15" y2="15"/>
-                  <line x1="15" y1="9" x2="9" y2="15"/>
-                </svg>
-                Fullscreen
-              </button>
+                <span style="color: #374151; font-size: 13px;">
+                  <strong>${vehicle.odometer.toLocaleString()}</strong> miles
+                </span>
+              </div>
+              ` : ''}
+              
+              <!-- Camera Image -->
+              ${vehicle.camera_image_url ? `
+              <div style="position: relative; width: 100%; height: 180px; overflow: hidden;">
+                <img 
+                  src="${vehicle.camera_image_url}" 
+                  alt="Vehicle camera view" 
+                  style="width: 100%; height: 100%; object-fit: cover;"
+                  onerror="this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; background: #f3f4f6; color: #9ca3af;\\'>Camera image unavailable</div>'"
+                />
+              </div>
+              ` : `
+              <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 13px;">
+                <div style="text-align: center;">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px;">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <div>Camera view unavailable</div>
+                </div>
+              </div>
+              `}
+              
+              <!-- Action Icons -->
+              <div style="padding: 8px 16px; background: white; display: flex; gap: 16px; border-top: 1px solid #e5e7eb;">
+                <button style="background: none; border: none; padding: 8px; cursor: pointer; color: #6b7280; display: flex; align-items: center; gap: 4px; font-size: 12px;" onmouseover="this.style.color='hsl(var(--primary))'" onmouseout="this.style.color='#6b7280'">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  History
+                </button>
+                <button style="background: none; border: none; padding: 8px; cursor: pointer; color: #6b7280; display: flex; align-items: center; gap: 4px; font-size: 12px;" onmouseover="this.style.color='hsl(var(--primary))'" onmouseout="this.style.color='#6b7280'">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                  </svg>
+                  Fullscreen
+                </button>
+              </div>
             </div>
-          </div>
-        `);
+          `);
 
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([lng, lat])
-          .setPopup(popup)
-          .addTo(map.current!);
+          const marker = new mapboxgl.Marker(el)
+            .setLngLat([lng, lat])
+            .setPopup(popup)
+            .addTo(map.current!);
 
-        markersRef.current.set(vehicle.id, { marker, popup });
-        bounds.extend([lng, lat]);
+          markersRef.current.set(vehicle.id, { marker, popup });
+          bounds.extend([lng, lat]);
+        }
       }
-    });
 
-    // Fit map to show all markers
-    if (markersRef.current.size > 0) {
-      map.current.fitBounds(bounds, {
-        padding: 50,
-        maxZoom: 12,
-      });
-    }
-  }, [vehicles]);
+      // Fit map to show all markers
+      if (markersRef.current.size > 0) {
+        map.current.fitBounds(bounds, {
+          padding: 50,
+          maxZoom: 12,
+        });
+      }
+    };
+
+    updateMarkers();
+  }, [vehicles, weatherCache]);
 
 
   return (
