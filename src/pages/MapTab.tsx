@@ -152,7 +152,7 @@ const MapTab = () => {
     }
   }, [showWeatherLayer]);
 
-  const addWeatherLayer = () => {
+  const addWeatherLayer = async () => {
     if (!map.current) return;
     
     // Remove existing layer if present
@@ -163,23 +163,40 @@ const MapTab = () => {
       map.current.removeSource('rain-source');
     }
 
-    // Add RainViewer radar overlay
-    map.current.addSource('rain-source', {
-      type: 'raster',
-      tiles: [
-        'https://tilecache.rainviewer.com/v2/radar/0/{z}/{x}/{y}/256/1_1.png'
-      ],
-      tileSize: 256,
-    });
+    try {
+      // Fetch latest radar timestamp from RainViewer API
+      const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+      const data = await response.json();
+      
+      if (!data.radar?.past?.length) {
+        console.error('No radar data available from RainViewer');
+        return;
+      }
 
-    map.current.addLayer({
-      id: 'rain-layer',
-      type: 'raster',
-      source: 'rain-source',
-      paint: {
-        'raster-opacity': 0.6,
-      },
-    });
+      // Get the most recent radar timestamp
+      const latestTimestamp = data.radar.past[data.radar.past.length - 1].path;
+
+      // Add RainViewer radar overlay with valid timestamp
+      map.current.addSource('rain-source', {
+        type: 'raster',
+        tiles: [
+          `https://tilecache.rainviewer.com${latestTimestamp}/256/{z}/{x}/{y}/2/1_1.png`
+        ],
+        tileSize: 256,
+      });
+
+      map.current.addLayer({
+        id: 'rain-layer',
+        type: 'raster',
+        source: 'rain-source',
+        paint: {
+          'raster-opacity': 0.6,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to load weather radar:', error);
+      toast.error('Failed to load weather radar overlay');
+    }
   };
 
   const removeWeatherLayer = () => {
