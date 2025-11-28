@@ -41,6 +41,8 @@ export default function CarriersTab() {
     phone: "",
     address: "",
   });
+  const [usdotLookup, setUsdotLookup] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -110,6 +112,43 @@ export default function CarriersTab() {
     }
   };
 
+  const handleUsdotLookup = async () => {
+    if (!usdotLookup.trim()) {
+      toast.error("Please enter a USDOT number");
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await fetch(`https://saferwebapi.com/v1/snapshots/${usdotLookup}`);
+      
+      if (!response.ok) {
+        throw new Error("Carrier not found");
+      }
+
+      const data = await response.json();
+      
+      // Extract MC number from mc_mx_ff_numbers (format: "MC-146894")
+      const mcNumber = data.mc_mx_ff_numbers?.match(/MC-(\d+)/)?.[1] || "";
+      
+      setFormData({
+        name: data.dba_name || data.legal_name || "",
+        mc_number: mcNumber,
+        dot_number: data.usdot || usdotLookup,
+        contact_name: "",
+        email: "",
+        phone: data.phone || "",
+        address: data.physical_address || "",
+      });
+      
+      toast.success("Carrier information loaded successfully");
+    } catch (error: any) {
+      toast.error("Failed to fetch carrier data: " + error.message);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   const filteredCarriers = carriers.filter((carrier) => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -140,6 +179,28 @@ export default function CarriersTab() {
               <DialogTitle>Add New Carrier</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddCarrier} className="space-y-4">
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <Label htmlFor="usdot_lookup">USDOT Lookup</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="usdot_lookup"
+                    placeholder="Enter USDOT number"
+                    value={usdotLookup}
+                    onChange={(e) => setUsdotLookup(e.target.value)}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={handleUsdotLookup}
+                    disabled={lookupLoading}
+                  >
+                    {lookupLoading ? "Loading..." : "Lookup"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter a USDOT number to auto-fill carrier information from SaferWeb
+                </p>
+              </div>
+              
               <div>
                 <Label htmlFor="name">Carrier Name</Label>
                 <Input
