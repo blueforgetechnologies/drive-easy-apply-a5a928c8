@@ -190,7 +190,7 @@ const MapTab = () => {
         type: 'raster',
         source: 'rain-source',
         paint: {
-          'raster-opacity': 0.6,
+          'raster-opacity': 0.85,
         },
       });
     } catch (error) {
