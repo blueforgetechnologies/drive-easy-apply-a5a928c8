@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
 
 interface Vehicle {
   id: string;
@@ -175,7 +175,16 @@ export default function VehiclesTab() {
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Asset Management</h2>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => navigate('/dashboard')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="text-2xl font-bold">Asset Management</h2>
+        </div>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
