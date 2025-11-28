@@ -332,7 +332,11 @@ export default function CarriersTab() {
               </TableHeader>
               <TableBody>
                 {filteredCarriers.map((carrier) => (
-                  <TableRow key={carrier.id}>
+                  <TableRow 
+                    key={carrier.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                  >
                     <TableCell className="font-medium">{carrier.name}</TableCell>
                     <TableCell>{carrier.mc_number || "N/A"}</TableCell>
                     <TableCell>{carrier.dot_number || "N/A"}</TableCell>
@@ -351,14 +355,25 @@ export default function CarriersTab() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/carrier/${carrier.id}`);
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8"
-                          onClick={() => handleDeleteCarrier(carrier.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCarrier(carrier.id);
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -22,6 +22,7 @@ import MapTab from "./pages/MapTab";
 import AccountingTab from "./pages/AccountingTab";
 import BusinessManagerTab from "./pages/BusinessManagerTab";
 import SettingsTab from "./pages/SettingsTab";
+import CarrierDetail from "./pages/CarrierDetail";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/dashboard/load/:id" element={<DashboardLayout><LoadDetail /></DashboardLayout>} />
           <Route path="/dashboard/settlement/:id" element={<DashboardLayout><SettlementDetail /></DashboardLayout>} />
           <Route path="/dashboard/invoice/:id" element={<DashboardLayout><InvoiceDetail /></DashboardLayout>} />
+          <Route path="/dashboard/carrier/:id" element={<DashboardLayout><CarrierDetail /></DashboardLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
