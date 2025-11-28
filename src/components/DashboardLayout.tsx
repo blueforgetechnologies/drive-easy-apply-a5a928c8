@@ -15,10 +15,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [userName, setUserName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("drivers");
   const [alertCount, setAlertCount] = useState<number>(0);
+  const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
 
   useEffect(() => {
     loadUserProfile();
     loadAlerts();
+    loadIntegrationAlerts();
     
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
@@ -27,6 +29,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
+
+    // Check integration status every 5 minutes
+    const interval = setInterval(loadIntegrationAlerts, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [location.pathname]);
 
   const loadUserProfile = async () => {
@@ -95,6 +101,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setAlertCount(vehicleCount + carrierCount);
   };
 
+  const loadIntegrationAlerts = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-integrations');
+      
+      if (error) {
+        console.error("Error checking integrations:", error);
+        return;
+      }
+      
+      if (data && data.integrations) {
+        const failedCount = data.integrations.filter(
+          (i: any) => i.status === "down" || i.status === "degraded"
+        ).length;
+        setIntegrationAlertCount(failedCount);
+      }
+    } catch (error) {
+      console.error("Error loading integration alerts:", error);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -146,9 +172,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Map className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Map</span>
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="gap-1.5">
+                <TabsTrigger value="settings" className="gap-1.5 relative">
                   <Settings className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Settings</span>
+                  {integrationAlertCount > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                      {integrationAlertCount}
+                    </span>
+                  )}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
