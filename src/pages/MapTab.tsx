@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, MapIcon, Satellite } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ const MapTab = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [syncing, setSyncing] = useState(false);
   const [weatherCache, setWeatherCache] = useState<Record<string, any>>({});
+  const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
 
   useEffect(() => {
@@ -109,7 +110,7 @@ const MapTab = () => {
       
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: mapStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12',
         center: [-98, 39], // Center of USA
         zoom: 4,
       });
@@ -128,7 +129,20 @@ const MapTab = () => {
       markersRef.current.forEach(({ marker }) => marker.remove());
       map.current?.remove();
     };
-  }, []);
+  }, [mapStyle]);
+
+  const toggleMapStyle = () => {
+    if (!map.current) return;
+    
+    const newStyle = mapStyle === 'streets' ? 'satellite' : 'streets';
+    setMapStyle(newStyle);
+    
+    map.current.setStyle(
+      newStyle === 'satellite' 
+        ? 'mapbox://styles/mapbox/satellite-streets-v12' 
+        : 'mapbox://styles/mapbox/streets-v12'
+    );
+  };
 
   const handleVehicleClick = (vehicleId: string) => {
     const markerData = markersRef.current.get(vehicleId);
@@ -451,6 +465,28 @@ const MapTab = () => {
       {/* Map container */}
       <div className="relative flex-1">
         <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
+        
+        {/* Map style toggle button */}
+        <div className="absolute top-4 right-4 z-10">
+          <Button
+            onClick={toggleMapStyle}
+            size="sm"
+            variant="secondary"
+            className="shadow-lg"
+          >
+            {mapStyle === 'streets' ? (
+              <>
+                <Satellite className="h-4 w-4 mr-2" />
+                Satellite
+              </>
+            ) : (
+              <>
+                <MapIcon className="h-4 w-4 mr-2" />
+                Streets
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
