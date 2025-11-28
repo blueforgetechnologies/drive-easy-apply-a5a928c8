@@ -124,12 +124,12 @@ serve(async (req) => {
       if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
         const lat = samsaraVehicle.gps[0].latitude;
         const lng = samsaraVehicle.gps[0].longitude;
-        // Store coordinates in parseable format for map: "lat, lng"
+        // Store coordinates in parseable format for map markers: "lat, lng"
         updateData.last_location = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         
-        // Store reverse geocoded address from Samsara if available
+        // Store reverse geocoded address from Samsara in separate field
         if (samsaraVehicle.gps[0].reverseGeo?.formattedLocation) {
-          updateData.last_location = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
+          updateData.formatted_address = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
         }
       }
 
