@@ -348,24 +348,43 @@ export default function VehiclesTab() {
           >
             Service Due
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="gap-2"
-          >
-            Unit # {sortOrder === "asc" ? "↑" : "↓"}
-          </Button>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search assets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-3">
+          {/* Sort by Unit Number */}
+          <button
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>Unit #</span>
+            <div className="flex flex-col">
+              <svg 
+                className={`w-3 h-3 -mb-1 transition-colors ${sortOrder === "asc" ? "text-foreground" : "text-muted-foreground/40"}`} 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path d="M5.293 7.707a1 1 0 011.414 0L10 11.586l3.293-3.879a1 1 0 111.414 1.414l-4 4.586a1 1 0 01-1.414 0l-4-4.586a1 1 0 010-1.414z" />
+              </svg>
+              <svg 
+                className={`w-3 h-3 -mt-1 transition-colors ${sortOrder === "desc" ? "text-foreground" : "text-muted-foreground/40"}`} 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path d="M14.707 12.293a1 1 0 01-1.414 0L10 8.414l-3.293 3.879a1 1 0 11-1.414-1.414l4-4.586a1 1 0 011.414 0l4 4.586a1 1 0 010 1.414z" />
+              </svg>
+            </div>
+          </button>
+          
+          {/* Search */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search assets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
