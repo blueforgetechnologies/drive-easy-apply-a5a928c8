@@ -111,7 +111,7 @@ const MapTab = () => {
       
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: mapStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/streets-v12',
         center: [-98, 39], // Center of USA
         zoom: 4,
       });
@@ -135,9 +135,12 @@ const MapTab = () => {
 
     return () => {
       markersRef.current.forEach(({ marker }) => marker.remove());
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
-  }, [mapStyle]);
+  }, []);
 
   useEffect(() => {
     if (!map.current) return;
