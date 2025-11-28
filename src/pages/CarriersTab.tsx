@@ -121,22 +121,15 @@ export default function CarriersTab() {
   const handleSyncAllCarriers = async () => {
     setSyncLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-carriers-fmcsa`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('sync-carriers-fmcsa', {
+        method: 'POST',
+      });
 
-      if (!response.ok) {
-        throw new Error('Failed to sync carriers');
+      if (error) {
+        throw error;
       }
 
-      const result = await response.json();
-      toast.success(`Synced ${result.successCount} carriers successfully`);
+      toast.success(`Synced ${data.successCount} carriers successfully`);
       loadData(); // Reload data to show updated status
     } catch (error: any) {
       toast.error('Failed to sync carriers: ' + error.message);
