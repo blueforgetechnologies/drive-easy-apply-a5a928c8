@@ -65,12 +65,37 @@ async function getAccessToken(userEmail: string): Promise<string> {
 function parseLoadEmail(subject: string, bodyText: string): any {
   const parsed: any = {};
 
-  // Extract origin/destination
-  const originMatch = bodyText.match(/origin[:\s]*([^\n]+)/i);
-  const destMatch = bodyText.match(/destination[:\s]*([^\n]+)/i);
-  
-  if (originMatch) parsed.origin = originMatch[1].trim();
-  if (destMatch) parsed.destination = destMatch[1].trim();
+  // Extract customer/broker name
+  const customerMatch = bodyText.match(/(?:customer|broker|company)[:\s]*([^\n]+)/i);
+  if (customerMatch) parsed.customer = customerMatch[1].trim();
+
+  // Extract origin city and state
+  const originMatch = bodyText.match(/origin[:\s]*([^,\n]+),?\s*([A-Z]{2})/i);
+  if (originMatch) {
+    parsed.origin_city = originMatch[1].trim();
+    parsed.origin_state = originMatch[2].trim();
+  }
+
+  // Extract destination city and state
+  const destMatch = bodyText.match(/destination[:\s]*([^,\n]+),?\s*([A-Z]{2})/i);
+  if (destMatch) {
+    parsed.destination_city = destMatch[1].trim();
+    parsed.destination_state = destMatch[2].trim();
+  }
+
+  // Extract pickup date and time
+  const pickupDateMatch = bodyText.match(/pickup[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(?:at\s*)?(\d{1,2}:\d{2}\s*(?:AM|PM|EST|CST|MST|PST)?)?/i);
+  if (pickupDateMatch) {
+    parsed.pickup_date = pickupDateMatch[1].trim();
+    parsed.pickup_time = pickupDateMatch[2]?.trim() || 'ASAP';
+  }
+
+  // Extract delivery date and time
+  const deliveryDateMatch = bodyText.match(/delivery[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(?:at\s*)?(\d{1,2}:\d{2}\s*(?:AM|PM|EST|CST|MST|PST)?)?/i);
+  if (deliveryDateMatch) {
+    parsed.delivery_date = deliveryDateMatch[1].trim();
+    parsed.delivery_time = deliveryDateMatch[2]?.trim() || 'Direct';
+  }
 
   // Extract rate
   const rateMatch = bodyText.match(/rate[:\s]*\$?[\s]*([\d,]+(?:\.\d{2})?)/i);
@@ -79,23 +104,52 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   }
 
   // Extract weight
-  const weightMatch = bodyText.match(/weight[:\s]*([\d,]+)\s*(?:lbs?|pounds?)/i);
+  const weightMatch = bodyText.match(/weight[:\s]*([\d,]+)\s*(?:lbs?|pounds?)?/i);
   if (weightMatch) {
-    parsed.weight = parseInt(weightMatch[1].replace(/,/g, ''));
+    parsed.weight = weightMatch[1].replace(/,/g, '');
   }
 
   // Extract equipment type
-  const equipmentMatch = bodyText.match(/(?:equipment|trailer)[:\s]*([^\n]+)/i);
+  const equipmentMatch = bodyText.match(/(?:equipment|trailer|truck)[:\s]*([^\n]+)/i);
   if (equipmentMatch) {
-    parsed.equipment_type = equipmentMatch[1].trim();
+    parsed.vehicle_type = equipmentMatch[1].trim();
   }
 
-  // Extract pickup/delivery dates
-  const pickupMatch = bodyText.match(/pickup[:\s]*([^\n]+)/i);
-  const deliveryMatch = bodyText.match(/delivery[:\s]*([^\n]+)/i);
-  
-  if (pickupMatch) parsed.pickup_date = pickupMatch[1].trim();
-  if (deliveryMatch) parsed.delivery_date = deliveryMatch[1].trim();
+  // Extract miles/distance
+  const milesMatch = bodyText.match(/(?:miles|distance)[:\s]*([\d,]+)/i);
+  if (milesMatch) {
+    parsed.loaded_miles = parseInt(milesMatch[1].replace(/,/g, ''));
+  }
+
+  // Extract deadhead miles
+  const deadheadMatch = bodyText.match(/(?:deadhead|empty)[:\s]*([\d,]+)/i);
+  if (deadheadMatch) {
+    parsed.empty_miles = parseInt(deadheadMatch[1].replace(/,/g, ''));
+  }
+
+  // Extract pieces/count
+  const piecesMatch = bodyText.match(/(?:pieces|pallets|count)[:\s]*(\d+)/i);
+  if (piecesMatch) {
+    parsed.pieces = parseInt(piecesMatch[1]);
+  }
+
+  // Extract dimensions
+  const dimensionsMatch = bodyText.match(/dimensions?[:\s]*([^\n]+)/i);
+  if (dimensionsMatch) {
+    parsed.dimensions = dimensionsMatch[1].trim();
+  }
+
+  // Extract available feet
+  const availFtMatch = bodyText.match(/(?:available|avail)[:\s]*(\d+)\s*(?:ft|feet)/i);
+  if (availFtMatch) {
+    parsed.avail_ft = availFtMatch[1];
+  }
+
+  // Extract reference/load number
+  const refMatch = bodyText.match(/(?:ref|reference|load)[:\s#]*([A-Z0-9-]+)/i);
+  if (refMatch) {
+    parsed.reference_number = refMatch[1].trim();
+  }
 
   return parsed;
 }
