@@ -241,19 +241,23 @@ const LoadEmailDetail = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-1">
-                  <Button variant="destructive" size="sm" className="h-6 text-[10px] flex-1 whitespace-nowrap">
-                    Skip
-                  </Button>
-                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
-                    Undecided
-                  </Button>
-                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
-                    Mark Unreviewed
-                  </Button>
-                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
-                    Wait
-                  </Button>
+                <div className="flex flex-col gap-1">
+                  <div className="flex gap-1">
+                    <Button variant="destructive" size="sm" className="h-6 text-[10px] flex-1 whitespace-nowrap">
+                      Skip
+                    </Button>
+                    <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+                      Undecided
+                    </Button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+                      Mark Unreviewed
+                    </Button>
+                    <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+                      Wait
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>
