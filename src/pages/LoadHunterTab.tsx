@@ -1146,7 +1146,10 @@ export default function LoadHunterTab() {
                 </div>
               ) : (
                 <>
-                  <div className="flex-1 overflow-y-auto border-t" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                  <div
+                    className="flex-1 overflow-y-auto border-t"
+                    style={{ maxHeight: 'calc(100vh - 280px)', overflowX: 'hidden' }}
+                  >
                     <Table>
                       <TableHeader>
                         <TableRow className="h-8">
@@ -1271,12 +1274,15 @@ export default function LoadHunterTab() {
                     </Table>
                   </div>
                   
-                  {/* Pagination - Always visible at bottom */}
+                  {/* Pagination - visible without horizontal scroll */}
                   <div className="flex items-center justify-between px-4 py-3 border-t bg-background shrink-0">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
-                      <span className="ml-4">
+                      <span>
                         {Math.min((currentPage - 1) * itemsPerPage + 1, loadEmails.length)} - {Math.min(currentPage * itemsPerPage, loadEmails.length)} of {loadEmails.length}
+                      </span>
+                      <span>
+                        Page {currentPage} of {Math.max(1, Math.ceil(loadEmails.length / itemsPerPage))}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -1293,7 +1299,7 @@ export default function LoadHunterTab() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCurrentPage(currentPage - 1)}
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -1302,7 +1308,7 @@ export default function LoadHunterTab() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCurrentPage(currentPage + 1)}
+                        onClick={() => setCurrentPage(Math.min(Math.ceil(loadEmails.length / itemsPerPage), currentPage + 1))}
                         disabled={currentPage >= Math.ceil(loadEmails.length / itemsPerPage)}
                       >
                         <ChevronRight className="h-4 w-4" />
