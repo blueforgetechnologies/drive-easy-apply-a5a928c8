@@ -156,10 +156,10 @@ export default function LoadHunterTab() {
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
   // Function to play alert sound
-  const playAlertSound = () => {
-    console.log('🔔 playAlertSound called, isSoundMuted:', isSoundMuted);
+  const playAlertSound = (force = false) => {
+    console.log('🔔 playAlertSound called, isSoundMuted:', isSoundMuted, 'force:', force);
     
-    if (isSoundMuted) {
+    if (isSoundMuted && !force) {
       console.log('❌ Sound is muted, skipping');
       return;
     }
@@ -203,7 +203,6 @@ export default function LoadHunterTab() {
       console.error('❌ Error playing sound:', error);
     }
   };
-
   const toggleSound = () => {
     console.log('🔘 toggleSound clicked, current state:', isSoundMuted);
     
@@ -233,7 +232,7 @@ export default function LoadHunterTab() {
       // Play test sound
       setTimeout(() => {
         console.log('⏰ Playing test sound after delay');
-        playAlertSound();
+        playAlertSound(true);
         toast.success('Sound alerts enabled');
       }, 100);
     } else {
