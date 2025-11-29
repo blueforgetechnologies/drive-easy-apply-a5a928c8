@@ -74,23 +74,23 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     <div className="bg-red-100 -mx-2 px-2 py-1 font-semibold flex items-center">
                       NE-LANG LOGISTICS LLC
                     </div>
-                    <div className="text-center text-gray-400">
+                    <div className="text-gray-400">
                       <div>Pickup Time</div>
                       <div>Delivery Time</div>
                     </div>
-                    <div className="text-center text-gray-400">
+                    <div className="text-gray-400">
                       <div>Origin</div>
                       <div>Destination</div>
                     </div>
-                    <div className="text-center text-gray-400">
+                    <div className="text-gray-400">
                       <div>Empty Drive</div>
                       <div>Loaded Drive</div>
                     </div>
-                    <div className="text-center text-gray-400">
+                    <div className="text-gray-400">
                       <div>Load Type</div>
                       <div>Weight</div>
                     </div>
-                    <div className="text-center text-gray-400">
+                    <div className="text-gray-400">
                       <div>Pieces</div>
                       <div>Dimensions</div>
                     </div>
@@ -102,7 +102,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     <div className="bg-yellow-100 -mx-2 px-2 py-1 font-semibold flex items-center">
                       GLOBALTRANZ ENTERPRISES, LLC
                     </div>
-                    <div className="text-center">
+                    <div>
                       <div>11/30/25 Sun 17:00 EST</div>
                       <div>12/01/25 Mon 09:00 EST</div>
                     </div>
@@ -114,11 +114,11 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                       <div>+ 408mi [6h 48m]</div>
                       <div>+ 375mi [6h 15m]</div>
                     </div>
-                    <div className="text-center">
+                    <div>
                       <div>SPRINTER</div>
                       <div>0</div>
                     </div>
-                    <div className="text-center">
+                    <div>
                       <div>0</div>
                       <div>0L x 0W x 0H</div>
                     </div>
