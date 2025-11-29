@@ -20,10 +20,23 @@ interface Stop {
   coordinates?: [number, number];
 }
 
+interface Break {
+  location: string;
+  coordinates: [number, number];
+  afterStopIndex: number;
+  duration: number; // minutes
+  reason: string;
+  cumulativeDriveTime: number;
+}
+
 interface OptimizationResult {
   optimizedSequence: Stop[];
   totalDistance: number;
   totalDuration: number;
+  totalDriveTime: number;
+  requiredBreaks: Break[];
+  hosCompliant: boolean;
+  isTeam: boolean;
   savings: {
     distanceSaved: number;
     timeSaved: number;
@@ -36,7 +49,7 @@ serve(async (req) => {
   }
 
   try {
-    const { stops } = await req.json();
+    const { stops, isTeam = false } = await req.json();
     const MAPBOX_TOKEN = Deno.env.get('VITE_MAPBOX_TOKEN');
     
     if (!MAPBOX_TOKEN) {
@@ -121,7 +134,10 @@ serve(async (req) => {
     // Step 5: Calculate total distance and duration for optimized route
     const optimizedMetrics = await calculateRouteMetrics(optimizedSequence, MAPBOX_TOKEN);
     
-    // Step 6: Calculate original route metrics for comparison
+    // Step 6: Calculate HOS compliance and required breaks
+    const hosAnalysis = calculateHOSCompliance(optimizedSequence, optimizedMetrics, isTeam);
+    
+    // Step 7: Calculate original route metrics for comparison
     const originalSequence = [...stops].sort((a, b) => a.stop_sequence - b.stop_sequence);
     const originalStopsWithCoords = originalSequence
       .map(stop => stopsWithCoords.find(s => s.id === stop.id))
@@ -132,6 +148,10 @@ serve(async (req) => {
       optimizedSequence,
       totalDistance: optimizedMetrics.distance,
       totalDuration: optimizedMetrics.duration,
+      totalDriveTime: optimizedMetrics.duration,
+      requiredBreaks: hosAnalysis.breaks,
+      hosCompliant: hosAnalysis.compliant,
+      isTeam,
       savings: {
         distanceSaved: Math.max(0, originalMetrics.distance - optimizedMetrics.distance),
         timeSaved: Math.max(0, originalMetrics.duration - optimizedMetrics.duration),
@@ -282,4 +302,137 @@ function checkTimeFeasibility(current: Stop, next: Stop): boolean {
   // Next stop should start after current stop ends (with some buffer for travel)
   // Assuming average 1 hour travel time between stops
   return nextStartTime >= currentEndTime + (60 * 60 * 1000);
+}
+
+interface HOSAnalysis {
+  compliant: boolean;
+  breaks: Break[];
+  totalDriveTime: number;
+  violations: string[];
+}
+
+function calculateHOSCompliance(
+  stops: Stop[], 
+  routeMetrics: { distance: number; duration: number },
+  isTeam: boolean
+): HOSAnalysis {
+  const breaks: Break[] = [];
+  const violations: string[] = [];
+  
+  // HOS regulations (in minutes)
+  const SOLO_MAX_DRIVE_TIME = 11 * 60; // 11 hours
+  const SOLO_MAX_ON_DUTY = 14 * 60; // 14 hours
+  const SOLO_BREAK_AFTER = 8 * 60; // 30-min break after 8 hours
+  const SOLO_BREAK_DURATION = 30; // 30 minutes
+  const SOLO_REST_PERIOD = 10 * 60; // 10 hours off-duty
+  
+  // Team drivers can alternate, so different rules
+  const TEAM_MAX_DRIVE_TIME = 20 * 60; // Can drive longer with alternating drivers
+  const TEAM_BREAK_DURATION = 30; // Still need rest breaks
+  
+  if (stops.length < 2) {
+    return { compliant: true, breaks: [], totalDriveTime: routeMetrics.duration, violations: [] };
+  }
+
+  const totalDriveTime = routeMetrics.duration;
+  let cumulativeDriveTime = 0;
+  let lastBreakTime = 0;
+  
+  if (isTeam) {
+    // Team operation - more flexible HOS
+    // Teams can drive continuously with alternating drivers
+    // But still need periodic rest breaks
+    
+    if (totalDriveTime > TEAM_MAX_DRIVE_TIME) {
+      // Need a major rest break
+      const breakPoint = Math.floor(stops.length / 2);
+      if (breakPoint > 0 && breakPoint < stops.length) {
+        const stop = stops[breakPoint];
+        breaks.push({
+          location: `${stop.location_name || stop.location_city}`,
+          coordinates: stop.coordinates!,
+          afterStopIndex: breakPoint,
+          duration: SOLO_REST_PERIOD,
+          reason: 'Team rest period - 10 hour break',
+          cumulativeDriveTime: TEAM_MAX_DRIVE_TIME
+        });
+      }
+    } else if (totalDriveTime > SOLO_BREAK_AFTER) {
+      // Need periodic breaks even for teams
+      const numberOfBreaks = Math.floor(totalDriveTime / SOLO_BREAK_AFTER);
+      for (let i = 1; i <= numberOfBreaks; i++) {
+        const breakPoint = Math.floor((stops.length * i) / (numberOfBreaks + 1));
+        if (breakPoint > 0 && breakPoint < stops.length) {
+          const stop = stops[breakPoint];
+          breaks.push({
+            location: `${stop.location_name || stop.location_city}`,
+            coordinates: stop.coordinates!,
+            afterStopIndex: breakPoint,
+            duration: TEAM_BREAK_DURATION,
+            reason: 'Team rest break - 30 minutes',
+            cumulativeDriveTime: (totalDriveTime * i) / (numberOfBreaks + 1)
+          });
+        }
+      }
+    }
+    
+    return {
+      compliant: totalDriveTime <= TEAM_MAX_DRIVE_TIME + SOLO_REST_PERIOD,
+      breaks,
+      totalDriveTime,
+      violations
+    };
+  } else {
+    // Solo driver - strict HOS regulations
+    const segmentDuration = totalDriveTime / (stops.length - 1);
+    
+    for (let i = 1; i < stops.length; i++) {
+      cumulativeDriveTime += segmentDuration;
+      
+      // Check if 30-minute break is needed (after 8 hours of driving)
+      if (cumulativeDriveTime - lastBreakTime >= SOLO_BREAK_AFTER) {
+        const stop = stops[i];
+        breaks.push({
+          location: `${stop.location_name || stop.location_city}`,
+          coordinates: stop.coordinates!,
+          afterStopIndex: i,
+          duration: SOLO_BREAK_DURATION,
+          reason: '30-minute break required (8+ hours driving)',
+          cumulativeDriveTime
+        });
+        lastBreakTime = cumulativeDriveTime;
+      }
+      
+      // Check if approaching 11-hour drive limit
+      if (cumulativeDriveTime >= SOLO_MAX_DRIVE_TIME) {
+        const stop = stops[i];
+        breaks.push({
+          location: `${stop.location_name || stop.location_city}`,
+          coordinates: stop.coordinates!,
+          afterStopIndex: i,
+          duration: SOLO_REST_PERIOD,
+          reason: '10-hour rest period required (11-hour drive limit reached)',
+          cumulativeDriveTime
+        });
+        violations.push('11-hour driving limit reached - 10-hour rest required');
+        cumulativeDriveTime = 0; // Reset after rest
+        lastBreakTime = 0;
+      }
+      
+      // Check 14-hour on-duty limit
+      const totalOnDutyTime = cumulativeDriveTime + (breaks.length * SOLO_BREAK_DURATION);
+      if (totalOnDutyTime >= SOLO_MAX_ON_DUTY) {
+        violations.push('14-hour on-duty limit would be exceeded');
+      }
+    }
+    
+    const totalTimeWithBreaks = totalDriveTime + (breaks.reduce((sum, b) => sum + b.duration, 0));
+    
+    return {
+      compliant: violations.length === 0 && totalDriveTime <= SOLO_MAX_DRIVE_TIME,
+      breaks,
+      totalDriveTime,
+      violations
+    };
+  }
 }

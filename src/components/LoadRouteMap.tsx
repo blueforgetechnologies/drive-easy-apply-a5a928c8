@@ -6,9 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface LoadRouteMapProps {
   stops: any[];
   optimizedStops?: any[];
+  requiredBreaks?: any[];
 }
 
-export default function LoadRouteMap({ stops, optimizedStops }: LoadRouteMapProps) {
+export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [] }: LoadRouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -57,7 +58,7 @@ export default function LoadRouteMap({ stops, optimizedStops }: LoadRouteMapProp
     if (map.current && map.current.isStyleLoaded()) {
       updateMarkersAndRoute();
     }
-  }, [stops, optimizedStops]);
+  }, [stops, optimizedStops, requiredBreaks]);
 
   const updateMarkersAndRoute = () => {
     if (!map.current) return;
@@ -144,9 +145,67 @@ export default function LoadRouteMap({ stops, optimizedStops }: LoadRouteMapProp
 
         // Fit bounds after all markers are added
         if (index === stopsToDisplay.length - 1 && coordinates.length > 0) {
+          // Add break markers if available
+          if (requiredBreaks.length > 0) {
+            addBreakMarkers(requiredBreaks);
+          }
+          
           map.current!.fitBounds(bounds, { padding: 100, maxZoom: 10 });
         }
       });
+    });
+  };
+
+  const addBreakMarkers = (breaks: any[]) => {
+    if (!map.current) return;
+
+    breaks.forEach((breakItem, index) => {
+      if (!breakItem.coordinates) return;
+
+      // Create break marker element
+      const el = document.createElement('div');
+      el.className = 'break-marker';
+      el.style.width = '40px';
+      el.style.height = '40px';
+      el.style.borderRadius = '50%';
+      el.style.border = '3px solid white';
+      el.style.backgroundColor = '#f97316'; // orange
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.color = 'white';
+      el.style.fontWeight = 'bold';
+      el.style.fontSize = '20px';
+      el.innerHTML = '⏸';
+
+      // Create popup
+      const popupContent = `
+        <div style="padding: 8px;">
+          <div style="font-weight: bold; margin-bottom: 4px; color: #f97316;">
+            Required Break #${index + 1}
+          </div>
+          <div style="font-size: 13px; color: #666;">
+            ${breakItem.location}
+          </div>
+          <div style="font-size: 12px; color: #888; margin-top: 4px;">
+            Duration: ${breakItem.duration} minutes
+          </div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">
+            ${breakItem.reason}
+          </div>
+        </div>
+      `;
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent);
+
+      // Add marker
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat(breakItem.coordinates)
+        .setPopup(popup)
+        .addTo(map.current!);
+
+      markers.current.push(marker);
     });
   };
 
@@ -238,6 +297,12 @@ export default function LoadRouteMap({ stops, optimizedStops }: LoadRouteMapProp
             <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
             <span>Delivery</span>
           </div>
+          {requiredBreaks.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-orange-500 border-2 border-white shadow-sm flex items-center justify-center text-white text-xs">⏸</div>
+              <span>Required Break</span>
+            </div>
+          )}
           {optimizedStops && optimizedStops.length > 0 && (
             <div className="flex items-center gap-2 ml-2 pl-2 border-l">
               <div className="w-8 h-1 bg-green-500 rounded"></div>

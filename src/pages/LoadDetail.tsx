@@ -262,13 +262,21 @@ export default function LoadDetail() {
     setOptimizing(true);
     try {
       const { data, error } = await supabase.functions.invoke('optimize-route', {
-        body: { stops }
+        body: { 
+          stops,
+          isTeam: load.team_required || false
+        }
       });
 
       if (error) throw error;
       
       setOptimizationResult(data);
-      toast.success("Route optimized successfully!");
+      
+      if (data.hosCompliant) {
+        toast.success("Route optimized and HOS compliant!");
+      } else {
+        toast.warning("Route optimized but requires attention for HOS compliance");
+      }
     } catch (error: any) {
       toast.error("Failed to optimize route");
       console.error(error);
@@ -743,10 +751,22 @@ export default function LoadDetail() {
           </div>
 
           {optimizationResult && (
-            <Card className="border-blue-500 bg-blue-50">
+            <Card className={optimizationResult.hosCompliant ? "border-blue-500 bg-blue-50" : "border-orange-500 bg-orange-50"}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center justify-between">
-                  <span>Optimization Results</span>
+                  <div className="flex items-center gap-3">
+                    <span>Optimization Results</span>
+                    {optimizationResult.isTeam ? (
+                      <Badge variant="outline" className="bg-purple-100">Team Operation</Badge>
+                    ) : (
+                      <Badge variant="outline">Solo Driver</Badge>
+                    )}
+                    {optimizationResult.hosCompliant ? (
+                      <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> HOS Compliant</Badge>
+                    ) : (
+                      <Badge className="bg-orange-500"><AlertCircle className="h-3 w-3 mr-1" /> HOS Attention Required</Badge>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleApplyOptimization}>
                       Apply Optimization
@@ -758,15 +778,58 @@ export default function LoadDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Total Distance</p>
                     <p className="text-lg font-bold">{optimizationResult.totalDistance.toFixed(1)} miles</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Total Duration</p>
-                    <p className="text-lg font-bold">{Math.round(optimizationResult.totalDuration / 60)} hours</p>
+                    <p className="text-muted-foreground">Drive Time</p>
+                    <p className="text-lg font-bold">{(optimizationResult.totalDriveTime / 60).toFixed(1)} hours</p>
                   </div>
+                  <div>
+                    <p className="text-muted-foreground">Required Breaks</p>
+                    <p className="text-lg font-bold">{optimizationResult.requiredBreaks.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Time (w/ breaks)</p>
+                    <p className="text-lg font-bold">
+                      {((optimizationResult.totalDriveTime + optimizationResult.requiredBreaks.reduce((sum: number, b: any) => sum + b.duration, 0)) / 60).toFixed(1)} hours
+                    </p>
+                  </div>
+                </div>
+
+                {optimizationResult.requiredBreaks.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="font-semibold mb-2 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Required Breaks for HOS Compliance:
+                      </p>
+                      <div className="space-y-2">
+                        {optimizationResult.requiredBreaks.map((breakItem: any, index: number) => (
+                          <div key={index} className="flex items-start gap-3 text-sm p-3 bg-white rounded border border-orange-200">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white text-xs font-bold flex-shrink-0">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">{breakItem.location}</p>
+                              <p className="text-muted-foreground text-xs mt-1">{breakItem.reason}</p>
+                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                <span>Duration: {breakItem.duration} minutes</span>
+                                <span>After {(breakItem.cumulativeDriveTime / 60).toFixed(1)} hours of driving</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Distance Saved</p>
                     <p className="text-lg font-bold text-green-600">
@@ -908,7 +971,8 @@ export default function LoadDetail() {
         <TabsContent value="route" className="space-y-4">
           <LoadRouteMap 
             stops={stops} 
-            optimizedStops={optimizationResult?.optimizedSequence} 
+            optimizedStops={optimizationResult?.optimizedSequence}
+            requiredBreaks={optimizationResult?.requiredBreaks || []}
           />
         </TabsContent>
 
