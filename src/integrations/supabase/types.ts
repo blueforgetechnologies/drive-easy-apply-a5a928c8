@@ -652,6 +652,36 @@ export type Database = {
           },
         ]
       }
+      gmail_tokens: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          id: string
+          refresh_token: string
+          token_expiry: string
+          updated_at: string | null
+          user_email: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string | null
+          id?: string
+          refresh_token: string
+          token_expiry: string
+          updated_at?: string | null
+          user_email: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          id?: string
+          refresh_token?: string
+          token_expiry?: string
+          updated_at?: string | null
+          user_email?: string
+        }
+        Relationships: []
+      }
       invites: {
         Row: {
           accepted_at: string | null
