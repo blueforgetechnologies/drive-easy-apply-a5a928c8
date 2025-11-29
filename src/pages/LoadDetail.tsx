@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import LoadRouteMap from "@/components/LoadRouteMap";
 
 export default function LoadDetail() {
   const { id } = useParams();
@@ -317,9 +318,10 @@ export default function LoadDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="stops">Stops ({stops.length})</TabsTrigger>
+          <TabsTrigger value="route">Route Map</TabsTrigger>
           <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
           <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
@@ -779,6 +781,10 @@ export default function LoadDetail() {
               No stops added yet. Click "Add Stop" to create pickup and delivery stops.
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="route" className="space-y-4">
+          <LoadRouteMap stops={stops} />
         </TabsContent>
 
         <TabsContent value="expenses" className="space-y-4">
