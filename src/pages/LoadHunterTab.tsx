@@ -6,11 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -70,6 +73,7 @@ export default function LoadHunterTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
+  const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -516,7 +520,7 @@ export default function LoadHunterTab() {
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-2">
-                <Button className="flex-1 h-10">
+                <Button className="flex-1 h-10" onClick={() => setCreateHuntOpen(true)}>
                   Create New Hunt
                 </Button>
                 <Button variant="outline" className="flex-1 h-10">
@@ -535,10 +539,128 @@ export default function LoadHunterTab() {
                     <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>Location not available</p>
                   </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create New Hunt Dialog */}
+      <Dialog open={createHuntOpen} onOpenChange={setCreateHuntOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Create New Hunt Plan</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Plan Name */}
+            <div className="space-y-2">
+              <Label htmlFor="planName">Plan Name</Label>
+              <Input id="planName" placeholder="Plan Name" />
+            </div>
+
+            {/* Vehicle Size */}
+            <div className="space-y-2">
+              <Label htmlFor="vehicleSize">
+                Vehicle Size <span className="text-destructive">*</span>
+              </Label>
+              <Select defaultValue="large-straight">
+                <SelectTrigger id="vehicleSize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="large-straight">Large Straight, Small Straight</SelectItem>
+                  <SelectItem value="small-straight">Small Straight</SelectItem>
+                  <SelectItem value="large-straight-only">Large Straight</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Zip Code, Available feet, Partial */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="zipCode">
+                  Zip Code <span className="text-destructive">*</span>
+                </Label>
+                <div className="relative">
+                  <Input id="zipCode" placeholder="Zip Code" />
+                  <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
                 </div>
-              )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="availableFeet">Available feet</Label>
+                <Input id="availableFeet" placeholder="Available feet" />
+              </div>
+              <div className="space-y-2">
+                <Label>&nbsp;</Label>
+                <div className="flex items-center space-x-2 h-10">
+                  <Checkbox id="partial" />
+                  <label htmlFor="partial" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Partial
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Pickup Search Radius, Total Mile Limit */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="pickupRadius">Pickup Search Radius</Label>
+                <Input id="pickupRadius" defaultValue="100" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mileLimit">Total Mile Limit</Label>
+                <Input id="mileLimit" placeholder="Total Mile Limit" />
+              </div>
+            </div>
+
+            {/* Available Load Capacity */}
+            <div className="space-y-2">
+              <Label htmlFor="loadCapacity">Available Load Capacity</Label>
+              <Input id="loadCapacity" defaultValue="9000" />
+            </div>
+
+            {/* Available Date and Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="availableDate">Available Date</Label>
+                <Input id="availableDate" type="date" defaultValue="2025-11-29" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="availableTime">Available Time (Eastern Time)</Label>
+                <Input id="availableTime" type="time" defaultValue="00:00" />
+              </div>
+            </div>
+
+            {/* Destination Zip Code */}
+            <div className="space-y-2">
+              <Label htmlFor="destinationZip">Destination Zip Code (bring driver to home)</Label>
+              <div className="relative">
+                <Input id="destinationZip" placeholder="Destination Zip Code" />
+                <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
+              </div>
+            </div>
+
+            {/* Destination Search Radius */}
+            <div className="space-y-2">
+              <Label htmlFor="destinationRadius">Destination Search Radius</Label>
+              <Input id="destinationRadius" placeholder="Destination Search Radius" />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" placeholder="Notes" rows={4} className="resize-none" />
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-start pt-2">
+              <Button variant="secondary" className="px-8" onClick={() => setCreateHuntOpen(false)}>
+                Save
+              </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+    </div>
         ) : (
           /* Loads Table */
           <div className="flex-1 overflow-hidden flex flex-col">
