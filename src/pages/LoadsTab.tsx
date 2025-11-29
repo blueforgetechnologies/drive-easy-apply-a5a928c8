@@ -121,6 +121,41 @@ export default function LoadsTab() {
     }
   };
 
+  const handleStatusChange = async (loadId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("loads" as any)
+        .update({ status: newStatus })
+        .eq("id", loadId);
+
+      if (error) throw error;
+      toast.success("Status updated successfully");
+      loadData();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case "pending":
+        return { label: "Pending Rate Approval", color: "bg-gray-100 text-gray-800 border-gray-200" };
+      case "dispatched":
+        return { label: "Dispatched", color: "bg-blue-500 text-white border-blue-500" };
+      case "in_transit":
+        return { label: "In Transit", color: "bg-purple-500 text-white border-purple-500" };
+      case "delivered":
+        return { label: "Delivered", color: "bg-green-600 text-white border-green-600" };
+      case "completed":
+        return { label: "Completed", color: "bg-green-800 text-white border-green-800" };
+      case "cancelled":
+        return { label: "Cancelled", color: "bg-red-500 text-white border-red-500" };
+      default:
+        return { label: status, color: "bg-muted text-muted-foreground" };
+    }
+  };
+
   const handleAddLoad = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -713,16 +748,27 @@ export default function LoadsTab() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox />
                       </TableCell>
-                      <TableCell>
-                        <div className="text-xs whitespace-nowrap">
-                          {load.status === "pending" && "Pending Rate"}
-                        </div>
-                        <div className="text-xs whitespace-nowrap">
-                          {load.status === "pending" && "Approval"}
-                        </div>
-                        {load.status === "dispatched" && (
-                          <Badge className="bg-blue-500 text-white text-xs">Dispatched</Badge>
-                        )}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={load.status}
+                          onValueChange={(value) => handleStatusChange(load.id, value)}
+                        >
+                          <SelectTrigger 
+                            className={`h-8 text-xs font-medium border ${getStatusDisplay(load.status).color}`}
+                          >
+                            <SelectValue>
+                              {getStatusDisplay(load.status).label}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending Rate Approval</SelectItem>
+                            <SelectItem value="dispatched">Dispatched</SelectItem>
+                            <SelectItem value="in_transit">In Transit</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold text-sm">
