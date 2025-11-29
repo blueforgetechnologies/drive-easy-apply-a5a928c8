@@ -65,16 +65,6 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                   </div>
                 </div>
 
-                {/* TABLE HEADER */}
-                <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 bg-blue-50 border-b text-[11px] text-blue-600 font-semibold text-center">
-                  <div className="text-left"></div>
-                  <div>Pickup Time<br />DeliverTime</div>
-                  <div>Origin<br />Destination</div>
-                  <div>Empty Drive<br />Loaded Drive</div>
-                  <div>Load Type<br />Weight</div>
-                  <div>Pieces<br />Dimensions</div>
-                </div>
-
                 {/* CARRIER ROWS */}
                 <div className="border-b">
                   <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 text-[11px]">
