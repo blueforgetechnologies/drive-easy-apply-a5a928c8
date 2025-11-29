@@ -691,6 +691,7 @@ export type Database = {
           created_by: string | null
           destination_radius: string | null
           destination_zip: string | null
+          enabled: boolean
           hunt_coordinates: Json | null
           id: string
           last_modified: string
@@ -712,6 +713,7 @@ export type Database = {
           created_by?: string | null
           destination_radius?: string | null
           destination_zip?: string | null
+          enabled?: boolean
           hunt_coordinates?: Json | null
           id?: string
           last_modified?: string
@@ -733,6 +735,7 @@ export type Database = {
           created_by?: string | null
           destination_radius?: string | null
           destination_zip?: string | null
+          enabled?: boolean
           hunt_coordinates?: Json | null
           id?: string
           last_modified?: string
