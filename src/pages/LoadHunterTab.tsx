@@ -180,6 +180,42 @@ export default function LoadHunterTab() {
     setEmailConfigOpen(false);
   };
 
+  const handleDismissEmail = async (emailId: string) => {
+    try {
+      const { error } = await supabase
+        .from('load_emails')
+        .update({ status: 'dismissed' })
+        .eq('id', emailId);
+
+      if (error) throw error;
+
+      // Remove from UI
+      setLoadEmails(loadEmails.filter(email => email.id !== emailId));
+      toast.success('Load email dismissed');
+    } catch (error) {
+      console.error('Error dismissing email:', error);
+      toast.error('Failed to dismiss email');
+    }
+  };
+
+  const handleReviewEmail = async (emailId: string) => {
+    try {
+      const { error } = await supabase
+        .from('load_emails')
+        .update({ status: 'reviewed' })
+        .eq('id', emailId);
+
+      if (error) throw error;
+
+      // Remove from UI
+      setLoadEmails(loadEmails.filter(email => email.id !== emailId));
+      toast.success('Load email marked as reviewed');
+    } catch (error) {
+      console.error('Error reviewing email:', error);
+      toast.error('Failed to mark email as reviewed');
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4">
       {/* Left Sidebar - Vehicles */}
@@ -312,57 +348,119 @@ export default function LoadHunterTab() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[220px]">From</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead className="w-[180px]">Received</TableHead>
-                          <TableHead className="w-[120px]">Status</TableHead>
-                          <TableHead className="w-[80px]"></TableHead>
+                          <TableHead className="w-[200px]">Truck - Drivers<br/>Carrier</TableHead>
+                          <TableHead className="w-[200px]">Customer</TableHead>
+                          <TableHead className="w-[120px]">Received<br/>Expires</TableHead>
+                          <TableHead className="w-[160px]">Pickup Time<br/>Delivery Time</TableHead>
+                          <TableHead className="w-[180px]">Origin<br/>Destination</TableHead>
+                          <TableHead className="w-[140px]">Empty Drive<br/>Loaded Drive</TableHead>
+                          <TableHead className="w-[140px]">Vehicle Type<br/>Weight</TableHead>
+                          <TableHead className="w-[120px]">Pieces<br/>Dimensions</TableHead>
+                          <TableHead className="w-[80px]">Avail ft</TableHead>
+                          <TableHead className="w-[100px]">Source</TableHead>
+                          <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {loadEmails.map((email) => (
-                          <TableRow key={email.id}>
-                            <TableCell>
-                              <div className="font-medium truncate">
-                                {email.from_name || email.from_email}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {email.from_email}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm font-medium truncate max-w-[320px]">
-                                {email.subject || "(No subject)"}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate max-w-[320px]">
-                                {email.body_text || "Preview not available"}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                {new Date(email.received_at).toLocaleString()}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={email.status === 'new' ? 'default' : email.status === 'processed' ? 'secondary' : 'outline'}
-                                className="text-xs"
-                              >
-                                {email.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Dismiss load">
-                                  <X className="h-3 w-3" />
-                                </Button>
-                                <Button variant="outline" size="sm" className="h-7 text-xs">
-                                  Review
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {loadEmails.map((email) => {
+                          const data = email.parsed_data || {};
+                          const receivedDate = new Date(email.received_at);
+                          const now = new Date();
+                          const diffMs = now.getTime() - receivedDate.getTime();
+                          const diffMins = Math.floor(diffMs / 60000);
+                          const diffHours = Math.floor(diffMins / 60);
+                          const diffDays = Math.floor(diffHours / 24);
+                          
+                          let receivedAgo = '';
+                          if (diffDays > 0) receivedAgo = `${diffDays}d ${diffHours % 24}h ago`;
+                          else if (diffHours > 0) receivedAgo = `${diffHours}h ${diffMins % 60}m ago`;
+                          else receivedAgo = `${diffMins}m ago`;
+
+                          return (
+                            <TableRow key={email.id}>
+                              <TableCell>
+                                <div className="text-sm font-medium">Available</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {email.from_name || email.from_email.split('@')[0]}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="mb-1">
+                                  {email.status === 'new' ? '🟡' : '🟢'}
+                                </Badge>
+                                <div className="text-sm font-medium truncate">
+                                  {data.customer || email.from_name || 'Unknown'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">{receivedAgo}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {data.expires_time || '—'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {data.pickup_date || '—'} {data.pickup_time || ''}
+                                </div>
+                                <div className="text-sm">
+                                  {data.delivery_date || '—'} {data.delivery_time || ''}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm font-medium">
+                                  {data.origin_city || '—'}, {data.origin_state || '—'}
+                                </div>
+                                <div className="text-sm">
+                                  {data.destination_city || '—'}, {data.destination_state || '—'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {data.empty_miles ? `${data.empty_miles} (${Math.floor(data.empty_miles / 60)}h ${data.empty_miles % 60}m)` : '—'}
+                                </div>
+                                <div className="text-sm">
+                                  {data.loaded_miles ? `${data.loaded_miles} (${Math.floor(data.loaded_miles / 60)}h ${data.loaded_miles % 60}m)` : '—'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">{data.vehicle_type || '—'}</div>
+                                <div className="text-sm">{data.weight ? `${data.weight} lbs` : '—'}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">{data.pieces || '—'}</div>
+                                <div className="text-sm text-muted-foreground">{data.dimensions || 'Not Specified'}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">{data.avail_ft || '—'}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">Email</div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 text-red-500 hover:text-red-700" 
+                                    aria-label="Dismiss load"
+                                    onClick={() => handleDismissEmail(email.id)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 text-blue-500 hover:text-blue-700" 
+                                    aria-label="Review load"
+                                    onClick={() => handleReviewEmail(email.id)}
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
