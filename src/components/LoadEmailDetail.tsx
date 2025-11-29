@@ -62,36 +62,22 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                       <div className="text-[14px] font-bold mb-0.5">Match ID: 4227959</div>
                       <button className="text-[10px] text-blue-500 hover:underline">View Match History</button>
                     </div>
-                    <div className="grid grid-cols-3 gap-6 text-[11px] text-center">
-                      <div>
-                        <div className="text-gray-500 mb-0.5">Average</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500 mb-0.5">Bid</div>
-                        <div className="text-blue-600 font-semibold">$1,282</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500 mb-0.5">Booked</div>
-                        <div className="font-semibold">N/A</div>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
                 {/* TABLE HEADER */}
-                <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr,2.3fr] px-3 py-2 bg-blue-50 border-b text-[11px] text-blue-600 font-semibold text-center">
+                <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 bg-blue-50 border-b text-[11px] text-blue-600 font-semibold text-center">
                   <div className="text-left"></div>
                   <div>Pickup Time<br />DeliverTime</div>
                   <div>Origin<br />Destination</div>
                   <div>Empty Drive<br />Loaded Drive</div>
                   <div>Load Type<br />Weight</div>
                   <div>Pieces<br />Dimensions</div>
-                  <div className="text-right pr-4">[$/mi]</div>
                 </div>
 
                 {/* CARRIER ROWS */}
                 <div className="border-b">
-                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr,2.3fr] px-3 py-2 text-[11px]">
+                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 text-[11px]">
                     <div className="bg-red-100 -mx-3 px-3 py-1 font-semibold flex items-center">
                       NE-LANG LOGISTICS LLC
                     </div>
@@ -100,12 +86,11 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     <div></div>
                     <div></div>
                     <div></div>
-                    <div></div>
                   </div>
                 </div>
 
                 <div className="border-b">
-                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr,2.3fr] px-3 py-2 text-[11px]">
+                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 text-[11px]">
                     <div className="bg-yellow-100 -mx-3 px-3 py-1 font-semibold flex items-center">
                       GLOBALTRANZ ENTERPRISES, LLC
                     </div>
@@ -129,32 +114,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                       <div>0</div>
                       <div>0L x 0W x 0H</div>
                     </div>
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="text-blue-600 font-semibold">Loaded Miles</span>
-                        <span><span className="font-semibold">375</span> <span className="text-blue-600">$3.42</span></span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-600 font-semibold">Total Miles</span>
-                        <span><span className="font-semibold">783</span> <span className="text-blue-600">$1.64</span></span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-600 font-semibold">Fuel, Tolls and Driver</span>
-                        <span><span className="font-semibold">$0.00</span> <span className="text-blue-600">$0.00</span></span>
-                      </div>
-                    </div>
                   </div>
-                </div>
-
-                {/* BID ROW */}
-                <div className="flex justify-end items-center gap-3 px-4 py-2 border-b bg-slate-50">
-                  <div className="flex items-center gap-2 bg-blue-500 text-white rounded-full h-9 px-4">
-                    <span className="text-xl font-bold">$</span>
-                    <span className="text-xl font-bold">1282</span>
-                  </div>
-                  <Button className="bg-green-600 hover:bg-green-700 h-8 px-4 text-[11px] font-semibold">
-                    Set Bid
-                  </Button>
                 </div>
 
                 {/* ORIGINAL POST */}
@@ -180,20 +140,78 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                   </div>
                 </div>
 
-                {/* ACTION BUTTONS */}
-                <div className="flex justify-end gap-2 px-4 py-3">
-                  <Button variant="destructive" size="sm" className="h-7 px-3 text-[11px]">
-                    Skip
-                  </Button>
-                  <Button size="sm" className="h-7 px-3 text-[11px] bg-blue-500 hover:bg-blue-600">
-                    Undecided
-                  </Button>
-                  <Button size="sm" className="h-7 px-3 text-[11px] bg-blue-500 hover:bg-blue-600">
-                    Mark Unreviewed
-                  </Button>
-                  <Button size="sm" className="h-7 px-3 text-[11px] bg-blue-500 hover:bg-blue-600">
-                    Wait
-                  </Button>
+              </Card>
+
+              {/* STATS AND ACTIONS CARD - SEPARATE */}
+              <Card className="border rounded-md overflow-hidden mt-3">
+                <div className="p-4">
+                  {/* Average/Bid/Booked Row */}
+                  <div className="grid grid-cols-3 gap-4 text-center mb-4 pb-4 border-b">
+                    <div>
+                      <div className="text-[11px] text-gray-500 mb-1">Average</div>
+                      <div className="text-[13px] font-semibold">—</div>
+                    </div>
+                    <div className="bg-blue-50 -mx-2 px-2 py-1 rounded">
+                      <div className="text-[11px] text-gray-500 mb-1">Bid</div>
+                      <div className="text-[15px] font-bold text-blue-600">$1,282</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-gray-500 mb-1">Booked</div>
+                      <div className="text-[13px] font-semibold">N/A</div>
+                    </div>
+                  </div>
+
+                  {/* Miles and Costs */}
+                  <div className="space-y-2 mb-4 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Loaded Miles</span>
+                      <div className="flex gap-2">
+                        <span className="font-semibold">375</span>
+                        <span className="text-blue-600 font-semibold">$3.42</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Total Miles</span>
+                      <div className="flex gap-2">
+                        <span className="font-semibold">783</span>
+                        <span className="text-blue-600 font-semibold">$1.64</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between pb-3 border-b">
+                      <span className="font-semibold">Fuel, Tolls and Driver</span>
+                      <div className="flex gap-2">
+                        <span className="font-semibold">$0.00</span>
+                        <span className="text-blue-600 font-semibold">$0.00</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bid Amount and Button */}
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b">
+                    <div className="flex items-center gap-2 bg-blue-500 text-white rounded-full h-10 px-5">
+                      <span className="text-lg font-bold">$</span>
+                      <span className="text-2xl font-bold">1282</span>
+                    </div>
+                    <Button className="bg-green-600 hover:bg-green-700 h-9 px-6 text-[12px] font-semibold">
+                      Set Bid
+                    </Button>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-2">
+                    <Button variant="destructive" size="sm" className="h-8 px-4 text-[11px]">
+                      Skip
+                    </Button>
+                    <Button size="sm" className="h-8 px-4 text-[11px] bg-blue-500 hover:bg-blue-600">
+                      Undecided
+                    </Button>
+                    <Button size="sm" className="h-8 px-4 text-[11px] bg-blue-500 hover:bg-blue-600">
+                      Mark Unreviewed
+                    </Button>
+                    <Button size="sm" className="h-8 px-4 text-[11px] bg-blue-500 hover:bg-blue-600">
+                      Wait
+                    </Button>
+                  </div>
                 </div>
               </Card>
 
