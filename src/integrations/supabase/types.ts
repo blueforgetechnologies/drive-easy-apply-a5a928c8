@@ -1546,6 +1546,50 @@ export type Database = {
           },
         ]
       }
+      missed_loads_history: {
+        Row: {
+          created_at: string | null
+          dispatcher_id: string | null
+          from_email: string | null
+          id: string
+          load_email_id: string
+          missed_at: string
+          received_at: string | null
+          reset_at: string | null
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dispatcher_id?: string | null
+          from_email?: string | null
+          id?: string
+          load_email_id: string
+          missed_at?: string
+          received_at?: string | null
+          reset_at?: string | null
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dispatcher_id?: string | null
+          from_email?: string | null
+          id?: string
+          load_email_id?: string
+          missed_at?: string
+          received_at?: string | null
+          reset_at?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missed_loads_history_load_email_id_fkey"
+            columns: ["load_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payees: {
         Row: {
           account_number: string | null

@@ -129,25 +129,16 @@ export default function LoadHunterTab() {
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
-    const emailTime = new Date(email.received_at);
-    if (activeFilter === 'unreviewed') return email.status === 'new' && emailTime > thirtyMinutesAgo;
-    if (activeFilter === 'missed') return email.status === 'new' && emailTime <= thirtyMinutesAgo;
+    if (activeFilter === 'unreviewed') return email.status === 'new';
+    if (activeFilter === 'missed') return email.status === 'missed';
     if (activeFilter === 'skipped') return email.status === 'skipped';
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
   });
 
-  // Count emails by status with time-based logic
-  const unreviewedCount = loadEmails.filter(e => {
-    const emailTime = new Date(e.received_at);
-    return e.status === 'new' && emailTime > thirtyMinutesAgo;
-  }).length;
-  
-  const missedCount = loadEmails.filter(e => {
-    const emailTime = new Date(e.received_at);
-    return e.status === 'new' && emailTime <= thirtyMinutesAgo;
-  }).length;
-  
+  // Count emails by status
+  const unreviewedCount = loadEmails.filter(e => e.status === 'new').length;
+  const missedCount = loadEmails.filter(e => e.status === 'missed').length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
   useEffect(() => {
@@ -179,6 +170,50 @@ export default function LoadHunterTab() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Auto-mark loads as missed after 30 minutes
+  useEffect(() => {
+    const checkMissedLoads = async () => {
+      const now = new Date();
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+      
+      // Find all 'new' status loads that are older than 30 minutes
+      const loadsToMark = loadEmails.filter(email => {
+        const emailTime = new Date(email.received_at);
+        return email.status === 'new' && emailTime <= thirtyMinutesAgo;
+      });
+
+      if (loadsToMark.length > 0) {
+        console.log(`Marking ${loadsToMark.length} loads as missed`);
+        
+        for (const load of loadsToMark) {
+          try {
+            const { error } = await supabase
+              .from('load_emails')
+              .update({ status: 'missed' })
+              .eq('id', load.id);
+
+            if (error) {
+              console.error('Error marking load as missed:', error);
+            }
+          } catch (err) {
+            console.error('Error updating load status:', err);
+          }
+        }
+
+        // Refresh the load emails list
+        await loadLoadEmails();
+      }
+    };
+
+    // Check immediately on mount
+    checkMissedLoads();
+
+    // Then check every minute
+    const interval = setInterval(checkMissedLoads, 60000);
+
+    return () => clearInterval(interval);
+  }, [loadEmails]);
 
   const fetchMapboxToken = async () => {
     try {
