@@ -93,9 +93,10 @@ const LoadEmailDetail = ({
               <div className="border-t pt-4">
                 <div className="text-sm font-semibold mb-2">Email Content:</div>
                 {email.body_html ? (
-                  <div 
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: email.body_html }}
+                  <iframe 
+                    srcDoc={email.body_html}
+                    className="w-full min-h-[600px] border rounded-md bg-white"
+                    sandbox="allow-same-origin"
                   />
                 ) : email.body_text ? (
                   <pre className="text-xs whitespace-pre-wrap font-mono bg-muted p-4 rounded-md overflow-x-auto">
