@@ -64,6 +64,7 @@ interface Load {
 
 interface HuntPlan {
   id: string;
+  vehicleId: string;
   planName: string;
   vehicleSize: string;
   zipCode: string;
@@ -344,8 +345,14 @@ export default function LoadHunterTab() {
   };
 
   const handleSaveHuntPlan = () => {
+    if (!selectedVehicle) {
+      toast.error("No vehicle selected");
+      return;
+    }
+
     const newHuntPlan: HuntPlan = {
       id: Math.random().toString(36).substr(2, 9),
+      vehicleId: selectedVehicle.id,
       ...huntFormData,
       createdBy: "Sofiane Talbi",
       createdAt: new Date(),
@@ -695,8 +702,10 @@ export default function LoadHunterTab() {
                 </div>
               </div>
 
-              {/* Hunt Plans */}
-              {huntPlans.map((plan) => (
+              {/* Hunt Plans - Filter by selected vehicle */}
+              {huntPlans
+                .filter((plan) => plan.vehicleId === selectedVehicle.id)
+                .map((plan) => (
                 <Card key={plan.id} className="p-4 space-y-3 bg-card border-2 border-border">
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between">
