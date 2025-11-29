@@ -39,7 +39,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
           <div className="flex gap-2">
             {/* Load Details Card */}
             <div className="flex-1">
-              <Card className="border rounded-md overflow-hidden h-full">
+              <Card className="border rounded-md overflow-hidden h-full pb-0">
                 {/* HEADER */}
                 <div className="flex items-center border-b p-2 bg-slate-50">
                   <div className="flex items-center gap-2 flex-1">
