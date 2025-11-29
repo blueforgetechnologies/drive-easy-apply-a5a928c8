@@ -704,7 +704,7 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <Badge variant="destructive" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'missed' ? 'bg-red-700' : 'bg-red-600'}`}>{missedCount}</Badge>
+              <Badge variant="destructive" className="h-4 px-1.5 text-[10px] ml-1 bg-red-400 text-white">{missedCount}</Badge>
             </Button>
             
             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
