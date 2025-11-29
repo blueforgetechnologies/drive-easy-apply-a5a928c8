@@ -68,6 +68,7 @@ export default function LoadHunterTab() {
   const [emailProvider, setEmailProvider] = useState("gmail");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [mapboxToken, setMapboxToken] = useState<string>("");
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -75,6 +76,7 @@ export default function LoadHunterTab() {
     loadVehicles();
     loadDrivers();
     loadLoadEmails();
+    fetchMapboxToken();
 
     // Subscribe to real-time updates for load_emails
     const channel = supabase
@@ -100,9 +102,22 @@ export default function LoadHunterTab() {
     };
   }, []);
 
+  const fetchMapboxToken = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+      if (error) throw error;
+      if (data?.token) {
+        setMapboxToken(data.token);
+      }
+    } catch (error) {
+      console.error('Failed to fetch Mapbox token:', error);
+      toast.error('Failed to load map token');
+    }
+  };
+
   // Initialize map when vehicle is selected
   useEffect(() => {
-    if (!selectedVehicle || !mapContainer.current) return;
+    if (!selectedVehicle || !mapContainer.current || !mapboxToken) return;
 
     // Clean up existing map
     if (map.current) {
@@ -117,7 +132,7 @@ export default function LoadHunterTab() {
     if (isNaN(lat) || isNaN(lng)) return;
 
     // Initialize new map
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
+    mapboxgl.accessToken = mapboxToken;
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -144,7 +159,7 @@ export default function LoadHunterTab() {
         map.current = null;
       }
     };
-  }, [selectedVehicle]);
+  }, [selectedVehicle, mapboxToken]);
 
   const loadVehicles = async () => {
     try {
