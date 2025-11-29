@@ -701,6 +701,7 @@ export type Database = {
           partial: boolean | null
           pickup_radius: string | null
           plan_name: string
+          updated_at: string | null
           vehicle_id: string
           vehicle_size: string | null
           zip_code: string | null
@@ -723,6 +724,7 @@ export type Database = {
           partial?: boolean | null
           pickup_radius?: string | null
           plan_name: string
+          updated_at?: string | null
           vehicle_id: string
           vehicle_size?: string | null
           zip_code?: string | null
@@ -745,6 +747,7 @@ export type Database = {
           partial?: boolean | null
           pickup_radius?: string | null
           plan_name?: string
+          updated_at?: string | null
           vehicle_id?: string
           vehicle_size?: string | null
           zip_code?: string | null
