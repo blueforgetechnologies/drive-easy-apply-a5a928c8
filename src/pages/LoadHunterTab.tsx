@@ -123,12 +123,21 @@ export default function LoadHunterTab() {
   const handleRefreshLoads = async () => {
     setRefreshing(true);
     try {
-      // Use Lovable Cloud client to invoke the edge function
-      const { data, error } = await supabase.functions.invoke('gmail-auth', {
-        body: { action: 'start' },
-      });
+      // Call the public edge function directly via HTTP with action as query param
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-auth?action=start`,
+        {
+          method: 'GET',
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('gmail-auth error response:', errorText);
+        throw new Error(errorText || 'Failed to start Gmail authorization');
+      }
+
+      const data = await response.json();
 
       // Open Gmail OAuth window
       window.open(data?.authUrl, '_blank', 'width=600,height=700');
@@ -146,6 +155,7 @@ export default function LoadHunterTab() {
       setRefreshing(false);
     }
   };
+
   const handleSaveEmailConfig = () => {
     if (!emailAddress) {
       toast.error("Please enter an email address");
@@ -251,10 +261,11 @@ export default function LoadHunterTab() {
               </DialogContent>
             </Dialog>
             <Button
-              onClick={handleRefreshLoads}
-              disabled={refreshing}
+              variant="default"
               size="sm"
               className="gap-2"
+              onClick={handleRefreshLoads}
+              disabled={refreshing}
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Refreshing..." : "Refresh Loads"}
@@ -262,93 +273,89 @@ export default function LoadHunterTab() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b">
-          <Button variant="default" size="sm" className="rounded-b-none bg-red-600 hover:bg-red-700">
-            Unreviewed Loads
-            <Badge variant="secondary" className="ml-2 bg-white text-red-600">
-              {loadEmails.length}
-            </Badge>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            Missed
-            <Badge variant="secondary" className="ml-2">0</Badge>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            Watchlist
-            <Badge variant="secondary" className="ml-2 bg-orange-500 text-white">0</Badge>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            Undecided
-            <Badge variant="secondary" className="ml-2 bg-orange-500 text-white">0</Badge>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            Skipped
-            <Badge variant="secondary" className="ml-2">0</Badge>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            My Bids
-            <Badge variant="default" className="ml-2">0</Badge>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            All
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-b-none">
-            Booked
-            <Badge variant="secondary" className="ml-2">0</Badge>
-          </Button>
-        </div>
-
-        {/* Load Table */}
-        <Card className="flex-1 overflow-hidden">
-          <CardContent className="p-0 h-full overflow-auto">
-            {loadEmails.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <div className="text-muted-foreground mb-4">
-                  <Settings className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="font-medium">No load emails yet</p>
-                  <p className="text-sm">Click "Refresh Loads" to connect Gmail and start receiving load emails from {emailAddress}</p>
-                </div>
+        {/* Loads Table */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <Card className="flex-1 flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-3">
+              <div>
+                <CardTitle className="text-base">Unreviewed Load Emails</CardTitle>
+                <p className="text-xs text-muted-foreground">New load offers detected from your monitored inbox</p>
               </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead>From</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Received</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadEmails.map((email) => (
-                    <TableRow key={email.id}>
-                      <TableCell className="font-medium">{email.from_email}</TableCell>
-                      <TableCell className="max-w-md truncate">{email.subject || 'No subject'}</TableCell>
-                      <TableCell className="text-sm">{new Date(email.received_at).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={email.status === 'new' ? 'destructive' : 'secondary'}>
-                          {email.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7">
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7">
-                            <CheckCircle className="h-4 w-4 text-blue-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                {loadEmails.length} new
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+              <div className="border-t">
+                {loadEmails.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.
+                  </div>
+                ) : (
+                  <div className="overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[220px]">From</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead className="w-[180px]">Received</TableHead>
+                          <TableHead className="w-[120px]">Status</TableHead>
+                          <TableHead className="w-[80px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loadEmails.map((email) => (
+                          <TableRow key={email.id}>
+                            <TableCell>
+                              <div className="font-medium truncate">
+                                {email.from_name || email.from_email}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {email.from_email}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm font-medium truncate max-w-[320px]">
+                                {email.subject || "(No subject)"}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate max-w-[320px]">
+                                {email.body_text || "Preview not available"}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {new Date(email.received_at).toLocaleString()}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={email.status === 'new' ? 'default' : email.status === 'processed' ? 'secondary' : 'outline'}
+                                className="text-xs"
+                              >
+                                {email.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Dismiss load">
+                                  <X className="h-3 w-3" />
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-7 text-xs">
+                                  Review
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
