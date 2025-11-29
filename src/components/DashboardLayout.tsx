@@ -272,7 +272,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 pb-20 md:pb-4">
+      <main className="mx-auto max-w-[1700px] px-3 sm:px-4 py-3 sm:py-4 pb-20 md:pb-4">
         {children}
       </main>
 
