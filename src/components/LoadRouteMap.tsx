@@ -5,9 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface LoadRouteMapProps {
   stops: any[];
+  optimizedStops?: any[];
 }
 
-export default function LoadRouteMap({ stops }: LoadRouteMapProps) {
+export default function LoadRouteMap({ stops, optimizedStops }: LoadRouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -56,7 +57,7 @@ export default function LoadRouteMap({ stops }: LoadRouteMapProps) {
     if (map.current && map.current.isStyleLoaded()) {
       updateMarkersAndRoute();
     }
-  }, [stops]);
+  }, [stops, optimizedStops]);
 
   const updateMarkersAndRoute = () => {
     if (!map.current) return;
@@ -68,10 +69,12 @@ export default function LoadRouteMap({ stops }: LoadRouteMapProps) {
     const coordinates: [number, number][] = [];
     const bounds = new mapboxgl.LngLatBounds();
 
-    // Sort stops by sequence
-    const sortedStops = [...stops].sort((a, b) => a.stop_sequence - b.stop_sequence);
+    // Use optimized stops if available, otherwise use original stops
+    const stopsToDisplay = optimizedStops && optimizedStops.length > 0 
+      ? optimizedStops 
+      : [...stops].sort((a, b) => a.stop_sequence - b.stop_sequence);
 
-    sortedStops.forEach((stop, index) => {
+    stopsToDisplay.forEach((stop, index) => {
       // Skip stops without location data
       if (!stop.location_city || !stop.location_state) return;
 
@@ -140,7 +143,7 @@ export default function LoadRouteMap({ stops }: LoadRouteMapProps) {
         }
 
         // Fit bounds after all markers are added
-        if (index === sortedStops.length - 1 && coordinates.length > 0) {
+        if (index === stopsToDisplay.length - 1 && coordinates.length > 0) {
           map.current!.fitBounds(bounds, { padding: 100, maxZoom: 10 });
         }
       });
@@ -204,7 +207,7 @@ export default function LoadRouteMap({ stops }: LoadRouteMapProps) {
         'line-cap': 'round',
       },
       paint: {
-        'line-color': '#6366f1',
+        'line-color': optimizedStops && optimizedStops.length > 0 ? '#22c55e' : '#6366f1',
         'line-width': 4,
         'line-opacity': 0.8,
       },
@@ -235,6 +238,12 @@ export default function LoadRouteMap({ stops }: LoadRouteMapProps) {
             <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
             <span>Delivery</span>
           </div>
+          {optimizedStops && optimizedStops.length > 0 && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+              <div className="w-8 h-1 bg-green-500 rounded"></div>
+              <span className="text-green-600 font-medium">Optimized</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
