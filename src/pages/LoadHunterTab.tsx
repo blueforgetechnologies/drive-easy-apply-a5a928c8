@@ -129,16 +129,31 @@ export default function LoadHunterTab() {
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
-    if (activeFilter === 'unreviewed') return email.status === 'new';
-    if (activeFilter === 'missed') return email.status === 'missed';
+    const emailTime = new Date(email.received_at);
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    
+    if (activeFilter === 'unreviewed') {
+      // Show new loads AND missed loads that are less than 30 minutes old
+      return email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
+    }
+    if (activeFilter === 'missed') {
+      // Show only missed loads that are 30+ minutes old
+      return email.status === 'missed' && emailTime <= thirtyMinutesAgo;
+    }
     if (activeFilter === 'skipped') return email.status === 'skipped';
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
   });
 
   // Count emails by status
-  const unreviewedCount = loadEmails.filter(e => e.status === 'new').length;
-  const missedCount = loadEmails.filter(e => e.status === 'missed').length;
+  const unreviewedCount = loadEmails.filter(e => {
+    const emailTime = new Date(e.received_at);
+    return e.status === 'new' || (e.status === 'missed' && emailTime > thirtyMinutesAgo);
+  }).length;
+  const missedCount = loadEmails.filter(e => {
+    const emailTime = new Date(e.received_at);
+    return e.status === 'missed' && emailTime <= thirtyMinutesAgo;
+  }).length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
   useEffect(() => {
@@ -171,16 +186,16 @@ export default function LoadHunterTab() {
     };
   }, []);
 
-  // Auto-mark loads as missed after 30 minutes
+  // Auto-mark loads as missed after 15 minutes
   useEffect(() => {
     const checkMissedLoads = async () => {
       const now = new Date();
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
       
-      // Find all 'new' status loads that are older than 30 minutes
+      // Find all 'new' status loads that are older than 15 minutes
       const loadsToMark = loadEmails.filter(email => {
         const emailTime = new Date(email.received_at);
-        return email.status === 'new' && emailTime <= thirtyMinutesAgo;
+        return email.status === 'new' && emailTime <= fifteenMinutesAgo;
       });
 
       if (loadsToMark.length > 0) {
