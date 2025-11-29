@@ -678,7 +678,7 @@ export default function LoadDetail() {
                         <div className="flex gap-4 mt-3">
                           {selectedCarrier.safer_status && (
                             <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Authority status</span>
+                              <span className="text-xs text-muted-foreground">Operating Authority Status</span>
                               <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
                                 {selectedCarrier.safer_status}
                               </Badge>
