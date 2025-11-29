@@ -90,9 +90,6 @@ export default function LoadHunterTab() {
   const [loads, setLoads] = useState<Load[]>([]);
   const [loadEmails, setLoadEmails] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [emailConfigOpen, setEmailConfigOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("P.D@talbilogistics.com");
-  const [emailProvider, setEmailProvider] = useState("gmail");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedEmailForDetail, setSelectedEmailForDetail] = useState<any | null>(null);
@@ -380,15 +377,6 @@ export default function LoadHunterTab() {
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const handleSaveEmailConfig = () => {
-    if (!emailAddress) {
-      toast.error("Please enter an email address");
-      return;
-    }
-    toast.success("Email configuration saved");
-    setEmailConfigOpen(false);
   };
 
   const handleSkipEmail = async (emailId: string) => {
@@ -700,51 +688,6 @@ export default function LoadHunterTab() {
               Dispatcher Metrix
             </Button>
             
-            <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs px-2.5">
-                  <Settings className="h-3.5 w-3.5" />
-                  Email Config
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Configure Email Integration</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address to Monitor</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="loads@yourcompany.com"
-                      value={emailAddress}
-                      onChange={(e) => setEmailAddress(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Enter the email address where you receive load offers
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="provider">Email Provider</Label>
-                    <select
-                      id="provider"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={emailProvider}
-                      onChange={(e) => setEmailProvider(e.target.value)}
-                    >
-                      <option value="gmail">Gmail</option>
-                      <option value="outlook">Outlook</option>
-                      <option value="imap">Other (IMAP)</option>
-                    </select>
-                  </div>
-                  <Button onClick={handleSaveEmailConfig} className="w-full">
-                    Save Configuration
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
             <Button
               variant="default"
               size="sm"
