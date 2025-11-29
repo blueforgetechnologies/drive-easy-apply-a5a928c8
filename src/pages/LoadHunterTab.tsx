@@ -350,10 +350,11 @@ export default function LoadHunterTab() {
     loadVehicles();
     loadDrivers();
     loadLoadEmails();
+    loadHuntPlans();
     fetchMapboxToken();
 
     // Subscribe to real-time updates for load_emails
-    const channel = supabase
+    const emailsChannel = supabase
       .channel('load-emails-changes')
       .on(
         'postgres_changes',
@@ -372,8 +373,27 @@ export default function LoadHunterTab() {
       )
       .subscribe();
 
+    // Subscribe to real-time updates for hunt_plans
+    const huntPlansChannel = supabase
+      .channel('hunt-plans-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'hunt_plans'
+        },
+        (payload) => {
+          console.log('Hunt plan change:', payload);
+          // Reload hunt plans on any change
+          loadHuntPlans();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(emailsChannel);
+      supabase.removeChannel(huntPlansChannel);
     };
   }, []);
 
@@ -556,6 +576,44 @@ export default function LoadHunterTab() {
     }
   };
 
+  const loadHuntPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("hunt_plans")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      
+      // Transform database format to component format
+      const transformedPlans: HuntPlan[] = (data || []).map(plan => ({
+        id: plan.id,
+        vehicleId: plan.vehicle_id,
+        planName: plan.plan_name,
+        vehicleSize: plan.vehicle_size || "",
+        zipCode: plan.zip_code || "",
+        availableFeet: plan.available_feet || "",
+        partial: plan.partial || false,
+        pickupRadius: plan.pickup_radius || "",
+        mileLimit: plan.mile_limit || "",
+        loadCapacity: plan.load_capacity || "",
+        availableDate: plan.available_date || "",
+        availableTime: plan.available_time || "",
+        destinationZip: plan.destination_zip || "",
+        destinationRadius: plan.destination_radius || "",
+        notes: plan.notes || "",
+        createdBy: plan.created_by || "",
+        createdAt: new Date(plan.created_at),
+        lastModified: new Date(plan.last_modified),
+        huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
+      }));
+      
+      setHuntPlans(transformedPlans);
+    } catch (error: any) {
+      console.error("Failed to load hunt plans", error);
+    }
+  };
+
   const getDriverName = (driverId: string | null) => {
     if (!driverId) return "";
     const driver = drivers.find(d => d.id === driverId);
@@ -672,19 +730,52 @@ export default function LoadHunterTab() {
         toast.warning("Could not geocode zip code, hunt may not filter accurately");
       }
 
-      const newHuntPlan: HuntPlan = {
-        id: Math.random().toString(36).substr(2, 9),
-        vehicleId: selectedVehicle.id,
-        ...huntFormData,
-        huntCoordinates,
-        createdBy: "Sofiane Talbi",
-        createdAt: new Date(),
-        lastModified: new Date(),
-      } as any;
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      setHuntPlans([...huntPlans, newHuntPlan]);
+      // Get user profile for name
+      let createdBy = "Unknown";
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+        
+        createdBy = profile?.full_name || user.email || "Unknown";
+      }
+
+      // Save to database
+      const { data, error } = await supabase
+        .from("hunt_plans")
+        .insert({
+          vehicle_id: selectedVehicle.id,
+          plan_name: huntFormData.planName,
+          vehicle_size: huntFormData.vehicleSize,
+          zip_code: huntFormData.zipCode,
+          available_feet: huntFormData.availableFeet,
+          partial: huntFormData.partial,
+          pickup_radius: huntFormData.pickupRadius,
+          mile_limit: huntFormData.mileLimit,
+          load_capacity: huntFormData.loadCapacity,
+          available_date: huntFormData.availableDate,
+          available_time: huntFormData.availableTime,
+          destination_zip: huntFormData.destinationZip,
+          destination_radius: huntFormData.destinationRadius,
+          notes: huntFormData.notes,
+          hunt_coordinates: huntCoordinates,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
       setCreateHuntOpen(false);
       toast.success("Hunt plan created successfully");
+      
+      // Reload hunt plans from database
+      await loadHuntPlans();
       
       // Trigger re-filtering of loads
       await loadLoadEmails();
@@ -711,9 +802,22 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleDeleteHuntPlan = (id: string) => {
-    setHuntPlans(huntPlans.filter(plan => plan.id !== id));
-    toast.success("Hunt plan deleted");
+  const handleDeleteHuntPlan = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("hunt_plans")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      // Reload hunt plans from database
+      await loadHuntPlans();
+      toast.success("Hunt plan deleted");
+    } catch (error) {
+      console.error("Error deleting hunt plan:", error);
+      toast.error("Failed to delete hunt plan");
+    }
   };
 
   const formatDateTime = (date: string, time: string) => {
