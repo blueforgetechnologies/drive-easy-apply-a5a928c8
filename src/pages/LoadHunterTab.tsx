@@ -438,6 +438,11 @@ export default function LoadHunterTab() {
     const emailTime = new Date(email.received_at);
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
     
+    // Remove loads without expiration after 30 minutes
+    if (!email.expires_at && emailTime <= thirtyMinutesAgo) {
+      return false;
+    }
+    
     // Apply hunt filtering for unreviewed status
     if (activeFilter === 'unreviewed') {
       const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
@@ -462,6 +467,13 @@ export default function LoadHunterTab() {
   // Count emails by status (with hunt filtering applied for unreviewed)
   const unreviewedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    
+    // Remove loads without expiration after 30 minutes
+    if (!e.expires_at && emailTime <= thirtyMinutesAgo) {
+      return false;
+    }
+    
     const isUnreviewed = e.status === 'new' || (e.status === 'missed' && emailTime > thirtyMinutesAgo);
     
     // Apply hunt filtering for unreviewed count
@@ -2234,6 +2246,23 @@ export default function LoadHunterTab() {
                           else if (diffHours > 0) receivedAgo = `${diffHours}h ${diffMins % 60}m ago`;
                           else receivedAgo = `${diffMins}m ago`;
 
+                          // Calculate expiration time
+                          let expiresIn = '';
+                          if (email.expires_at) {
+                            const expiresDate = new Date(email.expires_at);
+                            const timeUntilExpiration = expiresDate.getTime() - now.getTime();
+                            const minsUntilExpiration = Math.floor(timeUntilExpiration / 60000);
+                            
+                            if (minsUntilExpiration > 0) {
+                              expiresIn = `${minsUntilExpiration}m`;
+                            } else {
+                              expiresIn = 'Expired';
+                            }
+                          } else {
+                            // No expiration time - show infinity symbol
+                            expiresIn = '∞';
+                          }
+
                           return (
                             <TableRow 
                               key={email.id} 
@@ -2262,7 +2291,7 @@ export default function LoadHunterTab() {
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">{receivedAgo}</div>
                                 <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
-                                  {data.expires_time || '—'}
+                                  {expiresIn}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
