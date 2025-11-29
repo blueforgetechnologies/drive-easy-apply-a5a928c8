@@ -170,7 +170,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
         {/* MIDDLE RIGHT COLUMN - Stats & Actions */}
         <div className="w-[280px] space-y-3">
-          <Card className="p-3">
+          <Card className="p-3 flex flex-col justify-between" style={{ height: '560px' }}>
             {/* Average/Bid/Booked Row */}
             <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
               <div>
