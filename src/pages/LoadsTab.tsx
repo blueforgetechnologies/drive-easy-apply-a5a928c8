@@ -39,6 +39,12 @@ interface Load {
   broker_name: string | null;
   reference_number: string | null;
   created_at: string;
+  vehicle?: {
+    vehicle_number: string | null;
+  };
+  driver?: {
+    personal_info: any;
+  };
 }
 
 export default function LoadsTab() {
@@ -91,7 +97,11 @@ export default function LoadsTab() {
     try {
       let query = supabase
         .from("loads" as any)
-        .select("*");
+        .select(`
+          *,
+          vehicle:vehicles!assigned_vehicle_id(vehicle_number),
+          driver:applications!assigned_driver_id(personal_info)
+        `);
       
       // Only filter by status if not "all"
       if (filter !== "all") {
@@ -102,6 +112,7 @@ export default function LoadsTab() {
 
       if (error) {
         toast.error("Error loading loads");
+        console.error(error);
         return;
       }
       setLoads((data as any) || []);
@@ -714,8 +725,14 @@ export default function LoadsTab() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="font-semibold text-sm">N/A</div>
-                        <div className="text-xs text-muted-foreground">-</div>
+                        <div className="font-semibold text-sm">
+                          {load.vehicle?.vehicle_number || "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
+                            ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
+                            : "-"}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">{load.broker_name || "N/A"}</div>
