@@ -93,21 +93,29 @@ const LoadEmailDetail = ({
               <div className="border-t pt-4">
                 <div className="text-sm font-semibold mb-2">Email Content:</div>
                 {(() => {
-                  const emailContent: string | undefined = email.body_html || email.body_text;
-
-                  if (!emailContent) {
+                  const raw = (email.body_html || email.body_text || '') as string;
+                  if (!raw) {
                     return (
                       <div className="text-sm text-muted-foreground">No email content available</div>
                     );
                   }
 
+                  const hasHtmlTag = raw.toLowerCase().includes('<html');
+                  const docHtml = hasHtmlTag
+                    ? raw
+                    : `<!DOCTYPE html><html><head><meta charset="UTF-8"></meta></head><body>${raw}</body></html>`;
+
                   return (
-                    <iframe
-                      srcDoc={emailContent}
-                      className="w-full h-[600px] border rounded-md"
-                      style={{ backgroundColor: 'white' }}
-                      title="Email Content"
-                    />
+                    <div className="space-y-4">
+                      <iframe
+                        srcDoc={docHtml}
+                        className="w-full h-[600px] border rounded-md bg-white"
+                        title="Email Content"
+                      />
+                      <pre className="text-[10px] whitespace-pre-wrap font-mono bg-muted p-2 rounded border max-h-40 overflow-auto">
+                        {raw.slice(0, 1000)}
+                      </pre>
+                    </div>
                   );
                 })()}
               </div>
