@@ -137,11 +137,13 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 {/* VEHICLE */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1 text-[11px] items-center">
+                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-0.5 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Vehicle</div>
                   <div className="text-gray-500">Note:</div>
-                  <div className="flex items-center justify-end gap-2">
-                    <span><span className="font-semibold">Vehicle Size:</span> CARGO VAN</span>
+                  <div className="flex items-center justify-end gap-2 leading-tight">
+                    <span>
+                      <span className="font-semibold">Vehicle Size:</span> CARGO VAN
+                    </span>
                     <Button className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold">
                       Original Email
                     </Button>
