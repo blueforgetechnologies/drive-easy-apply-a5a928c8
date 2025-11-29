@@ -11,7 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -55,6 +62,9 @@ export default function LoadsTab() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedLoadIds, setSelectedLoadIds] = useState<string[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     load_number: `LD${Date.now()}`,
     load_type: "internal",
@@ -90,7 +100,22 @@ export default function LoadsTab() {
 
   useEffect(() => {
     loadData();
+    loadDriversAndVehicles();
   }, [filter]);
+
+  const loadDriversAndVehicles = async () => {
+    try {
+      const [driversResult, vehiclesResult] = await Promise.all([
+        supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
+        supabase.from("vehicles" as any).select("id, vehicle_number").eq("status", "active"),
+      ]);
+      
+      if (driversResult.data) setDrivers(driversResult.data);
+      if (vehiclesResult.data) setVehicles(vehiclesResult.data);
+    } catch (error) {
+      console.error("Error loading drivers/vehicles:", error);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -135,6 +160,90 @@ export default function LoadsTab() {
       console.error("Error updating status:", error);
       toast.error("Failed to update status");
     }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLoadIds.length === filteredLoads.length) {
+      setSelectedLoadIds([]);
+    } else {
+      setSelectedLoadIds(filteredLoads.map(load => load.id));
+    }
+  };
+
+  const toggleSelectLoad = (loadId: string) => {
+    setSelectedLoadIds(prev => 
+      prev.includes(loadId) 
+        ? prev.filter(id => id !== loadId)
+        : [...prev, loadId]
+    );
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("loads" as any)
+        .update({ status: newStatus })
+        .in("id", selectedLoadIds);
+
+      if (error) throw error;
+      toast.success(`Updated ${selectedLoadIds.length} load(s) to ${newStatus}`);
+      setSelectedLoadIds([]);
+      loadData();
+    } catch (error) {
+      console.error("Error updating loads:", error);
+      toast.error("Failed to update loads");
+    }
+  };
+
+  const handleBulkAssignment = async (field: 'assigned_driver_id' | 'assigned_vehicle_id', value: string) => {
+    try {
+      const { error } = await supabase
+        .from("loads" as any)
+        .update({ [field]: value })
+        .in("id", selectedLoadIds);
+
+      if (error) throw error;
+      toast.success(`Assigned ${field === 'assigned_driver_id' ? 'driver' : 'vehicle'} to ${selectedLoadIds.length} load(s)`);
+      setSelectedLoadIds([]);
+      loadData();
+    } catch (error) {
+      console.error("Error assigning:", error);
+      toast.error("Failed to assign");
+    }
+  };
+
+  const handleBulkExport = () => {
+    const selectedLoads = loads.filter(load => selectedLoadIds.includes(load.id));
+    
+    const csvHeaders = [
+      "Load Number", "Status", "Pickup City", "Pickup State", "Pickup Date",
+      "Delivery City", "Delivery State", "Delivery Date", "Rate", "Miles", "Broker"
+    ].join(",");
+    
+    const csvRows = selectedLoads.map(load => [
+      load.load_number,
+      load.status,
+      load.pickup_city || "",
+      load.pickup_state || "",
+      load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yyyy") : "",
+      load.delivery_city || "",
+      load.delivery_state || "",
+      load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yyyy") : "",
+      load.rate || 0,
+      load.estimated_miles || 0,
+      load.broker_name || ""
+    ].join(",")).join("\n");
+    
+    const csv = `${csvHeaders}\n${csvRows}`;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `loads_export_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    toast.success(`Exported ${selectedLoadIds.length} load(s)`);
   };
 
   const getStatusDisplay = (status: string) => {
@@ -621,6 +730,112 @@ export default function LoadsTab() {
         </Dialog>
       </div>
 
+      {selectedLoadIds.length > 0 && (
+        <Card className="mb-4 border-primary/50 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="text-sm">
+                  {selectedLoadIds.length} selected
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedLoadIds([])}
+                  className="h-7"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Check className="h-4 w-4 mr-2" />
+                      Update Status
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("pending")}>
+                      Pending
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("dispatched")}>
+                      Dispatched
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("in_transit")}>
+                      In Transit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("delivered")}>
+                      Delivered
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("completed")}>
+                      Completed
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("cancelled")}>
+                      Cancelled
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Truck className="h-4 w-4 mr-2" />
+                      Assign Driver
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {drivers.length === 0 ? (
+                      <DropdownMenuItem disabled>No active drivers</DropdownMenuItem>
+                    ) : (
+                      drivers.map((driver) => (
+                        <DropdownMenuItem 
+                          key={driver.id}
+                          onClick={() => handleBulkAssignment("assigned_driver_id", driver.id)}
+                        >
+                          {driver.personal_info?.firstName} {driver.personal_info?.lastName}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Truck className="h-4 w-4 mr-2" />
+                      Assign Vehicle
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {vehicles.length === 0 ? (
+                      <DropdownMenuItem disabled>No active vehicles</DropdownMenuItem>
+                    ) : (
+                      vehicles.map((vehicle) => (
+                        <DropdownMenuItem 
+                          key={vehicle.id}
+                          onClick={() => handleBulkAssignment("assigned_vehicle_id", vehicle.id)}
+                        >
+                          {vehicle.vehicle_number}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="outline" size="sm" onClick={handleBulkExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-wrap gap-2">
           <Button
@@ -739,7 +954,10 @@ export default function LoadsTab() {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-12">
-                      <Checkbox />
+                      <Checkbox 
+                        checked={selectedLoadIds.length === filteredLoads.length && filteredLoads.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
                     </TableHead>
                     <TableHead className="text-primary">Status</TableHead>
                     <TableHead className="text-primary">
@@ -788,7 +1006,11 @@ export default function LoadsTab() {
                       onClick={() => viewLoadDetail(load.id)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5 px-3">
-                        <Checkbox className="h-4 w-4" />
+                        <Checkbox 
+                          className="h-4 w-4"
+                          checked={selectedLoadIds.includes(load.id)}
+                          onCheckedChange={() => toggleSelectLoad(load.id)}
+                        />
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5 px-3">
                         <Select
