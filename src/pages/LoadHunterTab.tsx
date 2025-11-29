@@ -442,16 +442,6 @@ export default function LoadHunterTab() {
     }
   }, [selectedVehicle?.id]);
 
-  // Show detailed view if an email is selected
-  if (selectedEmailForDetail) {
-    return (
-      <LoadEmailDetail 
-        email={selectedEmailForDetail} 
-        onClose={() => setSelectedEmailForDetail(null)} 
-      />
-    );
-  }
-
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Filter Bar - Full Width */}
@@ -1135,6 +1125,12 @@ export default function LoadHunterTab() {
         </DialogContent>
       </Dialog>
     </div>
+        ) : selectedEmailForDetail ? (
+          /* Load Email Detail View */
+          <LoadEmailDetail 
+            email={selectedEmailForDetail} 
+            onClose={() => setSelectedEmailForDetail(null)} 
+          />
         ) : (
           /* Loads Table */
           <div className="flex-1 overflow-y-auto flex flex-col">
