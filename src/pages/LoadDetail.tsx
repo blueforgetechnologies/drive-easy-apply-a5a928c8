@@ -1004,6 +1004,7 @@ export default function LoadDetail() {
         <TabsContent value="route" className="space-y-4">
           <LoadRouteMap 
             stops={stops} 
+            vehicle={vehicles.find(v => v.id === load.assigned_vehicle_id)}
             optimizedStops={optimizationResult?.optimizedSequence}
             requiredBreaks={optimizationResult?.requiredBreaks || []}
             onOptimize={handleOptimizeRoute}
