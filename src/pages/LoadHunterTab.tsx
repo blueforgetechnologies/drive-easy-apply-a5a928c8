@@ -654,79 +654,57 @@ export default function LoadHunterTab() {
 
       {/* Main Content Area */}
       <div className="flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3">
-        {/* Left Sidebar - Vehicles */}
-        <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
-        {loading ? (
-          <div className="text-xs text-muted-foreground">Loading...</div>
-        ) : vehicles.length === 0 ? (
-          <div className="text-xs text-muted-foreground">No active trucks</div>
-        ) : (
-          vehicles.map((vehicle) => {
-            const hasHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id);
-            return (
-              <Card 
-                key={vehicle.id} 
-                className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
-                  hasHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
-                }`}
-                onClick={() => setSelectedVehicle(vehicle)}
-              >
-                <div className="flex items-start justify-between gap-1.5">
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <div className="font-medium text-xs leading-tight text-foreground">
-                      {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
+        {/* Left Sidebar - Vehicles - Always Visible */}
+        {!selectedEmailForDetail && (
+          <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
+            {loading ? (
+              <div className="text-xs text-muted-foreground">Loading...</div>
+            ) : vehicles.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No active trucks</div>
+            ) : (
+              vehicles.map((vehicle) => {
+                const hasHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id);
+                return (
+                  <Card 
+                    key={vehicle.id} 
+                    className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
+                      hasHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
+                    } ${selectedVehicle?.id === vehicle.id ? 'bg-muted' : ''}`}
+                    onClick={() => setSelectedVehicle(vehicle)}
+                  >
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="font-medium text-xs leading-tight text-foreground">
+                          {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground leading-tight">
+                          {vehicle.asset_type || "Asset Type"}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
+                          {vehicle.carrier || "No Carrier"}
+                        </div>
+                      </div>
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <div className="h-4 w-4 rounded-sm bg-red-500 flex items-center justify-center text-white text-[9px] font-medium">
+                          0
+                        </div>
+                        <div className="h-4 w-4 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[9px] font-medium">
+                          0
+                        </div>
+                        <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
+                          0
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[11px] text-muted-foreground leading-tight">
-                      {vehicle.asset_type || "Asset Type"}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
-                      {vehicle.carrier || "No Carrier"}
-                    </div>
-                  </div>
-                  <div className="flex gap-0.5 flex-shrink-0">
-                    <div className="h-4 w-4 rounded-sm bg-red-500 flex items-center justify-center text-white text-[9px] font-medium">
-                      0
-                    </div>
-                    <div className="h-4 w-4 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[9px] font-medium">
-                      0
-                    </div>
-                    <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
-                      0
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })
-         )}
-      </div>
-
-      {/* Main Content - Load Board or Vehicle Details */}
-      <div className="flex-1 space-y-2 overflow-hidden flex flex-col">
-        {selectedVehicle && (
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedVehicle(null)}
-                className="gap-1.5"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <div>
-                <h2 className="text-xl font-bold">
-                  Vehicle {selectedVehicle.vehicle_number}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Vehicle details and location
-                </p>
-              </div>
-            </div>
+                  </Card>
+                );
+              })
+            )}
           </div>
         )}
 
+      {/* Main Content - Load Board or Vehicle Details */}
+      <div className="flex-1 space-y-2 overflow-hidden flex flex-col">
         {/* Conditional Content: Load Board or Vehicle Details */}
         {selectedVehicle ? (
           /* Vehicle Details View */
