@@ -45,3 +45,6 @@ verify_jwt = false
 [functions.gmail-webhook]
 verify_jwt = false
 
+[functions.reset-missed-loads]
+verify_jwt = false
+
