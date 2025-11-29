@@ -111,8 +111,8 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                       <div><span className="text-blue-500 font-bold">D</span> {destCity}, {destState}</div>
                     </div>
                     <div className="text-green-600">
-                      <div><span className="text-green-600">+</span> 408mi [6h 48m]</div>
-                      <div><span className="text-green-600">+</span> 375mi [6h 15m]</div>
+                      <div><span className="inline-block w-3 text-green-600">+</span>408mi [6h 48m]</div>
+                      <div><span className="inline-block w-3 text-green-600">+</span>375mi [6h 15m]</div>
                     </div>
                     <div>
                       <div>SPRINTER</div>
