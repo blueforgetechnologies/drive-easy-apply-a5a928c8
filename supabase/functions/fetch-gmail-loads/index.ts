@@ -65,90 +65,81 @@ async function getAccessToken(userEmail: string): Promise<string> {
 function parseLoadEmail(subject: string, bodyText: string): any {
   const parsed: any = {};
 
-  // Extract customer/broker name
-  const customerMatch = bodyText.match(/(?:customer|broker|company)[:\s]*([^\n]+)/i);
-  if (customerMatch) parsed.customer = customerMatch[1].trim();
-
-  // Extract origin city and state
-  const originMatch = bodyText.match(/origin[:\s]*([^,\n]+),?\s*([A-Z]{2})/i);
-  if (originMatch) {
-    parsed.origin_city = originMatch[1].trim();
-    parsed.origin_state = originMatch[2].trim();
+  // Parse Sylectus email subject format:
+  // "VAN from Van Horn, TX to Tupelo, MS - Expedited Load - Typical Premium Freight Hot Shot Load : 1091 miles, 0 lbs. - Posted by..."
+  
+  // Extract vehicle type (first word)
+  const vehicleTypeMatch = subject.match(/^([A-Z\s]+)\s+from/i);
+  if (vehicleTypeMatch) {
+    parsed.vehicle_type = vehicleTypeMatch[1].trim();
   }
 
-  // Extract destination city and state
-  const destMatch = bodyText.match(/destination[:\s]*([^,\n]+),?\s*([A-Z]{2})/i);
-  if (destMatch) {
-    parsed.destination_city = destMatch[1].trim();
-    parsed.destination_state = destMatch[2].trim();
+  // Extract origin and destination from subject
+  const routeMatch = subject.match(/from\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
+  if (routeMatch) {
+    parsed.origin_city = routeMatch[1].trim();
+    parsed.origin_state = routeMatch[2].trim();
+    parsed.destination_city = routeMatch[3].trim();
+    parsed.destination_state = routeMatch[4].trim();
   }
 
-  // Extract pickup date and time
-  const pickupDateMatch = bodyText.match(/pickup[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(?:at\s*)?(\d{1,2}:\d{2}\s*(?:AM|PM|EST|CST|MST|PST)?)?/i);
-  if (pickupDateMatch) {
-    parsed.pickup_date = pickupDateMatch[1].trim();
-    parsed.pickup_time = pickupDateMatch[2]?.trim() || 'ASAP';
+  // Extract miles from subject
+  const milesMatch = subject.match(/:\s*(\d+)\s*miles/i);
+  if (milesMatch) {
+    parsed.loaded_miles = parseInt(milesMatch[1]);
   }
 
-  // Extract delivery date and time
-  const deliveryDateMatch = bodyText.match(/delivery[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(?:at\s*)?(\d{1,2}:\d{2}\s*(?:AM|PM|EST|CST|MST|PST)?)?/i);
-  if (deliveryDateMatch) {
-    parsed.delivery_date = deliveryDateMatch[1].trim();
-    parsed.delivery_time = deliveryDateMatch[2]?.trim() || 'Direct';
+  // Extract weight from subject
+  const weightMatch = subject.match(/(\d+)\s*lbs/i);
+  if (weightMatch) {
+    parsed.weight = weightMatch[1];
   }
 
-  // Extract rate
-  const rateMatch = bodyText.match(/rate[:\s]*\$?[\s]*([\d,]+(?:\.\d{2})?)/i);
+  // Extract customer/poster from subject
+  const postedByMatch = subject.match(/Posted by\s+([^(]+)/i);
+  if (postedByMatch) {
+    parsed.customer = postedByMatch[1].trim();
+  }
+
+  // Clean HTML if present in body
+  let cleanText = bodyText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+
+  // Extract pickup date and time from body
+  const pickupMatch = cleanText.match(/Pick.*?Up.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+  if (pickupMatch) {
+    parsed.pickup_date = pickupMatch[1];
+    parsed.pickup_time = pickupMatch[2];
+  }
+
+  // Extract delivery date and time from body
+  const deliveryMatch = cleanText.match(/Delivery.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+  if (deliveryMatch) {
+    parsed.delivery_date = deliveryMatch[1];
+    parsed.delivery_time = deliveryMatch[2];
+  }
+
+  // Extract rate if available
+  const rateMatch = cleanText.match(/(?:rate|pay).*?\$\s*([\d,]+(?:\.\d{2})?)/i);
   if (rateMatch) {
     parsed.rate = parseFloat(rateMatch[1].replace(/,/g, ''));
   }
 
-  // Extract weight
-  const weightMatch = bodyText.match(/weight[:\s]*([\d,]+)\s*(?:lbs?|pounds?)?/i);
-  if (weightMatch) {
-    parsed.weight = weightMatch[1].replace(/,/g, '');
-  }
-
-  // Extract equipment type
-  const equipmentMatch = bodyText.match(/(?:equipment|trailer|truck)[:\s]*([^\n]+)/i);
-  if (equipmentMatch) {
-    parsed.vehicle_type = equipmentMatch[1].trim();
-  }
-
-  // Extract miles/distance
-  const milesMatch = bodyText.match(/(?:miles|distance)[:\s]*([\d,]+)/i);
-  if (milesMatch) {
-    parsed.loaded_miles = parseInt(milesMatch[1].replace(/,/g, ''));
-  }
-
-  // Extract deadhead miles
-  const deadheadMatch = bodyText.match(/(?:deadhead|empty)[:\s]*([\d,]+)/i);
-  if (deadheadMatch) {
-    parsed.empty_miles = parseInt(deadheadMatch[1].replace(/,/g, ''));
-  }
-
-  // Extract pieces/count
-  const piecesMatch = bodyText.match(/(?:pieces|pallets|count)[:\s]*(\d+)/i);
+  // Extract pieces
+  const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces|pcs|pallets)/i);
   if (piecesMatch) {
     parsed.pieces = parseInt(piecesMatch[1]);
   }
 
   // Extract dimensions
-  const dimensionsMatch = bodyText.match(/dimensions?[:\s]*([^\n]+)/i);
+  const dimensionsMatch = cleanText.match(/dimensions?.*?(\d+[xX]\d+[xX]\d+)/i);
   if (dimensionsMatch) {
-    parsed.dimensions = dimensionsMatch[1].trim();
+    parsed.dimensions = dimensionsMatch[1];
   }
 
-  // Extract available feet
-  const availFtMatch = bodyText.match(/(?:available|avail)[:\s]*(\d+)\s*(?:ft|feet)/i);
-  if (availFtMatch) {
-    parsed.avail_ft = availFtMatch[1];
-  }
-
-  // Extract reference/load number
-  const refMatch = bodyText.match(/(?:ref|reference|load)[:\s#]*([A-Z0-9-]+)/i);
-  if (refMatch) {
-    parsed.reference_number = refMatch[1].trim();
+  // Extract available footage
+  const availMatch = cleanText.match(/(\d+)\s*(?:ft|feet).*?avail/i);
+  if (availMatch) {
+    parsed.avail_ft = availMatch[1];
   }
 
   return parsed;
