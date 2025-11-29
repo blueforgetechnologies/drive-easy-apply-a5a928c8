@@ -53,15 +53,17 @@ export default function LoadHunterTab() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [loadEmails, setLoadEmails] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailConfigOpen, setEmailConfigOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("");
+  const [emailAddress, setEmailAddress] = useState("P.D@talbilogistics.com");
   const [emailProvider, setEmailProvider] = useState("gmail");
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadVehicles();
     loadDrivers();
+    loadLoadEmails();
   }, []);
 
   const loadVehicles = async () => {
@@ -95,6 +97,21 @@ export default function LoadHunterTab() {
     }
   };
 
+  const loadLoadEmails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("load_emails")
+        .select("*")
+        .order("received_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setLoadEmails(data || []);
+    } catch (error: any) {
+      console.error("Failed to load emails", error);
+    }
+  };
+
   const getDriverName = (driverId: string | null) => {
     if (!driverId) return "";
     const driver = drivers.find(d => d.id === driverId);
@@ -104,18 +121,23 @@ export default function LoadHunterTab() {
   };
 
   const handleRefreshLoads = async () => {
-    if (!emailAddress) {
-      toast.error("Please configure email address first");
-      setEmailConfigOpen(true);
-      return;
-    }
-
     setRefreshing(true);
     try {
-      // TODO: Call edge function to fetch emails and parse loads
-      toast.info("Email integration coming soon. This will fetch loads from your configured email.");
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: { action: 'start' }
+      });
+
+      if (error) throw error;
+
+      // Open Gmail OAuth window
+      window.open(data.authUrl, '_blank', 'width=600,height=700');
+      
+      toast.success("Gmail authorization window opened - complete the authorization to start receiving load emails");
+      
+      // Refresh load emails after a delay
+      setTimeout(() => loadLoadEmails(), 3000);
     } catch (error: any) {
-      toast.error("Failed to refresh loads");
+      toast.error("Failed to start Gmail authorization");
     } finally {
       setRefreshing(false);
     }
@@ -242,7 +264,7 @@ export default function LoadHunterTab() {
           <Button variant="default" size="sm" className="rounded-b-none bg-red-600 hover:bg-red-700">
             Unreviewed Loads
             <Badge variant="secondary" className="ml-2 bg-white text-red-600">
-              {loads.length}
+              {loadEmails.length}
             </Badge>
           </Button>
           <Button variant="ghost" size="sm" className="rounded-b-none">
@@ -277,96 +299,35 @@ export default function LoadHunterTab() {
         {/* Load Table */}
         <Card className="flex-1 overflow-hidden">
           <CardContent className="p-0 h-full overflow-auto">
-            {loads.length === 0 ? (
+            {loadEmails.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <div className="text-muted-foreground mb-4">
-                  {!emailAddress ? (
-                    <>
-                      <Settings className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="font-medium">No email configured</p>
-                      <p className="text-sm">Click "Email Config" to set up your load email feed</p>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="font-medium">No loads available</p>
-                      <p className="text-sm">Click "Refresh Loads" to fetch new load offers from your email</p>
-                    </>
-                  )}
+                  <Settings className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">No load emails yet</p>
+                  <p className="text-sm">Click "Refresh Loads" to connect Gmail and start receiving load emails from {emailAddress}</p>
                 </div>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead className="w-[180px]">
-                      <div>Truck - Drivers</div>
-                      <div className="text-xs font-normal text-muted-foreground">Carrier</div>
-                    </TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="w-[110px]">
-                      <div>Received</div>
-                      <div className="text-xs font-normal text-muted-foreground">Expires</div>
-                    </TableHead>
-                    <TableHead>
-                      <div>Pickup Time</div>
-                      <div className="text-xs font-normal text-muted-foreground">Delivery Time</div>
-                    </TableHead>
-                    <TableHead>
-                      <div>Origin</div>
-                      <div className="text-xs font-normal text-muted-foreground">Destination</div>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <div>Empty Drive</div>
-                      <div className="text-xs font-normal text-muted-foreground">Loaded Drive</div>
-                    </TableHead>
-                    <TableHead>
-                      <div>Vehicle Type</div>
-                      <div className="text-xs font-normal text-muted-foreground">Weight</div>
-                    </TableHead>
-                    <TableHead>
-                      <div>Pieces</div>
-                      <div className="text-xs font-normal text-muted-foreground">Dimensions</div>
-                    </TableHead>
-                    <TableHead>Avail ft</TableHead>
-                    <TableHead>Source</TableHead>
+                    <TableHead>From</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Received</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loads.map((load) => (
-                    <TableRow key={load.id}>
+                  {loadEmails.map((email) => (
+                    <TableRow key={email.id}>
+                      <TableCell className="font-medium">{email.from_email}</TableCell>
+                      <TableCell className="max-w-md truncate">{email.subject || 'No subject'}</TableCell>
+                      <TableCell className="text-sm">{new Date(email.received_at).toLocaleString()}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{load.truck_driver_carrier}</div>
-                      </TableCell>
-                      <TableCell className="font-medium">{load.customer}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.received}</div>
-                        <div className="text-xs text-muted-foreground">{load.expires}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.pickup_date} {load.pickup_time}</div>
-                        <div className="text-xs text-muted-foreground">{load.delivery_date} {load.delivery_time}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.origin_city}, {load.origin_state}</div>
-                        <div className="text-xs text-muted-foreground">{load.destination_city}, {load.destination_state}</div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="text-sm">{load.empty_drive_miles} mi</div>
-                        <div className="text-xs text-muted-foreground">{load.loaded_drive_miles} mi</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.vehicle_type}</div>
-                        <div className="text-xs text-muted-foreground">{load.weight}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.pieces}</div>
-                        <div className="text-xs text-muted-foreground">{load.dimensions}</div>
-                      </TableCell>
-                      <TableCell>{load.avail_ft}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{load.source}</Badge>
+                        <Badge variant={email.status === 'new' ? 'destructive' : 'secondary'}>
+                          {email.status}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">

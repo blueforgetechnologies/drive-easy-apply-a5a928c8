@@ -837,6 +837,68 @@ export type Database = {
           },
         ]
       }
+      load_emails: {
+        Row: {
+          assigned_load_id: string | null
+          body_html: string | null
+          body_text: string | null
+          created_at: string
+          email_id: string
+          expires_at: string | null
+          from_email: string
+          from_name: string | null
+          id: string
+          parsed_data: Json | null
+          received_at: string
+          status: string
+          subject: string | null
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_load_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          email_id: string
+          expires_at?: string | null
+          from_email: string
+          from_name?: string | null
+          id?: string
+          parsed_data?: Json | null
+          received_at: string
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_load_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          email_id?: string
+          expires_at?: string | null
+          from_email?: string
+          from_name?: string | null
+          id?: string
+          parsed_data?: Json | null
+          received_at?: string
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_load_emails_load"
+            columns: ["assigned_load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       load_expenses: {
         Row: {
           amount: number
