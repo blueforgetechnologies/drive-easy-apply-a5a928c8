@@ -2233,6 +2233,13 @@ export default function LoadHunterTab() {
                         {filteredEmails
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((email) => {
+                          console.log('LoadHunter expires debug', {
+                            id: email.id,
+                            expires_at: email.expires_at,
+                            parsed_expires: email.parsed_data?.expires,
+                            parsed_expires_at: email.parsed_data?.expires_at,
+                            parsed_expires_datetime: email.parsed_data?.expires_datetime,
+                          });
                           const data = email.parsed_data || {};
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
