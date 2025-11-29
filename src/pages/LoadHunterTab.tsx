@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -138,16 +139,26 @@ export default function LoadHunterTab() {
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [lng, lat],
-      zoom: 12,
+      zoom: 5,
     });
 
+    // Create truck icon marker
+    const el = document.createElement('div');
+    el.className = 'truck-marker';
+    el.style.width = '40px';
+    el.style.height = '40px';
+    el.style.backgroundColor = '#3b82f6';
+    el.style.borderRadius = '50%';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
+    el.style.color = 'white';
+    el.style.fontSize = '20px';
+    el.innerHTML = '🚛';
+
     // Add marker
-    new mapboxgl.Marker({ color: '#3b82f6' })
+    new mapboxgl.Marker({ element: el })
       .setLngLat([lng, lat])
-      .setPopup(
-        new mapboxgl.Popup({ offset: 25 })
-          .setHTML(`<div class="p-2"><strong>${selectedVehicle.vehicle_number || 'Vehicle'}</strong><br/>${selectedVehicle.formatted_address || 'Location'}</div>`)
-      )
       .addTo(map.current);
 
     // Add navigation controls
@@ -423,115 +434,107 @@ export default function LoadHunterTab() {
         {/* Conditional Content: Load Board or Vehicle Details */}
         {selectedVehicle ? (
           /* Vehicle Details View */
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="grid grid-cols-2 gap-4 h-full">
-              {/* Left Panel - Vehicle Info */}
-              <div className="space-y-4 overflow-y-auto">
-                <Card className="p-3">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold">
-                        {selectedVehicle.vehicle_number || "N/A"}
-                      </span>
-                      {getDriverName(selectedVehicle.driver_1_id) ? (
-                        <Badge variant="default" className="text-xs">
-                          Driver Assigned
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="text-xs">
-                          No Driver Assigned
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </Card>
+          <div className="flex-1 overflow-hidden flex gap-3">
+            {/* Left Panel - Vehicle Info */}
+            <div className="w-[420px] flex-shrink-0 space-y-3 overflow-y-auto">
+              {/* Tabs */}
+              <Tabs defaultValue="empty" className="w-full">
+                <TabsList className="w-full grid grid-cols-4">
+                  <TabsTrigger value="empty" className="text-xs">Empty</TabsTrigger>
+                  <TabsTrigger value="delivery" className="text-xs">Delivery Date & Time</TabsTrigger>
+                  <TabsTrigger value="destination" className="text-xs">Destination</TabsTrigger>
+                  <TabsTrigger value="remaining" className="text-xs">Remaining</TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-                <Card className="p-3">
-                  <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">Location</div>
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-primary mt-0.5" />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">
-                          {selectedVehicle.formatted_address || selectedVehicle.last_location || "Location not available"}
-                        </div>
-                      </div>
-                    </div>
+              <Card className="p-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Location</span>
                   </div>
-                </Card>
-
-                <Card className="p-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Odometer</div>
-                      <div className="text-sm font-semibold">
-                        {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
-                      <div className="text-sm font-semibold">
-                        {selectedVehicle.next_service_date || "N/A"}
-                      </div>
-                    </div>
+                  <div className="text-sm font-medium">
+                    {selectedVehicle.formatted_address || selectedVehicle.last_location || "Location not available"}
                   </div>
-                </Card>
-
-                <Card className="p-3">
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold mb-2">Driver Assignments</div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">D1</span>
-                        <span className="text-sm">
-                          {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">D2</span>
-                        <span className="text-sm">
-                          {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 text-xs pt-1">
+                    <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Odometer</span>
+                    <span className="font-semibold">
+                      {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
+                    </span>
                   </div>
-                </Card>
-
-                <Card className="p-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold">Vehicle Note:</div>
-                      <Wrench className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="text-sm text-muted-foreground min-h-[60px]">
-                      {selectedVehicle.notes || "No notes available"}
-                    </div>
-                  </div>
-                </Card>
-
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1">
-                    Create New Hunt
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1">
-                    Set Driver to Time-Off mode
-                  </Button>
                 </div>
-              </div>
+              </Card>
 
-              {/* Right Panel - Map */}
-              <div className="h-full rounded-lg border overflow-hidden">
-                {selectedVehicle.last_location ? (
-                  <div ref={mapContainer} className="w-full h-full" />
-                ) : (
-                  <div className="w-full h-full bg-muted/10 flex items-center justify-center">
-                    <div className="text-center text-sm text-muted-foreground">
-                      <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Location not available</p>
+              {/* Next Maintenance Due - Prominent */}
+              <Card className="p-4 border-2 border-border">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-muted-foreground">Next Maintenance Due</div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold">N/A</div>
+                    <div className="text-xs text-muted-foreground">
+                      {selectedVehicle.next_service_date || "N/A"}
                     </div>
                   </div>
-                )}
+                </div>
+              </Card>
+
+              <Button variant="link" className="text-xs text-primary p-0 h-auto">
+                View Vehicle Details
+              </Button>
+
+              <Card className="p-3">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">D1</span>
+                    <span className="text-muted-foreground">
+                      {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Note: N/A</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">D2</span>
+                    <span className="text-muted-foreground">
+                      {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Note: N/A</span>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Vehicle Note:</div>
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-sm text-muted-foreground min-h-[60px] bg-muted/20 p-2 rounded">
+                    {selectedVehicle.notes || "No notes available"}
+                  </div>
+                </div>
+              </Card>
+
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1 text-xs">
+                  Create New Hunt
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 text-xs">
+                  Set Driver to Time-Off mode
+                </Button>
               </div>
+            </div>
+
+            {/* Right Panel - Map */}
+            <div className="flex-1 rounded-lg border overflow-hidden relative">
+              {selectedVehicle.last_location ? (
+                <div ref={mapContainer} className="w-full h-full" />
+              ) : (
+                <div className="w-full h-full bg-muted/10 flex items-center justify-center">
+                  <div className="text-center text-sm text-muted-foreground">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Location not available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
