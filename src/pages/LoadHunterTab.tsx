@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
@@ -535,15 +536,15 @@ export default function LoadHunterTab() {
         </div>
       </div>
 
-      {/* Vehicle Detail Modal */}
-      <Dialog open={!!selectedVehicle} onOpenChange={(open) => !open && setSelectedVehicle(null)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      {/* Vehicle Detail Panel */}
+      <Sheet open={!!selectedVehicle} onOpenChange={(open) => !open && setSelectedVehicle(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-5xl overflow-y-auto">
           {selectedVehicle && (
             <div className="grid grid-cols-2 gap-4">
               {/* Left Panel - Vehicle Info */}
               <div className="space-y-4">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center justify-between">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-bold">
                         {selectedVehicle.vehicle_number || "N/A"}
@@ -558,8 +559,8 @@ export default function LoadHunterTab() {
                         </Badge>
                       )}
                     </div>
-                  </DialogTitle>
-                </DialogHeader>
+                  </SheetTitle>
+                </SheetHeader>
 
                 <Card className="p-3">
                   <div className="space-y-2">
@@ -649,8 +650,8 @@ export default function LoadHunterTab() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
