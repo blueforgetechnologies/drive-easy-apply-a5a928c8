@@ -706,9 +706,9 @@ export default function LoadHunterTab() {
 
       {/* Main Content - Load Board or Vehicle Details */}
       <div className="flex-1 space-y-2 overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {selectedVehicle && (
+        {selectedVehicle && (
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -718,17 +718,17 @@ export default function LoadHunterTab() {
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-            )}
-            <div>
-              <h2 className="text-xl font-bold">
-                {selectedVehicle ? `Vehicle ${selectedVehicle.vehicle_number}` : 'Load Hunter'}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {selectedVehicle ? 'Vehicle details and location' : 'Available loads from email feed'}
-              </p>
+              <div>
+                <h2 className="text-xl font-bold">
+                  Vehicle {selectedVehicle.vehicle_number}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Vehicle details and location
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Conditional Content: Load Board or Vehicle Details */}
         {selectedVehicle ? (
