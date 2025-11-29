@@ -31,6 +31,11 @@ serve(async (req) => {
       }
     }
 
+    // Fallback: treat POSTs to /gmail-auth as "start" if no explicit action was provided
+    if (!action && req.method === 'POST' && url.pathname.endsWith('/gmail-auth')) {
+      action = 'start';
+    }
+
     // Initiate OAuth flow
     if (action === 'start') {
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
