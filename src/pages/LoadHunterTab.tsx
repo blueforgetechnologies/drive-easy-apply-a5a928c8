@@ -148,6 +148,9 @@ export default function LoadHunterTab() {
   
   // Track which load emails have been verified to match active hunts
   const [matchedLoadIds, setMatchedLoadIds] = useState<Set<string>>(new Set());
+  
+  // Track distances from hunt location to each load's pickup
+  const [loadDistances, setLoadDistances] = useState<Map<string, number>>(new Map());
 
   // Helper function to geocode a location string (zip code or "City, ST")
   const geocodeLocation = async (locationQuery: string): Promise<{ lat: number, lng: number } | null> => {
@@ -296,6 +299,7 @@ export default function LoadHunterTab() {
       const enabledHunts = huntPlans.filter(h => h.enabled);
       if (enabledHunts.length === 0) {
         setMatchedLoadIds(new Set());
+        setLoadDistances(new Map());
         return;
       }
       
@@ -307,9 +311,42 @@ export default function LoadHunterTab() {
       });
       
       const newMatchedIds = new Set<string>();
+      const newDistances = new Map<string, number>();
       
       // Check each recent load against hunt criteria
       for (const email of recentLoads) {
+        // Calculate distance from hunt location to load pickup for ALL loads
+        const loadData = extractLoadLocation(email);
+        
+        // Use the first enabled hunt's coordinates as the "truck location"
+        const primaryHunt = enabledHunts[0];
+        if (primaryHunt?.huntCoordinates) {
+          let loadLat = loadData.originLat;
+          let loadLng = loadData.originLng;
+          
+          // Geocode if needed
+          if ((!loadLat || !loadLng) && (loadData.originZip || loadData.originCityState)) {
+            const query = loadData.originZip || loadData.originCityState!;
+            const coords = await geocodeLocation(query);
+            if (coords) {
+              loadLat = coords.lat;
+              loadLng = coords.lng;
+            }
+          }
+          
+          // Calculate distance
+          if (loadLat && loadLng) {
+            const distance = calculateDistance(
+              primaryHunt.huntCoordinates.lat,
+              primaryHunt.huntCoordinates.lng,
+              loadLat,
+              loadLng
+            );
+            newDistances.set(email.id, Math.round(distance));
+          }
+        }
+        
+        // Check if load matches hunt criteria
         const matched = await loadMatchesHuntAsync(email);
         if (matched) {
           newMatchedIds.add(email.id);
@@ -325,12 +362,14 @@ export default function LoadHunterTab() {
       }
       
       setMatchedLoadIds(newMatchedIds);
+      setLoadDistances(newDistances);
     };
     
     if (mapboxToken && huntPlans.length > 0 && loadEmails.length > 0) {
       searchLoadsForHunts();
     } else if (huntPlans.length === 0) {
       setMatchedLoadIds(new Set());
+      setLoadDistances(new Map());
     }
   }, [loadEmails, huntPlans, mapboxToken]); // Re-run when new loads arrive, hunts change, or token is ready
   
@@ -2183,7 +2222,7 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {data.empty_miles ? `${data.empty_miles} mi` : '—'}
+                                  {loadDistances.get(email.id) ? `${loadDistances.get(email.id)} mi` : (data.empty_miles ? `${data.empty_miles} mi` : '—')}
                                 </div>
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
