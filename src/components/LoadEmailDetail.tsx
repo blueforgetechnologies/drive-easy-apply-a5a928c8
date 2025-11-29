@@ -97,29 +97,46 @@ const LoadEmailDetail = ({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const raw = (email.body_html || email.body_text || '') as string;
+                      const raw = (email.body_html || email.body_text || "") as string;
                       if (!raw) return;
 
-                      const blob = new Blob([raw], { type: 'text/html;charset=utf-8' });
+                      const blob = new Blob([raw], { type: "text/html;charset=utf-8" });
                       const url = URL.createObjectURL(blob);
-                      window.open(url, '_blank', 'noopener,noreferrer');
+                      window.open(url, "_blank", "noopener,noreferrer");
                     }}
                   >
                     Open in new tab
                   </Button>
                 </div>
                 {(() => {
-                  const raw = (email.body_html || email.body_text || '') as string;
+                  const raw = (email.body_html || email.body_text || "") as string;
                   if (!raw) {
                     return (
                       <div className="text-sm text-muted-foreground">No email content available</div>
                     );
                   }
 
+                  const hasHtmlTag = raw.toLowerCase().includes("<html");
+                  const docHtml = hasHtmlTag
+                    ? raw
+                    : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${raw}</body></html>`;
+
                   return (
-                    <pre className="text-[10px] whitespace-pre-wrap font-mono bg-muted p-3 rounded border max-h-[400px] overflow-auto">
-                      {raw}
-                    </pre>
+                    <div className="space-y-2">
+                      <iframe
+                        srcDoc={docHtml}
+                        className="w-full h-[600px] border rounded-md bg-background"
+                        title="Email Content"
+                      />
+                      <details className="text-[10px] bg-muted rounded border max-h-[200px] overflow-auto">
+                        <summary className="cursor-pointer px-2 py-1 font-semibold">
+                          View raw source
+                        </summary>
+                        <pre className="whitespace-pre-wrap font-mono px-2 pb-2">
+                          {raw.slice(0, 4000)}
+                        </pre>
+                      </details>
+                    </div>
                   );
                 })()}
               </div>
