@@ -527,7 +527,7 @@ export default function LoadHunterTab() {
               className="h-7 px-3 text-xs"
               onClick={() => setActiveMode('dispatch')}
             >
-              Dispatch
+              MY TRUCKS
             </Button>
             <Button 
               size="sm" 
@@ -632,6 +632,8 @@ export default function LoadHunterTab() {
                 My Bids
                 <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-blue-700 ml-1">85</Badge>
               </Button>
+              
+              <div className="w-px h-5 bg-border"></div>
               
               <Button 
                 size="sm" 
