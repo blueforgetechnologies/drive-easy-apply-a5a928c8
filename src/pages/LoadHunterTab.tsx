@@ -125,13 +125,13 @@ export default function LoadHunterTab() {
 
   // Calculate time thresholds
   const now = new Date();
-  const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
     const emailTime = new Date(email.received_at);
-    if (activeFilter === 'unreviewed') return email.status === 'new' && emailTime > fifteenMinutesAgo;
-    if (activeFilter === 'missed') return email.status === 'new' && emailTime <= fifteenMinutesAgo;
+    if (activeFilter === 'unreviewed') return email.status === 'new' && emailTime > thirtyMinutesAgo;
+    if (activeFilter === 'missed') return email.status === 'new' && emailTime <= thirtyMinutesAgo;
     if (activeFilter === 'skipped') return email.status === 'skipped';
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
@@ -140,12 +140,12 @@ export default function LoadHunterTab() {
   // Count emails by status with time-based logic
   const unreviewedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
-    return e.status === 'new' && emailTime > fifteenMinutesAgo;
+    return e.status === 'new' && emailTime > thirtyMinutesAgo;
   }).length;
   
   const missedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
-    return e.status === 'new' && emailTime <= fifteenMinutesAgo;
+    return e.status === 'new' && emailTime <= thirtyMinutesAgo;
   }).length;
   
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
