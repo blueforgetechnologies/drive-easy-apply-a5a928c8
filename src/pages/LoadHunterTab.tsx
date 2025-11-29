@@ -734,7 +734,7 @@ export default function LoadHunterTab() {
           /* Vehicle Details View */
           <div className="flex-1 overflow-hidden flex gap-3">
             {/* Left Panel - Vehicle Info */}
-            <div className="w-[500px] flex-shrink-0 space-y-4 overflow-y-auto border rounded-lg p-4 bg-card">
+            <div className="w-[380px] flex-shrink-0 space-y-4 overflow-y-auto border rounded-lg p-4 bg-card">
               {/* Tabs */}
               <Tabs defaultValue="empty" className="w-full">
                 <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30 mb-6">
@@ -1141,17 +1141,17 @@ export default function LoadHunterTab() {
                     <Table>
                       <TableHeader>
                         <TableRow className="h-8">
-                          <TableHead className="w-[160px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
-                          <TableHead className="w-[110px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Customer</TableHead>
-                          <TableHead className="w-[100px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Received<br/>Expires</TableHead>
-                          <TableHead className="w-[130px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Pickup Time<br/>Delivery Time</TableHead>
-                          <TableHead className="w-[150px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
-                          <TableHead className="w-[110px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Empty Drive<br/>Loaded Drive</TableHead>
-                          <TableHead className="w-[110px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
-                          <TableHead className="w-[100px] py-1 text-[13px] leading-tight text-blue-600 font-semibold">Pieces<br/>Dimensions</TableHead>
-                          <TableHead className="w-[70px] py-1 text-[13px] text-blue-600 font-semibold">Avail ft</TableHead>
-                          <TableHead className="w-[80px] py-1 text-[13px] text-blue-600 font-semibold">Source</TableHead>
-                          <TableHead className="w-[90px] py-1 text-[13px] text-blue-600 font-semibold">Actions</TableHead>
+                          <TableHead className="w-[160px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Truck - Drivers / Carrier</TableHead>
+                          <TableHead className="w-[110px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Customer</TableHead>
+                          <TableHead className="w-[100px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Received / Expires</TableHead>
+                          <TableHead className="w-[150px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Pickup Time / Delivery Time</TableHead>
+                          <TableHead className="w-[150px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Origin / Destination</TableHead>
+                          <TableHead className="w-[130px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Empty Drive / Loaded Drive</TableHead>
+                          <TableHead className="w-[130px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Vehicle Type / Weight</TableHead>
+                          <TableHead className="w-[120px] py-1 text-[13px] leading-tight text-blue-600 font-semibold whitespace-nowrap">Pieces / Dimensions</TableHead>
+                          <TableHead className="w-[70px] py-1 text-[13px] text-blue-600 font-semibold whitespace-nowrap">Avail ft</TableHead>
+                          <TableHead className="w-[80px] py-1 text-[13px] text-blue-600 font-semibold whitespace-nowrap">Source</TableHead>
+                          <TableHead className="w-[90px] py-1 text-[13px] text-blue-600 font-semibold whitespace-nowrap">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
