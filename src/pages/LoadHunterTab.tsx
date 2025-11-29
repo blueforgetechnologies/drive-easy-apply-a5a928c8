@@ -1274,8 +1274,8 @@ export default function LoadHunterTab() {
                     </Table>
                   </div>
                   
-                  {/* Pagination - visible without horizontal scroll */}
-                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background shrink-0">
+                  {/* Pagination - sticky at very bottom */}
+                  <div className="sticky bottom-0 flex items-center justify-between px-4 py-3 border-t bg-background">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span>
