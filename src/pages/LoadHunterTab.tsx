@@ -217,40 +217,40 @@ export default function LoadHunterTab() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-4">
+    <div className="flex h-[calc(100vh-8rem)] gap-3">
       {/* Left Sidebar - Vehicles */}
-      <div className="w-64 flex-shrink-0 space-y-2 overflow-y-auto border-r pr-4">
-        <div className="sticky top-0 bg-background pb-2">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-2">MY TRUCKS</h3>
+      <div className="w-56 flex-shrink-0 space-y-1.5 overflow-y-auto border-r pr-3">
+        <div className="sticky top-0 bg-background pb-1.5">
+          <h3 className="text-xs font-semibold text-muted-foreground mb-1">MY TRUCKS</h3>
         </div>
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading...</div>
+          <div className="text-xs text-muted-foreground">Loading...</div>
         ) : vehicles.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No active trucks</div>
+          <div className="text-xs text-muted-foreground">No active trucks</div>
         ) : (
           vehicles.map((vehicle) => (
-            <Card key={vehicle.id} className="p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className="space-y-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold text-sm">
+            <Card key={vehicle.id} className="p-2 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="space-y-0.5">
+                <div className="flex items-start justify-between gap-1.5">
+                  <div className="font-semibold text-xs leading-tight">
                     {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "Unassigned"}
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  <div className="flex gap-0.5 flex-shrink-0">
+                    <Badge variant="destructive" className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                       0
                     </Badge>
-                    <Badge variant="secondary" className="h-5 w-5 p-0 flex items-center justify-center text-xs bg-orange-500 text-white">
+                    <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-orange-500 text-white">
                       0
                     </Badge>
-                    <Badge variant="default" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                    <Badge variant="default" className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                       0
                     </Badge>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground leading-tight">
                   {vehicle.asset_type || "Asset Type"}
                 </div>
-                <div className="text-xs text-muted-foreground truncate">
+                <div className="text-[10px] text-muted-foreground truncate leading-tight">
                   {vehicle.carrier || "No Carrier"}
                 </div>
               </div>
@@ -260,17 +260,17 @@ export default function LoadHunterTab() {
       </div>
 
       {/* Main Content - Load Board */}
-      <div className="flex-1 space-y-4 overflow-hidden flex flex-col">
+      <div className="flex-1 space-y-2 overflow-hidden flex flex-col">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold">Load Hunter</h2>
-            <p className="text-sm text-muted-foreground">Available loads from email feed</p>
+            <h2 className="text-xl font-bold">Load Hunter</h2>
+            <p className="text-xs text-muted-foreground">Available loads from email feed</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Settings className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs px-2.5">
+                  <Settings className="h-3.5 w-3.5" />
                   Email Config
                 </Button>
               </DialogTrigger>
@@ -314,11 +314,11 @@ export default function LoadHunterTab() {
             <Button
               variant="default"
               size="sm"
-              className="gap-2"
+              className="gap-1.5 h-8 text-xs px-2.5"
               onClick={handleRefreshLoads}
               disabled={refreshing}
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Refreshing..." : "Refresh Loads"}
             </Button>
           </div>
@@ -327,38 +327,38 @@ export default function LoadHunterTab() {
         {/* Loads Table */}
         <div className="flex-1 overflow-hidden flex flex-col">
           <Card className="flex-1 flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between py-3">
+            <CardHeader className="flex flex-row items-center justify-between py-2 px-3">
               <div>
-                <CardTitle className="text-base">Unreviewed Load Emails</CardTitle>
-                <p className="text-xs text-muted-foreground">New load offers detected from your monitored inbox</p>
+                <CardTitle className="text-sm">Unreviewed Load Emails</CardTitle>
+                <p className="text-[10px] text-muted-foreground">New load offers detected from your monitored inbox</p>
               </div>
-              <Badge variant="secondary" className="gap-1 text-xs">
-                <CheckCircle className="h-3 w-3 text-green-500" />
+              <Badge variant="secondary" className="gap-1 text-[10px] h-5 px-1.5">
+                <CheckCircle className="h-2.5 w-2.5 text-green-500" />
                 {loadEmails.length} new
               </Badge>
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col min-h-0">
               <div className="border-t">
                 {loadEmails.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs text-muted-foreground">
                     No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.
                   </div>
                 ) : (
                   <div className="overflow-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[200px]">Truck - Drivers<br/>Carrier</TableHead>
-                          <TableHead className="w-[200px]">Customer</TableHead>
-                          <TableHead className="w-[120px]">Received<br/>Expires</TableHead>
-                          <TableHead className="w-[160px]">Pickup Time<br/>Delivery Time</TableHead>
-                          <TableHead className="w-[180px]">Origin<br/>Destination</TableHead>
-                          <TableHead className="w-[140px]">Empty Drive<br/>Loaded Drive</TableHead>
-                          <TableHead className="w-[140px]">Vehicle Type<br/>Weight</TableHead>
-                          <TableHead className="w-[120px]">Pieces<br/>Dimensions</TableHead>
-                          <TableHead className="w-[80px]">Avail ft</TableHead>
-                          <TableHead className="w-[100px]">Source</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
+                        <TableRow className="h-8">
+                          <TableHead className="w-[160px] py-1 text-[10px] leading-tight">Truck - Drivers<br/>Carrier</TableHead>
+                          <TableHead className="w-[140px] py-1 text-[10px] leading-tight">Customer</TableHead>
+                          <TableHead className="w-[100px] py-1 text-[10px] leading-tight">Received<br/>Expires</TableHead>
+                          <TableHead className="w-[130px] py-1 text-[10px] leading-tight">Pickup Time<br/>Delivery Time</TableHead>
+                          <TableHead className="w-[150px] py-1 text-[10px] leading-tight">Origin<br/>Destination</TableHead>
+                          <TableHead className="w-[110px] py-1 text-[10px] leading-tight">Empty Drive<br/>Loaded Drive</TableHead>
+                          <TableHead className="w-[110px] py-1 text-[10px] leading-tight">Vehicle Type<br/>Weight</TableHead>
+                          <TableHead className="w-[100px] py-1 text-[10px] leading-tight">Pieces<br/>Dimensions</TableHead>
+                          <TableHead className="w-[70px] py-1 text-[10px]">Avail ft</TableHead>
+                          <TableHead className="w-[80px] py-1 text-[10px]">Source</TableHead>
+                          <TableHead className="w-[90px] py-1 text-[10px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -377,84 +377,86 @@ export default function LoadHunterTab() {
                           else receivedAgo = `${diffMins}m ago`;
 
                           return (
-                            <TableRow key={email.id}>
-                              <TableCell>
-                                <div className="text-sm font-medium">Available</div>
-                                <div className="text-xs text-muted-foreground truncate">
+                            <TableRow key={email.id} className="h-12">
+                              <TableCell className="py-1">
+                                <div className="text-[11px] font-medium leading-tight">Available</div>
+                                <div className="text-[10px] text-muted-foreground truncate leading-tight">
                                   {email.from_name || email.from_email.split('@')[0]}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="mb-1">
+                              <TableCell className="py-1">
+                                <Badge variant="outline" className="mb-0.5 h-4 px-1 text-[10px]">
                                   {email.status === 'new' ? '🟡' : '🟢'}
                                 </Badge>
-                                <div className="text-sm font-medium truncate">
+                                <div className="text-[11px] font-medium truncate leading-tight">
                                   {data.customer || email.from_name || 'Unknown'}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{receivedAgo}</div>
-                                <div className="text-xs text-muted-foreground">
+                              <TableCell className="py-1">
+                                <div className="text-[11px] leading-tight">{receivedAgo}</div>
+                                <div className="text-[10px] text-muted-foreground leading-tight">
                                   {data.expires_time || '—'}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
+                              <TableCell className="py-1">
+                                <div className="text-[11px] leading-tight">
                                   {data.pickup_date || '—'} {data.pickup_time || ''}
                                 </div>
-                                <div className="text-sm">
+                                <div className="text-[11px] leading-tight">
                                   {data.delivery_date || '—'} {data.delivery_time || ''}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm font-medium">
+                              <TableCell className="py-1">
+                                <div className="text-[11px] font-medium leading-tight">
                                   {data.origin_city || '—'}, {data.origin_state || '—'}
                                 </div>
-                                <div className="text-sm">
+                                <div className="text-[11px] leading-tight">
                                   {data.destination_city || '—'}, {data.destination_state || '—'}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
+                              <TableCell className="py-1">
+                                <div className="text-[11px] leading-tight">
                                   {data.empty_miles ? `${data.empty_miles} mi` : '—'}
                                 </div>
-                                <div className="text-sm">
+                                <div className="text-[11px] leading-tight">
                                   {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{data.vehicle_type || '—'}</div>
-                                <div className="text-sm">{data.weight ? `${data.weight} lbs` : '—'}</div>
+                              <TableCell className="py-1">
+                                <div className="text-[11px] leading-tight">{data.vehicle_type || '—'}</div>
+                                <div className="text-[11px] leading-tight">{data.weight ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{data.pieces || '—'}</div>
-                                <div className="text-sm text-muted-foreground">{data.dimensions || 'Not Specified'}</div>
+                              <TableCell className="py-1">
+                                <div className="text-[11px] leading-tight">{data.pieces || '—'}</div>
+                                <div className="text-[10px] text-muted-foreground leading-tight">{data.dimensions || 'Not Specified'}</div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{data.avail_ft || '—'}</div>
+                              <TableCell className="py-1">
+                                <div className="text-[11px] leading-tight">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
                               </TableCell>
-                              <TableCell>
-                                <div className="text-sm">Email</div>
+                              <TableCell className="py-1">
+                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                                  {email.from_email.includes('@') ? email.from_email.split('@')[1].split('.')[0] : 'Email'}
+                                </Badge>
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
+                              <TableCell className="text-right py-1">
+                                <div className="flex justify-end gap-0.5">
                                   <Button 
                                     variant="ghost" 
-                                    size="icon" 
-                                    className="h-7 w-7 text-red-500 hover:text-red-700" 
+                                    size="sm" 
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
                                     aria-label="Dismiss load"
                                     onClick={() => handleDismissEmail(email.id)}
                                   >
-                                    <X className="h-4 w-4" />
+                                    <X className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button 
                                     variant="ghost" 
-                                    size="icon" 
-                                    className="h-7 w-7 text-blue-500 hover:text-blue-700" 
+                                    size="sm" 
+                                    className="h-6 w-6 p-0 text-green-500 hover:text-green-700" 
                                     aria-label="Review load"
                                     onClick={() => handleReviewEmail(email.id)}
                                   >
-                                    <CheckCircle className="h-4 w-4" />
+                                    <CheckCircle className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </TableCell>
