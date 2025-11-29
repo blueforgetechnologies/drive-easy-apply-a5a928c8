@@ -143,52 +143,58 @@ export default function LoadHunterTab() {
     return R * c;
   };
 
-  // Cache for geocoded zip codes to avoid repeated API calls
-  const zipCodeCache = useRef<Map<string, { lat: number, lng: number } | null>>(new Map());
+  // Cache for geocoded locations (zip codes or city/state) to avoid repeated API calls
+  const locationCache = useRef<Map<string, { lat: number, lng: number } | null>>(new Map());
   
   // Track which load emails have been verified to match active hunts
   const [matchedLoadIds, setMatchedLoadIds] = useState<Set<string>>(new Set());
 
-  // Helper function to geocode a zip code
-  const geocodeZipCode = async (zipCode: string): Promise<{ lat: number, lng: number } | null> => {
+  // Helper function to geocode a location string (zip code or "City, ST")
+  const geocodeLocation = async (locationQuery: string): Promise<{ lat: number, lng: number } | null> => {
     // Check cache first
-    if (zipCodeCache.current.has(zipCode)) {
-      return zipCodeCache.current.get(zipCode) || null;
+    if (locationCache.current.has(locationQuery)) {
+      return locationCache.current.get(locationQuery) || null;
     }
 
     try {
       if (!mapboxToken) return null;
       
+      const encoded = encodeURIComponent(locationQuery);
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${zipCode}.json?access_token=${mapboxToken}&country=US&types=postcode&limit=1`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${mapboxToken}&country=US&limit=1`
       );
       const data = await response.json();
       
       if (data.features && data.features.length > 0) {
         const [lng, lat] = data.features[0].center;
         const coords = { lat, lng };
-        zipCodeCache.current.set(zipCode, coords);
+        locationCache.current.set(locationQuery, coords);
         return coords;
       }
       
-      zipCodeCache.current.set(zipCode, null);
+      locationCache.current.set(locationQuery, null);
       return null;
     } catch (error) {
-      console.error('Error geocoding zip code:', error);
-      zipCodeCache.current.set(zipCode, null);
+      console.error('Error geocoding location:', error);
+      locationCache.current.set(locationQuery, null);
       return null;
     }
   };
 
   // Helper function to extract location data from load email
-  const extractLoadLocation = (email: any): { originZip?: string, originLat?: number, originLng?: number, loadType?: string, pickupDate?: string } => {
+  const extractLoadLocation = (email: any): { originZip?: string, originLat?: number, originLng?: number, originCityState?: string, loadType?: string, pickupDate?: string } => {
     try {
       if (email.parsed_data) {
         const parsed = email.parsed_data;
+        const originCityState = parsed.origin_city && parsed.origin_state
+          ? `${parsed.origin_city}, ${parsed.origin_state}`
+          : undefined;
+
         return {
           originZip: parsed.origin_zip || parsed.pickup_zip,
           originLat: parsed.origin_lat || parsed.pickup_lat,
           originLng: parsed.origin_lng || parsed.pickup_lng,
+          originCityState,
           loadType: parsed.vehicle_type || parsed.equipment_type,
           pickupDate: parsed.pickup_date
         };
@@ -241,9 +247,10 @@ export default function LoadHunterTab() {
         let loadLat = loadData.originLat;
         let loadLng = loadData.originLng;
         
-        // If load doesn't have coordinates but has zip code, geocode it
-        if ((!loadLat || !loadLng) && loadData.originZip) {
-          const coords = await geocodeZipCode(loadData.originZip);
+        // If load doesn't have coordinates but has zip code or city/state, geocode it
+        if ((!loadLat || !loadLng) && (loadData.originZip || loadData.originCityState)) {
+          const query = loadData.originZip || loadData.originCityState!;
+          const coords = await geocodeLocation(query);
           if (coords) {
             loadLat = coords.lat;
             loadLng = coords.lng;
