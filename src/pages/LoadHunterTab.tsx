@@ -539,23 +539,29 @@ export default function LoadHunterTab() {
       {/* Filter Bar - Full Width - Always Visible */}
       <div className="flex items-center gap-2 py-2 px-3 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
           {/* Mode Buttons */}
-          <div className="flex items-center gap-1 pr-3 border-r flex-shrink-0">
+          <div className="flex items-center border rounded-md overflow-hidden pr-3 border-r flex-shrink-0">
             <Button 
               size="sm" 
-              variant={activeMode === 'admin' ? 'default' : 'outline'}
-              className="h-7 px-3 text-xs"
+              variant={activeMode === 'admin' ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs rounded-none border-0"
               onClick={() => setActiveMode('admin')}
             >
               Admin
             </Button>
+            
+            <div className="w-px h-5 bg-border"></div>
+            
             <Button 
               size="sm" 
-              variant={activeMode === 'dispatch' ? 'default' : 'outline'}
-              className="h-7 px-3 text-xs"
+              variant={activeMode === 'dispatch' ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs rounded-none border-0"
               onClick={() => setActiveMode('dispatch')}
             >
               MY TRUCKS
             </Button>
+          </div>
+          
+          <div className="pr-3 border-r flex-shrink-0">
             <Button 
               size="sm" 
               variant="default"
