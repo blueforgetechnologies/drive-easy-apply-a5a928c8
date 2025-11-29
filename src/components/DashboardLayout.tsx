@@ -3,7 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import MobileNav from "./MobileNav";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -12,10 +16,12 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [userName, setUserName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("drivers");
   const [alertCount, setAlertCount] = useState<number>(0);
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
@@ -142,68 +148,141 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-foreground">TMS</h1>
-            <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList>
-                <TabsTrigger value="map" className="gap-1.5">
-                  <Map className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Map</span>
-                </TabsTrigger>
-                <TabsTrigger value="load-hunter" className="gap-1.5">
-                  <Target className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Load Hunter</span>
-                </TabsTrigger>
-                <TabsTrigger value="business" className="gap-1.5 relative">
-                  <Briefcase className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Business</span>
-                  {alertCount > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                      {alertCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="loads" className="gap-1.5">
-                  <Package className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Loads</span>
-                </TabsTrigger>
-                <TabsTrigger value="accounting" className="gap-1.5">
-                  <Calculator className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Accounting</span>
-                </TabsTrigger>
-                <TabsTrigger value="maintenance" className="gap-1.5">
-                  <Wrench className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Maintenance</span>
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="gap-1.5 relative">
-                  <Settings className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Settings</span>
-                  {integrationAlertCount > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                      {integrationAlertCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {userName}
-            </span>
-            <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-sm">
-              Logout
-            </Button>
+    <div className="min-h-screen w-full bg-background pb-safe">
+      <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
+          <div className="flex justify-between items-center gap-2">
+            {/* Left: Logo + Desktop Nav */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground whitespace-nowrap">TMS</h1>
+              
+              {/* Desktop Navigation - Hidden on mobile */}
+              <div className="hidden md:block overflow-x-auto">
+                <Tabs value={activeTab} onValueChange={handleTabChange}>
+                  <TabsList className="h-9">
+                    <TabsTrigger value="map" className="gap-1.5 h-8 text-xs">
+                      <Map className="h-3.5 w-3.5" />
+                      <span>Map</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs">
+                      <Target className="h-3.5 w-3.5" />
+                      <span>Hunter</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="business" className="gap-1.5 h-8 text-xs relative">
+                      <Briefcase className="h-3.5 w-3.5" />
+                      <span>Business</span>
+                      {alertCount > 0 && (
+                        <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
+                          {alertCount > 9 ? '9+' : alertCount}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="loads" className="gap-1.5 h-8 text-xs">
+                      <Package className="h-3.5 w-3.5" />
+                      <span>Loads</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="accounting" className="gap-1.5 h-8 text-xs">
+                      <Calculator className="h-3.5 w-3.5" />
+                      <span>Accounting</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="maintenance" className="gap-1.5 h-8 text-xs">
+                      <Wrench className="h-3.5 w-3.5" />
+                      <span>Maint</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="settings" className="gap-1.5 h-8 text-xs relative">
+                      <Settings className="h-3.5 w-3.5" />
+                      <span>Settings</span>
+                      {integrationAlertCount > 0 && (
+                        <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
+                          {integrationAlertCount > 9 ? '9+' : integrationAlertCount}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* Mobile Menu Button */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild className="md:hidden">
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <div className="flex flex-col h-full">
+                    <div className="border-b p-4">
+                      <h2 className="font-semibold">Navigation</h2>
+                    </div>
+                    <div className="flex-1 overflow-auto py-2">
+                      <nav className="flex flex-col gap-1 px-2">
+                        {[
+                          { value: "map", icon: Map, label: "Map" },
+                          { value: "load-hunter", icon: Target, label: "Load Hunter" },
+                          { value: "business", icon: Briefcase, label: "Business Manager", badge: alertCount },
+                          { value: "loads", icon: Package, label: "Loads" },
+                          { value: "accounting", icon: Calculator, label: "Accounting" },
+                          { value: "maintenance", icon: Wrench, label: "Maintenance" },
+                          { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          const isActive = activeTab === item.value;
+                          return (
+                            <button
+                              key={item.value}
+                              onClick={() => {
+                                handleTabChange(item.value);
+                                setMobileMenuOpen(false);
+                              }}
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative",
+                                isActive
+                                  ? "bg-primary text-primary-foreground"
+                                  : "hover:bg-accent hover:text-accent-foreground"
+                              )}
+                            >
+                              <Icon className="h-5 w-5" />
+                              <span>{item.label}</span>
+                              {item.badge && item.badge > 0 && (
+                                <span className="ml-auto inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                                  {item.badge > 9 ? '9+' : item.badge}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </nav>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* Right: User info + Logout */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline truncate max-w-[120px]">
+                {userName}
+              </span>
+              <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3">
+                <span className="hidden sm:inline">Logout</span>
+                <span className="sm:hidden">Exit</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-4">
+      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 pb-20 md:pb-4">
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <MobileNav 
+          alertCount={alertCount} 
+          integrationAlertCount={integrationAlertCount}
+        />
+      )}
     </div>
   );
 }
