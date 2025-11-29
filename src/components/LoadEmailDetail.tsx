@@ -222,17 +222,17 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="destructive" size="sm" className="h-8 px-3 text-[10px] flex-1">
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="destructive" size="sm" className="h-8 text-[11px] col-span-2">
                 Skip
               </Button>
-              <Button size="sm" className="h-8 px-3 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
+              <Button size="sm" className="h-8 text-[11px] bg-blue-500 hover:bg-blue-600">
                 Undecided
               </Button>
-              <Button size="sm" className="h-8 px-3 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
+              <Button size="sm" className="h-8 text-[11px] bg-blue-500 hover:bg-blue-600">
                 Mark Unreviewed
               </Button>
-              <Button size="sm" className="h-8 px-3 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
+              <Button size="sm" className="h-8 text-[11px] bg-blue-500 hover:bg-blue-600 col-span-2">
                 Wait
               </Button>
             </div>
