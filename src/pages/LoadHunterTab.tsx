@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
@@ -264,9 +264,7 @@ export default function LoadHunterTab() {
           // Add the new email to the list
           setLoadEmails((current) => [payload.new, ...current]);
           toast.success('New load email received!');
-          
-          // Play sound alert if not muted
-          playAlertSound();
+          // Sound will be handled by the loadEmails length watcher
         }
       )
       .subscribe();
@@ -274,7 +272,26 @@ export default function LoadHunterTab() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isSoundMuted]);
+  }, []);
+
+  // Watch for increases in load email count to trigger sound
+  const previousEmailCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    const currentCount = loadEmails.length;
+
+    if (previousEmailCountRef.current === null) {
+      // Initialize on first run, no sound
+      previousEmailCountRef.current = currentCount;
+      return;
+    }
+
+    if (currentCount > previousEmailCountRef.current) {
+      console.log('📥 Load email count increased:', previousEmailCountRef.current, '→', currentCount);
+      playAlertSound();
+    }
+
+    previousEmailCountRef.current = currentCount;
+  }, [loadEmails.length]);
 
   // Auto-mark loads as missed after 15 minutes
   useEffect(() => {
