@@ -1140,13 +1140,13 @@ export default function LoadHunterTab() {
               </Badge>
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col min-h-0">
-              <div className="border-t">
-                {loadEmails.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-muted-foreground">
-                    No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.
-                  </div>
-                ) : (
-                  <div className="overflow-auto">
+              {loadEmails.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground border-t">
+                  No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1 overflow-auto border-t">
                     <Table>
                       <TableHeader>
                         <TableRow className="h-8">
@@ -1270,11 +1270,9 @@ export default function LoadHunterTab() {
                       </TableBody>
                     </Table>
                   </div>
-                )}
-                
-                {/* Pagination */}
-                {loadEmails.length > 0 && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
+                  
+                  {/* Pagination - Always visible at bottom */}
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background shrink-0">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span className="ml-4">
@@ -1320,8 +1318,8 @@ export default function LoadHunterTab() {
                       </Button>
                     </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
           </div>
