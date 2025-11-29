@@ -117,11 +117,23 @@ export default function LoadHunterTab() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [vehicleNotes, setVehicleNotes] = useState("");
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 17;
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
+
+  // Filter emails based on active filter
+  const filteredEmails = loadEmails.filter(email => {
+    if (activeFilter === 'unreviewed') return email.status === 'new';
+    if (activeFilter === 'skipped') return email.status === 'skipped';
+    if (activeFilter === 'all') return true;
+    return true; // Default for other filters
+  });
+
+  // Count emails by status
+  const unreviewedCount = loadEmails.filter(e => e.status === 'new').length;
+  const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
   useEffect(() => {
     loadVehicles();
@@ -314,21 +326,21 @@ export default function LoadHunterTab() {
     setEmailConfigOpen(false);
   };
 
-  const handleDismissEmail = async (emailId: string) => {
+  const handleSkipEmail = async (emailId: string) => {
     try {
       const { error } = await supabase
         .from('load_emails')
-        .update({ status: 'dismissed' })
+        .update({ status: 'skipped' })
         .eq('id', emailId);
 
       if (error) throw error;
 
-      // Remove from UI
-      setLoadEmails(loadEmails.filter(email => email.id !== emailId));
-      toast.success('Load email dismissed');
+      // Reload emails to update counts and filtered view
+      await loadLoadEmails();
+      toast.success('Load skipped');
     } catch (error) {
-      console.error('Error dismissing email:', error);
-      toast.error('Failed to dismiss email');
+      console.error('Error skipping email:', error);
+      toast.error('Failed to skip email');
     }
   };
 
@@ -487,7 +499,7 @@ export default function LoadHunterTab() {
               }}
             >
               Unreviewed Loads
-              <Badge variant="destructive" className="h-4 px-1.5 text-[10px] bg-red-500 ml-1">2</Badge>
+              <Badge variant="destructive" className="h-4 px-1.5 text-[10px] bg-red-500 ml-1">{unreviewedCount}</Badge>
             </Button>
             
             <Button 
@@ -559,7 +571,7 @@ export default function LoadHunterTab() {
               }}
             >
               Skipped
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">23</Badge>
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">{skippedCount}</Badge>
             </Button>
             
             <Button 
@@ -1151,9 +1163,13 @@ export default function LoadHunterTab() {
           <Card className="flex-1 flex flex-col">
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="border-t">
-                {loadEmails.length === 0 ? (
+                {filteredEmails.length === 0 ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
-                    No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.
+                    {activeFilter === 'skipped' 
+                      ? 'No skipped loads yet.' 
+                      : activeFilter === 'unreviewed'
+                      ? 'No unreviewed loads. Click "Refresh Loads" to check for new emails.'
+                      : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
                   <>
@@ -1175,7 +1191,7 @@ export default function LoadHunterTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {loadEmails
+                        {filteredEmails
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((email) => {
                           const data = email.parsed_data || {};
@@ -1267,9 +1283,12 @@ export default function LoadHunterTab() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
-                                    aria-label="Dismiss load"
-                                    onClick={() => handleDismissEmail(email.id)}
+                                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
+                                    aria-label="Skip load"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSkipEmail(email.id);
+                                    }}
                                   >
                                     <X className="h-3.5 w-3.5" />
                                   </Button>
@@ -1296,7 +1315,7 @@ export default function LoadHunterTab() {
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span>
-                        {Math.min((currentPage - 1) * itemsPerPage + 1, loadEmails.length)} - {Math.min(currentPage * itemsPerPage, loadEmails.length)} of {loadEmails.length}
+                        {Math.min((currentPage - 1) * itemsPerPage + 1, filteredEmails.length)} - {Math.min(currentPage * itemsPerPage, filteredEmails.length)} of {filteredEmails.length}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -1322,8 +1341,8 @@ export default function LoadHunterTab() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCurrentPage(Math.min(Math.ceil(loadEmails.length / itemsPerPage), currentPage + 1))}
-                        disabled={currentPage >= Math.ceil(loadEmails.length / itemsPerPage)}
+                        onClick={() => setCurrentPage(Math.min(Math.ceil(filteredEmails.length / itemsPerPage), currentPage + 1))}
+                        disabled={currentPage >= Math.ceil(filteredEmails.length / itemsPerPage)}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -1331,8 +1350,8 @@ export default function LoadHunterTab() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCurrentPage(Math.ceil(loadEmails.length / itemsPerPage))}
-                        disabled={currentPage >= Math.ceil(loadEmails.length / itemsPerPage)}
+                        onClick={() => setCurrentPage(Math.ceil(filteredEmails.length / itemsPerPage))}
+                        disabled={currentPage >= Math.ceil(filteredEmails.length / itemsPerPage)}
                       >
                         <ChevronsRight className="h-4 w-4" />
                       </Button>
