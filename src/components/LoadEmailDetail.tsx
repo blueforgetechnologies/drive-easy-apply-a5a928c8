@@ -6,10 +6,12 @@ import { useState } from "react";
 import LoadRouteMap from "@/components/LoadRouteMap";
 interface LoadEmailDetailProps {
   email: any;
+  emptyDriveDistance?: number;
   onClose: () => void;
 }
 const LoadEmailDetail = ({
   email,
+  emptyDriveDistance,
   onClose
 }: LoadEmailDetailProps) => {
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -223,8 +225,8 @@ const LoadEmailDetail = ({
                       <div><span className="text-blue-500 font-bold">D</span> {destCity}, {destState}</div>
                     </div>
                     <div className="text-green-600">
-                      <div><span className="inline-block w-3 text-green-600">+</span>408mi [6h 48m]</div>
-                      <div><span className="inline-block w-3 text-green-600">+</span>375mi [6h 15m]</div>
+                      <div><span className="inline-block w-3 text-green-600">+</span>{emptyDriveDistance ? `${emptyDriveDistance}mi` : (data.empty_miles ? `${data.empty_miles}mi` : '—')}</div>
+                      <div><span className="inline-block w-3 text-green-600">+</span>{data.loaded_miles ? `${data.loaded_miles}mi` : '—'}</div>
                     </div>
                     <div>
                       <div>SPRINTER</div>
