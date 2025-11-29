@@ -64,6 +64,29 @@ export default function LoadHunterTab() {
     loadVehicles();
     loadDrivers();
     loadLoadEmails();
+
+    // Subscribe to real-time updates for load_emails
+    const channel = supabase
+      .channel('load-emails-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'load_emails'
+        },
+        (payload) => {
+          console.log('New load email received:', payload);
+          // Add the new email to the list
+          setLoadEmails((current) => [payload.new, ...current]);
+          toast.success('New load email received!');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadVehicles = async () => {
