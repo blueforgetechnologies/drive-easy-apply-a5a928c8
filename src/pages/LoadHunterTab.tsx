@@ -283,34 +283,49 @@ export default function LoadHunterTab() {
     return matchedLoadIds.has(email.id);
   };
   
-  // Effect to verify loads against hunts with async geocoding
+  // Effect to search through last 30 minutes of loads when hunts change
   useEffect(() => {
-    const verifyLoads = async () => {
+    const searchLoadsForHunts = async () => {
       const enabledHunts = huntPlans.filter(h => h.enabled);
       if (enabledHunts.length === 0) {
         setMatchedLoadIds(new Set());
         return;
       }
       
+      // Get loads from last 30 minutes only
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const recentLoads = loadEmails.filter(email => {
+        const receivedAt = new Date(email.received_at);
+        return receivedAt >= thirtyMinutesAgo;
+      });
+      
       const newMatchedIds = new Set<string>();
       
-      // Check each load email
-      for (const email of loadEmails) {
+      // Check each recent load against hunt criteria
+      for (const email of recentLoads) {
         const matched = await loadMatchesHuntAsync(email);
         if (matched) {
           newMatchedIds.add(email.id);
+          
+          // Mark as 'new' if it was missed, so it appears in unreviewed
+          if (email.status === 'missed') {
+            await supabase
+              .from('load_emails')
+              .update({ status: 'new' })
+              .eq('id', email.id);
+          }
         }
       }
       
       setMatchedLoadIds(newMatchedIds);
     };
     
-    if (mapboxToken && loadEmails.length > 0 && huntPlans.length > 0) {
-      verifyLoads();
+    if (mapboxToken && huntPlans.length > 0) {
+      searchLoadsForHunts();
     } else if (huntPlans.length === 0) {
       setMatchedLoadIds(new Set());
     }
-  }, [loadEmails, huntPlans, mapboxToken]);
+  }, [huntPlans, mapboxToken]); // Only trigger when hunts change, not on every load update
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
