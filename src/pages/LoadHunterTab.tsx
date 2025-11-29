@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Home, Bell, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -113,6 +113,7 @@ export default function LoadHunterTab() {
   });
   const [editingNotes, setEditingNotes] = useState(false);
   const [vehicleNotes, setVehicleNotes] = useState("");
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
   const [currentPage, setCurrentPage] = useState(1);
@@ -159,6 +160,29 @@ export default function LoadHunterTab() {
     loadLoadEmails();
     fetchMapboxToken();
 
+    // Function to play alert sound
+    const playAlertSound = () => {
+      if (isSoundMuted) return;
+      
+      // Create an audio context and play a notification sound
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Create a pleasant notification sound
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    };
+
     // Subscribe to real-time updates for load_emails
     const channel = supabase
       .channel('load-emails-changes')
@@ -174,6 +198,9 @@ export default function LoadHunterTab() {
           // Add the new email to the list
           setLoadEmails((current) => [payload.new, ...current]);
           toast.success('New load email received!');
+          
+          // Play sound alert if not muted
+          playAlertSound();
         }
       )
       .subscribe();
@@ -181,7 +208,7 @@ export default function LoadHunterTab() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isSoundMuted]);
 
   // Auto-mark loads as missed after 15 minutes
   useEffect(() => {
@@ -558,8 +585,10 @@ export default function LoadHunterTab() {
               size="sm" 
               variant="outline"
               className="h-7 px-2 text-xs"
+              onClick={() => setIsSoundMuted(!isSoundMuted)}
+              title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
             >
-              <Home className="h-3.5 w-3.5" />
+              {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
             </Button>
             
             <Button
