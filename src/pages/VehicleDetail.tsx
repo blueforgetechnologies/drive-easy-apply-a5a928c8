@@ -23,10 +23,14 @@ export default function VehicleDetail() {
   const [samsaraStats, setSamsaraStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [dispatchers, setDispatchers] = useState<any[]>([]);
 
   useEffect(() => {
     loadVehicle();
     loadSamsaraStats();
+    loadDrivers();
+    loadDispatchers();
   }, [id]);
 
   const loadVehicle = async () => {
@@ -88,6 +92,34 @@ export default function VehicleDetail() {
 
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const loadDrivers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .select('id, personal_info')
+        .eq('driver_status', 'Active');
+      
+      if (error) throw error;
+      setDrivers(data || []);
+    } catch (error) {
+      console.error('Error loading drivers:', error);
+    }
+  };
+
+  const loadDispatchers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('dispatchers')
+        .select('id, first_name, last_name')
+        .eq('status', 'Active');
+      
+      if (error) throw error;
+      setDispatchers(data || []);
+    } catch (error) {
+      console.error('Error loading dispatchers:', error);
+    }
   };
 
   const loadSamsaraStats = async () => {
@@ -286,24 +318,34 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Driver 1</Label>
-                  <Select value={formData.driver_1_id || ''} onValueChange={(value) => updateField('driver_1_id', value)}>
+                  <Select value={formData.driver_1_id || ''} onValueChange={(value) => updateField('driver_1_id', value === 'none' ? null : value)}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Select Driver" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="jose">Jose Lopez</SelectItem>
+                      <SelectItem value="none">No Driver Assigned</SelectItem>
+                      {drivers.map((driver) => (
+                        <SelectItem key={driver.id} value={driver.id}>
+                          {driver.personal_info?.firstName} {driver.personal_info?.lastName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Driver 2</Label>
-                  <Select value={formData.driver_2_id || ''} onValueChange={(value) => updateField('driver_2_id', value)}>
+                  <Select value={formData.driver_2_id || ''} onValueChange={(value) => updateField('driver_2_id', value === 'none' ? null : value)}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Select Driver" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="none">No Driver Assigned</SelectItem>
+                      {drivers.map((driver) => (
+                        <SelectItem key={driver.id} value={driver.id}>
+                          {driver.personal_info?.firstName} {driver.personal_info?.lastName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -326,12 +368,17 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Primary Dispatcher</Label>
-                  <Select value={formData.primary_dispatcher_id || ''} onValueChange={(value) => updateField('primary_dispatcher_id', value)}>
+                  <Select value={formData.primary_dispatcher_id || ''} onValueChange={(value) => updateField('primary_dispatcher_id', value === 'none' ? null : value)}>
                     <SelectTrigger className="h-7 text-xs">
-                      <SelectValue placeholder="Raymond Jones" />
+                      <SelectValue placeholder="Select Dispatcher" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="raymond">Raymond Jones</SelectItem>
+                      <SelectItem value="none">No Dispatcher Assigned</SelectItem>
+                      {dispatchers.map((dispatcher) => (
+                        <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                          {dispatcher.first_name} {dispatcher.last_name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
