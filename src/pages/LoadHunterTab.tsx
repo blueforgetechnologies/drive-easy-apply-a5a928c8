@@ -567,24 +567,6 @@ export default function LoadHunterTab() {
               Booked
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">2</Badge>
             </Button>
-            
-            <Button 
-              size="sm" 
-              variant={activeFilter === 'vehicle-assignment' ? 'default' : 'outline'}
-              className="h-7 px-2.5 text-xs"
-              onClick={() => setActiveFilter('vehicle-assignment')}
-            >
-              Vehicle Assignment
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant={activeFilter === 'dispatcher-metrix' ? 'default' : 'outline'}
-              className="h-7 px-2.5 text-xs"
-              onClick={() => setActiveFilter('dispatcher-metrix')}
-            >
-              Dispatcher Metrix
-            </Button>
           </div>
         </div>
       )}
@@ -669,6 +651,24 @@ export default function LoadHunterTab() {
           </div>
           {!selectedVehicle && (
             <div className="flex gap-1.5">
+            <Button 
+              size="sm" 
+              variant={activeFilter === 'vehicle-assignment' ? 'default' : 'outline'}
+              className="h-8 px-2.5 text-xs"
+              onClick={() => setActiveFilter('vehicle-assignment')}
+            >
+              Vehicle Assignment
+            </Button>
+            
+            <Button 
+              size="sm" 
+              variant={activeFilter === 'dispatcher-metrix' ? 'default' : 'outline'}
+              className="h-8 px-2.5 text-xs"
+              onClick={() => setActiveFilter('dispatcher-metrix')}
+            >
+              Dispatcher Metrix
+            </Button>
+            
             <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs px-2.5">
