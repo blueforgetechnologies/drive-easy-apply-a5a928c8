@@ -30,6 +30,7 @@ export default function LoadDetail() {
   const [dispatchers, setDispatchers] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [carriers, setCarriers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [carrierDialogOpen, setCarrierDialogOpen] = useState(false);
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierLookupLoading, setCarrierLookupLoading] = useState(false);
@@ -69,7 +70,7 @@ export default function LoadDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes, carriersRes] = await Promise.all([
+      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes, carriersRes, customersRes] = await Promise.all([
         supabase.from("loads").select("*").eq("id", id).single(),
         supabase.from("load_stops").select("*").eq("load_id", id).order("stop_sequence"),
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
@@ -79,6 +80,7 @@ export default function LoadDetail() {
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
+        supabase.from("customers").select("id, name, contact_name, phone, email").eq("status", "active"),
       ]);
 
       if (loadRes.error) throw loadRes.error;
@@ -91,6 +93,7 @@ export default function LoadDetail() {
       setDispatchers(dispatchersRes.data || []);
       setLocations(locationsRes.data || []);
       setCarriers(carriersRes.data || []);
+      setCustomers(customersRes.data || []);
     } catch (error: any) {
       toast.error("Error loading load details");
       console.error(error);
@@ -637,7 +640,7 @@ export default function LoadDetail() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select dispatcher" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-background z-50">
                       {dispatchers.map((dispatcher) => (
                         <SelectItem key={dispatcher.id} value={dispatcher.id}>
                           {dispatcher.first_name} {dispatcher.last_name}
@@ -648,13 +651,41 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
+                  <Label>Customer (Pays for Load)</Label>
+                  <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name} {customer.contact_name ? `(${customer.contact_name})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {load.customer_id && (() => {
+                    const selectedCustomer = customers.find(c => c.id === load.customer_id);
+                    if (selectedCustomer) {
+                      return (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {selectedCustomer.phone && <div>Phone: {selectedCustomer.phone}</div>}
+                          {selectedCustomer.email && <div>Email: {selectedCustomer.email}</div>}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                <div>
                   <Label>Assigned Carrier</Label>
                   <div className="flex gap-2">
                     <Select value={load.carrier_id || ""} onValueChange={(value) => updateField("carrier_id", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select carrier" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background z-50">
                         {carriers.map((carrier) => (
                           <SelectItem key={carrier.id} value={carrier.id}>
                             {carrier.name} {carrier.dot_number ? `(DOT: ${carrier.dot_number})` : ""}
