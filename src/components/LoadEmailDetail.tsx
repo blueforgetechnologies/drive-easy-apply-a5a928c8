@@ -92,19 +92,33 @@ const LoadEmailDetail = ({
               </div>
               <div className="border-t pt-4">
                 <div className="text-sm font-semibold mb-2">Email Content:</div>
-                {email.body_html ? (
-                  <iframe 
-                    srcDoc={email.body_html}
-                    className="w-full min-h-[600px] border rounded-md bg-white"
-                    sandbox="allow-same-origin"
-                  />
-                ) : email.body_text ? (
-                  <pre className="text-xs whitespace-pre-wrap font-mono bg-muted p-4 rounded-md overflow-x-auto">
-                    {email.body_text}
-                  </pre>
-                ) : (
-                  <div className="text-sm text-muted-foreground">No email content available</div>
-                )}
+                {(() => {
+                  const rawText: string | undefined = email.body_text;
+                  const hasHtmlInText = rawText && rawText.trim().startsWith('<');
+                  const htmlContent = email.body_html || (hasHtmlInText ? rawText : undefined);
+
+                  if (htmlContent) {
+                    return (
+                      <iframe
+                        srcDoc={htmlContent}
+                        className="w-full min-h-[600px] border rounded-md bg-white"
+                        sandbox="allow-same-origin"
+                      />
+                    );
+                  }
+
+                  if (rawText) {
+                    return (
+                      <pre className="text-xs whitespace-pre-wrap font-mono bg-muted p-4 rounded-md overflow-x-auto">
+                        {rawText}
+                      </pre>
+                    );
+                  }
+
+                  return (
+                    <div className="text-sm text-muted-foreground">No email content available</div>
+                  );
+                })()}
               </div>
             </div>
           </div>
