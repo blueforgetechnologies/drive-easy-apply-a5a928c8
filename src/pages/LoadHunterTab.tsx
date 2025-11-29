@@ -1129,16 +1129,6 @@ export default function LoadHunterTab() {
           /* Loads Table */
           <div className="flex-1 overflow-y-auto flex flex-col">
           <Card className="flex-1 flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between py-2 px-3">
-              <div>
-                <CardTitle className="text-sm">Unreviewed Load Emails</CardTitle>
-                <p className="text-[10px] text-muted-foreground">New load offers detected from your monitored inbox</p>
-              </div>
-              <Badge variant="secondary" className="gap-1 text-[10px] h-5 px-1.5">
-                <CheckCircle className="h-2.5 w-2.5 text-green-500" />
-                {loadEmails.length} new
-              </Badge>
-            </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="border-t">
                 {loadEmails.length === 0 ? (
