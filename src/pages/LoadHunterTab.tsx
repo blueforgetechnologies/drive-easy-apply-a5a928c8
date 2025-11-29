@@ -707,59 +707,65 @@ export default function LoadHunterTab() {
               <Badge variant="destructive" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'missed' ? 'bg-red-700' : 'bg-red-600'}`}>{missedCount}</Badge>
             </Button>
             
-            <Button 
-              size="sm" 
-              variant="outline"
-              className={`h-7 px-2.5 text-xs gap-1.5 ${
-                activeFilter === 'waitlist' 
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-              }`}
-              onClick={() => {
-                setActiveFilter('waitlist');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Waitlist
-              <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'waitlist' ? 'bg-orange-600' : 'bg-orange-500'}`}>{waitlistCount}</Badge>
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant="outline"
-              className={`h-7 px-2.5 text-xs gap-1.5 ${
-                activeFilter === 'undecided' 
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-              }`}
-              onClick={() => {
-                setActiveFilter('undecided');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Undecided
-              <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'undecided' ? 'bg-orange-600' : 'bg-orange-500'}`}>0</Badge>
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant="outline"
-              className={`h-7 px-2.5 text-xs gap-1.5 ${
-                activeFilter === 'skipped' 
-                  ? 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-              }`}
-              onClick={() => {
-                setActiveFilter('skipped');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Skipped
-              <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'skipped' ? 'bg-gray-700' : 'bg-gray-600'}`}>{skippedCount}</Badge>
-            </Button>
+            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+              <Button 
+                size="sm" 
+                variant="ghost"
+                className={`h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 ${
+                  activeFilter === 'waitlist' 
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  setActiveFilter('waitlist');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                Waitlist
+                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'waitlist' ? 'bg-orange-600' : 'bg-orange-500'}`}>{waitlistCount}</Badge>
+              </Button>
+              
+              <div className="w-px h-5 bg-gray-300"></div>
+              
+              <Button 
+                size="sm" 
+                variant="ghost"
+                className={`h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 ${
+                  activeFilter === 'undecided' 
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  setActiveFilter('undecided');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                Undecided
+                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'undecided' ? 'bg-orange-600' : 'bg-orange-500'}`}>0</Badge>
+              </Button>
+              
+              <div className="w-px h-5 bg-gray-300"></div>
+              
+              <Button 
+                size="sm" 
+                variant="ghost"
+                className={`h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 ${
+                  activeFilter === 'skipped' 
+                    ? 'bg-gray-600 hover:bg-gray-700 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  setActiveFilter('skipped');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                Skipped
+                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'skipped' ? 'bg-gray-700' : 'bg-gray-600'}`}>{skippedCount}</Badge>
+              </Button>
+            </div>
             
             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
               <Button 
