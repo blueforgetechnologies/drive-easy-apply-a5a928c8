@@ -723,7 +723,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Waitlist
-                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'waitlist' ? 'bg-orange-600' : 'bg-orange-500'}`}>{waitlistCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-orange-400 text-white">{waitlistCount}</Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
@@ -743,7 +743,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undecided
-                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'undecided' ? 'bg-orange-600' : 'bg-orange-500'}`}>0</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-orange-400 text-white">0</Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
@@ -763,7 +763,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skipped
-                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'skipped' ? 'bg-gray-700' : 'bg-gray-600'}`}>{skippedCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-gray-300 text-gray-700">{skippedCount}</Badge>
               </Button>
             </div>
             
@@ -783,7 +783,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 My Bids
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-600 text-white">85</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">85</Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
@@ -821,7 +821,7 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'booked' ? 'bg-green-700' : 'bg-green-600'}`}>2</Badge>
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">2</Badge>
             </Button>
           </div>
 
