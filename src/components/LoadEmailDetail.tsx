@@ -249,20 +249,20 @@ const LoadEmailDetail = ({
                     <span>
                       <span className="font-semibold">Load expires:</span>{' '}
                       <span className="text-red-600 font-semibold">
-                        {email.expires_at 
+                        {email.expires_at
                           ? new Date(email.expires_at).toLocaleString('en-US', {
                               month: '2-digit',
-                              day: '2-digit', 
+                              day: '2-digit',
                               year: '2-digit',
                               hour: '2-digit',
                               minute: '2-digit',
-                              timeZoneName: 'short'
+                              timeZoneName: 'short',
                             })
-                          : '∞'
-                        }
+                          : (data.expires_datetime || data.expires_at || data.expires || '∞')}
                       </span>
                     </span>
-                    <span className="font-semibold">Posted Rate:</span> <span className="text-red-600 font-semibold">N/A</span>
+                    <span className="font-semibold">Posted Rate:</span>{' '}
+                    <span className="text-red-600 font-semibold">N/A</span>
                   </div>
                 </div>
 
