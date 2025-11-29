@@ -608,93 +608,6 @@ export default function LoadDetail() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label>Assigned Driver</Label>
-                  <div className="flex gap-2">
-                    <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select driver" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {drivers.map((driver) => (
-                          <SelectItem key={driver.id} value={driver.id}>
-                            {driver.personal_info?.firstName} {driver.personal_info?.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {load.assigned_driver_id && (
-                      <EditEntityDialog 
-                        entityId={load.assigned_driver_id} 
-                        entityType="driver"
-                        onEntityUpdated={loadData}
-                      />
-                    )}
-                    <AddDriverDialog onDriverAdded={async (driverId) => {
-                      await loadData();
-                      updateField("assigned_driver_id", driverId);
-                    }} />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Assigned Vehicle</Label>
-                  <div className="flex gap-2">
-                    <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select vehicle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vehicles.map((vehicle) => (
-                          <SelectItem key={vehicle.id} value={vehicle.id}>
-                            {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {load.assigned_vehicle_id && (
-                      <EditEntityDialog 
-                        entityId={load.assigned_vehicle_id} 
-                        entityType="vehicle"
-                        onEntityUpdated={loadData}
-                      />
-                    )}
-                    <AddVehicleDialog onVehicleAdded={async (vehicleId) => {
-                      await loadData();
-                      updateField("assigned_vehicle_id", vehicleId);
-                    }} />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Assigned Dispatcher</Label>
-                  <div className="flex gap-2">
-                    <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select dispatcher" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
-                        {dispatchers.map((dispatcher) => (
-                          <SelectItem key={dispatcher.id} value={dispatcher.id}>
-                            {dispatcher.first_name} {dispatcher.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {load.assigned_dispatcher_id && (
-                      <EditEntityDialog 
-                        entityId={load.assigned_dispatcher_id} 
-                        entityType="dispatcher"
-                        onEntityUpdated={loadData}
-                      />
-                    )}
-                    <AddDispatcherDialog onDispatcherAdded={async (dispatcherId) => {
-                      await loadData();
-                      updateField("assigned_dispatcher_id", dispatcherId);
-                    }} />
-                  </div>
-                </div>
-
-                <div>
                   <Label>Customer (Pays for Load)</Label>
                   <div className="flex gap-2">
                     <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
@@ -785,6 +698,93 @@ export default function LoadDetail() {
                     }
                     return null;
                   })()}
+                </div>
+
+                <div>
+                  <Label>Assigned Vehicle</Label>
+                  <div className="flex gap-2">
+                    <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vehicle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehicles.map((vehicle) => (
+                          <SelectItem key={vehicle.id} value={vehicle.id}>
+                            {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {load.assigned_vehicle_id && (
+                      <EditEntityDialog 
+                        entityId={load.assigned_vehicle_id} 
+                        entityType="vehicle"
+                        onEntityUpdated={loadData}
+                      />
+                    )}
+                    <AddVehicleDialog onVehicleAdded={async (vehicleId) => {
+                      await loadData();
+                      updateField("assigned_vehicle_id", vehicleId);
+                    }} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Assigned Driver</Label>
+                  <div className="flex gap-2">
+                    <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select driver" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drivers.map((driver) => (
+                          <SelectItem key={driver.id} value={driver.id}>
+                            {driver.personal_info?.firstName} {driver.personal_info?.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {load.assigned_driver_id && (
+                      <EditEntityDialog 
+                        entityId={load.assigned_driver_id} 
+                        entityType="driver"
+                        onEntityUpdated={loadData}
+                      />
+                    )}
+                    <AddDriverDialog onDriverAdded={async (driverId) => {
+                      await loadData();
+                      updateField("assigned_driver_id", driverId);
+                    }} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Assigned Dispatcher</Label>
+                  <div className="flex gap-2">
+                    <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select dispatcher" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        {dispatchers.map((dispatcher) => (
+                          <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                            {dispatcher.first_name} {dispatcher.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {load.assigned_dispatcher_id && (
+                      <EditEntityDialog 
+                        entityId={load.assigned_dispatcher_id} 
+                        entityType="dispatcher"
+                        onEntityUpdated={loadData}
+                      />
+                    )}
+                    <AddDispatcherDialog onDispatcherAdded={async (dispatcherId) => {
+                      await loadData();
+                      updateField("assigned_dispatcher_id", dispatcherId);
+                    }} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
