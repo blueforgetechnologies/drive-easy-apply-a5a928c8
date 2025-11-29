@@ -70,7 +70,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
                 {/* CARRIER ROWS */}
                 <div className="border-b">
-                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-2 py-1.5 text-[11px]">
+                  <div className="grid grid-cols-[2.2fr,1.4fr,1.2fr,1.3fr,1fr,1fr] px-2 py-1.5 text-[11px]">
                     <div className="bg-red-100 -mx-2 px-2 py-1 font-semibold flex items-center">
                       NE-LANG LOGISTICS LLC
                     </div>
@@ -98,7 +98,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 <div className="border-b">
-                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-2 py-1.5 text-[11px]">
+                  <div className="grid grid-cols-[2.2fr,1.4fr,1.2fr,1.3fr,1fr,1fr] px-2 py-1.5 text-[11px]">
                     <div className="bg-yellow-100 -mx-2 px-2 py-1 font-semibold flex items-center">
                       GLOBALTRANZ ENTERPRISES, LLC
                     </div>
