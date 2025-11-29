@@ -34,8 +34,8 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
   return (
     <div className="flex-1 overflow-auto">
       <div className="flex gap-3 p-3">
-        {/* CENTER COLUMN */}
-        <div className="flex-1">
+        {/* CENTER COLUMN - Load Details + Map */}
+        <div className="flex-1 space-y-3">
               <Card className="border rounded-md overflow-hidden mb-3">
                 {/* HEADER */}
                 <div className="flex items-center border-b p-3 bg-slate-50">
@@ -140,83 +140,10 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                   </div>
                 </div>
 
-              </Card>
+          </Card>
 
-              {/* STATS AND ACTIONS CARD - SEPARATE */}
-              <Card className="border rounded-md overflow-hidden mt-3">
-                <div className="p-4">
-                  {/* Average/Bid/Booked Row */}
-                  <div className="grid grid-cols-3 gap-4 text-center mb-4 pb-4 border-b">
-                    <div>
-                      <div className="text-[11px] text-gray-500 mb-1">Average</div>
-                      <div className="text-[13px] font-semibold">—</div>
-                    </div>
-                    <div className="bg-blue-50 -mx-2 px-2 py-1 rounded">
-                      <div className="text-[11px] text-gray-500 mb-1">Bid</div>
-                      <div className="text-[15px] font-bold text-blue-600">$1,282</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-gray-500 mb-1">Booked</div>
-                      <div className="text-[13px] font-semibold">N/A</div>
-                    </div>
-                  </div>
-
-                  {/* Miles and Costs */}
-                  <div className="space-y-2 mb-4 text-[11px]">
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Loaded Miles</span>
-                      <div className="flex gap-2">
-                        <span className="font-semibold">375</span>
-                        <span className="text-blue-600 font-semibold">$3.42</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Total Miles</span>
-                      <div className="flex gap-2">
-                        <span className="font-semibold">783</span>
-                        <span className="text-blue-600 font-semibold">$1.64</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between pb-3 border-b">
-                      <span className="font-semibold">Fuel, Tolls and Driver</span>
-                      <div className="flex gap-2">
-                        <span className="font-semibold">$0.00</span>
-                        <span className="text-blue-600 font-semibold">$0.00</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bid Amount and Button */}
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b">
-                    <div className="flex items-center gap-2 bg-blue-500 text-white rounded-full h-10 px-5">
-                      <span className="text-lg font-bold">$</span>
-                      <span className="text-2xl font-bold">1282</span>
-                    </div>
-                    <Button className="bg-green-600 hover:bg-green-700 h-9 px-6 text-[12px] font-semibold">
-                      Set Bid
-                    </Button>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end gap-2">
-                    <Button variant="destructive" size="sm" className="h-8 px-4 text-[11px]">
-                      Skip
-                    </Button>
-                    <Button size="sm" className="h-8 px-4 text-[11px] bg-blue-500 hover:bg-blue-600">
-                      Undecided
-                    </Button>
-                    <Button size="sm" className="h-8 px-4 text-[11px] bg-blue-500 hover:bg-blue-600">
-                      Mark Unreviewed
-                    </Button>
-                    <Button size="sm" className="h-8 px-4 text-[11px] bg-blue-500 hover:bg-blue-600">
-                      Wait
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-
-              {/* MAP */}
-              <Card className="h-[500px] overflow-hidden rounded-md">
+          {/* MAP */}
+          <Card className="h-[500px] overflow-hidden rounded-md">
                 <LoadRouteMap
                   stops={[
                     {
@@ -236,7 +163,83 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
           </Card>
         </div>
 
-        {/* RIGHT QUOTE COLUMN */}
+        {/* MIDDLE RIGHT COLUMN - Stats & Actions */}
+        <div className="w-[280px] space-y-3">
+          <Card className="p-3">
+            {/* Average/Bid/Booked Row */}
+            <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
+              <div>
+                <div className="text-[10px] text-gray-500 mb-1">Average</div>
+                <div className="text-[12px] font-semibold">—</div>
+              </div>
+              <div className="bg-blue-50 -mx-1 px-1 py-1 rounded">
+                <div className="text-[10px] text-gray-500 mb-1">Bid</div>
+                <div className="text-[14px] font-bold text-blue-600">$1,282</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-500 mb-1">Booked</div>
+                <div className="text-[12px] font-semibold">N/A</div>
+              </div>
+            </div>
+
+            {/* [$/mi] Label */}
+            <div className="text-[10px] text-gray-500 text-right mb-2">[$/mi]</div>
+
+            {/* Miles and Costs */}
+            <div className="space-y-2 mb-3 text-[11px]">
+              <div className="flex justify-between">
+                <span className="font-semibold">Loaded Miles</span>
+                <div className="flex gap-3">
+                  <span className="font-semibold">375</span>
+                  <span className="text-blue-600 font-semibold">$3.42</span>
+                </div>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold">Total Miles</span>
+                <div className="flex gap-3">
+                  <span className="font-semibold">783</span>
+                  <span className="text-blue-600 font-semibold">$1.64</span>
+                </div>
+              </div>
+              <div className="flex justify-between pb-3 border-b">
+                <span className="font-semibold">Fuel, Tolls and Driver</span>
+                <div className="flex gap-3">
+                  <span className="font-semibold">$0.00</span>
+                  <span className="text-blue-600 font-semibold">$0.00</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bid Amount and Button */}
+            <div className="flex items-center justify-between mb-3 pb-3 border-b">
+              <div className="flex items-center gap-2 bg-blue-500 text-white rounded-full h-10 px-4">
+                <span className="text-lg font-bold">$</span>
+                <span className="text-2xl font-bold">1282</span>
+              </div>
+              <Button className="bg-green-600 hover:bg-green-700 h-9 px-5 text-[11px] font-semibold">
+                Set Bid
+              </Button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="destructive" size="sm" className="h-8 px-3 text-[10px] flex-1">
+                Skip
+              </Button>
+              <Button size="sm" className="h-8 px-3 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
+                Undecided
+              </Button>
+              <Button size="sm" className="h-8 px-3 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
+                Mark Unreviewed
+              </Button>
+              <Button size="sm" className="h-8 px-3 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
+                Wait
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* FAR RIGHT COLUMN - Quote Rates */}
         <div className="w-[200px]">
               <Card className="p-3">
                 <div className="flex justify-between text-[10px] text-gray-500 pb-2 border-b mb-2">
