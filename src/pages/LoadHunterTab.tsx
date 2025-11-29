@@ -574,7 +574,7 @@ export default function LoadHunterTab() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex flex-1 gap-3 overflow-hidden pt-3">
+      <div className="flex flex-1 gap-3 overflow-y-auto overflow-x-hidden pt-3">
         {/* Left Sidebar - Vehicles */}
         <div className="w-72 flex-shrink-0 space-y-1.5 overflow-y-auto border-r pr-3">
         <div className="sticky top-0 bg-background pb-1.5">
