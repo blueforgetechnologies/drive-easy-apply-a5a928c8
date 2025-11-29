@@ -157,6 +157,23 @@ export default function LoadDetail() {
 
     setCarrierLookupLoading(true);
     try {
+      // Check if carrier already exists
+      const { data: existingCarrier } = await supabase
+        .from('carriers')
+        .select('id, name')
+        .or(`dot_number.eq.${carrierSearch},mc_number.eq.${carrierSearch}`)
+        .maybeSingle();
+
+      if (existingCarrier) {
+        toast.success(`Carrier "${existingCarrier.name}" already exists in your list`);
+        updateField("carrier_id", existingCarrier.id);
+        setCarrierDialogOpen(false);
+        setCarrierSearch("");
+        setCarrierLookupLoading(false);
+        return;
+      }
+
+      // Fetch carrier data from FMCSA
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
         {
@@ -170,7 +187,13 @@ export default function LoadDetail() {
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Carrier not found");
+        if (response.status === 404) {
+          toast.error(`Carrier not found with DOT/MC: ${carrierSearch}. Please verify the number or add the carrier manually from the Carriers section.`);
+        } else {
+          toast.error(error.error || "Failed to lookup carrier");
+        }
+        setCarrierLookupLoading(false);
+        return;
       }
 
       const data = await response.json();
@@ -184,6 +207,8 @@ export default function LoadDetail() {
           dot_number: data.usdot || carrierSearch,
           phone: data.phone || "",
           address: data.physical_address || "",
+          safer_status: data.safer_status || null,
+          safety_rating: data.safety_rating || null,
           status: "active",
         })
         .select()
@@ -199,7 +224,8 @@ export default function LoadDetail() {
       // Auto-select the newly added carrier
       updateField("carrier_id", newCarrier.id);
     } catch (error: any) {
-      toast.error("Failed to fetch carrier data: " + error.message);
+      console.error('Carrier lookup error:', error);
+      toast.error("Failed to add carrier. Please try again or add manually from Carriers section.");
     } finally {
       setCarrierLookupLoading(false);
     }
