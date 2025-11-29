@@ -114,6 +114,7 @@ export default function LoadHunterTab() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [vehicleNotes, setVehicleNotes] = useState("");
   const [isSoundMuted, setIsSoundMuted] = useState(false);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
   const [currentPage, setCurrentPage] = useState(1);
@@ -154,34 +155,68 @@ export default function LoadHunterTab() {
   }).length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
+  // Function to play alert sound
+  const playAlertSound = () => {
+    if (isSoundMuted) return;
+    
+    try {
+      // Create or reuse audio context
+      let ctx = audioContext;
+      if (!ctx) {
+        ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        setAudioContext(ctx);
+      }
+      
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      // Create a pleasant notification sound (two-tone)
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      oscillator.frequency.setValueAtTime(600, ctx.currentTime + 0.1);
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.4);
+      
+      console.log('🔊 Sound notification played');
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
+  };
+
+  const toggleSound = () => {
+    const newMutedState = !isSoundMuted;
+    setIsSoundMuted(newMutedState);
+    
+    // Initialize audio context and play test sound when unmuting
+    if (!newMutedState) {
+      // Create audio context on user interaction
+      if (!audioContext) {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        setAudioContext(ctx);
+      }
+      
+      // Play test sound
+      setTimeout(() => {
+        playAlertSound();
+        toast.success('Sound alerts enabled');
+      }, 100);
+    } else {
+      toast.info('Sound alerts muted');
+    }
+  };
+
   useEffect(() => {
     loadVehicles();
     loadDrivers();
     loadLoadEmails();
     fetchMapboxToken();
-
-    // Function to play alert sound
-    const playAlertSound = () => {
-      if (isSoundMuted) return;
-      
-      // Create an audio context and play a notification sound
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Create a pleasant notification sound
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    };
 
     // Subscribe to real-time updates for load_emails
     const channel = supabase
@@ -591,7 +626,7 @@ export default function LoadHunterTab() {
               size="sm" 
               variant="outline"
               className="h-7 px-2 text-xs"
-              onClick={() => setIsSoundMuted(!isSoundMuted)}
+              onClick={toggleSound}
               title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
             >
               {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
