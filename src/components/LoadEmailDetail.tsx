@@ -225,7 +225,7 @@ const LoadEmailDetail = ({
                       <div><span className="text-blue-500 font-bold">D</span> {destCity}, {destState}</div>
                     </div>
                     <div className="text-green-600">
-                      <div><span className="inline-block w-3 text-green-600">+</span>{emptyDriveDistance ? `${emptyDriveDistance}mi` : (data.empty_miles ? `${data.empty_miles}mi` : '—')}</div>
+                      <div><span className="inline-block w-3 text-green-600">+</span>{emptyDriveDistance !== undefined && emptyDriveDistance !== null ? `${emptyDriveDistance}mi` : (data.empty_miles !== null && data.empty_miles !== undefined ? `${data.empty_miles}mi` : '—')}</div>
                       <div><span className="inline-block w-3 text-green-600">+</span>{data.loaded_miles ? `${data.loaded_miles}mi` : '—'}</div>
                     </div>
                     <div>

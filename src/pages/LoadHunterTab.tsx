@@ -2283,7 +2283,10 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {loadDistances.get(email.id) ? `${loadDistances.get(email.id)} mi` : (data.empty_miles ? `${data.empty_miles} mi` : '—')}
+                                  {loadDistances.has(email.id) 
+                                    ? `${loadDistances.get(email.id)} mi` 
+                                    : (data.empty_miles !== null && data.empty_miles !== undefined ? `${data.empty_miles} mi` : '—')
+                                  }
                                 </div>
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
