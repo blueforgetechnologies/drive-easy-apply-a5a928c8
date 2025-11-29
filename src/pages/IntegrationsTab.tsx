@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface Integration {
@@ -49,6 +52,9 @@ export default function IntegrationsTab() {
     },
   ]);
   const [isChecking, setIsChecking] = useState(false);
+  const [emailConfigOpen, setEmailConfigOpen] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("P.D@talbilogistics.com");
+  const [emailProvider, setEmailProvider] = useState("gmail");
 
   useEffect(() => {
     checkAllIntegrations();
@@ -109,6 +115,15 @@ export default function IntegrationsTab() {
     }
   };
 
+  const handleSaveEmailConfig = () => {
+    if (!emailAddress) {
+      toast.error("Please enter an email address");
+      return;
+    }
+    toast.success("Email configuration saved");
+    setEmailConfigOpen(false);
+  };
+
   const failedIntegrationsCount = integrations.filter(
     (i) => i.status === "down" || i.status === "degraded"
   ).length;
@@ -152,6 +167,73 @@ export default function IntegrationsTab() {
           </CardHeader>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-base">Email Configuration</CardTitle>
+              <CardDescription>Configure Load Hunter email integration</CardDescription>
+            </div>
+            <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <SettingsIcon className="h-4 w-4" />
+                  Configure
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Configure Email Integration</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address to Monitor</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="loads@yourcompany.com"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter the email address where you receive load offers
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="provider">Email Provider</Label>
+                    <select
+                      id="provider"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={emailProvider}
+                      onChange={(e) => setEmailProvider(e.target.value)}
+                    >
+                      <option value="gmail">Gmail</option>
+                      <option value="outlook">Outlook</option>
+                      <option value="imap">Other (IMAP)</option>
+                    </select>
+                  </div>
+                  <Button onClick={handleSaveEmailConfig} className="w-full">
+                    Save Configuration
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Email Address:</span>
+              <span className="font-medium">{emailAddress}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Provider:</span>
+              <span className="font-medium capitalize">{emailProvider}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4">
         {integrations.map((integration) => (
