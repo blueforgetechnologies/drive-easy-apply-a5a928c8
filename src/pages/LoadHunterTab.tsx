@@ -618,34 +618,36 @@ export default function LoadHunterTab() {
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">{skippedCount}</Badge>
             </Button>
             
-            <Button 
-              size="sm" 
-              variant={activeFilter === 'mybids' ? 'default' : 'outline'}
-              className="h-7 px-2.5 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-              onClick={() => {
-                setActiveFilter('mybids');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              My Bids
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-blue-700 ml-1">85</Badge>
-            </Button>
+            <div className="flex items-center border rounded-md overflow-hidden">
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'mybids' ? 'default' : 'ghost'}
+                className="h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                onClick={() => {
+                  setActiveFilter('mybids');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                My Bids
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-blue-700 ml-1">85</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'all' ? 'default' : 'ghost'}
+                className="h-7 px-2.5 text-xs rounded-none border-0"
+                onClick={() => {
+                  setActiveFilter('all');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                All
+              </Button>
+            </div>
             
-            <Button 
-              size="sm" 
-              variant={activeFilter === 'all' ? 'default' : 'outline'}
-              className="h-7 px-2.5 text-xs"
-              onClick={() => {
-                setActiveFilter('all');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              All
-            </Button>
-            
-            <Button 
+            <Button
               size="sm" 
               variant={activeFilter === 'booked' ? 'default' : 'outline'}
               className="h-7 px-2.5 text-xs gap-1.5"
