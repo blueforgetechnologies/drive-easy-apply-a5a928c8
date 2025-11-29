@@ -738,23 +738,23 @@ export default function LoadsTab() {
                     <TableHead className="text-primary">BOL</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                 <TableBody>
                   {filteredLoads.map((load) => (
                     <TableRow 
                       key={load.id} 
-                      className="cursor-pointer hover:bg-muted/30 border-b" 
+                      className="cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors" 
                       onClick={() => viewLoadDetail(load.id)}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox />
+                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5 px-3">
+                        <Checkbox className="h-4 w-4" />
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5 px-3">
                         <Select
                           value={load.status}
                           onValueChange={(value) => handleStatusChange(load.id, value)}
                         >
                           <SelectTrigger 
-                            className={`h-8 text-xs font-medium border ${getStatusDisplay(load.status).color}`}
+                            className={`h-7 text-xs font-medium border rounded-md ${getStatusDisplay(load.status).color}`}
                           >
                             <SelectValue>
                               {getStatusDisplay(load.status).label}
@@ -770,65 +770,65 @@ export default function LoadsTab() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-sm">
+                      <TableCell className="py-2.5 px-3">
+                        <div className="font-semibold text-sm text-foreground leading-tight">
                           {load.vehicle?.vehicle_number || "N/A"}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground leading-tight mt-0.5">
                           {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
                             ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
                             : "-"}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.broker_name || "N/A"}</div>
-                        <div className="text-xs text-muted-foreground">-</div>
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-sm text-foreground">{load.broker_name || "N/A"}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">-</div>
                       </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-sm">{load.load_number}</div>
-                        <div className="text-xs text-muted-foreground">{load.reference_number || "-"}</div>
+                      <TableCell className="py-2.5 px-3">
+                        <div className="font-medium text-sm text-foreground leading-tight">{load.load_number}</div>
+                        <div className="text-xs text-muted-foreground leading-tight mt-0.5">{load.reference_number || "-"}</div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{load.pickup_city}, {load.pickup_state}</div>
-                        <div className="text-xs text-muted-foreground">{load.delivery_city}, {load.delivery_state}</div>
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-sm text-foreground leading-tight">{load.pickup_city}, {load.pickup_state}</div>
+                        <div className="text-xs text-muted-foreground leading-tight mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-xs whitespace-nowrap">
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-xs whitespace-nowrap text-foreground leading-tight">
                           {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
                         </div>
-                        <div className="text-xs text-muted-foreground whitespace-nowrap">EST</div>
-                        <div className="text-xs whitespace-nowrap">
+                        <div className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">EST</div>
+                        <div className="text-xs whitespace-nowrap text-foreground leading-tight mt-0.5">
                           {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
                         </div>
-                        <div className="text-xs text-muted-foreground whitespace-nowrap">EST</div>
+                        <div className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">EST</div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">0</div>
-                        <div className="text-sm">{load.estimated_miles || "N/A"}</div>
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-sm text-foreground leading-tight">0</div>
+                        <div className="text-sm text-foreground leading-tight mt-0.5">{load.estimated_miles || "N/A"}</div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-sm text-foreground leading-tight">
                           {load.rate && load.estimated_miles 
                             ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
                             : "N/A"}
                         </div>
-                        <div className="text-sm">
+                        <div className="text-sm text-foreground leading-tight mt-0.5">
                           {load.rate && load.estimated_miles 
                             ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
                             : "N/A"}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm font-medium">
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-sm font-semibold text-foreground">
                           {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">-</div>
-                        <div className="text-sm">-</div>
+                      <TableCell className="py-2.5 px-3">
+                        <div className="text-sm text-muted-foreground leading-tight">-</div>
+                        <div className="text-sm text-muted-foreground leading-tight mt-0.5">-</div>
                       </TableCell>
-                      <TableCell className="text-sm">N/A</TableCell>
-                      <TableCell className="text-sm">N/A</TableCell>
+                      <TableCell className="text-sm text-muted-foreground py-2.5 px-3">N/A</TableCell>
+                      <TableCell className="text-sm text-muted-foreground py-2.5 px-3">N/A</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
