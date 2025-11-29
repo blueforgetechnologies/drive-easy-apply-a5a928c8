@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText, RefreshCw } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Carrier {
   id: string;
@@ -46,6 +47,7 @@ export default function CarriersTab() {
   const [usdotLookup, setUsdotLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [selectedCarriers, setSelectedCarriers] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
@@ -116,6 +118,56 @@ export default function CarriersTab() {
     } catch (error: any) {
       toast.error("Failed to delete carrier: " + error.message);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCarriers.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from("carriers" as any)
+        .delete()
+        .in("id", selectedCarriers);
+
+      if (error) throw error;
+      toast.success(`${selectedCarriers.length} carrier(s) deleted successfully`);
+      setSelectedCarriers([]);
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete carriers: " + error.message);
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (selectedCarriers.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from("carriers" as any)
+        .update({ status: newStatus })
+        .in("id", selectedCarriers);
+
+      if (error) throw error;
+      toast.success(`${selectedCarriers.length} carrier(s) updated to ${newStatus}`);
+      setSelectedCarriers([]);
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update carriers: " + error.message);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCarriers.length === filteredCarriers.length) {
+      setSelectedCarriers([]);
+    } else {
+      setSelectedCarriers(filteredCarriers.map(c => c.id));
+    }
+  };
+
+  const toggleSelectCarrier = (id: string) => {
+    setSelectedCarriers(prev => 
+      prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
+    );
   };
 
   const handleSyncAllCarriers = async () => {
@@ -201,8 +253,39 @@ export default function CarriersTab() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Carrier Management</h2>
+          {selectedCarriers.length > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {selectedCarriers.length} selected
+            </Badge>
+          )}
         </div>
         <div className="flex gap-2">
+          {selectedCarriers.length > 0 && (
+            <>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => handleBulkStatusChange("active")}
+              >
+                Set Active
+              </Button>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => handleBulkStatusChange("inactive")}
+              >
+                Set Inactive
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="gap-2"
+                onClick={handleBulkDelete}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected
+              </Button>
+            </>
+          )}
           <Button 
             variant="outline" 
             className="gap-2"
@@ -381,6 +464,12 @@ export default function CarriersTab() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={selectedCarriers.length === filteredCarriers.length && filteredCarriers.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="w-[80px]">Status</TableHead>
                     <TableHead className="min-w-[180px]">
                       <div>Carrier Name</div>
@@ -421,10 +510,18 @@ export default function CarriersTab() {
                   {filteredCarriers.map((carrier) => (
                     <TableRow 
                       key={carrier.id} 
-                      className="cursor-pointer hover:bg-muted/30"
-                      onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      className="hover:bg-muted/30"
                     >
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedCarriers.includes(carrier.id)}
+                          onCheckedChange={() => toggleSelectCarrier(carrier.id)}
+                        />
+                      </TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <Badge
                           variant={
                             carrier.status === "active"
@@ -445,35 +542,59 @@ export default function CarriersTab() {
                           {carrier.status.charAt(0).toUpperCase() + carrier.status.slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="font-medium text-blue-600 hover:underline">{carrier.name}</div>
                         <div className="text-xs text-muted-foreground">{carrier.dot_number || ""}</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">{carrier.contact_name || ""}</div>
                         <div className="text-xs text-muted-foreground">{carrier.phone || ""}</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">{carrier.address || ""}</div>
                         <div className="text-xs text-muted-foreground">{carrier.email || ""}</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">—</div>
                         <div className="text-xs text-muted-foreground">—</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">—</div>
                         <div className="text-xs text-muted-foreground">—</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">—</div>
                         <div className="text-xs text-muted-foreground">—</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">—</div>
                         <div className="text-xs text-muted-foreground">—</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                      >
                         <div className="text-sm">
                           {carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ? (
                             <span className="text-destructive font-medium">{carrier.safer_status}</span>
@@ -489,7 +610,7 @@ export default function CarriersTab() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="icon"
                           variant="ghost"
