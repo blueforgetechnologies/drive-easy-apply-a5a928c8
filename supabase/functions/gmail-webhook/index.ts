@@ -192,11 +192,17 @@ serve(async (req) => {
         let bodyText = '';
         let bodyHtml = '';
 
+        const decodeBase64Utf8 = (data: string) => {
+          const binary = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+          const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+          return new TextDecoder('utf-8').decode(bytes);
+        };
+
         function extractBody(part: any) {
           if (part.mimeType === 'text/plain' && part.body.data) {
-            bodyText = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+            bodyText = decodeBase64Utf8(part.body.data);
           } else if (part.mimeType === 'text/html' && part.body.data) {
-            bodyHtml = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+            bodyHtml = decodeBase64Utf8(part.body.data);
           } else if (part.parts) {
             part.parts.forEach(extractBody);
           }

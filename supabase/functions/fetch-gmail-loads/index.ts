@@ -201,14 +201,21 @@ serve(async (req) => {
         const subject = subjectHeader?.value || '(No Subject)';
         const receivedDate = dateHeader?.value ? new Date(dateHeader.value) : new Date();
 
-        // Extract body
+        // Extract body (decode base64 as UTF-8)
         let bodyText = '';
+
+        const decodeBase64Utf8 = (data: string) => {
+          const binary = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+          const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+          return new TextDecoder('utf-8').decode(bytes);
+        };
+
         if (fullMessage.payload?.body?.data) {
-          bodyText = atob(fullMessage.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+          bodyText = decodeBase64Utf8(fullMessage.payload.body.data);
         } else if (fullMessage.payload?.parts) {
           for (const part of fullMessage.payload.parts) {
             if (part.mimeType === 'text/plain' && part.body?.data) {
-              bodyText += atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+              bodyText += decodeBase64Utf8(part.body.data);
             }
           }
         }
