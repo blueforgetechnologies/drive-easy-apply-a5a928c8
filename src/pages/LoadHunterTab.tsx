@@ -439,7 +439,7 @@ export default function LoadHunterTab() {
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-3">
       {/* Left Sidebar - Vehicles */}
-      <div className="w-56 flex-shrink-0 space-y-1.5 overflow-y-auto border-r pr-3">
+      <div className="w-72 flex-shrink-0 space-y-1.5 overflow-y-auto border-r pr-3">
         <div className="sticky top-0 bg-background pb-1.5">
           <h3 className="text-xs font-semibold text-muted-foreground mb-1">MY TRUCKS</h3>
         </div>
@@ -453,12 +453,12 @@ export default function LoadHunterTab() {
             return (
               <Card 
                 key={vehicle.id} 
-                className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer relative ${
+                className={`p-2.5 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
                   hasHunt ? 'border-l-[6px] border-l-blue-500' : 'border-l-[6px] border-l-gray-300'
                 }`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm leading-tight text-foreground">
@@ -472,13 +472,13 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0 pt-0.5">
-                      <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-medium">
+                      <div className="h-5 w-5 rounded-sm bg-red-500 flex items-center justify-center text-white text-[10px] font-medium">
                         0
                       </div>
-                      <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-medium">
+                      <div className="h-5 w-5 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[10px] font-medium">
                         0
                       </div>
-                      <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium">
+                      <div className="h-5 w-5 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium">
                         0
                       </div>
                     </div>
