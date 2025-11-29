@@ -673,25 +673,21 @@ export default function LoadDetail() {
                   </div>
                   {load.carrier_id && (() => {
                     const selectedCarrier = carriers.find(c => c.id === load.carrier_id);
-                    if (selectedCarrier && (selectedCarrier.safer_status || selectedCarrier.safety_rating)) {
+                    if (selectedCarrier) {
                       return (
                         <div className="flex gap-4 mt-3">
-                          {selectedCarrier.safer_status && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Operating Authority Status</span>
-                              <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
-                                {selectedCarrier.safer_status}
-                              </Badge>
-                            </div>
-                          )}
-                          {selectedCarrier.safety_rating && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Safer Rating Check</span>
-                              <Badge variant={selectedCarrier.safety_rating === "CONDITIONAL" ? "destructive" : "default"}>
-                                {selectedCarrier.safety_rating}
-                              </Badge>
-                            </div>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">Operating Authority Status</span>
+                            <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
+                              {selectedCarrier.safer_status || "None"}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">Safer Rating Check</span>
+                            <Badge variant={selectedCarrier.safety_rating === "CONDITIONAL" ? "destructive" : "default"}>
+                              {selectedCarrier.safety_rating || "None"}
+                            </Badge>
+                          </div>
                         </div>
                       );
                     }
