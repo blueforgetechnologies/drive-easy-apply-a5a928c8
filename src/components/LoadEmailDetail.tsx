@@ -93,20 +93,21 @@ const LoadEmailDetail = ({
               <div className="border-t pt-4">
                 <div className="text-sm font-semibold mb-2">Email Content:</div>
                 {(() => {
-                  const htmlContent: string | undefined = email.body_html || email.body_text;
+                  const emailContent: string | undefined = email.body_html || email.body_text;
 
-                  if (htmlContent) {
+                  if (!emailContent) {
                     return (
-                      <iframe
-                        srcDoc={htmlContent}
-                        className="w-full min-h-[600px] border rounded-md bg-white"
-                        sandbox="allow-same-origin"
-                      />
+                      <div className="text-sm text-muted-foreground">No email content available</div>
                     );
                   }
 
                   return (
-                    <div className="text-sm text-muted-foreground">No email content available</div>
+                    <iframe
+                      srcDoc={emailContent}
+                      className="w-full h-[600px] border rounded-md"
+                      style={{ backgroundColor: 'white' }}
+                      title="Email Content"
+                    />
                   );
                 })()}
               </div>
