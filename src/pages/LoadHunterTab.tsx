@@ -574,11 +574,11 @@ export default function LoadHunterTab() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex flex-1 gap-3 overflow-y-auto overflow-x-hidden pt-3">
+      <div className="flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3">
         {/* Left Sidebar - Vehicles */}
-        <div className="w-72 flex-shrink-0 space-y-1.5 overflow-y-auto border-r pr-3">
-        <div className="sticky top-0 bg-background pb-1.5">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-1">MY TRUCKS</h3>
+        <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
+        <div className="sticky top-0 bg-background pb-1">
+          <h3 className="text-[11px] font-semibold text-muted-foreground">MY TRUCKS</h3>
         </div>
         {loading ? (
           <div className="text-xs text-muted-foreground">Loading...</div>
@@ -590,34 +590,32 @@ export default function LoadHunterTab() {
             return (
               <Card 
                 key={vehicle.id} 
-                className={`p-2.5 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
-                  hasHunt ? 'border-l-[6px] border-l-blue-500' : 'border-l-[6px] border-l-gray-300'
+                className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
+                  hasHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
                 }`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
-                <div className="space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm leading-tight text-foreground">
-                        {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
-                      </div>
-                      <div className="text-xs text-muted-foreground leading-tight mt-1">
-                        {vehicle.asset_type || "Asset Type"}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground/70 truncate leading-tight mt-0.5">
-                        {vehicle.carrier || "No Carrier"}
-                      </div>
+                <div className="flex items-start justify-between gap-1.5">
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="font-medium text-xs leading-tight text-foreground">
+                      {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                     </div>
-                    <div className="flex gap-1 flex-shrink-0 pt-0.5">
-                      <div className="h-5 w-5 rounded-sm bg-red-500 flex items-center justify-center text-white text-[10px] font-medium">
-                        0
-                      </div>
-                      <div className="h-5 w-5 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[10px] font-medium">
-                        0
-                      </div>
-                      <div className="h-5 w-5 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium">
-                        0
-                      </div>
+                    <div className="text-[11px] text-muted-foreground leading-tight">
+                      {vehicle.asset_type || "Asset Type"}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
+                      {vehicle.carrier || "No Carrier"}
+                    </div>
+                  </div>
+                  <div className="flex gap-0.5 flex-shrink-0">
+                    <div className="h-4 w-4 rounded-sm bg-red-500 flex items-center justify-center text-white text-[9px] font-medium">
+                      0
+                    </div>
+                    <div className="h-4 w-4 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[9px] font-medium">
+                      0
+                    </div>
+                    <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
+                      0
                     </div>
                   </div>
                 </div>
@@ -1172,10 +1170,10 @@ export default function LoadHunterTab() {
                           else receivedAgo = `${diffMins}m ago`;
 
                           return (
-                            <TableRow key={email.id} className="h-12">
+                            <TableRow key={email.id} className="h-10">
                               <TableCell className="py-1">
-                                <div className="text-[11px] font-medium leading-tight">Available</div>
-                                <div className="text-[10px] text-muted-foreground truncate leading-tight">
+                                <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
+                                <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
                                   {email.from_name || email.from_email.split('@')[0]}
                                 </div>
                               </TableCell>
@@ -1207,31 +1205,31 @@ export default function LoadHunterTab() {
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] font-medium leading-tight">
+                                <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
                                   {data.origin_city || '—'}, {data.origin_state || '—'}
                                 </div>
-                                <div className="text-[11px] leading-tight">
+                                <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.destination_city || '—'}, {data.destination_state || '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight">
+                                <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.empty_miles ? `${data.empty_miles} mi` : '—'}
                                 </div>
-                                <div className="text-[11px] leading-tight">
+                                <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight">{data.vehicle_type || '—'}</div>
-                                <div className="text-[11px] leading-tight">{data.weight ? `${data.weight} lbs` : '—'}</div>
+                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.vehicle_type || '—'}</div>
+                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.weight ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight">{data.pieces || '—'}</div>
-                                <div className="text-[10px] text-muted-foreground leading-tight">{data.dimensions || 'Not Specified'}</div>
+                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.pieces || '—'}</div>
+                                <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{data.dimensions || 'Not Specified'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
+                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
                                 <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
