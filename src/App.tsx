@@ -23,6 +23,7 @@ import AccountingTab from "./pages/AccountingTab";
 import BusinessManagerTab from "./pages/BusinessManagerTab";
 import SettingsTab from "./pages/SettingsTab";
 import CarrierDetail from "./pages/CarrierDetail";
+import LoadHunterTab from "./pages/LoadHunterTab";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,8 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Navigate to="/dashboard/business?subtab=assets" replace />} />
+          <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
+          <Route path="/dashboard/load-hunter" element={<DashboardLayout><LoadHunterTab /></DashboardLayout>} />
           <Route path="/dashboard/business" element={<DashboardLayout><BusinessManagerTab /></DashboardLayout>} />
           <Route path="/dashboard/dispatchers/:id" element={<DashboardLayout><DispatcherDetail /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
@@ -44,7 +47,6 @@ const App = () => (
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
-          <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<DashboardLayout><ApplicationDetail /></DashboardLayout>} />
           <Route path="/dashboard/vehicle/:id" element={<DashboardLayout><VehicleDetail /></DashboardLayout>} />
           <Route path="/dashboard/load/:id" element={<DashboardLayout><LoadDetail /></DashboardLayout>} />
