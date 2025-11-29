@@ -233,7 +233,8 @@ serve(async (req) => {
               from_email: fromEmail,
               from_name: fromName,
               subject: subject,
-              body_text: bodyText.substring(0, 5000), // Limit body text
+              body_html: bodyText, // Store full HTML content
+              body_text: bodyText.substring(0, 5000), // Short text preview for parsing/search
               received_at: receivedDate.toISOString(),
               parsed_data: parsedData,
               status: 'new',
