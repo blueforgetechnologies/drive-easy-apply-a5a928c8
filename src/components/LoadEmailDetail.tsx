@@ -1,8 +1,7 @@
-import { X, Truck, MapPin, Package, Calendar, DollarSign } from "lucide-react";
+import { X, Truck, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import LoadRouteMap from "@/components/LoadRouteMap";
 
 interface LoadEmailDetailProps {
@@ -11,22 +10,24 @@ interface LoadEmailDetailProps {
 }
 
 const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
-  const [bidAmount, setBidAmount] = useState("");
-  
-  const parsedData = email.parsed_data || {};
-  const originCity = parsedData.origin_city || "N/A";
-  const originState = parsedData.origin_state || "";
-  const destCity = parsedData.destination_city || "N/A";
-  const destState = parsedData.destination_state || "";
-  const pickupDate = parsedData.pickup_date || "N/A";
-  const deliveryDate = parsedData.delivery_date || "N/A";
-  const equipmentType = parsedData.equipment_type || "N/A";
-  const weight = parsedData.weight || "0";
-  const rate = parsedData.rate || "N/A";
-  
-  // Sample pricing data - would come from calculations
-  const pricingData = [
-    { rate: "$1,282.00", perMile: "$2.28" },
+  const data = email.parsed_data || {};
+
+  const originCity = data.origin_city || "ATLANTA";
+  const originState = data.origin_state || "GA";
+  const destCity = data.destination_city || "MEMPHIS";
+  const destState = data.destination_state || "TN";
+
+  const pickupDate = data.pickup_date_time || "11/30/25 Sun 17:00 EST";
+  const deliveryDate = data.delivery_date_time || "12/01/25 Mon 09:00 EST";
+
+  const vehicleType = data.vehicle_type || "SPRINTER";
+  const weight = data.weight || "0";
+
+  const loadedMiles = data.loaded_miles || 375;
+  const totalMiles = data.total_miles || 783;
+
+  const quoteTable = [
+    { rate: "$1,782.00", perMile: "$2.28" },
     { rate: "$1,732.00", perMile: "$2.21" },
     { rate: "$1,682.00", perMile: "$2.15" },
     { rate: "$1,632.00", perMile: "$2.08" },
@@ -36,230 +37,253 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
     { rate: "$1,382.00", perMile: "$1.77" },
     { rate: "$1,332.00", perMile: "$1.70" },
     { rate: "$1,282.00", perMile: "$1.64" },
+    { rate: "$1,232.00", perMile: "$1.57" },
+    { rate: "$1,182.00", perMile: "$1.51" },
+    { rate: "$1,132.00", perMile: "$1.45" },
+    { rate: "$1,082.00", perMile: "$1.38" },
+    { rate: "$1,032.00", perMile: "$1.32" },
+    { rate: "$982.00", perMile: "$1.25" },
+    { rate: "$932.00", perMile: "$1.19" },
+    { rate: "$882.00", perMile: "$1.13" },
+    { rate: "$832.00", perMile: "$1.06" },
+    { rate: "$782.00", perMile: "$1.00" },
   ];
 
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-auto">
-      {/* Header */}
-      <div className="border-b bg-background sticky top-0 z-10">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Truck className="h-5 w-5 text-blue-600" />
-              <h2 className="text-xl font-semibold">
-                {email.subject || "Load Details"}
-              </h2>
-              <Badge variant="destructive">No Driver Assigned</Badge>
-              <Badge className="bg-orange-500">Alert</Badge>
-              <Badge className="bg-blue-500">Info</Badge>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Match ID:</span>
-            <span className="font-semibold">{email.id.slice(0, 8)}</span>
-          </div>
+    <div className="fixed inset-0 z-50 bg-background overflow-auto">
+      <div className="mx-auto max-w-[1700px] px-3 py-3">
+        {/* Close */}
+        <div className="flex justify-between items-center mb-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-2 px-4 pb-2">
-          <Button variant="default" size="sm">Dispatch</Button>
-          <Button variant="outline" size="sm">Add Vehicle</Button>
-          <Button variant="ghost" size="sm">Unreviewed Loads <Badge>4</Badge></Button>
-          <Button variant="ghost" size="sm">Missed <Badge>50</Badge></Button>
-          <Button variant="ghost" size="sm">Waitlist <Badge variant="secondary">0</Badge></Button>
-          <Button variant="ghost" size="sm">Undecided <Badge variant="secondary">0</Badge></Button>
-          <Button variant="ghost" size="sm">Skipped <Badge variant="secondary">0</Badge></Button>
-          <Button variant="ghost" size="sm">My Bids <Badge>0</Badge></Button>
-        </div>
-      </div>
-
-      <div className="flex gap-4 p-4">
-        {/* Main Content */}
-        <div className="flex-1 space-y-4">
-          {/* Load Info Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="p-4 bg-red-50 border-l-4 border-red-500">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center">
-                  <Truck className="h-5 w-5 text-white" />
+        <div className="flex gap-3">
+          {/* CENTER COLUMN: header + map */}
+          <div className="flex-1 space-y-3">
+            <Card className="border rounded-md overflow-hidden">
+              {/* TOP HEADER ROW */}
+              <div className="flex border-b">
+                {/* Left TAL-3 panel */}
+                <div className="flex items-center gap-3 px-4 py-2 border-r min-w-[260px]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-500 text-white">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-0.5 text-[13px] leading-tight">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-blue-600">TAL-3</span>
+                      <span className="font-semibold text-red-500">Empty</span>
+                    </div>
+                    <div className="flex text-[11px] text-muted-foreground gap-4">
+                      <span>
+                        D1 <span className="font-medium text-foreground">No Driver Assigned</span> Note:
+                      </span>
+                    </div>
+                    <div className="flex text-[11px] text-muted-foreground gap-4">
+                      <span>
+                        D2 <span className="font-medium text-foreground">No Driver Assigned</span> Note:
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-semibold">{email.from_name || "Carrier Name"}</div>
-                  <div className="text-sm text-muted-foreground">Empty</div>
+
+                {/* Middle carrier grid */}
+                <div className="flex-1 text-[12px]">
+                  {/* Header row */}
+                  <div className="grid grid-cols-[2fr,1.5fr,1.5fr,1.5fr,1.5fr,1.2fr,1.2fr] border-b bg-muted/40 px-3 py-1 font-semibold text-blue-600">
+                    <div />
+                    <div className="text-right">Pickup Time<br />DeliverTime</div>
+                    <div className="text-right">Origin<br />Destination</div>
+                    <div className="text-right">Empty Drive<br />Loaded Drive</div>
+                    <div className="text-right">Load Type<br />Weight</div>
+                    <div className="text-right">Pieces</div>
+                    <div className="text-right">Dimensions</div>
+                  </div>
+
+                  {/* Row 1 - red */}
+                  <div className="grid grid-cols-[2fr,1.5fr,1.5fr,1.5fr,1.5fr,1.2fr,1.2fr] border-b">
+                    <div className="flex items-center px-3 py-1 bg-red-100 text-[12px] font-semibold">
+                      NE-LANG LOGISTICS LLC
+                    </div>
+                    <div className="px-3 py-1 text-right align-middle" />
+                    <div className="px-3 py-1 text-right align-middle" />
+                    <div className="px-3 py-1 text-right align-middle" />
+                    <div className="px-3 py-1 text-right align-middle" />
+                    <div className="px-3 py-1 text-right align-middle" />
+                    <div className="px-3 py-1 text-right align-middle" />
+                  </div>
+
+                  {/* Row 2 - yellow with data */}
+                  <div className="grid grid-cols-[2fr,1.5fr,1.5fr,1.5fr,1.5fr,1.2fr,1.2fr]">
+                    <div className="flex items-center px-3 py-1 bg-amber-100 text-[12px] font-semibold">
+                      GLOBALTRANZ ENTERPRISES, LLC
+                    </div>
+                    <div className="px-3 py-1 text-right">
+                      <div>{pickupDate}</div>
+                    </div>
+                    <div className="px-3 py-1 text-right">
+                      <div>
+                        <span className="text-orange-500 font-semibold mr-1">P</span>
+                        {originCity}, {originState}
+                      </div>
+                      <div>
+                        <span className="text-blue-500 font-semibold mr-1">D</span>
+                        {destCity}, {destState}
+                      </div>
+                    </div>
+                    <div className="px-3 py-1 text-right">
+                      <div className="text-green-600">+ 408mi [6h 48m]</div>
+                      <div className="text-green-600">+ 375mi [6h 15m]</div>
+                    </div>
+                    <div className="px-3 py-1 text-right">
+                      <div>{vehicleType}</div>
+                      <div>{weight}</div>
+                    </div>
+                    <div className="px-3 py-1 text-right">0</div>
+                    <div className="px-3 py-1 text-right">0L x 0W x 0H</div>
+                  </div>
+                </div>
+
+                {/* Right Match card */}
+                <div className="w-[260px] border-l p-3 text-[12px]">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <div>
+                      <div className="text-[11px] text-muted-foreground">Match ID:</div>
+                      <div className="font-semibold text-[13px]">4227959</div>
+                    </div>
+                    <button className="text-[11px] text-blue-600 underline">
+                      View Match History
+                    </button>
+                  </div>
+
+                  <Card className="mt-2 border bg-background">
+                    <div className="grid grid-cols-3 text-center text-[11px] border-b">
+                      <div className="py-1">
+                        <div>Average</div>
+                      </div>
+                      <div className="py-1 font-semibold bg-blue-100">Bid</div>
+                      <div className="py-1">Booked</div>
+                    </div>
+                    <div className="py-2 text-center text-[11px]">
+                      <div className="text-xs font-semibold mb-1">$1,282</div>
+                    </div>
+
+                    <div className="px-2 py-1 text-[11px] border-t space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>Loaded Miles</span>
+                        <span>
+                          {loadedMiles} <span className="text-blue-600 font-semibold">$3.42</span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Miles</span>
+                        <span>
+                          {totalMiles} <span className="text-blue-600 font-semibold">$1.64</span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Fuel, Tolls and Driver</span>
+                        <span>
+                          $0.00 <span className="text-blue-600 font-semibold">$0.00</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between px-3 py-2 border-t">
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-blue-600">
+                        <span className="text-lg">$</span> 1282
+                      </div>
+                      <Button size="sm" className="h-7 px-3 bg-green-600 hover:bg-green-700 text-[11px]">
+                        Set Bid
+                      </Button>
+                    </div>
+                  </Card>
                 </div>
               </div>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Pickup Time</span>
-                  <span>{pickupDate}</span>
+
+              {/* ORIGINAL POST / VEHICLE ROWS */}
+              <div className="border-t text-[12px]">
+                <div className="grid grid-cols-[1.6fr,3fr,1.4fr] border-b">
+                  <div className="px-4 py-2 border-r bg-muted/40 font-semibold text-blue-600">
+                    Original Post
+                  </div>
+                  <div className="px-4 py-2 text-red-600 text-[11px] flex items-center">
+                    Note: CONFIRM MC, CONFIRM ETA TO PICK, CONFIRM TRUCK DIMS
+                  </div>
+                  <div className="px-4 py-2 border-l flex items-center justify-end">
+                    <span className="mr-2 font-semibold">Posted Rate:</span>
+                    <span className="text-red-600 font-semibold">N/A</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Deliver Time</span>
-                  <span>{deliveryDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Origin</span>
-                  <span><MapPin className="inline h-3 w-3" /> {originCity}, {originState}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Destination</span>
-                  <span><MapPin className="inline h-3 w-3" /> {destCity}, {destState}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Empty Drive</span>
-                  <span className="text-green-600">+ 408mi [4h 48m]</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Loaded Drive</span>
-                  <span className="text-green-600">+ 375mi [6h 15m]</span>
+
+                <div className="grid grid-cols-[1.6fr,3fr,1.4fr]">
+                  <div className="px-4 py-2 border-r bg-muted/40 font-semibold text-blue-600">
+                    Vehicle
+                  </div>
+                  <div className="px-4 py-2 text-[11px] flex items-center">
+                    Note:
+                  </div>
+                  <div className="px-4 py-2 border-l flex items-center justify-between">
+                    <div className="text-[11px]">
+                      <span className="font-semibold mr-1">Vehicle Size:</span> CARGO VAN
+                    </div>
+                    <Button className="h-8 px-4 bg-orange-500 hover:bg-orange-600 text-[11px] font-semibold">
+                      Original Email
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-yellow-50 border-l-4 border-yellow-500">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-yellow-500 rounded flex items-center justify-center">
-                  <Package className="h-5 w-5 text-white" />
-                </div>
-                <div className="font-semibold text-sm">GLOBALTRANZ ENTERPRISES, LLC</div>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                12/01/25 Mon 09:00 EST
-              </div>
+            {/* MAP */}
+            <Card className="h-[520px] overflow-hidden">
+              <LoadRouteMap
+                stops={[
+                  {
+                    location_city: originCity,
+                    location_state: originState,
+                    location_address: `${originCity}, ${originState}`,
+                    stop_type: "pickup",
+                  },
+                  {
+                    location_city: destCity,
+                    location_state: destState,
+                    location_address: `${destCity}, ${destState}`,
+                    stop_type: "delivery",
+                  },
+                ]}
+              />
             </Card>
           </div>
 
-          {/* Load Details */}
-          <Card className="p-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="flex gap-2 mb-2">
-                  <Button variant="outline" size="sm">Original Post</Button>
-                  <span className="text-xs text-red-600">Note: CONFIRM MC, CONFIRM ETA TO PICK, CONFIRM TRUCK DIMS</span>
-                </div>
-                <div className="space-y-1">
-                  <div><span className="font-semibold">Vehicle:</span> Note:</div>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Load Type</span>
-                  <span>{equipmentType}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Weight</span>
-                  <span>{weight}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Pieces</span>
-                  <span>0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Dimensions</span>
-                  <span>0L x 0W x 0H</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold">Vehicle Size:</span>
-                  <span>CARGO VAN</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600 font-semibold">Posted Rate:</span>
-                  <span className="text-red-600">N/A</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mt-4 pt-4 border-t">
-              <div className="space-y-1">
-                <div className="flex gap-2 items-center">
-                  <span className="text-blue-600 font-semibold">Loaded Miles</span>
-                  <span className="font-bold text-lg">375</span>
-                  <span className="text-green-600 font-semibold">$3.42</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="text-blue-600 font-semibold">Total Miles</span>
-                  <span className="font-bold text-lg">783</span>
-                  <span className="text-green-600 font-semibold">$1.64</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="text-blue-600 font-semibold">Fuel, Tolls and Driver</span>
-                  <span className="font-bold">$0.00</span>
-                  <span className="text-green-600 font-semibold">$0.00</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="bg-orange-500 text-white">Original Email</Button>
-                <Button variant="destructive">Skip</Button>
-                <Button variant="secondary">Undecided</Button>
-                <Button variant="outline">Mark Unreviewed</Button>
-                <Button variant="default">Wait</Button>
-              </div>
-            </div>
-          </Card>
-
-          {/* Map */}
-          <Card className="p-4">
-            <LoadRouteMap 
-              stops={[
-                { 
-                  location_city: originCity, 
-                  location_state: originState,
-                  location_address: `${originCity}, ${originState}`,
-                  stop_type: 'pickup'
-                },
-                { 
-                  location_city: destCity, 
-                  location_state: destState,
-                  location_address: `${destCity}, ${destState}`,
-                  stop_type: 'delivery'
-                }
-              ]} 
-            />
-          </Card>
-        </div>
-
-        {/* Right Sidebar - Pricing */}
-        <div className="w-80">
-          <Card className="p-4">
-            <div className="text-center mb-4">
-              <div className="flex justify-around mb-2">
-                <div>
-                  <div className="text-sm text-muted-foreground">Average</div>
-                  <div className="text-sm text-muted-foreground">Bid</div>
-                </div>
-                <div>
-                  <div className="font-bold text-lg">Booked</div>
-                  <div className="text-blue-600 font-bold">$1,282</div>
-                </div>
-                <div>
-                  <div className="text-sm">N/A</div>
-                </div>
-              </div>
-              <div className="text-center text-2xl font-bold mb-2">1282</div>
-              <Button className="w-full bg-green-600 hover:bg-green-700">Set Bid</Button>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground flex justify-between px-2">
+          {/* RIGHT QUOTE COLUMN */}
+          <div className="w-[180px] flex-shrink-0">
+            <Card className="text-[11px] p-2">
+              <div className="flex justify-between px-1 pb-1 text-muted-foreground text-[10px] border-b mb-1">
                 <span>Quote Rate</span>
                 <span>$/mi</span>
               </div>
-              {pricingData.map((item, index) => (
-                <div 
-                  key={index}
-                  className={`flex justify-between p-2 rounded text-sm ${
-                    index === 0 ? 'bg-blue-100 font-semibold' : 'hover:bg-muted'
-                  }`}
-                >
-                  <span>{item.rate}</span>
-                  <span>{item.perMile}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+              <div className="space-y-0.5 max-h-[520px] overflow-auto pr-1">
+                {quoteTable.map((row, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex justify-between px-2 py-1 rounded-sm ${
+                      row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-muted"
+                    }`}
+                  >
+                    <span>{row.rate}</span>
+                    <span>{row.perMile}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
