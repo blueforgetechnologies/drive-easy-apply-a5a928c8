@@ -953,49 +953,48 @@ export default function LoadsTab() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-12">
+                    <TableHead className="w-12 py-2 px-2">
                       <Checkbox 
                         checked={selectedLoadIds.length === filteredLoads.length && filteredLoads.length > 0}
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="text-primary">Status</TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">Status</TableHead>
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>Truck Id</div>
                       <div>Driver</div>
                     </TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>Carrier</div>
                       <div>Customer</div>
                     </TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>Our Load ID</div>
                       <div>Customer Load</div>
                     </TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>Origin</div>
                       <div>Destination</div>
                     </TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>Pickup</div>
                       <div>Delivery</div>
                     </TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>DH</div>
                       <div>Loaded</div>
                     </TableHead>
-                    <TableHead className="text-primary">
-                      <div>Loaded $ /</div>
-                      <div>Mile</div>
-                      <div>Total $ / Mile</div>
+                    <TableHead className="text-primary text-xs py-2 px-2">
+                      <div>Loaded $/Mi</div>
+                      <div>Total $/Mi</div>
                     </TableHead>
-                    <TableHead className="text-primary">Payload</TableHead>
-                    <TableHead className="text-primary">
+                    <TableHead className="text-primary text-xs py-2 px-2">Payload</TableHead>
+                    <TableHead className="text-primary text-xs py-2 px-2">
                       <div>Load Owner</div>
-                      <div>Current Dispatcher</div>
+                      <div>Dispatcher</div>
                     </TableHead>
-                    <TableHead className="text-primary">RC</TableHead>
-                    <TableHead className="text-primary">BOL</TableHead>
+                    <TableHead className="text-primary text-xs py-2 px-2">RC</TableHead>
+                    <TableHead className="text-primary text-xs py-2 px-2">BOL</TableHead>
                   </TableRow>
                 </TableHeader>
                  <TableBody>
@@ -1005,14 +1004,14 @@ export default function LoadsTab() {
                       className="cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors" 
                       onClick={() => viewLoadDetail(load.id)}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5 px-3">
+                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
                         <Checkbox 
                           className="h-4 w-4"
                           checked={selectedLoadIds.includes(load.id)}
                           onCheckedChange={() => toggleSelectLoad(load.id)}
                         />
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5 px-3">
+                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
                         <Select
                           value={load.status}
                           onValueChange={(value) => handleStatusChange(load.id, value)}
@@ -1034,65 +1033,63 @@ export default function LoadsTab() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="font-semibold text-sm text-foreground leading-tight">
+                      <TableCell className="py-2 px-2">
+                        <div className="font-semibold text-xs text-foreground">
                           {load.vehicle?.vehicle_number || "N/A"}
                         </div>
-                        <div className="text-xs text-muted-foreground leading-tight mt-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5">
                           {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
                             ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
                             : "-"}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-sm text-foreground">{load.broker_name || "N/A"}</div>
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs text-foreground">{load.broker_name || "N/A"}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">-</div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="font-medium text-sm text-foreground leading-tight">{load.load_number}</div>
-                        <div className="text-xs text-muted-foreground leading-tight mt-0.5">{load.reference_number || "-"}</div>
+                      <TableCell className="py-2 px-2">
+                        <div className="font-medium text-xs text-foreground">{load.load_number}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{load.reference_number || "-"}</div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-sm text-foreground leading-tight">{load.pickup_city}, {load.pickup_state}</div>
-                        <div className="text-xs text-muted-foreground leading-tight mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs text-foreground">{load.pickup_city}, {load.pickup_state}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-xs whitespace-nowrap text-foreground leading-tight">
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs whitespace-nowrap text-foreground">
                           {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
                         </div>
-                        <div className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">EST</div>
-                        <div className="text-xs whitespace-nowrap text-foreground leading-tight mt-0.5">
+                        <div className="text-xs whitespace-nowrap text-foreground mt-0.5">
                           {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
                         </div>
-                        <div className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">EST</div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-sm text-foreground leading-tight">0</div>
-                        <div className="text-sm text-foreground leading-tight mt-0.5">{load.estimated_miles || "N/A"}</div>
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs text-foreground">0</div>
+                        <div className="text-xs text-foreground mt-0.5">{load.estimated_miles || "N/A"}</div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-sm text-foreground leading-tight">
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs text-foreground">
                           {load.rate && load.estimated_miles 
                             ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
                             : "N/A"}
                         </div>
-                        <div className="text-sm text-foreground leading-tight mt-0.5">
+                        <div className="text-xs text-foreground mt-0.5">
                           {load.rate && load.estimated_miles 
                             ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
                             : "N/A"}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-sm font-semibold text-foreground">
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs font-semibold text-foreground">
                           {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2.5 px-3">
-                        <div className="text-sm text-muted-foreground leading-tight">-</div>
-                        <div className="text-sm text-muted-foreground leading-tight mt-0.5">-</div>
+                      <TableCell className="py-2 px-2">
+                        <div className="text-xs text-muted-foreground">-</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">-</div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground py-2.5 px-3">N/A</TableCell>
-                      <TableCell className="text-sm text-muted-foreground py-2.5 px-3">N/A</TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
