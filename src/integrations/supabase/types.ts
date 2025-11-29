@@ -682,6 +682,72 @@ export type Database = {
         }
         Relationships: []
       }
+      hunt_plans: {
+        Row: {
+          available_date: string | null
+          available_feet: string | null
+          available_time: string | null
+          created_at: string
+          created_by: string | null
+          destination_radius: string | null
+          destination_zip: string | null
+          hunt_coordinates: Json | null
+          id: string
+          last_modified: string
+          load_capacity: string | null
+          mile_limit: string | null
+          notes: string | null
+          partial: boolean | null
+          pickup_radius: string | null
+          plan_name: string
+          vehicle_id: string
+          vehicle_size: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          available_date?: string | null
+          available_feet?: string | null
+          available_time?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_radius?: string | null
+          destination_zip?: string | null
+          hunt_coordinates?: Json | null
+          id?: string
+          last_modified?: string
+          load_capacity?: string | null
+          mile_limit?: string | null
+          notes?: string | null
+          partial?: boolean | null
+          pickup_radius?: string | null
+          plan_name: string
+          vehicle_id: string
+          vehicle_size?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          available_date?: string | null
+          available_feet?: string | null
+          available_time?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_radius?: string | null
+          destination_zip?: string | null
+          hunt_coordinates?: Json | null
+          id?: string
+          last_modified?: string
+          load_capacity?: string | null
+          mile_limit?: string | null
+          notes?: string | null
+          partial?: boolean | null
+          pickup_radius?: string | null
+          plan_name?: string
+          vehicle_id?: string
+          vehicle_size?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
       invites: {
         Row: {
           accepted_at: string | null
