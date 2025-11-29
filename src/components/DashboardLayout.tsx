@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -25,7 +25,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['business', 'loads', 'accounting', 'maintenance', 'settings', 'map'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -134,6 +134,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
       navigate(`/dashboard/${value}?subtab=users`);
+    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance') {
+      navigate(`/dashboard/${value}`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
     }
@@ -147,6 +149,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <h1 className="text-xl font-bold text-foreground">TMS</h1>
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList>
+                <TabsTrigger value="map" className="gap-1.5">
+                  <Map className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Map</span>
+                </TabsTrigger>
+                <TabsTrigger value="load-hunter" className="gap-1.5">
+                  <Target className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Load Hunter</span>
+                </TabsTrigger>
                 <TabsTrigger value="business" className="gap-1.5 relative">
                   <Briefcase className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Business</span>
@@ -167,10 +177,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <TabsTrigger value="maintenance" className="gap-1.5">
                   <Wrench className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Maintenance</span>
-                </TabsTrigger>
-                <TabsTrigger value="map" className="gap-1.5">
-                  <Map className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Map</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="gap-1.5 relative">
                   <Settings className="h-3.5 w-3.5" />
