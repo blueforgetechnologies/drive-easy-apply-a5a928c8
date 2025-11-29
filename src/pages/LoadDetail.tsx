@@ -78,7 +78,7 @@ export default function LoadDetail() {
         supabase.from("vehicles").select("id, vehicle_number, make, model").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
-        supabase.from("carriers").select("id, name, dot_number, mc_number").eq("status", "active"),
+        supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
       ]);
 
       if (loadRes.error) throw loadRes.error;
@@ -671,6 +671,26 @@ export default function LoadDetail() {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
+                  {load.carrier_id && (() => {
+                    const selectedCarrier = carriers.find(c => c.id === load.carrier_id);
+                    if (selectedCarrier && (selectedCarrier.safer_status || selectedCarrier.safety_rating)) {
+                      return (
+                        <div className="flex gap-2 mt-2">
+                          {selectedCarrier.safer_status && (
+                            <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
+                              {selectedCarrier.safer_status}
+                            </Badge>
+                          )}
+                          {selectedCarrier.safety_rating && (
+                            <Badge variant={selectedCarrier.safety_rating === "CONDITIONAL" ? "destructive" : "default"}>
+                              {selectedCarrier.safety_rating}
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </CardContent>
             </Card>
