@@ -114,10 +114,13 @@ serve(async (req) => {
     if (!carrierData.name && !carrierData.dba_name && !carrierData.physical_address) {
       console.log('No carrier data found in HTML');
       return new Response(
-        JSON.stringify({ error: 'Carrier not found with this USDOT number' }),
+        JSON.stringify({ 
+          error: 'Carrier not found with this USDOT number',
+          found: false
+        }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404 
+          status: 200 
         }
       );
     }

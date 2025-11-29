@@ -185,18 +185,14 @@ export default function LoadDetail() {
         }
       );
       
-      if (!response.ok) {
-        const error = await response.json();
-        if (response.status === 404) {
-          toast.error(`Carrier not found with DOT/MC: ${carrierSearch}. Please verify the number or add the carrier manually from the Carriers section.`);
-        } else {
-          toast.error(error.error || "Failed to lookup carrier");
-        }
+      const data = await response.json();
+
+      // Handle "not found" response from edge function
+      if (data?.found === false || data?.error === 'Carrier not found with this USDOT number') {
+        toast.error(`Carrier not found with DOT/MC: ${carrierSearch}. Please verify the number or add the carrier manually from the Carriers section.`);
         setCarrierLookupLoading(false);
         return;
       }
-
-      const data = await response.json();
       
       // Add carrier to database
       const { data: newCarrier, error } = await supabase
