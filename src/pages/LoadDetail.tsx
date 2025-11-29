@@ -150,57 +150,81 @@ export default function LoadDetail() {
   };
 
   const handleCarrierLookup = async () => {
-    if (!carrierSearch.trim()) {
+    const rawSearch = carrierSearch.trim();
+    if (!rawSearch) {
       toast.error("Please enter a DOT or MC number");
+      return;
+    }
+
+    // Normalize to digits so it works whether user types "MC 827893" or "827893"
+    const searchDigits = rawSearch.replace(/\D/g, "");
+    if (!searchDigits) {
+      toast.error("Please enter a valid DOT or MC number");
       return;
     }
 
     setCarrierLookupLoading(true);
     try {
-      // Check if carrier already exists
-      const { data: existingCarrier } = await supabase
-        .from('carriers')
-        .select('id, name')
-        .or(`dot_number.eq.${carrierSearch},mc_number.eq.${carrierSearch}`)
-        .maybeSingle();
+      // 1) Prefer existing carriers in your list (DOT or MC match) and just assign them
+      const { data: matchingCarriers, error: existingError } = await supabase
+        .from("carriers")
+        .select("id, name, mc_number, dot_number, status")
+        .or(`dot_number.ilike.%${searchDigits}%,mc_number.ilike.%${searchDigits}%`);
 
-      if (existingCarrier) {
-        toast.success(`Carrier "${existingCarrier.name}" already exists in your list`);
-        updateField("carrier_id", existingCarrier.id);
+      if (existingError) throw existingError;
+
+      if (matchingCarriers && matchingCarriers.length > 0) {
+        const carrierToUse = matchingCarriers[0];
+        updateField("carrier_id", carrierToUse.id);
+        toast.success(`Assigned existing carrier "${carrierToUse.name}" to this load`);
         setCarrierDialogOpen(false);
         setCarrierSearch("");
-        setCarrierLookupLoading(false);
         return;
       }
 
-      // Fetch carrier data from FMCSA
+      // 2) If not found locally, look up via edge function (supports USDOT)
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ usdot: carrierSearch }),
+          body: JSON.stringify({ usdot: searchDigits }),
         }
       );
-      
+
       const data = await response.json();
 
       // Handle "not found" response from edge function
-      if (data?.found === false || data?.error === 'Carrier not found with this USDOT number') {
-        toast.error(`Carrier not found with DOT/MC: ${carrierSearch}. Please verify the number or add the carrier manually from the Carriers section.`);
-        setCarrierLookupLoading(false);
+      if (data?.found === false || data?.error === "Carrier not found with this USDOT number") {
+        toast.error(
+          `Carrier not found with DOT/MC: ${rawSearch}. Please verify the number or add the carrier manually from the Carriers section.`,
+        );
         return;
       }
-      
-      // Add carrier to database
+
+      const carrierName = data.dba_name || data.name || "Unknown carrier";
+      const summary = `${carrierName} (USDOT: ${data.usdot || searchDigits}${
+        data.mc_number ? `, MC: ${data.mc_number}` : ""
+      })`;
+
+      const confirmed = window.confirm(
+        `We found ${summary}.\n\nDo you want to add this carrier to your list and assign it to this load?`,
+      );
+
+      if (!confirmed) {
+        toast("Carrier not added. You can always add it later from the Carriers section.");
+        return;
+      }
+
+      // 3) Add carrier to database only after user confirms
       const { data: newCarrier, error } = await supabase
         .from("carriers")
         .insert({
-          name: data.dba_name || data.name || "",
+          name: carrierName,
           mc_number: data.mc_number || "",
-          dot_number: data.usdot || carrierSearch,
+          dot_number: data.usdot || searchDigits,
           phone: data.phone || "",
           address: data.physical_address || "",
           safer_status: data.safer_status || null,
@@ -211,17 +235,16 @@ export default function LoadDetail() {
         .single();
 
       if (error) throw error;
-      
-      toast.success("Carrier added successfully");
+
+      // Auto-assign the newly added carrier to this load
+      updateField("carrier_id", newCarrier.id);
+      toast.success("Carrier added and assigned successfully");
       setCarrierDialogOpen(false);
       setCarrierSearch("");
-      loadData(); // Reload to get updated carriers list
-      
-      // Auto-select the newly added carrier
-      updateField("carrier_id", newCarrier.id);
+      loadData();
     } catch (error: any) {
-      console.error('Carrier lookup error:', error);
-      toast.error("Failed to add carrier. Please try again or add manually from Carriers section.");
+      console.error("Carrier lookup error:", error);
+      toast.error("Failed to lookup or add carrier. Please try again or add it manually from Carriers.");
     } finally {
       setCarrierLookupLoading(false);
     }
