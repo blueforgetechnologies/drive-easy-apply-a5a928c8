@@ -28,6 +28,7 @@ interface Vehicle {
   formatted_address: string | null;
   last_location: string | null;
   odometer: number | null;
+  oil_change_remaining: number | null;
   next_service_date: string | null;
   notes: string | null;
 }
@@ -110,6 +111,8 @@ export default function LoadHunterTab() {
     destinationRadius: "",
     notes: "",
   });
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [vehicleNotes, setVehicleNotes] = useState("");
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -394,6 +397,38 @@ export default function LoadHunterTab() {
     return `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
   };
 
+  const handleSaveVehicleNotes = async () => {
+    if (!selectedVehicle) return;
+    
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ notes: vehicleNotes })
+        .eq("id", selectedVehicle.id);
+
+      if (error) throw error;
+
+      toast.success("Vehicle notes saved successfully");
+      setEditingNotes(false);
+      
+      // Update the selected vehicle's notes
+      setSelectedVehicle({ ...selectedVehicle, notes: vehicleNotes });
+      
+      // Refresh vehicles list to show updated notes
+      loadVehicles();
+    } catch (error: any) {
+      toast.error("Failed to save notes: " + error.message);
+    }
+  };
+
+  // Update vehicle notes when a new vehicle is selected
+  useEffect(() => {
+    if (selectedVehicle) {
+      setVehicleNotes(selectedVehicle.notes || "");
+      setEditingNotes(false);
+    }
+  }, [selectedVehicle?.id]);
+
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-3">
       {/* Left Sidebar - Vehicles */}
@@ -533,7 +568,7 @@ export default function LoadHunterTab() {
             <div className="w-[500px] flex-shrink-0 space-y-4 overflow-y-auto border rounded-lg p-4 bg-card">
               {/* Tabs */}
               <Tabs defaultValue="empty" className="w-full">
-                <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30">
+                <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30 mb-4">
                   <TabsTrigger value="empty" className="text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                     Empty
                   </TabsTrigger>
@@ -553,9 +588,9 @@ export default function LoadHunterTab() {
               <div className="border-2 border-border rounded-lg p-4 space-y-4 bg-background">
                 {/* Location & Odometer with Maintenance Box */}
                 <div className="relative">
-                  <div className="space-y-1">
+                  <div className="space-y-1 pr-[220px]">
                     <div className="text-sm">Location</div>
-                    <div className="text-sm font-medium">
+                    <div className="text-sm font-medium whitespace-normal break-words">
                       {selectedVehicle.formatted_address || selectedVehicle.last_location || "N/A"}
                     </div>
                     <div className="flex items-center gap-2 text-sm">
@@ -571,8 +606,18 @@ export default function LoadHunterTab() {
                   <div className="absolute top-0 right-0 border-2 border-border rounded-lg px-4 py-2 bg-background min-w-[200px]">
                     <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-2xl font-bold">N/A</div>
-                      <div className="text-sm text-muted-foreground">N/A</div>
+                      <div className={`text-2xl font-bold ${
+                        selectedVehicle.oil_change_remaining !== null && selectedVehicle.oil_change_remaining < 0 
+                          ? "text-destructive" 
+                          : ""
+                      }`}>
+                        {selectedVehicle.oil_change_remaining !== null && selectedVehicle.oil_change_remaining !== undefined
+                          ? `${selectedVehicle.oil_change_remaining} mi`
+                          : "N/A"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {selectedVehicle.next_service_date || "N/A"}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -599,15 +644,44 @@ export default function LoadHunterTab() {
                   </div>
                 </div>
 
-                {/* Vehicle Note */}
+                {/* Vehicle Note - Editable */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold">Vehicle Note:</div>
-                    <Wrench className="h-5 w-5 text-primary" />
+                    <Wrench 
+                      className="h-5 w-5 text-primary cursor-pointer hover:text-primary/80" 
+                      onClick={() => setEditingNotes(!editingNotes)}
+                    />
                   </div>
-                  <div className="text-sm text-muted-foreground min-h-[40px]">
-                    {selectedVehicle.notes || "No notes available"}
-                  </div>
+                  {editingNotes ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={vehicleNotes}
+                        onChange={(e) => setVehicleNotes(e.target.value)}
+                        placeholder="Enter vehicle notes..."
+                        className="min-h-[80px] text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveVehicleNotes}>
+                          Save Notes
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setEditingNotes(false);
+                            setVehicleNotes(selectedVehicle.notes || "");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground min-h-[40px] whitespace-pre-wrap">
+                      {selectedVehicle.notes || "No notes available"}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
