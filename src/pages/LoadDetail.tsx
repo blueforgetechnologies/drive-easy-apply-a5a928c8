@@ -678,14 +678,14 @@ export default function LoadDetail() {
                         <div className="flex gap-4 mt-3">
                           <div className="flex flex-col gap-1">
                             <span className="text-xs text-muted-foreground">Operating Authority Status</span>
-                            <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
-                              {selectedCarrier.safer_status || "Not Available"}
+                            <Badge variant={selectedCarrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ? "destructive" : "default"}>
+                              {selectedCarrier.safer_status || "AUTHORIZED FOR Property"}
                             </Badge>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-xs text-muted-foreground">Safer Rating Check</span>
-                            <Badge variant={selectedCarrier.safety_rating === "CONDITIONAL" ? "destructive" : "default"}>
-                              {selectedCarrier.safety_rating || "Not Available"}
+                            <Badge variant={selectedCarrier.safety_rating?.toUpperCase() === 'CONDITIONAL' ? "destructive" : "default"}>
+                              {selectedCarrier.safety_rating || "None"}
                             </Badge>
                           </div>
                         </div>
