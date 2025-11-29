@@ -1707,7 +1707,10 @@ export type Database = {
           eld_device_sn: string | null
           fault_codes: Json | null
           formatted_address: string | null
+          fuel_efficiency_mpg: number | null
           fuel_per_gallon: number | null
+          fuel_tank_capacity: number | null
+          fuel_type: string | null
           has_side_door: boolean | null
           horizontal_etracks: number | null
           id: string
@@ -1796,7 +1799,10 @@ export type Database = {
           eld_device_sn?: string | null
           fault_codes?: Json | null
           formatted_address?: string | null
+          fuel_efficiency_mpg?: number | null
           fuel_per_gallon?: number | null
+          fuel_tank_capacity?: number | null
+          fuel_type?: string | null
           has_side_door?: boolean | null
           horizontal_etracks?: number | null
           id?: string
@@ -1885,7 +1891,10 @@ export type Database = {
           eld_device_sn?: string | null
           fault_codes?: Json | null
           formatted_address?: string | null
+          fuel_efficiency_mpg?: number | null
           fuel_per_gallon?: number | null
+          fuel_tank_capacity?: number | null
+          fuel_type?: string | null
           has_side_door?: boolean | null
           horizontal_etracks?: number | null
           id?: string
