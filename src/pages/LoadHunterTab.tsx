@@ -1142,7 +1142,7 @@ export default function LoadHunterTab() {
                           <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
                           <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
-                          <TableHead className="w-[150px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
+                          <TableHead className="w-[120px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
                           <TableHead className="w-[150px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
                           <TableHead className="w-[130px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Empty Drive<br/>Loaded Drive</TableHead>
                           <TableHead className="w-[130px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
