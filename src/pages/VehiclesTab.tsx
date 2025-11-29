@@ -50,6 +50,12 @@ export default function VehiclesTab() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showServiceDue, setShowServiceDue] = useState(false);
   const [driversMap, setDriversMap] = useState<Record<string, string>>({});
+  const [dispatchersMap, setDispatchersMap] = useState<Record<string, string>>({});
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+  const [availableDispatchers, setAvailableDispatchers] = useState<any[]>([]);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignDialogType, setAssignDialogType] = useState<"driver1" | "driver2" | "dispatcher">("driver1");
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [formData, setFormData] = useState({
     vehicle_number: "",
     carrier: "",
@@ -62,7 +68,34 @@ export default function VehiclesTab() {
 
   useEffect(() => {
     loadData();
+    loadAvailableDriversAndDispatchers();
   }, [filter, sortOrder]);
+
+  const loadAvailableDriversAndDispatchers = async () => {
+    try {
+      // Load drivers
+      const { data: driversData, error: driversError } = await supabase
+        .from("applications")
+        .select("id, personal_info, driver_status")
+        .in("driver_status", ["Active", "active", "ACTIVE"]);
+
+      if (!driversError && driversData) {
+        setAvailableDrivers(driversData);
+      }
+
+      // Load dispatchers
+      const { data: dispatchersData, error: dispatchersError } = await supabase
+        .from("dispatchers")
+        .select("id, first_name, last_name, status")
+        .in("status", ["Active", "active", "ACTIVE"]);
+
+      if (!dispatchersError && dispatchersData) {
+        setAvailableDispatchers(dispatchersData);
+      }
+    } catch (error) {
+      console.error("Error loading drivers/dispatchers:", error);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -116,6 +149,32 @@ export default function VehiclesTab() {
       } else {
         setDriversMap({});
       }
+
+      // Load dispatcher names for any assigned dispatchers
+      const dispatcherIds = Array.from(
+        new Set(
+          vehiclesData.map((v) => v.primary_dispatcher_id).filter((id): id is string => !!id)
+        )
+      );
+
+      if (dispatcherIds.length > 0) {
+        const { data: dispatchersData, error: dispatchersError } = await supabase
+          .from("dispatchers")
+          .select("id, first_name, last_name")
+          .in("id", dispatcherIds);
+
+        if (!dispatchersError && dispatchersData) {
+          const map: Record<string, string> = {};
+          dispatchersData.forEach((dispatcher: any) => {
+            map[dispatcher.id] = `${dispatcher.first_name} ${dispatcher.last_name}`.trim();
+          });
+          setDispatchersMap(map);
+        } else {
+          setDispatchersMap({});
+        }
+      } else {
+        setDispatchersMap({});
+      }
     } finally {
       setLoading(false);
     }
@@ -161,6 +220,43 @@ export default function VehiclesTab() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to delete asset: " + error.message);
+    }
+  };
+
+  const handleOpenAssignDialog = (vehicleId: string, type: "driver1" | "driver2" | "dispatcher") => {
+    setSelectedVehicleId(vehicleId);
+    setAssignDialogType(type);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignment = async (assignedId: string | null) => {
+    try {
+      const updateData: any = {};
+      
+      if (assignDialogType === "driver1") {
+        updateData.driver_1_id = assignedId;
+      } else if (assignDialogType === "driver2") {
+        updateData.driver_2_id = assignedId;
+      } else if (assignDialogType === "dispatcher") {
+        updateData.primary_dispatcher_id = assignedId;
+      }
+
+      const { error } = await supabase
+        .from("vehicles")
+        .update(updateData)
+        .eq("id", selectedVehicleId);
+
+      if (error) throw error;
+
+      toast.success(
+        assignDialogType === "dispatcher"
+          ? "Dispatcher assigned successfully"
+          : "Driver assigned successfully"
+      );
+      setAssignDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to assign: " + error.message);
     }
   };
 
@@ -468,23 +564,34 @@ export default function VehiclesTab() {
                         <div>{vehicle.carrier || "N/A"}</div>
                         <div className="text-sm text-muted-foreground">{vehicle.payee || "N/A"}</div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="text-primary underline">
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="text-sm space-y-1">
+                          <div
+                            className="text-primary underline cursor-pointer hover:text-primary/80"
+                            onClick={() => handleOpenAssignDialog(vehicle.id, "driver1")}
+                          >
                             {vehicle.driver_1_id
                               ? driversMap[vehicle.driver_1_id] || "Driver 1"
                               : "Assign Driver"}
                           </div>
-                          <div className="text-primary underline">
+                          <div
+                            className="text-primary underline cursor-pointer hover:text-primary/80"
+                            onClick={() => handleOpenAssignDialog(vehicle.id, "driver2")}
+                          >
                             {vehicle.driver_2_id
                               ? driversMap[vehicle.driver_2_id] || "Driver 2"
                               : "Assign Driver"}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-primary underline">
-                          {vehicle.primary_dispatcher_id ? "Assigned Dispatcher" : "Assign Dispatcher"}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="text-primary underline cursor-pointer hover:text-primary/80"
+                          onClick={() => handleOpenAssignDialog(vehicle.id, "dispatcher")}
+                        >
+                          {vehicle.primary_dispatcher_id
+                            ? dispatchersMap[vehicle.primary_dispatcher_id] || "Assigned Dispatcher"
+                            : "Assign Dispatcher"}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -558,6 +665,83 @@ export default function VehiclesTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Assignment Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {assignDialogType === "dispatcher"
+                ? "Assign Primary Dispatcher"
+                : assignDialogType === "driver1"
+                ? "Assign Driver 1"
+                : "Assign Driver 2"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {assignDialogType === "dispatcher" ? (
+              <div className="space-y-2">
+                <Label>Select Dispatcher</Label>
+                {availableDispatchers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No active dispatchers available</p>
+                ) : (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => handleAssignment(null)}
+                    >
+                      Unassign Dispatcher
+                    </Button>
+                    {availableDispatchers.map((dispatcher) => (
+                      <Button
+                        key={dispatcher.id}
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleAssignment(dispatcher.id)}
+                      >
+                        {dispatcher.first_name} {dispatcher.last_name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Select Driver</Label>
+                {availableDrivers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No active drivers available</p>
+                ) : (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => handleAssignment(null)}
+                    >
+                      Unassign Driver
+                    </Button>
+                    {availableDrivers.map((driver) => {
+                      const firstName = driver.personal_info?.firstName || "";
+                      const lastName = driver.personal_info?.lastName || "";
+                      const fullName = `${firstName} ${lastName}`.trim() || "Unnamed Driver";
+                      return (
+                        <Button
+                          key={driver.id}
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => handleAssignment(driver.id)}
+                        >
+                          {fullName}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
