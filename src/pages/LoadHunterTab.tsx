@@ -436,86 +436,90 @@ export default function LoadHunterTab() {
           /* Vehicle Details View */
           <div className="flex-1 overflow-hidden flex gap-3">
             {/* Left Panel - Vehicle Info */}
-            <div className="w-[480px] flex-shrink-0 space-y-3 overflow-y-auto p-4 bg-muted/20 rounded-lg">
+            <div className="w-[500px] flex-shrink-0 space-y-4 overflow-y-auto">
               {/* Tabs */}
               <Tabs defaultValue="empty" className="w-full">
-                <TabsList className="w-full grid grid-cols-4 h-9">
-                  <TabsTrigger value="empty" className="text-xs py-1.5">Empty</TabsTrigger>
-                  <TabsTrigger value="delivery" className="text-xs py-1.5">Delivery Date & Time</TabsTrigger>
-                  <TabsTrigger value="destination" className="text-xs py-1.5">Destination</TabsTrigger>
-                  <TabsTrigger value="remaining" className="text-xs py-1.5">Remaining</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30">
+                  <TabsTrigger value="empty" className="text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    Empty
+                  </TabsTrigger>
+                  <TabsTrigger value="delivery" className="text-sm">
+                    Delivery Date & Time
+                  </TabsTrigger>
+                  <TabsTrigger value="destination" className="text-sm">
+                    Destination
+                  </TabsTrigger>
+                  <TabsTrigger value="remaining" className="text-sm">
+                    Remaining
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              {/* Location & Odometer - Compact */}
-              <div className="space-y-1.5 py-2">
-                <div className="text-xs text-muted-foreground">Location</div>
-                <div className="text-sm font-medium">
-                  {selectedVehicle.formatted_address || selectedVehicle.last_location || "Location not available"}
+              {/* Location & Odometer with Maintenance Box */}
+              <div className="relative">
+                <div className="space-y-1">
+                  <div className="text-sm">Location</div>
+                  <div className="text-sm font-medium">
+                    {selectedVehicle.formatted_address || selectedVehicle.last_location || "N/A"}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Gauge className="h-4 w-4" />
+                    <span>Odometer</span>
+                    <span className="font-semibold">
+                      {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm pt-1">
-                  <Gauge className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Odometer</span>
-                  <span className="font-semibold">
-                    {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Next Maintenance Due - Compact with border */}
-              <div className="flex items-center justify-between border-2 border-border rounded-lg p-3">
-                <div className="text-sm font-medium text-muted-foreground">Next Maintenance Due</div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold">N/A</div>
-                  <div className="text-xs text-muted-foreground">
-                    {selectedVehicle.next_service_date || "N/A"}
+                
+                {/* Next Maintenance Due Box - Positioned on the right */}
+                <div className="absolute top-0 right-0 border-2 border-border rounded-lg px-4 py-2 bg-background min-w-[200px]">
+                  <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-2xl font-bold">N/A</div>
+                    <div className="text-sm text-muted-foreground">N/A</div>
                   </div>
                 </div>
               </div>
 
-              <Button variant="link" className="text-xs text-primary p-0 h-auto">
-                View Vehicle Details
+              <Button variant="link" className="text-sm text-primary p-0 h-auto">
+                View vehicle Details
               </Button>
 
-              {/* Driver Assignments - Compact */}
-              <div className="space-y-2 py-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">D1</span>
-                    <span className="text-muted-foreground">
-                      {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">Note: N/A</span>
+              {/* Driver Assignments - Single line format */}
+              <div className="space-y-2">
+                <div className="flex items-center text-sm">
+                  <span className="font-semibold w-8">D1</span>
+                  <span className="flex-1">
+                    {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
+                  </span>
+                  <span className="text-muted-foreground">Note: N/A</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">D2</span>
-                    <span className="text-muted-foreground">
-                      {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">Note: N/A</span>
+                <div className="flex items-center text-sm">
+                  <span className="font-semibold w-8">D2</span>
+                  <span className="flex-1">
+                    {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
+                  </span>
+                  <span className="text-muted-foreground">Note: N/A</span>
                 </div>
               </div>
 
-              {/* Vehicle Note - Compact */}
-              <div className="space-y-2 py-2">
+              {/* Vehicle Note */}
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold">Vehicle Note:</div>
-                  <Wrench className="h-4 w-4 text-primary" />
+                  <Wrench className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground min-h-[40px]">
                   {selectedVehicle.notes || "No notes available"}
                 </div>
               </div>
 
-              {/* Action Buttons - Compact */}
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" className="flex-1 h-9 text-xs">
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <Button className="flex-1 h-10">
                   Create New Hunt
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 h-9 text-xs">
+                <Button variant="outline" className="flex-1 h-10">
                   Set Driver to Time-Off mode
                 </Button>
               </div>
