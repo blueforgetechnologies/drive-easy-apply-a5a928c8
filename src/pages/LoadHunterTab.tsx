@@ -444,9 +444,8 @@ export default function LoadHunterTab() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      {/* Filter Bar - Full Width */}
-      {!selectedVehicle && (
-        <div className="flex items-center gap-2 py-2 px-3 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
+      {/* Filter Bar - Full Width - Always Visible */}
+      <div className="flex items-center gap-2 py-2 px-3 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
           {/* Mode Buttons */}
           <div className="flex items-center gap-1 pr-3 border-r flex-shrink-0">
             <span className="text-xs font-semibold text-muted-foreground mr-1">MODE:</span>
@@ -650,7 +649,6 @@ export default function LoadHunterTab() {
             </Button>
           </div>
         </div>
-      )}
 
       {/* Main Content Area */}
       <div className="flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3">
