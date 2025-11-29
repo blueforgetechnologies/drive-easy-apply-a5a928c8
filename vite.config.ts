@@ -17,15 +17,15 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "driver-hero.jpg"],
       manifest: {
-        name: "Driver Employment Application",
-        short_name: "Driver App",
-        description: "Complete your driver employment application online",
-        theme_color: "#ffffff",
+        name: "Transportation Management System",
+        short_name: "TMS",
+        description: "Comprehensive transportation and fleet management software",
+        theme_color: "#1e5ba8",
         background_color: "#ffffff",
         display: "standalone",
         scope: "/",
-        start_url: "/",
-        orientation: "portrait",
+        start_url: "/dashboard",
+        orientation: "any",
         icons: [
           {
             src: "/pwa-192x192.png",
