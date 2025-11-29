@@ -123,36 +123,29 @@ export default function LoadHunterTab() {
   const handleRefreshLoads = async () => {
     setRefreshing(true);
     try {
-      // Call the edge function with action as a query parameter
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-auth?action=start`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          }
-        }
-      );
+      // Use Lovable Cloud client to invoke the edge function
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: { action: 'start' },
+      });
 
-      if (!response.ok) throw new Error('Failed to start Gmail authorization');
-      
-      const data = await response.json();
+      if (error) throw error;
 
       // Open Gmail OAuth window
-      window.open(data.authUrl, '_blank', 'width=600,height=700');
-      
-      toast.success("Gmail authorization window opened - complete the authorization to start receiving load emails");
-      
+      window.open(data?.authUrl, '_blank', 'width=600,height=700');
+
+      toast.success(
+        'Gmail authorization window opened - complete the authorization to start receiving load emails'
+      );
+
       // Refresh load emails after a delay
       setTimeout(() => loadLoadEmails(), 3000);
     } catch (error: any) {
       console.error('Gmail auth error:', error);
-      toast.error("Failed to start Gmail authorization: " + error.message);
+      toast.error('Failed to start Gmail authorization');
     } finally {
       setRefreshing(false);
     }
   };
-
   const handleSaveEmailConfig = () => {
     if (!emailAddress) {
       toast.error("Please enter an email address");

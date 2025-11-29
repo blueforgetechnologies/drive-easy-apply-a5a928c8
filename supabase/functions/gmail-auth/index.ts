@@ -17,7 +17,19 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get('action');
+    let action = url.searchParams.get('action');
+
+    // Also support receiving the action in the JSON body (for supabase.functions.invoke)
+    if (!action && req.method !== 'GET' && req.method !== 'OPTIONS') {
+      try {
+        const body = await req.json();
+        if (body && typeof body.action === 'string') {
+          action = body.action;
+        }
+      } catch (_err) {
+        console.error('Failed to parse request body for gmail-auth:', _err);
+      }
+    }
 
     // Initiate OAuth flow
     if (action === 'start') {
