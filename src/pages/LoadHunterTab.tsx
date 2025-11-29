@@ -454,39 +454,39 @@ export default function LoadHunterTab() {
               <Card 
                 key={vehicle.id} 
                 className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer relative ${
-                  hasHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
+                  hasHunt ? 'border-l-[6px] border-l-blue-500' : 'border-l-[6px] border-l-gray-300'
                 }`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm leading-tight text-foreground">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
-                      <div className="text-xs text-muted-foreground leading-tight mt-0.5">
+                      <div className="text-xs text-muted-foreground leading-tight mt-1">
                         {vehicle.asset_type || "Asset Type"}
                       </div>
                       <div className="text-[11px] text-muted-foreground/70 truncate leading-tight mt-0.5">
                         {vehicle.carrier || "No Carrier"}
                       </div>
                     </div>
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="flex gap-1 flex-shrink-0 pt-0.5">
                       <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-medium">
                         0
                       </div>
                       <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-medium">
                         0
-                       </div>
-                       <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium">
-                         0
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               </Card>
-             );
-           })
+                      </div>
+                      <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium">
+                        0
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })
          )}
       </div>
 
