@@ -149,26 +149,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen w-full bg-background pb-safe">
-      <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+      <header className="sticky top-0 z-40 border-b bg-header border-header/20">
         <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
           <div className="flex justify-between items-center gap-2">
             {/* Left: Logo + Desktop Nav */}
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-foreground whitespace-nowrap">TMS</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-header-foreground whitespace-nowrap">TMS</h1>
               
               {/* Desktop Navigation - Hidden on mobile */}
               <div className="hidden md:block overflow-x-auto">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="h-9">
-                    <TabsTrigger value="map" className="gap-1.5 h-8 text-xs">
+                  <TabsList className="h-9 bg-header-foreground/10 border-header-foreground/20">
+                    <TabsTrigger value="map" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Map className="h-3.5 w-3.5" />
                       <span>Map</span>
                     </TabsTrigger>
-                    <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs">
+                    <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Target className="h-3.5 w-3.5" />
                       <span>Hunter</span>
                     </TabsTrigger>
-                    <TabsTrigger value="business" className="gap-1.5 h-8 text-xs relative">
+                    <TabsTrigger value="business" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Briefcase className="h-3.5 w-3.5" />
                       <span>Business</span>
                       {alertCount > 0 && (
@@ -177,19 +177,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         </span>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="loads" className="gap-1.5 h-8 text-xs">
+                    <TabsTrigger value="loads" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Package className="h-3.5 w-3.5" />
                       <span>Loads</span>
                     </TabsTrigger>
-                    <TabsTrigger value="accounting" className="gap-1.5 h-8 text-xs">
+                    <TabsTrigger value="accounting" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Calculator className="h-3.5 w-3.5" />
                       <span>Accounting</span>
                     </TabsTrigger>
-                    <TabsTrigger value="maintenance" className="gap-1.5 h-8 text-xs">
+                    <TabsTrigger value="maintenance" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Wrench className="h-3.5 w-3.5" />
                       <span>Maint</span>
                     </TabsTrigger>
-                    <TabsTrigger value="settings" className="gap-1.5 h-8 text-xs relative">
+                    <TabsTrigger value="settings" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Settings className="h-3.5 w-3.5" />
                       <span>Settings</span>
                       {integrationAlertCount > 0 && (
@@ -205,7 +205,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               {/* Mobile Menu Button */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild className="md:hidden">
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Button variant="ghost" size="icon" className="h-9 w-9 text-header-foreground hover:bg-header-foreground/20 hover:text-header-foreground">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
@@ -260,10 +260,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Right: User info + Logout */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline truncate max-w-[120px]">
+              <span className="text-xs sm:text-sm text-header-foreground/90 hidden sm:inline truncate max-w-[120px]">
                 {userName}
               </span>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3">
+              <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3 border-header-foreground/30 text-header-foreground hover:bg-header-foreground/20 hover:text-header-foreground">
                 <span className="hidden sm:inline">Logout</span>
                 <span className="sm:hidden">Exit</span>
               </Button>
