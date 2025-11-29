@@ -229,6 +229,17 @@ export default function LoadsTab() {
     navigate(`/dashboard/load/${id}`);
   };
 
+  // Calculate status counts
+  const statusCounts = {
+    all: loads.length,
+    pending: loads.filter(l => l.status === 'pending').length,
+    dispatched: loads.filter(l => l.status === 'dispatched').length,
+    in_transit: loads.filter(l => l.status === 'in_transit').length,
+    delivered: loads.filter(l => l.status === 'delivered').length,
+    completed: loads.filter(l => l.status === 'completed').length,
+    cancelled: loads.filter(l => l.status === 'cancelled').length,
+  };
+
   const filteredLoads = loads.filter((load) => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -621,6 +632,9 @@ export default function LoadsTab() {
             className={filter === "all" ? "bg-primary text-primary-foreground" : ""}
           >
             All Loads
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.all}
+            </Badge>
           </Button>
           <Button
             variant={filter === "pending" ? "default" : "outline"}
@@ -631,6 +645,9 @@ export default function LoadsTab() {
             className={filter === "pending" ? "bg-yellow-500 text-white hover:bg-yellow-600" : ""}
           >
             Pending
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.pending}
+            </Badge>
           </Button>
           <Button
             variant={filter === "dispatched" ? "default" : "outline"}
@@ -641,6 +658,9 @@ export default function LoadsTab() {
             className={filter === "dispatched" ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
           >
             Dispatched
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.dispatched}
+            </Badge>
           </Button>
           <Button
             variant={filter === "in_transit" ? "default" : "outline"}
@@ -651,6 +671,9 @@ export default function LoadsTab() {
             className={filter === "in_transit" ? "bg-purple-500 text-white hover:bg-purple-600" : ""}
           >
             In Transit
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.in_transit}
+            </Badge>
           </Button>
           <Button
             variant={filter === "delivered" ? "default" : "outline"}
@@ -661,6 +684,9 @@ export default function LoadsTab() {
             className={filter === "delivered" ? "bg-green-600 text-white hover:bg-green-700" : ""}
           >
             Delivered
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.delivered}
+            </Badge>
           </Button>
           <Button
             variant={filter === "completed" ? "default" : "outline"}
@@ -671,6 +697,22 @@ export default function LoadsTab() {
             className={filter === "completed" ? "bg-green-800 text-white hover:bg-green-900" : ""}
           >
             Completed
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.completed}
+            </Badge>
+          </Button>
+          <Button
+            variant={filter === "cancelled" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "cancelled" });
+              setSearchQuery("");
+            }}
+            className={filter === "cancelled" ? "bg-red-500 text-white hover:bg-red-600" : ""}
+          >
+            Cancelled
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.cancelled}
+            </Badge>
           </Button>
         </div>
 
