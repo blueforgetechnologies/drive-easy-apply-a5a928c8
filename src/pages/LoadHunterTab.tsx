@@ -2121,7 +2121,8 @@ export default function LoadHunterTab() {
           /* Load Email Detail View */
           <LoadEmailDetail 
             email={selectedEmailForDetail} 
-            onClose={() => setSelectedEmailForDetail(null)} 
+            emptyDriveDistance={loadDistances.get(selectedEmailForDetail.id)}
+            onClose={() => setSelectedEmailForDetail(null)}
           />
         ) : (
           /* Loads Table */
