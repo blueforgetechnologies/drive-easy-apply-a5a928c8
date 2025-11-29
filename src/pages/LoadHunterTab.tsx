@@ -1139,7 +1139,7 @@ export default function LoadHunterTab() {
                 {loadEmails.length} new
               </Badge>
             </CardHeader>
-            <CardContent className="p-0 flex-1 flex flex-col overflow-y-auto">
+            <CardContent className="p-0 flex-1 flex flex-col">
               <div className="border-t">
                 {loadEmails.length === 0 ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
