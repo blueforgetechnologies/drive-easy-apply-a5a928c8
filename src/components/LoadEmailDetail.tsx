@@ -93,9 +93,7 @@ const LoadEmailDetail = ({
               <div className="border-t pt-4">
                 <div className="text-sm font-semibold mb-2">Email Content:</div>
                 {(() => {
-                  const rawText: string | undefined = email.body_text;
-                  const hasHtmlInText = rawText && rawText.trim().startsWith('<');
-                  const htmlContent = email.body_html || (hasHtmlInText ? rawText : undefined);
+                  const htmlContent: string | undefined = email.body_html || email.body_text;
 
                   if (htmlContent) {
                     return (
@@ -104,14 +102,6 @@ const LoadEmailDetail = ({
                         className="w-full min-h-[600px] border rounded-md bg-white"
                         sandbox="allow-same-origin"
                       />
-                    );
-                  }
-
-                  if (rawText) {
-                    return (
-                      <pre className="text-xs whitespace-pre-wrap font-mono bg-muted p-4 rounded-md overflow-x-auto">
-                        {rawText}
-                      </pre>
                     );
                   }
 
