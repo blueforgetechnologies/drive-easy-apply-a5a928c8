@@ -81,11 +81,26 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     <div className="bg-red-100 -mx-3 px-3 py-1 font-semibold flex items-center">
                       NE-LANG LOGISTICS LLC
                     </div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
+                    <div className="text-center text-gray-400">
+                      <div>Pickup Time</div>
+                      <div>Delivery Time</div>
+                    </div>
+                    <div className="text-center text-gray-400">
+                      <div>Origin</div>
+                      <div>Destination</div>
+                    </div>
+                    <div className="text-center text-gray-400">
+                      <div>Empty Drive</div>
+                      <div>Loaded Drive</div>
+                    </div>
+                    <div className="text-center text-gray-400">
+                      <div>Load Type</div>
+                      <div>Weight</div>
+                    </div>
+                    <div className="text-center text-gray-400">
+                      <div>Pieces</div>
+                      <div>Dimensions</div>
+                    </div>
                   </div>
                 </div>
 
