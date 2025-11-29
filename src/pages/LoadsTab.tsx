@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check } from "lucide-react";
+import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +70,7 @@ export default function LoadsTab() {
   const [selectedLoadIds, setSelectedLoadIds] = useState<string[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     load_number: `LD${Date.now()}`,
     load_type: "internal",
@@ -100,6 +102,7 @@ export default function LoadsTab() {
     cargo_weight: "",
     estimated_miles: "",
     rate: "",
+    customer_id: "",
   });
 
   useEffect(() => {
@@ -109,15 +112,17 @@ export default function LoadsTab() {
 
   const loadDriversAndVehicles = async () => {
     try {
-      const [driversResult, vehiclesResult] = await Promise.all([
+      const [driversResult, vehiclesResult, customersResult] = await Promise.all([
         supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
         supabase.from("vehicles" as any).select("id, vehicle_number").eq("status", "active"),
+        supabase.from("customers" as any).select("id, name, contact_name").eq("status", "active"),
       ]);
       
       if (driversResult.data) setDrivers(driversResult.data);
       if (vehiclesResult.data) setVehicles(vehiclesResult.data);
+      if (customersResult.data) setCustomers(customersResult.data);
     } catch (error) {
-      console.error("Error loading drivers/vehicles:", error);
+      console.error("Error loading drivers/vehicles/customers:", error);
     }
   };
 
@@ -281,6 +286,7 @@ export default function LoadsTab() {
           cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
           estimated_miles: formData.estimated_miles ? parseFloat(formData.estimated_miles) : null,
           rate: formData.rate ? parseFloat(formData.rate) : null,
+          customer_id: formData.customer_id || null,
         });
 
       if (error) throw error;
@@ -317,6 +323,7 @@ export default function LoadsTab() {
         cargo_weight: "",
         estimated_miles: "",
         rate: "",
+        customer_id: "",
       });
       loadData();
     } catch (error: any) {
@@ -712,15 +719,38 @@ export default function LoadsTab() {
                   <DollarSign className="h-4 w-4" />
                   Financial
                 </h3>
-                <div>
-                  <Label htmlFor="rate">Rate ($)</Label>
-                  <Input
-                    id="rate"
-                    type="number"
-                    step="0.01"
-                    value={formData.rate}
-                    onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="customer_id">Customer (Who Pays)</Label>
+                    <div className="flex gap-2">
+                      <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select customer" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.name} {customer.contact_name ? `(${customer.contact_name})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <AddCustomerDialog onCustomerAdded={async (customerId) => {
+                        await loadDriversAndVehicles();
+                        setFormData({ ...formData, customer_id: customerId });
+                      }} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="rate">Rate ($)</Label>
+                    <Input
+                      id="rate"
+                      type="number"
+                      step="0.01"
+                      value={formData.rate}
+                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
