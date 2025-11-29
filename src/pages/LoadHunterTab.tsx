@@ -157,14 +157,28 @@ export default function LoadHunterTab() {
 
   // Function to play alert sound
   const playAlertSound = () => {
-    if (isSoundMuted) return;
+    console.log('🔔 playAlertSound called, isSoundMuted:', isSoundMuted);
+    
+    if (isSoundMuted) {
+      console.log('❌ Sound is muted, skipping');
+      return;
+    }
     
     try {
       // Create or reuse audio context
       let ctx = audioContext;
       if (!ctx) {
+        console.log('🎵 Creating new AudioContext');
         ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         setAudioContext(ctx);
+      }
+      
+      console.log('🎵 AudioContext state:', ctx.state);
+      
+      // Resume context if suspended (required by some browsers)
+      if (ctx.state === 'suspended') {
+        console.log('🔓 Resuming suspended AudioContext');
+        ctx.resume();
       }
       
       const oscillator = ctx.createOscillator();
@@ -184,30 +198,46 @@ export default function LoadHunterTab() {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.4);
       
-      console.log('🔊 Sound notification played');
+      console.log('✅ Sound notification played successfully');
     } catch (error) {
-      console.error('Error playing sound:', error);
+      console.error('❌ Error playing sound:', error);
     }
   };
 
   const toggleSound = () => {
+    console.log('🔘 toggleSound clicked, current state:', isSoundMuted);
+    
     const newMutedState = !isSoundMuted;
     setIsSoundMuted(newMutedState);
     
+    console.log('🔘 New muted state:', newMutedState);
+    
     // Initialize audio context and play test sound when unmuting
     if (!newMutedState) {
+      console.log('🔊 Enabling sound alerts...');
+      
       // Create audio context on user interaction
       if (!audioContext) {
+        console.log('🎵 Creating AudioContext on user interaction');
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         setAudioContext(ctx);
+        
+        // Resume if needed
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(() => {
+            console.log('🔓 AudioContext resumed');
+          });
+        }
       }
       
       // Play test sound
       setTimeout(() => {
+        console.log('⏰ Playing test sound after delay');
         playAlertSound();
         toast.success('Sound alerts enabled');
       }, 100);
     } else {
+      console.log('🔇 Sound alerts muted');
       toast.info('Sound alerts muted');
     }
   };
