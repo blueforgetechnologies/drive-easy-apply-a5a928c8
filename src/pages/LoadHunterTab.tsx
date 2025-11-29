@@ -61,6 +61,26 @@ interface Load {
   source: string;
 }
 
+interface HuntPlan {
+  id: string;
+  planName: string;
+  vehicleSize: string;
+  zipCode: string;
+  availableFeet: string;
+  partial: boolean;
+  pickupRadius: string;
+  mileLimit: string;
+  loadCapacity: string;
+  availableDate: string;
+  availableTime: string;
+  destinationZip: string;
+  destinationRadius: string;
+  notes: string;
+  createdBy: string;
+  createdAt: Date;
+  lastModified: Date;
+}
+
 export default function LoadHunterTab() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -74,6 +94,22 @@ export default function LoadHunterTab() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
+  const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
+  const [huntFormData, setHuntFormData] = useState({
+    planName: "",
+    vehicleSize: "large-straight",
+    zipCode: "",
+    availableFeet: "",
+    partial: false,
+    pickupRadius: "100",
+    mileLimit: "",
+    loadCapacity: "9000",
+    availableDate: new Date().toISOString().split('T')[0],
+    availableTime: "00:00",
+    destinationZip: "",
+    destinationRadius: "",
+    notes: "",
+  });
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -304,6 +340,60 @@ export default function LoadHunterTab() {
     }
   };
 
+  const handleSaveHuntPlan = () => {
+    const newHuntPlan: HuntPlan = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...huntFormData,
+      createdBy: "Sofiane Talbi",
+      createdAt: new Date(),
+      lastModified: new Date(),
+    };
+    
+    setHuntPlans([...huntPlans, newHuntPlan]);
+    setCreateHuntOpen(false);
+    toast.success("Hunt plan created successfully");
+    
+    // Reset form
+    setHuntFormData({
+      planName: "",
+      vehicleSize: "large-straight",
+      zipCode: "",
+      availableFeet: "",
+      partial: false,
+      pickupRadius: "100",
+      mileLimit: "",
+      loadCapacity: "9000",
+      availableDate: new Date().toISOString().split('T')[0],
+      availableTime: "00:00",
+      destinationZip: "",
+      destinationRadius: "",
+      notes: "",
+    });
+  };
+
+  const handleDeleteHuntPlan = (id: string) => {
+    setHuntPlans(huntPlans.filter(plan => plan.id !== id));
+    toast.success("Hunt plan deleted");
+  };
+
+  const formatDateTime = (date: string, time: string) => {
+    const dateObj = new Date(date + 'T' + time);
+    return dateObj.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }) + ' ' + time + ' EST';
+  };
+
+  const getTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ${seconds % 60}s ago`;
+    return `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
+  };
+
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-3">
       {/* Left Sidebar - Vehicles */}
@@ -527,6 +617,70 @@ export default function LoadHunterTab() {
                   Set Driver to Time-Off mode
                 </Button>
               </div>
+
+              {/* Hunt Plans */}
+              {huntPlans.map((plan) => (
+                <Card key={plan.id} className="p-4 space-y-3 bg-card">
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="secondary" className="h-8 px-3 text-xs">
+                        Disable
+                      </Button>
+                      <Button size="sm" variant="secondary" className="h-8 px-3 text-xs">
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="h-8 px-3 text-xs"
+                        onClick={() => handleDeleteHuntPlan(plan.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                      <Truck className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Hunt Plan Details */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Vehicle Size:</span>
+                      <span>{plan.vehicleSize === 'large-straight' ? 'Large Straight, Small Straight' : plan.vehicleSize}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Zipcodes:</span>
+                      <span>{plan.zipCode}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Search Distance (miles):</span>
+                      <span>{plan.pickupRadius}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Available Feet:</span>
+                      <span>{plan.availableFeet || 'TL'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Vehicle Available Time:</span>
+                      <span className="text-xs">{formatDateTime(plan.availableDate, plan.availableTime)}</span>
+                    </div>
+                  </div>
+
+                  {/* Meta Info */}
+                  <div className="space-y-1 text-xs text-muted-foreground pt-2">
+                    <div>Created by {plan.createdBy}: {getTimeAgo(plan.createdAt)}</div>
+                    <div>Last Modified: {getTimeAgo(plan.lastModified)}</div>
+                    <div className="text-right">Id: {plan.id}</div>
+                  </div>
+
+                  {/* Clear Matches Button */}
+                  <Button variant="destructive" size="sm" className="w-full">
+                    Clear Matches
+                  </Button>
+                </Card>
+              ))}
             </div>
 
             {/* Right Panel - Map */}
@@ -554,7 +708,12 @@ export default function LoadHunterTab() {
             {/* Plan Name */}
             <div className="space-y-2">
               <Label htmlFor="planName">Plan Name</Label>
-              <Input id="planName" placeholder="Plan Name" />
+              <Input 
+                id="planName" 
+                placeholder="Plan Name" 
+                value={huntFormData.planName}
+                onChange={(e) => setHuntFormData({...huntFormData, planName: e.target.value})}
+              />
             </div>
 
             {/* Vehicle Size */}
@@ -562,7 +721,10 @@ export default function LoadHunterTab() {
               <Label htmlFor="vehicleSize">
                 Vehicle Size <span className="text-destructive">*</span>
               </Label>
-              <Select defaultValue="large-straight">
+              <Select 
+                value={huntFormData.vehicleSize}
+                onValueChange={(value) => setHuntFormData({...huntFormData, vehicleSize: value})}
+              >
                 <SelectTrigger id="vehicleSize">
                   <SelectValue />
                 </SelectTrigger>
@@ -581,18 +743,32 @@ export default function LoadHunterTab() {
                   Zip Code <span className="text-destructive">*</span>
                 </Label>
                 <div className="relative">
-                  <Input id="zipCode" placeholder="Zip Code" />
+                  <Input 
+                    id="zipCode" 
+                    placeholder="Zip Code"
+                    value={huntFormData.zipCode}
+                    onChange={(e) => setHuntFormData({...huntFormData, zipCode: e.target.value})}
+                  />
                   <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="availableFeet">Available feet</Label>
-                <Input id="availableFeet" placeholder="Available feet" />
+                <Input 
+                  id="availableFeet" 
+                  placeholder="Available feet"
+                  value={huntFormData.availableFeet}
+                  onChange={(e) => setHuntFormData({...huntFormData, availableFeet: e.target.value})}
+                />
               </div>
               <div className="space-y-2">
                 <Label>&nbsp;</Label>
                 <div className="flex items-center space-x-2 h-10">
-                  <Checkbox id="partial" />
+                  <Checkbox 
+                    id="partial"
+                    checked={huntFormData.partial}
+                    onCheckedChange={(checked) => setHuntFormData({...huntFormData, partial: checked as boolean})}
+                  />
                   <label htmlFor="partial" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Partial
                   </label>
@@ -604,29 +780,52 @@ export default function LoadHunterTab() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="pickupRadius">Pickup Search Radius</Label>
-                <Input id="pickupRadius" defaultValue="100" />
+                <Input 
+                  id="pickupRadius"
+                  value={huntFormData.pickupRadius}
+                  onChange={(e) => setHuntFormData({...huntFormData, pickupRadius: e.target.value})}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="mileLimit">Total Mile Limit</Label>
-                <Input id="mileLimit" placeholder="Total Mile Limit" />
+                <Input 
+                  id="mileLimit" 
+                  placeholder="Total Mile Limit"
+                  value={huntFormData.mileLimit}
+                  onChange={(e) => setHuntFormData({...huntFormData, mileLimit: e.target.value})}
+                />
               </div>
             </div>
 
             {/* Available Load Capacity */}
             <div className="space-y-2">
               <Label htmlFor="loadCapacity">Available Load Capacity</Label>
-              <Input id="loadCapacity" defaultValue="9000" />
+              <Input 
+                id="loadCapacity"
+                value={huntFormData.loadCapacity}
+                onChange={(e) => setHuntFormData({...huntFormData, loadCapacity: e.target.value})}
+              />
             </div>
 
             {/* Available Date and Time */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="availableDate">Available Date</Label>
-                <Input id="availableDate" type="date" defaultValue="2025-11-29" />
+                <Input 
+                  id="availableDate" 
+                  type="date"
+                  value={huntFormData.availableDate}
+                  onChange={(e) => setHuntFormData({...huntFormData, availableDate: e.target.value})}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="availableTime">Available Time (Eastern Time)</Label>
-                <Input id="availableTime" type="time" defaultValue="00:00" />
+                <Input 
+                  id="availableTime" 
+                  type="time"
+                  value={huntFormData.availableTime}
+                  onChange={(e) => setHuntFormData({...huntFormData, availableTime: e.target.value})}
+                />
               </div>
             </div>
 
@@ -634,7 +833,12 @@ export default function LoadHunterTab() {
             <div className="space-y-2">
               <Label htmlFor="destinationZip">Destination Zip Code (bring driver to home)</Label>
               <div className="relative">
-                <Input id="destinationZip" placeholder="Destination Zip Code" />
+                <Input 
+                  id="destinationZip" 
+                  placeholder="Destination Zip Code"
+                  value={huntFormData.destinationZip}
+                  onChange={(e) => setHuntFormData({...huntFormData, destinationZip: e.target.value})}
+                />
                 <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
               </div>
             </div>
@@ -642,18 +846,30 @@ export default function LoadHunterTab() {
             {/* Destination Search Radius */}
             <div className="space-y-2">
               <Label htmlFor="destinationRadius">Destination Search Radius</Label>
-              <Input id="destinationRadius" placeholder="Destination Search Radius" />
+              <Input 
+                id="destinationRadius" 
+                placeholder="Destination Search Radius"
+                value={huntFormData.destinationRadius}
+                onChange={(e) => setHuntFormData({...huntFormData, destinationRadius: e.target.value})}
+              />
             </div>
 
             {/* Notes */}
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" placeholder="Notes" rows={4} className="resize-none" />
+              <Textarea 
+                id="notes" 
+                placeholder="Notes" 
+                rows={4} 
+                className="resize-none"
+                value={huntFormData.notes}
+                onChange={(e) => setHuntFormData({...huntFormData, notes: e.target.value})}
+              />
             </div>
 
             {/* Save Button */}
             <div className="flex justify-start pt-2">
-              <Button variant="secondary" className="px-8" onClick={() => setCreateHuntOpen(false)}>
+              <Button variant="secondary" className="px-8" onClick={handleSaveHuntPlan}>
                 Save
               </Button>
             </div>
