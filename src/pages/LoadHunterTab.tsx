@@ -1180,11 +1180,11 @@ export default function LoadHunterTab() {
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="flex items-center gap-1">
-                                  <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                                <div className="flex items-center gap-1 whitespace-nowrap">
+                                  <Badge variant="outline" className="h-4 px-1 text-[10px] flex-shrink-0">
                                     {email.status === 'new' ? '🟡' : '🟢'}
                                   </Badge>
-                                  <div className="text-[11px] font-medium leading-tight">
+                                  <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
                                     {(() => {
                                       const customerName = data.customer || email.from_name || 'Unknown';
                                       return customerName.length > 22 ? customerName.slice(0, 22) + '...' : customerName;
@@ -1193,16 +1193,16 @@ export default function LoadHunterTab() {
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight">{receivedAgo}</div>
-                                <div className="text-[10px] text-muted-foreground leading-tight">
+                                <div className="text-[11px] leading-tight whitespace-nowrap">{receivedAgo}</div>
+                                <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
                                   {data.expires_time || '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight">
+                                <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.pickup_date || '—'} {data.pickup_time || ''}
                                 </div>
-                                <div className="text-[11px] leading-tight">
+                                <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.delivery_date || '—'} {data.delivery_time || ''}
                                 </div>
                               </TableCell>
