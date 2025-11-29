@@ -32,103 +32,10 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-background">
-      {/* LEFT SIDEBAR - Vehicle List */}
-      <div className="w-[260px] border-r bg-background overflow-y-auto">
-        <div className="space-y-1 p-2">
-          {vehicles.map((vehicle, idx) => (
-            <div
-              key={idx}
-              className={`p-2 rounded cursor-pointer border ${
-                vehicle.active ? "bg-blue-50 border-blue-200" : "hover:bg-accent"
-              }`}
-            >
-              <div className="flex items-start justify-between mb-1">
-                <div className={`text-[11px] font-semibold ${vehicle.active && vehicle.name.includes("No Driver") ? "text-red-500" : ""}`}>
-                  {vehicle.name}
-                </div>
-                <div className="flex gap-0.5">
-                  <Badge variant="destructive" className="h-4 w-4 p-0 text-[9px] flex items-center justify-center">
-                    {vehicle.badges[0]}
-                  </Badge>
-                  <Badge className="h-4 w-4 p-0 text-[9px] flex items-center justify-center bg-orange-500">
-                    {vehicle.badges[1]}
-                  </Badge>
-                  <Badge className="h-4 w-4 p-0 text-[9px] flex items-center justify-center bg-blue-500">
-                    {vehicle.badges[2]}
-                  </Badge>
-                </div>
-              </div>
-              <div className="text-[10px] text-gray-500 whitespace-pre-line leading-tight">
-                {vehicle.company}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* TOP FILTER BAR */}
-        <div className="border-b bg-background px-3 py-2">
-          <div className="flex items-center gap-2 text-[11px] flex-wrap">
-            <span className="text-[10px] font-semibold text-gray-500 mr-1">MODE:</span>
-            <Button size="sm" variant="default" className="h-6 px-3 text-[10px]">
-              Admin
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-3 text-[10px]">
-              Dispatch
-            </Button>
-            <Button size="sm" className="h-6 px-3 text-[10px] bg-green-600 hover:bg-green-700">
-              Add Vehicle
-            </Button>
-            
-            <div className="h-4 w-px bg-border mx-1" />
-            
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Unreviewed Loads <Badge variant="destructive" className="ml-1 h-3 px-1 text-[9px]">4</Badge>
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 p-1">
-              <Home className="h-3 w-3" />
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 p-1">
-              <Bell className="h-3 w-3" />
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Missed <Badge className="ml-1 h-3 px-1 text-[9px] bg-gray-200 text-gray-700">50</Badge>
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Waitlist <Badge className="ml-1 h-3 px-1 text-[9px] bg-orange-500">0</Badge>
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Undecided <Badge className="ml-1 h-3 px-1 text-[9px] bg-gray-200 text-gray-700">0</Badge>
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Skipped <Badge className="ml-1 h-3 px-1 text-[9px] bg-gray-200 text-gray-700">21</Badge>
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              My Bids <Badge className="ml-1 h-3 px-1 text-[9px] bg-blue-500">0</Badge>
-            </Button>
-            <Button size="sm" className="h-6 px-2 text-[10px] bg-orange-500 hover:bg-orange-600">
-              All
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Booked <Badge className="ml-1 h-3 px-1 text-[9px] bg-blue-500">1</Badge>
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Vehicle Assignment
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
-              Dispatcher Matrix
-            </Button>
-          </div>
-        </div>
-
-        {/* SCROLLABLE CONTENT */}
-        <div className="flex-1 overflow-auto">
-          <div className="flex gap-3 p-3">
-            {/* CENTER COLUMN */}
-            <div className="flex-1">
+    <div className="flex-1 overflow-auto">
+      <div className="flex gap-3 p-3">
+        {/* CENTER COLUMN */}
+        <div className="flex-1">
               <Card className="border rounded-md overflow-hidden mb-3">
                 {/* HEADER */}
                 <div className="flex items-center border-b p-3 bg-slate-50">
@@ -308,11 +215,11 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     },
                   ]}
                 />
-              </Card>
-            </div>
+          </Card>
+        </div>
 
-            {/* RIGHT QUOTE COLUMN */}
-            <div className="w-[200px]">
+        {/* RIGHT QUOTE COLUMN */}
+        <div className="w-[200px]">
               <Card className="p-3">
                 <div className="flex justify-between text-[10px] text-gray-500 pb-2 border-b mb-2">
                   <span>Quote Rate</span>
@@ -353,9 +260,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     </div>
                   ))}
                 </div>
-              </Card>
-            </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>
