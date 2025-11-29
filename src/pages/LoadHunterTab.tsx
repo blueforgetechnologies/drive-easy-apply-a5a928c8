@@ -83,6 +83,7 @@ interface HuntPlan {
   createdAt: Date;
   lastModified: Date;
   huntCoordinates?: { lat: number; lng: number } | null;
+  enabled: boolean;
 }
 
 export default function LoadHunterTab() {
@@ -97,6 +98,8 @@ export default function LoadHunterTab() {
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
+  const [editingHunt, setEditingHunt] = useState<HuntPlan | null>(null);
+  const [editHuntOpen, setEditHuntOpen] = useState(false);
   const [huntFormData, setHuntFormData] = useState({
     planName: "",
     vehicleSize: "large-straight",
@@ -168,11 +171,13 @@ export default function LoadHunterTab() {
 
   // Check if a load matches any active hunt plans
   const loadMatchesHunt = (email: any): boolean => {
-    if (huntPlans.length === 0) return false; // No hunts active, don't show any loads in unreviewed
+    // Only consider enabled hunt plans
+    const enabledHunts = huntPlans.filter(h => h.enabled);
+    if (enabledHunts.length === 0) return false; // No enabled hunts, don't show any loads in unreviewed
     
     const loadData = extractLoadLocation(email);
     
-    return huntPlans.some((hunt: any) => {
+    return enabledHunts.some((hunt: any) => {
       let matchFound = false;
 
       // Match by date if specified
@@ -613,6 +618,7 @@ export default function LoadHunterTab() {
         createdAt: new Date(plan.created_at),
         lastModified: new Date(plan.last_modified),
         huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
+        enabled: plan.enabled !== false, // Default to true if undefined
       }));
       
       setHuntPlans(transformedPlans);
@@ -772,6 +778,7 @@ export default function LoadHunterTab() {
           notes: huntFormData.notes,
           hunt_coordinates: huntCoordinates,
           created_by: user?.id,
+          enabled: true,
         })
         .select()
         .single();
@@ -824,6 +831,124 @@ export default function LoadHunterTab() {
     } catch (error) {
       console.error("Error deleting hunt plan:", error);
       toast.error("Failed to delete hunt plan");
+    }
+  };
+
+  const handleToggleHunt = async (id: string, currentEnabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("hunt_plans")
+        .update({ enabled: !currentEnabled })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      // Reload hunt plans from database
+      await loadHuntPlans();
+      
+      // Trigger re-filtering of loads
+      await loadLoadEmails();
+      
+      toast.success(currentEnabled ? "Hunt disabled" : "Hunt enabled");
+    } catch (error) {
+      console.error("Error toggling hunt:", error);
+      toast.error("Failed to toggle hunt");
+    }
+  };
+
+  const handleEditHunt = (hunt: HuntPlan) => {
+    setEditingHunt(hunt);
+    setHuntFormData({
+      planName: hunt.planName,
+      vehicleSize: hunt.vehicleSize,
+      zipCode: hunt.zipCode,
+      availableFeet: hunt.availableFeet,
+      partial: hunt.partial,
+      pickupRadius: hunt.pickupRadius,
+      mileLimit: hunt.mileLimit,
+      loadCapacity: hunt.loadCapacity,
+      availableDate: hunt.availableDate,
+      availableTime: hunt.availableTime,
+      destinationZip: hunt.destinationZip,
+      destinationRadius: hunt.destinationRadius,
+      notes: hunt.notes,
+    });
+    setEditHuntOpen(true);
+  };
+
+  const handleUpdateHuntPlan = async () => {
+    if (!editingHunt) return;
+
+    if (!huntFormData.zipCode) {
+      toast.error("Please enter a zip code");
+      return;
+    }
+
+    try {
+      // Geocode the zipcode to get coordinates using Mapbox
+      const geocodeResponse = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${huntFormData.zipCode}.json?access_token=${mapboxToken}&country=US&types=postcode&limit=1`
+      );
+      const geocodeData = await geocodeResponse.json();
+      
+      let huntCoordinates = null;
+      if (geocodeData.features && geocodeData.features.length > 0) {
+        const [lng, lat] = geocodeData.features[0].center;
+        huntCoordinates = { lat, lng };
+      }
+
+      // Update in database
+      const { error } = await supabase
+        .from("hunt_plans")
+        .update({
+          plan_name: huntFormData.planName,
+          vehicle_size: huntFormData.vehicleSize,
+          zip_code: huntFormData.zipCode,
+          available_feet: huntFormData.availableFeet,
+          partial: huntFormData.partial,
+          pickup_radius: huntFormData.pickupRadius,
+          mile_limit: huntFormData.mileLimit,
+          load_capacity: huntFormData.loadCapacity,
+          available_date: huntFormData.availableDate,
+          available_time: huntFormData.availableTime,
+          destination_zip: huntFormData.destinationZip,
+          destination_radius: huntFormData.destinationRadius,
+          notes: huntFormData.notes,
+          hunt_coordinates: huntCoordinates,
+        })
+        .eq("id", editingHunt.id);
+
+      if (error) throw error;
+      
+      setEditHuntOpen(false);
+      setEditingHunt(null);
+      toast.success("Hunt plan updated successfully");
+      
+      // Reload hunt plans from database
+      await loadHuntPlans();
+      
+      // Trigger re-filtering of loads
+      await loadLoadEmails();
+      
+      // Reset form
+      setHuntFormData({
+        planName: "",
+        vehicleSize: "large-straight",
+        zipCode: "",
+        availableFeet: "",
+        partial: false,
+        pickupRadius: "100",
+        mileLimit: "",
+        loadCapacity: "9000",
+        availableDate: new Date().toISOString().split('T')[0],
+        availableTime: "00:00",
+        destinationZip: "",
+        destinationRadius: "",
+        notes: "",
+      });
+    } catch (error) {
+      console.error("Error updating hunt plan:", error);
+      toast.error("Failed to update hunt plan");
     }
   };
 
@@ -1323,8 +1448,8 @@ export default function LoadHunterTab() {
               {huntPlans
                 .filter((plan) => plan.vehicleId === selectedVehicle.id)
                 .map((plan) => {
-                  // Calculate matching loads for this hunt
-                  const matchingLoads = loadEmails.filter(email => {
+                  // Calculate matching loads for this hunt (only if enabled)
+                  const matchingLoads = plan.enabled ? loadEmails.filter(email => {
                     const emailTime = new Date(email.received_at);
                     const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
                     
@@ -1374,19 +1499,32 @@ export default function LoadHunterTab() {
                     }
 
                     return false;
-                  });
+                  }) : [];
                   
                   const matchCount = matchingLoads.length;
                   
                   return (
-                <Card key={plan.id} className="p-4 space-y-3 bg-card border-2 border-border">
-                  {/* Action Buttons */}
+                <Card key={plan.id} className={`p-4 space-y-3 border-2 ${plan.enabled ? 'bg-card border-border' : 'bg-muted/30 border-muted'}`}>
+                  {/* Status and Action Buttons */}
                   <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" className="h-8 px-3 text-xs">
-                        Disable
+                    <div className="flex gap-2 items-center">
+                      <Badge variant={plan.enabled ? "default" : "secondary"} className="h-6">
+                        {plan.enabled ? "Active" : "Disabled"}
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="h-8 px-3 text-xs"
+                        onClick={() => handleToggleHunt(plan.id, plan.enabled)}
+                      >
+                        {plan.enabled ? "Disable" : "Enable"}
                       </Button>
-                      <Button size="sm" variant="secondary" className="h-8 px-3 text-xs">
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="h-8 px-3 text-xs"
+                        onClick={() => handleEditHunt(plan)}
+                      >
                         Edit
                       </Button>
                       <Button 
@@ -1399,7 +1537,7 @@ export default function LoadHunterTab() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
-                      {matchCount > 0 && (
+                      {matchCount > 0 && plan.enabled && (
                         <Badge className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white">
                           {matchCount} {matchCount === 1 ? 'Match' : 'Matches'}
                         </Badge>
@@ -1640,6 +1778,192 @@ export default function LoadHunterTab() {
                 Save
               </Button>
               <Button variant="outline" className="px-8" onClick={() => setCreateHuntOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Hunt Dialog */}
+      <Dialog open={editHuntOpen} onOpenChange={setEditHuntOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Edit Hunt Plan</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Plan Name */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-planName">Plan Name</Label>
+              <Input 
+                id="edit-planName" 
+                placeholder="Plan Name" 
+                value={huntFormData.planName}
+                onChange={(e) => setHuntFormData({...huntFormData, planName: e.target.value})}
+              />
+            </div>
+
+            {/* Vehicle Size */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-vehicleSize">
+                Vehicle Size <span className="text-destructive">*</span>
+              </Label>
+              <Select 
+                value={huntFormData.vehicleSize}
+                onValueChange={(value) => setHuntFormData({...huntFormData, vehicleSize: value})}
+              >
+                <SelectTrigger id="edit-vehicleSize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="large-straight">Large Straight, Small Straight</SelectItem>
+                  <SelectItem value="small-straight">Small Straight</SelectItem>
+                  <SelectItem value="large-straight-only">Large Straight</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Zip Code, Available feet, Partial */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-zipCode">
+                  Zip Code <span className="text-destructive">*</span>
+                </Label>
+                <div className="relative">
+                  <Input 
+                    id="edit-zipCode" 
+                    placeholder="Zip Code"
+                    value={huntFormData.zipCode}
+                    onChange={(e) => setHuntFormData({...huntFormData, zipCode: e.target.value})}
+                  />
+                  <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-availableFeet">Available feet</Label>
+                <Input 
+                  id="edit-availableFeet" 
+                  placeholder="Available feet"
+                  value={huntFormData.availableFeet}
+                  onChange={(e) => setHuntFormData({...huntFormData, availableFeet: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>&nbsp;</Label>
+                <div className="flex items-center space-x-2 h-10">
+                  <Checkbox 
+                    id="edit-partial"
+                    checked={huntFormData.partial}
+                    onCheckedChange={(checked) => setHuntFormData({...huntFormData, partial: checked as boolean})}
+                  />
+                  <label htmlFor="edit-partial" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Partial
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Pickup Search Radius, Total Mile Limit */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-pickupRadius">Pickup Search Radius</Label>
+                <Input 
+                  id="edit-pickupRadius"
+                  value={huntFormData.pickupRadius}
+                  onChange={(e) => setHuntFormData({...huntFormData, pickupRadius: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-mileLimit">Total Mile Limit</Label>
+                <Input 
+                  id="edit-mileLimit" 
+                  placeholder="Total Mile Limit"
+                  value={huntFormData.mileLimit}
+                  onChange={(e) => setHuntFormData({...huntFormData, mileLimit: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Available Load Capacity */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-loadCapacity">Available Load Capacity</Label>
+              <Input 
+                id="edit-loadCapacity"
+                value={huntFormData.loadCapacity}
+                onChange={(e) => setHuntFormData({...huntFormData, loadCapacity: e.target.value})}
+              />
+            </div>
+
+            {/* Available Date and Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-availableDate">Available Date</Label>
+                <Input 
+                  id="edit-availableDate" 
+                  type="date"
+                  value={huntFormData.availableDate}
+                  onChange={(e) => setHuntFormData({...huntFormData, availableDate: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-availableTime">Available Time (Eastern Time)</Label>
+                <Input 
+                  id="edit-availableTime" 
+                  type="time"
+                  value={huntFormData.availableTime}
+                  onChange={(e) => setHuntFormData({...huntFormData, availableTime: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Destination Zip Code */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-destinationZip">Destination Zip Code (bring driver to home)</Label>
+              <div className="relative">
+                <Input 
+                  id="edit-destinationZip" 
+                  placeholder="Destination Zip Code"
+                  value={huntFormData.destinationZip}
+                  onChange={(e) => setHuntFormData({...huntFormData, destinationZip: e.target.value})}
+                />
+                <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
+              </div>
+            </div>
+
+            {/* Destination Search Radius */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-destinationRadius">Destination Search Radius</Label>
+              <Input 
+                id="edit-destinationRadius" 
+                placeholder="Destination Search Radius"
+                value={huntFormData.destinationRadius}
+                onChange={(e) => setHuntFormData({...huntFormData, destinationRadius: e.target.value})}
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <Textarea 
+                id="edit-notes" 
+                placeholder="Notes" 
+                rows={4} 
+                className="resize-none"
+                value={huntFormData.notes}
+                onChange={(e) => setHuntFormData({...huntFormData, notes: e.target.value})}
+              />
+            </div>
+
+            {/* Update and Cancel Buttons */}
+            <div className="flex justify-start gap-3 pt-2">
+              <Button variant="secondary" className="px-8" onClick={handleUpdateHuntPlan}>
+                Update
+              </Button>
+              <Button variant="outline" className="px-8" onClick={() => {
+                setEditHuntOpen(false);
+                setEditingHunt(null);
+              }}>
                 Cancel
               </Button>
             </div>
