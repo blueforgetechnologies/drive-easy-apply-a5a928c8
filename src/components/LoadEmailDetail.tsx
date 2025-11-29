@@ -126,7 +126,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 {/* ORIGINAL POST */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1.5 text-[11px] items-center">
+                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-0.5 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Original Post</div>
                   <div className="text-red-600 text-[10px]">
                     Note: CONFIRM MC, CONFIRM ETA TO PICK, CONFIRM TRUCK DIMS
@@ -137,7 +137,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 {/* VEHICLE */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1.5 text-[11px] items-center">
+                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-0.5 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Vehicle</div>
                   <div className="text-gray-500">Note:</div>
                   <div className="flex items-center justify-end gap-2 leading-tight">
