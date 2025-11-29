@@ -32,7 +32,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex">
+    <div className="flex h-[calc(100vh-8rem)] bg-background">
       {/* LEFT SIDEBAR - Vehicle List */}
       <div className="w-[260px] border-r bg-background overflow-y-auto">
         <div className="space-y-1 p-2">
