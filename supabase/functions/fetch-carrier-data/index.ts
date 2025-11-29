@@ -38,8 +38,8 @@ serve(async (req) => {
       physical_address: '',
       phone: '',
       mc_number: '',
-      safer_status: '',
-      safety_rating: '',
+      safer_status: null,
+      safety_rating: null,
     };
 
     console.log('Fetched HTML length:', html.length);
