@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Load {
   id: string;
@@ -36,6 +37,7 @@ interface Load {
   cargo_description: string | null;
   customer_id: string | null;
   broker_name: string | null;
+  reference_number: string | null;
   created_at: string;
 }
 
@@ -87,11 +89,16 @@ export default function LoadsTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("loads" as any)
-        .select("*")
-        .eq("status", filter)
-        .order("created_at", { ascending: false });
+        .select("*");
+      
+      // Only filter by status if not "all"
+      if (filter !== "all") {
+        query = query.eq("status", filter);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) {
         toast.error("Error loading loads");
@@ -203,9 +210,9 @@ export default function LoadsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Load Management</h2>
+        <h2 className="text-2xl font-bold">Booked Loads</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -560,6 +567,16 @@ export default function LoadsTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-wrap gap-2">
           <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+            className={filter === "all" ? "bg-primary text-primary-foreground" : ""}
+          >
+            All Loads
+          </Button>
+          <Button
             variant={filter === "pending" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "pending" });
@@ -626,75 +643,129 @@ export default function LoadsTab() {
         <CardContent className="p-0">
           {filteredLoads.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              {searchQuery ? "No loads match your search" : `No ${filter} loads found`}
+              {searchQuery ? "No loads match your search" : `No ${filter === "all" ? "" : filter} loads found`}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead>Load #</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Pickup</TableHead>
-                    <TableHead>Delivery</TableHead>
-                    <TableHead>Pickup Date</TableHead>
-                    <TableHead>Delivery Date</TableHead>
-                    <TableHead>Miles</TableHead>
-                    <TableHead>Rate</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="w-12">
+                      <Checkbox />
+                    </TableHead>
+                    <TableHead className="text-primary">Status</TableHead>
+                    <TableHead className="text-primary">
+                      <div>Truck Id</div>
+                      <div>Driver</div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      <div>Carrier</div>
+                      <div>Customer</div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      <div>Our Load ID</div>
+                      <div>Customer Load</div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      <div>Origin</div>
+                      <div>Destination</div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      <div>Pickup</div>
+                      <div>Delivery</div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      <div>DH</div>
+                      <div>Loaded</div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      <div>Loaded $ /</div>
+                      <div>Mile</div>
+                      <div>Total $ / Mile</div>
+                    </TableHead>
+                    <TableHead className="text-primary">Payload</TableHead>
+                    <TableHead className="text-primary">
+                      <div>Load Owner</div>
+                      <div>Current Dispatcher</div>
+                    </TableHead>
+                    <TableHead className="text-primary">RC</TableHead>
+                    <TableHead className="text-primary">BOL</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredLoads.map((load) => (
-                    <TableRow key={load.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewLoadDetail(load.id)}>
-                      <TableCell className="font-medium">{load.load_number}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{load.load_type || "N/A"}</Badge>
+                    <TableRow 
+                      key={load.id} 
+                      className="cursor-pointer hover:bg-muted/30 border-b" 
+                      onClick={() => viewLoadDetail(load.id)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox />
                       </TableCell>
                       <TableCell>
-                        <div>{load.pickup_city}, {load.pickup_state}</div>
-                        <div className="text-xs text-muted-foreground">{load.pickup_location}</div>
+                        <div className="text-xs whitespace-nowrap">
+                          {load.status === "pending" && "Pending Rate"}
+                        </div>
+                        <div className="text-xs whitespace-nowrap">
+                          {load.status === "pending" && "Approval"}
+                        </div>
+                        {load.status === "dispatched" && (
+                          <Badge className="bg-blue-500 text-white text-xs">Dispatched</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div>{load.delivery_city}, {load.delivery_state}</div>
-                        <div className="text-xs text-muted-foreground">{load.delivery_location}</div>
+                        <div className="font-semibold text-sm">N/A</div>
+                        <div className="text-xs text-muted-foreground">-</div>
                       </TableCell>
                       <TableCell>
-                        {load.pickup_date ? format(new Date(load.pickup_date), "MMM d, yyyy h:mm a") : "N/A"}
+                        <div className="text-sm">{load.broker_name || "N/A"}</div>
+                        <div className="text-xs text-muted-foreground">-</div>
                       </TableCell>
                       <TableCell>
-                        {load.delivery_date ? format(new Date(load.delivery_date), "MMM d, yyyy h:mm a") : "N/A"}
-                      </TableCell>
-                      <TableCell>{load.estimated_miles || "N/A"}</TableCell>
-                      <TableCell className="font-medium text-green-600">
-                        {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
+                        <div className="font-medium text-sm">{load.load_number}</div>
+                        <div className="text-xs text-muted-foreground">{load.reference_number || "-"}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusBadge(load.status)}>
-                          {load.status.charAt(0).toUpperCase() + load.status.slice(1).replace('_', ' ')}
-                        </Badge>
+                        <div className="text-sm">{load.pickup_city}, {load.pickup_state}</div>
+                        <div className="text-xs text-muted-foreground">{load.delivery_city}, {load.delivery_state}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            onClick={() => viewLoadDetail(load.id)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            onClick={() => handleDeleteLoad(load.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="text-xs whitespace-nowrap">
+                          {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">EST</div>
+                        <div className="text-xs whitespace-nowrap">
+                          {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">EST</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">0</div>
+                        <div className="text-sm">{load.estimated_miles || "N/A"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {load.rate && load.estimated_miles 
+                            ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
+                            : "N/A"}
+                        </div>
+                        <div className="text-sm">
+                          {load.rate && load.estimated_miles 
+                            ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
+                            : "N/A"}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <div className="text-sm font-medium">
+                          {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">-</div>
+                        <div className="text-sm">-</div>
+                      </TableCell>
+                      <TableCell className="text-sm">N/A</TableCell>
+                      <TableCell className="text-sm">N/A</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
