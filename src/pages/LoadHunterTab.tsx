@@ -1127,7 +1127,7 @@ export default function LoadHunterTab() {
     </div>
         ) : (
           /* Loads Table */
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto flex flex-col">
           <Card className="flex-1 flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between py-2 px-3">
               <div>
