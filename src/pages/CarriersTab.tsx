@@ -48,6 +48,7 @@ export default function CarriersTab() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [selectedCarriers, setSelectedCarriers] = useState<string[]>([]);
+  const [showCheckboxes, setShowCheckboxes] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -260,31 +261,55 @@ export default function CarriersTab() {
           )}
         </div>
         <div className="flex gap-2">
-          {selectedCarriers.length > 0 && (
+          {showCheckboxes && selectedCarriers.length > 0 && (
             <>
               <Button 
                 variant="outline" 
-                className="gap-2"
+                size="sm"
                 onClick={() => handleBulkStatusChange("active")}
               >
                 Set Active
               </Button>
               <Button 
                 variant="outline" 
-                className="gap-2"
+                size="sm"
                 onClick={() => handleBulkStatusChange("inactive")}
               >
                 Set Inactive
               </Button>
               <Button 
                 variant="destructive" 
+                size="sm"
                 className="gap-2"
                 onClick={handleBulkDelete}
               >
                 <Trash2 className="h-4 w-4" />
-                Delete Selected
+                Delete
               </Button>
             </>
+          )}
+          {!showCheckboxes && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowCheckboxes(true)}
+            >
+              <CheckSquare className="h-4 w-4" />
+              Select
+            </Button>
+          )}
+          {showCheckboxes && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setShowCheckboxes(false);
+                setSelectedCarriers([]);
+              }}
+            >
+              Cancel
+            </Button>
           )}
           <Button 
             variant="outline" 
@@ -464,46 +489,32 @@ export default function CarriersTab() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead className="w-[50px]">
-                      <Checkbox
-                        checked={selectedCarriers.length === filteredCarriers.length && filteredCarriers.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead className="w-[80px]">Status</TableHead>
-                    <TableHead className="min-w-[180px]">
+                    {showCheckboxes && (
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={selectedCarriers.length === filteredCarriers.length && filteredCarriers.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
+                    )}
+                    <TableHead className="w-[70px]">Status</TableHead>
+                    <TableHead>
                       <div>Carrier Name</div>
                       <div className="text-xs font-normal text-muted-foreground">USDOT #</div>
                     </TableHead>
-                    <TableHead className="min-w-[150px]">
+                    <TableHead>
                       <div>Contact</div>
                       <div className="text-xs font-normal text-muted-foreground">Phone</div>
                     </TableHead>
-                    <TableHead className="min-w-[200px]">
-                      <div>Physical Address</div>
-                      <div className="text-xs font-normal text-muted-foreground">Email Address</div>
+                    <TableHead className="hidden lg:table-cell">
+                      <div>Address</div>
+                      <div className="text-xs font-normal text-muted-foreground">Email</div>
                     </TableHead>
-                    <TableHead className="min-w-[120px]">
-                      <div>W9</div>
-                      <div className="text-xs font-normal text-muted-foreground">EIN</div>
+                    <TableHead className="hidden xl:table-cell">
+                      <div>Authority</div>
+                      <div className="text-xs font-normal text-muted-foreground">Safety Rating</div>
                     </TableHead>
-                    <TableHead className="min-w-[140px]">
-                      <div>Insurance</div>
-                      <div className="text-xs font-normal text-muted-foreground">Expiration Date</div>
-                    </TableHead>
-                    <TableHead className="min-w-[160px]">
-                      <div>Workman Compensation</div>
-                      <div className="text-xs font-normal text-muted-foreground">Expiration Date</div>
-                    </TableHead>
-                    <TableHead className="min-w-[140px]">
-                      <div>Carrier Agreement</div>
-                      <div className="text-xs font-normal text-muted-foreground">Direct Deposit</div>
-                    </TableHead>
-                    <TableHead className="min-w-[160px]">
-                      <div>Authority status</div>
-                      <div className="text-xs font-normal text-muted-foreground">Safer Rating Check</div>
-                    </TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -512,12 +523,14 @@ export default function CarriersTab() {
                       key={carrier.id} 
                       className="hover:bg-muted/30"
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedCarriers.includes(carrier.id)}
-                          onCheckedChange={() => toggleSelectCarrier(carrier.id)}
-                        />
-                      </TableCell>
+                      {showCheckboxes && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedCarriers.includes(carrier.id)}
+                            onCheckedChange={() => toggleSelectCarrier(carrier.id)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell 
                         className="cursor-pointer"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
@@ -557,35 +570,14 @@ export default function CarriersTab() {
                         <div className="text-xs text-muted-foreground">{carrier.phone || ""}</div>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer"
+                        className="cursor-pointer hidden lg:table-cell"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
-                        <div className="text-sm">{carrier.address || ""}</div>
-                        <div className="text-xs text-muted-foreground">{carrier.email || ""}</div>
+                        <div className="text-sm truncate max-w-[200px]">{carrier.address || "—"}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">{carrier.email || "—"}</div>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
-                      >
-                        <div className="text-sm">—</div>
-                        <div className="text-xs text-muted-foreground">—</div>
-                      </TableCell>
-                      <TableCell 
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
-                      >
-                        <div className="text-sm">—</div>
-                        <div className="text-xs text-muted-foreground">—</div>
-                      </TableCell>
-                      <TableCell 
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
-                      >
-                        <div className="text-sm">—</div>
-                        <div className="text-xs text-muted-foreground">—</div>
-                      </TableCell>
-                      <TableCell 
-                        className="cursor-pointer"
+                        className="cursor-pointer hidden xl:table-cell"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
                         <div className="text-sm">—</div>
@@ -614,13 +606,13 @@ export default function CarriersTab() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/dashboard/carrier/${carrier.id}`);
                           }}
                         >
-                          <FileText className="h-4 w-4" />
+                          <FileText className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
