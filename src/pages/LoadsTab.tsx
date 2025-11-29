@@ -37,6 +37,7 @@ interface Load {
   delivery_date: string | null;
   assigned_driver_id: string | null;
   assigned_vehicle_id: string | null;
+  carrier_id: string | null;
   rate: number | null;
   total_revenue: number | null;
   estimated_miles: number | null;
@@ -51,6 +52,9 @@ interface Load {
   };
   driver?: {
     personal_info: any;
+  };
+  carrier?: {
+    name: string | null;
   };
 }
 
@@ -125,7 +129,8 @@ export default function LoadsTab() {
         .select(`
           *,
           vehicle:vehicles!assigned_vehicle_id(vehicle_number),
-          driver:applications!assigned_driver_id(personal_info)
+          driver:applications!assigned_driver_id(personal_info),
+          carrier:carriers!carrier_id(name)
         `);
       
       // Only filter by status if not "all"
@@ -1044,7 +1049,7 @@ export default function LoadsTab() {
                         </div>
                       </TableCell>
                       <TableCell className="py-2 px-2">
-                        <div className="text-xs text-foreground">{load.broker_name || "N/A"}</div>
+                        <div className="text-xs text-foreground">{load.carrier?.name || "N/A"}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">-</div>
                       </TableCell>
                       <TableCell className="py-2 px-2">
