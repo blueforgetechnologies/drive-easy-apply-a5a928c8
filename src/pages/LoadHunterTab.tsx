@@ -609,16 +609,16 @@ export default function LoadHunterTab() {
                     {selectedVehicle.notes || "No notes available"}
                   </div>
                 </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
-                <Button className="flex-1 h-10" onClick={() => setCreateHuntOpen(true)}>
-                  Create New Hunt
-                </Button>
-                <Button variant="outline" className="flex-1 h-10">
-                  Set Driver to Time-Off mode
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <Button className="flex-1 h-9" onClick={() => setCreateHuntOpen(true)}>
+                    Create New Hunt
+                  </Button>
+                  <Button variant="outline" className="flex-1 h-9">
+                    Set Driver to Time-Off mode
+                  </Button>
+                </div>
               </div>
 
               {/* Hunt Plans */}
