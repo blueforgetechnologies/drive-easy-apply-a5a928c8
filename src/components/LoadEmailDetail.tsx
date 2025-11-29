@@ -181,7 +181,7 @@ const LoadEmailDetail = ({
             </div>
 
             {/* Stats & Actions Card */}
-            <div className="w-[280px]">
+            <div className="w-[340px]">
               <Card className="p-2 h-full flex flex-col justify-between">
                 <div>
                   {/* Average/Bid/Booked Row */}
@@ -241,23 +241,19 @@ const LoadEmailDetail = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col gap-1">
-                  <div className="flex gap-1">
-                    <Button variant="destructive" size="sm" className="h-6 text-[10px] flex-1 whitespace-nowrap">
-                      Skip
-                    </Button>
-                    <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
-                      Undecided
-                    </Button>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
-                      Mark Unreviewed
-                    </Button>
-                    <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
-                      Wait
-                    </Button>
-                  </div>
+                <div className="flex gap-1">
+                  <Button variant="destructive" size="sm" className="h-6 text-[10px] flex-1 whitespace-nowrap">
+                    Skip
+                  </Button>
+                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+                    Undecided
+                  </Button>
+                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+                    Mark Unreviewed
+                  </Button>
+                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+                    Wait
+                  </Button>
                 </div>
               </Card>
             </div>
