@@ -2248,15 +2248,31 @@ export default function LoadHunterTab() {
 
                           // Calculate expiration time
                           let expiresIn = '';
+                          const parsedExpires = (data.expires_datetime || data.expires_at || data.expires) as string | undefined;
                           if (email.expires_at) {
                             const expiresDate = new Date(email.expires_at);
                             const timeUntilExpiration = expiresDate.getTime() - now.getTime();
                             const minsUntilExpiration = Math.floor(timeUntilExpiration / 60000);
-                            
+
                             if (minsUntilExpiration > 0) {
                               expiresIn = `${minsUntilExpiration}m`;
                             } else {
                               expiresIn = 'Expired';
+                            }
+                          } else if (parsedExpires) {
+                            const parsedExpiresDate = new Date(parsedExpires);
+                            if (!isNaN(parsedExpiresDate.getTime())) {
+                              const timeUntilExpiration = parsedExpiresDate.getTime() - now.getTime();
+                              const minsUntilExpiration = Math.floor(timeUntilExpiration / 60000);
+
+                              if (minsUntilExpiration > 0) {
+                                expiresIn = `${minsUntilExpiration}m`;
+                              } else {
+                                expiresIn = 'Expired';
+                              }
+                            } else {
+                              // Fallback to showing the raw parsed expiration text if it's not a valid Date
+                              expiresIn = parsedExpires;
                             }
                           } else {
                             // No expiration time - show infinity symbol
