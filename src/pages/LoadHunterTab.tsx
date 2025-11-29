@@ -525,7 +525,6 @@ export default function LoadHunterTab() {
       <div className="flex items-center gap-2 py-2 px-3 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
           {/* Mode Buttons */}
           <div className="flex items-center gap-1 pr-3 border-r flex-shrink-0">
-            <span className="text-xs font-semibold text-muted-foreground mr-1">MODE:</span>
             <Button 
               size="sm" 
               variant={activeMode === 'admin' ? 'default' : 'outline'}
