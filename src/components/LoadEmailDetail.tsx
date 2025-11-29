@@ -1,7 +1,8 @@
-import { Truck, Home, Bell } from "lucide-react";
+import { Truck, Home, Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 import LoadRouteMap from "@/components/LoadRouteMap";
 interface LoadEmailDetailProps {
   email: any;
@@ -11,6 +12,7 @@ const LoadEmailDetail = ({
   email,
   onClose
 }: LoadEmailDetailProps) => {
+  const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const data = email.parsed_data || {};
   const originCity = data.origin_city || "ATLANTA";
   const originState = data.origin_state || "GA";
@@ -60,7 +62,54 @@ const LoadEmailDetail = ({
     company: "24' Large Straight\nALLIED FREIGHTLINE L...",
     badges: [1, 1, 1]
   }];
-  return <div className="flex-1 overflow-auto">
+  return <div className="flex-1 overflow-auto relative">
+      {/* Original Email Sidebar - Slides in from left */}
+      {showOriginalEmail && (
+        <div className="absolute left-0 top-0 bottom-0 w-1/2 bg-background z-50 shadow-2xl border-r animate-in slide-in-from-left duration-300 flex flex-col">
+          <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between z-10 flex-shrink-0">
+            <h2 className="text-lg font-semibold">Original Email</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowOriginalEmail(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-semibold mb-1">From:</div>
+                <div className="text-sm text-muted-foreground">{email.from_name || email.from_email}</div>
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Subject:</div>
+                <div className="text-sm text-muted-foreground">{email.subject || 'No subject'}</div>
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Received:</div>
+                <div className="text-sm text-muted-foreground">{new Date(email.received_at).toLocaleString()}</div>
+              </div>
+              <div className="border-t pt-4">
+                <div className="text-sm font-semibold mb-2">Email Content:</div>
+                {email.body_html ? (
+                  <div 
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: email.body_html }}
+                  />
+                ) : email.body_text ? (
+                  <pre className="text-xs whitespace-pre-wrap font-mono bg-muted p-4 rounded-md overflow-x-auto">
+                    {email.body_text}
+                  </pre>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No email content available</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex gap-2 p-2">
         {/* LEFT SIDE - Load Details + Stats + Map */}
         <div className="flex-1 space-y-2">
@@ -172,7 +221,10 @@ const LoadEmailDetail = ({
                     <span>
                       <span className="font-semibold">Vehicle Size:</span> CARGO VAN
                     </span>
-                    <Button className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold">
+                    <Button 
+                      className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold"
+                      onClick={() => setShowOriginalEmail(true)}
+                    >
                       Original Email
                     </Button>
                   </div>
