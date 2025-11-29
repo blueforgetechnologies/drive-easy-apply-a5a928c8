@@ -90,8 +90,24 @@ const LoadEmailDetail = ({
                 <div className="text-sm font-semibold mb-1">Received:</div>
                 <div className="text-sm text-muted-foreground">{new Date(email.received_at).toLocaleString()}</div>
               </div>
-              <div className="border-t pt-4">
-                <div className="text-sm font-semibold mb-2">Email Content:</div>
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">Email Content:</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const raw = (email.body_html || email.body_text || '') as string;
+                      if (!raw) return;
+
+                      const blob = new Blob([raw], { type: 'text/html;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, '_blank', 'noopener,noreferrer');
+                    }}
+                  >
+                    Open in new tab
+                  </Button>
+                </div>
                 {(() => {
                   const raw = (email.body_html || email.body_text || '') as string;
                   if (!raw) {
@@ -100,22 +116,10 @@ const LoadEmailDetail = ({
                     );
                   }
 
-                  const hasHtmlTag = raw.toLowerCase().includes('<html');
-                  const docHtml = hasHtmlTag
-                    ? raw
-                    : `<!DOCTYPE html><html><head><meta charset="UTF-8"></meta></head><body>${raw}</body></html>`;
-
                   return (
-                    <div className="space-y-4">
-                      <iframe
-                        srcDoc={docHtml}
-                        className="w-full h-[600px] border rounded-md bg-white"
-                        title="Email Content"
-                      />
-                      <pre className="text-[10px] whitespace-pre-wrap font-mono bg-muted p-2 rounded border max-h-40 overflow-auto">
-                        {raw.slice(0, 1000)}
-                      </pre>
-                    </div>
+                    <pre className="text-[10px] whitespace-pre-wrap font-mono bg-muted p-3 rounded border max-h-[400px] overflow-auto">
+                      {raw}
+                    </pre>
                   );
                 })()}
               </div>
