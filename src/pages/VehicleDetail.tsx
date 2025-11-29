@@ -98,10 +98,11 @@ export default function VehicleDetail() {
     try {
       const { data, error } = await supabase
         .from('applications')
-        .select('id, personal_info')
-        .eq('driver_status', 'Active');
+        .select('id, personal_info, driver_status')
+        .in('driver_status', ['Active', 'active', 'ACTIVE']);
       
       if (error) throw error;
+      console.log('Loaded drivers:', data);
       setDrivers(data || []);
     } catch (error) {
       console.error('Error loading drivers:', error);
@@ -112,10 +113,11 @@ export default function VehicleDetail() {
     try {
       const { data, error } = await supabase
         .from('dispatchers')
-        .select('id, first_name, last_name')
-        .eq('status', 'Active');
+        .select('id, first_name, last_name, status')
+        .in('status', ['Active', 'active', 'ACTIVE']);
       
       if (error) throw error;
+      console.log('Loaded dispatchers:', data);
       setDispatchers(data || []);
     } catch (error) {
       console.error('Error loading dispatchers:', error);
