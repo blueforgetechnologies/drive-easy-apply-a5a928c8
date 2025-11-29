@@ -123,34 +123,26 @@ export default function LoadHunterTab() {
   const handleRefreshLoads = async () => {
     setRefreshing(true);
     try {
-      // Call the public edge function directly via HTTP with action as query param
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-auth?action=start`,
-        {
-          method: 'GET',
-        }
-      );
+      // Call the fetch-gmail-loads function to pull emails directly
+      const { data, error } = await supabase.functions.invoke('fetch-gmail-loads');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('gmail-auth error response:', errorText);
-        throw new Error(errorText || 'Failed to start Gmail authorization');
+      if (error) {
+        console.error('fetch-gmail-loads error:', error);
+        throw new Error(error.message || 'Failed to fetch Gmail emails');
       }
 
-      const data = await response.json();
+      console.log('Fetch response:', data);
 
-      // Open Gmail OAuth window
-      window.open(data?.authUrl, '_blank', 'width=600,height=700');
-
-      toast.success(
-        'Gmail authorization window opened - complete the authorization to start receiving load emails'
-      );
-
-      // Refresh load emails after a delay
-      setTimeout(() => loadLoadEmails(), 3000);
+      if (data?.count > 0) {
+        toast.success(`Successfully loaded ${data.count} new load emails`);
+        // Reload the load emails table
+        await loadLoadEmails();
+      } else {
+        toast.info('No new load emails found');
+      }
     } catch (error: any) {
-      console.error('Gmail auth error:', error);
-      toast.error('Failed to start Gmail authorization');
+      console.error('Gmail fetch error:', error);
+      toast.error('Failed to fetch Gmail emails');
     } finally {
       setRefreshing(false);
     }
