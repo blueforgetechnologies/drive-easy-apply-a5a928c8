@@ -1211,7 +1211,63 @@ export default function LoadHunterTab() {
               {/* Hunt Plans - Filter by selected vehicle */}
               {huntPlans
                 .filter((plan) => plan.vehicleId === selectedVehicle.id)
-                .map((plan) => (
+                .map((plan) => {
+                  // Calculate matching loads for this hunt
+                  const matchingLoads = loadEmails.filter(email => {
+                    const emailTime = new Date(email.received_at);
+                    const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
+                    
+                    if (!isUnreviewed) return false;
+                    
+                    const loadData = extractLoadLocation(email);
+                    
+                    // Match by date if specified
+                    if (plan.availableDate && loadData.pickupDate) {
+                      const huntDate = new Date(plan.availableDate).toISOString().split('T')[0];
+                      const loadDate = new Date(loadData.pickupDate).toISOString().split('T')[0];
+                      if (huntDate !== loadDate) {
+                        return false;
+                      }
+                    }
+
+                    // Match by load type/vehicle size if specified
+                    if (plan.vehicleSize && loadData.loadType) {
+                      const vehicleSizeLower = plan.vehicleSize.toLowerCase();
+                      const loadTypeLower = loadData.loadType.toLowerCase();
+                      
+                      if (vehicleSizeLower.includes('straight')) {
+                        if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
+                          return false;
+                        }
+                      }
+                    }
+
+                    // Check distance radius if we have coordinates
+                    if ((plan as any).huntCoordinates && loadData.originLat && loadData.originLng) {
+                      const distance = calculateDistance(
+                        (plan as any).huntCoordinates.lat,
+                        (plan as any).huntCoordinates.lng,
+                        loadData.originLat,
+                        loadData.originLng
+                      );
+                      
+                      const radiusMiles = parseInt(plan.pickupRadius) || 100;
+                      
+                      if (distance <= radiusMiles) {
+                        return true;
+                      }
+                    } else if (loadData.originZip && plan.zipCode) {
+                      if (loadData.originZip === plan.zipCode) {
+                        return true;
+                      }
+                    }
+
+                    return false;
+                  });
+                  
+                  const matchCount = matchingLoads.length;
+                  
+                  return (
                 <Card key={plan.id} className="p-4 space-y-3 bg-card border-2 border-border">
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between">
@@ -1231,9 +1287,16 @@ export default function LoadHunterTab() {
                         Delete
                       </Button>
                     </div>
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                      <Truck className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {matchCount > 0 && (
+                        <Badge className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white">
+                          {matchCount} {matchCount === 1 ? 'Match' : 'Matches'}
+                        </Badge>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                        <Truck className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Hunt Plan Details */}
@@ -1272,7 +1335,8 @@ export default function LoadHunterTab() {
                     Clear Matches
                   </Button>
                 </Card>
-              ))}
+                  );
+              })}
             </div>
 
             {/* Right Panel - Map */}
