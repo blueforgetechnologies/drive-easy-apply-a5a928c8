@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Home, Bell } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -114,6 +114,8 @@ export default function LoadHunterTab() {
   });
   const [editingNotes, setEditingNotes] = useState(false);
   const [vehicleNotes, setVehicleNotes] = useState("");
+  const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -573,6 +575,155 @@ export default function LoadHunterTab() {
             </div>
           )}
         </div>
+
+        {/* Filter Bar - Only show when not viewing vehicle details */}
+        {!selectedVehicle && (
+          <div className="flex items-center gap-2 py-2 px-3 bg-background border-y overflow-x-auto">
+            {/* Mode Buttons */}
+            <div className="flex items-center gap-1 pr-3 border-r flex-shrink-0">
+              <span className="text-xs font-semibold text-muted-foreground mr-1">MODE:</span>
+              <Button 
+                size="sm" 
+                variant={activeMode === 'admin' ? 'default' : 'outline'}
+                className="h-7 px-3 text-xs"
+                onClick={() => setActiveMode('admin')}
+              >
+                Admin
+              </Button>
+              <Button 
+                size="sm" 
+                variant={activeMode === 'dispatch' ? 'default' : 'outline'}
+                className="h-7 px-3 text-xs"
+                onClick={() => setActiveMode('dispatch')}
+              >
+                Dispatch
+              </Button>
+              <Button 
+                size="sm" 
+                variant="default"
+                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700"
+              >
+                Add Vehicle
+              </Button>
+            </div>
+
+            {/* Filter Buttons */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'unreviewed' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                onClick={() => setActiveFilter('unreviewed')}
+              >
+                Unreviewed Loads
+                <Badge variant="destructive" className="h-4 px-1.5 text-[10px] bg-red-500 ml-1">2</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="h-7 px-2 text-xs"
+              >
+                <Home className="h-3.5 w-3.5" />
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="h-7 px-2 text-xs"
+              >
+                <Bell className="h-3.5 w-3.5" />
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'missed' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5"
+                onClick={() => setActiveFilter('missed')}
+              >
+                Missed
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">50</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'waitlist' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5 bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
+                onClick={() => setActiveFilter('waitlist')}
+              >
+                Waitlist
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-orange-600 ml-1">0</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'undecided' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5 bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
+                onClick={() => setActiveFilter('undecided')}
+              >
+                Undecided
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-orange-600 ml-1">0</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'skipped' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5"
+                onClick={() => setActiveFilter('skipped')}
+              >
+                Skipped
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">23</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'mybids' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                onClick={() => setActiveFilter('mybids')}
+              >
+                My Bids
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-blue-700 ml-1">85</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'all' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setActiveFilter('all')}
+              >
+                All
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'booked' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs gap-1.5"
+                onClick={() => setActiveFilter('booked')}
+              >
+                Booked
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">2</Badge>
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'vehicle-assignment' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setActiveFilter('vehicle-assignment')}
+              >
+                Vehicle Assignment
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant={activeFilter === 'dispatcher-metrix' ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setActiveFilter('dispatcher-metrix')}
+              >
+                Dispatcher Metrix
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Conditional Content: Load Board or Vehicle Details */}
         {selectedVehicle ? (
