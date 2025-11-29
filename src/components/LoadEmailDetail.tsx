@@ -3,36 +3,64 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import LoadRouteMap from "@/components/LoadRouteMap";
-
 interface LoadEmailDetailProps {
   email: any;
   onClose: () => void;
 }
-
-const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
+const LoadEmailDetail = ({
+  email,
+  onClose
+}: LoadEmailDetailProps) => {
   const data = email.parsed_data || {};
-
   const originCity = data.origin_city || "ATLANTA";
   const originState = data.origin_state || "GA";
   const destCity = data.destination_city || "MEMPHIS";
   const destState = data.destination_state || "TN";
 
   // Mock vehicle data for sidebar
-  const vehicles = [
-    { name: "NATL-1 - Torrence Dupree", company: "24' Large Straight\nALLIED FREIGHTLINE L...", badges: [1, 1, 1] },
-    { name: "NATL-13 - Lorenzo Stoner", company: "24' Large Straight\nDOAL LOGISTICS EXPRE...", badges: [1, 1, 1] },
-    { name: "NATL-6 - Jose Lopez", company: "24' Large Straight\nALLIED FREIGHTLINE L...", badges: [1, 1, 1] },
-    { name: "NATL-8 - WARD", company: "24' Large Straight\nDort Transportation", badges: [1, 1, 1] },
-    { name: "TAL-16 - RICARDO", company: "26' Large Straight\nDort Transportation", badges: [1, 1, 1] },
-    { name: "TAL-21 - ROY", company: "26' Large Straight\nBALE ROAD ROAD TRANS...", badges: [1, 1, 1] },
-    { name: "TAL-27 - Arthur Raglin", company: "26' Large Straight\nMYTRANSPORTATION SER...", badges: [1, 1, 1] },
-    { name: "TAL-3 - No Driver Assigned", company: "24' Large Straight\nNE-LANG LOGISTICS LL...", badges: [1, 1, 1], active: true },
-    { name: "TAL-7 - Shaun Johnson Anthony", company: "24' Large Straight\nGlobal Expediting ...", badges: [1, 1, 1] },
-    { name: "TAL-9 - Crystal", company: "24' Large Straight\nALLIED FREIGHTLINE L...", badges: [1, 1, 1] },
-  ];
-
-  return (
-    <div className="flex-1 overflow-auto">
+  const vehicles = [{
+    name: "NATL-1 - Torrence Dupree",
+    company: "24' Large Straight\nALLIED FREIGHTLINE L...",
+    badges: [1, 1, 1]
+  }, {
+    name: "NATL-13 - Lorenzo Stoner",
+    company: "24' Large Straight\nDOAL LOGISTICS EXPRE...",
+    badges: [1, 1, 1]
+  }, {
+    name: "NATL-6 - Jose Lopez",
+    company: "24' Large Straight\nALLIED FREIGHTLINE L...",
+    badges: [1, 1, 1]
+  }, {
+    name: "NATL-8 - WARD",
+    company: "24' Large Straight\nDort Transportation",
+    badges: [1, 1, 1]
+  }, {
+    name: "TAL-16 - RICARDO",
+    company: "26' Large Straight\nDort Transportation",
+    badges: [1, 1, 1]
+  }, {
+    name: "TAL-21 - ROY",
+    company: "26' Large Straight\nBALE ROAD ROAD TRANS...",
+    badges: [1, 1, 1]
+  }, {
+    name: "TAL-27 - Arthur Raglin",
+    company: "26' Large Straight\nMYTRANSPORTATION SER...",
+    badges: [1, 1, 1]
+  }, {
+    name: "TAL-3 - No Driver Assigned",
+    company: "24' Large Straight\nNE-LANG LOGISTICS LL...",
+    badges: [1, 1, 1],
+    active: true
+  }, {
+    name: "TAL-7 - Shaun Johnson Anthony",
+    company: "24' Large Straight\nGlobal Expediting ...",
+    badges: [1, 1, 1]
+  }, {
+    name: "TAL-9 - Crystal",
+    company: "24' Large Straight\nALLIED FREIGHTLINE L...",
+    badges: [1, 1, 1]
+  }];
+  return <div className="flex-1 overflow-auto">
       <div className="flex gap-2 p-2">
         {/* LEFT SIDE - Load Details + Stats + Map */}
         <div className="flex-1 space-y-2">
@@ -75,16 +103,16 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                       NE-LANG LOGISTICS LLC
                     </div>
                     <div className="text-gray-400">
-                      <div>Pickup Time</div>
-                      <div>Delivery Time</div>
+                      <div>    Pickup Time</div>
+                      <div>    Delivery Time</div>
                     </div>
                     <div className="text-gray-400">
-                      <div>Origin</div>
-                      <div>Destination</div>
+                      <div>   Origin</div>
+                      <div>   Destination</div>
                     </div>
                     <div className="text-gray-400">
-                      <div>Empty Drive</div>
-                      <div>Loaded Drive</div>
+                      <div>    Empty Drive</div>
+                      <div>    Loaded Drive</div>
                     </div>
                     <div className="text-gray-400">
                       <div>Load Type</div>
@@ -103,8 +131,8 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                       GLOBALTRANZ ENTERPRISES, LLC
                     </div>
                     <div>
-                      <div>11/30/25 Sun 17:00 EST</div>
-                      <div>12/01/25 Mon 09:00 EST</div>
+                      <div>   11/30/25 Sun 17:00 EST</div>
+                      <div>   12/01/25 Mon 09:00 EST</div>
                     </div>
                     <div>
                       <div><span className="text-orange-500 font-bold">P</span> {originCity}, {originState}</div>
@@ -233,22 +261,17 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
           {/* MAP - Full Width Below */}
           <Card className="h-[400px] overflow-hidden rounded-md">
-            <LoadRouteMap
-              stops={[
-                {
-                  location_city: originCity,
-                  location_state: originState,
-                  location_address: `${originCity}, ${originState}`,
-                  stop_type: "pickup",
-                },
-                {
-                  location_city: destCity,
-                  location_state: destState,
-                  location_address: `${destCity}, ${destState}`,
-                  stop_type: "delivery",
-                },
-              ]}
-            />
+            <LoadRouteMap stops={[{
+            location_city: originCity,
+            location_state: originState,
+            location_address: `${originCity}, ${originState}`,
+            stop_type: "pickup"
+          }, {
+            location_city: destCity,
+            location_state: destState,
+            location_address: `${destCity}, ${destState}`,
+            stop_type: "delivery"
+          }]} />
           </Card>
         </div>
 
@@ -260,45 +283,77 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
               <span>$/mi</span>
             </div>
             <div className="space-y-0.5 text-[10px] max-h-[700px] overflow-auto">
-              {[
-                { rate: "$1,782.00", perMile: "$2.28" },
-                { rate: "$1,732.00", perMile: "$2.21" },
-                { rate: "$1,682.00", perMile: "$2.15" },
-                { rate: "$1,632.00", perMile: "$2.08" },
-                { rate: "$1,582.00", perMile: "$2.02" },
-                { rate: "$1,532.00", perMile: "$1.96" },
-                { rate: "$1,482.00", perMile: "$1.89" },
-                { rate: "$1,432.00", perMile: "$1.83" },
-                { rate: "$1,382.00", perMile: "$1.77" },
-                { rate: "$1,332.00", perMile: "$1.70" },
-                { rate: "$1,282.00", perMile: "$1.64" },
-                { rate: "$1,232.00", perMile: "$1.57" },
-                { rate: "$1,182.00", perMile: "$1.51" },
-                { rate: "$1,132.00", perMile: "$1.45" },
-                { rate: "$1,082.00", perMile: "$1.38" },
-                { rate: "$1,032.00", perMile: "$1.32" },
-                { rate: "$982.00", perMile: "$1.25" },
-                { rate: "$932.00", perMile: "$1.19" },
-                { rate: "$882.00", perMile: "$1.13" },
-                { rate: "$832.00", perMile: "$1.06" },
-                { rate: "$782.00", perMile: "$1.00" },
-              ].map((row, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex justify-between px-1.5 py-0.5 rounded ${
-                      row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
-                    }`}
-                  >
+              {[{
+              rate: "$1,782.00",
+              perMile: "$2.28"
+            }, {
+              rate: "$1,732.00",
+              perMile: "$2.21"
+            }, {
+              rate: "$1,682.00",
+              perMile: "$2.15"
+            }, {
+              rate: "$1,632.00",
+              perMile: "$2.08"
+            }, {
+              rate: "$1,582.00",
+              perMile: "$2.02"
+            }, {
+              rate: "$1,532.00",
+              perMile: "$1.96"
+            }, {
+              rate: "$1,482.00",
+              perMile: "$1.89"
+            }, {
+              rate: "$1,432.00",
+              perMile: "$1.83"
+            }, {
+              rate: "$1,382.00",
+              perMile: "$1.77"
+            }, {
+              rate: "$1,332.00",
+              perMile: "$1.70"
+            }, {
+              rate: "$1,282.00",
+              perMile: "$1.64"
+            }, {
+              rate: "$1,232.00",
+              perMile: "$1.57"
+            }, {
+              rate: "$1,182.00",
+              perMile: "$1.51"
+            }, {
+              rate: "$1,132.00",
+              perMile: "$1.45"
+            }, {
+              rate: "$1,082.00",
+              perMile: "$1.38"
+            }, {
+              rate: "$1,032.00",
+              perMile: "$1.32"
+            }, {
+              rate: "$982.00",
+              perMile: "$1.25"
+            }, {
+              rate: "$932.00",
+              perMile: "$1.19"
+            }, {
+              rate: "$882.00",
+              perMile: "$1.13"
+            }, {
+              rate: "$832.00",
+              perMile: "$1.06"
+            }, {
+              rate: "$782.00",
+              perMile: "$1.00"
+            }].map((row, idx) => <div key={idx} className={`flex justify-between px-1.5 py-0.5 rounded ${row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"}`}>
                   <span>{row.rate}</span>
                   <span className="text-gray-600">{row.perMile}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
           </Card>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default LoadEmailDetail;
