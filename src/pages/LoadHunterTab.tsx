@@ -436,88 +436,86 @@ export default function LoadHunterTab() {
           /* Vehicle Details View */
           <div className="flex-1 overflow-hidden flex gap-3">
             {/* Left Panel - Vehicle Info */}
-            <div className="w-[420px] flex-shrink-0 space-y-3 overflow-y-auto">
+            <div className="w-[480px] flex-shrink-0 space-y-3 overflow-y-auto p-4 bg-muted/20 rounded-lg">
               {/* Tabs */}
               <Tabs defaultValue="empty" className="w-full">
-                <TabsList className="w-full grid grid-cols-4">
-                  <TabsTrigger value="empty" className="text-xs">Empty</TabsTrigger>
-                  <TabsTrigger value="delivery" className="text-xs">Delivery Date & Time</TabsTrigger>
-                  <TabsTrigger value="destination" className="text-xs">Destination</TabsTrigger>
-                  <TabsTrigger value="remaining" className="text-xs">Remaining</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-4 h-9">
+                  <TabsTrigger value="empty" className="text-xs py-1.5">Empty</TabsTrigger>
+                  <TabsTrigger value="delivery" className="text-xs py-1.5">Delivery Date & Time</TabsTrigger>
+                  <TabsTrigger value="destination" className="text-xs py-1.5">Destination</TabsTrigger>
+                  <TabsTrigger value="remaining" className="text-xs py-1.5">Remaining</TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              <Card className="p-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Location</span>
-                  </div>
-                  <div className="text-sm font-medium">
-                    {selectedVehicle.formatted_address || selectedVehicle.last_location || "Location not available"}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs pt-1">
-                    <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-muted-foreground">Odometer</span>
-                    <span className="font-semibold">
-                      {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
-                    </span>
-                  </div>
+              {/* Location & Odometer - Compact */}
+              <div className="space-y-1.5 py-2">
+                <div className="text-xs text-muted-foreground">Location</div>
+                <div className="text-sm font-medium">
+                  {selectedVehicle.formatted_address || selectedVehicle.last_location || "Location not available"}
                 </div>
-              </Card>
+                <div className="flex items-center gap-2 text-sm pt-1">
+                  <Gauge className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Odometer</span>
+                  <span className="font-semibold">
+                    {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
+                  </span>
+                </div>
+              </div>
 
-              {/* Next Maintenance Due - Prominent */}
-              <Card className="p-4 border-2 border-border">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-muted-foreground">Next Maintenance Due</div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold">N/A</div>
-                    <div className="text-xs text-muted-foreground">
-                      {selectedVehicle.next_service_date || "N/A"}
-                    </div>
+              {/* Next Maintenance Due - Compact with border */}
+              <div className="flex items-center justify-between border-2 border-border rounded-lg p-3">
+                <div className="text-sm font-medium text-muted-foreground">Next Maintenance Due</div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold">N/A</div>
+                  <div className="text-xs text-muted-foreground">
+                    {selectedVehicle.next_service_date || "N/A"}
                   </div>
                 </div>
-              </Card>
+              </div>
 
               <Button variant="link" className="text-xs text-primary p-0 h-auto">
                 View Vehicle Details
               </Button>
 
-              <Card className="p-3">
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">D1</span>
+              {/* Driver Assignments - Compact */}
+              <div className="space-y-2 py-2">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">D1</span>
                     <span className="text-muted-foreground">
                       {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
                     </span>
-                    <span className="text-xs text-muted-foreground">Note: N/A</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">D2</span>
+                  <span className="text-xs text-muted-foreground">Note: N/A</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">D2</span>
                     <span className="text-muted-foreground">
                       {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
                     </span>
-                    <span className="text-xs text-muted-foreground">Note: N/A</span>
                   </div>
+                  <span className="text-xs text-muted-foreground">Note: N/A</span>
                 </div>
-              </Card>
+              </div>
 
-              <Card className="p-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Vehicle Note:</div>
-                    <Wrench className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="text-sm text-muted-foreground min-h-[60px] bg-muted/20 p-2 rounded">
-                    {selectedVehicle.notes || "No notes available"}
-                  </div>
+              {/* Vehicle Note - Compact */}
+              <div className="space-y-2 py-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">Vehicle Note:</div>
+                  <Wrench className="h-4 w-4 text-primary" />
                 </div>
-              </Card>
+                <div className="text-sm text-muted-foreground">
+                  {selectedVehicle.notes || "No notes available"}
+                </div>
+              </div>
 
-              <div className="flex gap-2">
-                <Button size="sm" className="flex-1 text-xs">
+              {/* Action Buttons - Compact */}
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" className="flex-1 h-9 text-xs">
                   Create New Hunt
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 text-xs">
+                <Button size="sm" variant="outline" className="flex-1 h-9 text-xs">
                   Set Driver to Time-Off mode
                 </Button>
               </div>
