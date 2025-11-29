@@ -1147,7 +1147,7 @@ export default function LoadHunterTab() {
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto pb-16">
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="h-8">
@@ -1272,15 +1272,12 @@ export default function LoadHunterTab() {
                     </Table>
                   </div>
                   
-                  {/* Pagination fixed at bottom of viewport, compact */}
-                  <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-30 flex items-center justify-between px-3 py-1.5 rounded-full border bg-background shadow-md min-w-[320px] max-w-[70vw]">
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span>Items/page: {itemsPerPage}</span>
+                  {/* Pagination bar at bottom - inline, not floating */}
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
+                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                      <span>Items per page: {itemsPerPage}</span>
                       <span>
-                        {Math.min((currentPage - 1) * itemsPerPage + 1, loadEmails.length)}-{Math.min(currentPage * itemsPerPage, loadEmails.length)} of {loadEmails.length}
-                      </span>
-                      <span>
-                        Pg {currentPage}/{Math.max(1, Math.ceil(loadEmails.length / itemsPerPage))}
+                        {Math.min((currentPage - 1) * itemsPerPage + 1, loadEmails.length)} - {Math.min(currentPage * itemsPerPage, loadEmails.length)} of {loadEmails.length}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
