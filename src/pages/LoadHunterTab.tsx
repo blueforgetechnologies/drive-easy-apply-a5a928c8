@@ -82,6 +82,7 @@ interface HuntPlan {
   createdBy: string;
   createdAt: Date;
   lastModified: Date;
+  huntCoordinates?: { lat: number; lng: number } | null;
 }
 
 export default function LoadHunterTab() {
@@ -126,14 +127,116 @@ export default function LoadHunterTab() {
   const now = new Date();
   const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
   
+  // Helper function to calculate distance between two zip codes using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3959; // Radius of the Earth in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Helper function to extract location data from load email
+  const extractLoadLocation = (email: any): { originZip?: string, originLat?: number, originLng?: number, loadType?: string, pickupDate?: string } => {
+    try {
+      if (email.parsed_data) {
+        const parsed = email.parsed_data;
+        return {
+          originZip: parsed.origin_zip || parsed.pickup_zip,
+          originLat: parsed.origin_lat || parsed.pickup_lat,
+          originLng: parsed.origin_lng || parsed.pickup_lng,
+          loadType: parsed.vehicle_type || parsed.equipment_type,
+          pickupDate: parsed.pickup_date
+        };
+      }
+      
+      // Try extracting from body text if parsed_data not available
+      const bodyText = email.body_text || '';
+      const zipMatch = bodyText.match(/\b\d{5}\b/);
+      return {
+        originZip: zipMatch ? zipMatch[0] : undefined
+      };
+    } catch (error) {
+      console.error('Error extracting load location:', error);
+      return {};
+    }
+  };
+
+  // Check if a load matches any active hunt plans
+  const loadMatchesHunt = (email: any): boolean => {
+    if (huntPlans.length === 0) return true; // No hunts active, show all loads
+    
+    const loadData = extractLoadLocation(email);
+    
+    return huntPlans.some((hunt: any) => {
+      let matchFound = false;
+
+      // Match by date if specified
+      if (hunt.availableDate && loadData.pickupDate) {
+        const huntDate = new Date(hunt.availableDate).toISOString().split('T')[0];
+        const loadDate = new Date(loadData.pickupDate).toISOString().split('T')[0];
+        if (huntDate !== loadDate) {
+          return false; // Date doesn't match, skip this hunt
+        }
+      }
+
+      // Match by load type/vehicle size if specified
+      if (hunt.vehicleSize && loadData.loadType) {
+        const vehicleSizeLower = hunt.vehicleSize.toLowerCase();
+        const loadTypeLower = loadData.loadType.toLowerCase();
+        
+        // Check if vehicle size requirements match
+        if (vehicleSizeLower.includes('straight')) {
+          if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
+            return false; // Vehicle type doesn't match
+          }
+        }
+      }
+
+      // Check distance radius if we have coordinates
+      if (hunt.huntCoordinates && loadData.originLat && loadData.originLng) {
+        const distance = calculateDistance(
+          hunt.huntCoordinates.lat,
+          hunt.huntCoordinates.lng,
+          loadData.originLat,
+          loadData.originLng
+        );
+        
+        const radiusMiles = parseInt(hunt.pickupRadius) || 100;
+        
+        if (distance <= radiusMiles) {
+          matchFound = true;
+        }
+      } else if (loadData.originZip && hunt.zipCode) {
+        // Fallback to exact zip code matching if no coordinates
+        if (loadData.originZip === hunt.zipCode) {
+          matchFound = true;
+        }
+      }
+
+      return matchFound;
+    });
+  };
+  
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
     const emailTime = new Date(email.received_at);
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
     
+    // Apply hunt filtering for unreviewed status
     if (activeFilter === 'unreviewed') {
-      // Show new loads AND missed loads that are less than 30 minutes old
-      return email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
+      const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
+      
+      // If unreviewed, also check if it matches hunt criteria
+      if (isUnreviewed && huntPlans.length > 0) {
+        return loadMatchesHunt(email);
+      }
+      
+      return isUnreviewed;
     }
     if (activeFilter === 'missed') {
       // Show only missed loads that are 30+ minutes old
@@ -543,41 +646,69 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleSaveHuntPlan = () => {
+  const handleSaveHuntPlan = async () => {
     if (!selectedVehicle) {
       toast.error("No vehicle selected");
       return;
     }
 
-    const newHuntPlan: HuntPlan = {
-      id: Math.random().toString(36).substr(2, 9),
-      vehicleId: selectedVehicle.id,
-      ...huntFormData,
-      createdBy: "Sofiane Talbi",
-      createdAt: new Date(),
-      lastModified: new Date(),
-    };
-    
-    setHuntPlans([...huntPlans, newHuntPlan]);
-    setCreateHuntOpen(false);
-    toast.success("Hunt plan created successfully");
-    
-    // Reset form
-    setHuntFormData({
-      planName: "",
-      vehicleSize: "large-straight",
-      zipCode: "",
-      availableFeet: "",
-      partial: false,
-      pickupRadius: "100",
-      mileLimit: "",
-      loadCapacity: "9000",
-      availableDate: new Date().toISOString().split('T')[0],
-      availableTime: "00:00",
-      destinationZip: "",
-      destinationRadius: "",
-      notes: "",
-    });
+    if (!huntFormData.zipCode) {
+      toast.error("Please enter a zip code");
+      return;
+    }
+
+    try {
+      // Geocode the zipcode to get coordinates using Mapbox
+      const geocodeResponse = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${huntFormData.zipCode}.json?access_token=${mapboxToken}&country=US&types=postcode&limit=1`
+      );
+      const geocodeData = await geocodeResponse.json();
+      
+      let huntCoordinates = null;
+      if (geocodeData.features && geocodeData.features.length > 0) {
+        const [lng, lat] = geocodeData.features[0].center;
+        huntCoordinates = { lat, lng };
+      } else {
+        toast.warning("Could not geocode zip code, hunt may not filter accurately");
+      }
+
+      const newHuntPlan: HuntPlan = {
+        id: Math.random().toString(36).substr(2, 9),
+        vehicleId: selectedVehicle.id,
+        ...huntFormData,
+        huntCoordinates,
+        createdBy: "Sofiane Talbi",
+        createdAt: new Date(),
+        lastModified: new Date(),
+      } as any;
+      
+      setHuntPlans([...huntPlans, newHuntPlan]);
+      setCreateHuntOpen(false);
+      toast.success("Hunt plan created successfully");
+      
+      // Trigger re-filtering of loads
+      await loadLoadEmails();
+      
+      // Reset form
+      setHuntFormData({
+        planName: "",
+        vehicleSize: "large-straight",
+        zipCode: "",
+        availableFeet: "",
+        partial: false,
+        pickupRadius: "100",
+        mileLimit: "",
+        loadCapacity: "9000",
+        availableDate: new Date().toISOString().split('T')[0],
+        availableTime: "00:00",
+        destinationZip: "",
+        destinationRadius: "",
+        notes: "",
+      });
+    } catch (error) {
+      console.error("Error creating hunt plan:", error);
+      toast.error("Failed to create hunt plan");
+    }
   };
 
   const handleDeleteHuntPlan = (id: string) => {
