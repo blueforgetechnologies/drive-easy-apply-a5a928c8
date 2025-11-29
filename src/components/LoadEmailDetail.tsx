@@ -126,22 +126,15 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 {/* ORIGINAL POST */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-4 py-2 border-b text-[11px] items-center">
+                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-4 py-2 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Original Post</div>
                   <div className="text-red-600 text-[10px]">
                     Note: CONFIRM MC, CONFIRM ETA TO PICK, CONFIRM TRUCK DIMS
                   </div>
-                  <div className="text-right">
-                    <span className="font-semibold">Posted Rate:</span> <span className="text-red-600 font-semibold">N/A</span>
-                  </div>
-                </div>
-
-                {/* VEHICLE */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-4 py-2 border-b text-[11px] items-center">
-                  <div className="font-semibold text-blue-600">Vehicle</div>
-                  <div className="text-gray-500">Note:</div>
                   <div className="flex items-center justify-end gap-3">
-                    <span><span className="font-semibold">Vehicle Size:</span> CARGO VAN</span>
+                    <div className="text-right">
+                      <span className="font-semibold">Posted Rate:</span> <span className="text-red-600 font-semibold">N/A</span>
+                    </div>
                     <Button className="bg-orange-500 hover:bg-orange-600 h-7 px-3 text-[11px] font-semibold">
                       Original Email
                     </Button>
