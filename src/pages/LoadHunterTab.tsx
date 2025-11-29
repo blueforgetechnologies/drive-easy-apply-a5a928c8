@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
+import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +95,7 @@ export default function LoadHunterTab() {
   const [emailProvider, setEmailProvider] = useState("gmail");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedEmailForDetail, setSelectedEmailForDetail] = useState<any | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
@@ -439,6 +441,16 @@ export default function LoadHunterTab() {
       setEditingNotes(false);
     }
   }, [selectedVehicle?.id]);
+
+  // Show detailed view if an email is selected
+  if (selectedEmailForDetail) {
+    return (
+      <LoadEmailDetail 
+        email={selectedEmailForDetail} 
+        onClose={() => setSelectedEmailForDetail(null)} 
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
@@ -1170,7 +1182,11 @@ export default function LoadHunterTab() {
                           else receivedAgo = `${diffMins}m ago`;
 
                           return (
-                            <TableRow key={email.id} className="h-10">
+                            <TableRow 
+                              key={email.id} 
+                              className="h-10 cursor-pointer hover:bg-accent transition-colors"
+                              onClick={() => setSelectedEmailForDetail(email)}
+                            >
                               <TableCell className="py-1">
                                 <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
                                 <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
