@@ -123,11 +123,20 @@ export default function LoadHunterTab() {
   const handleRefreshLoads = async () => {
     setRefreshing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('gmail-auth', {
-        body: { action: 'start' }
-      });
+      // Call the edge function with action as a query parameter
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-auth?action=start`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          }
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to start Gmail authorization');
+      
+      const data = await response.json();
 
       // Open Gmail OAuth window
       window.open(data.authUrl, '_blank', 'width=600,height=700');
@@ -137,7 +146,8 @@ export default function LoadHunterTab() {
       // Refresh load emails after a delay
       setTimeout(() => loadLoadEmails(), 3000);
     } catch (error: any) {
-      toast.error("Failed to start Gmail authorization");
+      console.error('Gmail auth error:', error);
+      toast.error("Failed to start Gmail authorization: " + error.message);
     } finally {
       setRefreshing(false);
     }
