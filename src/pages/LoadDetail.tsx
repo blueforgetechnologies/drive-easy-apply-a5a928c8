@@ -675,16 +675,22 @@ export default function LoadDetail() {
                     const selectedCarrier = carriers.find(c => c.id === load.carrier_id);
                     if (selectedCarrier && (selectedCarrier.safer_status || selectedCarrier.safety_rating)) {
                       return (
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-4 mt-3">
                           {selectedCarrier.safer_status && (
-                            <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
-                              {selectedCarrier.safer_status}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Authority status</span>
+                              <Badge variant={selectedCarrier.safer_status === "NOT AUTHORIZED" ? "destructive" : "default"}>
+                                {selectedCarrier.safer_status}
+                              </Badge>
+                            </div>
                           )}
                           {selectedCarrier.safety_rating && (
-                            <Badge variant={selectedCarrier.safety_rating === "CONDITIONAL" ? "destructive" : "default"}>
-                              {selectedCarrier.safety_rating}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Safer Rating Check</span>
+                              <Badge variant={selectedCarrier.safety_rating === "CONDITIONAL" ? "destructive" : "default"}>
+                                {selectedCarrier.safety_rating}
+                              </Badge>
+                            </div>
                           )}
                         </div>
                       );
