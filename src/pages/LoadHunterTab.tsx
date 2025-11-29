@@ -1328,10 +1328,13 @@ export default function LoadHunterTab() {
               />
             </div>
 
-            {/* Save Button */}
-            <div className="flex justify-start pt-2">
+            {/* Save and Cancel Buttons */}
+            <div className="flex justify-start gap-3 pt-2">
               <Button variant="secondary" className="px-8" onClick={handleSaveHuntPlan}>
                 Save
+              </Button>
+              <Button variant="outline" className="px-8" onClick={() => setCreateHuntOpen(false)}>
+                Cancel
               </Button>
             </div>
           </div>
