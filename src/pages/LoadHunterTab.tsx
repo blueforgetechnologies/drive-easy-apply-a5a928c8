@@ -568,7 +568,7 @@ export default function LoadHunterTab() {
             <div className="w-[500px] flex-shrink-0 space-y-4 overflow-y-auto border rounded-lg p-4 bg-card">
               {/* Tabs */}
               <Tabs defaultValue="empty" className="w-full">
-                <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30 mb-4">
+                <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30 mb-6">
                   <TabsTrigger value="empty" className="text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                     Empty
                   </TabsTrigger>
