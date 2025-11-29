@@ -29,6 +29,10 @@ export default function LoadDetail() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
+  const [carriers, setCarriers] = useState<any[]>([]);
+  const [carrierDialogOpen, setCarrierDialogOpen] = useState(false);
+  const [carrierSearch, setCarrierSearch] = useState("");
+  const [carrierLookupLoading, setCarrierLookupLoading] = useState(false);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
@@ -65,7 +69,7 @@ export default function LoadDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes] = await Promise.all([
+      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes, carriersRes] = await Promise.all([
         supabase.from("loads").select("*").eq("id", id).single(),
         supabase.from("load_stops").select("*").eq("load_id", id).order("stop_sequence"),
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
@@ -74,6 +78,7 @@ export default function LoadDetail() {
         supabase.from("vehicles").select("id, vehicle_number, make, model").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
+        supabase.from("carriers").select("id, name, dot_number, mc_number").eq("status", "active"),
       ]);
 
       if (loadRes.error) throw loadRes.error;
@@ -85,6 +90,7 @@ export default function LoadDetail() {
       setVehicles(vehiclesRes.data || []);
       setDispatchers(dispatchersRes.data || []);
       setLocations(locationsRes.data || []);
+      setCarriers(carriersRes.data || []);
     } catch (error: any) {
       toast.error("Error loading load details");
       console.error(error);
@@ -107,6 +113,7 @@ export default function LoadDetail() {
           assigned_driver_id: load.assigned_driver_id,
           assigned_vehicle_id: load.assigned_vehicle_id,
           assigned_dispatcher_id: load.assigned_dispatcher_id,
+          carrier_id: load.carrier_id,
           equipment_type: load.equipment_type,
           temperature_required: load.temperature_required,
           hazmat: load.hazmat,
@@ -139,6 +146,62 @@ export default function LoadDetail() {
       console.error(error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCarrierLookup = async () => {
+    if (!carrierSearch.trim()) {
+      toast.error("Please enter a DOT or MC number");
+      return;
+    }
+
+    setCarrierLookupLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ usdot: carrierSearch }),
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Carrier not found");
+      }
+
+      const data = await response.json();
+      
+      // Add carrier to database
+      const { data: newCarrier, error } = await supabase
+        .from("carriers")
+        .insert({
+          name: data.dba_name || data.name || "",
+          mc_number: data.mc_number || "",
+          dot_number: data.usdot || carrierSearch,
+          phone: data.phone || "",
+          address: data.physical_address || "",
+          status: "active",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      toast.success("Carrier added successfully");
+      setCarrierDialogOpen(false);
+      setCarrierSearch("");
+      loadData(); // Reload to get updated carriers list
+      
+      // Auto-select the newly added carrier
+      updateField("carrier_id", newCarrier.id);
+    } catch (error: any) {
+      toast.error("Failed to fetch carrier data: " + error.message);
+    } finally {
+      setCarrierLookupLoading(false);
     }
   };
 
@@ -537,6 +600,32 @@ export default function LoadDetail() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label>Assigned Carrier</Label>
+                  <div className="flex gap-2">
+                    <Select value={load.carrier_id || ""} onValueChange={(value) => updateField("carrier_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select carrier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {carriers.map((carrier) => (
+                          <SelectItem key={carrier.id} value={carrier.id}>
+                            {carrier.name} {carrier.dot_number ? `(DOT: ${carrier.dot_number})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setCarrierDialogOpen(true)}
+                      type="button"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1256,6 +1345,42 @@ export default function LoadDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Carrier Search Dialog */}
+      <Dialog open={carrierDialogOpen} onOpenChange={setCarrierDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Carrier by DOT/MC Number</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>DOT or MC Number</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter DOT or MC number"
+                  value={carrierSearch}
+                  onChange={(e) => setCarrierSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCarrierLookup();
+                    }
+                  }}
+                />
+                <Button 
+                  onClick={handleCarrierLookup}
+                  disabled={carrierLookupLoading}
+                >
+                  {carrierLookupLoading ? "Searching..." : "Search"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Search FMCSA database for carrier information and automatically add to your list
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
