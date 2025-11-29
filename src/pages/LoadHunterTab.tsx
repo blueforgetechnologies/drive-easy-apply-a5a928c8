@@ -168,7 +168,7 @@ export default function LoadHunterTab() {
 
   // Check if a load matches any active hunt plans
   const loadMatchesHunt = (email: any): boolean => {
-    if (huntPlans.length === 0) return true; // No hunts active, show all loads
+    if (huntPlans.length === 0) return false; // No hunts active, don't show any loads in unreviewed
     
     const loadData = extractLoadLocation(email);
     
@@ -231,12 +231,12 @@ export default function LoadHunterTab() {
     if (activeFilter === 'unreviewed') {
       const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
       
-      // If unreviewed, also check if it matches hunt criteria
-      if (isUnreviewed && huntPlans.length > 0) {
+      // Only show unreviewed loads that match hunt criteria
+      if (isUnreviewed) {
         return loadMatchesHunt(email);
       }
       
-      return isUnreviewed;
+      return false;
     }
     if (activeFilter === 'missed') {
       // Show only missed loads that are 30+ minutes old
