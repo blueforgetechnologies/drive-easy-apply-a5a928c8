@@ -657,33 +657,37 @@ export default function LoadHunterTab() {
 
           {/* Filter Buttons */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <Button 
-              size="sm" 
-              variant="outline"
-              className={`h-7 px-2.5 text-xs gap-1.5 ${
-                activeFilter === 'unreviewed' 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-              }`}
-              onClick={() => {
-                setActiveFilter('unreviewed');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Unreviewed Loads
-              <Badge variant="destructive" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'unreviewed' ? 'bg-red-500' : 'bg-blue-600'}`}>{unreviewedCount}</Badge>
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="h-7 px-2 text-xs"
-              onClick={toggleSound}
-              title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
-            >
-              {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-            </Button>
+            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+              <Button 
+                size="sm" 
+                variant="ghost"
+                className={`h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 ${
+                  activeFilter === 'unreviewed' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  setActiveFilter('unreviewed');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                Unreviewed Loads
+                <Badge variant="destructive" className="h-4 px-1.5 text-[10px] bg-red-500 text-white ml-1">{unreviewedCount}</Badge>
+              </Button>
+              
+              <div className="w-px h-5 bg-gray-300"></div>
+              
+              <Button 
+                size="sm" 
+                variant="ghost"
+                className="h-7 px-2 text-xs rounded-none border-0 bg-white text-gray-700 hover:bg-gray-50"
+                onClick={toggleSound}
+                title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
+              >
+                {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
             
             <Button
               size="sm" 
@@ -773,7 +777,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 My Bids
-                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'mybids' ? 'bg-blue-700' : 'bg-blue-600'}`}>85</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-600 text-white">85</Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
