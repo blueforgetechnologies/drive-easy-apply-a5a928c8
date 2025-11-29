@@ -320,12 +320,12 @@ export default function LoadHunterTab() {
       setMatchedLoadIds(newMatchedIds);
     };
     
-    if (mapboxToken && huntPlans.length > 0) {
+    if (mapboxToken && huntPlans.length > 0 && loadEmails.length > 0) {
       searchLoadsForHunts();
     } else if (huntPlans.length === 0) {
       setMatchedLoadIds(new Set());
     }
-  }, [huntPlans, mapboxToken]); // Only trigger when hunts change, not on every load update
+  }, [loadEmails, huntPlans, mapboxToken]); // Re-run when new loads arrive, hunts change, or token is ready
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
