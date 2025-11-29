@@ -448,39 +448,46 @@ export default function LoadHunterTab() {
         ) : vehicles.length === 0 ? (
           <div className="text-xs text-muted-foreground">No active trucks</div>
         ) : (
-          vehicles.map((vehicle) => (
-            <Card 
-              key={vehicle.id} 
-              className="p-2 hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => setSelectedVehicle(vehicle)}
-            >
-              <div className="space-y-0.5">
-                <div className="flex items-start justify-between gap-1.5">
-                  <div className="font-semibold text-xs leading-tight">
-                    {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "Unassigned"}
-                  </div>
-                  <div className="flex gap-0.5 flex-shrink-0">
-                    <Badge variant="destructive" className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-                      0
-                    </Badge>
-                    <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-orange-500 text-white">
-                      0
-                    </Badge>
-                    <Badge variant="default" className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-                      0
-                    </Badge>
-                  </div>
-                </div>
-                <div className="text-[10px] text-muted-foreground leading-tight">
-                  {vehicle.asset_type || "Asset Type"}
-                </div>
-                <div className="text-[10px] text-muted-foreground truncate leading-tight">
-                  {vehicle.carrier || "No Carrier"}
-                </div>
-              </div>
-            </Card>
-          ))
-        )}
+          vehicles.map((vehicle) => {
+            const hasHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id);
+            return (
+              <Card 
+                key={vehicle.id} 
+                className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer relative ${
+                  hasHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
+                }`}
+                onClick={() => setSelectedVehicle(vehicle)}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm leading-tight text-foreground">
+                        {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-tight mt-0.5">
+                        {vehicle.asset_type || "Asset Type"}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground/70 truncate leading-tight mt-0.5">
+                        {vehicle.carrier || "No Carrier"}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-medium">
+                        0
+                      </div>
+                      <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-medium">
+                        0
+                       </div>
+                       <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium">
+                         0
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </Card>
+             );
+           })
+         )}
       </div>
 
       {/* Main Content - Load Board or Vehicle Details */}
