@@ -620,7 +620,7 @@ export default function LoadHunterTab() {
 
               {/* Hunt Plans */}
               {huntPlans.map((plan) => (
-                <Card key={plan.id} className="p-4 space-y-3 bg-card">
+                <Card key={plan.id} className="p-4 space-y-3 bg-card border-2 border-border">
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2">
