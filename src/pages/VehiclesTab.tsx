@@ -49,6 +49,7 @@ export default function VehiclesTab() {
   const [syncing, setSyncing] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showServiceDue, setShowServiceDue] = useState(false);
+  const [driversMap, setDriversMap] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     vehicle_number: "",
     carrier: "",
@@ -83,7 +84,38 @@ export default function VehiclesTab() {
         toast.error("Error loading assets");
         return;
       }
-      setVehicles(data || []);
+
+      const vehiclesData = data || [];
+      setVehicles(vehiclesData);
+
+      // Load driver names for any assigned drivers so they show in the list
+      const driverIds = Array.from(
+        new Set(
+          vehiclesData.flatMap((v) => [v.driver_1_id, v.driver_2_id]).filter((id): id is string => !!id)
+        )
+      );
+
+      if (driverIds.length > 0) {
+        const { data: driversData, error: driversError } = await supabase
+          .from("applications")
+          .select("id, personal_info")
+          .in("id", driverIds);
+
+        if (!driversError && driversData) {
+          const map: Record<string, string> = {};
+          driversData.forEach((driver: any) => {
+            const first = driver.personal_info?.firstName || "";
+            const last = driver.personal_info?.lastName || "";
+            const name = `${first} ${last}`.trim() || "Driver";
+            map[driver.id] = name;
+          });
+          setDriversMap(map);
+        } else {
+          setDriversMap({});
+        }
+      } else {
+        setDriversMap({});
+      }
     } finally {
       setLoading(false);
     }
@@ -438,12 +470,22 @@ export default function VehiclesTab() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="text-primary underline">Assign Driver</div>
-                          <div className="text-primary underline">Assign Driver</div>
+                          <div className="text-primary underline">
+                            {vehicle.driver_1_id
+                              ? driversMap[vehicle.driver_1_id] || "Driver 1"
+                              : "Assign Driver"}
+                          </div>
+                          <div className="text-primary underline">
+                            {vehicle.driver_2_id
+                              ? driversMap[vehicle.driver_2_id] || "Driver 2"
+                              : "Assign Driver"}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-primary underline">Assign Dispatcher</div>
+                        <div className="text-primary underline">
+                          {vehicle.primary_dispatcher_id ? "Assigned Dispatcher" : "Assign Dispatcher"}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div>{vehicle.asset_type || "N/A"}</div>
