@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -139,6 +139,7 @@ export default function LoadHunterTab() {
       // Show only missed loads that are 30+ minutes old
       return email.status === 'missed' && emailTime <= thirtyMinutesAgo;
     }
+    if (activeFilter === 'waitlist') return email.status === 'waitlist';
     if (activeFilter === 'skipped') return email.status === 'skipped';
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
@@ -153,6 +154,7 @@ export default function LoadHunterTab() {
     const emailTime = new Date(e.received_at);
     return e.status === 'missed' && emailTime <= thirtyMinutesAgo;
   }).length;
+  const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
   // Function to play alert sound
@@ -506,6 +508,24 @@ export default function LoadHunterTab() {
     }
   };
 
+  const handleMoveToWaitlist = async (emailId: string) => {
+    try {
+      const { error } = await supabase
+        .from('load_emails')
+        .update({ status: 'waitlist' })
+        .eq('id', emailId);
+
+      if (error) throw error;
+
+      // Reload emails to update counts and filtered view
+      await loadLoadEmails();
+      toast.success('Load moved to waitlist');
+    } catch (error) {
+      console.error('Error moving to waitlist:', error);
+      toast.error('Failed to move load to waitlist');
+    }
+  };
+
   const handleSaveHuntPlan = () => {
     if (!selectedVehicle) {
       toast.error("No vehicle selected");
@@ -686,7 +706,7 @@ export default function LoadHunterTab() {
               }}
             >
               Waitlist
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-orange-600 ml-1">0</Badge>
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-orange-600 ml-1">{waitlistCount}</Badge>
             </Button>
             
             <Button 
@@ -1379,27 +1399,30 @@ export default function LoadHunterTab() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right py-1">
-                                <div className="flex justify-end gap-0.5">
+                                <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
+                                    className="h-6 w-6 p-0 rounded-full text-red-500 hover:bg-red-50 hover:text-red-700" 
                                     aria-label="Skip load"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleSkipEmail(email.id);
                                     }}
                                   >
-                                    <X className="h-3.5 w-3.5" />
+                                    <X className="h-4 w-4" />
                                   </Button>
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-6 w-6 p-0 text-green-500 hover:text-green-700" 
-                                    aria-label="Review load"
-                                    onClick={() => handleReviewEmail(email.id)}
+                                    className="h-6 w-6 p-0 rounded-full bg-blue-500 text-white hover:bg-blue-600" 
+                                    aria-label="Move to waitlist"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMoveToWaitlist(email.id);
+                                    }}
                                   >
-                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    <MoreVertical className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </TableCell>
