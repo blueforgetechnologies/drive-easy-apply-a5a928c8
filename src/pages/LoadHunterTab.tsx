@@ -416,10 +416,10 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell>
                                 <div className="text-sm">
-                                  {data.empty_miles ? `${data.empty_miles} (${Math.floor(data.empty_miles / 60)}h ${data.empty_miles % 60}m)` : '—'}
+                                  {data.empty_miles ? `${data.empty_miles} mi` : '—'}
                                 </div>
                                 <div className="text-sm">
-                                  {data.loaded_miles ? `${data.loaded_miles} (${Math.floor(data.loaded_miles / 60)}h ${data.loaded_miles % 60}m)` : '—'}
+                                  {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
                                 </div>
                               </TableCell>
                               <TableCell>
