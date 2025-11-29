@@ -973,6 +973,8 @@ export default function LoadDetail() {
             stops={stops} 
             optimizedStops={optimizationResult?.optimizedSequence}
             requiredBreaks={optimizationResult?.requiredBreaks || []}
+            onOptimize={handleOptimizeRoute}
+            optimizing={optimizing}
           />
         </TabsContent>
 

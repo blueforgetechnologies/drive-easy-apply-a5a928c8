@@ -7,9 +7,11 @@ interface LoadRouteMapProps {
   stops: any[];
   optimizedStops?: any[];
   requiredBreaks?: any[];
+  onOptimize?: () => void;
+  optimizing?: boolean;
 }
 
-export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [] }: LoadRouteMapProps) {
+export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [], onOptimize, optimizing = false }: LoadRouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -287,6 +289,19 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden border">
       <div ref={mapContainer} className="absolute inset-0" />
+      
+      {onOptimize && (
+        <div className="absolute top-4 right-4 z-10">
+          <button
+            onClick={onOptimize}
+            disabled={optimizing || stops.length < 2}
+            className="bg-background/95 backdrop-blur-sm hover:bg-background border shadow-lg px-4 py-2 rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {optimizing ? "Optimizing..." : "Optimize Route"}
+          </button>
+        </div>
+      )}
+      
       <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border">
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
