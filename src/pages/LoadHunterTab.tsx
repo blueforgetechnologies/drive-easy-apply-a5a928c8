@@ -248,10 +248,17 @@ export default function LoadHunterTab() {
     return true; // Default for other filters
   });
 
-  // Count emails by status
+  // Count emails by status (with hunt filtering applied for unreviewed)
   const unreviewedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
-    return e.status === 'new' || (e.status === 'missed' && emailTime > thirtyMinutesAgo);
+    const isUnreviewed = e.status === 'new' || (e.status === 'missed' && emailTime > thirtyMinutesAgo);
+    
+    // Apply hunt filtering for unreviewed count
+    if (isUnreviewed) {
+      return loadMatchesHunt(e);
+    }
+    
+    return false;
   }).length;
   const missedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
