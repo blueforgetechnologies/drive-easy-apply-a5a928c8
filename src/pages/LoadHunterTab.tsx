@@ -549,62 +549,65 @@ export default function LoadHunterTab() {
                 </TabsList>
               </Tabs>
 
-              {/* Location & Odometer with Maintenance Box */}
-              <div className="relative">
-                <div className="space-y-1">
-                  <div className="text-sm">Location</div>
-                  <div className="text-sm font-medium">
-                    {selectedVehicle.formatted_address || selectedVehicle.last_location || "N/A"}
+              {/* Vehicle Details Section with Border */}
+              <div className="border-2 border-border rounded-lg p-4 space-y-4 bg-background">
+                {/* Location & Odometer with Maintenance Box */}
+                <div className="relative">
+                  <div className="space-y-1">
+                    <div className="text-sm">Location</div>
+                    <div className="text-sm font-medium">
+                      {selectedVehicle.formatted_address || selectedVehicle.last_location || "N/A"}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Gauge className="h-4 w-4" />
+                      <span>Odometer</span>
+                      <span className="font-semibold">
+                        {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Gauge className="h-4 w-4" />
-                    <span>Odometer</span>
-                    <span className="font-semibold">
-                      {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
+                  
+                  {/* Next Maintenance Due Box - Positioned on the right */}
+                  <div className="absolute top-0 right-0 border-2 border-border rounded-lg px-4 py-2 bg-background min-w-[200px]">
+                    <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-2xl font-bold">N/A</div>
+                      <div className="text-sm text-muted-foreground">N/A</div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button variant="link" className="text-sm text-primary p-0 h-auto">
+                  View vehicle Details
+                </Button>
+
+                {/* Driver Assignments - Single line format */}
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <span className="font-semibold w-8">D1</span>
+                    <span className="flex-1">
+                      {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
                     </span>
+                    <span className="text-muted-foreground">Note: N/A</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <span className="font-semibold w-8">D2</span>
+                    <span className="flex-1">
+                      {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
+                    </span>
+                    <span className="text-muted-foreground">Note: N/A</span>
                   </div>
                 </div>
-                
-                {/* Next Maintenance Due Box - Positioned on the right */}
-                <div className="absolute top-0 right-0 border-2 border-border rounded-lg px-4 py-2 bg-background min-w-[200px]">
-                  <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="text-2xl font-bold">N/A</div>
-                    <div className="text-sm text-muted-foreground">N/A</div>
+
+                {/* Vehicle Note */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Vehicle Note:</div>
+                    <Wrench className="h-5 w-5 text-primary" />
                   </div>
-                </div>
-              </div>
-
-              <Button variant="link" className="text-sm text-primary p-0 h-auto">
-                View vehicle Details
-              </Button>
-
-              {/* Driver Assignments - Single line format */}
-              <div className="space-y-2">
-                <div className="flex items-center text-sm">
-                  <span className="font-semibold w-8">D1</span>
-                  <span className="flex-1">
-                    {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
-                  </span>
-                  <span className="text-muted-foreground">Note: N/A</span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <span className="font-semibold w-8">D2</span>
-                  <span className="flex-1">
-                    {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
-                  </span>
-                  <span className="text-muted-foreground">Note: N/A</span>
-                </div>
-              </div>
-
-              {/* Vehicle Note */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">Vehicle Note:</div>
-                  <Wrench className="h-5 w-5 text-primary" />
-                </div>
-                <div className="text-sm text-muted-foreground min-h-[40px]">
-                  {selectedVehicle.notes || "No notes available"}
+                  <div className="text-sm text-muted-foreground min-h-[40px]">
+                    {selectedVehicle.notes || "No notes available"}
+                  </div>
                 </div>
               </div>
 
