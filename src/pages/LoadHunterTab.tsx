@@ -123,16 +123,31 @@ export default function LoadHunterTab() {
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
+  // Calculate time thresholds
+  const now = new Date();
+  const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+  
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
-    if (activeFilter === 'unreviewed') return email.status === 'new';
+    const emailTime = new Date(email.received_at);
+    if (activeFilter === 'unreviewed') return email.status === 'new' && emailTime > fifteenMinutesAgo;
+    if (activeFilter === 'missed') return email.status === 'new' && emailTime <= fifteenMinutesAgo;
     if (activeFilter === 'skipped') return email.status === 'skipped';
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
   });
 
-  // Count emails by status
-  const unreviewedCount = loadEmails.filter(e => e.status === 'new').length;
+  // Count emails by status with time-based logic
+  const unreviewedCount = loadEmails.filter(e => {
+    const emailTime = new Date(e.received_at);
+    return e.status === 'new' && emailTime > fifteenMinutesAgo;
+  }).length;
+  
+  const missedCount = loadEmails.filter(e => {
+    const emailTime = new Date(e.received_at);
+    return e.status === 'new' && emailTime <= fifteenMinutesAgo;
+  }).length;
+  
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
   useEffect(() => {
@@ -529,7 +544,7 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">50</Badge>
+              <Badge variant="destructive" className="h-4 px-1.5 text-[10px] ml-1">{missedCount}</Badge>
             </Button>
             
             <Button 
