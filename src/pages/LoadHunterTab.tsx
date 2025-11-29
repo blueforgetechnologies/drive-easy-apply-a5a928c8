@@ -1183,8 +1183,11 @@ export default function LoadHunterTab() {
                                 <Badge variant="outline" className="mb-0.5 h-4 px-1 text-[10px]">
                                   {email.status === 'new' ? '🟡' : '🟢'}
                                 </Badge>
-                                <div className="text-[11px] font-medium truncate leading-tight">
-                                  {data.customer || email.from_name || 'Unknown'}
+                                <div className="text-[11px] font-medium leading-tight">
+                                  {(() => {
+                                    const customerName = data.customer || email.from_name || 'Unknown';
+                                    return customerName.length > 22 ? customerName.slice(0, 22) + '...' : customerName;
+                                  })()}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
