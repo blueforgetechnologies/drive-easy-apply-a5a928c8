@@ -574,15 +574,7 @@ export default function LoadHunterTab() {
               <Home className="h-3.5 w-3.5" />
             </Button>
             
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="h-7 px-2 text-xs"
-            >
-              <Bell className="h-3.5 w-3.5" />
-            </Button>
-            
-            <Button 
+            <Button
               size="sm" 
               variant={activeFilter === 'missed' ? 'default' : 'outline'}
               className="h-7 px-2.5 text-xs gap-1.5"
