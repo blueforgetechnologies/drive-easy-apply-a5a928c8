@@ -94,12 +94,13 @@ export default function LoadHunterTab() {
       const { data, error } = await supabase
         .from("vehicles")
         .select("*")
-        .eq("status", "active")
+        .in("status", ["active", "available"])
         .order("vehicle_number", { ascending: true });
 
       if (error) throw error;
       setVehicles(data || []);
     } catch (error: any) {
+      console.error("Failed to load vehicles", error);
       toast.error("Failed to load vehicles");
     } finally {
       setLoading(false);
