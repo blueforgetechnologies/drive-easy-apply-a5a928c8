@@ -1138,18 +1138,18 @@ export default function LoadHunterTab() {
                     <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="h-8">
-                          <TableHead className="w-[160px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
-                          <TableHead className="w-[110px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Customer</TableHead>
-                          <TableHead className="w-[100px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
-                          <TableHead className="w-[150px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
-                          <TableHead className="w-[150px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
-                          <TableHead className="w-[130px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Empty Drive<br/>Loaded Drive</TableHead>
-                          <TableHead className="w-[130px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
-                          <TableHead className="w-[120px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Pieces<br/>Dimensions</TableHead>
-                          <TableHead className="w-[70px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Avail ft</TableHead>
-                          <TableHead className="w-[80px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Source</TableHead>
-                          <TableHead className="w-[90px] py-0.5 text-[13px] leading-[1.2] text-blue-600 font-semibold">Actions</TableHead>
+                        <TableRow className="h-7">
+                          <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
+                          <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
+                          <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
+                          <TableHead className="w-[150px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
+                          <TableHead className="w-[150px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
+                          <TableHead className="w-[130px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Empty Drive<br/>Loaded Drive</TableHead>
+                          <TableHead className="w-[130px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
+                          <TableHead className="w-[120px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Pieces<br/>Dimensions</TableHead>
+                          <TableHead className="w-[70px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Avail ft</TableHead>
+                          <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Source</TableHead>
+                          <TableHead className="w-[90px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
