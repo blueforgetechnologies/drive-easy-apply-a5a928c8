@@ -29,6 +29,15 @@ interface Break {
   cumulativeDriveTime: number;
 }
 
+interface FuelEmissionsData {
+  estimatedFuelGallons: number;
+  estimatedFuelCost: number;
+  carbonEmissionsKg: number;
+  carbonEmissionsLbs: number;
+  fuelType: string;
+  vehicleMpg: number;
+}
+
 interface OptimizationResult {
   optimizedSequence: Stop[];
   totalDistance: number;
@@ -37,6 +46,7 @@ interface OptimizationResult {
   requiredBreaks: Break[];
   hosCompliant: boolean;
   isTeam: boolean;
+  fuelEmissions?: FuelEmissionsData;
   savings: {
     distanceSaved: number;
     timeSaved: number;
@@ -49,13 +59,26 @@ serve(async (req) => {
   }
 
   try {
-    const { stops, isTeam = false } = await req.json();
+    const { stops, isTeam = false, vehicleId } = await req.json();
     const MAPBOX_TOKEN = Deno.env.get('VITE_MAPBOX_TOKEN');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!MAPBOX_TOKEN) {
       console.error('VITE_MAPBOX_TOKEN not configured');
       return new Response(
         JSON.stringify({ error: 'Mapbox token not configured' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Supabase credentials not configured');
+      return new Response(
+        JSON.stringify({ error: 'Database not configured' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -137,7 +160,36 @@ serve(async (req) => {
     // Step 6: Calculate HOS compliance and required breaks
     const hosAnalysis = calculateHOSCompliance(optimizedSequence, optimizedMetrics, isTeam);
     
-    // Step 7: Calculate original route metrics for comparison
+    // Step 7: Calculate fuel costs and emissions if vehicle data is available
+    let fuelEmissions: FuelEmissionsData | undefined;
+    if (vehicleId) {
+      try {
+        const vehicleResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/vehicles?id=eq.${vehicleId}&select=fuel_type,fuel_efficiency_mpg,asset_type`,
+          {
+            headers: {
+              'apikey': SUPABASE_SERVICE_ROLE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+            }
+          }
+        );
+        const vehicleData = await vehicleResponse.json();
+        
+        if (vehicleData && vehicleData.length > 0) {
+          const vehicle = vehicleData[0];
+          fuelEmissions = calculateFuelEmissions(
+            optimizedMetrics.distance,
+            vehicle.fuel_type || 'diesel',
+            vehicle.fuel_efficiency_mpg || 6.5,
+            vehicle.asset_type || 'truck'
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching vehicle data:', error);
+      }
+    }
+    
+    // Step 8: Calculate original route metrics for comparison
     const originalSequence = [...stops].sort((a, b) => a.stop_sequence - b.stop_sequence);
     const originalStopsWithCoords = originalSequence
       .map(stop => stopsWithCoords.find(s => s.id === stop.id))
@@ -152,6 +204,7 @@ serve(async (req) => {
       requiredBreaks: hosAnalysis.breaks,
       hosCompliant: hosAnalysis.compliant,
       isTeam,
+      fuelEmissions,
       savings: {
         distanceSaved: Math.max(0, originalMetrics.distance - optimizedMetrics.distance),
         timeSaved: Math.max(0, originalMetrics.duration - optimizedMetrics.duration),
@@ -302,6 +355,62 @@ function checkTimeFeasibility(current: Stop, next: Stop): boolean {
   // Next stop should start after current stop ends (with some buffer for travel)
   // Assuming average 1 hour travel time between stops
   return nextStartTime >= currentEndTime + (60 * 60 * 1000);
+}
+
+function calculateFuelEmissions(
+  distanceMiles: number,
+  fuelType: string,
+  mpg: number,
+  assetType: string
+): FuelEmissionsData {
+  // Calculate fuel consumption
+  const fuelGallons = distanceMiles / mpg;
+  
+  // Fuel prices (national average estimates)
+  const fuelPrices: { [key: string]: number } = {
+    'diesel': 3.85,
+    'gasoline': 3.25,
+    'electric': 0.13, // per kWh, converted later
+    'hybrid': 3.50,
+    'cng': 2.50,
+    'lng': 2.25,
+  };
+  
+  // Carbon emissions factors (kg CO2 per gallon)
+  const emissionFactors: { [key: string]: number } = {
+    'diesel': 10.21,  // kg CO2 per gallon
+    'gasoline': 8.89,
+    'electric': 0.0,   // Zero direct emissions (electricity generation emissions not counted here)
+    'hybrid': 6.67,    // Average between gas and electric
+    'cng': 6.37,
+    'lng': 6.37,
+  };
+  
+  const pricePerUnit = fuelPrices[fuelType.toLowerCase()] || fuelPrices['diesel'];
+  const emissionFactor = emissionFactors[fuelType.toLowerCase()] || emissionFactors['diesel'];
+  
+  // For electric vehicles, calculate differently (kWh instead of gallons)
+  let estimatedCost: number;
+  let carbonKg: number;
+  
+  if (fuelType.toLowerCase() === 'electric') {
+    // Assume 2 kWh per mile for electric trucks
+    const kWh = distanceMiles * 2;
+    estimatedCost = kWh * pricePerUnit;
+    carbonKg = 0; // Direct emissions
+  } else {
+    estimatedCost = fuelGallons * pricePerUnit;
+    carbonKg = fuelGallons * emissionFactor;
+  }
+  
+  return {
+    estimatedFuelGallons: fuelGallons,
+    estimatedFuelCost: estimatedCost,
+    carbonEmissionsKg: carbonKg,
+    carbonEmissionsLbs: carbonKg * 2.20462, // Convert kg to lbs
+    fuelType: fuelType,
+    vehicleMpg: mpg,
+  };
 }
 
 interface HOSAnalysis {

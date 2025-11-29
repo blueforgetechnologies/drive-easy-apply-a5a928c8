@@ -264,7 +264,8 @@ export default function LoadDetail() {
       const { data, error } = await supabase.functions.invoke('optimize-route', {
         body: { 
           stops,
-          isTeam: load.team_required || false
+          isTeam: load.team_required || false,
+          vehicleId: load.assigned_vehicle_id || null
         }
       });
 
@@ -798,6 +799,38 @@ export default function LoadDetail() {
                     </p>
                   </div>
                 </div>
+
+                {optimizationResult.fuelEmissions && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="font-semibold mb-2 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Fuel Cost & Environmental Impact:
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="p-3 bg-white rounded border">
+                          <p className="text-muted-foreground text-xs">Fuel Type</p>
+                          <p className="font-bold capitalize">{optimizationResult.fuelEmissions.fuelType}</p>
+                        </div>
+                        <div className="p-3 bg-white rounded border">
+                          <p className="text-muted-foreground text-xs">Fuel Needed</p>
+                          <p className="font-bold">{optimizationResult.fuelEmissions.estimatedFuelGallons.toFixed(1)} gal</p>
+                          <p className="text-xs text-muted-foreground">@ {optimizationResult.fuelEmissions.vehicleMpg} MPG</p>
+                        </div>
+                        <div className="p-3 bg-green-50 rounded border border-green-200">
+                          <p className="text-muted-foreground text-xs">Estimated Cost</p>
+                          <p className="font-bold text-green-700">${optimizationResult.fuelEmissions.estimatedFuelCost.toFixed(2)}</p>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                          <p className="text-muted-foreground text-xs">CO₂ Emissions</p>
+                          <p className="font-bold text-blue-700">{optimizationResult.fuelEmissions.carbonEmissionsLbs.toFixed(0)} lbs</p>
+                          <p className="text-xs text-muted-foreground">{optimizationResult.fuelEmissions.carbonEmissionsKg.toFixed(1)} kg</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {optimizationResult.requiredBreaks.length > 0 && (
                   <>
