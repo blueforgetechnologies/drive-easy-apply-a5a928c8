@@ -31,6 +31,8 @@ export default function LoadDetail() {
   const [locations, setLocations] = useState<any[]>([]);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizationResult, setOptimizationResult] = useState<any>(null);
   const [newStop, setNewStop] = useState({
     stop_type: "pickup",
     location_name: "",
@@ -247,6 +249,53 @@ export default function LoadDetail() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to delete expense");
+      console.error(error);
+    }
+  };
+
+  const handleOptimizeRoute = async () => {
+    if (stops.length < 2) {
+      toast.error("At least 2 stops required for optimization");
+      return;
+    }
+
+    setOptimizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('optimize-route', {
+        body: { stops }
+      });
+
+      if (error) throw error;
+      
+      setOptimizationResult(data);
+      toast.success("Route optimized successfully!");
+    } catch (error: any) {
+      toast.error("Failed to optimize route");
+      console.error(error);
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
+  const handleApplyOptimization = async () => {
+    if (!optimizationResult) return;
+
+    try {
+      // Update all stop sequences
+      const updates = optimizationResult.optimizedSequence.map((stop: any) => 
+        supabase
+          .from("load_stops")
+          .update({ stop_sequence: stop.stop_sequence })
+          .eq("id", stop.id)
+      );
+
+      await Promise.all(updates);
+      
+      toast.success("Optimized route applied successfully!");
+      setOptimizationResult(null);
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to apply optimization");
       console.error(error);
     }
   };
@@ -564,10 +613,18 @@ export default function LoadDetail() {
         <TabsContent value="stops" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Load Stops</h3>
-            <Dialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" /> Add Stop</Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleOptimizeRoute}
+                disabled={optimizing || stops.length < 2}
+              >
+                {optimizing ? "Optimizing..." : "Optimize Route"}
+              </Button>
+              <Dialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button><Plus className="mr-2 h-4 w-4" /> Add Stop</Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add Stop</DialogTitle>
@@ -682,7 +739,72 @@ export default function LoadDetail() {
                 <Button onClick={handleAddStop} className="w-full">Add Stop</Button>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
+
+          {optimizationResult && (
+            <Card className="border-blue-500 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Optimization Results</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleApplyOptimization}>
+                      Apply Optimization
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setOptimizationResult(null)}>
+                      Dismiss
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Total Distance</p>
+                    <p className="text-lg font-bold">{optimizationResult.totalDistance.toFixed(1)} miles</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Duration</p>
+                    <p className="text-lg font-bold">{Math.round(optimizationResult.totalDuration / 60)} hours</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Distance Saved</p>
+                    <p className="text-lg font-bold text-green-600">
+                      {optimizationResult.savings.distanceSaved.toFixed(1)} miles
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Time Saved</p>
+                    <p className="text-lg font-bold text-green-600">
+                      {Math.round(optimizationResult.savings.timeSaved / 60)} hours
+                    </p>
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <p className="font-semibold mb-2">Optimized Stop Sequence:</p>
+                  <div className="space-y-2">
+                    {optimizationResult.optimizedSequence.map((stop: any, index: number) => (
+                      <div key={stop.id} className="flex items-center gap-3 text-sm p-2 bg-white rounded">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                          {index + 1}
+                        </div>
+                        <div className="flex items-center gap-2 flex-1">
+                          <Badge variant={stop.stop_type === 'pickup' ? 'default' : 'secondary'}>
+                            {stop.stop_type}
+                          </Badge>
+                          <span className="font-medium">{stop.location_name}</span>
+                        </div>
+                        <span className="text-muted-foreground text-xs">
+                          {stop.location_city}, {stop.location_state}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="space-y-3">
             {stops.map((stop, index) => (
@@ -784,7 +906,10 @@ export default function LoadDetail() {
         </TabsContent>
 
         <TabsContent value="route" className="space-y-4">
-          <LoadRouteMap stops={stops} />
+          <LoadRouteMap 
+            stops={stops} 
+            optimizedStops={optimizationResult?.optimizedSequence} 
+          />
         </TabsContent>
 
         <TabsContent value="expenses" className="space-y-4">
