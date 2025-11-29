@@ -572,6 +572,83 @@ export default function LoadHunterTab() {
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1">2</Badge>
             </Button>
           </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+            <Button 
+              size="sm" 
+              variant={activeFilter === 'vehicle-assignment' ? 'default' : 'outline'}
+              className="h-7 px-2.5 text-xs"
+              onClick={() => setActiveFilter('vehicle-assignment')}
+            >
+              Vehicle Assignment
+            </Button>
+            
+            <Button 
+              size="sm" 
+              variant={activeFilter === 'dispatcher-metrix' ? 'default' : 'outline'}
+              className="h-7 px-2.5 text-xs"
+              onClick={() => setActiveFilter('dispatcher-metrix')}
+            >
+              Dispatcher Metrix
+            </Button>
+            
+            <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs px-2.5">
+                  <Settings className="h-3.5 w-3.5" />
+                  Email Config
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Configure Email Integration</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address to Monitor</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="loads@yourcompany.com"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter the email address where you receive load offers
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="provider">Email Provider</Label>
+                    <select
+                      id="provider"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={emailProvider}
+                      onChange={(e) => setEmailProvider(e.target.value)}
+                    >
+                      <option value="gmail">Gmail</option>
+                      <option value="outlook">Outlook</option>
+                      <option value="imap">Other (IMAP)</option>
+                    </select>
+                  </div>
+                  <Button onClick={handleSaveEmailConfig} className="w-full">
+                    Save Configuration
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-1.5 h-7 text-xs px-2.5"
+              onClick={handleRefreshLoads}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "Refreshing..." : "Refresh Loads"}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -651,82 +728,6 @@ export default function LoadHunterTab() {
               </p>
             </div>
           </div>
-          {!selectedVehicle && (
-            <div className="flex gap-1.5">
-            <Button 
-              size="sm" 
-              variant={activeFilter === 'vehicle-assignment' ? 'default' : 'outline'}
-              className="h-8 px-2.5 text-xs"
-              onClick={() => setActiveFilter('vehicle-assignment')}
-            >
-              Vehicle Assignment
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant={activeFilter === 'dispatcher-metrix' ? 'default' : 'outline'}
-              className="h-8 px-2.5 text-xs"
-              onClick={() => setActiveFilter('dispatcher-metrix')}
-            >
-              Dispatcher Metrix
-            </Button>
-            
-            <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs px-2.5">
-                  <Settings className="h-3.5 w-3.5" />
-                  Email Config
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Configure Email Integration</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address to Monitor</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="loads@yourcompany.com"
-                      value={emailAddress}
-                      onChange={(e) => setEmailAddress(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Enter the email address where you receive load offers
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="provider">Email Provider</Label>
-                    <select
-                      id="provider"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={emailProvider}
-                      onChange={(e) => setEmailProvider(e.target.value)}
-                    >
-                      <option value="gmail">Gmail</option>
-                      <option value="outlook">Outlook</option>
-                      <option value="imap">Other (IMAP)</option>
-                    </select>
-                  </div>
-                  <Button onClick={handleSaveEmailConfig} className="w-full">
-                    Save Configuration
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button
-              variant="default"
-              size="sm"
-              className="gap-1.5 h-8 text-xs px-2.5"
-              onClick={handleRefreshLoads}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Refreshing..." : "Refresh Loads"}
-            </Button>
-            </div>
-          )}
         </div>
 
         {/* Conditional Content: Load Board or Vehicle Details */}
