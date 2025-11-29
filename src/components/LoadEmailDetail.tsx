@@ -33,17 +33,17 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="flex gap-3 p-3">
+      <div className="flex gap-2 p-2">
         {/* LEFT SIDE - Load Details + Stats + Map */}
-        <div className="flex-1 space-y-3">
-          <div className="flex gap-3">
+        <div className="flex-1 space-y-2">
+          <div className="flex gap-2">
             {/* Load Details Card */}
             <div className="flex-1">
               <Card className="border rounded-md overflow-hidden h-full">
                 {/* HEADER */}
-                <div className="flex items-center border-b p-3 bg-slate-50">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="flex h-12 w-16 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
+                <div className="flex items-center border-b p-2 bg-slate-50">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="flex h-10 w-14 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
                       <Truck className="h-4 w-4 text-blue-600" />
                       <div className="text-[10px] font-semibold text-blue-600">TAL-3</div>
                       <div className="text-[10px] font-semibold text-red-500">Empty</div>
@@ -60,9 +60,9 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-8">
+                  <div className="flex items-center gap-6">
                     <div>
-                      <div className="text-[14px] font-bold mb-0.5">Match ID: 4227959</div>
+                      <div className="text-[13px] font-bold mb-0.5">Match ID: 4227959</div>
                       <button className="text-[10px] text-blue-500 hover:underline">View Match History</button>
                     </div>
                   </div>
@@ -70,8 +70,8 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
                 {/* CARRIER ROWS */}
                 <div className="border-b">
-                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 text-[11px]">
-                    <div className="bg-red-100 -mx-3 px-3 py-1 font-semibold flex items-center">
+                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-2 py-1.5 text-[11px]">
+                    <div className="bg-red-100 -mx-2 px-2 py-1 font-semibold flex items-center">
                       NE-LANG LOGISTICS LLC
                     </div>
                     <div className="text-center text-gray-400">
@@ -98,8 +98,8 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 <div className="border-b">
-                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-3 py-2 text-[11px]">
-                    <div className="bg-yellow-100 -mx-3 px-3 py-1 font-semibold flex items-center">
+                  <div className="grid grid-cols-[2.2fr,1.2fr,1.2fr,1.3fr,1fr,1fr] px-2 py-1.5 text-[11px]">
+                    <div className="bg-yellow-100 -mx-2 px-2 py-1 font-semibold flex items-center">
                       GLOBALTRANZ ENTERPRISES, LLC
                     </div>
                     <div className="text-center">
@@ -126,7 +126,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 {/* ORIGINAL POST */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-4 py-2 border-b text-[11px] items-center">
+                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1.5 border-b text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Original Post</div>
                   <div className="text-red-600 text-[10px]">
                     Note: CONFIRM MC, CONFIRM ETA TO PICK, CONFIRM TRUCK DIMS
@@ -137,12 +137,12 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 </div>
 
                 {/* VEHICLE */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-4 py-2 text-[11px] items-center">
+                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1.5 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Vehicle</div>
                   <div className="text-gray-500">Note:</div>
-                  <div className="flex items-center justify-end gap-3">
+                  <div className="flex items-center justify-end gap-2">
                     <span><span className="font-semibold">Vehicle Size:</span> CARGO VAN</span>
-                    <Button className="bg-orange-500 hover:bg-orange-600 h-7 px-3 text-[11px] font-semibold">
+                    <Button className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold">
                       Original Email
                     </Button>
                   </div>
@@ -152,29 +152,29 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
             {/* Stats & Actions Card */}
             <div className="w-[280px]">
-              <Card className="p-3 h-full flex flex-col justify-between">
+              <Card className="p-2 h-full flex flex-col justify-between">
                 <div>
                   {/* Average/Bid/Booked Row */}
-                  <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
+                  <div className="grid grid-cols-3 gap-2 text-center mb-2 pb-2 border-b">
                     <div>
-                      <div className="text-[10px] text-gray-500 mb-1">Average</div>
+                      <div className="text-[10px] text-gray-500 mb-0.5">Average</div>
                       <div className="text-[12px] font-semibold">—</div>
                     </div>
-                    <div className="bg-blue-50 -mx-1 px-1 py-1 rounded">
-                      <div className="text-[10px] text-gray-500 mb-1">Bid</div>
+                    <div className="bg-blue-50 -mx-1 px-1 py-0.5 rounded">
+                      <div className="text-[10px] text-gray-500 mb-0.5">Bid</div>
                       <div className="text-[14px] font-bold text-blue-600">$1,282</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-gray-500 mb-1">Booked</div>
+                      <div className="text-[10px] text-gray-500 mb-0.5">Booked</div>
                       <div className="text-[12px] font-semibold">N/A</div>
                     </div>
                   </div>
 
                   {/* [$/mi] Label */}
-                  <div className="text-[10px] text-gray-500 text-right mb-2">[$/mi]</div>
+                  <div className="text-[10px] text-gray-500 text-right mb-1.5">[$/mi]</div>
 
                   {/* Miles and Costs */}
-                  <div className="space-y-2 mb-3 text-[11px]">
+                  <div className="space-y-1.5 mb-2 text-[11px]">
                     <div className="flex justify-between">
                       <span className="font-semibold">Loaded Miles</span>
                       <div className="flex gap-3">
@@ -189,7 +189,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                         <span className="text-blue-600 font-semibold">$1.64</span>
                       </div>
                     </div>
-                    <div className="flex justify-between pb-3 border-b">
+                    <div className="flex justify-between pb-2 border-b">
                       <span className="font-semibold">Fuel, Tolls and Driver</span>
                       <div className="flex gap-3">
                         <span className="font-semibold">$0.00</span>
@@ -199,29 +199,29 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                   </div>
 
                   {/* Bid Amount and Button */}
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b">
-                    <div className="flex items-center gap-2 bg-blue-500 text-white rounded-full h-10 px-4">
-                      <span className="text-lg font-bold">$</span>
-                      <span className="text-2xl font-bold">1282</span>
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                    <div className="flex items-center gap-2 bg-blue-500 text-white rounded-full h-9 px-3">
+                      <span className="text-base font-bold">$</span>
+                      <span className="text-xl font-bold">1282</span>
                     </div>
-                    <Button className="bg-green-600 hover:bg-green-700 h-9 px-5 text-[11px] font-semibold">
+                    <Button className="bg-green-600 hover:bg-green-700 h-8 px-4 text-[11px] font-semibold">
                       Set Bid
                     </Button>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <Button variant="destructive" size="sm" className="h-8 text-[11px] flex-1">
+                <div className="flex gap-1.5">
+                  <Button variant="destructive" size="sm" className="h-7 text-[10px] flex-1">
                     Skip
                   </Button>
-                  <Button size="sm" className="h-8 text-[11px] flex-1 bg-blue-500 hover:bg-blue-600">
+                  <Button size="sm" className="h-7 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
                     Undecided
                   </Button>
-                  <Button size="sm" className="h-8 text-[11px] flex-1 bg-blue-500 hover:bg-blue-600">
+                  <Button size="sm" className="h-7 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
                     Mark Unreviewed
                   </Button>
-                  <Button size="sm" className="h-8 text-[11px] flex-1 bg-blue-500 hover:bg-blue-600">
+                  <Button size="sm" className="h-7 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600">
                     Wait
                   </Button>
                 </div>
@@ -230,7 +230,7 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
           </div>
 
           {/* MAP - Full Width Below */}
-          <Card className="h-[500px] overflow-hidden rounded-md">
+          <Card className="h-[400px] overflow-hidden rounded-md">
             <LoadRouteMap
               stops={[
                 {
@@ -252,12 +252,12 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
 
         {/* FAR RIGHT COLUMN - Quote Rates */}
         <div className="w-[200px]">
-          <Card className="p-3">
-            <div className="flex justify-between text-[10px] text-gray-500 pb-2 border-b mb-2">
+          <Card className="p-2">
+            <div className="flex justify-between text-[10px] text-gray-500 pb-1.5 border-b mb-1.5">
               <span>Quote Rate</span>
               <span>$/mi</span>
             </div>
-            <div className="space-y-0.5 text-[11px] max-h-[700px] overflow-auto">
+            <div className="space-y-0.5 text-[10px] max-h-[700px] overflow-auto">
               {[
                 { rate: "$1,782.00", perMile: "$2.28" },
                 { rate: "$1,732.00", perMile: "$2.21" },
@@ -281,12 +281,12 @@ const LoadEmailDetail = ({ email, onClose }: LoadEmailDetailProps) => {
                 { rate: "$832.00", perMile: "$1.06" },
                 { rate: "$782.00", perMile: "$1.00" },
               ].map((row, idx) => (
-                <div
-                  key={idx}
-                  className={`flex justify-between px-2 py-1 rounded ${
-                    row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
-                  }`}
-                >
+                  <div
+                    key={idx}
+                    className={`flex justify-between px-1.5 py-0.5 rounded ${
+                      row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
+                    }`}
+                  >
                   <span>{row.rate}</span>
                   <span className="text-gray-600">{row.perMile}</span>
                 </div>
