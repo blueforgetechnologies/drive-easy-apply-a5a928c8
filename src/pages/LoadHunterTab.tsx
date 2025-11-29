@@ -95,6 +95,7 @@ export default function LoadHunterTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedEmailForDetail, setSelectedEmailForDetail] = useState<any | null>(null);
+  const [selectedEmailDistance, setSelectedEmailDistance] = useState<number | undefined>(undefined);
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
@@ -372,6 +373,65 @@ export default function LoadHunterTab() {
       setLoadDistances(new Map());
     }
   }, [loadEmails, huntPlans, mapboxToken]); // Re-run when new loads arrive, hunts change, or token is ready
+
+  // Calculate distance for selected email detail view
+  useEffect(() => {
+    const calculateSelectedDistance = async () => {
+      if (!selectedEmailForDetail || !huntPlans.length || !mapboxToken) {
+        setSelectedEmailDistance(undefined);
+        return;
+      }
+
+      // Check if we already have the distance in loadDistances
+      const existingDistance = loadDistances.get(selectedEmailForDetail.id);
+      if (existingDistance) {
+        setSelectedEmailDistance(existingDistance);
+        return;
+      }
+
+      // Calculate distance from first enabled hunt's location
+      const enabledHunts = huntPlans.filter(h => h.enabled);
+      if (enabledHunts.length === 0) {
+        setSelectedEmailDistance(undefined);
+        return;
+      }
+
+      const primaryHunt = enabledHunts[0];
+      if (!primaryHunt.huntCoordinates) {
+        setSelectedEmailDistance(undefined);
+        return;
+      }
+
+      const loadData = extractLoadLocation(selectedEmailForDetail);
+      let loadLat = loadData.originLat;
+      let loadLng = loadData.originLng;
+
+      // Geocode if needed
+      if ((!loadLat || !loadLng) && (loadData.originZip || loadData.originCityState)) {
+        const query = loadData.originZip || loadData.originCityState!;
+        const coords = await geocodeLocation(query);
+        if (coords) {
+          loadLat = coords.lat;
+          loadLng = coords.lng;
+        }
+      }
+
+      // Calculate distance
+      if (loadLat && loadLng) {
+        const distance = calculateDistance(
+          primaryHunt.huntCoordinates.lat,
+          primaryHunt.huntCoordinates.lng,
+          loadLat,
+          loadLng
+        );
+        setSelectedEmailDistance(Math.round(distance));
+      } else {
+        setSelectedEmailDistance(undefined);
+      }
+    };
+
+    calculateSelectedDistance();
+  }, [selectedEmailForDetail, huntPlans, mapboxToken, loadDistances]);
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
@@ -2121,7 +2181,7 @@ export default function LoadHunterTab() {
           /* Load Email Detail View */
           <LoadEmailDetail 
             email={selectedEmailForDetail} 
-            emptyDriveDistance={loadDistances.get(selectedEmailForDetail.id)}
+            emptyDriveDistance={selectedEmailDistance}
             onClose={() => setSelectedEmailForDetail(null)}
           />
         ) : (
