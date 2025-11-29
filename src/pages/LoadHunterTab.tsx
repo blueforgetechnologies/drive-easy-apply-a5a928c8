@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench } from "lucide-react";
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface Vehicle {
   id: string;
@@ -18,6 +21,11 @@ interface Vehicle {
   driver_1_id: string | null;
   driver_2_id: string | null;
   status: string;
+  formatted_address: string | null;
+  last_location: string | null;
+  odometer: number | null;
+  next_service_date: string | null;
+  notes: string | null;
 }
 
 interface Driver {
@@ -59,6 +67,9 @@ export default function LoadHunterTab() {
   const [emailAddress, setEmailAddress] = useState("P.D@talbilogistics.com");
   const [emailProvider, setEmailProvider] = useState("gmail");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const mapContainer = React.useRef<HTMLDivElement>(null);
+  const map = React.useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
     loadVehicles();
@@ -88,6 +99,52 @@ export default function LoadHunterTab() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Initialize map when vehicle is selected
+  useEffect(() => {
+    if (!selectedVehicle || !mapContainer.current) return;
+
+    // Clean up existing map
+    if (map.current) {
+      map.current.remove();
+      map.current = null;
+    }
+
+    // Get coordinates from last_location
+    if (!selectedVehicle.last_location) return;
+
+    const [lat, lng] = selectedVehicle.last_location.split(',').map(parseFloat);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    // Initialize new map
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
+    
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [lng, lat],
+      zoom: 12,
+    });
+
+    // Add marker
+    new mapboxgl.Marker({ color: '#3b82f6' })
+      .setLngLat([lng, lat])
+      .setPopup(
+        new mapboxgl.Popup({ offset: 25 })
+          .setHTML(`<div class="p-2"><strong>${selectedVehicle.vehicle_number || 'Vehicle'}</strong><br/>${selectedVehicle.formatted_address || 'Location'}</div>`)
+      )
+      .addTo(map.current);
+
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [selectedVehicle]);
 
   const loadVehicles = async () => {
     try {
@@ -230,7 +287,11 @@ export default function LoadHunterTab() {
           <div className="text-xs text-muted-foreground">No active trucks</div>
         ) : (
           vehicles.map((vehicle) => (
-            <Card key={vehicle.id} className="p-2 hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card 
+              key={vehicle.id} 
+              className="p-2 hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={() => setSelectedVehicle(vehicle)}
+            >
               <div className="space-y-0.5">
                 <div className="flex items-start justify-between gap-1.5">
                   <div className="font-semibold text-xs leading-tight">
@@ -473,6 +534,123 @@ export default function LoadHunterTab() {
           </Card>
         </div>
       </div>
+
+      {/* Vehicle Detail Modal */}
+      <Dialog open={!!selectedVehicle} onOpenChange={(open) => !open && setSelectedVehicle(null)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          {selectedVehicle && (
+            <div className="grid grid-cols-2 gap-4">
+              {/* Left Panel - Vehicle Info */}
+              <div className="space-y-4">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold">
+                        {selectedVehicle.vehicle_number || "N/A"}
+                      </span>
+                      {getDriverName(selectedVehicle.driver_1_id) ? (
+                        <Badge variant="default" className="text-xs">
+                          Driver Assigned
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-xs">
+                          No Driver Assigned
+                        </Badge>
+                      )}
+                    </div>
+                  </DialogTitle>
+                </DialogHeader>
+
+                <Card className="p-3">
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted-foreground">Location</div>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">
+                          {selectedVehicle.formatted_address || selectedVehicle.last_location || "Location not available"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Odometer</div>
+                      <div className="text-sm font-semibold">
+                        {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
+                      <div className="text-sm font-semibold">
+                        {selectedVehicle.next_service_date || "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-3">
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold mb-2">Driver Assignments</div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">D1</span>
+                        <span className="text-sm">
+                          {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">D2</span>
+                        <span className="text-sm">
+                          {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-semibold">Vehicle Note:</div>
+                      <Wrench className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="text-sm text-muted-foreground min-h-[60px]">
+                      {selectedVehicle.notes || "No notes available"}
+                    </div>
+                  </div>
+                </Card>
+
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1">
+                    Create New Hunt
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1">
+                    Set Driver to Time-Off mode
+                  </Button>
+                </div>
+              </div>
+
+              {/* Right Panel - Map */}
+              <div className="h-[600px] rounded-lg border overflow-hidden">
+                {selectedVehicle.last_location ? (
+                  <div ref={mapContainer} className="w-full h-full" />
+                ) : (
+                  <div className="w-full h-full bg-muted/10 flex items-center justify-center">
+                    <div className="text-center text-sm text-muted-foreground">
+                      <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Location not available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
