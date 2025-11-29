@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus } from "lucide-react";
 
-export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: () => void }) {
+export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: string) => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,7 +23,7 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: () => void 
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("applications")
         .insert({
           personal_info: {
@@ -49,7 +49,9 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: () => void 
           document_upload: {},
           employment_history: {},
           driving_history: {},
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -63,8 +65,8 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: () => void 
         dateOfBirth: "",
       });
       
-      if (onDriverAdded) {
-        onDriverAdded();
+      if (onDriverAdded && data) {
+        onDriverAdded(data.id);
       }
     } catch (error: any) {
       toast.error("Failed to add driver: " + error.message);
@@ -76,9 +78,8 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: () => void 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Driver Manually
+        <Button variant="outline" size="icon">
+          <Plus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
