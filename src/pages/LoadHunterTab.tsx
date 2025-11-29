@@ -656,9 +656,6 @@ export default function LoadHunterTab() {
       <div className="flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3">
         {/* Left Sidebar - Vehicles */}
         <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
-        <div className="sticky top-0 bg-background pb-1">
-          <h3 className="text-[11px] font-semibold text-muted-foreground">MY TRUCKS</h3>
-        </div>
         {loading ? (
           <div className="text-xs text-muted-foreground">Loading...</div>
         ) : vehicles.length === 0 ? (
