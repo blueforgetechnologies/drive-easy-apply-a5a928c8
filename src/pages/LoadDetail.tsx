@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import LoadRouteMap from "@/components/LoadRouteMap";
+import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 
 export default function LoadDetail() {
   const { id } = useParams();
@@ -652,18 +653,24 @@ export default function LoadDetail() {
 
                 <div>
                   <Label>Customer (Pays for Load)</Label>
-                  <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name} {customer.contact_name ? `(${customer.contact_name})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select customer" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name} {customer.contact_name ? `(${customer.contact_name})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <AddCustomerDialog onCustomerAdded={async (customerId) => {
+                      await loadData();
+                      updateField("customer_id", customerId);
+                    }} />
+                  </div>
                   {load.customer_id && (() => {
                     const selectedCustomer = customers.find(c => c.id === load.customer_id);
                     if (selectedCustomer) {
