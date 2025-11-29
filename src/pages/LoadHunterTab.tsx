@@ -1272,9 +1272,9 @@ export default function LoadHunterTab() {
                     </Table>
                   </div>
                   
-                  {/* Pagination at bottom of results */}
-                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background mt-1">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  {/* Pagination fixed at bottom of viewport */}
+                  <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center justify-between px-4 py-2 rounded-full border bg-background shadow-md min-w-[420px] max-w-[80vw]">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span>
                         {Math.min((currentPage - 1) * itemsPerPage + 1, loadEmails.length)} - {Math.min(currentPage * itemsPerPage, loadEmails.length)} of {loadEmails.length}
