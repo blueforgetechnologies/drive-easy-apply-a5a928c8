@@ -117,7 +117,7 @@ export default function LoadHunterTab() {
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15;
+  const itemsPerPage = 17;
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -1139,14 +1139,14 @@ export default function LoadHunterTab() {
                 {loadEmails.length} new
               </Badge>
             </CardHeader>
-            <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
               {loadEmails.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground border-t">
                   No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.
                 </div>
               ) : (
                 <>
-                  <div className="flex-1 overflow-auto border-t">
+                  <div className="flex-1 overflow-y-auto border-t" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                     <Table>
                       <TableHeader>
                         <TableRow className="h-8">
