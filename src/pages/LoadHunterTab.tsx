@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Home, Bell } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Home, Bell, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -116,6 +116,8 @@ export default function LoadHunterTab() {
   const [vehicleNotes, setVehicleNotes] = useState("");
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -1162,7 +1164,9 @@ export default function LoadHunterTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {loadEmails.map((email) => {
+                        {loadEmails
+                          .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                          .map((email) => {
                           const data = email.parsed_data || {};
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
@@ -1265,6 +1269,56 @@ export default function LoadHunterTab() {
                         })}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+                
+                {/* Pagination */}
+                {loadEmails.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Items per page: {itemsPerPage}</span>
+                      <span className="ml-4">
+                        {Math.min((currentPage - 1) * itemsPerPage + 1, loadEmails.length)} - {Math.min(currentPage * itemsPerPage, loadEmails.length)} of {loadEmails.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage >= Math.ceil(loadEmails.length / itemsPerPage)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setCurrentPage(Math.ceil(loadEmails.length / itemsPerPage))}
+                        disabled={currentPage >= Math.ceil(loadEmails.length / itemsPerPage)}
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
