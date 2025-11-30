@@ -223,100 +223,76 @@ export default function LoadHunterTab() {
     }
   };
 
-  // Check if a load matches any active hunt plans (async version for geocoding)
-  // Returns the matching hunt plan ID, or null if no match
-  const loadMatchesHuntAsync = async (email: any): Promise<string | null> => {
-    // Only consider enabled hunt plans
-    const enabledHunts = huntPlans.filter(h => h.enabled);
-    if (enabledHunts.length === 0) return null;
-    
-    const loadData = extractLoadLocation(email);
-    
-    for (const hunt of enabledHunts) {
-      // Match by date if specified
-      if (hunt.availableDate && loadData.pickupDate) {
-        const huntDateObj = new Date(hunt.availableDate);
-        const loadDateObj = new Date(loadData.pickupDate);
-        
-        // Validate both dates are valid before comparing
-        if (isNaN(huntDateObj.getTime()) || isNaN(loadDateObj.getTime())) {
-          continue; // Invalid date, skip this hunt
-        }
-        
-        const huntDate = huntDateObj.toISOString().split('T')[0];
-        const loadDate = loadDateObj.toISOString().split('T')[0];
-        if (huntDate !== loadDate) {
-          continue; // Date doesn't match, try next hunt
-        }
+  // Core matching logic used everywhere we decide if a load matches a hunt
+  const doesLoadMatchHunt = (loadData: {
+    originZip?: string;
+    originLat?: number;
+    originLng?: number;
+    originCityState?: string;
+    loadType?: string;
+    pickupDate?: string;
+  }, hunt: HuntPlan): boolean => {
+    // Match by date if specified
+    if (hunt.availableDate && loadData.pickupDate) {
+      const huntDateObj = new Date(hunt.availableDate);
+      const loadDateObj = new Date(loadData.pickupDate);
+
+      // Validate both dates are valid before comparing
+      if (isNaN(huntDateObj.getTime()) || isNaN(loadDateObj.getTime())) {
+        return false; // Invalid date, doesn't match
       }
 
-      // Match by load type/vehicle size if specified
-      if (hunt.vehicleSize && loadData.loadType) {
-        const vehicleSizeLower = hunt.vehicleSize.toLowerCase();
-        const loadTypeLower = loadData.loadType.toLowerCase();
-        
-        if (vehicleSizeLower.includes('straight')) {
-          if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
-            continue; // Vehicle type doesn't match, try next hunt
-          }
-        }
+      const huntDate = huntDateObj.toISOString().split('T')[0];
+      const loadDate = loadDateObj.toISOString().split('T')[0];
+      if (huntDate !== loadDate) {
+        return false;
       }
+    }
 
-      // Check distance radius
-      if (hunt.huntCoordinates) {
-        let loadLat = loadData.originLat;
-        let loadLng = loadData.originLng;
-        
-        // If load doesn't have coordinates but has zip code or city/state, geocode it
-        if ((!loadLat || !loadLng) && (loadData.originZip || loadData.originCityState)) {
-          const query = loadData.originZip || loadData.originCityState!;
-          const coords = await geocodeLocation(query);
-          if (coords) {
-            loadLat = coords.lat;
-            loadLng = coords.lng;
-          }
-        }
-        
-        // Calculate distance if we have both coordinates
-        if (loadLat && loadLng) {
-          const distance = calculateDistance(
-            hunt.huntCoordinates.lat,
-            hunt.huntCoordinates.lng,
-            loadLat,
-            loadLng
-          );
-          
-          const radiusMiles = parseInt(hunt.pickupRadius) || 100;
-          
-          if (distance <= radiusMiles) {
-            return hunt.id; // Match found for this hunt
-          }
-        }
-      }
-      
-      // Fallback to exact zip code matching
-      if (loadData.originZip && hunt.zipCode) {
-        if (loadData.originZip === hunt.zipCode) {
-          return hunt.id; // Exact zip match
+    // Match by load type/vehicle size if specified
+    if (hunt.vehicleSize && loadData.loadType) {
+      const vehicleSizeLower = hunt.vehicleSize.toLowerCase();
+      const loadTypeLower = loadData.loadType.toLowerCase();
+
+      if (vehicleSizeLower.includes('straight')) {
+        if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
+          return false;
         }
       }
     }
-    
-    return null; // No matches found
+
+    // Check distance radius if we have coordinates
+    if (hunt.huntCoordinates && loadData.originLat && loadData.originLng) {
+      const distance = calculateDistance(
+        hunt.huntCoordinates.lat,
+        hunt.huntCoordinates.lng,
+        loadData.originLat,
+        loadData.originLng
+      );
+
+      const radiusMiles = parseInt(hunt.pickupRadius) || 100;
+
+      if (distance <= radiusMiles) {
+        return true;
+      }
+    } else if (loadData.originZip && hunt.zipCode) {
+      // Fallback to exact zip code matching
+      if (loadData.originZip === hunt.zipCode) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
-  // Check if a load has been verified to match hunts
-  const loadMatchesHunt = (email: any): boolean => {
-    return matchedLoadIds.has(email.id);
-  };
-  
-  // Effect to search through last 30 minutes of loads when hunts change
+  // Effect to search through loads when hunts change
   useEffect(() => {
     const searchLoadsForHunts = async () => {
       const enabledHunts = huntPlans.filter(h => h.enabled);
       if (enabledHunts.length === 0) {
         setMatchedLoadIds(new Set());
         setLoadDistances(new Map());
+        setLoadHuntMap(new Map());
         return;
       }
       
@@ -337,36 +313,24 @@ export default function LoadHunterTab() {
         // Use the first enabled hunt's coordinates as the "truck location" for distance display
         const primaryHunt = enabledHunts[0];
         if (primaryHunt?.huntCoordinates) {
-          let loadLat = loadData.originLat;
-          let loadLng = loadData.originLng;
+          const { originLat, originLng } = loadData;
           
-          // Geocode if needed
-          if ((!loadLat || !loadLng) && (loadData.originZip || loadData.originCityState)) {
-            const query = loadData.originZip || loadData.originCityState!;
-            const coords = await geocodeLocation(query);
-            if (coords) {
-              loadLat = coords.lat;
-              loadLng = coords.lng;
-            }
-          }
-          
-          // Calculate distance
-          if (loadLat && loadLng) {
+          if (originLat && originLng) {
             const distance = calculateDistance(
               primaryHunt.huntCoordinates.lat,
               primaryHunt.huntCoordinates.lng,
-              loadLat,
-              loadLng
+              originLat,
+              originLng
             );
             newDistances.set(email.id, Math.round(distance));
           }
         }
         
-        // Check if load matches hunt criteria and capture which hunt it matched
-        const matchingHuntId = await loadMatchesHuntAsync(email);
-        if (matchingHuntId) {
+        // Find the first hunt this load matches using the shared matching logic
+        const matchingHunt = enabledHunts.find(hunt => doesLoadMatchHunt(loadData, hunt));
+        if (matchingHunt) {
           newMatchedIds.add(email.id);
-          newHuntMap.set(email.id, matchingHuntId);
+          newHuntMap.set(email.id, matchingHunt.id);
           
           // Mark as 'new' if it was missed, so it appears in unreviewed
           if (email.status === 'missed') {
@@ -383,13 +347,14 @@ export default function LoadHunterTab() {
       setLoadHuntMap(newHuntMap);
     };
     
-    if (mapboxToken && huntPlans.length > 0 && loadEmails.length > 0) {
+    if (huntPlans.length > 0 && loadEmails.length > 0) {
       searchLoadsForHunts();
     } else if (huntPlans.length === 0) {
       setMatchedLoadIds(new Set());
       setLoadDistances(new Map());
+      setLoadHuntMap(new Map());
     }
-  }, [loadEmails, huntPlans, mapboxToken]); // Re-run when new loads arrive, hunts change, or token is ready
+  }, [loadEmails, huntPlans]); // Re-run when new loads arrive or hunts change
 
   // Calculate distance for selected email detail view
   useEffect(() => {
