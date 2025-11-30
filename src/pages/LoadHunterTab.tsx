@@ -2496,6 +2496,7 @@ export default function LoadHunterTab() {
                         <TableRow className="h-7">
                           <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
                           <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
+                          <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
                           <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
                           <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
@@ -2651,6 +2652,12 @@ export default function LoadHunterTab() {
                               <TableCell className="py-1">
                                 <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
                                   {email.load_id || '—'}
+                                </div>
+                              </TableCell>
+                              {/* Load Hunt Match ID (dev only) */}
+                              <TableCell className="py-1">
+                                <div className="text-[10px] font-mono text-muted-foreground leading-tight whitespace-nowrap">
+                                  {activeFilter === 'unreviewed' && match ? (match as any).id.substring(0, 8) : '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
