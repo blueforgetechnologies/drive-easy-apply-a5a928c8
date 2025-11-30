@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
+import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +128,8 @@ export default function LoadHunterTab() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
+  const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
+  const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 17;
   const mapContainer = React.useRef<HTMLDivElement>(null);
@@ -2643,7 +2646,44 @@ export default function LoadHunterTab() {
                             <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
                               className="h-10 cursor-pointer hover:bg-accent transition-colors"
-                              onClick={() => setSelectedEmailForDetail(email)}
+                              onClick={async () => {
+                                // Check if this load has multiple matches
+                                const matchesForLoad = loadMatches.filter(m => m.load_email_id === email.id);
+                                
+                                if (matchesForLoad.length > 1) {
+                                  // Fetch vehicle details for all matches
+                                  const vehicleIds = matchesForLoad.map(m => m.vehicle_id);
+                                  const { data: vehicleData } = await supabase
+                                    .from('vehicles')
+                                    .select('*')
+                                    .in('id', vehicleIds);
+                                  
+                                  if (vehicleData) {
+                                    const enrichedMatches = matchesForLoad.map(match => {
+                                      const vehicle = vehicleData.find(v => v.id === match.vehicle_id);
+                                      return {
+                                        id: match.id,
+                                        vehicle_id: match.vehicle_id,
+                                        vehicle_number: vehicle?.vehicle_number || 'Unknown',
+                                        distance_miles: match.distance_miles,
+                                        current_location: vehicle?.last_location || vehicle?.formatted_address,
+                                        last_updated: vehicle?.last_updated,
+                                        status: vehicle?.status,
+                                        oil_change_due: vehicle?.oil_change_remaining ? vehicle.oil_change_remaining < 0 : false,
+                                      };
+                                    });
+                                    
+                                    setMultipleMatches(enrichedMatches);
+                                    setShowMultipleMatchesDialog(true);
+                                  }
+                                } else {
+                                  // Single match or no match - show detail directly
+                                  setSelectedEmailForDetail(email);
+                                  if (match) {
+                                    setSelectedEmailDistance((match as any).distance_miles);
+                                  }
+                                }
+                              }}
                             >
                               {/* Order Number from Sylectus */}
                               <TableCell className="py-1">
@@ -2881,6 +2921,28 @@ export default function LoadHunterTab() {
         )}
       </div>
       </div>
+
+      <MultipleMatchesDialog
+        open={showMultipleMatchesDialog}
+        onOpenChange={setShowMultipleMatchesDialog}
+        matches={multipleMatches}
+        onSelectVehicle={(vehicleId, matchId) => {
+          // Find the email and match to show detail
+          const match = multipleMatches.find(m => m.id === matchId);
+          if (match) {
+            const email = loadEmails.find(e => {
+              // Find the load email that corresponds to this match
+              return loadMatches.some(lm => lm.id === matchId && lm.load_email_id === e.id);
+            });
+            
+            if (email) {
+              setSelectedEmailForDetail(email);
+              setSelectedEmailDistance(match.distance_miles);
+              setShowMultipleMatchesDialog(false);
+            }
+          }
+        }}
+      />
     </div>
   );
 }
