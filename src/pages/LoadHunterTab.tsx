@@ -2464,10 +2464,14 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {data.pickup_date || ''} {data.pickup_time || ''}
+                                  {(data.pickup_date || data.pickup_time)
+                                    ? `${data.pickup_date || ''} ${data.pickup_time || ''}`
+                                    : '—'}
                                 </div>
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {data.delivery_date || ''} {data.delivery_time || ''}
+                                  {(data.delivery_date || data.delivery_time)
+                                    ? `${data.delivery_date || ''} ${data.delivery_time || ''}`
+                                    : '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
