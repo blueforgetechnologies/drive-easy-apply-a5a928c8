@@ -2435,15 +2435,39 @@ export default function LoadHunterTab() {
                           let pickupDisplay = '—';
                           if (data.pickup_date || data.pickup_time) {
                             pickupDisplay = `${data.pickup_date || ''} ${data.pickup_time || ''}`.trim();
-                          } else if (/ASAP/i.test(rawBody)) {
-                            pickupDisplay = 'ASAP';
+                          } else {
+                            // Fallback 1: special terms like ASAP
+                            if (/ASAP/i.test(rawBody)) {
+                              pickupDisplay = 'ASAP';
+                            } else {
+                              // Fallback 2: try to extract date/time near "Pick-Up"
+                              const pickupRegex = /Pick[-\s]*Up[\s\S]{0,80}?(\d{1,2}\/\d{1,2}\/\d{2,4})(?:[^0-9]{0,10}(\d{1,2}:\d{2}\s*(?:AM|PM)?))?/i;
+                              const pickupMatch = rawBody.match(pickupRegex);
+                              if (pickupMatch) {
+                                const datePart = pickupMatch[1];
+                                const timePart = pickupMatch[2] || '';
+                                pickupDisplay = `${datePart} ${timePart}`.trim();
+                              }
+                            }
                           }
 
                           let deliveryDisplay = '—';
                           if (data.delivery_date || data.delivery_time) {
                             deliveryDisplay = `${data.delivery_date || ''} ${data.delivery_time || ''}`.trim();
-                          } else if (/Deliver\s+Direct/i.test(rawBody)) {
-                            deliveryDisplay = 'Deliver Direct';
+                          } else {
+                            // Fallback 1: special terms like Deliver Direct
+                            if (/Deliver\s+Direct/i.test(rawBody)) {
+                              deliveryDisplay = 'Deliver Direct';
+                            } else {
+                              // Fallback 2: try to extract date/time near "Delivery"
+                              const deliveryRegex = /Delivery[\s\S]{0,80}?(\d{1,2}\/\d{1,2}\/\d{2,4})(?:[^0-9]{0,10}(\d{1,2}:\d{2}\s*(?:AM|PM)?))?/i;
+                              const deliveryMatch = rawBody.match(deliveryRegex);
+                              if (deliveryMatch) {
+                                const datePart = deliveryMatch[1];
+                                const timePart = deliveryMatch[2] || '';
+                                deliveryDisplay = `${datePart} ${timePart}`.trim();
+                              }
+                            }
                           }
 
                           return (
