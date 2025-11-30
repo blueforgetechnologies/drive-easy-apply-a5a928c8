@@ -630,7 +630,7 @@ export default function LoadHunterTab() {
         const { data: dispatcher, error: dispatcherError } = await supabase
           .from('dispatchers')
           .select('id, first_name, last_name, email')
-          .eq('email', user.email)
+          .ilike('email', user.email)
           .single();
         
         console.log('🔍 Dispatcher lookup:', { dispatcher, error: dispatcherError });
