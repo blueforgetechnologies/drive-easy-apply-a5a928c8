@@ -131,9 +131,9 @@ export default function LoadHunterTab() {
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
-  // Calculate time thresholds
-  const now = new Date();
-  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+  // Helper to get current time (recalculates each render for accurate filtering)
+  const getCurrentTime = () => new Date();
+  const getThirtyMinutesAgo = () => new Date(getCurrentTime().getTime() - 30 * 60 * 1000);
   
   // Helper function to calculate distance between two zip codes using Haversine formula
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -448,7 +448,7 @@ export default function LoadHunterTab() {
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
     const emailTime = new Date(email.received_at);
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    const thirtyMinutesAgo = getThirtyMinutesAgo();
     
     // CRITICAL: Skipped and waitlist loads should always be visible regardless of age or expiration
     if (email.status === 'skipped' || email.status === 'waitlist') {
@@ -480,7 +480,7 @@ export default function LoadHunterTab() {
   // Count emails by status
   const unreviewedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    const thirtyMinutesAgo = getThirtyMinutesAgo();
     
     // Remove loads without expiration after 30 minutes
     if (e.status === 'new' && !e.expires_at && emailTime <= thirtyMinutesAgo) {
@@ -1825,7 +1825,7 @@ export default function LoadHunterTab() {
                   // Calculate matching loads for this hunt (only if enabled)
                   const matchingLoads = plan.enabled ? loadEmails.filter(email => {
                     const emailTime = new Date(email.received_at);
-                    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+                    const thirtyMinutesAgo = getThirtyMinutesAgo();
                     
                     // Only count 'new' status loads
                     if (email.status !== 'new') return false;
