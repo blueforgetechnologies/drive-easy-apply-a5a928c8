@@ -400,11 +400,15 @@ export type Database = {
           created_at: string | null
           credit_limit: number | null
           email: string | null
+          email_secondary: string | null
           id: string
           name: string
           notes: string | null
           payment_terms: string | null
           phone: string | null
+          phone_fax: string | null
+          phone_mobile: string | null
+          phone_secondary: string | null
           state: string | null
           status: string | null
           updated_at: string | null
@@ -417,11 +421,15 @@ export type Database = {
           created_at?: string | null
           credit_limit?: number | null
           email?: string | null
+          email_secondary?: string | null
           id?: string
           name: string
           notes?: string | null
           payment_terms?: string | null
           phone?: string | null
+          phone_fax?: string | null
+          phone_mobile?: string | null
+          phone_secondary?: string | null
           state?: string | null
           status?: string | null
           updated_at?: string | null
@@ -434,11 +442,15 @@ export type Database = {
           created_at?: string | null
           credit_limit?: number | null
           email?: string | null
+          email_secondary?: string | null
           id?: string
           name?: string
           notes?: string | null
           payment_terms?: string | null
           phone?: string | null
+          phone_fax?: string | null
+          phone_mobile?: string | null
+          phone_secondary?: string | null
           state?: string | null
           status?: string | null
           updated_at?: string | null

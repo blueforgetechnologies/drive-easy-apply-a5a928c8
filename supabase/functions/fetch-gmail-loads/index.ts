@@ -301,6 +301,45 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     }
   }
 
+  // Extract customer contact information
+  // Look for email patterns
+  const emailPattern = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+  const emailMatches = bodyText.match(emailPattern);
+  if (emailMatches && emailMatches.length > 0) {
+    // Filter out common system/no-reply emails
+    const validEmails = emailMatches.filter(email => 
+      !email.includes('noreply') && 
+      !email.includes('no-reply') &&
+      !email.includes('sylectus')
+    );
+    if (validEmails.length > 0) {
+      parsed.customer_email = validEmails[0];
+      if (validEmails.length > 1) {
+        parsed.customer_email_secondary = validEmails[1];
+      }
+    }
+  }
+
+  // Extract phone numbers (various formats)
+  const phonePattern = /(?:phone|tel|mobile|cell|fax)[\s:]*([0-9]{3}[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}|\([0-9]{3}\)[\s]?[0-9]{3}[-.\s]?[0-9]{4})/gi;
+  const phoneMatches = bodyText.match(phonePattern);
+  if (phoneMatches && phoneMatches.length > 0) {
+    const phones = phoneMatches.map(match => {
+      const numberMatch = match.match(/([0-9]{3}[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}|\([0-9]{3}\)[\s]?[0-9]{3}[-.\s]?[0-9]{4})/);
+      return numberMatch ? numberMatch[1] : null;
+    }).filter(Boolean);
+    
+    if (phones.length > 0) {
+      parsed.customer_phone = phones[0];
+      if (phones.length > 1) {
+        parsed.customer_phone_secondary = phones[1];
+      }
+      if (phones.length > 2) {
+        parsed.customer_phone_mobile = phones[2];
+      }
+    }
+  }
+
   return parsed;
 }
 
@@ -335,7 +374,10 @@ async function ensureCustomerExists(parsedData: any): Promise<void> {
         .insert({
           name: customerName.trim(),
           email: parsedData?.customer_email || null,
+          email_secondary: parsedData?.customer_email_secondary || null,
           phone: parsedData?.customer_phone || null,
+          phone_secondary: parsedData?.customer_phone_secondary || null,
+          phone_mobile: parsedData?.customer_phone_mobile || null,
           contact_name: parsedData?.customer_contact || null,
           address: parsedData?.customer_address || null,
           city: parsedData?.customer_city || null,
