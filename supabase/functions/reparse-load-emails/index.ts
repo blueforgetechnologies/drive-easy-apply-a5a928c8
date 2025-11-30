@@ -65,18 +65,38 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     const timezone = expiresHtmlMatch[3];
     parsed.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
     
+    // Convert to ISO timestamp with proper timezone handling
     try {
       const dateParts = dateStr.split('/');
-      const month = dateParts[0];
-      const day = dateParts[1];
+      const month = dateParts[0].padStart(2, '0');
+      const day = dateParts[1].padStart(2, '0');
       let year = dateParts[2];
       
       if (year.length === 2) {
         year = '20' + year;
       }
       
-      const dateTimeStr = `${month}/${day}/${year} ${timeStr}`;
-      const expiresDate = new Date(dateTimeStr);
+      const timeParts = timeStr.split(':');
+      const hour = timeParts[0].padStart(2, '0');
+      const minute = timeParts[1].padStart(2, '0');
+      
+      // Map timezone abbreviations to UTC offsets
+      const timezoneOffsets: { [key: string]: string } = {
+        'EST': '-05:00',
+        'EDT': '-04:00',
+        'CST': '-06:00',
+        'CDT': '-05:00',
+        'MST': '-07:00',
+        'MDT': '-06:00',
+        'PST': '-08:00',
+        'PDT': '-07:00',
+        'CEN': '-06:00',
+        'CENT': '-06:00',
+      };
+      
+      const offset = timezoneOffsets[timezone.toUpperCase()] || '-05:00';
+      const isoString = `${year}-${month}-${day}T${hour}:${minute}:00${offset}`;
+      const expiresDate = new Date(isoString);
       
       if (!isNaN(expiresDate.getTime())) {
         parsed.expires_at = expiresDate.toISOString();
