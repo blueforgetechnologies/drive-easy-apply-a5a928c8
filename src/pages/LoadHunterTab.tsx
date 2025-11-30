@@ -3,6 +3,7 @@ import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
+import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -2479,6 +2480,13 @@ export default function LoadHunterTab() {
             email={selectedEmailForDetail} 
             emptyDriveDistance={selectedEmailDistance}
             onClose={() => setSelectedEmailForDetail(null)}
+          />
+        ) : activeFilter === 'vehicle-assignment' ? (
+          /* Vehicle Assignment View */
+          <VehicleAssignmentView
+            vehicles={vehicles}
+            drivers={drivers}
+            onBack={() => setActiveFilter('unreviewed')}
           />
         ) : (
           /* Loads Table */
