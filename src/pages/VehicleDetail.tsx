@@ -316,12 +316,12 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Carrier Name</Label>
-                  <Select value={formData.carrier || ''} onValueChange={(value) => updateField('carrier', value)}>
+                  <Select value={formData.carrier || 'none'} onValueChange={(value) => updateField('carrier', value === 'none' ? null : value)}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Select Carrier" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Carrier</SelectItem>
+                      <SelectItem value="none">No Carrier</SelectItem>
                       {carriers.map((carrier) => (
                         <SelectItem key={carrier.id} value={carrier.id}>
                           {carrier.name}
@@ -333,12 +333,12 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Bid As</Label>
-                  <Select value={formData.bid_as || ''} onValueChange={(value) => updateField('bid_as', value)}>
+                  <Select value={formData.bid_as || 'none'} onValueChange={(value) => updateField('bid_as', value === 'none' ? null : value)}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Selection</SelectItem>
+                      <SelectItem value="none">No Selection</SelectItem>
                       {carriers.map((carrier) => (
                         <SelectItem key={carrier.id} value={carrier.id}>
                           {carrier.name}
@@ -350,12 +350,12 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Payee</Label>
-                  <Select value={formData.payee || ''} onValueChange={(value) => updateField('payee', value)}>
+                  <Select value={formData.payee || 'none'} onValueChange={(value) => updateField('payee', value === 'none' ? null : value)}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Select Payee" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Payee</SelectItem>
+                      <SelectItem value="none">No Payee</SelectItem>
                       {payees.map((payee) => (
                         <SelectItem key={payee.id} value={payee.id}>
                           {payee.name}
