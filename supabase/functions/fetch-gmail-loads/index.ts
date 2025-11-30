@@ -337,6 +337,10 @@ async function ensureCustomerExists(parsedData: any): Promise<void> {
           email: parsedData?.customer_email || null,
           phone: parsedData?.customer_phone || null,
           contact_name: parsedData?.customer_contact || null,
+          address: parsedData?.customer_address || null,
+          city: parsedData?.customer_city || null,
+          state: parsedData?.customer_state || null,
+          zip: parsedData?.customer_zip || null,
           status: 'active',
           notes: 'Auto-imported from load email'
         });
