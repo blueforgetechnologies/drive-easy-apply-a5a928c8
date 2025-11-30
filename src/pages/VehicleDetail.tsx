@@ -25,12 +25,16 @@ export default function VehicleDetail() {
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
+  const [carriers, setCarriers] = useState<any[]>([]);
+  const [payees, setPayees] = useState<any[]>([]);
 
   useEffect(() => {
     loadVehicle();
     loadSamsaraStats();
     loadDrivers();
     loadDispatchers();
+    loadCarriers();
+    loadPayees();
   }, [id]);
 
   const loadVehicle = async () => {
@@ -121,6 +125,34 @@ export default function VehicleDetail() {
       setDispatchers(data || []);
     } catch (error) {
       console.error('Error loading dispatchers:', error);
+    }
+  };
+
+  const loadCarriers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('carriers')
+        .select('id, name, status')
+        .in('status', ['Active', 'active', 'ACTIVE']);
+      
+      if (error) throw error;
+      setCarriers(data || []);
+    } catch (error) {
+      console.error('Error loading carriers:', error);
+    }
+  };
+
+  const loadPayees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payees')
+        .select('id, name, status')
+        .in('status', ['Active', 'active', 'ACTIVE']);
+      
+      if (error) throw error;
+      setPayees(data || []);
+    } catch (error) {
+      console.error('Error loading payees:', error);
     }
   };
 
@@ -289,7 +321,12 @@ export default function VehicleDetail() {
                       <SelectValue placeholder="Select Carrier" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="GULF COAST ROAD RUNNER LLC">GULF COAST ROAD RUNNER LLC</SelectItem>
+                      <SelectItem value="">No Carrier</SelectItem>
+                      {carriers.map((carrier) => (
+                        <SelectItem key={carrier.id} value={carrier.id}>
+                          {carrier.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -301,7 +338,12 @@ export default function VehicleDetail() {
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="TALBI LOGISTICS LLC">TALBI LOGISTICS LLC</SelectItem>
+                      <SelectItem value="">No Selection</SelectItem>
+                      {carriers.map((carrier) => (
+                        <SelectItem key={carrier.id} value={carrier.id}>
+                          {carrier.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -313,7 +355,12 @@ export default function VehicleDetail() {
                       <SelectValue placeholder="Select Payee" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ROY">ROY</SelectItem>
+                      <SelectItem value="">No Payee</SelectItem>
+                      {payees.map((payee) => (
+                        <SelectItem key={payee.id} value={payee.id}>
+                          {payee.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
