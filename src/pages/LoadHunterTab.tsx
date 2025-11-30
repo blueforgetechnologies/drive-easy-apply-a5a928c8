@@ -320,19 +320,17 @@ export default function LoadHunterTab() {
         return;
       }
       
-      // Get loads from last 30 minutes only
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-      const recentLoads = loadEmails.filter(email => {
-        const receivedAt = new Date(email.received_at);
-        return receivedAt >= thirtyMinutesAgo;
-      });
+      // Consider all loads in "new" or "missed" status, regardless of age
+      const candidateLoads = loadEmails.filter(email =>
+        email.status === 'new' || email.status === 'missed'
+      );
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
       const newHuntMap = new Map<string, string>();
       
-      // Check each recent load against hunt criteria
-      for (const email of recentLoads) {
+      // Check each candidate load against hunt criteria
+      for (const email of candidateLoads) {
         // Calculate distance from primary hunt location to load pickup for ALL loads
         const loadData = extractLoadLocation(email);
         
