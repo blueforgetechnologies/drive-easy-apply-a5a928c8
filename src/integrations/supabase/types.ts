@@ -1054,6 +1054,67 @@ export type Database = {
           },
         ]
       }
+      load_hunt_matches: {
+        Row: {
+          created_at: string
+          distance_miles: number | null
+          hunt_plan_id: string
+          id: string
+          is_active: boolean
+          load_email_id: string
+          match_score: number | null
+          matched_at: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          distance_miles?: number | null
+          hunt_plan_id: string
+          id?: string
+          is_active?: boolean
+          load_email_id: string
+          match_score?: number | null
+          matched_at?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          distance_miles?: number | null
+          hunt_plan_id?: string
+          id?: string
+          is_active?: boolean
+          load_email_id?: string
+          match_score?: number | null
+          matched_at?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_hunt_matches_hunt_plan_id_fkey"
+            columns: ["hunt_plan_id"]
+            isOneToOne: false
+            referencedRelation: "hunt_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_hunt_matches_load_email_id_fkey"
+            columns: ["load_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_hunt_matches_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       load_stops: {
         Row: {
           actual_arrival: string | null
