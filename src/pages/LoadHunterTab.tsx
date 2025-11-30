@@ -1712,7 +1712,35 @@ export default function LoadHunterTab() {
               Vehicle Assignment
             </Button>
             
-            <Button 
+            <div className="flex gap-2 ml-2 pl-2 border-l border-gray-300">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className={`h-7 px-2.5 text-xs ${
+                  activeMode === 'admin' 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
+                    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                }`}
+                onClick={() => setActiveMode('admin')}
+              >
+                Admin
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className={`h-7 px-2.5 text-xs ${
+                  activeMode === 'dispatch' 
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' 
+                    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                }`}
+                onClick={() => setActiveMode('dispatch')}
+                disabled={myVehicleIds.length === 0}
+              >
+                MY TRUCKS
+              </Button>
+            </div>
+            
+            <Button
               size="sm" 
               variant="outline"
               className={`h-7 px-2.5 text-xs ${
