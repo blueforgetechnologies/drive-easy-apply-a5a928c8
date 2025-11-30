@@ -2495,6 +2495,7 @@ export default function LoadHunterTab() {
                       <TableHeader>
                         <TableRow className="h-7">
                           <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
+                          <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
                           <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
                           <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
@@ -2640,9 +2641,16 @@ export default function LoadHunterTab() {
                               className="h-10 cursor-pointer hover:bg-accent transition-colors"
                               onClick={() => setSelectedEmailForDetail(email)}
                             >
+                              {/* Order Number from Sylectus */}
                               <TableCell className="py-1">
                                 <div className="text-[11px] font-semibold leading-tight whitespace-nowrap">
                                   {data.order_number ? `#${data.order_number}` : '—'}
+                                </div>
+                              </TableCell>
+                              {/* Our internal Load ID */}
+                              <TableCell className="py-1">
+                                <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
+                                  {email.load_id || '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
