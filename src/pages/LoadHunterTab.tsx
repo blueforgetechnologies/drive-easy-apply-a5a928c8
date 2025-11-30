@@ -232,6 +232,16 @@ export default function LoadHunterTab() {
     loadType?: string;
     pickupDate?: string;
   }, hunt: HuntPlan): boolean => {
+    console.log("[doesLoadMatchHunt] Checking load vs hunt", {
+      huntId: hunt.id,
+      vehicleId: hunt.vehicleId,
+      huntZip: hunt.zipCode,
+      huntVehicleSize: hunt.vehicleSize,
+      loadOriginZip: loadData.originZip,
+      loadType: loadData.loadType,
+      pickupDate: loadData.pickupDate,
+    });
+
     // Match by date if specified
     if (hunt.availableDate && loadData.pickupDate) {
       const huntDateObj = new Date(hunt.availableDate);
@@ -239,12 +249,14 @@ export default function LoadHunterTab() {
 
       // Validate both dates are valid before comparing
       if (isNaN(huntDateObj.getTime()) || isNaN(loadDateObj.getTime())) {
+        console.log("[doesLoadMatchHunt] Invalid date", { huntDate: hunt.availableDate, loadDate: loadData.pickupDate });
         return false; // Invalid date, doesn't match
       }
 
       const huntDate = huntDateObj.toISOString().split('T')[0];
       const loadDate = loadDateObj.toISOString().split('T')[0];
       if (huntDate !== loadDate) {
+        console.log("[doesLoadMatchHunt] Date mismatch", { huntDate, loadDate });
         return false;
       }
     }
@@ -256,6 +268,7 @@ export default function LoadHunterTab() {
 
       if (vehicleSizeLower.includes('straight')) {
         if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
+          console.log("[doesLoadMatchHunt] Vehicle type mismatch", { vehicleSizeLower, loadTypeLower });
           return false;
         }
       }
@@ -271,6 +284,7 @@ export default function LoadHunterTab() {
       );
 
       const radiusMiles = parseInt(hunt.pickupRadius) || 100;
+      console.log("[doesLoadMatchHunt] Distance check", { distance, radiusMiles });
 
       if (distance <= radiusMiles) {
         return true;
@@ -278,18 +292,22 @@ export default function LoadHunterTab() {
     } else if (loadData.originZip && hunt.zipCode) {
       // Fallback to exact zip code matching
       if (loadData.originZip === hunt.zipCode) {
+        console.log("[doesLoadMatchHunt] Zip match", { originZip: loadData.originZip });
         return true;
       }
     }
 
+    console.log("[doesLoadMatchHunt] No match");
     return false;
   };
 
   // Effect to search through loads when hunts change
   useEffect(() => {
     const searchLoadsForHunts = async () => {
+      console.log("[searchLoadsForHunts] start", { hunts: huntPlans.length, emails: loadEmails.length });
       const enabledHunts = huntPlans.filter(h => h.enabled);
       if (enabledHunts.length === 0) {
+        console.log("[searchLoadsForHunts] no enabled hunts, clearing matches");
         setMatchedLoadIds(new Set());
         setLoadDistances(new Map());
         setLoadHuntMap(new Map());
@@ -300,6 +318,7 @@ export default function LoadHunterTab() {
       const candidateLoads = loadEmails.filter(email =>
         email.status === 'new' || email.status === 'missed'
       );
+      console.log("[searchLoadsForHunts] candidate loads", candidateLoads.length);
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
@@ -307,8 +326,14 @@ export default function LoadHunterTab() {
       
       // Check each candidate load against hunt criteria
       for (const email of candidateLoads) {
-        // Calculate distance from primary hunt location to load pickup for ALL loads
         const loadData = extractLoadLocation(email);
+        console.log("[searchLoadsForHunts] evaluating email", {
+          emailId: email.id,
+          status: email.status,
+          originZip: loadData.originZip,
+          loadType: loadData.loadType,
+          pickupDate: loadData.pickupDate,
+        });
         
         // Use the first enabled hunt's coordinates as the "truck location" for distance display
         const primaryHunt = enabledHunts[0];
@@ -329,6 +354,7 @@ export default function LoadHunterTab() {
         // Find the first hunt this load matches using the shared matching logic
         const matchingHunt = enabledHunts.find(hunt => doesLoadMatchHunt(loadData, hunt));
         if (matchingHunt) {
+          console.log("[searchLoadsForHunts] MATCH", { emailId: email.id, huntId: matchingHunt.id, vehicleId: matchingHunt.vehicleId });
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunt.id);
           
@@ -339,9 +365,12 @@ export default function LoadHunterTab() {
               .update({ status: 'new' })
               .eq('id', email.id);
           }
+        } else {
+          console.log("[searchLoadsForHunts] NO MATCH", { emailId: email.id });
         }
       }
       
+      console.log("[searchLoadsForHunts] done", { matches: newMatchedIds.size });
       setMatchedLoadIds(newMatchedIds);
       setLoadDistances(newDistances);
       setLoadHuntMap(newHuntMap);
