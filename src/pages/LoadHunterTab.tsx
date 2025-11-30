@@ -133,6 +133,8 @@ export default function LoadHunterTab() {
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 17;
+  const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
+  const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
@@ -478,6 +480,11 @@ export default function LoadHunterTab() {
           const email = loadEmails.find(e => e.id === match.load_email_id);
           if (!email || email.status !== 'new') return false;
           
+          // Filter by dispatcher's vehicles when in MY TRUCKS mode
+          if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
+            if (!myVehicleIds.includes(match.vehicle_id)) return false;
+          }
+          
           // DEV: Removed time-based filtering to show all matches during development
           // const now = new Date();
           // const receivedAt = new Date(email.received_at);
@@ -503,6 +510,11 @@ export default function LoadHunterTab() {
   const unreviewedCount = loadMatches.filter(match => {
     const email = loadEmails.find(e => e.id === match.load_email_id);
     if (!email || email.status !== 'new') return false;
+    
+    // Filter by dispatcher's vehicles when in MY TRUCKS mode
+    if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
+      if (!myVehicleIds.includes(match.vehicle_id)) return false;
+    }
     
     // DEV: Removed time-based filtering to show all matches during development
     // const now = new Date();
@@ -606,6 +618,36 @@ export default function LoadHunterTab() {
       toast.info('Sound alerts muted');
     }
   };
+
+  // Fetch current user's dispatcher info and assigned vehicles
+  useEffect(() => {
+    const fetchUserDispatcherInfo = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        // Check if user is a dispatcher
+        const { data: dispatcher } = await supabase
+          .from('dispatchers')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+        
+        if (dispatcher) {
+          setCurrentDispatcherId(dispatcher.id);
+          
+          // Get vehicles assigned to this dispatcher
+          const { data: assignedVehicles } = await supabase
+            .from('vehicles')
+            .select('id')
+            .eq('primary_dispatcher_id', dispatcher.id);
+          
+          if (assignedVehicles) {
+            setMyVehicleIds(assignedVehicles.map(v => v.id));
+          }
+        }
+      }
+    };
+    fetchUserDispatcherInfo();
+  }, []);
 
   useEffect(() => {
     loadVehicles();
@@ -1755,10 +1797,14 @@ export default function LoadHunterTab() {
         <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
           {loading ? (
             <div className="text-xs text-muted-foreground">Loading...</div>
-          ) : vehicles.length === 0 ? (
-            <div className="text-xs text-muted-foreground">No active trucks</div>
+          ) : vehicles.filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id)).length === 0 ? (
+            <div className="text-xs text-muted-foreground">
+              {activeMode === 'dispatch' ? 'No trucks assigned to you' : 'No active trucks'}
+            </div>
           ) : (
-            vehicles.map((vehicle) => {
+            vehicles
+              .filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id))
+              .map((vehicle) => {
               const hasHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id);
               return (
                 <Card 
