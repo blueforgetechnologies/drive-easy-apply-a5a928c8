@@ -454,22 +454,20 @@ export default function LoadHunterTab() {
       return false; // Don't show in other filters
     }
     
-    // Remove loads without expiration after 30 minutes (only for new/missed loads)
-    if (!email.expires_at && emailTime <= thirtyMinutesAgo && email.status !== 'missed') {
+    // Remove loads without expiration after 30 minutes (only new loads, not missed/skipped/waitlist)
+    if (email.status === 'new' && !email.expires_at && emailTime <= thirtyMinutesAgo) {
       return false;
     }
     
     // Apply hunt filtering for unreviewed status
     if (activeFilter === 'unreviewed') {
-      const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
-      
-      // Only show unreviewed loads that match hunt criteria
-      if (isUnreviewed) {
+      // Only show loads with 'new' status that match hunt criteria
+      if (email.status === 'new') {
         return loadMatchesHunt(email);
       }
-      
       return false;
     }
+    
     if (activeFilter === 'missed') {
       // Show all missed loads regardless of age
       return email.status === 'missed';
@@ -483,15 +481,13 @@ export default function LoadHunterTab() {
     const emailTime = new Date(e.received_at);
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
     
-    // Remove loads without expiration after 30 minutes (except skipped/waitlist/missed)
-    if (!e.expires_at && emailTime <= thirtyMinutesAgo && e.status !== 'missed' && e.status !== 'skipped' && e.status !== 'waitlist') {
+    // Remove loads without expiration after 30 minutes
+    if (e.status === 'new' && !e.expires_at && emailTime <= thirtyMinutesAgo) {
       return false;
     }
     
-    const isUnreviewed = e.status === 'new' || (e.status === 'missed' && emailTime > thirtyMinutesAgo);
-    
-    // Apply hunt filtering for unreviewed count
-    if (isUnreviewed) {
+    // Only count 'new' status loads that match hunt criteria
+    if (e.status === 'new') {
       return loadMatchesHunt(e);
     }
     
@@ -656,50 +652,6 @@ export default function LoadHunterTab() {
 
     previousEmailCountRef.current = currentCount;
   }, [loadEmails.length]);
-
-  // Auto-mark loads as missed after 15 minutes
-  useEffect(() => {
-    const checkMissedLoads = async () => {
-      const now = new Date();
-      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
-      
-      // Find all 'new' status loads that are older than 15 minutes
-      const loadsToMark = loadEmails.filter(email => {
-        const emailTime = new Date(email.received_at);
-        return email.status === 'new' && emailTime <= fifteenMinutesAgo;
-      });
-
-      if (loadsToMark.length > 0) {
-        console.log(`Marking ${loadsToMark.length} loads as missed`);
-        
-        for (const load of loadsToMark) {
-          try {
-            const { error } = await supabase
-              .from('load_emails')
-              .update({ status: 'missed' })
-              .eq('id', load.id);
-
-            if (error) {
-              console.error('Error marking load as missed:', error);
-            }
-          } catch (err) {
-            console.error('Error updating load status:', err);
-          }
-        }
-
-        // Refresh the load emails list
-        await loadLoadEmails();
-      }
-    };
-
-    // Check immediately on mount
-    checkMissedLoads();
-
-    // Then check every minute
-    const interval = setInterval(checkMissedLoads, 60000);
-
-    return () => clearInterval(interval);
-  }, [loadEmails]);
 
   const fetchMapboxToken = async () => {
     try {
@@ -1723,9 +1675,13 @@ export default function LoadHunterTab() {
                   // Calculate matching loads for this hunt (only if enabled)
                   const matchingLoads = plan.enabled ? loadEmails.filter(email => {
                     const emailTime = new Date(email.received_at);
-                    const isUnreviewed = email.status === 'new' || (email.status === 'missed' && emailTime > thirtyMinutesAgo);
+                    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
                     
-                    if (!isUnreviewed) return false;
+                    // Only count 'new' status loads
+                    if (email.status !== 'new') return false;
+                    
+                    // Remove expired loads (30+ minutes old without expiration time)
+                    if (!email.expires_at && emailTime <= thirtyMinutesAgo) return false;
                     
                     const loadData = extractLoadLocation(email);
                     
