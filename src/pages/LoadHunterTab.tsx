@@ -23,6 +23,8 @@ interface Vehicle {
   vehicle_number: string | null;
   carrier: string | null;
   asset_type: string | null;
+  asset_subtype: string | null;
+  dimensions_length: number | null;
   driver_1_id: string | null;
   driver_2_id: string | null;
   status: string;
@@ -1655,7 +1657,7 @@ export default function LoadHunterTab() {
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
                       <div className="text-[11px] text-muted-foreground leading-tight">
-                        {vehicle.asset_type || "Asset Type"}
+                        {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                       </div>
                       <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
