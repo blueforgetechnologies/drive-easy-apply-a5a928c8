@@ -2434,7 +2434,16 @@ export default function LoadHunterTab() {
                           const rawBody = (email.body_text || email.body_html || '').toString();
                           const cleanBody = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
-                          let pickupDisplay = data.pickup_time || data.pickup_date || '';
+                          // Build pickup display: show date + time when both available, otherwise show what we have
+                          let pickupDisplay = '';
+                          if (data.pickup_date && data.pickup_time) {
+                            pickupDisplay = `${data.pickup_date} ${data.pickup_time}`;
+                          } else if (data.pickup_date) {
+                            pickupDisplay = data.pickup_date;
+                          } else if (data.pickup_time) {
+                            pickupDisplay = data.pickup_time;
+                          }
+                          
                           if (!pickupDisplay) {
                             // Fallback: extract timing after location in raw body
                             const pickupMatch = cleanBody.match(/Pick[-\s]*Up\s+[A-Za-z\s,]+\d{5}\s+(ASAP|[A-Za-z\s]+?)(?:\s+Delivery|$)/i);
@@ -2446,7 +2455,16 @@ export default function LoadHunterTab() {
                             pickupDisplay = '—';
                           }
 
-                          let deliveryDisplay = data.delivery_time || data.delivery_date || '';
+                          // Build delivery display: show date + time when both available, otherwise show what we have
+                          let deliveryDisplay = '';
+                          if (data.delivery_date && data.delivery_time) {
+                            deliveryDisplay = `${data.delivery_date} ${data.delivery_time}`;
+                          } else if (data.delivery_date) {
+                            deliveryDisplay = data.delivery_date;
+                          } else if (data.delivery_time) {
+                            deliveryDisplay = data.delivery_time;
+                          }
+                          
                           if (!deliveryDisplay) {
                             // Fallback: extract timing after location in raw body
                             const deliveryMatch = cleanBody.match(/Delivery\s+[A-Za-z\s,]+\d{5}\s+(Deliver\s+Direct|[A-Za-z\s]+?)(?:\s+Rate|\s+Contact|$)/i);
