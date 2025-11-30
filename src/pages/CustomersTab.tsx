@@ -17,7 +17,11 @@ interface Customer {
   name: string;
   contact_name: string | null;
   email: string | null;
+  email_secondary: string | null;
   phone: string | null;
+  phone_secondary: string | null;
+  phone_mobile: string | null;
+  phone_fax: string | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -40,7 +44,11 @@ export default function CustomersTab() {
     name: "",
     contact_name: "",
     email: "",
+    email_secondary: "",
     phone: "",
+    phone_secondary: "",
+    phone_mobile: "",
+    phone_fax: "",
     address: "",
     city: "",
     state: "",
@@ -116,7 +124,11 @@ export default function CustomersTab() {
       name: customer.name || "",
       contact_name: customer.contact_name || "",
       email: customer.email || "",
+      email_secondary: customer.email_secondary || "",
       phone: customer.phone || "",
+      phone_secondary: customer.phone_secondary || "",
+      phone_mobile: customer.phone_mobile || "",
+      phone_fax: customer.phone_fax || "",
       address: customer.address || "",
       city: customer.city || "",
       state: customer.state || "",
@@ -149,7 +161,11 @@ export default function CustomersTab() {
       name: "",
       contact_name: "",
       email: "",
+      email_secondary: "",
       phone: "",
+      phone_secondary: "",
+      phone_mobile: "",
+      phone_fax: "",
       address: "",
       city: "",
       state: "",
@@ -208,6 +224,24 @@ export default function CustomersTab() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email_secondary">Secondary Email</Label>
+                  <Input
+                    id="email_secondary"
+                    type="email"
+                    value={formData.email_secondary}
+                    onChange={(e) => setFormData({ ...formData, email_secondary: e.target.value })}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="phone">Phone</Label>
                   <Input
                     id="phone"
@@ -216,13 +250,31 @@ export default function CustomersTab() {
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
-                <div className="col-span-2">
-                  <Label htmlFor="email">Email</Label>
+                <div>
+                  <Label htmlFor="phone_secondary">Secondary Phone</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    id="phone_secondary"
+                    type="tel"
+                    value={formData.phone_secondary}
+                    onChange={(e) => setFormData({ ...formData, phone_secondary: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone_mobile">Mobile</Label>
+                  <Input
+                    id="phone_mobile"
+                    type="tel"
+                    value={formData.phone_mobile}
+                    onChange={(e) => setFormData({ ...formData, phone_mobile: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone_fax">Fax</Label>
+                  <Input
+                    id="phone_fax"
+                    type="tel"
+                    value={formData.phone_fax}
+                    onChange={(e) => setFormData({ ...formData, phone_fax: e.target.value })}
                   />
                 </div>
                 <div className="col-span-2">
