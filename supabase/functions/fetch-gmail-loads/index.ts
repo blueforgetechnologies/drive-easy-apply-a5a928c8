@@ -301,7 +301,55 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     }
   }
 
-      return parsed;
+  return parsed;
+}
+
+async function ensureCustomerExists(parsedData: any): Promise<void> {
+  const customerName = parsedData?.customer;
+  
+  // Skip invalid customer names
+  if (!customerName || 
+      customerName === '- Alliance Posted Load' || 
+      customerName.includes('Name: </strong>') ||
+      customerName.trim() === '') {
+    return;
+  }
+
+  try {
+    // Check if customer already exists (case-insensitive)
+    const { data: existing, error: checkError } = await supabase
+      .from('customers')
+      .select('id')
+      .ilike('name', customerName.trim())
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking customer:', checkError);
+      return;
+    }
+
+    // If customer doesn't exist, create it
+    if (!existing) {
+      const { error: insertError } = await supabase
+        .from('customers')
+        .insert({
+          name: customerName.trim(),
+          email: parsedData?.customer_email || null,
+          phone: parsedData?.customer_phone || null,
+          contact_name: parsedData?.customer_contact || null,
+          status: 'active',
+          notes: 'Auto-imported from load email'
+        });
+
+      if (insertError) {
+        console.error('Error creating customer:', insertError);
+      } else {
+        console.log(`Created new customer: ${customerName}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error in ensureCustomerExists:', error);
+  }
 }
 
 serve(async (req) => {
@@ -381,6 +429,9 @@ serve(async (req) => {
 
         // Parse load data
         const parsedData = parseLoadEmail(subject, bodyText);
+
+        // Check and create customer if needed
+        await ensureCustomerExists(parsedData);
 
         // Check if email already exists
         const { data: existing } = await supabase

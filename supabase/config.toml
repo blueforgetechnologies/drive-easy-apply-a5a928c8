@@ -54,3 +54,6 @@ verify_jwt = true
 [functions.reparse-load-emails]
 verify_jwt = false
 
+[functions.backfill-customers]
+verify_jwt = false
+
