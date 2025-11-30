@@ -117,21 +117,29 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     // Extract all <p> tags from leginfo
     const pTags = leginfoContent.match(/<p[^>]*>(.*?)<\/p>/gi);
     if (pTags && pTags.length >= 2) {
-      // Second <p> tag should contain the date/time
+      // Second <p> tag should contain the date/time or instruction
       const secondP = pTags[1].replace(/<[^>]*>/g, '').trim();
-      // Parse date/time format like "11/30/25 10:00 EST" or "ASAP" or "Deliver Direct"
-      const structuredMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-      if (structuredMatch) {
-        parsed.pickup_date = structuredMatch[1];
-        parsed.pickup_time = structuredMatch[2];
-      } else if (secondP.length > 0 && secondP.length < 50) {
-        // It's a timing instruction like "ASAP" or "Deliver Direct"
-        parsed.pickup_time = secondP;
+      
+      // First, try to match date + time together (e.g., "11/30/25 10:00 EST")
+      const dateTimeMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
+      if (dateTimeMatch) {
+        // Found both date and time - use them
+        parsed.pickup_date = dateTimeMatch[1];
+        parsed.pickup_time = dateTimeMatch[2];
+      } else {
+        // No date/time found, check if it's a valid instruction text (not a location fragment)
+        // Valid instructions: ASAP, Deliver Direct, or similar short phrases
+        // Exclude if it looks like a location (contains state abbreviations at end)
+        const isLocationFragment = /\b[A-Z]{2}$/.test(secondP); // Ends with state code like "IN", "OH"
+        if (!isLocationFragment && secondP.length > 0 && secondP.length < 50) {
+          // It's likely a timing instruction like "ASAP" or "Deliver Direct"
+          parsed.pickup_time = secondP;
+        }
       }
     }
   }
   
-  // Fallback to text-based extraction if not found
+  // Fallback to text-based extraction if nothing found
   if (!parsed.pickup_date && !parsed.pickup_time) {
     const pickupMatch = cleanText.match(/Pick.*?Up.*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
     if (pickupMatch) {
@@ -148,21 +156,29 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     // Extract all <p> tags from leginfo
     const pTags = leginfoContent.match(/<p[^>]*>(.*?)<\/p>/gi);
     if (pTags && pTags.length >= 2) {
-      // Second <p> tag should contain the date/time
+      // Second <p> tag should contain the date/time or instruction
       const secondP = pTags[1].replace(/<[^>]*>/g, '').trim();
-      // Parse date/time format like "11/30/25 10:00 EST" or "ASAP" or "Deliver Direct"
-      const structuredMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-      if (structuredMatch) {
-        parsed.delivery_date = structuredMatch[1];
-        parsed.delivery_time = structuredMatch[2];
-      } else if (secondP.length > 0 && secondP.length < 50) {
-        // It's a timing instruction like "ASAP" or "Deliver Direct"
-        parsed.delivery_time = secondP;
+      
+      // First, try to match date + time together (e.g., "11/30/25 10:00 EST")
+      const dateTimeMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
+      if (dateTimeMatch) {
+        // Found both date and time - use them
+        parsed.delivery_date = dateTimeMatch[1];
+        parsed.delivery_time = dateTimeMatch[2];
+      } else {
+        // No date/time found, check if it's a valid instruction text (not a location fragment)
+        // Valid instructions: ASAP, Deliver Direct, or similar short phrases
+        // Exclude if it looks like a location (contains state abbreviations at end)
+        const isLocationFragment = /\b[A-Z]{2}$/.test(secondP); // Ends with state code like "IN", "OH"
+        if (!isLocationFragment && secondP.length > 0 && secondP.length < 50) {
+          // It's likely a timing instruction like "ASAP" or "Deliver Direct"
+          parsed.delivery_time = secondP;
+        }
       }
     }
   }
   
-  // Fallback to text-based extraction if not found
+  // Fallback to text-based extraction if nothing found
   if (!parsed.delivery_date && !parsed.delivery_time) {
     const deliveryMatch = cleanText.match(/Delivery.*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
     if (deliveryMatch) {
