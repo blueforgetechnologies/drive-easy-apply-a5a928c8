@@ -211,7 +211,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <span>Hunter</span>
                       {unreviewedLoadsCount > 0 && (
                         <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
-                          {unreviewedLoadsCount > 9 ? '9+' : unreviewedLoadsCount}
+                          {unreviewedLoadsCount}
                         </span>
                       )}
                     </TabsTrigger>
