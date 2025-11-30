@@ -29,29 +29,19 @@ const LoadEmailDetail = ({
   const destCity = data.destination_city || "MEMPHIS";
   const destState = data.destination_state || "TN";
 
-  // Debug logging
-  console.log('🔍 LoadEmailDetail - match:', match);
-  console.log('🔍 LoadEmailDetail - vehicles count:', vehicles?.length);
-  console.log('🔍 LoadEmailDetail - drivers count:', drivers?.length);
-  console.log('🔍 LoadEmailDetail - carriersMap:', carriersMap);
-
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
-  console.log('🔍 LoadEmailDetail - found vehicle:', vehicle);
   
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
-  console.log('🔍 LoadEmailDetail - driver1:', driver1);
-  console.log('🔍 LoadEmailDetail - driver2:', driver2);
   
   const driver1Name = driver1?.personal_info?.firstName && driver1?.personal_info?.lastName 
     ? `${driver1.personal_info.firstName} ${driver1.personal_info.lastName}` 
     : null;
-  const driver2Name = driver2?.personal_info?.firstName && driver2?.personal_info?.lastName 
+  const driver2Name = driver2?.personal_info?.firstName && driver2?.personal_info?.lastName
     ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` 
     : null;
   const carrierName = vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null;
-  console.log('🔍 LoadEmailDetail - carrierName:', carrierName);
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
@@ -280,23 +270,10 @@ const LoadEmailDetail = ({
                     {data.notes ? `Note: ${data.notes}` : 'Note:'}
                   </div>
                   <div className="text-right space-x-3">
-                    <span>
-                      <span className="font-semibold">Load expires:</span>{' '}
-                      <span className="text-red-600 font-semibold">
-                        {email.expires_at
-                          ? new Date(email.expires_at).toLocaleString('en-US', {
-                              month: '2-digit',
-                              day: '2-digit',
-                              year: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              timeZoneName: 'short',
-                            })
-                          : (data.expires_datetime || '—')}
-                      </span>
-                    </span>
                     <span className="font-semibold">Posted Rate:</span>{' '}
-                    <span className="text-red-600 font-semibold">N/A</span>
+                    <span className="text-red-600 font-semibold">
+                      {data.rate ? `$${data.rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'NONE'}
+                    </span>
                   </div>
                 </div>
 
