@@ -110,35 +110,39 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   let cleanText = bodyText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
   // Extract pickup date and time
+  // First try to match structured date/time
   const pickupMatch = cleanText.match(/Pick.*?Up.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
   if (pickupMatch) {
     parsed.pickup_date = pickupMatch[1];
     parsed.pickup_time = pickupMatch[2];
   } else {
-    // Look for ANY text after Pick-Up when no date/time found
-    const pickupTextMatch = cleanText.match(/Pick.*?Up[:\s]*([A-Za-z0-9\s\/:]+?)(?:\s{2,}|Delivery|Indianapolis|Chicago|Location|$)/i);
-    if (pickupTextMatch) {
-      const extracted = pickupTextMatch[1].trim();
-      if (extracted && extracted.length > 2 && extracted.length < 50) {
-        // Store as pickup_time if it looks like a special instruction
-        parsed.pickup_time = extracted;
+    // Look for timing instructions on a separate line after location
+    // Pattern: Pick-Up [location line] [timing line like ASAP]
+    const pickupTimingMatch = cleanText.match(/Pick[-\s]*Up\s+[A-Za-z\s,]+(?:\d{5})?\s+(ASAP|Deliver\s+Direct|[A-Za-z\s]+)/i);
+    if (pickupTimingMatch && pickupTimingMatch[1]) {
+      const timing = pickupTimingMatch[1].trim();
+      // Only accept if it's a known timing instruction or short enough to be valid
+      if (timing.length < 30 && !/^\d+$/.test(timing)) {
+        parsed.pickup_time = timing;
       }
     }
   }
 
   // Extract delivery date and time
+  // First try to match structured date/time
   const deliveryMatch = cleanText.match(/Delivery.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
   if (deliveryMatch) {
     parsed.delivery_date = deliveryMatch[1];
     parsed.delivery_time = deliveryMatch[2];
   } else {
-    // Look for ANY text after Delivery when no date/time found
-    const deliveryTextMatch = cleanText.match(/Delivery[:\s]*([A-Za-z0-9\s\/:]+?)(?:\s{2,}|Rate|Contact|Expires|Location|$)/i);
-    if (deliveryTextMatch) {
-      const extracted = deliveryTextMatch[1].trim();
-      if (extracted && extracted.length > 2 && extracted.length < 50) {
-        // Store as delivery_time if it looks like a special instruction
-        parsed.delivery_time = extracted;
+    // Look for timing instructions on a separate line after location
+    // Pattern: Delivery [location line] [timing line like Deliver Direct]
+    const deliveryTimingMatch = cleanText.match(/Delivery\s+[A-Za-z\s,]+(?:\d{5})?\s+(ASAP|Deliver\s+Direct|[A-Za-z\s]+)/i);
+    if (deliveryTimingMatch && deliveryTimingMatch[1]) {
+      const timing = deliveryTimingMatch[1].trim();
+      // Only accept if it's a known timing instruction or short enough to be valid
+      if (timing.length < 30 && !/^\d+$/.test(timing)) {
+        parsed.delivery_time = timing;
       }
     }
   }
