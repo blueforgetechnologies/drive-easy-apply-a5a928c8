@@ -69,30 +69,90 @@ serve(async (req) => {
 
     console.log(`Found ${customersMap.size} unique customers`);
 
-    // Check existing customers to avoid duplicates
+    // Check existing customers
     const { data: existingCustomers, error: existingError } = await supabase
       .from('customers')
-      .select('name');
+      .select('*');
 
     if (existingError) {
       console.error('Error fetching existing customers:', existingError);
       throw existingError;
     }
 
-    const existingNames = new Set(
-      (existingCustomers || []).map(c => c.name.toUpperCase().trim())
+    const existingMap = new Map(
+      (existingCustomers || []).map(c => [c.name.toUpperCase().trim(), c])
     );
 
-    // Filter out existing customers
-    const newCustomers = Array.from(customersMap.values()).filter(
-      customer => !existingNames.has(customer.name.toUpperCase().trim())
-    );
+    // Separate into new customers and customers to update
+    const newCustomers = [];
+    const customersToUpdate = [];
+
+    for (const customer of customersMap.values()) {
+      const key = customer.name.toUpperCase().trim();
+      const existing = existingMap.get(key);
+
+      if (!existing) {
+        newCustomers.push(customer);
+      } else {
+        // Update if new data is available and existing field is null/empty
+        const updates: any = {};
+        let hasUpdates = false;
+
+        if (customer.email && !existing.email) {
+          updates.email = customer.email;
+          hasUpdates = true;
+        }
+        if (customer.email_secondary && !existing.email_secondary) {
+          updates.email_secondary = customer.email_secondary;
+          hasUpdates = true;
+        }
+        if (customer.phone && !existing.phone) {
+          updates.phone = customer.phone;
+          hasUpdates = true;
+        }
+        if (customer.phone_secondary && !existing.phone_secondary) {
+          updates.phone_secondary = customer.phone_secondary;
+          hasUpdates = true;
+        }
+        if (customer.phone_mobile && !existing.phone_mobile) {
+          updates.phone_mobile = customer.phone_mobile;
+          hasUpdates = true;
+        }
+        if (customer.address && !existing.address) {
+          updates.address = customer.address;
+          hasUpdates = true;
+        }
+        if (customer.city && !existing.city) {
+          updates.city = customer.city;
+          hasUpdates = true;
+        }
+        if (customer.state && !existing.state) {
+          updates.state = customer.state;
+          hasUpdates = true;
+        }
+        if (customer.zip && !existing.zip) {
+          updates.zip = customer.zip;
+          hasUpdates = true;
+        }
+        if (customer.contact_name && !existing.contact_name) {
+          updates.contact_name = customer.contact_name;
+          hasUpdates = true;
+        }
+
+        if (hasUpdates) {
+          customersToUpdate.push({ id: existing.id, updates });
+        }
+      }
+    }
 
     console.log(`${newCustomers.length} new customers to insert`);
+    console.log(`${customersToUpdate.length} existing customers to update`);
 
     let insertedCount = 0;
+    let updatedCount = 0;
+
+    // Insert new customers
     if (newCustomers.length > 0) {
-      // Insert new customers
       const { error: insertError } = await supabase
         .from('customers')
         .insert(newCustomers);
@@ -106,13 +166,28 @@ serve(async (req) => {
       console.log(`Successfully inserted ${insertedCount} new customers`);
     }
 
+    // Update existing customers
+    for (const { id, updates } of customersToUpdate) {
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update(updates)
+        .eq('id', id);
+
+      if (updateError) {
+        console.error(`Error updating customer ${id}:`, updateError);
+      } else {
+        updatedCount++;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Backfill complete. Added ${insertedCount} new customers.`,
+        message: `Backfill complete. Added ${insertedCount} new customers, updated ${updatedCount} existing customers.`,
         total_unique: customersMap.size,
         already_existed: customersMap.size - insertedCount,
-        newly_added: insertedCount
+        newly_added: insertedCount,
+        updated: updatedCount
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
