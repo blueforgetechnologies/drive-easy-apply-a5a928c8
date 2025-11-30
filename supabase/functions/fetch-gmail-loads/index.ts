@@ -101,7 +101,53 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.customer = postedByMatch[1].trim();
   }
 
-  // Clean HTML if present in body
+  // Extract from HTML structure using <strong> tags
+  // Pieces: <strong>Pieces: </strong>1</p>
+  const piecesHtmlMatch = bodyText.match(/<strong>Pieces?:\s*<\/strong>\s*(\d+)/i);
+  if (piecesHtmlMatch) {
+    parsed.pieces = parseInt(piecesHtmlMatch[1]);
+  }
+
+  // Dimensions: <strong>Dimensions: </strong>48L x 40W x 72H</p>
+  const dimsHtmlMatch = bodyText.match(/<strong>Dimensions?:\s*<\/strong>\s*(\d+)L?\s*[xX]\s*(\d+)W?\s*[xX]\s*(\d+)H?/i);
+  if (dimsHtmlMatch) {
+    parsed.dimensions = `${dimsHtmlMatch[1]}x${dimsHtmlMatch[2]}x${dimsHtmlMatch[3]}`;
+  }
+
+  // Expires: <strong>Expires: </strong>11/30/25 12:00 EST</p>
+  const expiresHtmlMatch = bodyText.match(/<strong>Expires?:\s*<\/strong>\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*([A-Z]{2,3}T?)/i);
+  if (expiresHtmlMatch) {
+    const dateStr = expiresHtmlMatch[1];
+    const timeStr = expiresHtmlMatch[2];
+    const timezone = expiresHtmlMatch[3];
+    parsed.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
+    
+    // Convert to ISO timestamp for expires_at column
+    try {
+      // Parse date (handle both MM/DD/YY and MM/DD/YYYY)
+      const dateParts = dateStr.split('/');
+      const month = dateParts[0];
+      const day = dateParts[1];
+      let year = dateParts[2];
+      
+      // Convert 2-digit year to 4-digit (25 -> 2025)
+      if (year.length === 2) {
+        year = '20' + year;
+      }
+      
+      // Construct date string and parse
+      const dateTimeStr = `${month}/${day}/${year} ${timeStr}`;
+      const expiresDate = new Date(dateTimeStr);
+      
+      if (!isNaN(expiresDate.getTime())) {
+        parsed.expires_at = expiresDate.toISOString();
+      }
+    } catch (e) {
+      console.error('Error parsing expires date:', e);
+    }
+  }
+
+  // Clean HTML for text-based parsing (fallback for other fields)
   let cleanText = bodyText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
   // Extract pickup date and time from body
@@ -124,39 +170,26 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.rate = parseFloat(rateMatch[1].replace(/,/g, ''));
   }
 
-  // Extract pieces (supports: pieces, pcs, pallets, plts, skids)
-  const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces?|pcs?|pallets?|plts?|plt|skids?)/i);
-  if (piecesMatch) {
-    parsed.pieces = parseInt(piecesMatch[1]);
-  }
-
-  // Extract dimensions (normalizes variants like 48 x 40 x 72, 48X40X72, with quotes)
-  const dimsSectionMatch = cleanText.match(/dimensions?[:\s-]*([0-9"' xX]+)/i);
-  if (dimsSectionMatch) {
-    const dimsInner = dimsSectionMatch[1];
-    const dimsPattern = /(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+)/;
-    const innerMatch = dimsInner.match(dimsPattern);
-    if (innerMatch) {
-      parsed.dimensions = `${innerMatch[1]}x${innerMatch[2]}x${innerMatch[3]}`;
+  // Fallback: Extract pieces from plain text if not found in HTML
+  if (!parsed.pieces) {
+    const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces?|pcs?|pallets?|plts?|plt|skids?)/i);
+    if (piecesMatch) {
+      parsed.pieces = parseInt(piecesMatch[1]);
     }
   }
 
-  // Extract available footage
-
-      // Extract expiration time from body
-      const expiresMatch = cleanText.match(/expires?.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[A-Z]{2,3}T?)/i);
-      if (expiresMatch) {
-        parsed.expires_datetime = `${expiresMatch[1]} ${expiresMatch[2]}`;
-        // Convert to ISO timestamp for expires_at column
-        try {
-          const expiresDate = new Date(`${expiresMatch[1]} ${expiresMatch[2]}`);
-          if (!isNaN(expiresDate.getTime())) {
-            parsed.expires_at = expiresDate.toISOString();
-          }
-        } catch (e) {
-          console.error('Error parsing expires date:', e);
-        }
+  // Fallback: Extract dimensions from plain text if not found in HTML
+  if (!parsed.dimensions) {
+    const dimsSectionMatch = cleanText.match(/dimensions?[:\s-]*([0-9"' xX]+)/i);
+    if (dimsSectionMatch) {
+      const dimsInner = dimsSectionMatch[1];
+      const dimsPattern = /(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+)/;
+      const innerMatch = dimsInner.match(dimsPattern);
+      if (innerMatch) {
+        parsed.dimensions = `${innerMatch[1]}x${innerMatch[2]}x${innerMatch[3]}`;
       }
+    }
+  }
 
       return parsed;
 }
