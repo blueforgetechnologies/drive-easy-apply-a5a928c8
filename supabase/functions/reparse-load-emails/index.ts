@@ -241,32 +241,40 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   // Remove line breaks and extra whitespace for better regex matching
   const cleanedHtml = bodyText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
-  // Broker Name: <strong>Broker Name: </strong>VALUE
-  const brokerNameMatch = cleanedHtml.match(/<strong>Broker Name:\s*<\/strong>\s*([^<]+)/i);
+  // Broker Name: <strong>Broker Name: </strong>VALUE (text or inside tags)
+  const brokerNameMatch = cleanedHtml.match(/<strong>Broker Name:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
   if (brokerNameMatch) {
     parsed.broker_name = brokerNameMatch[1].trim();
   }
 
-  // Broker Company: <strong>Broker Company: </strong>VALUE
-  const brokerCompanyMatch = cleanedHtml.match(/<strong>Broker Company:\s*<\/strong>\s*([^<]+)/i);
+  // Broker Company: <strong>Broker Company: </strong>VALUE (text or inside tags)
+  const brokerCompanyMatch = cleanedHtml.match(/<strong>Broker Company:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
   if (brokerCompanyMatch) {
     parsed.broker_company = brokerCompanyMatch[1].trim();
   }
 
-  // Broker Phone: <strong>Broker Phone: </strong>VALUE
-  const brokerPhoneMatch = cleanedHtml.match(/<strong>Broker Phone:\s*<\/strong>\s*([^<]+)/i);
+  // Broker Phone: <strong>Broker Phone: </strong>VALUE (text or inside tags)
+  const brokerPhoneMatch = cleanedHtml.match(/<strong>Broker Phone:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
   if (brokerPhoneMatch) {
     parsed.broker_phone = brokerPhoneMatch[1].trim();
   }
 
   // Email can be in multiple places:
-  // 1. <strong>Email: </strong>VALUE
-  const brokerEmailMatch1 = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
-  if (brokerEmailMatch1) {
+  // 1. <strong>Email: </strong>VALUE (direct text)
+  let brokerEmailMatch1 = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
+  if (brokerEmailMatch1 && brokerEmailMatch1[1].trim()) {
     parsed.broker_email = brokerEmailMatch1[1].trim();
   }
   
-  // 2. In subject line after poster name in parentheses: (email@domain.com)
+  // 2. <strong>Email: </strong><a ...>VALUE</a> (inside link tag)
+  if (!parsed.broker_email) {
+    const emailInLinkMatch = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*<a[^>]*>([^<]+)<\/a>/i);
+    if (emailInLinkMatch) {
+      parsed.broker_email = emailInLinkMatch[1].trim();
+    }
+  }
+  
+  // 3. In subject line after poster name in parentheses: (email@domain.com)
   if (!parsed.broker_email) {
     const emailInSubject = subject.match(/\(([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)\)/);
     if (emailInSubject) {
