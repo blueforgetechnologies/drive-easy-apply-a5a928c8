@@ -2494,6 +2494,7 @@ export default function LoadHunterTab() {
                     <Table>
                       <TableHeader>
                         <TableRow className="h-7">
+                          <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
                           <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
                           <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
@@ -2639,6 +2640,11 @@ export default function LoadHunterTab() {
                               className="h-10 cursor-pointer hover:bg-accent transition-colors"
                               onClick={() => setSelectedEmailForDetail(email)}
                             >
+                              <TableCell className="py-1">
+                                <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
+                                  {email.email_id.substring(0, 8)}
+                                </div>
+                              </TableCell>
                               <TableCell className="py-1">
                                 {(() => {
                                   if (activeFilter === 'unreviewed' && match) {
