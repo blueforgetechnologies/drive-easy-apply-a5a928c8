@@ -48,3 +48,9 @@ verify_jwt = false
 [functions.reset-missed-loads]
 verify_jwt = false
 
+[functions.fetch-gmail-loads]
+verify_jwt = true
+
+[functions.reparse-load-emails]
+verify_jwt = false
+

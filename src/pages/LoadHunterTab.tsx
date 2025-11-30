@@ -911,6 +911,32 @@ export default function LoadHunterTab() {
     }
   };
 
+  const handleReparseEmails = async () => {
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reparse-load-emails');
+
+      if (error) {
+        console.error('reparse-load-emails error:', error);
+        throw new Error(error.message || 'Failed to reparse emails');
+      }
+
+      console.log('Reparse response:', data);
+
+      if (data?.success > 0) {
+        toast.success(`Reparsed ${data.success} emails successfully`);
+        await loadLoadEmails();
+      } else {
+        toast.info('No emails to reparse');
+      }
+    } catch (error: any) {
+      console.error('Reparse error:', error);
+      toast.error('Failed to reparse emails');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleSkipEmail = async (emailId: string) => {
     try {
       const { error } = await supabase
@@ -1552,6 +1578,17 @@ export default function LoadHunterTab() {
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Refreshing..." : "Refresh Loads"}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-7 text-xs px-2.5"
+              onClick={handleReparseEmails}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "Reparsing..." : "Reparse All"}
             </Button>
           </div>
         </div>
