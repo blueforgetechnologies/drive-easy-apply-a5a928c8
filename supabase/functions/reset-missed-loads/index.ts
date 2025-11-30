@@ -17,24 +17,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting daily missed loads reset at midnight ET');
+    console.log('Starting daily missed and skipped loads reset at midnight ET');
 
-    // Get all currently missed loads
-    const { data: missedLoads, error: fetchError } = await supabaseClient
+    // Get all currently missed and skipped loads
+    const { data: loadsToReset, error: fetchError } = await supabaseClient
       .from('load_emails')
       .select('*')
-      .eq('status', 'missed');
+      .in('status', ['missed', 'skipped']);
 
     if (fetchError) {
-      console.error('Error fetching missed loads:', fetchError);
+      console.error('Error fetching loads to reset:', fetchError);
       throw fetchError;
     }
 
-    console.log(`Found ${missedLoads?.length || 0} missed loads to reset`);
+    console.log(`Found ${loadsToReset?.length || 0} loads to reset (missed + skipped)`);
 
-    // Log each missed load to history before resetting
-    if (missedLoads && missedLoads.length > 0) {
-      const historyRecords = missedLoads.map(load => ({
+    // Log each load to history before resetting (only for missed loads, not skipped)
+    const missedLoadsOnly = loadsToReset?.filter(load => load.status === 'missed') || [];
+    if (missedLoadsOnly.length > 0) {
+      const historyRecords = missedLoadsOnly.map(load => ({
         load_email_id: load.id,
         missed_at: load.updated_at,
         reset_at: new Date().toISOString(),
@@ -71,8 +72,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Reset ${missedLoads?.length || 0} missed loads`,
-        count: missedLoads?.length || 0,
+        message: `Reset ${loadsToReset?.length || 0} loads (missed + skipped)`,
+        count: loadsToReset?.length || 0,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

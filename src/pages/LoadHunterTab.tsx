@@ -438,8 +438,16 @@ export default function LoadHunterTab() {
     const emailTime = new Date(email.received_at);
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
     
-    // Remove loads without expiration after 30 minutes
-    if (!email.expires_at && emailTime <= thirtyMinutesAgo) {
+    // CRITICAL: Skipped and waitlist loads should always be visible regardless of age or expiration
+    if (email.status === 'skipped' || email.status === 'waitlist') {
+      if (activeFilter === 'skipped') return email.status === 'skipped';
+      if (activeFilter === 'waitlist') return email.status === 'waitlist';
+      if (activeFilter === 'all') return true;
+      return false; // Don't show in other filters
+    }
+    
+    // Remove loads without expiration after 30 minutes (only for new/missed loads)
+    if (!email.expires_at && emailTime <= thirtyMinutesAgo && email.status !== 'missed') {
       return false;
     }
     
@@ -455,11 +463,9 @@ export default function LoadHunterTab() {
       return false;
     }
     if (activeFilter === 'missed') {
-      // Show only missed loads that are 30+ minutes old
-      return email.status === 'missed' && emailTime <= thirtyMinutesAgo;
+      // Show all missed loads regardless of age
+      return email.status === 'missed';
     }
-    if (activeFilter === 'waitlist') return email.status === 'waitlist';
-    if (activeFilter === 'skipped') return email.status === 'skipped';
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
   });
@@ -469,8 +475,8 @@ export default function LoadHunterTab() {
     const emailTime = new Date(e.received_at);
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
     
-    // Remove loads without expiration after 30 minutes
-    if (!e.expires_at && emailTime <= thirtyMinutesAgo) {
+    // Remove loads without expiration after 30 minutes (except skipped/waitlist/missed)
+    if (!e.expires_at && emailTime <= thirtyMinutesAgo && e.status !== 'missed' && e.status !== 'skipped' && e.status !== 'waitlist') {
       return false;
     }
     
@@ -483,10 +489,7 @@ export default function LoadHunterTab() {
     
     return false;
   }).length;
-  const missedCount = loadEmails.filter(e => {
-    const emailTime = new Date(e.received_at);
-    return e.status === 'missed' && emailTime <= thirtyMinutesAgo;
-  }).length;
+  const missedCount = loadEmails.filter(e => e.status === 'missed').length;
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
