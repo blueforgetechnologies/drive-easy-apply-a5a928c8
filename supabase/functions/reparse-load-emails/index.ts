@@ -220,6 +220,48 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     }
   }
 
+  // Extract notes from HTML structure (notes-section class)
+  const notesMatch = bodyText.match(/<div[^>]*class=['"]notes-section['"][^>]*>([\s\S]*?)<\/div>/i);
+  if (notesMatch) {
+    const notesContent = notesMatch[1];
+    // Extract text from <p> tags, join with comma
+    const notesPTags = notesContent.match(/<p[^>]*>(.*?)<\/p>/gi);
+    if (notesPTags && notesPTags.length > 0) {
+      const notesText = notesPTags
+        .map(tag => tag.replace(/<[^>]*>/g, '').trim())
+        .filter(text => text.length > 0)
+        .join(', ');
+      if (notesText) {
+        parsed.notes = notesText;
+      }
+    }
+  }
+
+  // Extract broker information from HTML structure
+  // Broker Name: <strong>Broker Name: </strong>VALUE
+  const brokerNameMatch = bodyText.match(/<strong>Broker Name:\s*<\/strong>\s*([^<]+)/i);
+  if (brokerNameMatch) {
+    parsed.broker_name = brokerNameMatch[1].trim();
+  }
+
+  // Broker Company: <strong>Broker Company: </strong>VALUE
+  const brokerCompanyMatch = bodyText.match(/<strong>Broker Company:\s*<\/strong>\s*([^<]+)/i);
+  if (brokerCompanyMatch) {
+    parsed.broker_company = brokerCompanyMatch[1].trim();
+  }
+
+  // Broker Phone: <strong>Broker Phone: </strong>VALUE
+  const brokerPhoneMatch = bodyText.match(/<strong>Broker Phone:\s*<\/strong>\s*([^<]+)/i);
+  if (brokerPhoneMatch) {
+    parsed.broker_phone = brokerPhoneMatch[1].trim();
+  }
+
+  // Email: <strong>Email: </strong>VALUE
+  const brokerEmailMatch = bodyText.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
+  if (brokerEmailMatch) {
+    parsed.broker_email = brokerEmailMatch[1].trim();
+  }
+
   return parsed;
 }
 

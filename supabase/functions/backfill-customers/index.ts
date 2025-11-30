@@ -37,7 +37,8 @@ serve(async (req) => {
 
     for (const email of loadEmails || []) {
       const data = email.parsed_data;
-      const customerName = data?.customer;
+      // Use broker_company as customer name (broker company is the customer)
+      const customerName = data?.broker_company || data?.customer;
 
       if (customerName && 
           customerName !== '- Alliance Posted Load' && 
@@ -50,19 +51,24 @@ serve(async (req) => {
         if (!customersMap.has(key)) {
           customersMap.set(key, {
             name: customerName.trim(),
-            email: data?.customer_email || null,
-            email_secondary: data?.customer_email_secondary || null,
-            phone: data?.customer_phone || null,
-            phone_secondary: data?.customer_phone_secondary || null,
-            phone_mobile: data?.customer_phone_mobile || null,
-            contact_name: data?.customer_contact || null,
-            address: data?.customer_address || null,
-            city: data?.customer_city || null,
-            state: data?.customer_state || null,
-            zip: data?.customer_zip || null,
+            contact_name: data?.broker_name || null,
+            email: data?.broker_email || null,
+            phone: data?.broker_phone || null,
             status: 'active',
             notes: 'Auto-imported from load emails'
           });
+        } else {
+          // Update existing entry if we have more broker data
+          const existing = customersMap.get(key);
+          if (!existing.contact_name && data?.broker_name) {
+            existing.contact_name = data.broker_name;
+          }
+          if (!existing.email && data?.broker_email) {
+            existing.email = data.broker_email;
+          }
+          if (!existing.phone && data?.broker_phone) {
+            existing.phone = data.broker_phone;
+          }
         }
       }
     }
@@ -98,44 +104,16 @@ serve(async (req) => {
         const updates: any = {};
         let hasUpdates = false;
 
+        if (customer.contact_name && !existing.contact_name) {
+          updates.contact_name = customer.contact_name;
+          hasUpdates = true;
+        }
         if (customer.email && !existing.email) {
           updates.email = customer.email;
           hasUpdates = true;
         }
-        if (customer.email_secondary && !existing.email_secondary) {
-          updates.email_secondary = customer.email_secondary;
-          hasUpdates = true;
-        }
         if (customer.phone && !existing.phone) {
           updates.phone = customer.phone;
-          hasUpdates = true;
-        }
-        if (customer.phone_secondary && !existing.phone_secondary) {
-          updates.phone_secondary = customer.phone_secondary;
-          hasUpdates = true;
-        }
-        if (customer.phone_mobile && !existing.phone_mobile) {
-          updates.phone_mobile = customer.phone_mobile;
-          hasUpdates = true;
-        }
-        if (customer.address && !existing.address) {
-          updates.address = customer.address;
-          hasUpdates = true;
-        }
-        if (customer.city && !existing.city) {
-          updates.city = customer.city;
-          hasUpdates = true;
-        }
-        if (customer.state && !existing.state) {
-          updates.state = customer.state;
-          hasUpdates = true;
-        }
-        if (customer.zip && !existing.zip) {
-          updates.zip = customer.zip;
-          hasUpdates = true;
-        }
-        if (customer.contact_name && !existing.contact_name) {
-          updates.contact_name = customer.contact_name;
           hasUpdates = true;
         }
 
