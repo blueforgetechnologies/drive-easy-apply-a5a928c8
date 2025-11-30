@@ -2642,7 +2642,7 @@ export default function LoadHunterTab() {
                             >
                               <TableCell className="py-1">
                                 <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
-                                  {email.email_id.substring(0, 8)}
+                                  {data.order_number ? `#${data.order_number}` : email.email_id.substring(0, 8)}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">

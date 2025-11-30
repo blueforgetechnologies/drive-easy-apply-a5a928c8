@@ -47,6 +47,12 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.customer = postedByMatch[1].trim();
   }
 
+  // Extract Order Number from body text (e.g., "Bid on Order #206389")
+  const orderNumberMatch = bodyText.match(/Bid on Order #(\d+)/i);
+  if (orderNumberMatch) {
+    parsed.order_number = orderNumberMatch[1];
+  }
+
   // Extract from HTML structure using <strong> tags
   const piecesHtmlMatch = bodyText.match(/<strong>Pieces?:\s*<\/strong>\s*(\d+)/i);
   if (piecesHtmlMatch) {
