@@ -19,11 +19,11 @@ serve(async (req) => {
 
     console.log('Starting daily missed and skipped loads reset at midnight ET');
 
-    // Get all currently missed and skipped loads
+    // Get all currently missed and skipped loads, plus loads marked for missed tracking
     const { data: loadsToReset, error: fetchError } = await supabaseClient
       .from('load_emails')
       .select('*')
-      .in('status', ['missed', 'skipped']);
+      .or('status.in.(missed,skipped),marked_missed_at.not.is.null');
 
     if (fetchError) {
       console.error('Error fetching loads to reset:', fetchError);
@@ -32,12 +32,13 @@ serve(async (req) => {
 
     console.log(`Found ${loadsToReset?.length || 0} loads to reset (missed + skipped)`);
 
-    // Log each load to history before resetting (only for missed loads, not skipped)
-    const missedLoadsOnly = loadsToReset?.filter(load => load.status === 'missed') || [];
-    if (missedLoadsOnly.length > 0) {
-      const historyRecords = missedLoadsOnly.map(load => ({
+    // Log loads to history before resetting
+    // Log loads that have marked_missed_at set (these are the tracked missed loads)
+    const loadsWithMissedTracking = loadsToReset?.filter(load => load.marked_missed_at !== null) || [];
+    if (loadsWithMissedTracking.length > 0) {
+      const historyRecords = loadsWithMissedTracking.map(load => ({
         load_email_id: load.id,
-        missed_at: load.updated_at,
+        missed_at: load.marked_missed_at || load.updated_at,
         reset_at: new Date().toISOString(),
         from_email: load.from_email,
         subject: load.subject,
@@ -56,23 +57,26 @@ serve(async (req) => {
       console.log(`Logged ${historyRecords.length} missed loads to history`);
     }
 
-    // Reset all missed loads back to new status
+    // Reset all missed loads back to new status and clear marked_missed_at timestamp
     const { error: resetError } = await supabaseClient
       .from('load_emails')
-      .update({ status: 'new' })
-      .eq('status', 'missed');
+      .update({ 
+        status: 'new',
+        marked_missed_at: null 
+      })
+      .or('status.eq.missed,marked_missed_at.not.is.null');
 
     if (resetError) {
       console.error('Error resetting missed loads:', resetError);
       throw resetError;
     }
 
-    console.log('Successfully reset all missed loads to new status');
+    console.log('Successfully reset loads: cleared skipped status and missed tracking');
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Reset ${loadsToReset?.length || 0} loads (missed + skipped)`,
+        message: `Reset ${loadsToReset?.length || 0} loads (skipped status + missed tracking)`,
         count: loadsToReset?.length || 0,
       }),
       {

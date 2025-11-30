@@ -469,8 +469,8 @@ export default function LoadHunterTab() {
     }
     
     if (activeFilter === 'missed') {
-      // Show all missed loads regardless of age
-      return email.status === 'missed';
+      // Show loads that have been marked for missed tracking (duplicates in missed section)
+      return email.marked_missed_at !== null;
     }
     if (activeFilter === 'all') return true;
     return true; // Default for other filters
@@ -493,7 +493,7 @@ export default function LoadHunterTab() {
     
     return false;
   }).length;
-  const missedCount = loadEmails.filter(e => e.status === 'missed').length;
+  const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
 
@@ -652,6 +652,81 @@ export default function LoadHunterTab() {
 
     previousEmailCountRef.current = currentCount;
   }, [loadEmails.length]);
+
+  // Auto-mark loads for missed tracking after 15 minutes (without changing status)
+  useEffect(() => {
+    const checkMissedLoads = async () => {
+      const now = new Date();
+      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+      
+      // Find all 'new' status loads that are older than 15 minutes and not yet marked for missed tracking
+      const loadsToMark = loadEmails.filter(email => {
+        const emailTime = new Date(email.received_at);
+        return email.status === 'new' && !email.marked_missed_at && emailTime <= fifteenMinutesAgo;
+      });
+
+      if (loadsToMark.length > 0) {
+        console.log(`Marking ${loadsToMark.length} loads for missed tracking (keeping in unreviewed)`);
+        
+        const historyRecords = [];
+        
+        for (const load of loadsToMark) {
+          try {
+            const timestamp = new Date().toISOString();
+            
+            // Set marked_missed_at timestamp but keep status as 'new'
+            const { error } = await supabase
+              .from('load_emails')
+              .update({ marked_missed_at: timestamp })
+              .eq('id', load.id);
+
+            if (error) {
+              console.error('Error marking load for missed tracking:', error);
+            } else {
+              // Add to history records for batch insert
+              historyRecords.push({
+                load_email_id: load.id,
+                missed_at: timestamp,
+                from_email: load.from_email,
+                subject: load.subject,
+                received_at: load.received_at,
+              });
+            }
+          } catch (err) {
+            console.error('Error updating load:', err);
+          }
+        }
+
+        // Log all marked loads to history in one batch
+        if (historyRecords.length > 0) {
+          try {
+            const { error: historyError } = await supabase
+              .from('missed_loads_history')
+              .insert(historyRecords);
+            
+            if (historyError) {
+              console.error('Error logging to missed_loads_history:', historyError);
+            } else {
+              console.log(`Logged ${historyRecords.length} loads to missed history`);
+            }
+          } catch (err) {
+            console.error('Error inserting history records:', err);
+          }
+        }
+
+        // Refresh the load emails list
+        await loadLoadEmails();
+      }
+    };
+
+    // Check immediately on mount
+    checkMissedLoads();
+
+    // Then check every minute
+    const interval = setInterval(checkMissedLoads, 60000);
+
+    return () => clearInterval(interval);
+  }, [loadEmails]);
 
   const fetchMapboxToken = async () => {
     try {
@@ -847,7 +922,10 @@ export default function LoadHunterTab() {
     try {
       const { error } = await supabase
         .from('load_emails')
-        .update({ status: 'skipped' })
+        .update({ 
+          status: 'skipped',
+          marked_missed_at: null // Clear missed tracking when skipped
+        })
         .eq('id', emailId);
 
       if (error) throw error;
@@ -883,7 +961,10 @@ export default function LoadHunterTab() {
     try {
       const { error } = await supabase
         .from('load_emails')
-        .update({ status: 'waitlist' })
+        .update({ 
+          status: 'waitlist',
+          marked_missed_at: null // Clear missed tracking when waitlisted
+        })
         .eq('id', emailId);
 
       if (error) throw error;

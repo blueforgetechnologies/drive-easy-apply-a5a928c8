@@ -950,6 +950,7 @@ export type Database = {
           from_email: string
           from_name: string | null
           id: string
+          marked_missed_at: string | null
           parsed_data: Json | null
           received_at: string
           status: string
@@ -967,6 +968,7 @@ export type Database = {
           from_email: string
           from_name?: string | null
           id?: string
+          marked_missed_at?: string | null
           parsed_data?: Json | null
           received_at: string
           status?: string
@@ -984,6 +986,7 @@ export type Database = {
           from_email?: string
           from_name?: string | null
           id?: string
+          marked_missed_at?: string | null
           parsed_data?: Json | null
           received_at?: string
           status?: string
