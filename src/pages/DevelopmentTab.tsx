@@ -120,19 +120,32 @@ export default function DevelopmentTab() {
             <h4 className="font-semibold mb-3 flex items-center gap-2">
               <Badge>Unreviewed</Badge>
             </h4>
+            <div className="bg-amber-100 dark:bg-amber-950 border-l-4 border-amber-500 p-4 rounded-lg mb-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-amber-900 dark:text-amber-100">Development Mode Active</p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    Time-based filtering (30-minute window and expiry checks) has been temporarily disabled for development. 
+                    All matches with status="new" are currently displayed regardless of received time or expiry status. 
+                    This allows testing and debugging of all hunt matches including older loads.
+                  </p>
+                </div>
+              </div>
+            </div>
             <div className="bg-muted p-4 rounded-lg space-y-2 text-sm">
               <p><strong>Data Source:</strong> load_hunt_matches table (NOT load_emails directly)</p>
               <p><strong>Display Logic:</strong> Shows one row per match (one load can appear multiple times if it matches multiple hunt plans)</p>
-              <p><strong>Filtering Criteria:</strong></p>
+              <p><strong>Filtering Criteria (PRODUCTION):</strong></p>
               <ul className="list-disc list-inside ml-4 space-y-1 text-muted-foreground">
                 <li>Load email status must be "new"</li>
-                <li>If load has expires_at: must not be expired (expires_at &gt; now)</li>
-                <li>If load has NO expires_at: must be less than 30 minutes old (received_at within last 30 minutes)</li>
+                <li className="line-through opacity-60">If load has expires_at: must not be expired (expires_at &gt; now) - DISABLED FOR DEV</li>
+                <li className="line-through opacity-60">If load has NO expires_at: must be less than 30 minutes old (received_at within last 30 minutes) - DISABLED FOR DEV</li>
                 <li>Load must match at least one active hunt plan to appear</li>
               </ul>
               <p><strong>Removal Rules:</strong></p>
               <ul className="list-disc list-inside ml-4 space-y-1 text-muted-foreground">
-                <li>Load expires (based on expires_at or 30-minute timeout)</li>
+                <li className="line-through opacity-60">Load expires (based on expires_at or 30-minute timeout) - DISABLED FOR DEV</li>
                 <li>User manually skips the load</li>
                 <li>User moves load to Waitlist</li>
                 <li>User places a Bid on the load (to be implemented)</li>

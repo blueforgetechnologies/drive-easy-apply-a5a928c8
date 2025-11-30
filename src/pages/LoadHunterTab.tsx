@@ -467,47 +467,41 @@ export default function LoadHunterTab() {
       });
 
   // Get filtered matches for unreviewed (one row per match)
+  // DEV MODE: Showing ALL matches regardless of time/expiry for development
   const filteredMatches = activeFilter === 'unreviewed'
     ? loadMatches.filter(match => {
         const email = loadEmails.find(e => e.id === match.load_email_id);
         if (!email || email.status !== 'new') return false;
         
-        const now = new Date();
-        const receivedAt = new Date(email.received_at);
-        const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-        
-        // Check if load has expired based on expires_at (but ignore if expires_at is before received_at - invalid data)
-        if (email.expires_at) {
-          const expiresAt = new Date(email.expires_at);
-          // Only filter out if expires time is valid (after received) AND in the past
-          if (expiresAt > receivedAt && expiresAt < now) return false;
-        }
-        
-        // Always remove if received more than 30 minutes ago
-        if (receivedAt < thirtyMinutesAgo) return false;
+        // DEV: Removed time-based filtering to show all matches during development
+        // const now = new Date();
+        // const receivedAt = new Date(email.received_at);
+        // const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+        // if (email.expires_at) {
+        //   const expiresAt = new Date(email.expires_at);
+        //   if (expiresAt > receivedAt && expiresAt < now) return false;
+        // }
+        // if (receivedAt < thirtyMinutesAgo) return false;
         
         return true;
       })
     : [];
 
   // Count matches (not emails) for unreviewed
+  // DEV MODE: Counting ALL matches regardless of time/expiry for development
   const unreviewedCount = loadMatches.filter(match => {
     const email = loadEmails.find(e => e.id === match.load_email_id);
     if (!email || email.status !== 'new') return false;
     
-    const now = new Date();
-    const receivedAt = new Date(email.received_at);
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-    
-    // Check if load has expired based on expires_at (but ignore if expires_at is before received_at - invalid data)
-    if (email.expires_at) {
-      const expiresAt = new Date(email.expires_at);
-      // Only filter out if expires time is valid (after received) AND in the past
-      if (expiresAt > receivedAt && expiresAt < now) return false;
-    }
-    
-    // Always remove if received more than 30 minutes ago
-    if (receivedAt < thirtyMinutesAgo) return false;
+    // DEV: Removed time-based filtering to show all matches during development
+    // const now = new Date();
+    // const receivedAt = new Date(email.received_at);
+    // const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    // if (email.expires_at) {
+    //   const expiresAt = new Date(email.expires_at);
+    //   if (expiresAt > receivedAt && expiresAt < now) return false;
+    // }
+    // if (receivedAt < thirtyMinutesAgo) return false;
     
     return true;
   }).length;
