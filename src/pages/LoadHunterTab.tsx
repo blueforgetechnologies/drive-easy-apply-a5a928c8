@@ -227,8 +227,16 @@ export default function LoadHunterTab() {
     for (const hunt of enabledHunts) {
       // Match by date if specified
       if (hunt.availableDate && loadData.pickupDate) {
-        const huntDate = new Date(hunt.availableDate).toISOString().split('T')[0];
-        const loadDate = new Date(loadData.pickupDate).toISOString().split('T')[0];
+        const huntDateObj = new Date(hunt.availableDate);
+        const loadDateObj = new Date(loadData.pickupDate);
+        
+        // Validate both dates are valid before comparing
+        if (isNaN(huntDateObj.getTime()) || isNaN(loadDateObj.getTime())) {
+          continue; // Invalid date, skip this hunt
+        }
+        
+        const huntDate = huntDateObj.toISOString().split('T')[0];
+        const loadDate = loadDateObj.toISOString().split('T')[0];
         if (huntDate !== loadDate) {
           continue; // Date doesn't match, try next hunt
         }
@@ -1723,8 +1731,16 @@ export default function LoadHunterTab() {
                     
                     // Match by date if specified
                     if (plan.availableDate && loadData.pickupDate) {
-                      const huntDate = new Date(plan.availableDate).toISOString().split('T')[0];
-                      const loadDate = new Date(loadData.pickupDate).toISOString().split('T')[0];
+                      const huntDateObj = new Date(plan.availableDate);
+                      const loadDateObj = new Date(loadData.pickupDate);
+                      
+                      // Validate both dates are valid before comparing
+                      if (isNaN(huntDateObj.getTime()) || isNaN(loadDateObj.getTime())) {
+                        return false; // Invalid date, doesn't match
+                      }
+                      
+                      const huntDate = huntDateObj.toISOString().split('T')[0];
+                      const loadDate = loadDateObj.toISOString().split('T')[0];
                       if (huntDate !== loadDate) {
                         return false;
                       }
