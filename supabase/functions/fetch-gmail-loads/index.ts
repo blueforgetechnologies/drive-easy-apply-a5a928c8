@@ -122,12 +122,12 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     const timezone = expiresHtmlMatch[3];
     parsed.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
     
-    // Convert to ISO timestamp for expires_at column
+    // Convert to ISO timestamp for expires_at column with proper timezone handling
     try {
       // Parse date (handle both MM/DD/YY and MM/DD/YYYY)
       const dateParts = dateStr.split('/');
-      const month = dateParts[0];
-      const day = dateParts[1];
+      const month = dateParts[0].padStart(2, '0');
+      const day = dateParts[1].padStart(2, '0');
       let year = dateParts[2];
       
       // Convert 2-digit year to 4-digit (25 -> 2025)
@@ -135,9 +135,30 @@ function parseLoadEmail(subject: string, bodyText: string): any {
         year = '20' + year;
       }
       
-      // Construct date string and parse
-      const dateTimeStr = `${month}/${day}/${year} ${timeStr}`;
-      const expiresDate = new Date(dateTimeStr);
+      // Parse time (handle both 12h and 24h format)
+      const timeParts = timeStr.split(':');
+      const hour = timeParts[0].padStart(2, '0');
+      const minute = timeParts[1].padStart(2, '0');
+      
+      // Map timezone abbreviations to UTC offsets
+      const timezoneOffsets: { [key: string]: string } = {
+        'EST': '-05:00',
+        'EDT': '-04:00',
+        'CST': '-06:00',
+        'CDT': '-05:00',
+        'MST': '-07:00',
+        'MDT': '-06:00',
+        'PST': '-08:00',
+        'PDT': '-07:00',
+        'CEN': '-06:00', // Central
+        'CENT': '-06:00',
+      };
+      
+      const offset = timezoneOffsets[timezone.toUpperCase()] || '-05:00'; // Default to EST
+      
+      // Construct ISO 8601 string: YYYY-MM-DDTHH:MM:SS-05:00
+      const isoString = `${year}-${month}-${day}T${hour}:${minute}:00${offset}`;
+      const expiresDate = new Date(isoString);
       
       if (!isNaN(expiresDate.getTime())) {
         parsed.expires_at = expiresDate.toISOString();
