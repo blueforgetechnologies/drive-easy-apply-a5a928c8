@@ -473,17 +473,17 @@ export default function LoadHunterTab() {
         if (!email || email.status !== 'new') return false;
         
         const now = new Date();
+        const receivedAt = new Date(email.received_at);
+        const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
         
         // Check if load has expired based on expires_at
         if (email.expires_at) {
           const expiresAt = new Date(email.expires_at);
           if (expiresAt < now) return false;
-        } else {
-          // If no expires_at, check if 30 minutes have passed since received_at
-          const receivedAt = new Date(email.received_at);
-          const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-          if (receivedAt < thirtyMinutesAgo) return false;
         }
+        
+        // Always remove if received more than 30 minutes ago
+        if (receivedAt < thirtyMinutesAgo) return false;
         
         return true;
       })
@@ -495,17 +495,17 @@ export default function LoadHunterTab() {
     if (!email || email.status !== 'new') return false;
     
     const now = new Date();
+    const receivedAt = new Date(email.received_at);
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
     
     // Check if load has expired based on expires_at
     if (email.expires_at) {
       const expiresAt = new Date(email.expires_at);
       if (expiresAt < now) return false;
-    } else {
-      // If no expires_at, check if 30 minutes have passed since received_at
-      const receivedAt = new Date(email.received_at);
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-      if (receivedAt < thirtyMinutesAgo) return false;
     }
+    
+    // Always remove if received more than 30 minutes ago
+    if (receivedAt < thirtyMinutesAgo) return false;
     
     return true;
   }).length;
