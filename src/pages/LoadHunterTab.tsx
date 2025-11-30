@@ -224,41 +224,28 @@ export default function LoadHunterTab() {
     }
   };
 
-  // Core matching logic used everywhere we decide if a load matches a hunt
-  const doesLoadMatchHunt = (loadData: {
+  // Core matching logic - now async to support geocoding
+  const doesLoadMatchHunt = async (loadData: {
     originZip?: string;
     originLat?: number;
     originLng?: number;
     originCityState?: string;
     loadType?: string;
     pickupDate?: string;
-  }, hunt: HuntPlan): boolean => {
-    console.log("[doesLoadMatchHunt] Checking load vs hunt", {
-      huntId: hunt.id,
-      vehicleId: hunt.vehicleId,
-      huntZip: hunt.zipCode,
-      huntVehicleSize: hunt.vehicleSize,
-      loadOriginZip: loadData.originZip,
-      loadType: loadData.loadType,
-      pickupDate: loadData.pickupDate,
-    });
-
+  }, hunt: HuntPlan): Promise<{ matches: boolean; distance?: number }> => {
     // Match by date if specified
     if (hunt.availableDate && loadData.pickupDate) {
       const huntDateObj = new Date(hunt.availableDate);
       const loadDateObj = new Date(loadData.pickupDate);
 
-      // Validate both dates are valid before comparing
       if (isNaN(huntDateObj.getTime()) || isNaN(loadDateObj.getTime())) {
-        console.log("[doesLoadMatchHunt] Invalid date", { huntDate: hunt.availableDate, loadDate: loadData.pickupDate });
-        return false; // Invalid date, doesn't match
+        return { matches: false };
       }
 
       const huntDate = huntDateObj.toISOString().split('T')[0];
       const loadDate = loadDateObj.toISOString().split('T')[0];
       if (huntDate !== loadDate) {
-        console.log("[doesLoadMatchHunt] Date mismatch", { huntDate, loadDate });
-        return false;
+        return { matches: false };
       }
     }
 
@@ -269,37 +256,45 @@ export default function LoadHunterTab() {
 
       if (vehicleSizeLower.includes('straight')) {
         if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
-          console.log("[doesLoadMatchHunt] Vehicle type mismatch", { vehicleSizeLower, loadTypeLower });
-          return false;
+          return { matches: false };
         }
       }
     }
 
-    // Check distance radius if we have coordinates
-    if (hunt.huntCoordinates && loadData.originLat && loadData.originLng) {
+    // Try to get load coordinates - geocode if needed
+    let loadLat = loadData.originLat;
+    let loadLng = loadData.originLng;
+    
+    if ((!loadLat || !loadLng) && loadData.originCityState && hunt.huntCoordinates) {
+      const coords = await geocodeLocation(loadData.originCityState);
+      if (coords) {
+        loadLat = coords.lat;
+        loadLng = coords.lng;
+      }
+    }
+
+    // Check distance radius if we have both coordinates
+    if (hunt.huntCoordinates && loadLat && loadLng) {
       const distance = calculateDistance(
         hunt.huntCoordinates.lat,
         hunt.huntCoordinates.lng,
-        loadData.originLat,
-        loadData.originLng
+        loadLat,
+        loadLng
       );
 
       const radiusMiles = parseInt(hunt.pickupRadius) || 100;
-      console.log("[doesLoadMatchHunt] Distance check", { distance, radiusMiles });
 
       if (distance <= radiusMiles) {
-        return true;
+        return { matches: true, distance };
       }
     } else if (loadData.originZip && hunt.zipCode) {
       // Fallback to exact zip code matching
       if (loadData.originZip === hunt.zipCode) {
-        console.log("[doesLoadMatchHunt] Zip match", { originZip: loadData.originZip });
-        return true;
+        return { matches: true };
       }
     }
 
-    console.log("[doesLoadMatchHunt] No match");
-    return false;
+    return { matches: false };
   };
 
   // Effect to search through loads when hunts change and persist ALL matches to database
@@ -326,39 +321,28 @@ export default function LoadHunterTab() {
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
         
-        // Use first hunt's coordinates for distance display
-        const primaryHunt = enabledHunts[0];
-        if (primaryHunt?.huntCoordinates) {
-          const { originLat, originLng } = loadData;
-          if (originLat && originLng) {
-            const distance = calculateDistance(
-              primaryHunt.huntCoordinates.lat,
-              primaryHunt.huntCoordinates.lng,
-              originLat,
-              originLng
-            );
-            newDistances.set(email.id, Math.round(distance));
-          }
-        }
+        // Find ALL hunts that match this load (async now because of geocoding)
+        const matchResults = await Promise.all(
+          enabledHunts.map(hunt => doesLoadMatchHunt(loadData, hunt))
+        );
         
-        // Find ALL hunts that match this load (not just the first)
-        const matchingHunts = enabledHunts.filter(hunt => doesLoadMatchHunt(loadData, hunt));
+        const matchingHunts = enabledHunts.filter((_, index) => matchResults[index].matches);
         
         if (matchingHunts.length > 0) {
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunts[0].id);
           
+          // Calculate distance from first match for display
+          const firstMatchDistance = matchResults[enabledHunts.indexOf(matchingHunts[0])].distance;
+          if (firstMatchDistance) {
+            newDistances.set(email.id, Math.round(firstMatchDistance));
+          }
+          
           // Persist ALL matches to database
-          for (const matchingHunt of matchingHunts) {
-            let matchDistance: number | null = null;
-            if (matchingHunt.huntCoordinates && loadData.originLat && loadData.originLng) {
-              matchDistance = calculateDistance(
-                matchingHunt.huntCoordinates.lat,
-                matchingHunt.huntCoordinates.lng,
-                loadData.originLat,
-                loadData.originLng
-              );
-            }
+          for (let i = 0; i < matchingHunts.length; i++) {
+            const matchingHunt = matchingHunts[i];
+            const matchIndex = enabledHunts.indexOf(matchingHunt);
+            const matchDistance = matchResults[matchIndex].distance;
             
             const { error } = await supabase
               .from('load_hunt_matches')
@@ -366,7 +350,7 @@ export default function LoadHunterTab() {
                 load_email_id: email.id,
                 hunt_plan_id: matchingHunt.id,
                 vehicle_id: matchingHunt.vehicleId,
-                distance_miles: matchDistance,
+                distance_miles: matchDistance || null,
                 is_active: true,
               }, {
                 onConflict: 'load_email_id,hunt_plan_id'
