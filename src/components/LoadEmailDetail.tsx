@@ -323,9 +323,9 @@ const LoadEmailDetail = ({
                     </div>
                     <Button 
                       onClick={() => {
-                        if (bidAmount) {
-                          setShowBidCard(true);
-                        }
+                        const finalBid = bidAmount || data.rate?.toString() || "3000";
+                        setBidAmount(finalBid);
+                        setShowBidCard(true);
                       }}
                       className="bg-green-600 hover:bg-green-700 h-9 px-6 text-sm font-semibold shadow-sm"
                     >
@@ -376,8 +376,8 @@ const LoadEmailDetail = ({
             
             {/* Floating Bid Card - Appears on right side over map */}
             {showBidCard && !showOriginalEmail && (
-              <div className="absolute right-0 top-0 w-[360px] z-40 animate-in slide-in-from-right duration-300">
-                <Card className="p-3 shadow-2xl border-2 border-green-500">
+              <div className="absolute right-4 top-4 w-[360px] z-40 animate-in slide-in-from-right duration-300">
+                <Card className="p-3 shadow-2xl border-2 border-green-500 bg-background">
                   <div className="flex items-center justify-between mb-3 pb-3 border-b">
                     <h3 className="text-sm font-semibold">Bid Set Successfully</h3>
                     <Button
