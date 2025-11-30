@@ -395,64 +395,16 @@ export default function LoadHunterTab() {
     }
   }, [loadEmails, huntPlans]);
 
-  // Calculate distance for selected email detail view
+  // Use saved distance from match - no recalculation needed
   useEffect(() => {
-    const calculateSelectedDistance = async () => {
-      if (!selectedEmailForDetail || !huntPlans.length || !mapboxToken) {
-        setSelectedEmailDistance(undefined);
-        return;
-      }
-
-      // Check if we already have the distance in loadDistances
-      const existingDistance = loadDistances.get(selectedEmailForDetail.id);
-      if (existingDistance) {
-        setSelectedEmailDistance(existingDistance);
-        return;
-      }
-
-      // Calculate distance from first enabled hunt's location
-      const enabledHunts = huntPlans.filter(h => h.enabled);
-      if (enabledHunts.length === 0) {
-        setSelectedEmailDistance(undefined);
-        return;
-      }
-
-      const primaryHunt = enabledHunts[0];
-      if (!primaryHunt.huntCoordinates) {
-        setSelectedEmailDistance(undefined);
-        return;
-      }
-
-      const loadData = extractLoadLocation(selectedEmailForDetail);
-      let loadLat = loadData.originLat;
-      let loadLng = loadData.originLng;
-
-      // Geocode if needed
-      if ((!loadLat || !loadLng) && (loadData.originZip || loadData.originCityState)) {
-        const query = loadData.originZip || loadData.originCityState!;
-        const coords = await geocodeLocation(query);
-        if (coords) {
-          loadLat = coords.lat;
-          loadLng = coords.lng;
-        }
-      }
-
-      // Calculate distance
-      if (loadLat && loadLng) {
-        const distance = calculateDistance(
-          primaryHunt.huntCoordinates.lat,
-          primaryHunt.huntCoordinates.lng,
-          loadLat,
-          loadLng
-        );
-        setSelectedEmailDistance(Math.round(distance));
-      } else {
-        setSelectedEmailDistance(undefined);
-      }
-    };
-
-    calculateSelectedDistance();
-  }, [selectedEmailForDetail, huntPlans, mapboxToken, loadDistances]);
+    // If we have a match, use its saved distance_miles value
+    // This avoids recalculating and making unnecessary Mapbox API calls
+    if (selectedMatchForDetail && selectedMatchForDetail.distance_miles !== undefined) {
+      setSelectedEmailDistance(selectedMatchForDetail.distance_miles);
+    } else {
+      setSelectedEmailDistance(undefined);
+    }
+  }, [selectedMatchForDetail]);
   
   // Filter based on active filter - for unreviewed, use matches instead of emails
   const filteredEmails = activeFilter === 'unreviewed' 
