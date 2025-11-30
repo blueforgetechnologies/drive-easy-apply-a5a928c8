@@ -51,6 +51,8 @@ export default function VehiclesTab() {
   const [showServiceDue, setShowServiceDue] = useState(false);
   const [driversMap, setDriversMap] = useState<Record<string, string>>({});
   const [dispatchersMap, setDispatchersMap] = useState<Record<string, string>>({});
+  const [carriersMap, setCarriersMap] = useState<Record<string, string>>({});
+  const [payeesMap, setPayeesMap] = useState<Record<string, string>>({});
   const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
   const [availableDispatchers, setAvailableDispatchers] = useState<any[]>([]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -148,6 +150,58 @@ export default function VehiclesTab() {
         }
       } else {
         setDriversMap({});
+      }
+
+      // Load carrier names
+      const carrierIds = Array.from(
+        new Set(
+          vehiclesData.map((v) => v.carrier).filter((id): id is string => !!id)
+        )
+      );
+
+      if (carrierIds.length > 0) {
+        const { data: carriersData, error: carriersError } = await supabase
+          .from("carriers")
+          .select("id, name")
+          .in("id", carrierIds);
+
+        if (!carriersError && carriersData) {
+          const map: Record<string, string> = {};
+          carriersData.forEach((carrier: any) => {
+            map[carrier.id] = carrier.name;
+          });
+          setCarriersMap(map);
+        } else {
+          setCarriersMap({});
+        }
+      } else {
+        setCarriersMap({});
+      }
+
+      // Load payee names
+      const payeeIds = Array.from(
+        new Set(
+          vehiclesData.map((v) => v.payee).filter((id): id is string => !!id)
+        )
+      );
+
+      if (payeeIds.length > 0) {
+        const { data: payeesData, error: payeesError } = await supabase
+          .from("payees")
+          .select("id, name")
+          .in("id", payeeIds);
+
+        if (!payeesError && payeesData) {
+          const map: Record<string, string> = {};
+          payeesData.forEach((payee: any) => {
+            map[payee.id] = payee.name;
+          });
+          setPayeesMap(map);
+        } else {
+          setPayeesMap({});
+        }
+      } else {
+        setPayeesMap({});
       }
 
       // Load dispatcher names for any assigned dispatchers
@@ -561,8 +615,8 @@ export default function VehiclesTab() {
                         <div className="text-sm text-muted-foreground">0</div>
                       </TableCell>
                       <TableCell>
-                        <div>{vehicle.carrier || "N/A"}</div>
-                        <div className="text-sm text-muted-foreground">{vehicle.payee || "N/A"}</div>
+                        <div>{vehicle.carrier ? carriersMap[vehicle.carrier] || "N/A" : "N/A"}</div>
+                        <div className="text-sm text-muted-foreground">{vehicle.payee ? payeesMap[vehicle.payee] || "N/A" : "N/A"}</div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="text-sm space-y-1">
