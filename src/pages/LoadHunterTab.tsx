@@ -2561,11 +2561,10 @@ export default function LoadHunterTab() {
                             >
                               <TableCell className="py-1">
                                 {(() => {
-                                  // Prefer using the precomputed matchedLoadIds set to know if this load is hunted
+                                  // Find which enabled hunt plan this load actually matches
                                   const enabledHunts = huntPlans.filter(plan => plan.enabled);
                                   
-                                  // Try to find a matching enabled hunt plan for this load based on location
-                                  let matchingHunt = enabledHunts.find(plan => {
+                                  const matchingHunt = enabledHunts.find(plan => {
                                     const loadData = extractLoadLocation(email);
                                     
                                     // Check distance radius if we have coordinates
@@ -2589,14 +2588,9 @@ export default function LoadHunterTab() {
                                     return false;
                                   });
                                   
-                                  // If our fresh location check didn't find a plan, but this load is known
-                                  // to be a match (in matchedLoadIds), fall back to the first enabled hunt.
-                                  if (!matchingHunt && matchedLoadIds.has(email.id) && enabledHunts.length > 0) {
-                                    matchingHunt = enabledHunts[0];
-                                  }
-                                  
+                                  // Only show truck info if we found a matching hunt
                                   if (matchingHunt) {
-                                    const vehicle = vehicles.find(v => v.id === matchingHunt!.vehicleId);
+                                    const vehicle = vehicles.find(v => v.id === matchingHunt.vehicleId);
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
@@ -2613,7 +2607,7 @@ export default function LoadHunterTab() {
                                     }
                                   }
                                   
-                                  // Fallback when no matching hunt/vehicle found
+                                  // Show Available if no hunt matches this load
                                   return (
                                     <div>
                                       <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
