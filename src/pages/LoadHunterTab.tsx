@@ -582,6 +582,7 @@ export default function LoadHunterTab() {
     loadDrivers();
     loadLoadEmails();
     loadHuntPlans();
+    loadHuntMatches();
     loadCarriersAndPayees();
     fetchMapboxToken();
 
@@ -623,9 +624,28 @@ export default function LoadHunterTab() {
       )
       .subscribe();
 
+    // Subscribe to real-time updates for load_hunt_matches
+    const matchesChannel = supabase
+      .channel('load-hunt-matches-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'load_hunt_matches'
+        },
+        (payload) => {
+          console.log('Load hunt match change:', payload);
+          // Reload matches on any change
+          loadHuntMatches();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(emailsChannel);
       supabase.removeChannel(huntPlansChannel);
+      supabase.removeChannel(matchesChannel);
     };
   }, []);
 
@@ -908,6 +928,36 @@ export default function LoadHunterTab() {
       setHuntPlans(transformedPlans);
     } catch (error: any) {
       console.error("Failed to load hunt plans", error);
+    }
+  };
+
+  const loadHuntMatches = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("load_hunt_matches")
+        .select("*")
+        .eq("is_active", true);
+
+      if (error) throw error;
+      
+      // Build the hunt map from persisted matches
+      const huntMap = new Map<string, string>();
+      const distances = new Map<string, number>();
+      const matchedIds = new Set<string>();
+      
+      (data || []).forEach((match: any) => {
+        huntMap.set(match.load_email_id, match.hunt_plan_id);
+        if (match.distance_miles) {
+          distances.set(match.load_email_id, match.distance_miles);
+        }
+        matchedIds.add(match.load_email_id);
+      });
+      
+      setLoadHuntMap(huntMap);
+      setLoadDistances(distances);
+      setMatchedLoadIds(matchedIds);
+    } catch (error: any) {
+      console.error("Failed to load hunt matches", error);
     }
   };
 
