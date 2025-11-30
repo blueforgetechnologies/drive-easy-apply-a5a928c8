@@ -469,22 +469,29 @@ export default function LoadHunterTab() {
   // Get filtered matches for unreviewed (one row per match)
   // DEV MODE: Showing ALL matches regardless of time/expiry for development
   const filteredMatches = activeFilter === 'unreviewed'
-    ? loadMatches.filter(match => {
-        const email = loadEmails.find(e => e.id === match.load_email_id);
-        if (!email || email.status !== 'new') return false;
-        
-        // DEV: Removed time-based filtering to show all matches during development
-        // const now = new Date();
-        // const receivedAt = new Date(email.received_at);
-        // const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-        // if (email.expires_at) {
-        //   const expiresAt = new Date(email.expires_at);
-        //   if (expiresAt > receivedAt && expiresAt < now) return false;
-        // }
-        // if (receivedAt < thirtyMinutesAgo) return false;
-        
-        return true;
-      })
+    ? loadMatches
+        .filter(match => {
+          const email = loadEmails.find(e => e.id === match.load_email_id);
+          if (!email || email.status !== 'new') return false;
+          
+          // DEV: Removed time-based filtering to show all matches during development
+          // const now = new Date();
+          // const receivedAt = new Date(email.received_at);
+          // const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+          // if (email.expires_at) {
+          //   const expiresAt = new Date(email.expires_at);
+          //   if (expiresAt > receivedAt && expiresAt < now) return false;
+          // }
+          // if (receivedAt < thirtyMinutesAgo) return false;
+          
+          return true;
+        })
+        .sort((a, b) => {
+          const emailA = loadEmails.find(e => e.id === a.load_email_id);
+          const emailB = loadEmails.find(e => e.id === b.load_email_id);
+          if (!emailA || !emailB) return 0;
+          return new Date(emailB.received_at).getTime() - new Date(emailA.received_at).getTime();
+        })
     : [];
 
   // Count matches (not emails) for unreviewed
