@@ -7,11 +7,19 @@ import LoadRouteMap from "@/components/LoadRouteMap";
 interface LoadEmailDetailProps {
   email: any;
   emptyDriveDistance?: number;
+  match?: any;
+  vehicles?: any[];
+  drivers?: any[];
+  carriersMap?: Record<string, string>;
   onClose: () => void;
 }
 const LoadEmailDetail = ({
   email,
   emptyDriveDistance,
+  match,
+  vehicles = [],
+  drivers = [],
+  carriersMap = {},
   onClose
 }: LoadEmailDetailProps) => {
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -21,8 +29,21 @@ const LoadEmailDetail = ({
   const destCity = data.destination_city || "MEMPHIS";
   const destState = data.destination_state || "TN";
 
-  // Mock vehicle data for sidebar
-  const vehicles = [{
+  // Get actual vehicle, driver, carrier, and broker data
+  const vehicle = match && vehicles.find((v: any) => v.id === match.vehicle_id);
+  const driver1 = vehicle?.driver_1_id ? drivers.find((d: any) => d.id === vehicle.driver_1_id) : null;
+  const driver2 = vehicle?.driver_2_id ? drivers.find((d: any) => d.id === vehicle.driver_2_id) : null;
+  const driver1Name = driver1?.personal_info?.firstName && driver1?.personal_info?.lastName 
+    ? `${driver1.personal_info.firstName} ${driver1.personal_info.lastName}` 
+    : null;
+  const driver2Name = driver2?.personal_info?.firstName && driver2?.personal_info?.lastName 
+    ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` 
+    : null;
+  const carrierName = vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null;
+  const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
+
+  // Mock vehicle data for sidebar (not currently used)
+  const mockVehicles = [{
     name: "NATL-1 - Torrence Dupree",
     company: "24' Large Straight\nALLIED FREIGHTLINE L...",
     badges: [1, 1, 1]
@@ -159,16 +180,16 @@ const LoadEmailDetail = ({
                   <div className="flex items-center gap-2 flex-1">
                     <div className="flex h-10 w-14 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
                       <Truck className="h-4 w-4 text-blue-600" />
-                      <div className="text-[10px] font-semibold text-blue-600">TAL-3</div>
+                      <div className="text-[10px] font-semibold text-blue-600">{vehicle?.vehicle_number || "N/A"}</div>
                       <div className="text-[10px] font-semibold text-red-500">Empty</div>
                     </div>
                     <div className="text-[11px] space-y-0.5">
                       <div>
-                        <span className="text-gray-500">D1</span> <span className="font-medium">No Driver Assigned</span>{" "}
+                        <span className="text-gray-500">D1</span> <span className="font-medium">{driver1Name || "No Driver Assigned"}</span>{" "}
                         <span className="text-gray-400">Note:</span>
                       </div>
                       <div>
-                        <span className="text-gray-500">D2</span> <span className="font-medium">No Driver Assigned</span>{" "}
+                        <span className="text-gray-500">D2</span> <span className="font-medium">{driver2Name || "No Driver Assigned"}</span>{" "}
                         <span className="text-gray-400">Note:</span>
                       </div>
                     </div>
@@ -176,7 +197,7 @@ const LoadEmailDetail = ({
 
                   <div className="flex items-center gap-6">
                     <div>
-                      <div className="text-[13px] font-bold mb-0.5">Match ID: 4227959</div>
+                      <div className="text-[13px] font-bold mb-0.5">Match ID: {match?.id?.substring(0, 8) || "N/A"}</div>
                       <button className="text-[10px] text-blue-500 hover:underline">View Match History</button>
                     </div>
                   </div>
@@ -186,7 +207,7 @@ const LoadEmailDetail = ({
                 <div className="border-b">
                   <div className="grid grid-cols-[2.2fr,1.4fr,1.2fr,1.5fr,1fr,1fr] px-2 py-1.5 text-[11px]">
                     <div className="bg-red-100 -mx-2 px-2 py-1 font-semibold flex items-center">
-                      NE-LANG LOGISTICS LLC
+                      {carrierName || "No Carrier"}
                     </div>
                     <div className="text-gray-400">
                       <div>    Pickup Time</div>
@@ -214,7 +235,7 @@ const LoadEmailDetail = ({
                 <div className="border-b">
                   <div className="grid grid-cols-[2.2fr,1.4fr,1.2fr,1.5fr,1fr,1fr] px-2 py-1.5 text-[11px]">
                     <div className="bg-yellow-100 -mx-2 px-2 py-1 font-semibold flex items-center">
-                      GLOBALTRANZ ENTERPRISES, LLC
+                      {brokerName}
                     </div>
                     <div>
                       <div>   11/30/25 Sun 17:00 EST</div>
