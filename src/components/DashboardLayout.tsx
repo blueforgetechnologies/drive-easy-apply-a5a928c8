@@ -21,12 +21,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [activeTab, setActiveTab] = useState<string>("drivers");
   const [alertCount, setAlertCount] = useState<number>(0);
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
+  const [unreviewedLoadsCount, setUnreviewedLoadsCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
     loadAlerts();
     loadIntegrationAlerts();
+    loadUnreviewedLoads();
     
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
@@ -38,7 +40,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     // Check integration status every 5 minutes
     const interval = setInterval(loadIntegrationAlerts, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    
+    // Refresh unreviewed loads count every minute
+    const unreviewedInterval = setInterval(loadUnreviewedLoads, 60 * 1000);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(unreviewedInterval);
+    };
   }, [location.pathname]);
 
   const loadUserProfile = async () => {
@@ -127,6 +136,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const loadUnreviewedLoads = async () => {
+    try {
+      const { count, error } = await supabase
+        .from("load_emails")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "new");
+      
+      if (error) {
+        console.error("Error loading unreviewed loads:", error);
+        return;
+      }
+      
+      setUnreviewedLoadsCount(count || 0);
+    } catch (error) {
+      console.error("Error counting unreviewed loads:", error);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -164,9 +191,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <Map className="h-3.5 w-3.5" />
                       <span>Map</span>
                     </TabsTrigger>
-                    <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
+                    <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Target className="h-3.5 w-3.5" />
                       <span>Hunter</span>
+                      {unreviewedLoadsCount > 0 && (
+                        <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
+                          {unreviewedLoadsCount > 9 ? '9+' : unreviewedLoadsCount}
+                        </span>
+                      )}
                     </TabsTrigger>
                     <TabsTrigger value="business" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Briefcase className="h-3.5 w-3.5" />
@@ -218,7 +250,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <nav className="flex flex-col gap-1 px-2">
                         {[
                           { value: "map", icon: Map, label: "Map" },
-                          { value: "load-hunter", icon: Target, label: "Load Hunter" },
+                          { value: "load-hunter", icon: Target, label: "Load Hunter", badge: unreviewedLoadsCount },
                           { value: "business", icon: Briefcase, label: "Business Manager", badge: alertCount },
                           { value: "loads", icon: Package, label: "Loads" },
                           { value: "accounting", icon: Calculator, label: "Accounting" },
@@ -281,6 +313,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <MobileNav 
           alertCount={alertCount} 
           integrationAlertCount={integrationAlertCount}
+          unreviewedLoadsCount={unreviewedLoadsCount}
         />
       )}
     </div>
