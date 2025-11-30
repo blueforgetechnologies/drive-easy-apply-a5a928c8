@@ -101,57 +101,74 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
     return `${dispatcher.first_name} ${dispatcher.last_name}`;
   };
 
+  const handleDispatcherChange = async (vehicleId: string, newDispatcherId: string) => {
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ primary_dispatcher_id: newDispatcherId === "unassigned" ? null : newDispatcherId })
+        .eq("id", vehicleId);
+
+      if (error) throw error;
+      toast.success("Dispatcher assigned successfully");
+    } catch (error) {
+      console.error("Failed to update dispatcher", error);
+      toast.error("Failed to assign dispatcher");
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto flex flex-col">
-      <Card className="flex-1 flex flex-col m-4">
-        <CardContent className="p-4 flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col m-2">
+        <CardContent className="p-3 flex-1 flex flex-col">
           {/* Search and Filters */}
-          <div className="flex items-center gap-4 mb-4 pb-4 border-b">
+          <div className="flex items-center gap-2 mb-3 pb-3 border-b">
             <Input
               placeholder="Search by Truck or Rental/Unit number"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md"
+              className="max-w-xs h-8 text-sm"
             />
 
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <Button
                 variant={filterType === "all" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setFilterType("all")}
+                className="h-8 text-xs px-2"
               >
-                View All <span className="ml-1 font-bold">{allCount}</span>
+                All <span className="ml-1 font-bold">{allCount}</span>
               </Button>
 
               <Button
                 variant={filterType === "unassigned" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setFilterType("unassigned")}
+                className="h-8 text-xs px-2"
               >
-                View Unassigned <span className="ml-1 font-bold">{unassignedCount}</span>
+                Unassigned <span className="ml-1 font-bold">{unassignedCount}</span>
               </Button>
 
               <Button
                 variant={filterType === "active" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setFilterType("active")}
-                className={filterType === "active" ? "bg-green-600 hover:bg-green-700" : ""}
+                className={`h-8 text-xs px-2 ${filterType === "active" ? "bg-green-600 hover:bg-green-700" : ""}`}
               >
-                Active units <span className="ml-1 font-bold">{activeCount}</span>
+                Active <span className="ml-1 font-bold">{activeCount}</span>
               </Button>
 
               <Button
                 variant={filterType === "inactive" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setFilterType("inactive")}
-                className={filterType === "inactive" ? "bg-gray-600 hover:bg-gray-700" : ""}
+                className={`h-8 text-xs px-2 ${filterType === "inactive" ? "bg-gray-600 hover:bg-gray-700" : ""}`}
               >
                 Inactive <span className="ml-1 font-bold">{inactiveCount}</span>
               </Button>
             </div>
 
             <Select value={selectedCarrier} onValueChange={setSelectedCarrier}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-48 h-8 text-sm">
                 <SelectValue placeholder="Filter by Carrier" />
               </SelectTrigger>
               <SelectContent>
@@ -169,22 +186,21 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
           <div className="flex-1 overflow-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="font-bold">Unit ID</TableHead>
-                  <TableHead className="font-bold">Drivers</TableHead>
-                  <TableHead className="font-bold">Carrier</TableHead>
-                  <TableHead className="font-bold">Primary Dispatcher</TableHead>
-                  <TableHead className="font-bold">Dispatchers</TableHead>
+                <TableRow className="h-9">
+                  <TableHead className="font-bold text-xs py-2">Unit ID</TableHead>
+                  <TableHead className="font-bold text-xs py-2">Drivers</TableHead>
+                  <TableHead className="font-bold text-xs py-2">Carrier</TableHead>
+                  <TableHead className="font-bold text-xs py-2">Primary Dispatcher</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredVehicles.map((vehicle) => (
-                  <TableRow key={vehicle.id}>
-                    <TableCell className="font-semibold">
+                  <TableRow key={vehicle.id} className="h-10">
+                    <TableCell className="font-semibold text-sm py-2">
                       {vehicle.vehicle_number || "—"}
                     </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
+                    <TableCell className="py-2">
+                      <div className="space-y-0.5 text-sm">
                         {vehicle.driver_1_id && (
                           <div>{getDriverName(vehicle.driver_1_id)}</div>
                         )}
@@ -196,22 +212,26 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm py-2">
                       {vehicle.carrier || "—"}
                     </TableCell>
-                    <TableCell>
-                      {getDispatcherName(vehicle.primary_dispatcher_id) || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        size="sm" 
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-                        onClick={() => {
-                          toast.info("Dispatcher assignment feature coming soon");
-                        }}
+                    <TableCell className="py-2">
+                      <Select
+                        value={vehicle.primary_dispatcher_id || "unassigned"}
+                        onValueChange={(value) => handleDispatcherChange(vehicle.id, value)}
                       >
-                        ADD NEW
-                      </Button>
+                        <SelectTrigger className="h-8 text-sm w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {dispatchers.map((dispatcher) => (
+                            <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                              {dispatcher.first_name} {dispatcher.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -220,8 +240,8 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
           </div>
 
           {/* Pagination */}
-          <div className="flex justify-center items-center mt-4 pt-4 border-t">
-            <Button variant="outline" size="sm" className="bg-blue-600 text-white hover:bg-blue-700">
+          <div className="flex justify-center items-center mt-2 pt-2 border-t">
+            <Button variant="outline" size="sm" className="h-7 text-xs bg-blue-600 text-white hover:bg-blue-700">
               1
             </Button>
           </div>
