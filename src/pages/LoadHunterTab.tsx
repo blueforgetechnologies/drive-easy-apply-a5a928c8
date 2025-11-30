@@ -447,9 +447,6 @@ export default function LoadHunterTab() {
   
   // Filter emails based on active filter
   const filteredEmails = loadEmails.filter(email => {
-    const emailTime = new Date(email.received_at);
-    const thirtyMinutesAgo = getThirtyMinutesAgo();
-    
     // CRITICAL: Skipped and waitlist loads should always be visible regardless of age or expiration
     if (email.status === 'skipped' || email.status === 'waitlist') {
       if (activeFilter === 'skipped') return email.status === 'skipped';
@@ -458,14 +455,9 @@ export default function LoadHunterTab() {
       return false; // Don't show in other filters
     }
     
-    // Remove loads without expiration after 30 minutes (only new loads, not missed/skipped/waitlist)
-    if (email.status === 'new' && !email.expires_at && emailTime <= thirtyMinutesAgo) {
-      return false;
-    }
-    
-    // Apply hunt filtering for unreviewed status
+    // Apply filtering for unreviewed status
     if (activeFilter === 'unreviewed') {
-      // Show all loads with 'new' status regardless of hunt matching
+      // Show all loads with 'new' status regardless of age or expiration
       return email.status === 'new';
     }
     
@@ -479,15 +471,7 @@ export default function LoadHunterTab() {
 
   // Count emails by status
   const unreviewedCount = loadEmails.filter(e => {
-    const emailTime = new Date(e.received_at);
-    const thirtyMinutesAgo = getThirtyMinutesAgo();
-    
-    // Remove loads without expiration after 30 minutes
-    if (e.status === 'new' && !e.expires_at && emailTime <= thirtyMinutesAgo) {
-      return false;
-    }
-    
-    // Count all 'new' status loads
+    // Count all 'new' status loads regardless of age or expiration
     return e.status === 'new';
   }).length;
   const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
