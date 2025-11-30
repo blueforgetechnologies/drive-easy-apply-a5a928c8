@@ -1420,7 +1420,9 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed Loads
-                <Badge variant="destructive" className="h-4 px-1.5 text-[10px] bg-red-500 text-white ml-1">{unreviewedCount}</Badge>
+                <Badge variant="destructive" className="h-4 px-1.5 text-[10px] bg-red-500 text-white ml-1">
+                  {unreviewedCount > 9 ? '9+' : unreviewedCount}
+                </Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
@@ -1451,7 +1453,9 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <Badge variant="destructive" className="h-4 px-1.5 text-[10px] ml-1 bg-red-400 text-white">{missedCount}</Badge>
+              <Badge variant="destructive" className="h-4 px-1.5 text-[10px] ml-1 bg-red-400 text-white">
+                {missedCount > 9 ? '9+' : missedCount}
+              </Badge>
             </Button>
             
             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
@@ -1470,7 +1474,9 @@ export default function LoadHunterTab() {
                 }}
               >
                 Waitlist
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-orange-400 text-white">{waitlistCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-orange-400 text-white">
+                  {waitlistCount > 9 ? '9+' : waitlistCount}
+                </Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
@@ -1510,7 +1516,9 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skipped
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-gray-300 text-gray-700">{skippedCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-gray-300 text-gray-700">
+                  {skippedCount > 9 ? '9+' : skippedCount}
+                </Badge>
               </Button>
             </div>
             
