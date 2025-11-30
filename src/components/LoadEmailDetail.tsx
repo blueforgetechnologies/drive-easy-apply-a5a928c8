@@ -1,8 +1,9 @@
+import { useEffect, useState } from "react";
 import { Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
 import LoadRouteMap from "@/components/LoadRouteMap";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LoadEmailDetailProps {
   email: any;
@@ -26,6 +27,7 @@ const LoadEmailDetail = ({
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
   const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
+  const [toEmail, setToEmail] = useState<string | null>(null);
   const data = email.parsed_data || {};
   
   const originCity = data.origin_city || "ATLANTA";
@@ -48,6 +50,33 @@ const LoadEmailDetail = ({
   const carrierName = vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null;
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
+
+  // Ensure we use the email tied to this match's load_email_id so you can verify correctness
+  useEffect(() => {
+    const resolveToEmail = async () => {
+      try {
+        if (match?.load_email_id) {
+          const { data: loadEmail, error } = await supabase
+            .from("load_emails")
+            .select("from_email")
+            .eq("id", match.load_email_id)
+            .single();
+
+          if (!error && loadEmail?.from_email) {
+            setToEmail(loadEmail.from_email);
+            return;
+          }
+        }
+        // Fallback to the email prop if we can't resolve via match
+        setToEmail(email.from_email || null);
+      } catch (e) {
+        console.error("Error resolving toEmail from match:", e);
+        setToEmail(email.from_email || null);
+      }
+    };
+
+    resolveToEmail();
+  }, [match, email.from_email]);
 
   return (
     <div className="flex-1 overflow-auto relative">
@@ -393,7 +422,7 @@ const LoadEmailDetail = ({
                     <div className="space-y-3">
                       <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">To:</div>
-                        <div className="text-muted-foreground">{email.from_email || 'No email'}</div>
+                        <div className="text-muted-foreground">{toEmail || 'No email found for this match'}</div>
                       </div>
                       
                       <div className="bg-muted/50 p-2 rounded text-xs">
