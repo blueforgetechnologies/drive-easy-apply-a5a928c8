@@ -53,6 +53,10 @@ serve(async (req) => {
             email: data?.customer_email || null,
             phone: data?.customer_phone || null,
             contact_name: data?.customer_contact || null,
+            address: data?.customer_address || null,
+            city: data?.customer_city || null,
+            state: data?.customer_state || null,
+            zip: data?.customer_zip || null,
             status: 'active',
             notes: 'Auto-imported from load emails'
           });
