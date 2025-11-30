@@ -2434,43 +2434,29 @@ export default function LoadHunterTab() {
                           const rawBody = (email.body_text || email.body_html || '').toString();
                           const cleanBody = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
-                          const sanitizeDisplay = (value: string): string => {
-                            const v = (value || '').trim();
-                            if (!v) return '—';
-                            // Filter out CSS-like noise such as "box > p ," etc.
-                            if (/box\s*>\s*p/i.test(v)) return '—';
-                            // If it has at least one letter or digit, keep it, otherwise treat as empty
-                            if (!/[A-Za-z0-9]/.test(v)) return '—';
-                            return v.slice(0, 40);
-                          };
-                          
-                          let pickupDisplay = '';
-                          if (data.pickup_date || data.pickup_time) {
-                            pickupDisplay = `${data.pickup_date || ''} ${data.pickup_time || ''}`;
-                          } else {
-                            const pickupRegex = /Pick[-\s]*Up[:\s]*([^\n\r<]{3,50}?)(?:\s*Delivery|\s*Location|$)/i;
-                            const pickupMatch = cleanBody.match(pickupRegex);
-                            if (pickupMatch) {
-                              pickupDisplay = pickupMatch[1]
-                                .replace(/^\s*[:\-]\s*/, '')
-                                .replace(/\s*(Delivery|Location).*$/i, '');
+                          let pickupDisplay = data.pickup_time || data.pickup_date || '';
+                          if (!pickupDisplay) {
+                            // Fallback: extract timing after location in raw body
+                            const pickupMatch = cleanBody.match(/Pick[-\s]*Up\s+[A-Za-z\s,]+\d{5}\s+(ASAP|[A-Za-z\s]+?)(?:\s+Delivery|$)/i);
+                            if (pickupMatch && pickupMatch[1]) {
+                              pickupDisplay = pickupMatch[1].trim();
                             }
                           }
-                          pickupDisplay = sanitizeDisplay(pickupDisplay);
+                          if (!pickupDisplay || /box\s*>\s*p/i.test(pickupDisplay)) {
+                            pickupDisplay = '—';
+                          }
 
-                          let deliveryDisplay = '';
-                          if (data.delivery_date || data.delivery_time) {
-                            deliveryDisplay = `${data.delivery_date || ''} ${data.delivery_time || ''}`;
-                          } else {
-                            const deliveryRegex = /Delivery[:\s]*([^\n\r<]{3,50}?)(?:\s*Rate|\s*Contact|\s*Expires|\s*Location|$)/i;
-                            const deliveryMatch = cleanBody.match(deliveryRegex);
-                            if (deliveryMatch) {
-                              deliveryDisplay = deliveryMatch[1]
-                                .replace(/^\s*[:\-]\s*/, '')
-                                .replace(/\s*(Rate|Contact|Expires|Location).*$/i, '');
+                          let deliveryDisplay = data.delivery_time || data.delivery_date || '';
+                          if (!deliveryDisplay) {
+                            // Fallback: extract timing after location in raw body
+                            const deliveryMatch = cleanBody.match(/Delivery\s+[A-Za-z\s,]+\d{5}\s+(Deliver\s+Direct|[A-Za-z\s]+?)(?:\s+Rate|\s+Contact|$)/i);
+                            if (deliveryMatch && deliveryMatch[1]) {
+                              deliveryDisplay = deliveryMatch[1].trim();
                             }
                           }
-                          deliveryDisplay = sanitizeDisplay(deliveryDisplay);
+                          if (!deliveryDisplay || /box\s*>\s*p/i.test(deliveryDisplay)) {
+                            deliveryDisplay = '—';
+                          }
 
                           return (
                             <TableRow 
