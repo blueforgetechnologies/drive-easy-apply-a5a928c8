@@ -101,6 +101,7 @@ export default function LoadHunterTab() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedEmailForDetail, setSelectedEmailForDetail] = useState<any | null>(null);
   const [selectedEmailDistance, setSelectedEmailDistance] = useState<number | undefined>(undefined);
+  const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<any | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
@@ -2535,7 +2536,14 @@ export default function LoadHunterTab() {
           <LoadEmailDetail 
             email={selectedEmailForDetail} 
             emptyDriveDistance={selectedEmailDistance}
-            onClose={() => setSelectedEmailForDetail(null)}
+            match={selectedMatchForDetail}
+            vehicles={vehicles}
+            drivers={drivers}
+            carriersMap={carriersMap}
+            onClose={() => {
+              setSelectedEmailForDetail(null);
+              setSelectedMatchForDetail(null);
+            }}
           />
         ) : activeFilter === 'vehicle-assignment' ? (
           /* Vehicle Assignment View */
@@ -2743,6 +2751,7 @@ export default function LoadHunterTab() {
                                 } else {
                                   // Single match or no match - show detail directly
                                   setSelectedEmailForDetail(email);
+                                  setSelectedMatchForDetail(match);
                                   if (match) {
                                     setSelectedEmailDistance((match as any).distance_miles);
                                   }
@@ -3004,6 +3013,7 @@ export default function LoadHunterTab() {
             
             if (email) {
               setSelectedEmailForDetail(email);
+              setSelectedMatchForDetail(match);
               setSelectedEmailDistance(match.distance_miles);
               setShowMultipleMatchesDialog(false);
             }
