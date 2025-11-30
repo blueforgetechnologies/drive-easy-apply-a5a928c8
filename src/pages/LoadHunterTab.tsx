@@ -470,14 +470,44 @@ export default function LoadHunterTab() {
   const filteredMatches = activeFilter === 'unreviewed'
     ? loadMatches.filter(match => {
         const email = loadEmails.find(e => e.id === match.load_email_id);
-        return email && email.status === 'new';
+        if (!email || email.status !== 'new') return false;
+        
+        const now = new Date();
+        
+        // Check if load has expired based on expires_at
+        if (email.expires_at) {
+          const expiresAt = new Date(email.expires_at);
+          if (expiresAt < now) return false;
+        } else {
+          // If no expires_at, check if 30 minutes have passed since received_at
+          const receivedAt = new Date(email.received_at);
+          const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+          if (receivedAt < thirtyMinutesAgo) return false;
+        }
+        
+        return true;
       })
     : [];
 
   // Count matches (not emails) for unreviewed
   const unreviewedCount = loadMatches.filter(match => {
     const email = loadEmails.find(e => e.id === match.load_email_id);
-    return email && email.status === 'new';
+    if (!email || email.status !== 'new') return false;
+    
+    const now = new Date();
+    
+    // Check if load has expired based on expires_at
+    if (email.expires_at) {
+      const expiresAt = new Date(email.expires_at);
+      if (expiresAt < now) return false;
+    } else {
+      // If no expires_at, check if 30 minutes have passed since received_at
+      const receivedAt = new Date(email.received_at);
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+      if (receivedAt < thirtyMinutesAgo) return false;
+    }
+    
+    return true;
   }).length;
   
   const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
