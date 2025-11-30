@@ -2384,10 +2384,22 @@ export default function LoadHunterTab() {
                             const timeUntilExpiration = expiresDate.getTime() - now.getTime();
                             const minsUntilExpiration = Math.floor(timeUntilExpiration / 60000);
 
-                            if (minsUntilExpiration > 0) {
+                            if (minsUntilExpiration > 60) {
+                              const hours = Math.floor(minsUntilExpiration / 60);
+                              const mins = minsUntilExpiration % 60;
+                              expiresIn = `${hours}h ${mins}m`;
+                            } else if (minsUntilExpiration > 0) {
                               expiresIn = `${minsUntilExpiration}m`;
                             } else {
-                              expiresIn = 'Expired';
+                              // Show negative time for expired loads
+                              const expiredMins = Math.abs(minsUntilExpiration);
+                              if (expiredMins > 60) {
+                                const hours = Math.floor(expiredMins / 60);
+                                const mins = expiredMins % 60;
+                                expiresIn = `-${hours}h ${mins}m`;
+                              } else {
+                                expiresIn = `-${expiredMins}m`;
+                              }
                             }
                           } else if (parsedExpires) {
                             const parsedExpiresDate = new Date(parsedExpires);
@@ -2395,10 +2407,22 @@ export default function LoadHunterTab() {
                               const timeUntilExpiration = parsedExpiresDate.getTime() - now.getTime();
                               const minsUntilExpiration = Math.floor(timeUntilExpiration / 60000);
 
-                              if (minsUntilExpiration > 0) {
+                              if (minsUntilExpiration > 60) {
+                                const hours = Math.floor(minsUntilExpiration / 60);
+                                const mins = minsUntilExpiration % 60;
+                                expiresIn = `${hours}h ${mins}m`;
+                              } else if (minsUntilExpiration > 0) {
                                 expiresIn = `${minsUntilExpiration}m`;
                               } else {
-                                expiresIn = 'Expired';
+                                // Show negative time for expired loads
+                                const expiredMins = Math.abs(minsUntilExpiration);
+                                if (expiredMins > 60) {
+                                  const hours = Math.floor(expiredMins / 60);
+                                  const mins = expiredMins % 60;
+                                  expiresIn = `-${hours}h ${mins}m`;
+                                } else {
+                                  expiresIn = `-${expiredMins}m`;
+                                }
                               }
                             } else {
                               expiresIn = '—';
