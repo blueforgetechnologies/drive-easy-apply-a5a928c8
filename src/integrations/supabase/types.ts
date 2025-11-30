@@ -950,6 +950,7 @@ export type Database = {
           from_email: string
           from_name: string | null
           id: string
+          load_id: string | null
           marked_missed_at: string | null
           parsed_data: Json | null
           received_at: string
@@ -968,6 +969,7 @@ export type Database = {
           from_email: string
           from_name?: string | null
           id?: string
+          load_id?: string | null
           marked_missed_at?: string | null
           parsed_data?: Json | null
           received_at: string
@@ -986,6 +988,7 @@ export type Database = {
           from_email?: string
           from_name?: string | null
           id?: string
+          load_id?: string | null
           marked_missed_at?: string | null
           parsed_data?: Json | null
           received_at?: string
@@ -2256,6 +2259,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_load_id_for_date: {
+        Args: { target_date: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
