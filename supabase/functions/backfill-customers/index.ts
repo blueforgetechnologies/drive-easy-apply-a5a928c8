@@ -51,7 +51,10 @@ serve(async (req) => {
           customersMap.set(key, {
             name: customerName.trim(),
             email: data?.customer_email || null,
+            email_secondary: data?.customer_email_secondary || null,
             phone: data?.customer_phone || null,
+            phone_secondary: data?.customer_phone_secondary || null,
+            phone_mobile: data?.customer_phone_mobile || null,
             contact_name: data?.customer_contact || null,
             address: data?.customer_address || null,
             city: data?.customer_city || null,
