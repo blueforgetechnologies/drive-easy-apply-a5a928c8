@@ -154,6 +154,9 @@ export default function LoadHunterTab() {
   // Track which load emails have been verified to match active hunts
   const [matchedLoadIds, setMatchedLoadIds] = useState<Set<string>>(new Set());
   
+  // Map each load email to the specific hunt plan it matched
+  const [loadHuntMap, setLoadHuntMap] = useState<Map<string, string>>(new Map());
+  
   // Track distances from hunt location to each load's pickup
   const [loadDistances, setLoadDistances] = useState<Map<string, number>>(new Map());
 
@@ -221,10 +224,11 @@ export default function LoadHunterTab() {
   };
 
   // Check if a load matches any active hunt plans (async version for geocoding)
-  const loadMatchesHuntAsync = async (email: any): Promise<boolean> => {
+  // Returns the matching hunt plan ID, or null if no match
+  const loadMatchesHuntAsync = async (email: any): Promise<string | null> => {
     // Only consider enabled hunt plans
     const enabledHunts = huntPlans.filter(h => h.enabled);
-    if (enabledHunts.length === 0) return false;
+    if (enabledHunts.length === 0) return null;
     
     const loadData = extractLoadLocation(email);
     
@@ -285,7 +289,7 @@ export default function LoadHunterTab() {
           const radiusMiles = parseInt(hunt.pickupRadius) || 100;
           
           if (distance <= radiusMiles) {
-            return true; // Match found!
+            return hunt.id; // Match found for this hunt
           }
         }
       }
@@ -293,12 +297,12 @@ export default function LoadHunterTab() {
       // Fallback to exact zip code matching
       if (loadData.originZip && hunt.zipCode) {
         if (loadData.originZip === hunt.zipCode) {
-          return true; // Exact zip match
+          return hunt.id; // Exact zip match
         }
       }
     }
     
-    return false; // No matches found
+    return null; // No matches found
   };
 
   // Check if a load has been verified to match hunts
@@ -325,13 +329,14 @@ export default function LoadHunterTab() {
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
+      const newHuntMap = new Map<string, string>();
       
       // Check each recent load against hunt criteria
       for (const email of recentLoads) {
-        // Calculate distance from hunt location to load pickup for ALL loads
+        // Calculate distance from primary hunt location to load pickup for ALL loads
         const loadData = extractLoadLocation(email);
         
-        // Use the first enabled hunt's coordinates as the "truck location"
+        // Use the first enabled hunt's coordinates as the "truck location" for distance display
         const primaryHunt = enabledHunts[0];
         if (primaryHunt?.huntCoordinates) {
           let loadLat = loadData.originLat;
@@ -359,10 +364,11 @@ export default function LoadHunterTab() {
           }
         }
         
-        // Check if load matches hunt criteria
-        const matched = await loadMatchesHuntAsync(email);
-        if (matched) {
+        // Check if load matches hunt criteria and capture which hunt it matched
+        const matchingHuntId = await loadMatchesHuntAsync(email);
+        if (matchingHuntId) {
           newMatchedIds.add(email.id);
+          newHuntMap.set(email.id, matchingHuntId);
           
           // Mark as 'new' if it was missed, so it appears in unreviewed
           if (email.status === 'missed') {
@@ -376,6 +382,7 @@ export default function LoadHunterTab() {
       
       setMatchedLoadIds(newMatchedIds);
       setLoadDistances(newDistances);
+      setLoadHuntMap(newHuntMap);
     };
     
     if (mapboxToken && huntPlans.length > 0 && loadEmails.length > 0) {
@@ -2545,32 +2552,11 @@ export default function LoadHunterTab() {
                             >
                               <TableCell className="py-1">
                                 {(() => {
-                                  // Find which enabled hunt plan this load actually matches
-                                  const enabledHunts = huntPlans.filter(plan => plan.enabled);
-                                  
-                                  const matchingHunt = enabledHunts.find(plan => {
-                                    const loadData = extractLoadLocation(email);
-                                    
-                                    // Check distance radius if we have coordinates
-                                    if (plan.huntCoordinates && loadData.originLat && loadData.originLng) {
-                                      const distance = calculateDistance(
-                                        plan.huntCoordinates.lat,
-                                        plan.huntCoordinates.lng,
-                                        loadData.originLat,
-                                        loadData.originLng
-                                      );
-                                      
-                                      const radiusMiles = parseInt(plan.pickupRadius) || 100;
-                                      if (distance <= radiusMiles) return true;
-                                    }
-                                    
-                                    // Fallback to exact zip code matching
-                                    if (loadData.originZip && plan.zipCode) {
-                                      if (loadData.originZip === plan.zipCode) return true;
-                                    }
-                                    
-                                    return false;
-                                  });
+                                  // Use the precomputed hunt match map to find which truck hunted this load
+                                  const matchingHuntId = loadHuntMap.get(email.id);
+                                  const matchingHunt = matchingHuntId
+                                    ? huntPlans.find(plan => plan.id === matchingHuntId)
+                                    : undefined;
                                   
                                   // Only show truck info if we found a matching hunt
                                   if (matchingHunt) {
