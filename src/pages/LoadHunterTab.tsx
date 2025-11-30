@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -1617,6 +1617,44 @@ export default function LoadHunterTab() {
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Refreshing..." : "Refresh Loads"}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-7 text-xs px-2.5 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+              onClick={async () => {
+                setRefreshing(true);
+                try {
+                  // Force re-search of loads from last 30 minutes against hunt plans
+                  const enabledHunts = huntPlans.filter(h => h.enabled);
+                  if (enabledHunts.length === 0) {
+                    toast.error("No active hunt plans to match");
+                    setRefreshing(false);
+                    return;
+                  }
+                  
+                  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+                  const recentLoads = loadEmails.filter(email => {
+                    const receivedAt = new Date(email.received_at);
+                    return receivedAt >= thirtyMinutesAgo && email.status === 'new';
+                  });
+                  
+                  toast.success(`Re-checking ${recentLoads.length} loads from last 30 min against ${enabledHunts.length} active hunt(s)`);
+                  
+                  // Trigger re-evaluation by forcing state update
+                  await loadLoadEmails();
+                } catch (error) {
+                  console.error("Error refreshing hunts:", error);
+                  toast.error("Failed to refresh hunts");
+                } finally {
+                  setRefreshing(false);
+                }
+              }}
+              disabled={refreshing}
+            >
+              <Target className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh Hunts
             </Button>
             
             <Button
