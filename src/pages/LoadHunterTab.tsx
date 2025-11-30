@@ -2431,6 +2431,21 @@ export default function LoadHunterTab() {
                             expiresIn = '—';
                           }
 
+                          const rawBody = (email.body_text || email.body_html || '').toString();
+                          let pickupDisplay = '—';
+                          if (data.pickup_date || data.pickup_time) {
+                            pickupDisplay = `${data.pickup_date || ''} ${data.pickup_time || ''}`.trim();
+                          } else if (/ASAP/i.test(rawBody)) {
+                            pickupDisplay = 'ASAP';
+                          }
+
+                          let deliveryDisplay = '—';
+                          if (data.delivery_date || data.delivery_time) {
+                            deliveryDisplay = `${data.delivery_date || ''} ${data.delivery_time || ''}`.trim();
+                          } else if (/Deliver\s+Direct/i.test(rawBody)) {
+                            deliveryDisplay = 'Deliver Direct';
+                          }
+
                           return (
                             <TableRow 
                               key={email.id} 
@@ -2464,10 +2479,10 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {data.pickup_date || data.pickup_time || '—'} {data.pickup_date && data.pickup_time ? data.pickup_time : ''}
+                                  {pickupDisplay}
                                 </div>
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {data.delivery_date || data.delivery_time || '—'} {data.delivery_date && data.delivery_time ? data.delivery_time : ''}
+                                  {deliveryDisplay}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
