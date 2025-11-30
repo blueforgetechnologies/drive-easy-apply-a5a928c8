@@ -101,6 +101,8 @@ export default function LoadHunterTab() {
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
   const [editingHunt, setEditingHunt] = useState<HuntPlan | null>(null);
   const [editHuntOpen, setEditHuntOpen] = useState(false);
+  const [carriersMap, setCarriersMap] = useState<Record<string, string>>({});
+  const [payeesMap, setPayeesMap] = useState<Record<string, string>>({});
   const [huntFormData, setHuntFormData] = useState({
     planName: "",
     vehicleSize: "large-straight",
@@ -581,6 +583,7 @@ export default function LoadHunterTab() {
     loadDrivers();
     loadLoadEmails();
     loadHuntPlans();
+    loadCarriersAndPayees();
     fetchMapboxToken();
 
     // Subscribe to real-time updates for load_emails
@@ -819,6 +822,40 @@ export default function LoadHunterTab() {
       setDrivers(data || []);
     } catch (error: any) {
       console.error("Failed to load drivers", error);
+    }
+  };
+
+  const loadCarriersAndPayees = async () => {
+    try {
+      // Load carriers
+      const { data: carriersData, error: carriersError } = await supabase
+        .from("carriers")
+        .select("id, name")
+        .in("status", ["active", "Active", "ACTIVE"]);
+
+      if (!carriersError && carriersData) {
+        const cMap: Record<string, string> = {};
+        carriersData.forEach((carrier: any) => {
+          cMap[carrier.id] = carrier.name;
+        });
+        setCarriersMap(cMap);
+      }
+
+      // Load payees
+      const { data: payeesData, error: payeesError } = await supabase
+        .from("payees")
+        .select("id, name")
+        .in("status", ["active", "Active", "ACTIVE"]);
+
+      if (!payeesError && payeesData) {
+        const pMap: Record<string, string> = {};
+        payeesData.forEach((payee: any) => {
+          pMap[payee.id] = payee.name;
+        });
+        setPayeesMap(pMap);
+      }
+    } catch (error: any) {
+      console.error("Failed to load carriers/payees", error);
     }
   };
 
@@ -1621,7 +1658,7 @@ export default function LoadHunterTab() {
                         {vehicle.asset_type || "Asset Type"}
                       </div>
                       <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
-                        {vehicle.carrier || "No Carrier"}
+                        {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
@@ -2483,10 +2520,40 @@ export default function LoadHunterTab() {
                               onClick={() => setSelectedEmailForDetail(email)}
                             >
                               <TableCell className="py-1">
-                                <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
-                                <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                  {email.from_name || email.from_email.split('@')[0]}
-                                </div>
+                                {(() => {
+                                  // Find which hunt plan this load matches
+                                  const matchingHunt = huntPlans.find(plan => {
+                                    const loadLocation = extractLoadLocation(email);
+                                    return plan.enabled && matchedLoadIds.has(email.id);
+                                  });
+                                  
+                                  if (matchingHunt) {
+                                    const vehicle = vehicles.find(v => v.id === matchingHunt.vehicleId);
+                                    if (vehicle) {
+                                      const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
+                                      const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
+                                      return (
+                                        <div>
+                                          <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
+                                            {vehicle.vehicle_number || "N/A"} - {driverName}
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                            {carrierName}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  }
+                                  
+                                  return (
+                                    <div>
+                                      <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
+                                      <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                        {email.from_name || email.from_email.split('@')[0]}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1 whitespace-nowrap">
