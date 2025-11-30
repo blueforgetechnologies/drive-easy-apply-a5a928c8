@@ -393,7 +393,7 @@ const LoadEmailDetail = ({
                     <div className="space-y-3">
                       <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">To:</div>
-                        <div className="text-muted-foreground">{email.from_email || 'sett@getfreightllc.com'}</div>
+                        <div className="text-muted-foreground">{email.from_email || 'No email'}</div>
                       </div>
                       
                       <div className="bg-muted/50 p-2 rounded text-xs">
