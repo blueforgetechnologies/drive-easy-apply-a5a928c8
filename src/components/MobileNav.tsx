@@ -65,7 +65,7 @@ export default function MobileNav({ alertCount, integrationAlertCount, unreviewe
                 <Icon className="h-5 w-5" />
                 {item.badge && item.badge > 0 && (
                   <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
-                    {item.badge > 9 ? '9+' : item.badge}
+                    {item.value === 'load-hunter' ? item.badge : item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
               </div>
