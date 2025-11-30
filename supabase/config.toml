@@ -60,3 +60,6 @@ verify_jwt = false
 [functions.test-ai]
 verify_jwt = true
 
+[functions.ai-update-customers]
+verify_jwt = true
+
