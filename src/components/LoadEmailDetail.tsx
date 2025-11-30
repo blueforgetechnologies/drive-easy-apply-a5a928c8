@@ -229,12 +229,12 @@ const LoadEmailDetail = ({
                       <div><span className="inline-block w-3 text-green-600">+</span>{data.loaded_miles ? `${data.loaded_miles}mi` : '—'}</div>
                     </div>
                     <div>
-                      <div>SPRINTER</div>
-                      <div>0</div>
+                      <div>{data.vehicle_type || 'SPRINTER'}</div>
+                      <div>{data.weight || '0'}</div>
                     </div>
                     <div>
-                      <div>0</div>
-                      <div>0L x 0W x 0H</div>
+                      <div>{data.pieces || '0'}</div>
+                      <div>{data.dimensions || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
@@ -258,7 +258,7 @@ const LoadEmailDetail = ({
                               minute: '2-digit',
                               timeZoneName: 'short',
                             })
-                          : (data.expires_datetime || data.expires_at || data.expires || '∞')}
+                          : (data.expires_datetime || '∞')}
                       </span>
                     </span>
                     <span className="font-semibold">Posted Rate:</span>{' '}
