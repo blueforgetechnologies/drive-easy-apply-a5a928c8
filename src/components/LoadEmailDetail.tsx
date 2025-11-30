@@ -277,7 +277,7 @@ const LoadEmailDetail = ({
                 <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Original Post</div>
                   <div className="text-red-600 text-[10px]">
-                    Note: CONFIRM MC, CONFIRM ETA TO PICK, CONFIRM TRUCK DIMS
+                    {data.notes ? `Note: ${data.notes}` : 'Note:'}
                   </div>
                   <div className="text-right space-x-3">
                     <span>
@@ -303,10 +303,10 @@ const LoadEmailDetail = ({
                 {/* VEHICLE */}
                 <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1 text-[11px] items-center">
                   <div className="font-semibold text-blue-600">Vehicle</div>
-                  <div className="text-gray-500">Note:</div>
+                  <div className="text-gray-500">{vehicle?.notes ? `Note: ${vehicle.notes}` : 'Note:'}</div>
                   <div className="flex items-center justify-end gap-2 leading-tight">
                     <span>
-                      <span className="font-semibold">Vehicle Size:</span> CARGO VAN
+                      <span className="font-semibold">Vehicle Size:</span> {data.vehicle_type || 'N/A'}
                     </span>
                     <Button 
                       className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold"
