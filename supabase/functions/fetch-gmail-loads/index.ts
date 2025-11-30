@@ -176,6 +176,15 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   if (pickupMatch) {
     parsed.pickup_date = pickupMatch[1];
     parsed.pickup_time = pickupMatch[2];
+  } else {
+    // Look for special pickup instructions like "ASAP" when no date/time found
+    const pickupSpecialMatch = cleanText.match(/Pick.*?Up[:\s]*([A-Za-z\s]+?)(?:\s*Delivery|\s*Indianapolis|\s*Chicago|$)/i);
+    if (pickupSpecialMatch) {
+      const specialValue = pickupSpecialMatch[1].trim();
+      if (specialValue && specialValue.length < 30 && /^[A-Za-z\s]+$/.test(specialValue)) {
+        parsed.pickup_time = specialValue;
+      }
+    }
   }
 
   // Extract delivery date and time from body
@@ -183,6 +192,15 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   if (deliveryMatch) {
     parsed.delivery_date = deliveryMatch[1];
     parsed.delivery_time = deliveryMatch[2];
+  } else {
+    // Look for special delivery instructions like "Deliver Direct" when no date/time found
+    const deliverySpecialMatch = cleanText.match(/Delivery[:\s]*([A-Za-z\s]+?)(?:\s*Rate|\s*Contact|\s*Expires|$)/i);
+    if (deliverySpecialMatch) {
+      const specialValue = deliverySpecialMatch[1].trim();
+      if (specialValue && specialValue.length < 30 && /^[A-Za-z\s]+$/.test(specialValue)) {
+        parsed.delivery_time = specialValue;
+      }
+    }
   }
 
   // Extract rate if available
