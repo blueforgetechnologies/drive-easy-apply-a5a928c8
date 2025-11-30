@@ -2769,11 +2769,14 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 {(() => {
+                                  // Get broker info from parsed data
+                                  const brokerName = data.broker || data.customer || email.from_name || email.from_email.split('@')[0];
+                                  
                                   if (activeFilter === 'unreviewed' && match) {
                                     // For unreviewed (matches), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
                                     if (vehicle) {
-                                      const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
+                                      const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                       return (
                                         <div>
@@ -2781,7 +2784,7 @@ export default function LoadHunterTab() {
                                             {vehicle.vehicle_number || "N/A"} - {driverName}
                                           </div>
                                           <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                            {carrierName}
+                                            {carrierName} • {brokerName}
                                           </div>
                                         </div>
                                       );
@@ -2796,7 +2799,7 @@ export default function LoadHunterTab() {
                                     if (matchingHunt) {
                                       const vehicle = vehicles.find(v => v.id === matchingHunt.vehicleId);
                                       if (vehicle) {
-                                        const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
+                                        const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
                                         const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                         return (
                                           <div>
@@ -2804,7 +2807,7 @@ export default function LoadHunterTab() {
                                               {vehicle.vehicle_number || "N/A"} - {driverName}
                                             </div>
                                             <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                              {carrierName}
+                                              {carrierName} • {brokerName}
                                             </div>
                                           </div>
                                         );
@@ -2812,12 +2815,12 @@ export default function LoadHunterTab() {
                                     }
                                   }
                                   
-                                  // Show Available if no match
+                                  // Show Available if no match, with broker info
                                   return (
                                     <div>
                                       <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
                                       <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                        {email.from_name || email.from_email.split('@')[0]}
+                                        Broker: {brokerName}
                                       </div>
                                     </div>
                                   );
