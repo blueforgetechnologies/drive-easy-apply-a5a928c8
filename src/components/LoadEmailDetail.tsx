@@ -29,10 +29,21 @@ const LoadEmailDetail = ({
   const destCity = data.destination_city || "MEMPHIS";
   const destState = data.destination_state || "TN";
 
+  // Debug logging
+  console.log('🔍 LoadEmailDetail - match:', match);
+  console.log('🔍 LoadEmailDetail - vehicles count:', vehicles?.length);
+  console.log('🔍 LoadEmailDetail - drivers count:', drivers?.length);
+  console.log('🔍 LoadEmailDetail - carriersMap:', carriersMap);
+
   // Get actual vehicle, driver, carrier, and broker data
-  const vehicle = match && vehicles.find((v: any) => v.id === match.vehicle_id);
-  const driver1 = vehicle?.driver_1_id ? drivers.find((d: any) => d.id === vehicle.driver_1_id) : null;
-  const driver2 = vehicle?.driver_2_id ? drivers.find((d: any) => d.id === vehicle.driver_2_id) : null;
+  const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
+  console.log('🔍 LoadEmailDetail - found vehicle:', vehicle);
+  
+  const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
+  const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
+  console.log('🔍 LoadEmailDetail - driver1:', driver1);
+  console.log('🔍 LoadEmailDetail - driver2:', driver2);
+  
   const driver1Name = driver1?.personal_info?.firstName && driver1?.personal_info?.lastName 
     ? `${driver1.personal_info.firstName} ${driver1.personal_info.lastName}` 
     : null;
@@ -40,6 +51,8 @@ const LoadEmailDetail = ({
     ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` 
     : null;
   const carrierName = vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null;
+  console.log('🔍 LoadEmailDetail - carrierName:', carrierName);
+  
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
   // Mock vehicle data for sidebar (not currently used)
