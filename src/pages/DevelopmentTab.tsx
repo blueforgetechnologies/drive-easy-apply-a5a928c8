@@ -264,6 +264,81 @@ export default function DevelopmentTab() {
         </CardContent>
       </Card>
 
+      {/* Parsed Email Fields (DEV) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code className="h-5 w-5" />
+            Parsed Email Fields (what we currently extract)
+          </CardTitle>
+          <CardDescription>
+            Human-readable reference of all fields we parse from the original Sylectus email into <code>parsed_data</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div>
+            <h4 className="font-semibold mb-1">Route & Vehicle</h4>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><strong>vehicle_type</strong> – VAN / CARGO VAN / STRAIGHT, taken from the very beginning of the subject line.</li>
+              <li><strong>origin_city</strong> / <strong>origin_state</strong> – pickup city & state (e.g. Morrisville, NC) from “from … to …”.</li>
+              <li><strong>destination_city</strong> / <strong>destination_state</strong> – delivery city & state from the same subject route.</li>
+              <li><strong>loaded_miles</strong> – posted loaded miles (e.g. 318 miles).</li>
+              <li><strong>weight</strong> – load weight in pounds from the subject (e.g. 0 lbs).</li>
+              <li><strong>pieces</strong> – number of pieces / pallets, from the HTML “Pieces” line or text fallbacks.</li>
+              <li><strong>dimensions</strong> – L x W x H measurements converted to “LxWxH”.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-1">Timing</h4>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><strong>pickup_date</strong> / <strong>pickup_time</strong> – second line in the pickup leginfo box or text fallback. Can be a real date/time or instructions like “ASAP”.</li>
+              <li><strong>delivery_date</strong> / <strong>delivery_time</strong> – second line in the delivery leginfo box or text fallback.</li>
+              <li><strong>expires_datetime</strong> – raw “Expires” value as shown in the email (MM/DD/YY HH:MM TZ).</li>
+              <li><strong>expires_at</strong> – ISO timestamp version of expires_datetime with timezone applied (used for filtering).</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-1">Pricing</h4>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><strong>rate</strong> – the dollar amount after the word rate/pay anywhere in the text.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-1">Broker / Customer</h4>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><strong>customer</strong> – “Posted by …” name from the subject.</li>
+              <li><strong>broker</strong> – same as customer (poster name).</li>
+              <li><strong>broker_name</strong> – value after “Broker Name:” in the details block.</li>
+              <li><strong>broker_company</strong> – value after “Broker Company:”.</li>
+              <li><strong>broker_phone</strong> – value after “Broker Phone:”.</li>
+              <li><strong>broker_email</strong> – comes from one of three places, in this order:
+                <ul className="list-disc list-inside ml-5 space-y-0.5">
+                  <li><code>&lt;strong&gt;Email:&lt;/strong&gt; some@email.com</code> text,</li>
+                  <li>or inside the email link: <code>&lt;a&gt;some@email.com&lt;/a&gt;</code>,</li>
+                  <li>or, if not found in HTML, the email inside parentheses in the subject line.</li>
+                </ul>
+              </li>
+              <li><strong>order_number</strong> – numeric order ID from “Bid on Order #123456”.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-1">Notes & Extras</h4>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><strong>notes</strong> – combined text from all &lt;p&gt; tags inside the “notes-section” block.</li>
+            </ul>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            If you see something in the original email that is not listed here (for example an extra field in the broker block),
+            it means we are not parsing it yet and should add it to <code>parseLoadEmail</code>.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Database Tables */}
       <Card>
         <CardHeader>
