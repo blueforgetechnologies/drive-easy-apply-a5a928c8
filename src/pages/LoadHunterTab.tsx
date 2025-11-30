@@ -799,8 +799,7 @@ export default function LoadHunterTab() {
       const { data, error } = await supabase
         .from("load_emails")
         .select("*")
-        .order("received_at", { ascending: false })
-        .limit(50);
+        .order("received_at", { ascending: false });
 
       if (error) throw error;
       setLoadEmails(data || []);
