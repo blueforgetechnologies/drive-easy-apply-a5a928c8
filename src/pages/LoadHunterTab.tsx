@@ -2561,10 +2561,11 @@ export default function LoadHunterTab() {
                             >
                               <TableCell className="py-1">
                                 {(() => {
-                                  // Try to find a matching enabled hunt plan for this load
-                                  const matchingHunt = huntPlans.find(plan => {
-                                    if (!plan.enabled) return false;
-                                    
+                                  // Prefer using the precomputed matchedLoadIds set to know if this load is hunted
+                                  const enabledHunts = huntPlans.filter(plan => plan.enabled);
+                                  
+                                  // Try to find a matching enabled hunt plan for this load based on location
+                                  let matchingHunt = enabledHunts.find(plan => {
                                     const loadData = extractLoadLocation(email);
                                     
                                     // Check distance radius if we have coordinates
@@ -2588,8 +2589,14 @@ export default function LoadHunterTab() {
                                     return false;
                                   });
                                   
+                                  // If our fresh location check didn't find a plan, but this load is known
+                                  // to be a match (in matchedLoadIds), fall back to the first enabled hunt.
+                                  if (!matchingHunt && matchedLoadIds.has(email.id) && enabledHunts.length > 0) {
+                                    matchingHunt = enabledHunts[0];
+                                  }
+                                  
                                   if (matchingHunt) {
-                                    const vehicle = vehicles.find(v => v.id === matchingHunt.vehicleId);
+                                    const vehicle = vehicles.find(v => v.id === matchingHunt!.vehicleId);
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
