@@ -142,6 +142,12 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.avail_ft = availMatch[1];
   }
 
+  // Extract expiration time from body
+  const expiresMatch = cleanText.match(/expires?.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[A-Z]{2,3}T?)/i);
+  if (expiresMatch) {
+    parsed.expires_datetime = `${expiresMatch[1]} ${expiresMatch[2]}`;
+  }
+
   return parsed;
 }
 

@@ -2233,13 +2233,6 @@ export default function LoadHunterTab() {
                         {filteredEmails
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((email) => {
-                          console.log('LoadHunter expires debug', {
-                            id: email.id,
-                            expires_at: email.expires_at,
-                            parsed_expires: email.parsed_data?.expires,
-                            parsed_expires_at: email.parsed_data?.expires_at,
-                            parsed_expires_datetime: email.parsed_data?.expires_datetime,
-                          });
                           const data = email.parsed_data || {};
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
@@ -2255,7 +2248,8 @@ export default function LoadHunterTab() {
 
                           // Calculate expiration time
                           let expiresIn = '';
-                          const parsedExpires = (data.expires_datetime || data.expires_at || data.expires) as string | undefined;
+                          const parsedExpires = data.expires_datetime as string | undefined;
+                          
                           if (email.expires_at) {
                             const expiresDate = new Date(email.expires_at);
                             const timeUntilExpiration = expiresDate.getTime() - now.getTime();
@@ -2278,11 +2272,9 @@ export default function LoadHunterTab() {
                                 expiresIn = 'Expired';
                               }
                             } else {
-                              // Fallback to showing the raw parsed expiration text if it's not a valid Date
-                              expiresIn = parsedExpires;
+                              expiresIn = '∞';
                             }
                           } else {
-                            // No expiration time - show infinity symbol
                             expiresIn = '∞';
                           }
 
