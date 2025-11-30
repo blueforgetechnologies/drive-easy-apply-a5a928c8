@@ -284,6 +284,23 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     }
   }
 
+  // Extract notes from HTML structure (notes-section class)
+  const notesMatch = bodyText.match(/<div[^>]*class=['"]notes-section['"][^>]*>([\s\S]*?)<\/div>/i);
+  if (notesMatch) {
+    const notesContent = notesMatch[1];
+    // Extract text from <p> tags, join with comma
+    const notesPTags = notesContent.match(/<p[^>]*>(.*?)<\/p>/gi);
+    if (notesPTags && notesPTags.length > 0) {
+      const notesText = notesPTags
+        .map(tag => tag.replace(/<[^>]*>/g, '').trim())
+        .filter(text => text.length > 0)
+        .join(', ');
+      if (notesText) {
+        parsed.notes = notesText;
+      }
+    }
+  }
+
       return parsed;
 }
 
