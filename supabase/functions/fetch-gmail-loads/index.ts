@@ -124,23 +124,24 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.rate = parseFloat(rateMatch[1].replace(/,/g, ''));
   }
 
-  // Extract pieces
-  const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces|pcs|pallets)/i);
+  // Extract pieces (supports: pieces, pcs, pallets, plts, skids)
+  const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces?|pcs?|pallets?|plts?|plt|skids?)/i);
   if (piecesMatch) {
     parsed.pieces = parseInt(piecesMatch[1]);
   }
 
-  // Extract dimensions
-  const dimensionsMatch = cleanText.match(/dimensions?.*?(\d+[xX]\d+[xX]\d+)/i);
-  if (dimensionsMatch) {
-    parsed.dimensions = dimensionsMatch[1];
+  // Extract dimensions (normalizes variants like 48 x 40 x 72, 48X40X72, with quotes)
+  const dimsSectionMatch = cleanText.match(/dimensions?[:\s-]*([0-9"' xX]+)/i);
+  if (dimsSectionMatch) {
+    const dimsInner = dimsSectionMatch[1];
+    const dimsPattern = /(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+)/;
+    const innerMatch = dimsInner.match(dimsPattern);
+    if (innerMatch) {
+      parsed.dimensions = `${innerMatch[1]}x${innerMatch[2]}x${innerMatch[3]}`;
+    }
   }
 
   // Extract available footage
-  const availMatch = cleanText.match(/(\d+)\s*(?:ft|feet).*?avail/i);
-  if (availMatch) {
-    parsed.avail_ft = availMatch[1];
-  }
 
       // Extract expiration time from body
       const expiresMatch = cleanText.match(/expires?.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[A-Z]{2,3}T?)/i);
