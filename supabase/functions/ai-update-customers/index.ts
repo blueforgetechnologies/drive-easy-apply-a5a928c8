@@ -22,7 +22,8 @@ serve(async (req) => {
     const { data: emails, error: emailsError } = await supabase
       .from("load_emails")
       .select("*")
-      .order("received_at", { ascending: false });
+      .order("received_at", { ascending: false })
+      .limit(100); // Process only 100 most recent emails to avoid timeout
 
     if (emailsError) throw emailsError;
 
@@ -31,8 +32,12 @@ serve(async (req) => {
     const processedCustomers = new Map();
     let created = 0;
     let updated = 0;
+    let processed = 0;
+    let errors = 0;
 
     for (const email of emails || []) {
+      processed++;
+      console.log(`Processing email ${processed}/${emails?.length}...`);
       if (!email.body_html && !email.parsed_data) continue;
 
       const emailContent = email.body_html || JSON.stringify(email.parsed_data);
@@ -86,14 +91,24 @@ serve(async (req) => {
       });
 
       if (!aiResponse.ok) {
-        console.error(`AI error for email ${email.id}:`, await aiResponse.text());
+        const errorText = await aiResponse.text();
+        console.error(`AI error for email ${email.id}:`, errorText);
+        errors++;
+        
+        if (aiResponse.status === 429) {
+          console.log("Rate limit hit, stopping processing");
+          break;
+        }
         continue;
       }
 
       const aiData = await aiResponse.json();
       const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
       
-      if (!toolCall) continue;
+      if (!toolCall) {
+        console.log(`No data extracted from email ${email.id}`);
+        continue;
+      }
 
       const customerData = JSON.parse(toolCall.function.arguments);
       
@@ -161,13 +176,15 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Customer update complete: ${created} created, ${updated} updated`);
+    console.log(`Customer update complete: ${created} created, ${updated} updated, ${errors} errors`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         created,
         updated,
+        processed,
+        errors,
         total: processedCustomers.size
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

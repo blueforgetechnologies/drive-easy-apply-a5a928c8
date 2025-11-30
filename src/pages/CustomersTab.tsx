@@ -49,7 +49,10 @@ export default function CustomersTab() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`AI update complete: ${data.created} created, ${data.updated} updated`);
+      toast.success(`AI update complete: ${data.created} created, ${data.updated} updated from ${data.processed} emails`);
+      if (data.errors > 0) {
+        toast.warning(`${data.errors} emails had parsing errors`);
+      }
       loadData();
     },
     onError: (error: any) => {
