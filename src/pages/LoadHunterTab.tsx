@@ -461,11 +461,8 @@ export default function LoadHunterTab() {
     
     // Apply hunt filtering for unreviewed status
     if (activeFilter === 'unreviewed') {
-      // Only show loads with 'new' status that match hunt criteria
-      if (email.status === 'new') {
-        return loadMatchesHunt(email);
-      }
-      return false;
+      // Show all loads with 'new' status regardless of hunt matching
+      return email.status === 'new';
     }
     
     if (activeFilter === 'missed') {
@@ -476,7 +473,7 @@ export default function LoadHunterTab() {
     return true; // Default for other filters
   });
 
-  // Count emails by status (with hunt filtering applied for unreviewed)
+  // Count emails by status
   const unreviewedCount = loadEmails.filter(e => {
     const emailTime = new Date(e.received_at);
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
@@ -486,12 +483,8 @@ export default function LoadHunterTab() {
       return false;
     }
     
-    // Only count 'new' status loads that match hunt criteria
-    if (e.status === 'new') {
-      return loadMatchesHunt(e);
-    }
-    
-    return false;
+    // Count all 'new' status loads
+    return e.status === 'new';
   }).length;
   const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
