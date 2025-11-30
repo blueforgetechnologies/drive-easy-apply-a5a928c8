@@ -142,13 +142,22 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.avail_ft = availMatch[1];
   }
 
-  // Extract expiration time from body
-  const expiresMatch = cleanText.match(/expires?.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[A-Z]{2,3}T?)/i);
-  if (expiresMatch) {
-    parsed.expires_datetime = `${expiresMatch[1]} ${expiresMatch[2]}`;
-  }
+      // Extract expiration time from body
+      const expiresMatch = cleanText.match(/expires?.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[A-Z]{2,3}T?)/i);
+      if (expiresMatch) {
+        parsed.expires_datetime = `${expiresMatch[1]} ${expiresMatch[2]}`;
+        // Convert to ISO timestamp for expires_at column
+        try {
+          const expiresDate = new Date(`${expiresMatch[1]} ${expiresMatch[2]}`);
+          if (!isNaN(expiresDate.getTime())) {
+            parsed.expires_at = expiresDate.toISOString();
+          }
+        } catch (e) {
+          console.error('Error parsing expires date:', e);
+        }
+      }
 
-  return parsed;
+      return parsed;
 }
 
 serve(async (req) => {
@@ -250,6 +259,7 @@ serve(async (req) => {
               body_text: bodyText.substring(0, 5000), // Short text preview for parsing/search
               received_at: receivedDate.toISOString(),
               parsed_data: parsedData,
+              expires_at: parsedData.expires_at || null,
               status: 'new',
             });
 

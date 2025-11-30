@@ -2385,8 +2385,8 @@ export default function LoadHunterTab() {
                                 <div className="text-[11px] leading-tight whitespace-nowrap">{data.weight ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.pieces || '—'}</div>
-                                <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{data.dimensions || 'Not Specified'}</div>
+                                <div className="text-[11px] leading-tight whitespace-nowrap">{data?.pieces || '—'}</div>
+                                <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions || 'Not Specified'}</div>
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
