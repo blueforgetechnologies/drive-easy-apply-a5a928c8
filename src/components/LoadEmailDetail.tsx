@@ -25,7 +25,7 @@ const LoadEmailDetail = ({
 }: LoadEmailDetailProps) => {
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
-  const [showBidCard, setShowBidCard] = useState(false);
+  const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
   const data = email.parsed_data || {};
   
   const originCity = data.origin_city || "ATLANTA";
@@ -325,7 +325,7 @@ const LoadEmailDetail = ({
                       onClick={() => {
                         const finalBid = bidAmount || data.rate?.toString() || "3000";
                         setBidAmount(finalBid);
-                        setShowBidCard(true);
+                        setShowBidCardOnMap(true);
                       }}
                       className="bg-green-600 hover:bg-green-700 h-9 px-6 text-sm font-semibold shadow-sm"
                     >
@@ -374,88 +374,76 @@ const LoadEmailDetail = ({
               />
             </Card>
             
-            {/* Floating Bid Card - Appears on right side over map */}
-            {showBidCard && !showOriginalEmail && (
-              <div className="absolute right-4 top-4 w-[360px] z-40 animate-in slide-in-from-right duration-300">
-                <Card className="p-3 shadow-2xl border-2 border-green-500 bg-background">
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b">
-                    <h3 className="text-sm font-semibold">Bid Set Successfully</h3>
+            {/* Original Email Card - Appears on right side over map when Set Bid is clicked */}
+            {showBidCardOnMap && !showOriginalEmail && (
+              <div className="absolute right-4 top-4 w-[500px] max-h-[calc(100%-2rem)] z-40 animate-in slide-in-from-right duration-300">
+                <Card className="shadow-2xl border-2 bg-background flex flex-col max-h-full">
+                  <div className="sticky top-0 bg-background border-b p-3 flex items-center justify-between z-10 flex-shrink-0">
+                    <h3 className="text-sm font-semibold">Original Email</h3>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
-                      onClick={() => setShowBidCard(false)}
+                      onClick={() => setShowBidCardOnMap(false)}
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  
-                  {/* Average/Bid/Booked Row */}
-                  <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
-                    <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Average</div>
-                      <div className="text-sm font-semibold">—</div>
-                    </div>
-                    <div className="bg-green-50 -mx-1 px-2 py-1 rounded border border-green-200">
-                      <div className="text-[11px] text-muted-foreground mb-1">Bid</div>
-                      <div className="text-lg font-bold text-green-600">${bidAmount ? parseInt(bidAmount).toLocaleString() : '3,000'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Booked</div>
-                      <div className="text-sm font-semibold">N/A</div>
-                    </div>
-                  </div>
-
-                  {/* [$/mi] Label */}
-                  <div className="text-xs text-muted-foreground text-right mb-2">[$/mi]</div>
-
-                  {/* Miles and Costs */}
-                  <div className="space-y-2 mb-3 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Loaded Miles</span>
-                      <div className="flex gap-4 items-center">
-                        <span className="font-semibold">{data.loaded_miles || 862}</span>
-                        <span className="text-blue-600 font-semibold w-14 text-right">$3.48</span>
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <div className="space-y-3">
+                      <div className="bg-muted/50 p-2 rounded text-xs">
+                        <div className="font-semibold mb-1">To:</div>
+                        <div className="text-muted-foreground">{email.from_email || 'sett@getfreightllc.com'}</div>
+                      </div>
+                      
+                      <div className="bg-muted/50 p-2 rounded text-xs">
+                        <div className="font-semibold mb-1">CC:</div>
+                        <div className="text-muted-foreground">—</div>
+                      </div>
+                      
+                      <div className="bg-muted/50 p-2 rounded text-xs">
+                        <div className="font-semibold mb-1">Subject:</div>
+                        <div className="text-muted-foreground">{email.subject || 'No subject'}</div>
+                      </div>
+                      
+                      <div className="border rounded p-3 text-xs space-y-2">
+                        <p>Hello ,</p>
+                        <p>I have a 24' Large Straight.</p>
+                        <p className="text-blue-600">Please let me know if I can help on this load:</p>
+                        <p className="text-blue-600">Order Number: {data.order_number || '85174'} [{originCity} to {destCity}]</p>
+                        
+                        <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">
+                          <div><strong>We have:</strong> {data.equipment_details || '[10 straps] [2 load bars] [2 horizontal E-Tracks] [10 blankets]'}</div>
+                          <div><strong>Truck Dimension:</strong> {data.truck_dimensions || 'L x W x H: ( 288 x 97 x 102 ) inches'}</div>
+                          <div><strong>Door:</strong> {data.door_dimensions || 'Roll Up W x H ( 94 x 96 ) inches'}</div>
+                          <div><strong>Features:</strong> {data.features || '[Dock High] [Air Ride] [Lift Gate] [Trailer Tracking] [Pallet Jack]'}</div>
+                        </div>
+                        
+                        <div className="bg-blue-50 p-2 rounded mt-2">
+                          <p>Our truck is nearby ( {emptyDriveDistance ? `${Math.round(emptyDriveDistance)}mi` : '252mi'} away ). We can pick up on time and deliver as scheduled.</p>
+                        </div>
+                        
+                        <div className="bg-slate-50 p-2 rounded">
+                          <p>Driver is U.S. citizen with birth certificate in hand. Clean criminal record.</p>
+                        </div>
+                        
+                        <div className="bg-blue-50 p-2 rounded">
+                          <p>Due to increased fuel costs, this bid includes a $ {data.fuel_surcharge || '375.00'} fuel surcharge.</p>
+                        </div>
+                        
+                        <div className="flex gap-2 mt-3">
+                          <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-xs h-8">
+                            Email Bid
+                          </Button>
+                          <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs h-8">
+                            Mark as Place Bid
+                          </Button>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs h-8">
+                            Book Load
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Total Miles</span>
-                      <div className="flex gap-4 items-center">
-                        <span className="font-semibold">{((data.loaded_miles || 862) + (emptyDriveDistance || 252))}</span>
-                        <span className="text-blue-600 font-semibold w-14 text-right">$2.69</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b">
-                      <span className="font-medium">Fuel, Tolls and Driver</span>
-                      <div className="flex gap-4 items-center">
-                        <span className="font-semibold">$0.00</span>
-                        <span className="text-blue-600 font-semibold w-14 text-right">$0.00</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bid Display */}
-                  <div className="flex items-center justify-center mb-3 pb-3 border-b">
-                    <div className="flex items-center gap-1 bg-green-600 text-white rounded-full h-12 px-6">
-                      <span className="text-2xl font-bold">$</span>
-                      <span className="text-3xl font-bold">{bidAmount || '3000'}</span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="destructive" size="sm" className="h-9 text-xs font-medium">
-                      Skip
-                    </Button>
-                    <Button size="sm" className="h-9 text-xs bg-blue-500 hover:bg-blue-600 font-medium">
-                      Undecided
-                    </Button>
-                    <Button size="sm" className="h-9 text-xs bg-blue-500 hover:bg-blue-600 font-medium col-span-2">
-                      Mark Unreviewed
-                    </Button>
-                    <Button size="sm" className="h-9 text-xs bg-blue-500 hover:bg-blue-600 font-medium col-span-2">
-                      Wait
-                    </Button>
                   </div>
                 </Card>
               </div>
