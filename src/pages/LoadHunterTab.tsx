@@ -2433,42 +2433,44 @@ export default function LoadHunterTab() {
 
                           const rawBody = (email.body_text || email.body_html || '').toString();
                           const cleanBody = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+
+                          const sanitizeDisplay = (value: string): string => {
+                            const v = (value || '').trim();
+                            if (!v) return '—';
+                            // Filter out CSS-like noise such as "box > p ," etc.
+                            if (/box\s*>\s*p/i.test(v)) return '—';
+                            // If it has at least one letter or digit, keep it, otherwise treat as empty
+                            if (!/[A-Za-z0-9]/.test(v)) return '—';
+                            return v.slice(0, 40);
+                          };
                           
-                          let pickupDisplay = '—';
+                          let pickupDisplay = '';
                           if (data.pickup_date || data.pickup_time) {
-                            pickupDisplay = `${data.pickup_date || ''} ${data.pickup_time || ''}`.trim();
+                            pickupDisplay = `${data.pickup_date || ''} ${data.pickup_time || ''}`;
                           } else {
-                            // Extract ANY text after Pick-Up keyword
-                            const pickupRegex = /Pick[-\s]*Up[:\s]*([^\n\r<]{3,50}?)(?:\s*Delivery|\s*Indianapolis|\s*Chicago|\s*Location|$)/i;
+                            const pickupRegex = /Pick[-\s]*Up[:\s]*([^\n\r<]{3,50}?)(?:\s*Delivery|\s*Location|$)/i;
                             const pickupMatch = cleanBody.match(pickupRegex);
                             if (pickupMatch) {
-                              const extracted = pickupMatch[1].trim();
-                              // Clean up common artifacts
-                              pickupDisplay = extracted
+                              pickupDisplay = pickupMatch[1]
                                 .replace(/^\s*[:\-]\s*/, '')
-                                .replace(/\s*(Delivery|Location).*$/i, '')
-                                .trim()
-                                .slice(0, 40);
+                                .replace(/\s*(Delivery|Location).*$/i, '');
                             }
                           }
+                          pickupDisplay = sanitizeDisplay(pickupDisplay);
 
-                          let deliveryDisplay = '—';
+                          let deliveryDisplay = '';
                           if (data.delivery_date || data.delivery_time) {
-                            deliveryDisplay = `${data.delivery_date || ''} ${data.delivery_time || ''}`.trim();
+                            deliveryDisplay = `${data.delivery_date || ''} ${data.delivery_time || ''}`;
                           } else {
-                            // Extract ANY text after Delivery keyword
                             const deliveryRegex = /Delivery[:\s]*([^\n\r<]{3,50}?)(?:\s*Rate|\s*Contact|\s*Expires|\s*Location|$)/i;
                             const deliveryMatch = cleanBody.match(deliveryRegex);
                             if (deliveryMatch) {
-                              const extracted = deliveryMatch[1].trim();
-                              // Clean up common artifacts
-                              deliveryDisplay = extracted
+                              deliveryDisplay = deliveryMatch[1]
                                 .replace(/^\s*[:\-]\s*/, '')
-                                .replace(/\s*(Rate|Contact|Expires|Location).*$/i, '')
-                                .trim()
-                                .slice(0, 40);
+                                .replace(/\s*(Rate|Contact|Expires|Location).*$/i, '');
                             }
                           }
+                          deliveryDisplay = sanitizeDisplay(deliveryDisplay);
 
                           return (
                             <TableRow 
