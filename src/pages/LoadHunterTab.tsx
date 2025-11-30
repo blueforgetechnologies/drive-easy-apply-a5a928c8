@@ -93,6 +93,7 @@ export default function LoadHunterTab() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [loadEmails, setLoadEmails] = useState<any[]>([]);
+  const [loadMatches, setLoadMatches] = useState<any[]>([]); // Store all matches from database
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -301,7 +302,7 @@ export default function LoadHunterTab() {
     return false;
   };
 
-  // Effect to search through loads when hunts change and persist matches to database
+  // Effect to search through loads when hunts change and persist ALL matches to database
   useEffect(() => {
     const searchLoadsForHunts = async () => {
       const enabledHunts = huntPlans.filter(h => h.enabled);
@@ -312,7 +313,7 @@ export default function LoadHunterTab() {
         return;
       }
       
-      // Consider all loads in "new" or "missed" status, regardless of age
+      // Consider all loads in "new" or "missed" status
       const candidateLoads = loadEmails.filter(email =>
         email.status === 'new' || email.status === 'missed'
       );
@@ -321,15 +322,14 @@ export default function LoadHunterTab() {
       const newDistances = new Map<string, number>();
       const newHuntMap = new Map<string, string>();
       
-      // Check each candidate load against hunt criteria
+      // Check each load against ALL hunt plans and create matches for ALL that match
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
         
-        // Use the first enabled hunt's coordinates as the "truck location" for distance display
+        // Use first hunt's coordinates for distance display
         const primaryHunt = enabledHunts[0];
         if (primaryHunt?.huntCoordinates) {
           const { originLat, originLng } = loadData;
-          
           if (originLat && originLng) {
             const distance = calculateDistance(
               primaryHunt.huntCoordinates.lat,
@@ -341,41 +341,43 @@ export default function LoadHunterTab() {
           }
         }
         
-        // Find the first hunt this load matches using the shared matching logic
-        const matchingHunt = enabledHunts.find(hunt => doesLoadMatchHunt(loadData, hunt));
-        if (matchingHunt) {
+        // Find ALL hunts that match this load (not just the first)
+        const matchingHunts = enabledHunts.filter(hunt => doesLoadMatchHunt(loadData, hunt));
+        
+        if (matchingHunts.length > 0) {
           newMatchedIds.add(email.id);
-          newHuntMap.set(email.id, matchingHunt.id);
+          newHuntMap.set(email.id, matchingHunts[0].id);
           
-          // Calculate distance for this specific match
-          let matchDistance: number | null = null;
-          if (matchingHunt.huntCoordinates && loadData.originLat && loadData.originLng) {
-            matchDistance = calculateDistance(
-              matchingHunt.huntCoordinates.lat,
-              matchingHunt.huntCoordinates.lng,
-              loadData.originLat,
-              loadData.originLng
-            );
+          // Persist ALL matches to database
+          for (const matchingHunt of matchingHunts) {
+            let matchDistance: number | null = null;
+            if (matchingHunt.huntCoordinates && loadData.originLat && loadData.originLng) {
+              matchDistance = calculateDistance(
+                matchingHunt.huntCoordinates.lat,
+                matchingHunt.huntCoordinates.lng,
+                loadData.originLat,
+                loadData.originLng
+              );
+            }
+            
+            const { error } = await supabase
+              .from('load_hunt_matches')
+              .upsert({
+                load_email_id: email.id,
+                hunt_plan_id: matchingHunt.id,
+                vehicle_id: matchingHunt.vehicleId,
+                distance_miles: matchDistance,
+                is_active: true,
+              }, {
+                onConflict: 'load_email_id,hunt_plan_id'
+              });
+            
+            if (error) {
+              console.error('Error persisting load match:', error);
+            }
           }
           
-          // Persist match to database (upsert)
-          const { error } = await supabase
-            .from('load_hunt_matches')
-            .upsert({
-              load_email_id: email.id,
-              hunt_plan_id: matchingHunt.id,
-              vehicle_id: matchingHunt.vehicleId,
-              distance_miles: matchDistance,
-              is_active: true,
-            }, {
-              onConflict: 'load_email_id,hunt_plan_id'
-            });
-          
-          if (error) {
-            console.error('Error persisting load match:', error);
-          }
-          
-          // Mark as 'new' if it was missed, so it appears in unreviewed
+          // Mark as 'new' if it was missed
           if (email.status === 'missed') {
             await supabase
               .from('load_emails')
@@ -388,6 +390,9 @@ export default function LoadHunterTab() {
       setMatchedLoadIds(newMatchedIds);
       setLoadDistances(newDistances);
       setLoadHuntMap(newHuntMap);
+      
+      // Reload matches after creating them
+      await loadHuntMatches();
     };
     
     if (huntPlans.length > 0 && loadEmails.length > 0) {
@@ -397,7 +402,7 @@ export default function LoadHunterTab() {
       setLoadDistances(new Map());
       setLoadHuntMap(new Map());
     }
-  }, [loadEmails, huntPlans]); // Re-run when new loads arrive or hunts change
+  }, [loadEmails, huntPlans]);
 
   // Calculate distance for selected email detail view
   useEffect(() => {
@@ -458,35 +463,39 @@ export default function LoadHunterTab() {
     calculateSelectedDistance();
   }, [selectedEmailForDetail, huntPlans, mapboxToken, loadDistances]);
   
-  // Filter emails based on active filter
-  const filteredEmails = loadEmails.filter(email => {
-    // CRITICAL: Skipped and waitlist loads should always be visible regardless of age or expiration
-    if (email.status === 'skipped' || email.status === 'waitlist') {
-      if (activeFilter === 'skipped') return email.status === 'skipped';
-      if (activeFilter === 'waitlist') return email.status === 'waitlist';
-      if (activeFilter === 'all') return true;
-      return false; // Don't show in other filters
-    }
-    
-    // Apply filtering for unreviewed status
-    if (activeFilter === 'unreviewed') {
-      // Show all loads with 'new' status regardless of age or expiration
-      return email.status === 'new';
-    }
-    
-    if (activeFilter === 'missed') {
-      // Show loads that have been marked for missed tracking (duplicates in missed section)
-      return email.marked_missed_at !== null;
-    }
-    if (activeFilter === 'all') return true;
-    return true; // Default for other filters
-  });
+  // Filter based on active filter - for unreviewed, use matches instead of emails
+  const filteredEmails = activeFilter === 'unreviewed' 
+    ? [] // Don't use emails for unreviewed
+    : loadEmails.filter(email => {
+        // CRITICAL: Skipped and waitlist loads should always be visible
+        if (email.status === 'skipped' || email.status === 'waitlist') {
+          if (activeFilter === 'skipped') return email.status === 'skipped';
+          if (activeFilter === 'waitlist') return email.status === 'waitlist';
+          if (activeFilter === 'all') return true;
+          return false;
+        }
+        
+        if (activeFilter === 'missed') {
+          return email.marked_missed_at !== null;
+        }
+        if (activeFilter === 'all') return true;
+        return true;
+      });
 
-  // Count emails by status
-  const unreviewedCount = loadEmails.filter(e => {
-    // Count all 'new' status loads regardless of age or expiration
-    return e.status === 'new';
+  // Get filtered matches for unreviewed (one row per match)
+  const filteredMatches = activeFilter === 'unreviewed'
+    ? loadMatches.filter(match => {
+        const email = loadEmails.find(e => e.id === match.load_email_id);
+        return email && email.status === 'new';
+      })
+    : [];
+
+  // Count matches (not emails) for unreviewed
+  const unreviewedCount = loadMatches.filter(match => {
+    const email = loadEmails.find(e => e.id === match.load_email_id);
+    return email && email.status === 'new';
   }).length;
+  
   const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
@@ -939,6 +948,8 @@ export default function LoadHunterTab() {
         .eq("is_active", true);
 
       if (error) throw error;
+      
+      setLoadMatches(data || []);
       
       // Build the hunt map from persisted matches
       const huntMap = new Map<string, string>();
@@ -2455,12 +2466,12 @@ export default function LoadHunterTab() {
           <Card className="flex-1 flex flex-col">
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="border-t">
-                {filteredEmails.length === 0 ? (
+                {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 : filteredEmails.length === 0) ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     {activeFilter === 'skipped' 
                       ? 'No skipped loads yet.' 
                       : activeFilter === 'unreviewed'
-                      ? 'No unreviewed loads. Click "Refresh Loads" to check for new emails.'
+                      ? 'No matched loads. Create hunt plans to see matches here.'
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
@@ -2483,9 +2494,17 @@ export default function LoadHunterTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredEmails
+                        {(activeFilter === 'unreviewed' ? filteredMatches : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                          .map((email) => {
+                          .map((item) => {
+                          // For unreviewed, item is a match; for others, item is an email
+                          const email = activeFilter === 'unreviewed'
+                            ? loadEmails.find(e => e.id === (item as any).load_email_id)
+                            : item;
+                          
+                          if (!email) return null;
+                          
+                          const match = activeFilter === 'unreviewed' ? item : null;
                           const data = email.parsed_data || {};
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
@@ -2602,21 +2621,15 @@ export default function LoadHunterTab() {
 
                           return (
                             <TableRow 
-                              key={email.id} 
+                              key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
                               className="h-10 cursor-pointer hover:bg-accent transition-colors"
                               onClick={() => setSelectedEmailForDetail(email)}
                             >
                               <TableCell className="py-1">
                                 {(() => {
-                                  // Use the precomputed hunt match map to find which truck hunted this load
-                                  const matchingHuntId = loadHuntMap.get(email.id);
-                                  const matchingHunt = matchingHuntId
-                                    ? huntPlans.find(plan => plan.id === matchingHuntId)
-                                    : undefined;
-                                  
-                                  // Only show truck info if we found a matching hunt
-                                  if (matchingHunt) {
-                                    const vehicle = vehicles.find(v => v.id === matchingHunt.vehicleId);
+                                  if (activeFilter === 'unreviewed' && match) {
+                                    // For unreviewed (matches), show the matched truck directly
+                                    const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
@@ -2631,9 +2644,33 @@ export default function LoadHunterTab() {
                                         </div>
                                       );
                                     }
+                                  } else {
+                                    // For other filters, use the hunt map lookup
+                                    const matchingHuntId = loadHuntMap.get(email.id);
+                                    const matchingHunt = matchingHuntId
+                                      ? huntPlans.find(plan => plan.id === matchingHuntId)
+                                      : undefined;
+                                    
+                                    if (matchingHunt) {
+                                      const vehicle = vehicles.find(v => v.id === matchingHunt.vehicleId);
+                                      if (vehicle) {
+                                        const driverName = getDriverName(vehicle.driver_1_id) || "No Driver";
+                                        const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
+                                        return (
+                                          <div>
+                                            <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
+                                              {vehicle.vehicle_number || "N/A"} - {driverName}
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                              {carrierName}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                    }
                                   }
                                   
-                                  // Show Available if no hunt matches this load
+                                  // Show Available if no match
                                   return (
                                     <div>
                                       <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
@@ -2746,7 +2783,10 @@ export default function LoadHunterTab() {
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span>
-                        {Math.min((currentPage - 1) * itemsPerPage + 1, filteredEmails.length)} - {Math.min(currentPage * itemsPerPage, filteredEmails.length)} of {filteredEmails.length}
+                        {(() => {
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length;
+                          return `${Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - ${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems}`;
+                        })()}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -2772,8 +2812,11 @@ export default function LoadHunterTab() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCurrentPage(Math.min(Math.ceil(filteredEmails.length / itemsPerPage), currentPage + 1))}
-                        disabled={currentPage >= Math.ceil(filteredEmails.length / itemsPerPage)}
+                        onClick={() => {
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length;
+                          setCurrentPage(Math.min(Math.ceil(totalItems / itemsPerPage), currentPage + 1));
+                        }}
+                        disabled={currentPage >= Math.ceil((activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length) / itemsPerPage)}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -2781,8 +2824,11 @@ export default function LoadHunterTab() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCurrentPage(Math.ceil(filteredEmails.length / itemsPerPage))}
-                        disabled={currentPage >= Math.ceil(filteredEmails.length / itemsPerPage)}
+                        onClick={() => {
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length;
+                          setCurrentPage(Math.ceil(totalItems / itemsPerPage));
+                        }}
+                        disabled={currentPage >= Math.ceil((activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length) / itemsPerPage)}
                       >
                         <ChevronsRight className="h-4 w-4" />
                       </Button>
