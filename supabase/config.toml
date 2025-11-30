@@ -57,3 +57,6 @@ verify_jwt = false
 [functions.backfill-customers]
 verify_jwt = false
 
+[functions.test-ai]
+verify_jwt = true
+

@@ -1,9 +1,33 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const UsageCostsTab = () => {
+  const [aiTestResult, setAiTestResult] = useState<string>("");
+
+  // Test AI mutation
+  const testAiMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('test-ai', {
+        body: { prompt: "Say hello and confirm you're working!" }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setAiTestResult(data.response);
+      toast.success("AI test successful!");
+    },
+    onError: (error: any) => {
+      console.error("AI test error:", error);
+      toast.error(error.message || "AI test failed");
+    }
+  });
+
   // Fetch table counts
   const { data: tableCounts } = useQuery({
     queryKey: ["usage-table-counts"],
@@ -132,6 +156,54 @@ const UsageCostsTab = () => {
           </div>
           <div className="pt-2 border-t">
             <p className="text-sm text-muted-foreground">Note: Geocoding occurs when loads match hunt plans with location criteria</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lovable AI Usage */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Lovable AI Usage
+          </CardTitle>
+          <CardDescription>AI model requests and costs</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Model</p>
+            <p className="text-lg font-medium">google/gemini-2.5-flash</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Test AI Integration</p>
+            <Button 
+              onClick={() => testAiMutation.mutate()}
+              disabled={testAiMutation.isPending}
+              className="w-full"
+            >
+              {testAiMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing AI...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Test AI
+                </>
+              )}
+            </Button>
+            {aiTestResult && (
+              <div className="mt-3 p-3 bg-muted rounded-md">
+                <p className="text-sm font-medium mb-1">AI Response:</p>
+                <p className="text-sm text-muted-foreground">{aiTestResult}</p>
+              </div>
+            )}
+          </div>
+          <div className="pt-2 border-t text-xs text-muted-foreground">
+            <p>• Usage-based pricing per AI request</p>
+            <p>• Check credit balance in Lovable workspace settings</p>
+            <p>• Free monthly usage included, then pay-as-you-go</p>
           </div>
         </CardContent>
       </Card>
