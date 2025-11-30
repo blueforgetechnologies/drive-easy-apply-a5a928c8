@@ -623,26 +623,36 @@ export default function LoadHunterTab() {
   useEffect(() => {
     const fetchUserDispatcherInfo = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔍 Current user:', user?.email);
+      
       if (user?.email) {
         // Check if user is a dispatcher
-        const { data: dispatcher } = await supabase
+        const { data: dispatcher, error: dispatcherError } = await supabase
           .from('dispatchers')
-          .select('id')
+          .select('id, first_name, last_name, email')
           .eq('email', user.email)
           .single();
         
+        console.log('🔍 Dispatcher lookup:', { dispatcher, error: dispatcherError });
+        
         if (dispatcher) {
           setCurrentDispatcherId(dispatcher.id);
+          console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
           
           // Get vehicles assigned to this dispatcher
-          const { data: assignedVehicles } = await supabase
+          const { data: assignedVehicles, error: vehiclesError } = await supabase
             .from('vehicles')
-            .select('id')
+            .select('id, vehicle_number')
             .eq('primary_dispatcher_id', dispatcher.id);
+          
+          console.log('🔍 Assigned vehicles:', { assignedVehicles, error: vehiclesError });
           
           if (assignedVehicles) {
             setMyVehicleIds(assignedVehicles.map(v => v.id));
+            console.log('✅ My vehicle IDs:', assignedVehicles.map(v => v.id));
           }
+        } else {
+          console.log('❌ No dispatcher found for email:', user.email);
         }
       }
     };
@@ -1711,34 +1721,6 @@ export default function LoadHunterTab() {
             >
               Vehicle Assignment
             </Button>
-            
-            <div className="flex gap-2 ml-2 pl-2 border-l border-gray-300">
-              <Button 
-                size="sm" 
-                variant="outline"
-                className={`h-7 px-2.5 text-xs ${
-                  activeMode === 'admin' 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
-                    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                }`}
-                onClick={() => setActiveMode('admin')}
-              >
-                Admin
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline"
-                className={`h-7 px-2.5 text-xs ${
-                  activeMode === 'dispatch' 
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' 
-                    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                }`}
-                onClick={() => setActiveMode('dispatch')}
-                disabled={myVehicleIds.length === 0}
-              >
-                MY TRUCKS
-              </Button>
-            </div>
             
             <Button
               size="sm" 
