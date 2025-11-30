@@ -257,12 +257,6 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     }
   }
 
-  // Extract rate if available
-  const rateMatch = cleanText.match(/(?:rate|pay).*?\$\s*([\d,]+(?:\.\d{2})?)/i);
-  if (rateMatch) {
-    parsed.rate = parseFloat(rateMatch[1].replace(/,/g, ''));
-  }
-
   // Fallback: Extract pieces from plain text if not found in HTML
   if (!parsed.pieces) {
     const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces?|pcs?|pallets?|plts?|plt|skids?)/i);
@@ -305,6 +299,13 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   // Remove line breaks and extra whitespace for better regex matching
   const cleanedHtml = bodyText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
+  // Extract Posted Amount (not Rate) - look for "Posted Amount:" specifically
+  const postedAmountMatch = cleanedHtml.match(/<strong>Posted Amount:\s*<\/strong>\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
+  if (postedAmountMatch) {
+    parsed.rate = parseFloat(postedAmountMatch[1].replace(/,/g, ''));
+  }
+  
+  
   // Broker Name: <strong>Broker Name: </strong>VALUE (text or inside tags)
   const brokerNameMatch = cleanedHtml.match(/<strong>Broker Name:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
   if (brokerNameMatch) {
@@ -323,27 +324,59 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.broker_phone = brokerPhoneMatch[1].trim();
   }
 
-  // Email can be in multiple places:
+  // Email field (not broker email - this is the general Email: field)
   // 1. <strong>Email: </strong>VALUE (direct text)
-  let brokerEmailMatch1 = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
-  if (brokerEmailMatch1 && brokerEmailMatch1[1].trim()) {
-    parsed.broker_email = brokerEmailMatch1[1].trim();
+  let emailMatch1 = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
+  if (emailMatch1 && emailMatch1[1].trim()) {
+    parsed.email = emailMatch1[1].trim();
   }
   
   // 2. <strong>Email: </strong><a ...>VALUE</a> (inside link tag)
-  if (!parsed.broker_email) {
+  if (!parsed.email) {
     const emailInLinkMatch = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*<a[^>]*>([^<]+)<\/a>/i);
     if (emailInLinkMatch) {
-      parsed.broker_email = emailInLinkMatch[1].trim();
+      parsed.email = emailInLinkMatch[1].trim();
     }
   }
   
-  // 3. In subject line after poster name in parentheses: (email@domain.com)
-  if (!parsed.broker_email) {
-    const emailInSubject = subject.match(/\(([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)\)/);
-    if (emailInSubject) {
-      parsed.broker_email = emailInSubject[1].trim();
-    }
+  // Broker Email (separate field) - can be in subject line after poster name
+  const emailInSubject = subject.match(/\(([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)\)/);
+  if (emailInSubject) {
+    parsed.broker_email = emailInSubject[1].trim();
+  }
+
+  // Load Type: <strong>Load Type: </strong>VALUE
+  const loadTypeMatch = cleanedHtml.match(/<strong>Load Type:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
+  if (loadTypeMatch) {
+    parsed.load_type = loadTypeMatch[1].trim();
+  }
+
+  // Dock Level: <strong>Dock Level: </strong>VALUE
+  const dockLevelMatch = cleanedHtml.match(/<strong>Dock Level:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
+  if (dockLevelMatch) {
+    parsed.dock_level = dockLevelMatch[1].trim();
+  }
+
+  // Hazmat: <strong>Hazmat: </strong>VALUE (Yes/No)
+  const hazmatMatch = cleanedHtml.match(/<strong>Hazmat:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
+  if (hazmatMatch) {
+    const hazmatValue = hazmatMatch[1].trim().toLowerCase();
+    parsed.hazmat = hazmatValue === 'yes' || hazmatValue === 'true';
+  }
+
+  // Stackable: <strong>Stackable: </strong>VALUE (Yes/No)
+  const stackableMatch = cleanedHtml.match(/<strong>Stackable:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
+  if (stackableMatch) {
+    const stackableValue = stackableMatch[1].trim().toLowerCase();
+    parsed.stackable = stackableValue === 'yes' || stackableValue === 'true';
+  }
+
+  // Detect 2 STOPS - look for multiple stop indicators in the email
+  // Check for "2 stops" or "two stops" or multiple pickup/delivery sections
+  const twoStopsIndicator = cleanedHtml.match(/2\s+stops/i) || cleanedHtml.match(/two\s+stops/i);
+  if (twoStopsIndicator) {
+    parsed.has_multiple_stops = true;
+    parsed.stop_count = 2;
   }
 
   return parsed;

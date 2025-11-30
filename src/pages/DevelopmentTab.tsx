@@ -306,7 +306,7 @@ export default function DevelopmentTab() {
               <div>
                 <h4 className="font-semibold mb-1">Pricing</h4>
                 <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                  <li><strong>rate</strong> – the dollar amount after the word rate/pay anywhere in the text.</li>
+                  <li><strong>rate</strong> – extracted from "Posted Amount:" field (NOT "Rate:"). This is the dollar amount the broker is offering.</li>
                 </ul>
               </div>
 
@@ -318,14 +318,21 @@ export default function DevelopmentTab() {
                   <li><strong>broker_name</strong> – value after "Broker Name:" in the details block.</li>
                   <li><strong>broker_company</strong> – value after "Broker Company:".</li>
                   <li><strong>broker_phone</strong> – value after "Broker Phone:".</li>
-                  <li><strong>broker_email</strong> – comes from one of three places, in this order:
-                    <ul className="list-disc list-inside ml-5 space-y-0.5">
-                      <li><code>&lt;strong&gt;Email:&lt;/strong&gt; some@email.com</code> text,</li>
-                      <li>or inside the email link: <code>&lt;a&gt;some@email.com&lt;/a&gt;</code>,</li>
-                      <li>or, if not found in HTML, the email inside parentheses in the subject line.</li>
-                    </ul>
-                  </li>
+                  <li><strong>email</strong> – general email from "Email:" field (NOT broker email).</li>
+                  <li><strong>broker_email</strong> – extracted from email in parentheses in subject line (e.g., "(email@domain.com)").</li>
                   <li><strong>order_number</strong> – numeric order ID from "Bid on Order #123456".</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-1">Load Details</h4>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                  <li><strong>load_type</strong> – Type of load extracted from "Load Type:" field (e.g., "Expedited", "Standard").</li>
+                  <li><strong>dock_level</strong> – Dock level requirement from "Dock Level:" field.</li>
+                  <li><strong>hazmat</strong> – Boolean indicating if load contains hazardous materials (extracted from "Hazmat:" field).</li>
+                  <li><strong>stackable</strong> – Boolean indicating if load is stackable (extracted from "Stackable:" field).</li>
+                  <li><strong>has_multiple_stops</strong> – Boolean indicating if load has 2 stops (detected from "2 stops" text).</li>
+                  <li><strong>stop_count</strong> – Number of stops (currently only captures 2 when detected).</li>
                 </ul>
               </div>
 
