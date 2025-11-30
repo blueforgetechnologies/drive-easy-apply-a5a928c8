@@ -233,8 +233,8 @@ const LoadEmailDetail = ({
                       <div>{data.weight || '0'}</div>
                     </div>
                     <div>
-                      <div>{data.pieces || '0'}</div>
-                      <div>{data.dimensions || 'N/A'}</div>
+                      <div>{data?.pieces || '0'}</div>
+                      <div>{data?.dimensions || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
