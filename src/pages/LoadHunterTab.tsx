@@ -1064,10 +1064,54 @@ export default function LoadHunterTab() {
       // Reload hunt plans from database
       await loadHuntPlans();
       
+      // If enabling the hunt (was disabled, now enabled), retroactively check loads from last 30 min
+      if (currentEnabled === false) {
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        
+        // Get loads from the last 30 minutes that are currently in "new" or "missed" status
+        const { data: recentLoads, error: fetchError } = await supabase
+          .from('load_emails')
+          .select('*')
+          .gte('received_at', thirtyMinutesAgo.toISOString())
+          .in('status', ['new', 'missed']);
+        
+        if (!fetchError && recentLoads) {
+          // Get the updated hunt plan
+          const { data: updatedHunt } = await supabase
+            .from('hunt_plans')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (updatedHunt) {
+            // Check each recent load against the hunt criteria
+            for (const load of recentLoads) {
+              const loadData = extractLoadLocation(load);
+              
+              // Simple matching logic (you can expand this to use the full loadMatchesHunt logic)
+              let matches = true;
+              
+              // Match by load type if specified
+              if (updatedHunt.vehicle_size && loadData.loadType) {
+                matches = loadData.loadType.toLowerCase().includes(updatedHunt.vehicle_size.toLowerCase());
+              }
+              
+              // If matches, ensure it's marked as "new" so it appears in unreviewed
+              if (matches && load.status === 'missed') {
+                await supabase
+                  .from('load_emails')
+                  .update({ status: 'new' })
+                  .eq('id', load.id);
+              }
+            }
+          }
+        }
+      }
+      
       // Trigger re-filtering of loads
       await loadLoadEmails();
       
-      toast.success(currentEnabled ? "Hunt disabled" : "Hunt enabled");
+      toast.success(currentEnabled ? "Hunt disabled" : "Hunt enabled - checking recent loads");
     } catch (error) {
       console.error("Error toggling hunt:", error);
       toast.error("Failed to toggle hunt");
