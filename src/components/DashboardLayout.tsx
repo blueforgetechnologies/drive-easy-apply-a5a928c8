@@ -138,9 +138,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const loadUnreviewedLoads = async () => {
     try {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("load_emails")
-        .select("*", { count: "exact", head: true })
+        .select("*")
         .eq("status", "new");
       
       if (error) {
@@ -148,7 +148,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return;
       }
       
-      setUnreviewedLoadsCount(count || 0);
+      // Apply same filtering logic as Load Hunter page
+      const now = new Date();
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+      
+      const filteredCount = (data || []).filter(e => {
+        const emailTime = new Date(e.received_at);
+        
+        // Remove loads without expiration after 30 minutes
+        if (e.status === 'new' && !e.expires_at && emailTime <= thirtyMinutesAgo) {
+          return false;
+        }
+        
+        return true;
+      }).length;
+      
+      setUnreviewedLoadsCount(filteredCount);
     } catch (error) {
       console.error("Error counting unreviewed loads:", error);
     }
