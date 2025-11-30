@@ -2432,22 +2432,23 @@ export default function LoadHunterTab() {
                           }
 
                           const rawBody = (email.body_text || email.body_html || '').toString();
+                          const cleanBody = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+                          
                           let pickupDisplay = '—';
                           if (data.pickup_date || data.pickup_time) {
                             pickupDisplay = `${data.pickup_date || ''} ${data.pickup_time || ''}`.trim();
                           } else {
-                            // Fallback 1: special terms like ASAP
-                            if (/ASAP/i.test(rawBody)) {
-                              pickupDisplay = 'ASAP';
-                            } else {
-                              // Fallback 2: try to extract date/time near "Pick-Up"
-                              const pickupRegex = /Pick[-\s]*Up[\s\S]{0,80}?(\d{1,2}\/\d{1,2}\/\d{2,4})(?:[^0-9]{0,10}(\d{1,2}:\d{2}\s*(?:AM|PM)?))?/i;
-                              const pickupMatch = rawBody.match(pickupRegex);
-                              if (pickupMatch) {
-                                const datePart = pickupMatch[1];
-                                const timePart = pickupMatch[2] || '';
-                                pickupDisplay = `${datePart} ${timePart}`.trim();
-                              }
+                            // Extract ANY text after Pick-Up keyword
+                            const pickupRegex = /Pick[-\s]*Up[:\s]*([^\n\r<]{3,50}?)(?:\s*Delivery|\s*Indianapolis|\s*Chicago|\s*Location|$)/i;
+                            const pickupMatch = cleanBody.match(pickupRegex);
+                            if (pickupMatch) {
+                              const extracted = pickupMatch[1].trim();
+                              // Clean up common artifacts
+                              pickupDisplay = extracted
+                                .replace(/^\s*[:\-]\s*/, '')
+                                .replace(/\s*(Delivery|Location).*$/i, '')
+                                .trim()
+                                .slice(0, 40);
                             }
                           }
 
@@ -2455,18 +2456,17 @@ export default function LoadHunterTab() {
                           if (data.delivery_date || data.delivery_time) {
                             deliveryDisplay = `${data.delivery_date || ''} ${data.delivery_time || ''}`.trim();
                           } else {
-                            // Fallback 1: special terms like Deliver Direct
-                            if (/Deliver\s+Direct/i.test(rawBody)) {
-                              deliveryDisplay = 'Deliver Direct';
-                            } else {
-                              // Fallback 2: try to extract date/time near "Delivery"
-                              const deliveryRegex = /Delivery[\s\S]{0,80}?(\d{1,2}\/\d{1,2}\/\d{2,4})(?:[^0-9]{0,10}(\d{1,2}:\d{2}\s*(?:AM|PM)?))?/i;
-                              const deliveryMatch = rawBody.match(deliveryRegex);
-                              if (deliveryMatch) {
-                                const datePart = deliveryMatch[1];
-                                const timePart = deliveryMatch[2] || '';
-                                deliveryDisplay = `${datePart} ${timePart}`.trim();
-                              }
+                            // Extract ANY text after Delivery keyword
+                            const deliveryRegex = /Delivery[:\s]*([^\n\r<]{3,50}?)(?:\s*Rate|\s*Contact|\s*Expires|\s*Location|$)/i;
+                            const deliveryMatch = cleanBody.match(deliveryRegex);
+                            if (deliveryMatch) {
+                              const extracted = deliveryMatch[1].trim();
+                              // Clean up common artifacts
+                              deliveryDisplay = extracted
+                                .replace(/^\s*[:\-]\s*/, '')
+                                .replace(/\s*(Rate|Contact|Expires|Location).*$/i, '')
+                                .trim()
+                                .slice(0, 40);
                             }
                           }
 

@@ -115,12 +115,13 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.pickup_date = pickupMatch[1];
     parsed.pickup_time = pickupMatch[2];
   } else {
-    // Look for special pickup instructions like "ASAP" when no date/time found
-    const pickupSpecialMatch = cleanText.match(/Pick.*?Up[:\s]*([A-Za-z\s]+?)(?:\s*Delivery|\s*Indianapolis|\s*Chicago|$)/i);
-    if (pickupSpecialMatch) {
-      const specialValue = pickupSpecialMatch[1].trim();
-      if (specialValue && specialValue.length < 30 && /^[A-Za-z\s]+$/.test(specialValue)) {
-        parsed.pickup_time = specialValue;
+    // Look for ANY text after Pick-Up when no date/time found
+    const pickupTextMatch = cleanText.match(/Pick.*?Up[:\s]*([A-Za-z0-9\s\/:]+?)(?:\s{2,}|Delivery|Indianapolis|Chicago|Location|$)/i);
+    if (pickupTextMatch) {
+      const extracted = pickupTextMatch[1].trim();
+      if (extracted && extracted.length > 2 && extracted.length < 50) {
+        // Store as pickup_time if it looks like a special instruction
+        parsed.pickup_time = extracted;
       }
     }
   }
@@ -131,12 +132,13 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.delivery_date = deliveryMatch[1];
     parsed.delivery_time = deliveryMatch[2];
   } else {
-    // Look for special delivery instructions like "Deliver Direct" when no date/time found
-    const deliverySpecialMatch = cleanText.match(/Delivery[:\s]*([A-Za-z\s]+?)(?:\s*Rate|\s*Contact|\s*Expires|$)/i);
-    if (deliverySpecialMatch) {
-      const specialValue = deliverySpecialMatch[1].trim();
-      if (specialValue && specialValue.length < 30 && /^[A-Za-z\s]+$/.test(specialValue)) {
-        parsed.delivery_time = specialValue;
+    // Look for ANY text after Delivery when no date/time found
+    const deliveryTextMatch = cleanText.match(/Delivery[:\s]*([A-Za-z0-9\s\/:]+?)(?:\s{2,}|Rate|Contact|Expires|Location|$)/i);
+    if (deliveryTextMatch) {
+      const extracted = deliveryTextMatch[1].trim();
+      if (extracted && extracted.length > 2 && extracted.length < 50) {
+        // Store as delivery_time if it looks like a special instruction
+        parsed.delivery_time = extracted;
       }
     }
   }
