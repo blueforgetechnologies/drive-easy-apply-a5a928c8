@@ -301,13 +301,11 @@ export default function LoadHunterTab() {
     return false;
   };
 
-  // Effect to search through loads when hunts change
+  // Effect to search through loads when hunts change and persist matches to database
   useEffect(() => {
     const searchLoadsForHunts = async () => {
-      console.log("[searchLoadsForHunts] start", { hunts: huntPlans.length, emails: loadEmails.length });
       const enabledHunts = huntPlans.filter(h => h.enabled);
       if (enabledHunts.length === 0) {
-        console.log("[searchLoadsForHunts] no enabled hunts, clearing matches");
         setMatchedLoadIds(new Set());
         setLoadDistances(new Map());
         setLoadHuntMap(new Map());
@@ -318,7 +316,6 @@ export default function LoadHunterTab() {
       const candidateLoads = loadEmails.filter(email =>
         email.status === 'new' || email.status === 'missed'
       );
-      console.log("[searchLoadsForHunts] candidate loads", candidateLoads.length);
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
@@ -327,13 +324,6 @@ export default function LoadHunterTab() {
       // Check each candidate load against hunt criteria
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
-        console.log("[searchLoadsForHunts] evaluating email", {
-          emailId: email.id,
-          status: email.status,
-          originZip: loadData.originZip,
-          loadType: loadData.loadType,
-          pickupDate: loadData.pickupDate,
-        });
         
         // Use the first enabled hunt's coordinates as the "truck location" for distance display
         const primaryHunt = enabledHunts[0];
@@ -354,9 +344,36 @@ export default function LoadHunterTab() {
         // Find the first hunt this load matches using the shared matching logic
         const matchingHunt = enabledHunts.find(hunt => doesLoadMatchHunt(loadData, hunt));
         if (matchingHunt) {
-          console.log("[searchLoadsForHunts] MATCH", { emailId: email.id, huntId: matchingHunt.id, vehicleId: matchingHunt.vehicleId });
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunt.id);
+          
+          // Calculate distance for this specific match
+          let matchDistance: number | null = null;
+          if (matchingHunt.huntCoordinates && loadData.originLat && loadData.originLng) {
+            matchDistance = calculateDistance(
+              matchingHunt.huntCoordinates.lat,
+              matchingHunt.huntCoordinates.lng,
+              loadData.originLat,
+              loadData.originLng
+            );
+          }
+          
+          // Persist match to database (upsert)
+          const { error } = await supabase
+            .from('load_hunt_matches')
+            .upsert({
+              load_email_id: email.id,
+              hunt_plan_id: matchingHunt.id,
+              vehicle_id: matchingHunt.vehicleId,
+              distance_miles: matchDistance,
+              is_active: true,
+            }, {
+              onConflict: 'load_email_id,hunt_plan_id'
+            });
+          
+          if (error) {
+            console.error('Error persisting load match:', error);
+          }
           
           // Mark as 'new' if it was missed, so it appears in unreviewed
           if (email.status === 'missed') {
@@ -365,12 +382,9 @@ export default function LoadHunterTab() {
               .update({ status: 'new' })
               .eq('id', email.id);
           }
-        } else {
-          console.log("[searchLoadsForHunts] NO MATCH", { emailId: email.id });
         }
       }
       
-      console.log("[searchLoadsForHunts] done", { matches: newMatchedIds.size });
       setMatchedLoadIds(newMatchedIds);
       setLoadDistances(newDistances);
       setLoadHuntMap(newHuntMap);
