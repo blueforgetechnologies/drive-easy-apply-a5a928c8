@@ -256,10 +256,19 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.broker_phone = brokerPhoneMatch[1].trim();
   }
 
-  // Email: <strong>Email: </strong>VALUE
-  const brokerEmailMatch = bodyText.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
-  if (brokerEmailMatch) {
-    parsed.broker_email = brokerEmailMatch[1].trim();
+  // Email can be in multiple places:
+  // 1. <strong>Email: </strong>VALUE
+  const brokerEmailMatch1 = bodyText.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
+  if (brokerEmailMatch1) {
+    parsed.broker_email = brokerEmailMatch1[1].trim();
+  }
+  
+  // 2. In subject line after poster name in parentheses: (email@domain.com)
+  if (!parsed.broker_email) {
+    const emailInSubject = subject.match(/\(([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)\)/);
+    if (emailInSubject) {
+      parsed.broker_email = emailInSubject[1].trim();
+    }
   }
 
   return parsed;
