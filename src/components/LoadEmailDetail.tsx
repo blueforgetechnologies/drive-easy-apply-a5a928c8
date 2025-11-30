@@ -258,7 +258,7 @@ const LoadEmailDetail = ({
                               minute: '2-digit',
                               timeZoneName: 'short',
                             })
-                          : (data.expires_datetime || '∞')}
+                          : (data.expires_datetime || '—')}
                       </span>
                     </span>
                     <span className="font-semibold">Posted Rate:</span>{' '}

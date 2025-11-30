@@ -2316,10 +2316,10 @@ export default function LoadHunterTab() {
                                 expiresIn = 'Expired';
                               }
                             } else {
-                              expiresIn = '∞';
+                              expiresIn = '—';
                             }
                           } else {
-                            expiresIn = '∞';
+                            expiresIn = '—';
                           }
 
                           return (
