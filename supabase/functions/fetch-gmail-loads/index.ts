@@ -95,10 +95,12 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.weight = weightMatch[1];
   }
 
-  // Extract customer/poster from subject
+  // Extract customer/poster from subject (this is also the broker in Sylectus emails)
   const postedByMatch = subject.match(/Posted by\s+([^(]+)/i);
   if (postedByMatch) {
-    parsed.customer = postedByMatch[1].trim();
+    const posterName = postedByMatch[1].trim();
+    parsed.customer = posterName;
+    parsed.broker = posterName; // Broker is the same as the poster in Sylectus
   }
 
   // Extract Order Number from body text (e.g., "Bid on Order #206389")
