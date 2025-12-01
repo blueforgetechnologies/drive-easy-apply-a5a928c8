@@ -40,6 +40,107 @@ serve(async (req) => {
       action = 'start';
     }
 
+    // Setup Gmail push notifications for existing tokens
+    if (action === 'setup-push') {
+      console.log('Setting up Gmail push notifications...');
+      
+      // Get the most recent token from the database
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('gmail_tokens')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (tokenError || !tokenData) {
+        console.error('No tokens found:', tokenError);
+        return new Response(JSON.stringify({ 
+          error: 'No Gmail tokens found. Please connect Gmail first.' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log('Found token for:', tokenData.user_email);
+      
+      // Check if token needs refresh
+      let accessToken = tokenData.access_token;
+      const tokenExpiry = new Date(tokenData.token_expiry);
+      
+      if (tokenExpiry < new Date()) {
+        console.log('Token expired, refreshing...');
+        const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: GMAIL_CLIENT_ID,
+            client_secret: GMAIL_CLIENT_SECRET,
+            refresh_token: tokenData.refresh_token,
+            grant_type: 'refresh_token',
+          }),
+        });
+        
+        const refreshData = await refreshResponse.json();
+        if (!refreshData.access_token) {
+          console.error('Failed to refresh token:', refreshData);
+          return new Response(JSON.stringify({ 
+            error: 'Failed to refresh token. Please reconnect Gmail.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        accessToken = refreshData.access_token;
+        
+        // Update token in database
+        await supabase
+          .from('gmail_tokens')
+          .update({
+            access_token: accessToken,
+            token_expiry: new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString(),
+          })
+          .eq('user_email', tokenData.user_email);
+      }
+      
+      // Call Gmail watch API
+      console.log('Calling Gmail watch API with topic:', GMAIL_PUBSUB_TOPIC);
+      const watchResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/watch', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topicName: GMAIL_PUBSUB_TOPIC,
+          labelIds: ['INBOX'],
+        }),
+      });
+      
+      const watchData = await watchResponse.json();
+      console.log('Gmail watch response:', watchData);
+      
+      if (watchData.error) {
+        return new Response(JSON.stringify({ 
+          error: watchData.error.message || 'Failed to setup push notifications',
+          details: watchData.error
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        message: 'Gmail push notifications configured successfully',
+        historyId: watchData.historyId,
+        expiration: watchData.expiration
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Initiate OAuth flow
     if (action === 'start') {
       const redirectUri = `${SUPABASE_URL}/functions/v1/gmail-auth?action=callback`;
