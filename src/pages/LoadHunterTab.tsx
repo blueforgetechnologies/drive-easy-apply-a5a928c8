@@ -1100,6 +1100,23 @@ export default function LoadHunterTab() {
     }
   };
 
+  const handleSkipMatch = async (matchId: string) => {
+    try {
+      const { error } = await supabase
+        .from('load_hunt_matches')
+        .update({ is_active: false })
+        .eq('id', matchId);
+
+      if (error) throw error;
+
+      await loadHuntMatches();
+      toast.success('Match skipped');
+    } catch (error) {
+      console.error('Error skipping match:', error);
+      toast.error('Failed to skip match');
+    }
+  };
+
   const handleSkipEmail = async (emailId: string) => {
     try {
       const { error } = await supabase
@@ -2895,10 +2912,14 @@ export default function LoadHunterTab() {
                                     variant="ghost" 
                                     size="sm" 
                                     className="h-6 w-6 p-0 rounded-full text-red-500 hover:bg-red-50 hover:text-red-700" 
-                                    aria-label="Skip load"
+                                    aria-label="Skip load or match"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleSkipEmail(email.id);
+                                      if (activeFilter === 'unreviewed' && match) {
+                                        handleSkipMatch((match as any).id);
+                                      } else {
+                                        handleSkipEmail(email.id);
+                                      }
                                     }}
                                   >
                                     <X className="h-4 w-4" />
