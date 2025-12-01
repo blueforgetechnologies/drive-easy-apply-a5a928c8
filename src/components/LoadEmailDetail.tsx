@@ -58,20 +58,25 @@ const LoadEmailDetail = ({
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
-  // Handle Skip button click
+  // Handle Skip button click - skips only this specific match, not the entire load
   const handleSkip = async () => {
     try {
+      if (!match?.id) {
+        console.error("No match ID available to skip");
+        return;
+      }
+
       const { error } = await supabase
-        .from("load_emails")
-        .update({ status: "skipped" })
-        .eq("id", email.id);
+        .from("load_hunt_matches")
+        .update({ is_active: false })
+        .eq("id", match.id);
 
       if (error) throw error;
       
       // Close the detail view and return to unreviewed list
       onClose();
     } catch (error) {
-      console.error("Error skipping load:", error);
+      console.error("Error skipping match:", error);
     }
   };
 
