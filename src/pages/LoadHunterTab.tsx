@@ -1824,12 +1824,12 @@ export default function LoadHunterTab() {
             vehicles
               .filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id))
               .map((vehicle) => {
-              const hasHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id);
+              const hasEnabledHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id && plan.enabled);
               return (
                 <Card 
                   key={vehicle.id} 
                   className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
-                    hasHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
+                    hasEnabledHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
                   } ${selectedVehicle?.id === vehicle.id ? 'bg-muted' : ''}`}
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
