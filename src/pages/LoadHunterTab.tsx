@@ -305,6 +305,7 @@ export default function LoadHunterTab() {
   };
 
   // Effect to search through loads when hunts change and persist ALL matches to database
+  // 24/7 MATCHING: Processes ALL loads with status 'new' regardless of age
   useEffect(() => {
     const searchLoadsForHunts = async () => {
       console.log('🔍 Running hunt matching logic. LoadEmails:', loadEmails.length, 'Hunt plans:', huntPlans.length);
@@ -320,25 +321,30 @@ export default function LoadHunterTab() {
       
       console.log('✅ Found', enabledHunts.length, 'enabled hunt plans');
       
-      // Consider all loads in "new" or "missed" status
-      const candidateLoads = loadEmails.filter(email =>
-        email.status === 'new' || email.status === 'missed'
-      );
+      // 24/7: Consider ALL loads with "new" status regardless of age
+      const candidateLoads = loadEmails.filter(email => email.status === 'new');
       
-      console.log('📧 Candidate loads for matching:', candidateLoads.length);
+      console.log('📧 Candidate loads for matching (24/7):', candidateLoads.length);
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
       const newHuntMap = new Map<string, string>();
       let matchCount = 0;
+      let skippedCount = 0;
       
       // Check each load against ALL hunt plans and create matches for ALL that match
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
         
-        // Skip loads without geocodable location data
+        // Better location data logging for debugging
         if (!loadData.originCityState && !loadData.originZip) {
-          console.log('⚠️ Skipping load (no location):', email.subject?.substring(0, 50));
+          skippedCount++;
+          console.log('⚠️ Skipping load (missing location):', {
+            subject: email.subject?.substring(0, 50),
+            cityState: loadData.originCityState,
+            zip: loadData.originZip,
+            hasCoords: !!(loadData.originLat && loadData.originLng)
+          });
           continue;
         }
         
@@ -351,7 +357,7 @@ export default function LoadHunterTab() {
         
         if (matchingHunts.length > 0) {
           matchCount++;
-          console.log('✅ Match found for:', email.subject?.substring(0, 50), '- Matching hunts:', matchingHunts.length);
+          console.log('✅ Match found:', email.subject?.substring(0, 50), '→', matchingHunts.length, 'hunt(s)');
           
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunts[0].id);
@@ -381,23 +387,15 @@ export default function LoadHunterTab() {
               });
             
             if (error) {
-              console.error('Error persisting load match:', error);
+              console.error('❌ Error persisting match:', error);
             } else {
-              console.log('💾 Persisted match to database');
+              console.log('💾 Saved match:', matchingHunt.planName);
             }
-          }
-          
-          // Mark as 'new' if it was missed
-          if (email.status === 'missed') {
-            await supabase
-              .from('load_emails')
-              .update({ status: 'new' })
-              .eq('id', email.id);
           }
         }
       }
       
-      console.log('🎯 Matching complete. Total matches created:', matchCount);
+      console.log('🎯 Matching complete:', matchCount, 'matched,', skippedCount, 'skipped (no location)');
       
       setMatchedLoadIds(newMatchedIds);
       setLoadDistances(newDistances);
@@ -417,6 +415,25 @@ export default function LoadHunterTab() {
       setLoadHuntMap(new Map());
     }
   }, [loadEmails.length, huntPlans.length, loadEmails, huntPlans]);
+
+  // 24/7 PERIODIC RE-MATCH: Continuously checks for unmatched loads every 2 minutes
+  // This catches loads that failed geocoding initially and ensures continuous operation
+  useEffect(() => {
+    if (huntPlans.length === 0) return;
+    
+    console.log('⏰ Starting 24/7 periodic re-match (every 2 minutes)');
+    
+    const interval = setInterval(() => {
+      console.log('⏰ Periodic re-match triggered');
+      // Force re-matching by updating state (triggers the matching useEffect above)
+      setLoadEmails(current => [...current]);
+    }, 2 * 60 * 1000); // Every 2 minutes
+    
+    return () => {
+      console.log('⏰ Stopping 24/7 periodic re-match');
+      clearInterval(interval);
+    };
+  }, [huntPlans.length]);
 
   // Use saved distance from match - no recalculation needed
   useEffect(() => {
