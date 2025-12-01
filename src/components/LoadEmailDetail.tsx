@@ -38,22 +38,9 @@ const LoadEmailDetail = ({
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
   
-  // Determine truck size (in feet) and type for subject/body text
-  const truckLengthFeet = (() => {
-    if (vehicle?.dimensions_length) return vehicle.dimensions_length;
-    if (typeof data.truck_dimensions === "string") {
-      const match = data.truck_dimensions.match(/(\d+)/);
-      if (match) {
-        const inches = parseInt(match[1], 10);
-        if (!isNaN(inches) && inches > 0) {
-          return Math.round(inches / 12);
-        }
-      }
-    }
-    return undefined;
-  })();
-
-  const truckType = vehicle?.asset_subtype || data.vehicle_type || "Large Straight";
+  // Use ONLY the asset's Trailer Size and Asset Type from the vehicles table
+  const truckLengthFeet = vehicle?.dimensions_length || undefined;
+  const truckType = vehicle?.asset_subtype || undefined;
   
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
