@@ -333,6 +333,15 @@ export default function LoadHunterTab() {
       let matchCount = 0;
       let skippedCount = 0;
       
+      // Collect all matches first, then batch insert
+      const allMatches: Array<{
+        load_email_id: string;
+        hunt_plan_id: string;
+        vehicle_id: string;
+        distance_miles: number | null;
+        is_active: boolean;
+      }> = [];
+      
       // Check each load against ALL hunt plans and create matches for ALL that match
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
@@ -340,12 +349,6 @@ export default function LoadHunterTab() {
         // Better location data logging for debugging
         if (!loadData.originCityState && !loadData.originZip) {
           skippedCount++;
-          console.log('⚠️ Skipping load (missing location):', {
-            subject: email.subject?.substring(0, 50),
-            cityState: loadData.originCityState,
-            zip: loadData.originZip,
-            hasCoords: !!(loadData.originLat && loadData.originLng)
-          });
           continue;
         }
         
@@ -369,30 +372,34 @@ export default function LoadHunterTab() {
             newDistances.set(email.id, Math.round(firstMatchDistance));
           }
           
-          // Persist ALL matches to database
+          // Collect matches for batch insert
           for (let i = 0; i < matchingHunts.length; i++) {
             const matchingHunt = matchingHunts[i];
             const matchIndex = enabledHunts.indexOf(matchingHunt);
             const matchDistance = matchResults[matchIndex].distance;
             
-            const { error } = await supabase
-              .from('load_hunt_matches')
-              .upsert({
-                load_email_id: email.id,
-                hunt_plan_id: matchingHunt.id,
-                vehicle_id: matchingHunt.vehicleId,
-                distance_miles: matchDistance || null,
-                is_active: true,
-              }, {
-                onConflict: 'load_email_id,hunt_plan_id'
-              });
-            
-            if (error) {
-              console.error('❌ Error persisting match:', error);
-            } else {
-              console.log('💾 Saved match:', matchingHunt.planName);
-            }
+            allMatches.push({
+              load_email_id: email.id,
+              hunt_plan_id: matchingHunt.id,
+              vehicle_id: matchingHunt.vehicleId,
+              distance_miles: matchDistance || null,
+              is_active: true,
+            });
           }
+        }
+      }
+      
+      // Batch upsert all matches at once
+      if (allMatches.length > 0) {
+        console.log('💾 Batch saving', allMatches.length, 'matches');
+        const { error } = await supabase
+          .from('load_hunt_matches')
+          .upsert(allMatches, { onConflict: 'load_email_id,hunt_plan_id' });
+        
+        if (error) {
+          console.error('❌ Error batch persisting matches:', error);
+        } else {
+          console.log('✅ Batch saved', allMatches.length, 'matches');
         }
       }
       
@@ -759,54 +766,41 @@ export default function LoadHunterTab() {
       if (loadsToMark.length > 0) {
         console.log(`Marking ${loadsToMark.length} loads for missed tracking (keeping in unreviewed)`);
         
-        const historyRecords = [];
+        const timestamp = new Date().toISOString();
+        const loadIds = loadsToMark.map(load => load.id);
         
-        for (const load of loadsToMark) {
-          try {
-            const timestamp = new Date().toISOString();
-            
-            // Set marked_missed_at timestamp but keep status as 'new'
-            const { error } = await supabase
-              .from('load_emails')
-              .update({ marked_missed_at: timestamp })
-              .eq('id', load.id);
+        // Batch update all loads at once
+        const { error } = await supabase
+          .from('load_emails')
+          .update({ marked_missed_at: timestamp })
+          .in('id', loadIds);
 
-            if (error) {
-              console.error('Error marking load for missed tracking:', error);
-            } else {
-              // Add to history records for batch insert
-              historyRecords.push({
-                load_email_id: load.id,
-                missed_at: timestamp,
-                from_email: load.from_email,
-                subject: load.subject,
-                received_at: load.received_at,
-              });
-            }
-          } catch (err) {
-            console.error('Error updating load:', err);
+        if (error) {
+          console.error('Error batch marking loads for missed tracking:', error);
+        } else {
+          // Prepare history records for batch insert
+          const historyRecords = loadsToMark.map(load => ({
+            load_email_id: load.id,
+            missed_at: timestamp,
+            from_email: load.from_email,
+            subject: load.subject,
+            received_at: load.received_at,
+          }));
+
+          // Log all marked loads to history in one batch
+          const { error: historyError } = await supabase
+            .from('missed_loads_history')
+            .insert(historyRecords);
+          
+          if (historyError) {
+            console.error('Error logging to missed_loads_history:', historyError);
+          } else {
+            console.log(`Logged ${historyRecords.length} loads to missed history`);
           }
-        }
 
-        // Log all marked loads to history in one batch
-        if (historyRecords.length > 0) {
-          try {
-            const { error: historyError } = await supabase
-              .from('missed_loads_history')
-              .insert(historyRecords);
-            
-            if (historyError) {
-              console.error('Error logging to missed_loads_history:', historyError);
-            } else {
-              console.log(`Logged ${historyRecords.length} loads to missed history`);
-            }
-          } catch (err) {
-            console.error('Error inserting history records:', err);
-          }
+          // Refresh the load emails list
+          await loadLoadEmails();
         }
-
-        // Refresh the load emails list
-        await loadLoadEmails();
       }
     };
 
