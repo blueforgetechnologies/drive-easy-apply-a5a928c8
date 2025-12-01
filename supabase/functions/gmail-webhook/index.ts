@@ -52,18 +52,31 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
 }
 
 async function getAccessToken(userEmail: string): Promise<string> {
+  console.log('Looking up token for:', userEmail);
+  
+  // Use maybeSingle() instead of single() to avoid throwing on no rows
   const { data: tokenData, error } = await supabase
     .from('gmail_tokens')
     .select('*')
-    .eq('user_email', userEmail)
-    .single();
+    .ilike('user_email', userEmail)
+    .maybeSingle();
 
-  if (error || !tokenData) {
+  console.log('Token lookup result:', { found: !!tokenData, error: error?.message });
+
+  if (error) {
+    console.error('Database error looking up token:', error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+  
+  if (!tokenData) {
+    console.error('No token found for email:', userEmail);
     throw new Error('No token found for user');
   }
 
   const tokenExpiry = new Date(tokenData.token_expiry);
   const now = new Date();
+  
+  console.log('Token expiry check:', { expiry: tokenExpiry.toISOString(), now: now.toISOString(), expired: tokenExpiry <= now });
   
   if (tokenExpiry <= now) {
     console.log('Token expired, refreshing...');
