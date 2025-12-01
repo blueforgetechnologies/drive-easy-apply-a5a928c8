@@ -948,92 +948,145 @@ export default function LoadHunterTab() {
     }
   };
 
-  const loadLoadEmails = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("load_emails")
-        .select("*")
-        .order("received_at", { ascending: false });
+  const loadLoadEmails = async (retries = 3) => {
+    console.log('📧 Loading emails...');
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from("load_emails")
+          .select("*")
+          .in("status", ["new", "waitlist", "skipped"])
+          .order("received_at", { ascending: false })
+          .limit(5000);
 
-      if (error) throw error;
-      setLoadEmails(data || []);
-    } catch (error: any) {
-      console.error("Failed to load emails", error);
-    }
-  };
-
-  const loadHuntPlans = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("hunt_plans")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      
-      // Transform database format to component format
-      const transformedPlans: HuntPlan[] = (data || []).map(plan => ({
-        id: plan.id,
-        vehicleId: plan.vehicle_id,
-        planName: plan.plan_name,
-        vehicleSize: plan.vehicle_size || "",
-        zipCode: plan.zip_code || "",
-        availableFeet: plan.available_feet || "",
-        partial: plan.partial || false,
-        pickupRadius: plan.pickup_radius || "",
-        mileLimit: plan.mile_limit || "",
-        loadCapacity: plan.load_capacity || "",
-        availableDate: plan.available_date || "",
-        availableTime: plan.available_time || "",
-        destinationZip: plan.destination_zip || "",
-        destinationRadius: plan.destination_radius || "",
-        notes: plan.notes || "",
-        createdBy: plan.created_by || "",
-        createdAt: new Date(plan.created_at),
-        lastModified: new Date(plan.last_modified),
-        huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
-        enabled: plan.enabled !== false, // Default to true if undefined
-      }));
-      
-      setHuntPlans(transformedPlans);
-    } catch (error: any) {
-      console.error("Failed to load hunt plans", error);
-    }
-  };
-
-  const loadHuntMatches = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("load_hunt_matches")
-        .select("*");
-
-      if (error) throw error;
-      
-      const allMatches = data || [];
-      const active = allMatches.filter((m: any) => m.is_active !== false);
-      const skipped = allMatches.filter((m: any) => m.is_active === false);
-
-      setLoadMatches(active);
-      setSkippedMatches(skipped);
-      
-      // Build the hunt map from ACTIVE matches only
-      const huntMap = new Map<string, string>();
-      const distances = new Map<string, number>();
-      const matchedIds = new Set<string>();
-      
-      active.forEach((match: any) => {
-        huntMap.set(match.load_email_id, match.hunt_plan_id);
-        if (match.distance_miles) {
-          distances.set(match.load_email_id, match.distance_miles);
+        if (error) {
+          console.error(`📧 Attempt ${attempt} failed:`, error);
+          if (attempt === retries) {
+            toast.error('Failed to load emails - please refresh');
+            return;
+          }
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+          continue;
         }
-        matchedIds.add(match.load_email_id);
-      });
-      
-      setLoadHuntMap(huntMap);
-      setLoadDistances(distances);
-      setMatchedLoadIds(matchedIds);
-    } catch (error: any) {
-      console.error("Failed to load hunt matches", error);
+        console.log(`✅ Loaded ${data?.length || 0} emails`);
+        setLoadEmails(data || []);
+        return;
+      } catch (err) {
+        console.error(`📧 Attempt ${attempt} error:`, err);
+        if (attempt === retries) {
+          toast.error('Failed to load emails - please refresh');
+        }
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+      }
+    }
+  };
+
+  const loadHuntPlans = async (retries = 3) => {
+    console.log('🎯 Loading hunt plans...');
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from("hunt_plans")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error(`🎯 Attempt ${attempt} failed:`, error);
+          if (attempt === retries) {
+            toast.error('Failed to load hunt plans - please refresh');
+            return;
+          }
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+          continue;
+        }
+        
+        console.log(`✅ Loaded ${data?.length || 0} hunt plans`);
+        const transformedPlans: HuntPlan[] = (data || []).map((plan: any) => ({
+          id: plan.id,
+          vehicleId: plan.vehicle_id,
+          planName: plan.plan_name,
+          vehicleSize: plan.vehicle_size || "",
+          zipCode: plan.zip_code || "",
+          availableFeet: plan.available_feet || "",
+          partial: plan.partial || false,
+          pickupRadius: plan.pickup_radius || "",
+          mileLimit: plan.mile_limit || "",
+          loadCapacity: plan.load_capacity || "",
+          availableDate: plan.available_date || "",
+          availableTime: plan.available_time || "",
+          destinationZip: plan.destination_zip || "",
+          destinationRadius: plan.destination_radius || "",
+          notes: plan.notes || "",
+          createdBy: plan.created_by || "",
+          createdAt: new Date(plan.created_at),
+          lastModified: new Date(plan.last_modified),
+          huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
+          enabled: plan.enabled !== false,
+        }));
+        
+        setHuntPlans(transformedPlans);
+        return;
+      } catch (err) {
+        console.error(`🎯 Attempt ${attempt} error:`, err);
+        if (attempt === retries) {
+          toast.error('Failed to load hunt plans - please refresh');
+        }
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+      }
+    }
+  };
+
+  const loadHuntMatches = async (retries = 3) => {
+    console.log('🔗 Loading hunt matches...');
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from("load_hunt_matches")
+          .select("*");
+
+        if (error) {
+          console.error(`🔗 Attempt ${attempt} failed:`, error);
+          if (attempt === retries) {
+            toast.error('Failed to load hunt matches - please refresh');
+            return;
+          }
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+          continue;
+        }
+        
+        console.log(`✅ Loaded ${data?.length || 0} hunt matches`);
+        const allMatches = data || [];
+        const active = allMatches.filter((m: any) => m.is_active !== false);
+        const skipped = allMatches.filter((m: any) => m.is_active === false);
+
+        console.log(`   Active: ${active.length}, Skipped: ${skipped.length}`);
+        
+        setLoadMatches(active);
+        setSkippedMatches(skipped);
+        
+        const huntMap = new Map<string, string>();
+        const distances = new Map<string, number>();
+        const matchedIds = new Set<string>();
+        
+        active.forEach((match: any) => {
+          huntMap.set(match.load_email_id, match.hunt_plan_id);
+          if (match.distance_miles) {
+            distances.set(match.load_email_id, match.distance_miles);
+          }
+          matchedIds.add(match.load_email_id);
+        });
+        
+        setLoadHuntMap(huntMap);
+        setLoadDistances(distances);
+        setMatchedLoadIds(matchedIds);
+        return;
+      } catch (err) {
+        console.error(`🔗 Attempt ${attempt} error:`, err);
+        if (attempt === retries) {
+          toast.error('Failed to load hunt matches - please refresh');
+        }
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+      }
     }
   };
 
