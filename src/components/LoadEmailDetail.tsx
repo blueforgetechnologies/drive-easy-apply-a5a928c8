@@ -332,7 +332,7 @@ const LoadEmailDetail = ({
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Total Miles</span>
                       <div className="flex gap-4 items-center">
-                        <span className="font-semibold">{((data.loaded_miles || 375) + (emptyDriveDistance || 0))}</span>
+                        <span className="font-semibold">{Math.round((data.loaded_miles || 375) + (emptyDriveDistance || 0))}</span>
                         <span className="text-blue-600 font-semibold w-14 text-right">$1.64</span>
                       </div>
                     </div>
