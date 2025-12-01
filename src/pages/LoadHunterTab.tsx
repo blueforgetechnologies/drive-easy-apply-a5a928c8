@@ -95,7 +95,8 @@ export default function LoadHunterTab() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [loadEmails, setLoadEmails] = useState<any[]>([]);
-  const [loadMatches, setLoadMatches] = useState<any[]>([]); // Store all matches from database
+  const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (is_active = true)
+  const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Skipped/inactive matches
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -524,7 +525,7 @@ export default function LoadHunterTab() {
   
   const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
-  const skippedCount = loadEmails.filter(e => e.status === 'skipped').length;
+  const skippedCount = skippedMatches.length;
 
   // Function to play alert sound
   const playAlertSound = (force = false) => {
@@ -1010,19 +1011,23 @@ export default function LoadHunterTab() {
     try {
       const { data, error } = await supabase
         .from("load_hunt_matches")
-        .select("*")
-        .eq("is_active", true);
+        .select("*");
 
       if (error) throw error;
       
-      setLoadMatches(data || []);
+      const allMatches = data || [];
+      const active = allMatches.filter((m: any) => m.is_active !== false);
+      const skipped = allMatches.filter((m: any) => m.is_active === false);
+
+      setLoadMatches(active);
+      setSkippedMatches(skipped);
       
-      // Build the hunt map from persisted matches
+      // Build the hunt map from ACTIVE matches only
       const huntMap = new Map<string, string>();
       const distances = new Map<string, number>();
       const matchedIds = new Set<string>();
       
-      (data || []).forEach((match: any) => {
+      active.forEach((match: any) => {
         huntMap.set(match.load_email_id, match.hunt_plan_id);
         if (match.distance_miles) {
           distances.set(match.load_email_id, match.distance_miles);
@@ -2598,17 +2603,18 @@ export default function LoadHunterTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(activeFilter === 'unreviewed' ? filteredMatches : filteredEmails)
+                        {(activeFilter === 'unreviewed' ? filteredMatches : activeFilter === 'skipped' ? skippedMatches : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
-                          // For unreviewed, item is a match; for others, item is an email
-                          const email = activeFilter === 'unreviewed'
+                          // For unreviewed/skipped, item is a match; for others, item is an email
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped';
+                          const email = viewingMatches
                             ? loadEmails.find(e => e.id === (item as any).load_email_id)
                             : item;
                           
                           if (!email) return null;
                           
-                          const match = activeFilter === 'unreviewed' ? item : null;
+                          const match = viewingMatches ? item : null;
                           const data = email.parsed_data || {};
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
