@@ -21,6 +21,7 @@ interface Vehicle {
   driver_2_id: string | null;
   primary_dispatcher_id: string | null;
   asset_type: string | null;
+  asset_subtype: string | null;
   dimensions_length: number | null;
   dimensions_width: number | null;
   dimensions_height: number | null;
@@ -649,7 +650,11 @@ export default function VehiclesTab() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div>{vehicle.asset_type || "N/A"}</div>
+                        <div>
+                          {vehicle.dimensions_length && vehicle.asset_subtype
+                            ? `${vehicle.dimensions_length}' ${vehicle.asset_subtype}`
+                            : vehicle.asset_type || "N/A"}
+                        </div>
                         <div className="text-sm text-muted-foreground">Air Ride</div>
                       </TableCell>
                       <TableCell>
