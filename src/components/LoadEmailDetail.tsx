@@ -38,6 +38,23 @@ const LoadEmailDetail = ({
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
   
+  // Determine truck size (in feet) and type for subject/body text
+  const truckLengthFeet = (() => {
+    if (vehicle?.dimensions_length) return vehicle.dimensions_length;
+    if (typeof data.truck_dimensions === "string") {
+      const match = data.truck_dimensions.match(/(\d+)/);
+      if (match) {
+        const inches = parseInt(match[1], 10);
+        if (!isNaN(inches) && inches > 0) {
+          return Math.round(inches / 12);
+        }
+      }
+    }
+    return undefined;
+  })();
+
+  const truckType = vehicle?.asset_subtype || data.vehicle_type || "Large Straight";
+  
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
   
@@ -436,14 +453,14 @@ const LoadEmailDetail = ({
                        <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">Subject:</div>
                         <div className="text-muted-foreground">
-                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {vehicle?.dimensions_length ? `${vehicle.dimensions_length}'` : ''} {vehicle?.asset_subtype || ''} - ${bidAmount || '0'}
+                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {truckLengthFeet ? `${truckLengthFeet}ft` : ''} {truckType} - ${bidAmount || '0'}
                         </div>
                       </div>
                       
                       <div className="border rounded p-3 text-xs space-y-2">
-                        <p>Hello ,</p>
-                        <p>I have a 24' Large Straight.</p>
-                        <p className="text-blue-600">Please let me know if I can help on this load:</p>
+                         <p>Hello ,</p>
+                        <p>I have a {truckLengthFeet ? `${truckLengthFeet}' ` : ''}{truckType}.</p>
+                         <p className="text-blue-600">Please let me know if I can help on this load:</p>
                         <p className="text-blue-600">Order Number: {data.order_number || '85174'} [{originCity} to {destCity}]</p>
                         
                         <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">
