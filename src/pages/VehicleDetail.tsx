@@ -692,19 +692,27 @@ export default function VehicleDetail() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[10px]">Asset Size / Type</Label>
-                  <div className="grid grid-cols-3 gap-1 items-center">
-                    <Input placeholder="26" value={formData.dimensions_length || ''} onChange={(e) => updateField('dimensions_length', e.target.value)} className="h-7 text-xs" />
-                    <span className="text-[10px]">ft.</span>
-                    <Select value={formData.asset_subtype || ''} onValueChange={(value) => updateField('asset_subtype', value)}>
-                      <SelectTrigger className="h-7 text-xs">
-                        <SelectValue placeholder="Large Straight" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Large Straight">Large Straight</SelectItem>
-                        <SelectItem value="Air Ride">Air Ride</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-3 gap-1 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Trailer Size</Label>
+                      <div className="flex gap-1 items-center">
+                        <Input placeholder="26" value={formData.dimensions_length || ''} onChange={(e) => updateField('dimensions_length', e.target.value)} className="h-7 text-xs" />
+                        <span className="text-[10px]">ft.</span>
+                      </div>
+                    </div>
+                    <div></div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Asset Type</Label>
+                      <Select value={formData.asset_subtype || ''} onValueChange={(value) => updateField('asset_subtype', value)}>
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Large Straight" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Large Straight">Large Straight</SelectItem>
+                          <SelectItem value="Air Ride">Air Ride</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
