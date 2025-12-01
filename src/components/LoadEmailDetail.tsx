@@ -433,9 +433,11 @@ const LoadEmailDetail = ({
                         <div className="text-muted-foreground">—</div>
                       </div>
                       
-                      <div className="bg-muted/50 p-2 rounded text-xs">
+                       <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">Subject:</div>
-                        <div className="text-muted-foreground">{email.subject || 'No subject'}</div>
+                        <div className="text-muted-foreground">
+                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {vehicle?.dimensions_length ? `${vehicle.dimensions_length}'` : ''} {vehicle?.asset_subtype || ''} {vehicle?.asset_type || ''} - ${bidAmount || '0'}
+                        </div>
                       </div>
                       
                       <div className="border rounded p-3 text-xs space-y-2">
