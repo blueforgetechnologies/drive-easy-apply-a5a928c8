@@ -2603,7 +2603,14 @@ export default function LoadHunterTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(activeFilter === 'unreviewed' ? filteredMatches : activeFilter === 'skipped' ? skippedMatches : filteredEmails)
+                        {(activeFilter === 'unreviewed' ? filteredMatches : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => {
+                          // Skipped matches stay visible until midnight ET regardless of expiration
+                          const email = loadEmails.find(e => e.id === match.load_email_id);
+                          if (!email) return false;
+                          
+                          // Show all skipped matches - they persist until midnight reset
+                          return true;
+                        }) : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed/skipped, item is a match; for others, item is an email
