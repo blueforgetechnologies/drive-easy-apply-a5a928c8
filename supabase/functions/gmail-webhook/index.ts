@@ -51,39 +51,65 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
   return tokens.access_token;
 }
 
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function getAccessToken(userEmail: string): Promise<string> {
   console.log('Looking up token for:', userEmail);
   
-  // Use maybeSingle() instead of single() to avoid throwing on no rows
-  const { data: tokenData, error } = await supabase
-    .from('gmail_tokens')
-    .select('*')
-    .ilike('user_email', userEmail)
-    .maybeSingle();
+  // Retry logic with exponential backoff for database timeouts
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const backoffMs = Math.pow(2, attempt) * 500; // 500ms, 1000ms, 2000ms
+      console.log(`Retry attempt ${attempt + 1} after ${backoffMs}ms`);
+      await delay(backoffMs);
+    }
+    
+    try {
+      const { data: tokenData, error } = await supabase
+        .from('gmail_tokens')
+        .select('access_token, refresh_token, token_expiry')
+        .ilike('user_email', userEmail)
+        .maybeSingle();
 
-  console.log('Token lookup result:', { found: !!tokenData, error: error?.message });
+      if (error) {
+        if (error.message?.includes('timeout')) {
+          console.warn(`Timeout on attempt ${attempt + 1}:`, error.message);
+          lastError = new Error(`Database timeout: ${error.message}`);
+          continue; // Retry on timeout
+        }
+        console.error('Database error looking up token:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      if (!tokenData) {
+        console.error('No token found for email:', userEmail);
+        throw new Error('No token found for user');
+      }
 
-  if (error) {
-    console.error('Database error looking up token:', error);
-    throw new Error(`Database error: ${error.message}`);
+      const tokenExpiry = new Date(tokenData.token_expiry);
+      const now = new Date();
+      
+      if (tokenExpiry <= now) {
+        console.log('Token expired, refreshing...');
+        return await refreshAccessToken(tokenData.refresh_token);
+      }
+
+      console.log('Token found and valid');
+      return tokenData.access_token;
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('timeout')) {
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
   }
   
-  if (!tokenData) {
-    console.error('No token found for email:', userEmail);
-    throw new Error('No token found for user');
-  }
-
-  const tokenExpiry = new Date(tokenData.token_expiry);
-  const now = new Date();
-  
-  console.log('Token expiry check:', { expiry: tokenExpiry.toISOString(), now: now.toISOString(), expired: tokenExpiry <= now });
-  
-  if (tokenExpiry <= now) {
-    console.log('Token expired, refreshing...');
-    return await refreshAccessToken(tokenData.refresh_token);
-  }
-
-  return tokenData.access_token;
+  throw lastError || new Error('Failed to get access token after retries');
 }
 
 // Full Sylectus email parser (same as fetch-gmail-loads)
