@@ -307,26 +307,40 @@ export default function LoadHunterTab() {
   // Effect to search through loads when hunts change and persist ALL matches to database
   useEffect(() => {
     const searchLoadsForHunts = async () => {
+      console.log('🔍 Running hunt matching logic. LoadEmails:', loadEmails.length, 'Hunt plans:', huntPlans.length);
+      
       const enabledHunts = huntPlans.filter(h => h.enabled);
       if (enabledHunts.length === 0) {
+        console.log('❌ No enabled hunt plans');
         setMatchedLoadIds(new Set());
         setLoadDistances(new Map());
         setLoadHuntMap(new Map());
         return;
       }
       
+      console.log('✅ Found', enabledHunts.length, 'enabled hunt plans');
+      
       // Consider all loads in "new" or "missed" status
       const candidateLoads = loadEmails.filter(email =>
         email.status === 'new' || email.status === 'missed'
       );
       
+      console.log('📧 Candidate loads for matching:', candidateLoads.length);
+      
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
       const newHuntMap = new Map<string, string>();
+      let matchCount = 0;
       
       // Check each load against ALL hunt plans and create matches for ALL that match
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
+        
+        // Skip loads without geocodable location data
+        if (!loadData.originCityState && !loadData.originZip) {
+          console.log('⚠️ Skipping load (no location):', email.subject?.substring(0, 50));
+          continue;
+        }
         
         // Find ALL hunts that match this load (async now because of geocoding)
         const matchResults = await Promise.all(
@@ -336,6 +350,9 @@ export default function LoadHunterTab() {
         const matchingHunts = enabledHunts.filter((_, index) => matchResults[index].matches);
         
         if (matchingHunts.length > 0) {
+          matchCount++;
+          console.log('✅ Match found for:', email.subject?.substring(0, 50), '- Matching hunts:', matchingHunts.length);
+          
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunts[0].id);
           
@@ -365,6 +382,8 @@ export default function LoadHunterTab() {
             
             if (error) {
               console.error('Error persisting load match:', error);
+            } else {
+              console.log('💾 Persisted match to database');
             }
           }
           
@@ -378,6 +397,8 @@ export default function LoadHunterTab() {
         }
       }
       
+      console.log('🎯 Matching complete. Total matches created:', matchCount);
+      
       setMatchedLoadIds(newMatchedIds);
       setLoadDistances(newDistances);
       setLoadHuntMap(newHuntMap);
@@ -387,13 +408,15 @@ export default function LoadHunterTab() {
     };
     
     if (huntPlans.length > 0 && loadEmails.length > 0) {
+      console.log('🚀 Triggering hunt matching');
       searchLoadsForHunts();
     } else if (huntPlans.length === 0) {
+      console.log('⚠️ No hunt plans available');
       setMatchedLoadIds(new Set());
       setLoadDistances(new Map());
       setLoadHuntMap(new Map());
     }
-  }, [loadEmails, huntPlans]);
+  }, [loadEmails.length, huntPlans.length, loadEmails, huntPlans]);
 
   // Use saved distance from match - no recalculation needed
   useEffect(() => {
