@@ -58,6 +58,23 @@ const LoadEmailDetail = ({
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
+  // Handle Skip button click
+  const handleSkip = async () => {
+    try {
+      const { error } = await supabase
+        .from("load_emails")
+        .update({ status: "skipped" })
+        .eq("id", email.id);
+
+      if (error) throw error;
+      
+      // Close the detail view and return to unreviewed list
+      onClose();
+    } catch (error) {
+      console.error("Error skipping load:", error);
+    }
+  };
+
   // Ensure we use the broker_email from parsed_data for the bid email
   useEffect(() => {
     const resolveToEmail = async () => {
@@ -375,7 +392,12 @@ const LoadEmailDetail = ({
 
                 {/* Action Buttons */}
                 <div className="flex gap-1.5">
-                  <Button variant="destructive" size="sm" className="h-8 text-xs flex-1 whitespace-nowrap font-medium">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="h-8 text-xs flex-1 whitespace-nowrap font-medium"
+                    onClick={handleSkip}
+                  >
                     Skip
                   </Button>
                   <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium">
