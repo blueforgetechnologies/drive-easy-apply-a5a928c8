@@ -38,12 +38,12 @@ const LoadEmailDetail = ({
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
   
-  // Use asset's Trailer Size / Asset Type; if no asset matched, show "(NOT FOUND)"
+  // Use asset's Trailer Size / Asset Type from the matched vehicle; if no asset matched, show "(NOT FOUND)"
   const truckLengthFeet = vehicle?.dimensions_length;
-  const truckType = vehicle?.asset_subtype;
-  
-  const displaySize = vehicle ? (truckLengthFeet ? `${truckLengthFeet}' ` : '') : '(NOT FOUND) ';
-  const displayType = vehicle ? (truckType || 'Large Straight') : '';
+  const truckType = vehicle?.asset_type;
+
+  const displaySize = vehicle && truckLengthFeet ? `${truckLengthFeet}' ` : "";
+  const displayType = vehicle ? (truckType || "Large Straight") : "(NOT FOUND)";
   
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
