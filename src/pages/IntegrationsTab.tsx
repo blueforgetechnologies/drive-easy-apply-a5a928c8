@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 interface Integration {
@@ -55,6 +55,8 @@ export default function IntegrationsTab() {
   const [emailConfigOpen, setEmailConfigOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("P.D@talbilogistics.com");
   const [emailProvider, setEmailProvider] = useState("gmail");
+  const [isSettingUpPush, setIsSettingUpPush] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"unknown" | "active" | "error">("unknown");
 
   useEffect(() => {
     checkAllIntegrations();
@@ -62,6 +64,34 @@ export default function IntegrationsTab() {
     const interval = setInterval(checkAllIntegrations, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const setupGmailPush = async () => {
+    setIsSettingUpPush(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: { action: 'setup-push' }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
+      setPushStatus("active");
+      toast.success("Gmail push notifications configured successfully!", {
+        description: `Expires: ${data.expiration ? new Date(parseInt(data.expiration)).toLocaleString() : 'Unknown'}`
+      });
+    } catch (error) {
+      console.error("Error setting up Gmail push:", error);
+      setPushStatus("error");
+      toast.error("Failed to setup Gmail push notifications", {
+        description: error instanceof Error ? error.message : "Unknown error"
+      });
+    } finally {
+      setIsSettingUpPush(false);
+    }
+  };
 
   const checkAllIntegrations = async () => {
     setIsChecking(true);
@@ -231,6 +261,47 @@ export default function IntegrationsTab() {
               <span className="text-muted-foreground">Provider:</span>
               <span className="font-medium capitalize">{emailProvider}</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <Bell className="h-5 w-5 text-blue-500 mt-0.5" />
+              <div>
+                <CardTitle className="text-base">Gmail Push Notifications</CardTitle>
+                <CardDescription>Enable real-time email notifications for Load Hunter</CardDescription>
+              </div>
+            </div>
+            {pushStatus === "active" && <Badge variant="default" className="bg-green-500">Active</Badge>}
+            {pushStatus === "error" && <Badge variant="destructive">Error</Badge>}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Setup Gmail push notifications to receive instant load emails without polling.
+            </p>
+            <Button
+              onClick={setupGmailPush}
+              disabled={isSettingUpPush}
+              size="sm"
+              className="gap-2"
+            >
+              {isSettingUpPush ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Setting up...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4" />
+                  Setup Gmail Push
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
