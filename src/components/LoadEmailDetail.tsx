@@ -38,19 +38,12 @@ const LoadEmailDetail = ({
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
   
-  // Prefer Trailer Size / Asset Type from the selected asset; if no asset match, fall back to email data
-  const truckLengthFeet = vehicle
-    ? vehicle.dimensions_length
-    : (typeof data.truck_dimensions === "string"
-        ? (() => {
-            const matchLen = data.truck_dimensions.match(/(\d+)/);
-            return matchLen ? parseInt(matchLen[1], 10) : undefined;
-          })()
-        : undefined);
-
-  const truckType = vehicle
-    ? (vehicle.asset_subtype || "Large Straight")
-    : (data.vehicle_type || "Large Straight");
+  // Use asset's Trailer Size / Asset Type; if no asset matched, show "(NOT FOUND)"
+  const truckLengthFeet = vehicle?.dimensions_length;
+  const truckType = vehicle?.asset_subtype;
+  
+  const displaySize = vehicle ? (truckLengthFeet ? `${truckLengthFeet}' ` : '') : '(NOT FOUND) ';
+  const displayType = vehicle ? (truckType || 'Large Straight') : '';
   
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
@@ -450,13 +443,13 @@ const LoadEmailDetail = ({
                        <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">Subject:</div>
                         <div className="text-muted-foreground">
-                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {truckLengthFeet ? `${truckLengthFeet}' ` : ''}{truckType || ''} - ${bidAmount || '0'}
+                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}
                         </div>
                       </div>
                       
                       <div className="border rounded p-3 text-xs space-y-2">
                          <p>Hello ,</p>
-                        <p>I have a {truckLengthFeet ? `${truckLengthFeet}' ` : ''}{truckType}.</p>
+                        <p>I have a {displaySize}{displayType}.</p>
                          <p className="text-blue-600">Please let me know if I can help on this load:</p>
                         <p className="text-blue-600">Order Number: {data.order_number || '85174'} [{originCity} to {destCity}]</p>
                         
