@@ -314,7 +314,6 @@ export default function DevelopmentTab() {
                 <h4 className="font-semibold mb-1">Broker / Customer</h4>
                 <ul className="list-disc list-inside text-muted-foreground space-y-1">
                   <li><strong>customer</strong> – "Posted by …" name from the subject.</li>
-                  <li><strong>broker</strong> – same as customer (poster name).</li>
                   <li><strong>broker_name</strong> – value after "Broker Name:" in the details block.</li>
                   <li><strong>broker_company</strong> – value after "Broker Company:".</li>
                   <li><strong>broker_phone</strong> – value after "Broker Phone:".</li>
