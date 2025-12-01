@@ -51,32 +51,35 @@ const LoadEmailDetail = ({
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
-  // Ensure we use the email tied to this match's load_email_id so you can verify correctness
+  // Ensure we use the broker_email from parsed_data for the bid email
   useEffect(() => {
     const resolveToEmail = async () => {
       try {
         if (match?.load_email_id) {
           const { data: loadEmail, error } = await supabase
             .from("load_emails")
-            .select("from_email")
+            .select("parsed_data")
             .eq("id", match.load_email_id)
-            .single();
+            .maybeSingle();
 
-          if (!error && loadEmail?.from_email) {
-            setToEmail(loadEmail.from_email);
-            return;
+          if (!error && loadEmail?.parsed_data) {
+            const parsedData = loadEmail.parsed_data as Record<string, any>;
+            if (parsedData.broker_email) {
+              setToEmail(parsedData.broker_email);
+              return;
+            }
           }
         }
-        // Fallback to the email prop if we can't resolve via match
-        setToEmail(email.from_email || null);
+        // Fallback to broker_email from email prop if available
+        setToEmail(data.broker_email || email.from_email || null);
       } catch (e) {
         console.error("Error resolving toEmail from match:", e);
-        setToEmail(email.from_email || null);
+        setToEmail(data.broker_email || email.from_email || null);
       }
     };
 
     resolveToEmail();
-  }, [match, email.from_email]);
+  }, [match, email.from_email, data.broker_email]);
 
   return (
     <div className="flex-1 overflow-auto relative">
