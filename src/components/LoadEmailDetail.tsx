@@ -38,9 +38,16 @@ const LoadEmailDetail = ({
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
   
-  // Use ONLY the asset's Trailer Size and Asset Type from the vehicles table
-  const truckLengthFeet = vehicle?.dimensions_length || undefined;
-  const truckType = vehicle?.asset_subtype || undefined;
+  // Prefer Trailer Size / Asset Type from the selected asset; fall back to email data if no asset match
+  const truckLengthFeet = vehicle?.dimensions_length
+    ?? (typeof data.truck_dimensions === "string"
+      ? (() => {
+          const matchLen = data.truck_dimensions.match(/(\d+)/);
+          return matchLen ? parseInt(matchLen[1], 10) : undefined;
+        })()
+      : undefined);
+
+  const truckType = vehicle?.asset_subtype || data.vehicle_type || "Large Straight";
   
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
@@ -440,7 +447,7 @@ const LoadEmailDetail = ({
                        <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">Subject:</div>
                         <div className="text-muted-foreground">
-                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {truckLengthFeet ? `${truckLengthFeet}ft` : ''} {truckType} - ${bidAmount || '0'}
+                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {truckLengthFeet ? `${truckLengthFeet}' ` : ''}{truckType || ''} - ${bidAmount || '0'}
                         </div>
                       </div>
                       
