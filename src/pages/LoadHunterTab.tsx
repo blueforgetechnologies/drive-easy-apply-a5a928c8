@@ -1878,6 +1878,25 @@ export default function LoadHunterTab() {
               <Button 
                 size="sm" 
                 variant="ghost"
+                className={`h-7 px-2.5 text-xs rounded-none border-0 ${
+                  activeFilter === 'all' 
+                    ? 'bg-gray-800 text-white hover:bg-gray-900' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  setActiveFilter('all');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                All
+              </Button>
+              
+              <div className="w-px h-5 bg-gray-300"></div>
+              
+              <Button 
+                size="sm" 
+                variant="ghost"
                 className={`h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 ${
                   activeFilter === 'unreviewed' 
                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
@@ -1984,44 +2003,23 @@ export default function LoadHunterTab() {
               </Button>
             </div>
             
-            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
-              <Button 
-                size="sm" 
-                variant="ghost"
-                className={`h-7 px-2.5 text-xs gap-1.5 rounded-none border-0 ${
-                  activeFilter === 'mybids' 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-                onClick={() => {
-                  setActiveFilter('mybids');
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                My Bids
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">85</Badge>
-              </Button>
-              
-              <div className="w-px h-5 bg-gray-300"></div>
-              
-              <Button 
-                size="sm" 
-                variant="ghost"
-                className={`h-7 px-2.5 text-xs rounded-none border-0 ${
-                  activeFilter === 'all' 
-                    ? 'bg-gray-800 text-white hover:bg-gray-900' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-                onClick={() => {
-                  setActiveFilter('all');
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                All
-              </Button>
-            </div>
+            <Button 
+              size="sm" 
+              variant="outline"
+              className={`h-7 px-2.5 text-xs gap-1.5 ${
+                activeFilter === 'mybids' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
+                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+              }`}
+              onClick={() => {
+                setActiveFilter('mybids');
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              My Bids
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">85</Badge>
+            </Button>
             
             <Button
               size="sm" 
