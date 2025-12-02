@@ -97,6 +97,7 @@ export default function LoadHunterTab() {
   const [loadEmails, setLoadEmails] = useState<any[]>([]);
   const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (is_active = true)
   const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Skipped/inactive matches
+  const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -473,60 +474,24 @@ export default function LoadHunterTab() {
         return true;
       });
 
-  // Get filtered matches for unreviewed (one row per match)
-  // DEV MODE: Showing ALL matches regardless of time/expiry for development
+  // Get filtered matches for unreviewed - USE SERVER-SIDE VIEW DATA for scalability
   const filteredMatches = activeFilter === 'unreviewed'
-    ? loadMatches
+    ? unreviewedViewData
         .filter(match => {
-          const email = loadEmails.find(e => e.id === match.load_email_id);
-          if (!email || email.status !== 'new') return false;
-          
           // Filter by dispatcher's vehicles when in MY TRUCKS mode
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
           }
-          
-          // DEV: Removed time-based filtering to show all matches during development
-          // const now = new Date();
-          // const receivedAt = new Date(email.received_at);
-          // const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-          // if (email.expires_at) {
-          //   const expiresAt = new Date(email.expires_at);
-          //   if (expiresAt > receivedAt && expiresAt < now) return false;
-          // }
-          // if (receivedAt < thirtyMinutesAgo) return false;
-          
           return true;
         })
-        .sort((a, b) => {
-          const emailA = loadEmails.find(e => e.id === a.load_email_id);
-          const emailB = loadEmails.find(e => e.id === b.load_email_id);
-          if (!emailA || !emailB) return 0;
-          return new Date(emailB.received_at).getTime() - new Date(emailA.received_at).getTime();
-        })
+        .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
     : [];
 
-  // Count matches (not emails) for unreviewed
-  // DEV MODE: Counting ALL matches regardless of time/expiry for development
-  const unreviewedCount = loadMatches.filter(match => {
-    const email = loadEmails.find(e => e.id === match.load_email_id);
-    if (!email || email.status !== 'new') return false;
-    
-    // Filter by dispatcher's vehicles when in MY TRUCKS mode
+  // Count uses server-side view data for accuracy
+  const unreviewedCount = unreviewedViewData.filter(match => {
     if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
       if (!myVehicleIds.includes(match.vehicle_id)) return false;
     }
-    
-    // DEV: Removed time-based filtering to show all matches during development
-    // const now = new Date();
-    // const receivedAt = new Date(email.received_at);
-    // const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-    // if (email.expires_at) {
-    //   const expiresAt = new Date(email.expires_at);
-    //   if (expiresAt > receivedAt && expiresAt < now) return false;
-    // }
-    // if (receivedAt < thirtyMinutesAgo) return false;
-    
     return true;
   }).length;
   
@@ -666,6 +631,7 @@ export default function LoadHunterTab() {
     loadLoadEmails();
     loadHuntPlans();
     loadHuntMatches();
+    loadUnreviewedMatches(); // Load from efficient server-side view
     loadCarriersAndPayees();
     fetchMapboxToken();
 
@@ -721,6 +687,7 @@ export default function LoadHunterTab() {
           console.log('Load hunt match change:', payload);
           // Reload matches on any change
           loadHuntMatches();
+          loadUnreviewedMatches(); // Also refresh server-side view
         }
       )
       .subscribe();
@@ -1101,6 +1068,39 @@ export default function LoadHunterTab() {
     }
   };
 
+  // Load unreviewed matches efficiently from database view (server-side filtering)
+  const loadUnreviewedMatches = async (retries = 3) => {
+    console.log('🚀 Loading unreviewed matches from view...');
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from("unreviewed_matches")
+          .select("*")
+          .limit(500);
+
+        if (error) {
+          console.error(`🚀 Attempt ${attempt} failed:`, error);
+          if (attempt === retries) {
+            toast.error('Failed to load unreviewed matches - please refresh');
+            return;
+          }
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+          continue;
+        }
+        
+        console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view`);
+        setUnreviewedViewData(data || []);
+        return;
+      } catch (err) {
+        console.error(`🚀 Attempt ${attempt} error:`, err);
+        if (attempt === retries) {
+          toast.error('Failed to load unreviewed matches - please refresh');
+        }
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+      }
+    }
+  };
+
   const getDriverName = (driverId: string | null) => {
     if (!driverId) return "";
     const driver = drivers.find(d => d.id === driverId);
@@ -1124,8 +1124,9 @@ export default function LoadHunterTab() {
 
       if (data?.count > 0) {
         toast.success(`Successfully loaded ${data.count} new load emails`);
-        // Reload the load emails table
+        // Reload the load emails table and unreviewed view
         await loadLoadEmails();
+        await loadUnreviewedMatches();
       } else {
         toast.info('No new load emails found');
       }
@@ -1152,6 +1153,7 @@ export default function LoadHunterTab() {
       if (data?.success > 0) {
         toast.success(`Reparsed ${data.success} emails successfully`);
         await loadLoadEmails();
+        await loadUnreviewedMatches();
       } else {
         toast.info('No emails to reparse');
       }
@@ -1173,6 +1175,7 @@ export default function LoadHunterTab() {
       if (error) throw error;
 
       await loadHuntMatches();
+      await loadUnreviewedMatches();
       toast.success('Match skipped');
     } catch (error) {
       console.error('Error skipping match:', error);
@@ -1194,6 +1197,7 @@ export default function LoadHunterTab() {
 
       // Reload emails to update counts and filtered view
       await loadLoadEmails();
+      await loadUnreviewedMatches();
       toast.success('Load skipped');
     } catch (error) {
       console.error('Error skipping email:', error);
@@ -1210,8 +1214,9 @@ export default function LoadHunterTab() {
 
       if (error) throw error;
 
-      // Remove from UI
+      // Remove from UI and reload view
       setLoadEmails(loadEmails.filter(email => email.id !== emailId));
+      await loadUnreviewedMatches();
       toast.success('Load email marked as reviewed');
     } catch (error) {
       console.error('Error reviewing email:', error);
@@ -1233,6 +1238,7 @@ export default function LoadHunterTab() {
 
       // Reload emails to update counts and filtered view
       await loadLoadEmails();
+      await loadUnreviewedMatches();
       toast.success('Load moved to waitlist');
     } catch (error) {
       console.error('Error moving to waitlist:', error);
@@ -2671,15 +2677,39 @@ export default function LoadHunterTab() {
                         }) : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
-                          // For unreviewed/skipped, item is a match; for others, item is an email
+                          // For unreviewed, item is from view with email data included
+                          // For skipped, item is a match that needs email lookup
+                          // For others, item is an email
                           const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped';
-                          const email = viewingMatches
-                            ? loadEmails.find(e => e.id === (item as any).load_email_id)
-                            : item;
+                          
+                          // Get email data - from view (unreviewed) or lookup (skipped) or item itself (other)
+                          let email: any;
+                          if (activeFilter === 'unreviewed') {
+                            // View data includes email fields directly
+                            email = {
+                              id: (item as any).load_email_id,
+                              parsed_data: (item as any).parsed_data,
+                              subject: (item as any).subject,
+                              received_at: (item as any).received_at,
+                              expires_at: (item as any).expires_at,
+                              from_email: (item as any).from_email,
+                              from_name: (item as any).from_name,
+                              load_id: (item as any).load_id,
+                              status: (item as any).email_status,
+                            };
+                          } else if (activeFilter === 'skipped') {
+                            email = loadEmails.find(e => e.id === (item as any).load_email_id);
+                          } else {
+                            email = item;
+                          }
                           
                           if (!email) return null;
                           
-                          const match = viewingMatches ? item : null;
+                          // For view data, use match_id; for old format, use id
+                          const match = viewingMatches ? {
+                            ...item,
+                            id: (item as any).match_id || (item as any).id,
+                          } : null;
                           const data = email.parsed_data || {};
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
