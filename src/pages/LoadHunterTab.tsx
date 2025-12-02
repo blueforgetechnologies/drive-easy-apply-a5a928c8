@@ -139,6 +139,8 @@ export default function LoadHunterTab() {
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const isTabHiddenRef = useRef(false);
   const map = React.useRef<mapboxgl.Map | null>(null);
 
   // Helper to get current time (recalculates each render for accurate filtering)
@@ -580,7 +582,44 @@ export default function LoadHunterTab() {
       console.error('❌ Error playing sound:', error);
     }
   };
-  const toggleSound = () => {
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        setNotificationsEnabled(true);
+        console.log('✅ Browser notifications enabled');
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Show system notification (works even when tab is inactive)
+  const showSystemNotification = (title: string, body: string) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+    
+    try {
+      const notification = new Notification(title, {
+        body,
+        icon: '/pwa-192x192.png',
+        tag: 'load-hunter-alert',
+        requireInteraction: false,
+      });
+      
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+      
+      // Auto close after 5 seconds
+      setTimeout(() => notification.close(), 5000);
+    } catch (error) {
+      console.error('Error showing notification:', error);
+    }
+  };
+
+  const toggleSound = async () => {
     console.log('🔘 toggleSound clicked, current state:', isSoundMuted);
     
     const newMutedState = !isSoundMuted;
@@ -591,6 +630,9 @@ export default function LoadHunterTab() {
     // Initialize audio context and play test sound when unmuting
     if (!newMutedState) {
       console.log('🔊 Enabling sound alerts...');
+      
+      // Request notification permission for background alerts
+      const notifGranted = await requestNotificationPermission();
       
       // Create audio context on user interaction
       if (!audioContext) {
@@ -610,13 +652,52 @@ export default function LoadHunterTab() {
       setTimeout(() => {
         console.log('⏰ Playing test sound after delay');
         playAlertSound(true);
-        toast.success('Sound alerts enabled');
+        if (notifGranted) {
+          toast.success('Sound & background notifications enabled');
+        } else {
+          toast.success('Sound alerts enabled (enable browser notifications for background alerts)');
+        }
       }, 100);
     } else {
       console.log('🔇 Sound alerts muted');
       toast.info('Sound alerts muted');
     }
   };
+
+  // Handle visibility change - refresh data when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('👋 Tab hidden - background mode');
+        isTabHiddenRef.current = true;
+      } else {
+        console.log('👀 Tab visible - refreshing data');
+        isTabHiddenRef.current = false;
+        
+        // Immediately refresh all data when user returns
+        loadLoadEmails();
+        loadHuntMatches();
+        loadUnreviewedMatches();
+        loadHuntPlans();
+        
+        // Resume audio context if it was suspended
+        if (audioContext && audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Check initial notification permission
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [audioContext]);
 
   // Fetch current user's dispatcher info and assigned vehicles
   useEffect(() => {
@@ -732,7 +813,7 @@ export default function LoadHunterTab() {
     };
   }, []);
 
-  // Watch for increases in load email count to trigger sound
+  // Watch for increases in load email count to trigger sound and background notifications
   const previousEmailCountRef = useRef<number | null>(null);
   useEffect(() => {
     const currentCount = loadEmails.length;
@@ -744,12 +825,25 @@ export default function LoadHunterTab() {
     }
 
     if (currentCount > previousEmailCountRef.current) {
+      const newLoadsCount = currentCount - previousEmailCountRef.current;
       console.log('📥 Load email count increased:', previousEmailCountRef.current, '→', currentCount);
-      playAlertSound();
+      
+      // Play sound if tab is visible and not muted
+      if (!isTabHiddenRef.current) {
+        playAlertSound();
+      }
+      
+      // Show system notification (works even when tab is hidden/inactive)
+      if (notificationsEnabled) {
+        showSystemNotification(
+          `${newLoadsCount} New Load${newLoadsCount > 1 ? 's' : ''} Received`,
+          'Click to view in Load Hunter'
+        );
+      }
     }
 
     previousEmailCountRef.current = currentCount;
-  }, [loadEmails.length]);
+  }, [loadEmails.length, notificationsEnabled]);
 
   // Auto-mark loads for missed tracking after 15 minutes (without changing status)
   useEffect(() => {
