@@ -471,21 +471,21 @@ export default function LoadHunterTab() {
     }
   }, [loadEmails.length, huntPlans.length, loadEmails, huntPlans]);
 
-  // 24/7 PERIODIC RE-MATCH: Continuously checks for unmatched loads every 2 minutes
-  // This catches loads that failed geocoding initially and ensures continuous operation
+  // BACKUP: Periodic re-match every 30 seconds (primary matching is in gmail-webhook)
+  // This catches any loads that failed initial matching
   useEffect(() => {
     if (huntPlans.length === 0) return;
     
-    console.log('⏰ Starting 24/7 periodic re-match (every 2 minutes)');
+    console.log('⏰ Starting backup periodic re-match (every 30 seconds)');
     
     const interval = setInterval(() => {
-      console.log('⏰ Periodic re-match triggered');
+      console.log('⏰ Backup re-match triggered');
       // Force re-matching by updating state (triggers the matching useEffect above)
       setLoadEmails(current => [...current]);
-    }, 2 * 60 * 1000); // Every 2 minutes
+    }, 30 * 1000); // Every 30 seconds (backup only)
     
     return () => {
-      console.log('⏰ Stopping 24/7 periodic re-match');
+      console.log('⏰ Stopping backup periodic re-match');
       clearInterval(interval);
     };
   }, [huntPlans.length]);

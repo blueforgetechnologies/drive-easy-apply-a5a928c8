@@ -484,11 +484,17 @@ async function createHuntMatches(emailId: string, parsedData: any): Promise<{ ma
       return { matchCount: 0, issues };
     }
 
-    const loadVehicleType = (parsedData?.vehicle_type || '').toLowerCase().replace(/\s+/g, '-');
+    const loadVehicleType = (parsedData?.vehicle_type || '').toLowerCase();
+    const loadVehicleTypeNormalized = loadVehicleType.replace(/\s+/g, '-');
+    
+    console.log(`🔍 Matching load vehicle type: "${loadVehicleType}" (normalized: "${loadVehicleTypeNormalized}")`);
     
     for (const plan of huntPlans) {
       const huntCoords = plan.hunt_coordinates as { lat: number; lng: number } | null;
-      if (!huntCoords?.lat || !huntCoords?.lng) continue;
+      if (!huntCoords?.lat || !huntCoords?.lng) {
+        console.log(`⚠️ Hunt plan ${plan.id} has no coordinates, skipping`);
+        continue;
+      }
 
       // Calculate distance
       const distance = calculateDistance(
@@ -499,19 +505,56 @@ async function createHuntMatches(emailId: string, parsedData: any): Promise<{ ma
       // Check if within radius
       const radius = parseInt(plan.pickup_radius || '300', 10);
       if (distance > radius) {
-        console.log(`Load outside radius for plan ${plan.id}: ${distance.toFixed(0)}mi > ${radius}mi`);
+        console.log(`📏 Load outside radius for plan ${plan.id}: ${distance.toFixed(0)}mi > ${radius}mi`);
         continue;
       }
 
+      // Parse vehicle_size - handle both JSON string and array
+      let vehicleSizes: string[] = [];
+      if (plan.vehicle_size) {
+        if (typeof plan.vehicle_size === 'string') {
+          try {
+            vehicleSizes = JSON.parse(plan.vehicle_size);
+          } catch {
+            vehicleSizes = [plan.vehicle_size];
+          }
+        } else if (Array.isArray(plan.vehicle_size)) {
+          vehicleSizes = plan.vehicle_size;
+        }
+      }
+      
+      // Vehicle type matching rules (more flexible matching)
+      const matchRules: Record<string, string[]> = {
+        'large-straight': ['large straight', 'small straight', 'straight', 'straight truck'],
+        'large-straight-only': ['large straight'],
+        'small-straight': ['small straight'],
+        'cargo-van': ['cargo van', 'van'],
+        'cube-van': ['cube van'],
+        'sprinter': ['sprinter', 'sprinter van'],
+        'sprinter-van': ['sprinter van', 'sprinter'],
+        'van': ['van', 'cargo van', 'sprinter van', 'cube van'],
+        'straight': ['straight', 'straight truck', 'large straight', 'small straight'],
+        'straight-truck': ['straight truck', 'straight', 'large straight', 'small straight'],
+        'tractor': ['tractor', 'semi'],
+        'flatbed': ['flatbed'],
+      };
+      
       // Check vehicle type match
-      const vehicleSizes = plan.vehicle_size || [];
-      const vehicleMatches = vehicleSizes.length === 0 || 
-        vehicleSizes.some((size: string) => loadVehicleType.includes(size.toLowerCase()));
+      const vehicleMatches = vehicleSizes.length === 0 || vehicleSizes.some((huntSize: string) => {
+        const normalizedHuntSize = huntSize.toLowerCase().replace(/\s+/g, '-');
+        const allowedVehicles = matchRules[normalizedHuntSize] || [huntSize.replace(/-/g, ' ')];
+        const matches = allowedVehicles.some(v => 
+          loadVehicleType.includes(v) || v.includes(loadVehicleType)
+        );
+        return matches;
+      });
       
       if (!vehicleMatches) {
-        console.log(`Vehicle type mismatch for plan ${plan.id}: ${loadVehicleType}`);
+        console.log(`🚛 Vehicle type mismatch for plan ${plan.id}: "${loadVehicleType}" not in [${vehicleSizes.join(', ')}]`);
         continue;
       }
+      
+      console.log(`✅ MATCH FOUND: plan ${plan.id}, distance ${distance.toFixed(0)}mi, vehicle ${loadVehicleType}`);
 
       // Create match
       const { error: matchError } = await supabase
