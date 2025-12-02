@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
+import { UserActivityTracker } from "@/components/UserActivityTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -3505,6 +3506,9 @@ export default function LoadHunterTab() {
           }
         }}
       />
+      
+      {/* User Activity Tracker */}
+      <UserActivityTracker />
     </div>
   );
 }
