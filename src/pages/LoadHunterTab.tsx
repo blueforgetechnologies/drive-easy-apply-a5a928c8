@@ -3165,20 +3165,15 @@ export default function LoadHunterTab() {
                             id: (item as any).match_id || (item as any).id,
                           } : null;
                           const data = email.parsed_data || {};
-                          const receivedDate = new Date(email.received_at);
                           const createdDate = new Date(email.created_at);
                           const now = new Date();
                           
-                          // Calculate time since original email was received (for display)
-                          const diffMs = now.getTime() - receivedDate.getTime();
+                          // Calculate time since we PROCESSED the email (this is when WE received it)
+                          const diffMs = now.getTime() - createdDate.getTime();
                           const diffMins = Math.floor(diffMs / 60000);
                           const diffHours = Math.floor(diffMins / 60);
                           const diffDays = Math.floor(diffHours / 24);
-                          
-                          // Calculate time since we PROCESSED the email (for NEW badge)
-                          const processedDiffMs = now.getTime() - createdDate.getTime();
-                          const processedMins = Math.floor(processedDiffMs / 60000);
-                          const isNewlyProcessed = processedMins <= 2;
+                          const isNewlyProcessed = diffMins <= 2;
                           
                           let receivedAgo = '';
                           if (diffDays > 0) receivedAgo = `${diffDays}d ${diffHours % 24}h ago`;
