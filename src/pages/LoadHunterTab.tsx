@@ -3104,10 +3104,21 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
-                                  {loadDistances.has(email.id) 
-                                    ? `${loadDistances.get(email.id)} mi` 
-                                    : (data.empty_miles !== null && data.empty_miles !== undefined ? `${data.empty_miles} mi` : '—')
-                                  }
+                                  {(() => {
+                                    // First check match distance (for unreviewed view data)
+                                    if (match && (match as any).distance_miles != null) {
+                                      return `${Math.round((match as any).distance_miles)} mi`;
+                                    }
+                                    // Then check loadDistances map
+                                    if (loadDistances.has(email.id)) {
+                                      return `${loadDistances.get(email.id)} mi`;
+                                    }
+                                    // Finally check parsed data
+                                    if (data.empty_miles != null) {
+                                      return `${data.empty_miles} mi`;
+                                    }
+                                    return '—';
+                                  })()}
                                 </div>
                                 <div className="text-[11px] leading-tight whitespace-nowrap">
                                   {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
