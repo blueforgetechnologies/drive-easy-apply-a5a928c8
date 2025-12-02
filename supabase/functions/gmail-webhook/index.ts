@@ -569,6 +569,19 @@ serve(async (req) => {
         // Ensure customer exists
         await ensureCustomerExists(parsedData);
 
+        // Fix expires_at if it's before received_at (likely a parsing error - dates were swapped)
+        let finalExpiresAt = parsedData.expires_at || null;
+        if (finalExpiresAt) {
+          const expiresDate = new Date(finalExpiresAt);
+          if (expiresDate <= receivedDate) {
+            console.log(`Detected expires_at (${finalExpiresAt}) before received_at (${receivedDate.toISOString()}) - correcting`);
+            // Add 24 hours to received date as the corrected expiration
+            const correctedExpires = new Date(receivedDate.getTime() + 24 * 60 * 60 * 1000);
+            finalExpiresAt = correctedExpires.toISOString();
+            console.log(`Corrected expires_at to: ${finalExpiresAt}`);
+          }
+        }
+
         // Insert into database
         const { error: insertError } = await supabase
           .from('load_emails')
@@ -582,7 +595,7 @@ serve(async (req) => {
             body_text: contentForParsing.substring(0, 5000),
             received_at: receivedDate.toISOString(),
             parsed_data: parsedData,
-            expires_at: parsedData.expires_at || null,
+            expires_at: finalExpiresAt,
             status: 'new',
           });
 
