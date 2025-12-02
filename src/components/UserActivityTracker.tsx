@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, ChevronDown, ChevronUp, Circle } from "lucide-react";
-import { startOfDay } from "date-fns";
+import { startOfDay, subHours } from "date-fns";
 
 interface UserPresence {
   id: string;
@@ -117,14 +117,17 @@ export function UserActivityTracker() {
   // Load users who logged in today
   const loadTodayUsers = useCallback(async () => {
     try {
-      // Get start of today in UTC
-      const todayStart = startOfDay(new Date()).toISOString();
+      // Get start of today UTC (subtract hours based on potential timezone offset to be safe)
+      const now = new Date();
+      const todayStartLocal = startOfDay(now);
+      // Use 24 hours ago as fallback to ensure we capture all users who logged in today regardless of timezone
+      const cutoffTime = subHours(todayStartLocal, 6).toISOString();
       
-      // Get users who logged in today with their most recent login
+      // Get users who logged in recently with their most recent login
       const { data: loginHistory, error: loginError } = await supabase
         .from('login_history')
         .select('user_id, logged_in_at')
-        .gte('logged_in_at', todayStart)
+        .gte('logged_in_at', cutoffTime)
         .order('logged_in_at', { ascending: false });
 
       if (loginError) {
@@ -133,7 +136,10 @@ export function UserActivityTracker() {
         return;
       }
 
-      if (!loginHistory || loginHistory.length === 0) {
+      // Also include any currently online users from presence
+      const onlineUserIdsArray = Array.from(onlineUserIds);
+      
+      if ((!loginHistory || loginHistory.length === 0) && onlineUserIdsArray.length === 0) {
         setUsers([]);
         setLoading(false);
         return;
@@ -141,13 +147,26 @@ export function UserActivityTracker() {
 
       // Get unique user IDs with their most recent login time
       const userLoginMap = new Map<string, Date>();
-      loginHistory.forEach(entry => {
+      (loginHistory || []).forEach(entry => {
         if (!userLoginMap.has(entry.user_id)) {
           userLoginMap.set(entry.user_id, new Date(entry.logged_in_at));
         }
       });
 
+      // Add online users who might not have login history yet
+      onlineUserIdsArray.forEach(userId => {
+        if (!userLoginMap.has(userId)) {
+          userLoginMap.set(userId, new Date());
+        }
+      });
+
       const userIds = Array.from(userLoginMap.keys());
+      
+      if (userIds.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
 
       // Get profiles for these users
       const { data: profiles } = await supabase
