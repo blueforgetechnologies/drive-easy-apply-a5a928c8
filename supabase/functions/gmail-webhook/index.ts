@@ -5,6 +5,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID')!;
 const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET')!;
+const MAPBOX_TOKEN = Deno.env.get('VITE_MAPBOX_TOKEN')!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -377,6 +378,37 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   return parsed;
 }
 
+// Geocode city/state to coordinates using Mapbox
+async function geocodeLocation(city: string, state: string): Promise<{lat: number, lng: number} | null> {
+  if (!city || !state || !MAPBOX_TOKEN) {
+    return null;
+  }
+  
+  try {
+    const query = encodeURIComponent(`${city}, ${state}, USA`);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error('Geocoding API error:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].center;
+      console.log(`Geocoded ${city}, ${state} to: ${lat}, ${lng}`);
+      return { lat, lng };
+    }
+    
+    console.warn(`No geocoding results for: ${city}, ${state}`);
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+}
+
 async function ensureCustomerExists(parsedData: any): Promise<void> {
   const customerName = parsedData?.broker_company || parsedData?.customer;
   
@@ -565,6 +597,15 @@ serve(async (req) => {
         // Parse load data using comprehensive Sylectus parser
         const parsedData = parseLoadEmail(subject, contentForParsing);
         console.log('Parsed load data:', JSON.stringify(parsedData).substring(0, 300));
+
+        // Geocode pickup location if coordinates missing
+        if (!parsedData.pickup_coordinates && parsedData.origin_city && parsedData.origin_state) {
+          const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
+          if (coords) {
+            parsedData.pickup_coordinates = coords;
+            console.log(`Added pickup coordinates for ${parsedData.origin_city}, ${parsedData.origin_state}`);
+          }
+        }
 
         // Ensure customer exists
         await ensureCustomerExists(parsedData);
