@@ -556,6 +556,7 @@ export default function LoadHunterTab() {
     ? unreviewedViewData
         .filter(match => {
           // Filter by dispatcher's vehicles when in MY TRUCKS mode
+          // Only filter if we're in dispatch mode AND we have vehicle IDs loaded
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
           }
@@ -563,6 +564,11 @@ export default function LoadHunterTab() {
         })
         .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
     : [];
+  
+  // Debug logging for filtered results
+  if (activeFilter === 'unreviewed') {
+    console.log(`📊 filteredMatches: ${filteredMatches.length} (from ${unreviewedViewData.length} total, mode: ${activeMode}, myVehicles: ${myVehicleIds.length})`);
+  }
 
   // Count uses server-side view data for accuracy
   const unreviewedCount = unreviewedViewData.filter(match => {
@@ -1321,6 +1327,9 @@ export default function LoadHunterTab() {
         }
         
         console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view`);
+        console.log('📊 Sample match:', data?.[0]);
+        console.log('📊 Current myVehicleIds:', myVehicleIds);
+        console.log('📊 Current activeMode:', activeMode);
         setUnreviewedViewData(data || []);
         return;
       } catch (err) {
