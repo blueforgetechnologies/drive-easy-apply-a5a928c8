@@ -2268,7 +2268,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      unreviewed_matches: {
+        Row: {
+          distance_miles: number | null
+          email_id: string | null
+          email_status: string | null
+          expires_at: string | null
+          from_email: string | null
+          from_name: string | null
+          hunt_enabled: boolean | null
+          hunt_plan_id: string | null
+          hunt_zip: string | null
+          is_active: boolean | null
+          load_email_id: string | null
+          load_id: string | null
+          match_id: string | null
+          matched_at: string | null
+          parsed_data: Json | null
+          pickup_radius: string | null
+          plan_name: string | null
+          received_at: string | null
+          subject: string | null
+          vehicle_id: string | null
+          vehicle_size: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_hunt_matches_hunt_plan_id_fkey"
+            columns: ["hunt_plan_id"]
+            isOneToOne: false
+            referencedRelation: "hunt_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_hunt_matches_load_email_id_fkey"
+            columns: ["load_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_hunt_matches_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_load_id_for_date: {
