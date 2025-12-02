@@ -2335,6 +2335,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_email_invited: { Args: { check_email: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
