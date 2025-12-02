@@ -1155,11 +1155,10 @@ export default function LoadHunterTab() {
     console.log('📧 Loading emails...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        // Fetch emails with relevant statuses OR with issues
+        // Fetch ALL emails for the "All" tab - no status filter
         const { data, error } = await supabase
           .from("load_emails")
           .select("*")
-          .or('status.in.(new,waitlist,skipped),has_issues.eq.true')
           .order("received_at", { ascending: false })
           .limit(5000);
 
