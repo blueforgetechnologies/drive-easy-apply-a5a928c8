@@ -11,14 +11,21 @@ interface VehicleAssignmentViewProps {
   vehicles: any[];
   drivers: any[];
   onBack: () => void;
+  onRefresh?: () => void;
 }
 
-export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssignmentViewProps) {
+export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: VehicleAssignmentViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "unassigned" | "active" | "inactive">("all");
   const [selectedCarrier, setSelectedCarrier] = useState<string>("all");
   const [carriers, setCarriers] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
+  const [localVehicles, setLocalVehicles] = useState(vehicles);
+
+  // Sync local vehicles when prop changes
+  useEffect(() => {
+    setLocalVehicles(vehicles);
+  }, [vehicles]);
 
   useEffect(() => {
     loadCarriers();
@@ -56,7 +63,7 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
   };
 
   // Filter vehicles based on search and filters
-  const filteredVehicles = vehicles.filter((vehicle) => {
+  const filteredVehicles = localVehicles.filter((vehicle) => {
     // Search filter
     const matchesSearch = 
       vehicle.vehicle_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -79,10 +86,10 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
   });
 
   // Get counts for filter buttons
-  const allCount = vehicles.length;
-  const unassignedCount = vehicles.filter(v => !v.assigned_driver_id && !v.primary_dispatcher_id).length;
-  const activeCount = vehicles.filter(v => v.status === "active").length;
-  const inactiveCount = vehicles.filter(v => v.status === "inactive").length;
+  const allCount = localVehicles.length;
+  const unassignedCount = localVehicles.filter(v => !v.assigned_driver_id && !v.primary_dispatcher_id).length;
+  const activeCount = localVehicles.filter(v => v.status === "active").length;
+  const inactiveCount = localVehicles.filter(v => v.status === "inactive").length;
 
   // Get driver name
   const getDriverName = (driverId: string | null) => {
@@ -102,17 +109,30 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack }: VehicleAssi
   };
 
   const handleDispatcherChange = async (vehicleId: string, newDispatcherId: string) => {
+    const newValue = newDispatcherId === "unassigned" ? null : newDispatcherId;
+    
+    // Optimistic update - immediately update local state
+    setLocalVehicles(prev => prev.map(v => 
+      v.id === vehicleId ? { ...v, primary_dispatcher_id: newValue } : v
+    ));
+    
     try {
       const { error } = await supabase
         .from("vehicles")
-        .update({ primary_dispatcher_id: newDispatcherId === "unassigned" ? null : newDispatcherId })
+        .update({ primary_dispatcher_id: newValue })
         .eq("id", vehicleId);
 
       if (error) throw error;
       toast.success("Dispatcher assigned successfully");
+      
+      // Notify parent to refresh if callback provided
+      onRefresh?.();
     } catch (error) {
       console.error("Failed to update dispatcher", error);
       toast.error("Failed to assign dispatcher");
+      
+      // Revert optimistic update on error
+      setLocalVehicles(vehicles);
     }
   };
 
