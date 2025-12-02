@@ -97,101 +97,124 @@ export function UserActivityTracker() {
 
   // Update online users from presence state
   const updateOnlineUsers = async (presenceState: Record<string, any[]>) => {
-    const onlineUserIds = Object.keys(presenceState);
-    
-    // Get all admin users
-    const { data: adminUsers } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'admin');
+    try {
+      const onlineUserIds = Object.keys(presenceState);
+      
+      // Get all admin users
+      const { data: adminUsers } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
 
-    if (!adminUsers) return;
+      if (!adminUsers || adminUsers.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-    const adminUserIds = adminUsers.map(u => u.user_id);
+      const adminUserIds = adminUsers.map(u => u.user_id);
 
-    // Get profiles for admin users
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, email, full_name')
-      .in('id', adminUserIds);
+      // Get profiles for admin users
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', adminUserIds);
 
-    if (!profiles) return;
+      if (!profiles || profiles.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-    // Get stats for each user
-    const usersWithStats: UserWithStats[] = await Promise.all(
-      profiles.map(async (profile) => {
-        const presenceData = presenceState[profile.id]?.[0];
-        const isOnline = onlineUserIds.includes(profile.id);
-        
-        // Get user stats from dispatchers (match by email)
-        const { data: dispatcher } = await supabase
-          .from('dispatchers')
-          .select('id')
-          .ilike('email', profile.email)
-          .single();
+      // Get stats for each user
+      const usersWithStats: UserWithStats[] = await Promise.all(
+        profiles.map(async (profile) => {
+          try {
+            const presenceData = presenceState[profile.id]?.[0];
+            const isOnline = onlineUserIds.includes(profile.id);
+            
+            // Get user stats from dispatchers (match by email)
+            const { data: dispatcher } = await supabase
+              .from('dispatchers')
+              .select('id')
+              .ilike('email', profile.email)
+              .maybeSingle();
 
-        let stats: UserStats = { unreviewed: 0, skipped: 0, missed: 0 };
+            let stats: UserStats = { unreviewed: 0, skipped: 0, missed: 0 };
 
-        if (dispatcher) {
-          // Get vehicles assigned to this dispatcher
-          const { data: assignedVehicles } = await supabase
-            .from('vehicles')
-            .select('id')
-            .eq('primary_dispatcher_id', dispatcher.id);
+            if (dispatcher) {
+              // Get vehicles assigned to this dispatcher
+              const { data: assignedVehicles } = await supabase
+                .from('vehicles')
+                .select('id')
+                .eq('primary_dispatcher_id', dispatcher.id);
 
-          const vehicleIds = assignedVehicles?.map(v => v.id) || [];
+              const vehicleIds = assignedVehicles?.map(v => v.id) || [];
 
-          if (vehicleIds.length > 0) {
-            // Count unreviewed matches for this dispatcher's vehicles
-            const { count: unreviewedCount } = await supabase
-              .from('load_hunt_matches')
-              .select('*', { count: 'exact', head: true })
-              .in('vehicle_id', vehicleIds)
-              .eq('is_active', true);
+              if (vehicleIds.length > 0) {
+                // Count unreviewed matches for this dispatcher's vehicles
+                const { count: unreviewedCount } = await supabase
+                  .from('load_hunt_matches')
+                  .select('*', { count: 'exact', head: true })
+                  .in('vehicle_id', vehicleIds)
+                  .eq('is_active', true);
 
-            // Count skipped matches
-            const { count: skippedCount } = await supabase
-              .from('load_hunt_matches')
-              .select('*', { count: 'exact', head: true })
-              .in('vehicle_id', vehicleIds)
-              .eq('is_active', false);
+                // Count skipped matches
+                const { count: skippedCount } = await supabase
+                  .from('load_hunt_matches')
+                  .select('*', { count: 'exact', head: true })
+                  .in('vehicle_id', vehicleIds)
+                  .eq('is_active', false);
 
-            // Count missed loads (from load_emails with status 'missed')
-            const { count: missedCount } = await supabase
-              .from('load_emails')
-              .select('*', { count: 'exact', head: true })
-              .eq('status', 'missed');
+                // Count missed loads (from load_emails with status 'missed')
+                const { count: missedCount } = await supabase
+                  .from('load_emails')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('status', 'missed');
 
-            stats = {
-              unreviewed: unreviewedCount || 0,
-              skipped: skippedCount || 0,
-              missed: missedCount || 0,
+                stats = {
+                  unreviewed: unreviewedCount || 0,
+                  skipped: skippedCount || 0,
+                  missed: missedCount || 0,
+                };
+              }
+            }
+
+            return {
+              id: profile.id,
+              email: profile.email,
+              fullName: profile.full_name || profile.email.split('@')[0],
+              lastActivity: presenceData?.lastActivity 
+                ? new Date(presenceData.lastActivity) 
+                : new Date(),
+              isOnline,
+              stats,
+            };
+          } catch (err) {
+            console.error('Error loading user stats:', err);
+            return {
+              id: profile.id,
+              email: profile.email,
+              fullName: profile.full_name || profile.email.split('@')[0],
+              lastActivity: new Date(),
+              isOnline: onlineUserIds.includes(profile.id),
+              stats: { unreviewed: 0, skipped: 0, missed: 0 },
             };
           }
-        }
+        })
+      );
 
-        return {
-          id: profile.id,
-          email: profile.email,
-          fullName: profile.full_name || profile.email.split('@')[0],
-          lastActivity: presenceData?.lastActivity 
-            ? new Date(presenceData.lastActivity) 
-            : new Date(),
-          isOnline,
-          stats,
-        };
-      })
-    );
+      // Sort: online users first, then by last activity
+      usersWithStats.sort((a, b) => {
+        if (a.isOnline && !b.isOnline) return -1;
+        if (!a.isOnline && b.isOnline) return 1;
+        return b.lastActivity.getTime() - a.lastActivity.getTime();
+      });
 
-    // Sort: online users first, then by last activity
-    usersWithStats.sort((a, b) => {
-      if (a.isOnline && !b.isOnline) return -1;
-      if (!a.isOnline && b.isOnline) return 1;
-      return b.lastActivity.getTime() - a.lastActivity.getTime();
-    });
-
-    setUsers(usersWithStats);
-    setLoading(false);
+      setUsers(usersWithStats);
+    } catch (err) {
+      console.error('Error updating online users:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load initial data and set up presence
