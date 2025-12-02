@@ -131,7 +131,7 @@ export default function LoadHunterTab() {
   const [vehicleNotes, setVehicleNotes] = useState("");
   const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('admin');
+  const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
