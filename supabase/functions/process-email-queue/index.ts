@@ -88,10 +88,46 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
   return null;
 }
 
-function generateLoadId(receivedAt: Date): string {
-  const dateStr = receivedAt.toISOString().slice(2, 10).replace(/-/g, '');
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `LH-${dateStr}-${random}`;
+// Improved parsing from subject line (like old gmail-webhook)
+function parseSubjectLine(subject: string): Record<string, any> {
+  const data: Record<string, any> = {};
+  
+  // Extract vehicle type, origin, destination from subject
+  const subjectMatch = subject.match(/^([A-Z\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER)[A-Z\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
+  if (subjectMatch) {
+    data.vehicle_type = subjectMatch[1].trim().toUpperCase();
+    data.origin_city = subjectMatch[2].trim();
+    data.origin_state = subjectMatch[3].trim();
+    data.destination_city = subjectMatch[4].trim();
+    data.destination_state = subjectMatch[5].trim();
+  }
+  
+  // Extract broker email from subject (in parentheses)
+  const brokerEmailMatch = subject.match(/\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/);
+  if (brokerEmailMatch) {
+    data.broker_email = brokerEmailMatch[1];
+  }
+  
+  // Extract miles
+  const milesMatch = subject.match(/:\s*(\d+)\s*miles/i);
+  if (milesMatch) {
+    data.loaded_miles = parseInt(milesMatch[1], 10);
+  }
+  
+  // Extract weight
+  const weightMatch = subject.match(/(\d+)\s*lbs/i);
+  if (weightMatch) {
+    data.weight = weightMatch[1];
+  }
+  
+  // Extract customer/broker name
+  const customerMatch = subject.match(/Posted by ([^(]+)\s*\(/);
+  if (customerMatch) {
+    data.customer = customerMatch[1].trim();
+    data.broker_company = customerMatch[1].trim();
+  }
+  
+  return data;
 }
 
 serve(async (req) => {
@@ -236,8 +272,12 @@ serve(async (req) => {
         };
         bodyText = extractBody(message.payload);
 
-        // Parse Sylectus data
-        const parsedData = parseSylectusEmail(subject, bodyText);
+        // Parse from subject (primary) then body (fallback)
+        const subjectData = parseSubjectLine(subject);
+        const bodyData = parseSylectusEmail(subject, bodyText);
+        
+        // Merge: prefer subject data, fill gaps from body
+        const parsedData = { ...bodyData, ...subjectData };
 
         // Geocode if we have origin location
         if (parsedData.origin_city && parsedData.origin_state) {
@@ -259,9 +299,7 @@ serve(async (req) => {
         const fromName = fromMatch ? fromMatch[1].trim() : from;
         const fromEmail = fromMatch ? fromMatch[2] : from;
 
-        // Insert into load_emails
-        const loadId = generateLoadId(receivedAt);
-        
+        // Insert into load_emails - let database trigger generate load_id
         const { error: insertError } = await supabase
           .from('load_emails')
           .upsert({
@@ -275,7 +313,6 @@ serve(async (req) => {
             received_at: receivedAt.toISOString(),
             parsed_data: parsedData,
             status: 'new',
-            load_id: loadId,
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
           }, { onConflict: 'email_id' });
