@@ -695,9 +695,9 @@ serve(async (req) => {
       });
     }
 
-    // Fetch unread messages
+    // Fetch unread messages - reduced batch size to prevent database timeouts
     const messagesResponse = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&q=is:unread&maxResults=20',
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&q=is:unread&maxResults=5',
       {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       }
@@ -718,15 +718,33 @@ serve(async (req) => {
     // Process each message
     for (const message of messagesData.messages) {
       try {
-        // Check if already processed (by email_id)
-        const { data: existingEmail } = await supabase
+        // Quick duplicate check using count (faster than select)
+        const { count, error: checkError } = await supabase
           .from('load_emails')
-          .select('id')
-          .eq('email_id', message.id)
-          .maybeSingle();
+          .select('*', { count: 'exact', head: true })
+          .eq('email_id', message.id);
 
-        if (existingEmail) {
+        if (checkError) {
+          console.error(`Error checking email ${message.id}:`, checkError);
+          continue;
+        }
+
+        if (count && count > 0) {
           console.log(`Email ${message.id} already exists, skipping`);
+          // Mark as read anyway to prevent reprocessing
+          await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/modify`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                removeLabelIds: ['UNREAD'],
+              }),
+            }
+          );
           continue;
         }
 
@@ -810,10 +828,10 @@ serve(async (req) => {
           }
         }
 
-        // Insert into database
-        const { error: insertError } = await supabase
+        // Insert into database using upsert to handle race conditions
+        const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
-          .insert({
+          .upsert({
             email_id: fullMessage.id,
             thread_id: fullMessage.threadId,
             from_email: fromEmail,
@@ -825,20 +843,32 @@ serve(async (req) => {
             parsed_data: parsedData,
             expires_at: finalExpiresAt,
             status: 'new',
-          });
+          }, { 
+            onConflict: 'email_id',
+            ignoreDuplicates: true 
+          })
+          .select('id')
+          .maybeSingle();
 
         if (insertError) {
-          console.error('Error storing email:', message.id, insertError);
-        } else {
+          // Log but don't fail on duplicate key or timeout - mark as read to prevent retry loops
+          if (insertError.code === '23505') {
+            console.log(`Email ${message.id} already inserted by another process, skipping`);
+          } else {
+            console.error('Error storing email:', message.id, insertError);
+          }
+        } else if (insertedEmail) {
           processedCount++;
           console.log(`Successfully stored email: ${subject}`);
           
-          // Create hunt matches for this load
+          // Create hunt matches for this load (skip if no ID returned - means it was a duplicate)
           const { matchCount, issues } = await createHuntMatches(fullMessage.id, parsedData);
           if (issues.length > 0) {
             console.warn(`Load ${subject} has issues: ${issues.join('; ')}`);
           }
           console.log(`Created ${matchCount} matches for load`);
+        } else {
+          console.log(`Email ${message.id} already exists (upsert returned null)`);
         }
 
         // Mark message as read in Gmail
