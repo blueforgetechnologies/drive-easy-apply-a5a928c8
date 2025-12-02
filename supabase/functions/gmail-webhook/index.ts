@@ -421,8 +421,11 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 }
 
-// Create hunt matches for a newly inserted load email
-async function createHuntMatches(emailId: string, parsedData: any): Promise<void> {
+// Create hunt matches for a newly inserted load email and track any issues
+async function createHuntMatches(emailId: string, parsedData: any): Promise<{ matchCount: number; issues: string[] }> {
+  const issues: string[] = [];
+  let matchCount = 0;
+  
   try {
     // Get the load email record to get the UUID
     const { data: loadEmail, error: loadError } = await supabase
@@ -433,14 +436,40 @@ async function createHuntMatches(emailId: string, parsedData: any): Promise<void
     
     if (loadError || !loadEmail) {
       console.error('Could not find load email for matching:', loadError);
-      return;
+      issues.push('Could not find load email record for matching');
+      return { matchCount: 0, issues };
+    }
+
+    // Check for missing critical fields
+    if (!parsedData?.broker_email) {
+      issues.push('Missing broker email');
+    }
+    if (!parsedData?.origin_city || !parsedData?.origin_state) {
+      issues.push('Missing origin location (city/state)');
+    }
+    if (!parsedData?.destination_city || !parsedData?.destination_state) {
+      issues.push('Missing destination location');
+    }
+    if (!parsedData?.vehicle_type) {
+      issues.push('Missing vehicle type');
     }
 
     // Check for pickup coordinates
     const pickupCoords = parsedData?.pickup_coordinates;
     if (!pickupCoords?.lat || !pickupCoords?.lng) {
       console.log('No pickup coordinates, skipping hunt matching');
-      return;
+      issues.push('Could not geocode pickup location - no coordinates available');
+      
+      // Update load_emails with issues
+      await supabase
+        .from('load_emails')
+        .update({ 
+          has_issues: true, 
+          issue_notes: issues.join('; ')
+        })
+        .eq('id', loadEmail.id);
+      
+      return { matchCount: 0, issues };
     }
 
     // Get all active hunt plans
@@ -451,7 +480,8 @@ async function createHuntMatches(emailId: string, parsedData: any): Promise<void
 
     if (huntError || !huntPlans?.length) {
       console.log('No active hunt plans found');
-      return;
+      // This is not an issue with the load itself, just no active hunts
+      return { matchCount: 0, issues };
     }
 
     const loadVehicleType = (parsedData?.vehicle_type || '').toLowerCase().replace(/\s+/g, '-');
@@ -497,12 +527,29 @@ async function createHuntMatches(emailId: string, parsedData: any): Promise<void
 
       if (matchError) {
         console.error('Error creating hunt match:', matchError);
+        issues.push(`Failed to create match for plan ${plan.id}`);
       } else {
+        matchCount++;
         console.log(`Created match: load ${loadEmail.id} -> plan ${plan.id}, distance ${distance.toFixed(0)}mi`);
       }
     }
+
+    // If there are any issues, update the load record
+    if (issues.length > 0) {
+      await supabase
+        .from('load_emails')
+        .update({ 
+          has_issues: true, 
+          issue_notes: issues.join('; ')
+        })
+        .eq('id', loadEmail.id);
+    }
+    
+    return { matchCount, issues };
   } catch (error) {
     console.error('Error in createHuntMatches:', error);
+    issues.push(`Unexpected error during matching: ${error}`);
+    return { matchCount: 0, issues };
   }
 }
 
@@ -744,7 +791,11 @@ serve(async (req) => {
           console.log(`Successfully stored email: ${subject}`);
           
           // Create hunt matches for this load
-          await createHuntMatches(fullMessage.id, parsedData);
+          const { matchCount, issues } = await createHuntMatches(fullMessage.id, parsedData);
+          if (issues.length > 0) {
+            console.warn(`Load ${subject} has issues: ${issues.join('; ')}`);
+          }
+          console.log(`Created ${matchCount} matches for load`);
         }
 
         // Mark message as read in Gmail

@@ -499,6 +499,9 @@ export default function LoadHunterTab() {
         if (activeFilter === 'missed') {
           return email.marked_missed_at !== null;
         }
+        if (activeFilter === 'issues') {
+          return email.has_issues === true;
+        }
         if (activeFilter === 'all') return true;
         return true;
       });
@@ -527,6 +530,7 @@ export default function LoadHunterTab() {
   const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = skippedMatches.length;
+  const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
 
   // Function to play alert sound
   const playAlertSound = (force = false) => {
@@ -959,10 +963,11 @@ export default function LoadHunterTab() {
     console.log('📧 Loading emails...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
+        // Fetch emails with relevant statuses OR with issues
         const { data, error } = await supabase
           .from("load_emails")
           .select("*")
-          .in("status", ["new", "waitlist", "skipped"])
+          .or('status.in.(new,waitlist,skipped),has_issues.eq.true')
           .order("received_at", { ascending: false })
           .limit(5000);
 
@@ -1821,6 +1826,26 @@ export default function LoadHunterTab() {
               Booked
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">2</Badge>
             </Button>
+            
+            {issuesCount > 0 && (
+              <Button
+                size="sm" 
+                variant="outline"
+                className={`h-7 px-2.5 text-xs gap-1.5 ${
+                  activeFilter === 'issues' 
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600' 
+                    : 'bg-white hover:bg-gray-50 text-amber-700 border-amber-300'
+                }`}
+                onClick={() => {
+                  setActiveFilter('issues');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                ⚠️ Issues
+                <Badge variant="destructive" className="h-4 px-1.5 text-[10px] ml-1 bg-amber-500 text-white">{issuesCount}</Badge>
+              </Button>
+            )}
           </div>
 
           {/* Action Buttons */}
