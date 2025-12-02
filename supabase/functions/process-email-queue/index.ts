@@ -272,8 +272,11 @@ serve(async (req) => {
 
         const subject = getHeader('Subject') || '';
         const from = getHeader('From') || '';
-        const dateHeader = getHeader('Date');
-        const receivedAt = dateHeader ? new Date(dateHeader) : new Date();
+        // Use Gmail's internalDate (when Gmail actually received the email) - NOT the Date header
+        // internalDate is in milliseconds since epoch
+        const receivedAt = message.internalDate 
+          ? new Date(parseInt(message.internalDate, 10)) 
+          : new Date();
 
         // Extract body
         let bodyText = '';
