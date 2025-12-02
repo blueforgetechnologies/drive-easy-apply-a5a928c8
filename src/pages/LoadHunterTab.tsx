@@ -213,10 +213,25 @@ export default function LoadHunterTab() {
           ? `${parsed.origin_city}, ${parsed.origin_state}`
           : undefined;
 
+        // Extract coordinates - check multiple possible locations
+        let originLat = parsed.origin_lat || parsed.pickup_lat;
+        let originLng = parsed.origin_lng || parsed.pickup_lng;
+        
+        // Also check nested pickup_coordinates object (common format from webhook)
+        if ((!originLat || !originLng) && parsed.pickup_coordinates) {
+          const coords = typeof parsed.pickup_coordinates === 'string' 
+            ? JSON.parse(parsed.pickup_coordinates) 
+            : parsed.pickup_coordinates;
+          if (coords && coords.lat && coords.lng) {
+            originLat = coords.lat;
+            originLng = coords.lng;
+          }
+        }
+
         return {
           originZip: parsed.origin_zip || parsed.pickup_zip,
-          originLat: parsed.origin_lat || parsed.pickup_lat,
-          originLng: parsed.origin_lng || parsed.pickup_lng,
+          originLat,
+          originLng,
           originCityState,
           loadType: parsed.load_type,
           vehicleType: parsed.vehicle_type || parsed.equipment_type,
