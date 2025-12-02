@@ -1164,11 +1164,11 @@ export default function LoadHunterTab() {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         // Fetch ALL emails for the "All" tab - no status filter
-        // Sort by created_at (when we processed it) so newly processed emails appear at top
+        // Sort by received_at (when Gmail received the email) so newest emails appear at top
         const { data, error } = await supabase
           .from("load_emails")
           .select("*")
-          .order("created_at", { ascending: false })
+          .order("received_at", { ascending: false })
           .limit(5000);
 
         if (error) {
@@ -3165,11 +3165,11 @@ export default function LoadHunterTab() {
                             id: (item as any).match_id || (item as any).id,
                           } : null;
                           const data = email.parsed_data || {};
-                          const createdDate = new Date(email.created_at);
+                          const receivedDate = new Date(email.received_at);
                           const now = new Date();
                           
-                          // Calculate time since we PROCESSED the email (this is when WE received it)
-                          const diffMs = now.getTime() - createdDate.getTime();
+                          // Calculate time since Gmail received the email
+                          const diffMs = now.getTime() - receivedDate.getTime();
                           const diffMins = Math.floor(diffMs / 60000);
                           const diffHours = Math.floor(diffMins / 60);
                           const diffDays = Math.floor(diffHours / 24);
