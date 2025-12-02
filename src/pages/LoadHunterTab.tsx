@@ -844,6 +844,8 @@ export default function LoadHunterTab() {
           console.log('New load email received:', payload);
           // Add the new email to the list
           setLoadEmails((current) => [payload.new, ...current]);
+          // Reset to page 1 so user sees the new email at the top
+          setCurrentPage(1);
           toast.success('New load email received!');
           // Sound will be handled by the loadEmails length watcher
         }
@@ -3276,9 +3278,9 @@ export default function LoadHunterTab() {
                           }
 
                           return (
-                            <TableRow 
+                          <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
-                              className="h-10 cursor-pointer hover:bg-accent transition-colors"
+                              className={`h-10 cursor-pointer hover:bg-accent transition-colors ${diffMins <= 2 ? 'bg-green-50 dark:bg-green-950/30 animate-pulse' : ''}`}
                               onClick={async () => {
                                 // Check if this load has multiple matches
                                 const matchesForLoad = loadMatches.filter(m => m.load_email_id === email.id);
@@ -3410,7 +3412,12 @@ export default function LoadHunterTab() {
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">{receivedAgo}</div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[11px] leading-tight whitespace-nowrap">{receivedAgo}</span>
+                                  {diffMins <= 2 && (
+                                    <Badge variant="default" className="h-4 px-1 text-[9px] bg-green-500 hover:bg-green-500">NEW</Badge>
+                                  )}
+                                </div>
                                 <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
                                   {expiresIn}
                                 </div>
