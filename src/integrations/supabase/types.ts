@@ -961,7 +961,9 @@ export type Database = {
           expires_at: string | null
           from_email: string
           from_name: string | null
+          has_issues: boolean | null
           id: string
+          issue_notes: string | null
           load_id: string | null
           marked_missed_at: string | null
           parsed_data: Json | null
@@ -980,7 +982,9 @@ export type Database = {
           expires_at?: string | null
           from_email: string
           from_name?: string | null
+          has_issues?: boolean | null
           id?: string
+          issue_notes?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
           parsed_data?: Json | null
@@ -999,7 +1003,9 @@ export type Database = {
           expires_at?: string | null
           from_email?: string
           from_name?: string | null
+          has_issues?: boolean | null
           id?: string
+          issue_notes?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
           parsed_data?: Json | null
