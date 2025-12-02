@@ -144,6 +144,10 @@ export default function LoadHunterTab() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const isTabHiddenRef = useRef(false);
   const map = React.useRef<mapboxgl.Map | null>(null);
+  
+  // Refs for stable callbacks in real-time subscriptions
+  const loadVehiclesRef = useRef<() => Promise<void>>();
+  const refreshMyVehicleIdsRef = useRef<() => Promise<void>>();
 
   // Helper to get current time (recalculates each render for accurate filtering)
   const getCurrentTime = () => new Date();
@@ -754,6 +758,9 @@ export default function LoadHunterTab() {
     }
   };
   
+  // Keep refs updated for real-time subscription callbacks
+  refreshMyVehicleIdsRef.current = refreshMyVehicleIds;
+  
   // Combined refresh for vehicle data (used by VehicleAssignmentView)
   const refreshVehicleData = async () => {
     await loadVehicles();
@@ -880,9 +887,9 @@ export default function LoadHunterTab() {
         },
         (payload) => {
           console.log('Vehicle change:', payload);
-          // Reload vehicles and my vehicle IDs when assignments change
-          loadVehicles();
-          refreshMyVehicleIds();
+          // Use refs to call the latest versions of these functions
+          loadVehiclesRef.current?.();
+          refreshMyVehicleIdsRef.current?.();
         }
       )
       .subscribe();
@@ -1086,6 +1093,9 @@ export default function LoadHunterTab() {
       setLoading(false);
     }
   };
+  
+  // Keep ref updated for real-time subscription callbacks
+  loadVehiclesRef.current = loadVehicles;
 
   const loadDrivers = async () => {
     try {
