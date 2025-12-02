@@ -578,6 +578,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_queue: {
+        Row: {
+          attempts: number
+          gmail_history_id: string | null
+          gmail_message_id: string
+          id: string
+          last_error: string | null
+          processed_at: string | null
+          queued_at: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          gmail_history_id?: string | null
+          gmail_message_id: string
+          id?: string
+          last_error?: string | null
+          processed_at?: string | null
+          queued_at?: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          gmail_history_id?: string | null
+          gmail_message_id?: string
+          id?: string
+          last_error?: string | null
+          processed_at?: string | null
+          queued_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string | null
