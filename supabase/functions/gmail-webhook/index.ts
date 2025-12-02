@@ -1,28 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+// Declare EdgeRuntime for Supabase Edge Functions
+declare const EdgeRuntime: {
+  waitUntil: (promise: Promise<any>) => void;
+};
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID')!;
 const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET')!;
 const MAPBOX_TOKEN = Deno.env.get('VITE_MAPBOX_TOKEN')!;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  db: { schema: 'public' },
+  auth: { persistSession: false }
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface PubSubMessage {
-  message: {
-    data: string;
-    messageId: string;
-    publishTime: string;
-  };
-  subscription: string;
-}
-
+// Refresh Gmail access token
 async function refreshAccessToken(refreshToken: string): Promise<string> {
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -52,856 +52,424 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
   return tokens.access_token;
 }
 
-// Helper function to delay execution
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 async function getAccessToken(userEmail: string): Promise<string> {
-  console.log('Looking up token for:', userEmail);
-  
-  // Retry logic with exponential backoff for database timeouts
-  const maxRetries = 3;
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    if (attempt > 0) {
-      const backoffMs = Math.pow(2, attempt) * 500; // 500ms, 1000ms, 2000ms
-      console.log(`Retry attempt ${attempt + 1} after ${backoffMs}ms`);
-      await delay(backoffMs);
-    }
-    
-    try {
-      const { data: tokenData, error } = await supabase
-        .from('gmail_tokens')
-        .select('access_token, refresh_token, token_expiry')
-        .ilike('user_email', userEmail)
-        .maybeSingle();
+  const { data: tokenData, error } = await supabase
+    .from('gmail_tokens')
+    .select('access_token, refresh_token, token_expiry')
+    .ilike('user_email', userEmail)
+    .maybeSingle();
 
-      if (error) {
-        if (error.message?.includes('timeout')) {
-          console.warn(`Timeout on attempt ${attempt + 1}:`, error.message);
-          lastError = new Error(`Database timeout: ${error.message}`);
-          continue; // Retry on timeout
-        }
-        console.error('Database error looking up token:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-      
-      if (!tokenData) {
-        console.error('No token found for email:', userEmail);
-        throw new Error('No token found for user');
-      }
-
-      const tokenExpiry = new Date(tokenData.token_expiry);
-      const now = new Date();
-      
-      if (tokenExpiry <= now) {
-        console.log('Token expired, refreshing...');
-        return await refreshAccessToken(tokenData.refresh_token);
-      }
-
-      console.log('Token found and valid');
-      return tokenData.access_token;
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('timeout')) {
-        lastError = err;
-        continue;
-      }
-      throw err;
-    }
+  if (error || !tokenData) {
+    throw new Error('No token found for user');
   }
-  
-  throw lastError || new Error('Failed to get access token after retries');
+
+  const tokenExpiry = new Date(tokenData.token_expiry);
+  if (tokenExpiry <= new Date()) {
+    return await refreshAccessToken(tokenData.refresh_token);
+  }
+
+  return tokenData.access_token;
 }
 
-// Full Sylectus email parser (same as fetch-gmail-loads)
-function parseLoadEmail(subject: string, bodyText: string): any {
+// Simplified email parser - extract only essential fields quickly
+function parseLoadEmailFast(subject: string, bodyHtml: string): any {
   const parsed: any = {};
-
-  // Extract vehicle type (first word)
-  const vehicleTypeMatch = subject.match(/^([A-Z\s]+)\s+from/i);
-  if (vehicleTypeMatch) {
-    parsed.vehicle_type = vehicleTypeMatch[1].trim();
+  
+  // Extract from subject (fastest)
+  const subjectMatch = subject.match(/^([A-Z\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER)[A-Z\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
+  if (subjectMatch) {
+    parsed.vehicle_type = subjectMatch[1].trim().toUpperCase();
+    parsed.origin_city = subjectMatch[2].trim();
+    parsed.origin_state = subjectMatch[3].trim();
+    parsed.destination_city = subjectMatch[4].trim();
+    parsed.destination_state = subjectMatch[5].trim();
   }
-
-  // Extract origin and destination from subject
-  const routeMatch = subject.match(/from\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
-  if (routeMatch) {
-    parsed.origin_city = routeMatch[1].trim();
-    parsed.origin_state = routeMatch[2].trim();
-    parsed.destination_city = routeMatch[3].trim();
-    parsed.destination_state = routeMatch[4].trim();
+  
+  // Extract broker email from subject
+  const brokerEmailMatch = subject.match(/\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/);
+  if (brokerEmailMatch) {
+    parsed.broker_email = brokerEmailMatch[1];
   }
-
+  
   // Extract miles from subject
   const milesMatch = subject.match(/:\s*(\d+)\s*miles/i);
   if (milesMatch) {
-    parsed.loaded_miles = parseInt(milesMatch[1]);
+    parsed.loaded_miles = parseInt(milesMatch[1], 10);
   }
-
+  
   // Extract weight from subject
   const weightMatch = subject.match(/(\d+)\s*lbs/i);
   if (weightMatch) {
     parsed.weight = weightMatch[1];
   }
-
-  // Extract customer/poster from subject
-  const postedByMatch = subject.match(/Posted by\s+([^(]+)/i);
-  if (postedByMatch) {
-    const posterName = postedByMatch[1].trim();
-    parsed.customer = posterName;
-    parsed.broker = posterName;
+  
+  // Extract customer/broker name from subject
+  const customerMatch = subject.match(/Posted by ([^(]+)\s*\(/);
+  if (customerMatch) {
+    parsed.customer = customerMatch[1].trim();
+    parsed.broker_company = customerMatch[1].trim();
   }
-
-  // Extract Order Number from body text
-  const orderNumberMatch = bodyText.match(/Bid on Order #(\d+)/i);
-  if (orderNumberMatch) {
-    parsed.order_number = orderNumberMatch[1];
-  }
-
-  // Extract from HTML structure
-  const piecesHtmlMatch = bodyText.match(/<strong>Pieces?:\s*<\/strong>\s*(\d+)/i);
-  if (piecesHtmlMatch) {
-    parsed.pieces = parseInt(piecesHtmlMatch[1]);
-  }
-
-  const dimsHtmlMatch = bodyText.match(/<strong>Dimensions?:\s*<\/strong>\s*(\d+)L?\s*[xX]\s*(\d+)W?\s*[xX]\s*(\d+)H?/i);
-  if (dimsHtmlMatch) {
-    parsed.dimensions = `${dimsHtmlMatch[1]}x${dimsHtmlMatch[2]}x${dimsHtmlMatch[3]}`;
-  }
-
-  // Expires datetime with timezone handling
-  const expiresHtmlMatch = bodyText.match(/<strong>Expires?:\s*<\/strong>\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*([A-Z]{2,3}T?)/i);
-  if (expiresHtmlMatch) {
-    const dateStr = expiresHtmlMatch[1];
-    const timeStr = expiresHtmlMatch[2];
-    const timezone = expiresHtmlMatch[3];
-    parsed.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
+  
+  // Quick body parsing for additional fields if needed
+  if (bodyHtml) {
+    // Order number
+    const orderMatch = bodyHtml.match(/Order(?:\s+Number)?[\s:#]*(\d+)/i);
+    if (orderMatch) parsed.order_number = orderMatch[1];
     
-    try {
-      const dateParts = dateStr.split('/');
-      const month = dateParts[0].padStart(2, '0');
-      const day = dateParts[1].padStart(2, '0');
-      let year = dateParts[2];
-      
-      if (year.length === 2) {
-        year = '20' + year;
-      }
-      
-      const timeParts = timeStr.split(':');
-      const hour = timeParts[0].padStart(2, '0');
-      const minute = timeParts[1].padStart(2, '0');
-      
-      const timezoneOffsets: { [key: string]: string } = {
-        'EST': '-05:00', 'EDT': '-04:00',
-        'CST': '-06:00', 'CDT': '-05:00',
-        'MST': '-07:00', 'MDT': '-06:00',
-        'PST': '-08:00', 'PDT': '-07:00',
-        'CEN': '-06:00', 'CENT': '-06:00',
-      };
-      
-      const offset = timezoneOffsets[timezone.toUpperCase()] || '-05:00';
-      const isoString = `${year}-${month}-${day}T${hour}:${minute}:00${offset}`;
-      const expiresDate = new Date(isoString);
-      
-      if (!isNaN(expiresDate.getTime())) {
-        parsed.expires_at = expiresDate.toISOString();
-      }
-    } catch (e) {
-      console.error('Error parsing expires date:', e);
-    }
-  }
-
-  // Clean HTML for text-based parsing
-  let cleanText = bodyText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
-
-  // Extract pickup date/time from HTML structure
-  const pickupBoxMatch = bodyText.match(/<div class=['"]pickup-box['"]>[\s\S]*?<div class=['"]leginfo['"]>([\s\S]*?)<\/div>/i);
-  if (pickupBoxMatch) {
-    const leginfoContent = pickupBoxMatch[1];
-    const pTags = leginfoContent.match(/<p[^>]*>(.*?)<\/p>/gi);
-    if (pTags && pTags.length >= 2) {
-      const secondP = pTags[1].replace(/<[^>]*>/g, '').trim();
-      const dateTimeMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-      if (dateTimeMatch) {
-        parsed.pickup_date = dateTimeMatch[1];
-        parsed.pickup_time = dateTimeMatch[2];
-      } else {
-        const isLocationFragment = /\b[A-Z]{2}$/.test(secondP);
-        if (!isLocationFragment && secondP.length > 0 && secondP.length < 50) {
-          parsed.pickup_time = secondP;
-        }
-      }
+    // Posted amount
+    const rateMatch = bodyHtml.match(/Posted\s+Amount[:\s]*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (rateMatch) parsed.rate = parseFloat(rateMatch[1].replace(',', ''));
+    
+    // Expiration
+    const expiresMatch = bodyHtml.match(/Expires[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|PST|ET|CT|PT)?/i);
+    if (expiresMatch) {
+      try {
+        const dateStr = expiresMatch[1];
+        const timeStr = expiresMatch[2];
+        const ampm = expiresMatch[3] || '';
+        const parts = dateStr.split('/');
+        let year = parseInt(parts[2], 10);
+        if (year < 100) year += 2000;
+        let hours = parseInt(timeStr.split(':')[0], 10);
+        const minutes = parseInt(timeStr.split(':')[1], 10);
+        if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+        if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+        const date = new Date(year, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10), hours, minutes);
+        parsed.expires_at = date.toISOString();
+      } catch (e) {}
     }
   }
   
-  if (!parsed.pickup_date && !parsed.pickup_time) {
-    const pickupMatch = cleanText.match(/Pick.*?Up.*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-    if (pickupMatch) {
-      parsed.pickup_date = pickupMatch[1];
-      parsed.pickup_time = pickupMatch[2];
-    }
-  }
-
-  // Extract delivery date/time from HTML structure
-  const deliveryBoxMatch = bodyText.match(/<div class=['"]delivery-box['"]>[\s\S]*?<div class=['"]leginfo['"]>([\s\S]*?)<\/div>/i);
-  if (deliveryBoxMatch) {
-    const leginfoContent = deliveryBoxMatch[1];
-    const pTags = leginfoContent.match(/<p[^>]*>(.*?)<\/p>/gi);
-    if (pTags && pTags.length >= 2) {
-      const secondP = pTags[1].replace(/<[^>]*>/g, '').trim();
-      const dateTimeMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-      if (dateTimeMatch) {
-        parsed.delivery_date = dateTimeMatch[1];
-        parsed.delivery_time = dateTimeMatch[2];
-      } else {
-        const isLocationFragment = /\b[A-Z]{2}$/.test(secondP);
-        if (!isLocationFragment && secondP.length > 0 && secondP.length < 50) {
-          parsed.delivery_time = secondP;
-        }
-      }
-    }
-  }
-  
-  if (!parsed.delivery_date && !parsed.delivery_time) {
-    const deliveryMatch = cleanText.match(/Delivery.*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-    if (deliveryMatch) {
-      parsed.delivery_date = deliveryMatch[1];
-      parsed.delivery_time = deliveryMatch[2];
-    }
-  }
-
-  // Fallback pieces extraction
-  if (!parsed.pieces) {
-    const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces?|pcs?|pallets?|plts?|plt|skids?)/i);
-    if (piecesMatch) {
-      parsed.pieces = parseInt(piecesMatch[1]);
-    }
-  }
-
-  // Fallback dimensions extraction
-  if (!parsed.dimensions) {
-    const dimsSectionMatch = cleanText.match(/dimensions?[:\s-]*([0-9"' xX]+)/i);
-    if (dimsSectionMatch) {
-      const dimsInner = dimsSectionMatch[1];
-      const dimsPattern = /(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+)/;
-      const innerMatch = dimsInner.match(dimsPattern);
-      if (innerMatch) {
-        parsed.dimensions = `${innerMatch[1]}x${innerMatch[2]}x${innerMatch[3]}`;
-      }
-    }
-  }
-
-  // Extract notes
-  const notesMatch = bodyText.match(/<div[^>]*class=['"]notes-section['"][^>]*>([\s\S]*?)<\/div>/i);
-  if (notesMatch) {
-    const notesContent = notesMatch[1];
-    const notesPTags = notesContent.match(/<p[^>]*>(.*?)<\/p>/gi);
-    if (notesPTags && notesPTags.length > 0) {
-      const notesText = notesPTags
-        .map(tag => tag.replace(/<[^>]*>/g, '').trim())
-        .filter(text => text.length > 0)
-        .join(', ');
-      if (notesText) {
-        parsed.notes = notesText;
-      }
-    }
-  }
-
-  // Extract broker information
-  const cleanedHtml = bodyText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
-  
-  const postedAmountMatch = cleanedHtml.match(/<strong>Posted Amount:\s*<\/strong>\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
-  if (postedAmountMatch) {
-    parsed.rate = parseFloat(postedAmountMatch[1].replace(/,/g, ''));
-  }
-  
-  const brokerNameMatch = cleanedHtml.match(/<strong>Broker Name:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (brokerNameMatch) {
-    parsed.broker_name = brokerNameMatch[1].trim();
-  }
-
-  const brokerCompanyMatch = cleanedHtml.match(/<strong>Broker Company:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (brokerCompanyMatch) {
-    parsed.broker_company = brokerCompanyMatch[1].trim();
-  }
-
-  const brokerPhoneMatch = cleanedHtml.match(/<strong>Broker Phone:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (brokerPhoneMatch) {
-    parsed.broker_phone = brokerPhoneMatch[1].trim();
-  }
-
-  let emailMatch1 = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
-  if (emailMatch1 && emailMatch1[1].trim()) {
-    parsed.email = emailMatch1[1].trim();
-  }
-  
-  if (!parsed.email) {
-    const emailInLinkMatch = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*<a[^>]*>([^<]+)<\/a>/i);
-    if (emailInLinkMatch) {
-      parsed.email = emailInLinkMatch[1].trim();
-    }
-  }
-  
-  const emailInSubject = subject.match(/\(([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)\)/);
-  if (emailInSubject) {
-    parsed.broker_email = emailInSubject[1].trim();
-  }
-
-  const loadTypeMatch = cleanedHtml.match(/<strong>Load Type:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (loadTypeMatch) {
-    parsed.load_type = loadTypeMatch[1].trim();
-  }
-
-  const dockLevelMatch = cleanedHtml.match(/<strong>Dock Level:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (dockLevelMatch) {
-    parsed.dock_level = dockLevelMatch[1].trim();
-  }
-
-  const hazmatMatch = cleanedHtml.match(/<strong>Hazmat:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (hazmatMatch) {
-    const hazmatValue = hazmatMatch[1].trim().toLowerCase();
-    parsed.hazmat = hazmatValue === 'yes' || hazmatValue === 'true';
-  }
-
-  const stackableMatch = cleanedHtml.match(/<strong>Stackable:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (stackableMatch) {
-    const stackableValue = stackableMatch[1].trim().toLowerCase();
-    parsed.stackable = stackableValue === 'yes' || stackableValue === 'true';
-  }
-
-  const twoStopsIndicator = cleanedHtml.match(/2\s+stops/i) || cleanedHtml.match(/two\s+stops/i);
-  if (twoStopsIndicator) {
-    parsed.has_multiple_stops = true;
-    parsed.stop_count = 2;
-  }
-
   return parsed;
 }
 
-// Geocode city/state to coordinates using Mapbox
-async function geocodeLocation(city: string, state: string): Promise<{lat: number, lng: number} | null> {
-  if (!city || !state || !MAPBOX_TOKEN) {
-    return null;
+// Fast geocoding with caching in memory
+const geocodeCache = new Map<string, { lat: number; lng: number }>();
+
+async function geocodeLocationFast(city: string, state: string): Promise<{ lat: number; lng: number } | null> {
+  if (!city || !state || !MAPBOX_TOKEN) return null;
+  
+  const cacheKey = `${city.toLowerCase()},${state.toLowerCase()}`;
+  if (geocodeCache.has(cacheKey)) {
+    return geocodeCache.get(cacheKey)!;
   }
   
   try {
     const query = encodeURIComponent(`${city}, ${state}, USA`);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`;
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`
+    );
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error('Geocoding API error:', response.status);
-      return null;
-    }
+    if (!response.ok) return null;
     
     const data = await response.json();
     if (data.features && data.features.length > 0) {
       const [lng, lat] = data.features[0].center;
-      console.log(`Geocoded ${city}, ${state} to: ${lat}, ${lng}`);
-      return { lat, lng };
+      const result = { lat, lng };
+      geocodeCache.set(cacheKey, result);
+      return result;
     }
-    
-    console.warn(`No geocoding results for: ${city}, ${state}`);
     return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
+  } catch {
     return null;
   }
 }
 
-// Calculate distance between two coordinates using Haversine formula
+// Calculate distance using Haversine formula
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3959; // Earth's radius in miles
+  const R = 3959;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// Create hunt matches for a newly inserted load email and track any issues
-async function createHuntMatches(emailId: string, parsedData: any): Promise<{ matchCount: number; issues: string[] }> {
-  const issues: string[] = [];
-  let matchCount = 0;
-  
+// Process a single email and return the record to insert
+async function processEmail(message: any, accessToken: string): Promise<any | null> {
   try {
-    // Get the load email record to get the UUID
-    const { data: loadEmail, error: loadError } = await supabase
-      .from('load_emails')
-      .select('id')
-      .eq('email_id', emailId)
-      .single();
+    const messageResponse = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    );
     
-    if (loadError || !loadEmail) {
-      console.error('Could not find load email for matching:', loadError);
-      issues.push('Could not find load email record for matching');
-      return { matchCount: 0, issues };
+    if (!messageResponse.ok) return null;
+    
+    const fullMessage = await messageResponse.json();
+    const headers = fullMessage.payload?.headers || [];
+    const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
+    const subjectHeader = headers.find((h: any) => h.name.toLowerCase() === 'subject');
+    const dateHeader = headers.find((h: any) => h.name.toLowerCase() === 'date');
+
+    const fromEmail = fromHeader?.value || 'unknown@example.com';
+    const fromName = fromEmail.split('<')[0].trim();
+    const subject = subjectHeader?.value || '(No Subject)';
+    const receivedDate = dateHeader?.value ? new Date(dateHeader.value) : new Date();
+
+    // Extract body
+    let bodyHtml = '';
+    const decodeBase64Utf8 = (data: string) => {
+      const binary = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+      return new TextDecoder('utf-8').decode(bytes);
+    };
+
+    function extractBody(part: any) {
+      if (part.mimeType === 'text/html' && part.body?.data) {
+        bodyHtml = decodeBase64Utf8(part.body.data);
+      } else if (part.parts) {
+        part.parts.forEach(extractBody);
+      }
     }
 
-    // Check for missing critical fields
-    if (!parsedData?.broker_email) {
-      issues.push('Missing broker email');
-    }
-    if (!parsedData?.origin_city || !parsedData?.origin_state) {
-      issues.push('Missing origin location (city/state)');
-    }
-    if (!parsedData?.destination_city || !parsedData?.destination_state) {
-      issues.push('Missing destination location');
-    }
-    if (!parsedData?.vehicle_type) {
-      issues.push('Missing vehicle type');
+    if (fullMessage.payload?.body?.data) {
+      bodyHtml = decodeBase64Utf8(fullMessage.payload.body.data);
+    } else if (fullMessage.payload?.parts) {
+      fullMessage.payload.parts.forEach(extractBody);
     }
 
-    // Check for pickup coordinates
-    const pickupCoords = parsedData?.pickup_coordinates;
-    if (!pickupCoords?.lat || !pickupCoords?.lng) {
-      console.log('No pickup coordinates, skipping hunt matching');
-      issues.push('Could not geocode pickup location - no coordinates available');
-      
-      // Update load_emails with issues
-      await supabase
-        .from('load_emails')
-        .update({ 
-          has_issues: true, 
-          issue_notes: issues.join('; ')
-        })
-        .eq('id', loadEmail.id);
-      
-      return { matchCount: 0, issues };
+    // Parse load data (fast version)
+    const parsedData = parseLoadEmailFast(subject, bodyHtml);
+    
+    // Geocode pickup location
+    if (parsedData.origin_city && parsedData.origin_state) {
+      const coords = await geocodeLocationFast(parsedData.origin_city, parsedData.origin_state);
+      if (coords) {
+        parsedData.pickup_coordinates = coords;
+      }
     }
 
-    // Get all active hunt plans
-    const { data: huntPlans, error: huntError } = await supabase
+    // Fix expires_at if before received_at
+    let finalExpiresAt = parsedData.expires_at || null;
+    if (finalExpiresAt) {
+      const expiresDate = new Date(finalExpiresAt);
+      if (expiresDate <= receivedDate) {
+        finalExpiresAt = new Date(receivedDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      }
+    }
+
+    return {
+      email_id: fullMessage.id,
+      thread_id: fullMessage.threadId,
+      from_email: fromEmail,
+      from_name: fromName,
+      subject: subject,
+      body_html: bodyHtml.substring(0, 50000), // Limit size
+      body_text: bodyHtml.substring(0, 5000),
+      received_at: receivedDate.toISOString(),
+      parsed_data: parsedData,
+      expires_at: finalExpiresAt,
+      status: 'new',
+    };
+  } catch (error) {
+    console.error('Error processing message:', message.id, error);
+    return null;
+  }
+}
+
+// Background task to create hunt matches (runs after response is sent)
+async function createMatchesBackground(emailRecords: any[]) {
+  try {
+    // Get all active hunt plans once
+    const { data: huntPlans } = await supabase
       .from('hunt_plans')
       .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size')
       .eq('enabled', true);
 
-    if (huntError || !huntPlans?.length) {
-      console.log('No active hunt plans found');
-      // This is not an issue with the load itself, just no active hunts
-      return { matchCount: 0, issues };
-    }
+    if (!huntPlans?.length) return;
 
-    const loadVehicleType = (parsedData?.vehicle_type || '').toLowerCase();
-    const loadVehicleTypeNormalized = loadVehicleType.replace(/\s+/g, '-');
-    
-    console.log(`🔍 Matching load vehicle type: "${loadVehicleType}" (normalized: "${loadVehicleTypeNormalized}")`);
-    
-    for (const plan of huntPlans) {
-      const huntCoords = plan.hunt_coordinates as { lat: number; lng: number } | null;
-      if (!huntCoords?.lat || !huntCoords?.lng) {
-        console.log(`⚠️ Hunt plan ${plan.id} has no coordinates, skipping`);
-        continue;
-      }
+    const matchesToInsert: any[] = [];
 
-      // Calculate distance
-      const distance = calculateDistance(
-        huntCoords.lat, huntCoords.lng,
-        pickupCoords.lat, pickupCoords.lng
-      );
+    for (const record of emailRecords) {
+      const parsedData = record.parsed_data;
+      const pickupCoords = parsedData?.pickup_coordinates;
+      
+      if (!pickupCoords?.lat || !pickupCoords?.lng) continue;
 
-      // Check if within radius
-      const radius = parseInt(plan.pickup_radius || '300', 10);
-      if (distance > radius) {
-        console.log(`📏 Load outside radius for plan ${plan.id}: ${distance.toFixed(0)}mi > ${radius}mi`);
-        continue;
-      }
+      const loadVehicleType = (parsedData?.vehicle_type || '').toLowerCase();
 
-      // Parse vehicle_size - handle both JSON string and array
-      let vehicleSizes: string[] = [];
-      if (plan.vehicle_size) {
-        if (typeof plan.vehicle_size === 'string') {
+      for (const plan of huntPlans) {
+        const huntCoords = plan.hunt_coordinates as { lat: number; lng: number } | null;
+        if (!huntCoords?.lat || !huntCoords?.lng) continue;
+
+        const distance = calculateDistance(
+          huntCoords.lat, huntCoords.lng,
+          pickupCoords.lat, pickupCoords.lng
+        );
+
+        const radius = parseInt(plan.pickup_radius || '300', 10);
+        if (distance > radius) continue;
+
+        // Vehicle type matching
+        let vehicleSizes: string[] = [];
+        if (plan.vehicle_size) {
           try {
-            vehicleSizes = JSON.parse(plan.vehicle_size);
+            vehicleSizes = typeof plan.vehicle_size === 'string' 
+              ? JSON.parse(plan.vehicle_size) 
+              : plan.vehicle_size;
           } catch {
             vehicleSizes = [plan.vehicle_size];
           }
-        } else if (Array.isArray(plan.vehicle_size)) {
-          vehicleSizes = plan.vehicle_size;
+        }
+
+        const vehicleMatches = vehicleSizes.length === 0 || vehicleSizes.some((huntSize: string) => {
+          const normalizedHuntSize = huntSize.toLowerCase().replace(/\s+/g, ' ');
+          return loadVehicleType.includes(normalizedHuntSize) || 
+                 normalizedHuntSize.includes(loadVehicleType.replace(/-/g, ' '));
+        });
+
+        if (!vehicleMatches) continue;
+
+        // Get the load_email id from database
+        const { data: loadEmail } = await supabase
+          .from('load_emails')
+          .select('id')
+          .eq('email_id', record.email_id)
+          .single();
+
+        if (loadEmail) {
+          matchesToInsert.push({
+            load_email_id: loadEmail.id,
+            hunt_plan_id: plan.id,
+            vehicle_id: plan.vehicle_id,
+            distance_miles: Math.round(distance),
+            match_score: Math.max(0, 100 - (distance / radius) * 50),
+            is_active: true
+          });
         }
       }
-      
-      // Vehicle type matching rules (more flexible matching)
-      const matchRules: Record<string, string[]> = {
-        'large-straight': ['large straight', 'small straight', 'straight', 'straight truck'],
-        'large-straight-only': ['large straight'],
-        'small-straight': ['small straight'],
-        'cargo-van': ['cargo van', 'van'],
-        'cube-van': ['cube van'],
-        'sprinter': ['sprinter', 'sprinter van'],
-        'sprinter-van': ['sprinter van', 'sprinter'],
-        'van': ['van', 'cargo van', 'sprinter van', 'cube van'],
-        'straight': ['straight', 'straight truck', 'large straight', 'small straight'],
-        'straight-truck': ['straight truck', 'straight', 'large straight', 'small straight'],
-        'tractor': ['tractor', 'semi'],
-        'flatbed': ['flatbed'],
-      };
-      
-      // Check vehicle type match
-      const vehicleMatches = vehicleSizes.length === 0 || vehicleSizes.some((huntSize: string) => {
-        const normalizedHuntSize = huntSize.toLowerCase().replace(/\s+/g, '-');
-        const allowedVehicles = matchRules[normalizedHuntSize] || [huntSize.replace(/-/g, ' ')];
-        const matches = allowedVehicles.some(v => 
-          loadVehicleType.includes(v) || v.includes(loadVehicleType)
-        );
-        return matches;
-      });
-      
-      if (!vehicleMatches) {
-        console.log(`🚛 Vehicle type mismatch for plan ${plan.id}: "${loadVehicleType}" not in [${vehicleSizes.join(', ')}]`);
-        continue;
-      }
-      
-      console.log(`✅ MATCH FOUND: plan ${plan.id}, distance ${distance.toFixed(0)}mi, vehicle ${loadVehicleType}`);
+    }
 
-      // Create match
-      const { error: matchError } = await supabase
+    // Batch insert matches
+    if (matchesToInsert.length > 0) {
+      const { error } = await supabase
         .from('load_hunt_matches')
-        .insert({
-          load_email_id: loadEmail.id,
-          hunt_plan_id: plan.id,
-          vehicle_id: plan.vehicle_id,
-          distance_miles: Math.round(distance),
-          match_score: Math.max(0, 100 - (distance / radius) * 50),
-          is_active: true
+        .upsert(matchesToInsert, { 
+          onConflict: 'load_email_id,hunt_plan_id',
+          ignoreDuplicates: true 
         });
-
-      if (matchError) {
-        console.error('Error creating hunt match:', matchError);
-        issues.push(`Failed to create match for plan ${plan.id}`);
+      
+      if (error) {
+        console.error('Error inserting matches:', error);
       } else {
-        matchCount++;
-        console.log(`Created match: load ${loadEmail.id} -> plan ${plan.id}, distance ${distance.toFixed(0)}mi`);
-      }
-    }
-
-    // If there are any issues, update the load record
-    if (issues.length > 0) {
-      await supabase
-        .from('load_emails')
-        .update({ 
-          has_issues: true, 
-          issue_notes: issues.join('; ')
-        })
-        .eq('id', loadEmail.id);
-    }
-    
-    return { matchCount, issues };
-  } catch (error) {
-    console.error('Error in createHuntMatches:', error);
-    issues.push(`Unexpected error during matching: ${error}`);
-    return { matchCount: 0, issues };
-  }
-}
-
-async function ensureCustomerExists(parsedData: any): Promise<void> {
-  const customerName = parsedData?.broker_company || parsedData?.customer;
-  
-  if (!customerName || 
-      customerName === '- Alliance Posted Load' || 
-      customerName.includes('Name: </strong>') ||
-      customerName.trim() === '') {
-    return;
-  }
-
-  try {
-    const { data: existing, error: checkError } = await supabase
-      .from('customers')
-      .select('id')
-      .ilike('name', customerName.trim())
-      .maybeSingle();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking customer:', checkError);
-      return;
-    }
-
-    if (!existing) {
-      const { error: insertError } = await supabase
-        .from('customers')
-        .insert({
-          name: customerName.trim(),
-          contact_name: parsedData?.broker_name || null,
-          email: parsedData?.broker_email || null,
-          phone: parsedData?.broker_phone || null,
-          status: 'active',
-          notes: 'Auto-imported from load email'
-        });
-
-      if (insertError) {
-        console.error('Error creating customer:', insertError);
-      } else {
-        console.log(`Created new customer: ${customerName}`);
+        console.log(`✅ Created ${matchesToInsert.length} hunt matches`);
       }
     }
   } catch (error) {
-    console.error('Error in ensureCustomerExists:', error);
+    console.error('Background match creation error:', error);
   }
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  
   try {
-    console.log('Gmail webhook received request');
-    
-    // Parse Pub/Sub message
-    let pubsubMessage: PubSubMessage;
-    try {
-      pubsubMessage = await req.json();
-      console.log('Pub/Sub message received:', JSON.stringify(pubsubMessage).substring(0, 200));
-    } catch (parseError) {
-      console.error('Failed to parse Pub/Sub message:', parseError);
-      // Return 200 to acknowledge receipt (prevent retries for bad messages)
-      return new Response(JSON.stringify({ error: 'Invalid message format' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Decode Pub/Sub message data
-    let notification: any;
-    try {
-      const decodedData = atob(pubsubMessage.message.data);
-      notification = JSON.parse(decodedData);
-      console.log('Gmail notification decoded:', notification);
-    } catch (decodeError) {
-      console.error('Failed to decode notification:', decodeError);
-      return new Response(JSON.stringify({ error: 'Invalid notification data' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Get the email address - default to configured email
-    const userEmail = notification.emailAddress || 'p.d@talbilogistics.com';
-    console.log('Processing notification for:', userEmail);
-
-    // Get access token
+    // Get access token - use the configured Gmail account
     let accessToken: string;
     try {
-      accessToken = await getAccessToken(userEmail);
-      console.log('Access token retrieved successfully');
+      // Get the first available Gmail token
+      const { data: tokenRecord } = await supabase
+        .from('gmail_tokens')
+        .select('user_email')
+        .limit(1)
+        .single();
+      
+      if (!tokenRecord) {
+        throw new Error('No Gmail tokens configured');
+      }
+      
+      accessToken = await getAccessToken(tokenRecord.user_email);
     } catch (tokenError) {
-      console.error('Failed to get access token:', tokenError);
-      return new Response(JSON.stringify({ error: 'Token retrieval failed' }), {
+      console.error('Token error:', tokenError);
+      return new Response(JSON.stringify({ error: 'Token failed' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Fetch unread messages - reduced batch size to prevent database timeouts
+    // Fetch only 3 unread messages at a time for reliability
     const messagesResponse = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&q=is:unread&maxResults=5',
-      {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-      }
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&q=is:unread&maxResults=3',
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
     );
 
     const messagesData = await messagesResponse.json();
     
     if (!messagesData.messages || messagesData.messages.length === 0) {
-      console.log('No new messages to process');
+      console.log('No new messages');
       return new Response(JSON.stringify({ success: true, processed: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Processing ${messagesData.messages.length} unread messages`);
-    let processedCount = 0;
+    console.log(`📧 Processing ${messagesData.messages.length} messages`);
 
-    // Process each message
-    for (const message of messagesData.messages) {
-      try {
-        // Quick duplicate check using count (faster than select)
-        const { count, error: checkError } = await supabase
-          .from('load_emails')
-          .select('*', { count: 'exact', head: true })
-          .eq('email_id', message.id);
+    // Process emails in parallel
+    const emailPromises = messagesData.messages.map((msg: any) => processEmail(msg, accessToken));
+    const emailRecords = (await Promise.all(emailPromises)).filter(Boolean);
 
-        if (checkError) {
-          console.error(`Error checking email ${message.id}:`, checkError);
-          continue;
-        }
-
-        if (count && count > 0) {
-          console.log(`Email ${message.id} already exists, skipping`);
-          // Mark as read anyway to prevent reprocessing
-          await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/modify`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                removeLabelIds: ['UNREAD'],
-              }),
-            }
-          );
-          continue;
-        }
-
-        // Fetch full message details
-        const messageResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`,
-          {
-            headers: { 'Authorization': `Bearer ${accessToken}` },
-          }
-        );
-
-        const fullMessage = await messageResponse.json();
-        
-        // Extract headers
-        const headers = fullMessage.payload?.headers || [];
-        const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
-        const subjectHeader = headers.find((h: any) => h.name.toLowerCase() === 'subject');
-        const dateHeader = headers.find((h: any) => h.name.toLowerCase() === 'date');
-
-        const fromEmail = fromHeader?.value || 'unknown@example.com';
-        const fromName = fromEmail.split('<')[0].trim();
-        const subject = subjectHeader?.value || '(No Subject)';
-        const receivedDate = dateHeader?.value ? new Date(dateHeader.value) : new Date();
-
-        // Extract body (decode base64 as UTF-8)
-        let bodyText = '';
-        let bodyHtml = '';
-
-        const decodeBase64Utf8 = (data: string) => {
-          const binary = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
-          const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-          return new TextDecoder('utf-8').decode(bytes);
-        };
-
-        function extractBody(part: any) {
-          if (part.mimeType === 'text/plain' && part.body?.data) {
-            bodyText = decodeBase64Utf8(part.body.data);
-          } else if (part.mimeType === 'text/html' && part.body?.data) {
-            bodyHtml = decodeBase64Utf8(part.body.data);
-          } else if (part.parts) {
-            part.parts.forEach(extractBody);
-          }
-        }
-
-        if (fullMessage.payload?.body?.data) {
-          bodyHtml = decodeBase64Utf8(fullMessage.payload.body.data);
-          bodyText = bodyHtml;
-        } else if (fullMessage.payload?.parts) {
-          fullMessage.payload.parts.forEach(extractBody);
-        }
-
-        // Use HTML for parsing (Sylectus emails are HTML-based)
-        const contentForParsing = bodyHtml || bodyText;
-
-        // Parse load data using comprehensive Sylectus parser
-        const parsedData = parseLoadEmail(subject, contentForParsing);
-        console.log('Parsed load data:', JSON.stringify(parsedData).substring(0, 300));
-
-        // Geocode pickup location if coordinates missing
-        if (!parsedData.pickup_coordinates && parsedData.origin_city && parsedData.origin_state) {
-          const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
-          if (coords) {
-            parsedData.pickup_coordinates = coords;
-            console.log(`Added pickup coordinates for ${parsedData.origin_city}, ${parsedData.origin_state}`);
-          }
-        }
-
-        // Ensure customer exists
-        await ensureCustomerExists(parsedData);
-
-        // Fix expires_at if it's before received_at (likely a parsing error - dates were swapped)
-        let finalExpiresAt = parsedData.expires_at || null;
-        if (finalExpiresAt) {
-          const expiresDate = new Date(finalExpiresAt);
-          if (expiresDate <= receivedDate) {
-            console.log(`Detected expires_at (${finalExpiresAt}) before received_at (${receivedDate.toISOString()}) - correcting`);
-            // Add 24 hours to received date as the corrected expiration
-            const correctedExpires = new Date(receivedDate.getTime() + 24 * 60 * 60 * 1000);
-            finalExpiresAt = correctedExpires.toISOString();
-            console.log(`Corrected expires_at to: ${finalExpiresAt}`);
-          }
-        }
-
-        // Insert into database using upsert to handle race conditions
-        const { data: insertedEmail, error: insertError } = await supabase
-          .from('load_emails')
-          .upsert({
-            email_id: fullMessage.id,
-            thread_id: fullMessage.threadId,
-            from_email: fromEmail,
-            from_name: fromName,
-            subject: subject,
-            body_html: contentForParsing,
-            body_text: contentForParsing.substring(0, 5000),
-            received_at: receivedDate.toISOString(),
-            parsed_data: parsedData,
-            expires_at: finalExpiresAt,
-            status: 'new',
-          }, { 
-            onConflict: 'email_id',
-            ignoreDuplicates: true 
-          })
-          .select('id')
-          .maybeSingle();
-
-        if (insertError) {
-          // Log but don't fail on duplicate key or timeout - mark as read to prevent retry loops
-          if (insertError.code === '23505') {
-            console.log(`Email ${message.id} already inserted by another process, skipping`);
-          } else {
-            console.error('Error storing email:', message.id, insertError);
-          }
-        } else if (insertedEmail) {
-          processedCount++;
-          console.log(`Successfully stored email: ${subject}`);
-          
-          // Create hunt matches for this load (skip if no ID returned - means it was a duplicate)
-          const { matchCount, issues } = await createHuntMatches(fullMessage.id, parsedData);
-          if (issues.length > 0) {
-            console.warn(`Load ${subject} has issues: ${issues.join('; ')}`);
-          }
-          console.log(`Created ${matchCount} matches for load`);
-        } else {
-          console.log(`Email ${message.id} already exists (upsert returned null)`);
-        }
-
-        // Mark message as read in Gmail
-        await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/modify`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              removeLabelIds: ['UNREAD'],
-            }),
-          }
-        );
-
-      } catch (msgError) {
-        console.error('Error processing message:', message.id, msgError);
-      }
+    if (emailRecords.length === 0) {
+      return new Response(JSON.stringify({ success: true, processed: 0 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`Gmail webhook completed: processed ${processedCount} new emails`);
+    // Batch insert all emails at once (much faster than individual inserts)
+    const { data: insertedEmails, error: insertError } = await supabase
+      .from('load_emails')
+      .upsert(emailRecords, { 
+        onConflict: 'email_id',
+        ignoreDuplicates: true 
+      })
+      .select('email_id');
 
-    return new Response(JSON.stringify({ success: true, processed: processedCount }), {
+    const processedCount = insertedEmails?.length || 0;
+
+    if (insertError) {
+      console.error('Insert error:', insertError);
+    } else {
+      console.log(`✅ Inserted ${processedCount} emails in ${Date.now() - startTime}ms`);
+    }
+
+    // Mark messages as read in parallel
+    const markReadPromises = messagesData.messages.map((msg: any) =>
+      fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}/modify`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
+        }
+      ).catch(() => {}) // Ignore errors
+    );
+    
+    // Don't wait for mark-as-read to complete
+    Promise.all(markReadPromises);
+
+    // Create hunt matches in background (after response is sent)
+    if (processedCount > 0) {
+      EdgeRuntime.waitUntil(createMatchesBackground(emailRecords));
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      processed: processedCount,
+      duration_ms: Date.now() - startTime 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Gmail webhook error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    // Return 200 to prevent Pub/Sub retries on unexpected errors
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error('Webhook error:', error);
+    return new Response(JSON.stringify({ error: String(error) }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
