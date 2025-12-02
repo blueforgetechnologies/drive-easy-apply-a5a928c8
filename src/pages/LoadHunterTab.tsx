@@ -440,6 +440,7 @@ export default function LoadHunterTab() {
       
       // Reload matches after creating them
       await loadHuntMatches();
+      await loadUnreviewedMatches(); // Refresh server-side view for Unreviewed tab
     };
     
     if (huntPlans.length > 0 && loadEmails.length > 0) {
