@@ -140,13 +140,13 @@ serve(async (req) => {
   let errors = 0;
 
   try {
-    // Get pending queue items - limit to 5 for controlled processing
+    // Get pending queue items - limit to 2 to avoid Gmail rate limiting
     const { data: queueItems, error: queueError } = await supabase
       .from('email_queue')
       .select('*')
       .eq('status', 'pending')
       .order('queued_at', { ascending: true })
-      .limit(5);
+      .limit(2);
 
     if (queueError) {
       console.error('Queue fetch error:', queueError);
