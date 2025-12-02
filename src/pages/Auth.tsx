@@ -43,15 +43,27 @@ export default function Auth() {
         if (data.user) {
           await supabase.from("login_history").insert({
             user_id: data.user.id,
-            ip_address: null, // Could be populated with actual IP if available
+            ip_address: null,
             user_agent: navigator.userAgent,
-            location: null, // Could be populated with geolocation if available
+            location: null,
           });
         }
 
         toast.success("Logged in successfully!");
         navigate("/dashboard");
       } else {
+        // Check if email is invited before allowing signup
+        const { data: isInvited, error: checkError } = await supabase
+          .rpc('is_email_invited', { check_email: email });
+        
+        if (checkError) {
+          throw new Error("Unable to verify invitation status");
+        }
+        
+        if (!isInvited) {
+          throw new Error("This email has not been invited. Please contact an administrator to request access.");
+        }
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
