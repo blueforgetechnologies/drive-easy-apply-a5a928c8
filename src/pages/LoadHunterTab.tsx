@@ -551,6 +551,11 @@ export default function LoadHunterTab() {
         return true;
       });
 
+  // Debug: Log filtered emails count for all filter
+  if (activeFilter === 'all') {
+    console.log(`📧 All filter: ${filteredEmails.length} emails (from ${loadEmails.length} total loadEmails)`);
+  }
+
   // Get filtered matches for unreviewed - USE SERVER-SIDE VIEW DATA for scalability
   const filteredMatches = activeFilter === 'unreviewed'
     ? unreviewedViewData
