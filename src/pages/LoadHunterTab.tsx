@@ -138,6 +138,7 @@ export default function LoadHunterTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 17;
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
+  const currentDispatcherIdRef = useRef<string | null>(null);
   const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -737,6 +738,28 @@ export default function LoadHunterTab() {
     };
   }, [audioContext]);
 
+  // Function to refresh my vehicles (assigned to current dispatcher)
+  const refreshMyVehicleIds = async () => {
+    const dispatcherId = currentDispatcherIdRef.current;
+    if (!dispatcherId) return;
+    
+    const { data: assignedVehicles } = await supabase
+      .from('vehicles')
+      .select('id, vehicle_number')
+      .eq('primary_dispatcher_id', dispatcherId);
+    
+    if (assignedVehicles) {
+      setMyVehicleIds(assignedVehicles.map(v => v.id));
+      console.log('✅ Refreshed my vehicle IDs:', assignedVehicles.map(v => v.id));
+    }
+  };
+  
+  // Combined refresh for vehicle data (used by VehicleAssignmentView)
+  const refreshVehicleData = async () => {
+    await loadVehicles();
+    await refreshMyVehicleIds();
+  };
+
   // Fetch current user's dispatcher info and assigned vehicles
   useEffect(() => {
     const fetchUserDispatcherInfo = async () => {
@@ -755,6 +778,7 @@ export default function LoadHunterTab() {
         
         if (dispatcher) {
           setCurrentDispatcherId(dispatcher.id);
+          currentDispatcherIdRef.current = dispatcher.id;
           console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
           
           // Get vehicles assigned to this dispatcher
@@ -844,10 +868,30 @@ export default function LoadHunterTab() {
       )
       .subscribe();
 
+    // Subscribe to real-time updates for vehicles (dispatcher assignments)
+    const vehiclesChannel = supabase
+      .channel('vehicles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle change:', payload);
+          // Reload vehicles and my vehicle IDs when assignments change
+          loadVehicles();
+          refreshMyVehicleIds();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(emailsChannel);
       supabase.removeChannel(huntPlansChannel);
       supabase.removeChannel(matchesChannel);
+      supabase.removeChannel(vehiclesChannel);
     };
   }, []);
 
@@ -2928,6 +2972,7 @@ export default function LoadHunterTab() {
             vehicles={vehicles}
             drivers={drivers}
             onBack={() => setActiveFilter('unreviewed')}
+            onRefresh={refreshVehicleData}
           />
         ) : activeFilter === 'issues' ? (
           /* Issues View - Special table showing issue details */
