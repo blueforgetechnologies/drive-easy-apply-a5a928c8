@@ -203,7 +203,7 @@ export default function LoadHunterTab() {
   };
 
   // Helper function to extract location data from load email
-  const extractLoadLocation = (email: any): { originZip?: string, originLat?: number, originLng?: number, originCityState?: string, loadType?: string, pickupDate?: string } => {
+  const extractLoadLocation = (email: any): { originZip?: string, originLat?: number, originLng?: number, originCityState?: string, loadType?: string, vehicleType?: string, pickupDate?: string } => {
     try {
       if (email.parsed_data) {
         const parsed = email.parsed_data;
@@ -216,7 +216,8 @@ export default function LoadHunterTab() {
           originLat: parsed.origin_lat || parsed.pickup_lat,
           originLng: parsed.origin_lng || parsed.pickup_lng,
           originCityState,
-          loadType: parsed.vehicle_type || parsed.equipment_type,
+          loadType: parsed.load_type,
+          vehicleType: parsed.vehicle_type || parsed.equipment_type,
           pickupDate: parsed.pickup_date
         };
       }
@@ -240,6 +241,7 @@ export default function LoadHunterTab() {
     originLng?: number;
     originCityState?: string;
     loadType?: string;
+    vehicleType?: string;
     pickupDate?: string;
   }, hunt: HuntPlan): Promise<{ matches: boolean; distance?: number }> => {
     // Match by date if specified
@@ -259,14 +261,38 @@ export default function LoadHunterTab() {
     }
 
     // Match by load type/vehicle size if specified
-    if (hunt.vehicleSize && loadData.loadType) {
-      const vehicleSizeLower = hunt.vehicleSize.toLowerCase();
-      const loadTypeLower = loadData.loadType.toLowerCase();
+    if (hunt.vehicleSize && loadData.vehicleType) {
+      const huntVehicle = hunt.vehicleSize.toLowerCase().replace(/-/g, ' ');
+      const loadVehicle = loadData.vehicleType.toLowerCase();
 
-      if (vehicleSizeLower.includes('straight')) {
-        if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
-          return { matches: false };
-        }
+      // Define matching rules for each hunt type
+      const matchRules: Record<string, string[]> = {
+        'large straight': ['large straight', 'small straight', 'straight', 'straight truck'],
+        'large straight only': ['large straight'],
+        'small straight': ['small straight'],
+        'cargo van': ['cargo van'],
+        'cube van': ['cube van'],
+        'sprinter': ['sprinter', 'sprinter van'],
+        'sprinter van': ['sprinter van', 'sprinter'],
+        'sprinter team': ['sprinter team'],
+        'van': ['van', 'cargo van', 'sprinter van', 'cube van'],
+        'straight': ['straight', 'straight truck', 'large straight', 'small straight'],
+        'straight truck': ['straight truck', 'straight', 'large straight', 'small straight'],
+        'straight liftgate': ['straight with liftgate', 'lift gate truck'],
+        'dock high straight': ['dock high straight'],
+        'large straight team': ['large straight team'],
+        'lift gate truck': ['lift gate truck', 'straight with liftgate'],
+        'flatbed': ['flatbed'],
+        'tractor': ['tractor', 'semi'],
+        'semi': ['semi', 'tractor'],
+        'reefer sprinter': ['reefer sprinter van'],
+      };
+
+      const allowedVehicles = matchRules[huntVehicle] || [huntVehicle];
+      const vehicleMatches = allowedVehicles.some(v => loadVehicle.includes(v) || v.includes(loadVehicle));
+      
+      if (!vehicleMatches) {
+        return { matches: false };
       }
     }
 
@@ -2190,7 +2216,30 @@ export default function LoadHunterTab() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="font-medium">Vehicle Size:</span>
-                      <span>{plan.vehicleSize === 'large-straight' ? 'Large Straight, Small Straight' : plan.vehicleSize}</span>
+                      <span>{(() => {
+                        const labels: Record<string, string> = {
+                          'large-straight': 'Large Straight, Small Straight',
+                          'large-straight-only': 'Large Straight Only',
+                          'small-straight': 'Small Straight',
+                          'cargo-van': 'Cargo Van',
+                          'cube-van': 'Cube Van',
+                          'sprinter': 'Sprinter',
+                          'sprinter-van': 'Sprinter Van',
+                          'sprinter-team': 'Sprinter Team',
+                          'van': 'Van',
+                          'straight': 'Straight',
+                          'straight-truck': 'Straight Truck',
+                          'straight-liftgate': 'Straight With Liftgate',
+                          'dock-high-straight': 'Dock High Straight',
+                          'large-straight-team': 'Large Straight Team',
+                          'lift-gate-truck': 'Lift Gate Truck',
+                          'flatbed': 'Flatbed',
+                          'tractor': 'Tractor',
+                          'semi': 'Semi',
+                          'reefer-sprinter': 'Reefer Sprinter Van',
+                        };
+                        return labels[plan.vehicleSize] || plan.vehicleSize;
+                      })()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Zipcodes:</span>
@@ -2273,8 +2322,24 @@ export default function LoadHunterTab() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="large-straight">Large Straight, Small Straight</SelectItem>
+                  <SelectItem value="large-straight-only">Large Straight Only</SelectItem>
                   <SelectItem value="small-straight">Small Straight</SelectItem>
-                  <SelectItem value="large-straight-only">Large Straight</SelectItem>
+                  <SelectItem value="cargo-van">Cargo Van</SelectItem>
+                  <SelectItem value="cube-van">Cube Van</SelectItem>
+                  <SelectItem value="sprinter">Sprinter</SelectItem>
+                  <SelectItem value="sprinter-van">Sprinter Van</SelectItem>
+                  <SelectItem value="sprinter-team">Sprinter Team</SelectItem>
+                  <SelectItem value="van">Van</SelectItem>
+                  <SelectItem value="straight">Straight</SelectItem>
+                  <SelectItem value="straight-truck">Straight Truck</SelectItem>
+                  <SelectItem value="straight-liftgate">Straight With Liftgate</SelectItem>
+                  <SelectItem value="dock-high-straight">Dock High Straight</SelectItem>
+                  <SelectItem value="large-straight-team">Large Straight Team</SelectItem>
+                  <SelectItem value="lift-gate-truck">Lift Gate Truck</SelectItem>
+                  <SelectItem value="flatbed">Flatbed</SelectItem>
+                  <SelectItem value="tractor">Tractor</SelectItem>
+                  <SelectItem value="semi">Semi</SelectItem>
+                  <SelectItem value="reefer-sprinter">Reefer Sprinter Van</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2456,8 +2521,24 @@ export default function LoadHunterTab() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="large-straight">Large Straight, Small Straight</SelectItem>
+                  <SelectItem value="large-straight-only">Large Straight Only</SelectItem>
                   <SelectItem value="small-straight">Small Straight</SelectItem>
-                  <SelectItem value="large-straight-only">Large Straight</SelectItem>
+                  <SelectItem value="cargo-van">Cargo Van</SelectItem>
+                  <SelectItem value="cube-van">Cube Van</SelectItem>
+                  <SelectItem value="sprinter">Sprinter</SelectItem>
+                  <SelectItem value="sprinter-van">Sprinter Van</SelectItem>
+                  <SelectItem value="sprinter-team">Sprinter Team</SelectItem>
+                  <SelectItem value="van">Van</SelectItem>
+                  <SelectItem value="straight">Straight</SelectItem>
+                  <SelectItem value="straight-truck">Straight Truck</SelectItem>
+                  <SelectItem value="straight-liftgate">Straight With Liftgate</SelectItem>
+                  <SelectItem value="dock-high-straight">Dock High Straight</SelectItem>
+                  <SelectItem value="large-straight-team">Large Straight Team</SelectItem>
+                  <SelectItem value="lift-gate-truck">Lift Gate Truck</SelectItem>
+                  <SelectItem value="flatbed">Flatbed</SelectItem>
+                  <SelectItem value="tractor">Tractor</SelectItem>
+                  <SelectItem value="semi">Semi</SelectItem>
+                  <SelectItem value="reefer-sprinter">Reefer Sprinter Van</SelectItem>
                 </SelectContent>
               </Select>
             </div>
