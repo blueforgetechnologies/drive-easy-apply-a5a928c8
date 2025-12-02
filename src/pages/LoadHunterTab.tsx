@@ -132,7 +132,7 @@ export default function LoadHunterTab() {
   const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
-  const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -484,7 +484,8 @@ export default function LoadHunterTab() {
         const { data, error } = await supabase.functions.invoke('process-email-queue');
         if (data?.processed > 0) {
           console.log(`📧 Queue processed: ${data.processed} emails`);
-          // Refresh data after processing
+          // Refresh ALL data after processing so new emails show immediately
+          loadLoadEmails();
           loadUnreviewedMatches();
         }
       } catch (e) {
