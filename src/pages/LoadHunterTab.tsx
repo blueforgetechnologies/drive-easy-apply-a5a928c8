@@ -1883,7 +1883,7 @@ export default function LoadHunterTab() {
               <Button 
                 size="sm" 
                 variant="ghost"
-                className={`h-7 px-2.5 text-xs rounded-none border-0 ${
+                className={`h-7 px-4 text-xs gap-1.5 rounded-none border-0 ${
                   activeFilter === 'all' 
                     ? 'bg-gray-800 text-white hover:bg-gray-900' 
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -1895,6 +1895,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 All
+                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{loadEmails.length}</Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
