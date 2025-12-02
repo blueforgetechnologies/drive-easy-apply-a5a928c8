@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, ChevronDown, ChevronUp, Circle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { startOfDay } from "date-fns";
 
 interface UserPresence {
   id: string;
@@ -30,6 +30,8 @@ export function UserActivityTracker() {
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [presenceActivityMap, setPresenceActivityMap] = useState<Map<string, Date>>(new Map());
 
   // Track current user's presence
   const trackPresence = useCallback(async () => {
@@ -49,7 +51,18 @@ export function UserActivityTracker() {
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        updateOnlineUsers(state);
+        const onlineIds = new Set(Object.keys(state));
+        setOnlineUserIds(onlineIds);
+        
+        // Extract last activity from presence data
+        const activityMap = new Map<string, Date>();
+        Object.entries(state).forEach(([userId, presences]) => {
+          const presence = presences[0] as any;
+          if (presence?.lastActivity) {
+            activityMap.set(userId, new Date(presence.lastActivity));
+          }
+        });
+        setPresenceActivityMap(activityMap);
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
         console.log('User joined:', newPresences);
@@ -76,10 +89,16 @@ export function UserActivityTracker() {
 
     // Update activity on user actions
     const updateActivity = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+        
       await channel.track({
         id: user.id,
         email: user.email,
-        fullName: users.find(u => u.id === user.id)?.fullName || 'Unknown',
+        fullName: profile?.full_name || 'Unknown',
         lastActivity: new Date().toISOString(),
       });
     };
@@ -95,31 +114,49 @@ export function UserActivityTracker() {
     };
   }, []);
 
-  // Update online users from presence state
-  const updateOnlineUsers = async (presenceState: Record<string, any[]>) => {
+  // Load users who logged in today
+  const loadTodayUsers = useCallback(async () => {
     try {
-      const onlineUserIds = Object.keys(presenceState);
+      // Get start of today in UTC
+      const todayStart = startOfDay(new Date()).toISOString();
       
-      // Get all admin users
-      const { data: adminUsers } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
+      // Get users who logged in today with their most recent login
+      const { data: loginHistory, error: loginError } = await supabase
+        .from('login_history')
+        .select('user_id, logged_in_at')
+        .gte('logged_in_at', todayStart)
+        .order('logged_in_at', { ascending: false });
 
-      if (!adminUsers || adminUsers.length === 0) {
+      if (loginError) {
+        console.error('Error fetching login history:', loginError);
         setLoading(false);
         return;
       }
 
-      const adminUserIds = adminUsers.map(u => u.user_id);
+      if (!loginHistory || loginHistory.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
 
-      // Get profiles for admin users
+      // Get unique user IDs with their most recent login time
+      const userLoginMap = new Map<string, Date>();
+      loginHistory.forEach(entry => {
+        if (!userLoginMap.has(entry.user_id)) {
+          userLoginMap.set(entry.user_id, new Date(entry.logged_in_at));
+        }
+      });
+
+      const userIds = Array.from(userLoginMap.keys());
+
+      // Get profiles for these users
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, email, full_name')
-        .in('id', adminUserIds);
+        .in('id', userIds);
 
       if (!profiles || profiles.length === 0) {
+        setUsers([]);
         setLoading(false);
         return;
       }
@@ -128,8 +165,12 @@ export function UserActivityTracker() {
       const usersWithStats: UserWithStats[] = await Promise.all(
         profiles.map(async (profile) => {
           try {
-            const presenceData = presenceState[profile.id]?.[0];
-            const isOnline = onlineUserIds.includes(profile.id);
+            const isOnline = onlineUserIds.has(profile.id);
+            
+            // Use presence activity if online, otherwise use last login time
+            const lastLoginTime = userLoginMap.get(profile.id) || new Date();
+            const presenceActivity = presenceActivityMap.get(profile.id);
+            const lastActivity = isOnline && presenceActivity ? presenceActivity : lastLoginTime;
             
             // Get user stats from dispatchers (match by email)
             const { data: dispatcher } = await supabase
@@ -182,9 +223,7 @@ export function UserActivityTracker() {
               id: profile.id,
               email: profile.email,
               fullName: profile.full_name || profile.email.split('@')[0],
-              lastActivity: presenceData?.lastActivity 
-                ? new Date(presenceData.lastActivity) 
-                : new Date(),
+              lastActivity,
               isOnline,
               stats,
             };
@@ -194,8 +233,8 @@ export function UserActivityTracker() {
               id: profile.id,
               email: profile.email,
               fullName: profile.full_name || profile.email.split('@')[0],
-              lastActivity: new Date(),
-              isOnline: onlineUserIds.includes(profile.id),
+              lastActivity: userLoginMap.get(profile.id) || new Date(),
+              isOnline: onlineUserIds.has(profile.id),
               stats: { unreviewed: 0, skipped: 0, missed: 0 },
             };
           }
@@ -211,47 +250,28 @@ export function UserActivityTracker() {
 
       setUsers(usersWithStats);
     } catch (err) {
-      console.error('Error updating online users:', err);
+      console.error('Error loading today users:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [onlineUserIds, presenceActivityMap]);
 
   // Load initial data and set up presence
   useEffect(() => {
     trackPresence();
+  }, [trackPresence]);
+
+  // Reload users when online status or presence activity changes
+  useEffect(() => {
+    loadTodayUsers();
     
-    // Refresh stats every 30 seconds
+    // Refresh every 30 seconds
     const interval = setInterval(() => {
-      loadUserStats();
+      loadTodayUsers();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [trackPresence]);
-
-  // Load user stats independently
-  const loadUserStats = async () => {
-    const { data: adminUsers } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'admin');
-
-    if (!adminUsers) return;
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, email, full_name')
-      .in('id', adminUsers.map(u => u.user_id));
-
-    if (!profiles) return;
-
-    setUsers(prev => 
-      prev.map(user => {
-        const profile = profiles.find(p => p.id === user.id);
-        return profile ? { ...user, email: profile.email, fullName: profile.full_name || user.fullName } : user;
-      })
-    );
-  };
+  }, [loadTodayUsers]);
 
   const formatLastActivity = (date: Date) => {
     const now = new Date();
@@ -262,7 +282,7 @@ export function UserActivityTracker() {
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ${diffMins % 60}m ago`;
-    return formatDistanceToNow(date, { addSuffix: true });
+    return `${Math.floor(diffHours / 24)}d ago`;
   };
 
   const onlineCount = users.filter(u => u.isOnline).length;
@@ -294,7 +314,7 @@ export function UserActivityTracker() {
               </div>
             ) : users.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
-                No team members found
+                No team members logged in today
               </div>
             ) : (
               <div className="divide-y divide-border/50">
