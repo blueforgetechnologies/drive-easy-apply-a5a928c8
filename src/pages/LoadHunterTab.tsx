@@ -1229,6 +1229,26 @@ export default function LoadHunterTab() {
     }
   };
 
+  const handleDismissIssue = async (emailId: string) => {
+    try {
+      const { error } = await supabase
+        .from('load_emails')
+        .update({ 
+          has_issues: false,
+          issue_notes: null
+        })
+        .eq('id', emailId);
+
+      if (error) throw error;
+
+      await loadLoadEmails();
+      toast.success('Issue dismissed');
+    } catch (error) {
+      console.error('Error dismissing issue:', error);
+      toast.error('Failed to dismiss issue');
+    }
+  };
+
   const handleSkipEmail = async (emailId: string) => {
     try {
       const { error } = await supabase
@@ -2777,6 +2797,90 @@ export default function LoadHunterTab() {
             drivers={drivers}
             onBack={() => setActiveFilter('unreviewed')}
           />
+        ) : activeFilter === 'issues' ? (
+          /* Issues View - Special table showing issue details */
+          <div className="flex-1 overflow-y-auto flex flex-col">
+          <Card className="flex-1 flex flex-col">
+            <CardContent className="p-0 flex-1 flex flex-col">
+              <div className="border-t">
+                {filteredEmails.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="text-green-600 text-lg font-medium mb-2">✓ No Issues</div>
+                    <div className="text-sm text-muted-foreground">
+                      All loads are processing correctly. Issues will appear here when loads can't be fully parsed or matched.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="h-8">
+                          <TableHead className="w-[100px] py-1 text-[12px] text-amber-600 font-semibold">Load ID</TableHead>
+                          <TableHead className="w-[80px] py-1 text-[12px] text-amber-600 font-semibold">Order #</TableHead>
+                          <TableHead className="w-[150px] py-1 text-[12px] text-amber-600 font-semibold">Origin → Dest</TableHead>
+                          <TableHead className="w-[100px] py-1 text-[12px] text-amber-600 font-semibold">Received</TableHead>
+                          <TableHead className="py-1 text-[12px] text-amber-600 font-semibold">Issue Details</TableHead>
+                          <TableHead className="w-[100px] py-1 text-[12px] text-amber-600 font-semibold">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredEmails.map((email) => {
+                          const parsed = email.parsed_data || {};
+                          return (
+                            <TableRow key={email.id} className="h-10 hover:bg-amber-50">
+                              <TableCell className="py-1 text-xs font-mono">{email.load_id || '-'}</TableCell>
+                              <TableCell className="py-1 text-xs">{parsed.order_number || '-'}</TableCell>
+                              <TableCell className="py-1 text-xs">
+                                {parsed.origin_city && parsed.origin_state 
+                                  ? `${parsed.origin_city}, ${parsed.origin_state}` 
+                                  : <span className="text-red-500">Missing</span>}
+                                {' → '}
+                                {parsed.destination_city && parsed.destination_state 
+                                  ? `${parsed.destination_city}, ${parsed.destination_state}` 
+                                  : <span className="text-red-500">Missing</span>}
+                              </TableCell>
+                              <TableCell className="py-1 text-xs text-muted-foreground">
+                                {email.received_at ? new Date(email.received_at).toLocaleString() : '-'}
+                              </TableCell>
+                              <TableCell className="py-1">
+                                <div className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                                  ⚠️ {email.issue_notes || 'Unknown issue'}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-1">
+                                <div className="flex gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => {
+                                      setSelectedEmailForDetail(email);
+                                      setSelectedEmailDistance(undefined);
+                                    }}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    className="h-6 px-2 text-xs text-amber-600 hover:bg-amber-50"
+                                    onClick={() => handleDismissIssue(email.id)}
+                                  >
+                                    Dismiss
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          </div>
         ) : (
           /* Loads Table */
           <div className="flex-1 overflow-y-auto flex flex-col">
