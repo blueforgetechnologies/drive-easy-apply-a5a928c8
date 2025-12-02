@@ -769,14 +769,25 @@ export default function LoadHunterTab() {
         const timestamp = new Date().toISOString();
         const loadIds = loadsToMark.map(load => load.id);
         
-        // Batch update all loads at once
-        const { error } = await supabase
-          .from('load_emails')
-          .update({ marked_missed_at: timestamp })
-          .in('id', loadIds);
+        // Batch update in chunks of 50 to avoid URL length limits
+        const CHUNK_SIZE = 50;
+        let hasError = false;
+        
+        for (let i = 0; i < loadIds.length; i += CHUNK_SIZE) {
+          const chunk = loadIds.slice(i, i + CHUNK_SIZE);
+          const { error } = await supabase
+            .from('load_emails')
+            .update({ marked_missed_at: timestamp })
+            .in('id', chunk);
+          
+          if (error) {
+            console.error(`Error batch marking chunk ${i}-${i + chunk.length}:`, error);
+            hasError = true;
+          }
+        }
 
-        if (error) {
-          console.error('Error batch marking loads for missed tracking:', error);
+        if (hasError) {
+          console.error('Some batches failed when marking loads for missed tracking');
         } else {
           // Prepare history records for batch insert
           const historyRecords = loadsToMark.map(load => ({
