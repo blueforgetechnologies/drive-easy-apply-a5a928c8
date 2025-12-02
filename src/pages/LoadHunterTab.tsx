@@ -71,7 +71,7 @@ interface HuntPlan {
   id: string;
   vehicleId: string;
   planName: string;
-  vehicleSize: string;
+  vehicleSizes: string[];
   zipCode: string;
   availableFeet: string;
   partial: boolean;
@@ -113,7 +113,7 @@ export default function LoadHunterTab() {
   const [payeesMap, setPayeesMap] = useState<Record<string, string>>({});
   const [huntFormData, setHuntFormData] = useState({
     planName: "",
-    vehicleSize: "large-straight",
+    vehicleSizes: ["large-straight"] as string[],
     zipCode: "",
     availableFeet: "",
     partial: false,
@@ -261,35 +261,37 @@ export default function LoadHunterTab() {
     }
 
     // Match by load type/vehicle size if specified
-    if (hunt.vehicleSize && loadData.vehicleType) {
-      const huntVehicle = hunt.vehicleSize.toLowerCase().replace(/-/g, ' ');
+    if (hunt.vehicleSizes && hunt.vehicleSizes.length > 0 && loadData.vehicleType) {
       const loadVehicle = loadData.vehicleType.toLowerCase();
 
       // Define matching rules for each hunt type
       const matchRules: Record<string, string[]> = {
-        'large straight': ['large straight', 'small straight', 'straight', 'straight truck'],
-        'large straight only': ['large straight'],
-        'small straight': ['small straight'],
-        'cargo van': ['cargo van'],
-        'cube van': ['cube van'],
+        'large-straight': ['large straight', 'small straight', 'straight', 'straight truck'],
+        'large-straight-only': ['large straight'],
+        'small-straight': ['small straight'],
+        'cargo-van': ['cargo van'],
+        'cube-van': ['cube van'],
         'sprinter': ['sprinter', 'sprinter van'],
-        'sprinter van': ['sprinter van', 'sprinter'],
-        'sprinter team': ['sprinter team'],
+        'sprinter-van': ['sprinter van', 'sprinter'],
+        'sprinter-team': ['sprinter team'],
         'van': ['van', 'cargo van', 'sprinter van', 'cube van'],
         'straight': ['straight', 'straight truck', 'large straight', 'small straight'],
-        'straight truck': ['straight truck', 'straight', 'large straight', 'small straight'],
-        'straight liftgate': ['straight with liftgate', 'lift gate truck'],
-        'dock high straight': ['dock high straight'],
-        'large straight team': ['large straight team'],
-        'lift gate truck': ['lift gate truck', 'straight with liftgate'],
+        'straight-truck': ['straight truck', 'straight', 'large straight', 'small straight'],
+        'straight-liftgate': ['straight with liftgate', 'lift gate truck'],
+        'dock-high-straight': ['dock high straight'],
+        'large-straight-team': ['large straight team'],
+        'lift-gate-truck': ['lift gate truck', 'straight with liftgate'],
         'flatbed': ['flatbed'],
         'tractor': ['tractor', 'semi'],
         'semi': ['semi', 'tractor'],
-        'reefer sprinter': ['reefer sprinter van'],
+        'reefer-sprinter': ['reefer sprinter van'],
       };
 
-      const allowedVehicles = matchRules[huntVehicle] || [huntVehicle];
-      const vehicleMatches = allowedVehicles.some(v => loadVehicle.includes(v) || v.includes(loadVehicle));
+      // Check if ANY selected vehicle type matches the load
+      const vehicleMatches = hunt.vehicleSizes.some(huntSize => {
+        const allowedVehicles = matchRules[huntSize] || [huntSize.replace(/-/g, ' ')];
+        return allowedVehicles.some(v => loadVehicle.includes(v) || v.includes(loadVehicle));
+      });
       
       if (!vehicleMatches) {
         return { matches: false };
@@ -1005,28 +1007,40 @@ export default function LoadHunterTab() {
         }
         
         console.log(`✅ Loaded ${data?.length || 0} hunt plans`);
-        const transformedPlans: HuntPlan[] = (data || []).map((plan: any) => ({
-          id: plan.id,
-          vehicleId: plan.vehicle_id,
-          planName: plan.plan_name,
-          vehicleSize: plan.vehicle_size || "",
-          zipCode: plan.zip_code || "",
-          availableFeet: plan.available_feet || "",
-          partial: plan.partial || false,
-          pickupRadius: plan.pickup_radius || "",
-          mileLimit: plan.mile_limit || "",
-          loadCapacity: plan.load_capacity || "",
-          availableDate: plan.available_date || "",
-          availableTime: plan.available_time || "",
-          destinationZip: plan.destination_zip || "",
-          destinationRadius: plan.destination_radius || "",
-          notes: plan.notes || "",
-          createdBy: plan.created_by || "",
-          createdAt: new Date(plan.created_at),
-          lastModified: new Date(plan.last_modified),
-          huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
-          enabled: plan.enabled !== false,
-        }));
+        const transformedPlans: HuntPlan[] = (data || []).map((plan: any) => {
+          // Parse vehicle_size - could be JSON array or legacy string
+          let vehicleSizes: string[] = [];
+          if (plan.vehicle_size) {
+            try {
+              const parsed = JSON.parse(plan.vehicle_size);
+              vehicleSizes = Array.isArray(parsed) ? parsed : [plan.vehicle_size];
+            } catch {
+              vehicleSizes = [plan.vehicle_size];
+            }
+          }
+          return {
+            id: plan.id,
+            vehicleId: plan.vehicle_id,
+            planName: plan.plan_name,
+            vehicleSizes,
+            zipCode: plan.zip_code || "",
+            availableFeet: plan.available_feet || "",
+            partial: plan.partial || false,
+            pickupRadius: plan.pickup_radius || "",
+            mileLimit: plan.mile_limit || "",
+            loadCapacity: plan.load_capacity || "",
+            availableDate: plan.available_date || "",
+            availableTime: plan.available_time || "",
+            destinationZip: plan.destination_zip || "",
+            destinationRadius: plan.destination_radius || "",
+            notes: plan.notes || "",
+            createdBy: plan.created_by || "",
+            createdAt: new Date(plan.created_at),
+            lastModified: new Date(plan.last_modified),
+            huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
+            enabled: plan.enabled !== false,
+          };
+        });
         
         setHuntPlans(transformedPlans);
         return;
@@ -1319,7 +1333,7 @@ export default function LoadHunterTab() {
         .insert({
           vehicle_id: selectedVehicle.id,
           plan_name: huntFormData.planName,
-          vehicle_size: huntFormData.vehicleSize,
+          vehicle_size: JSON.stringify(huntFormData.vehicleSizes),
           zip_code: huntFormData.zipCode,
           available_feet: huntFormData.availableFeet,
           partial: huntFormData.partial,
@@ -1352,7 +1366,7 @@ export default function LoadHunterTab() {
       // Reset form
       setHuntFormData({
         planName: "",
-        vehicleSize: "large-straight",
+        vehicleSizes: ["large-straight"],
         zipCode: "",
         availableFeet: "",
         partial: false,
@@ -1459,7 +1473,7 @@ export default function LoadHunterTab() {
     setEditingHunt(hunt);
     setHuntFormData({
       planName: hunt.planName,
-      vehicleSize: hunt.vehicleSize,
+      vehicleSizes: hunt.vehicleSizes,
       zipCode: hunt.zipCode,
       availableFeet: hunt.availableFeet,
       partial: hunt.partial,
@@ -1501,7 +1515,7 @@ export default function LoadHunterTab() {
         .from("hunt_plans")
         .update({
           plan_name: huntFormData.planName,
-          vehicle_size: huntFormData.vehicleSize,
+          vehicle_size: JSON.stringify(huntFormData.vehicleSizes),
           zip_code: huntFormData.zipCode,
           available_feet: huntFormData.availableFeet,
           partial: huntFormData.partial,
@@ -1532,7 +1546,7 @@ export default function LoadHunterTab() {
       // Reset form
       setHuntFormData({
         planName: "",
-        vehicleSize: "large-straight",
+        vehicleSizes: ["large-straight"],
         zipCode: "",
         availableFeet: "",
         partial: false,
@@ -2131,14 +2145,20 @@ export default function LoadHunterTab() {
                     }
 
                     // Match by load type/vehicle size if specified
-                    if (plan.vehicleSize && loadData.loadType) {
-                      const vehicleSizeLower = plan.vehicleSize.toLowerCase();
+                    if (plan.vehicleSizes && plan.vehicleSizes.length > 0 && loadData.loadType) {
                       const loadTypeLower = loadData.loadType.toLowerCase();
                       
-                      if (vehicleSizeLower.includes('straight')) {
-                        if (!loadTypeLower.includes('straight') && !loadTypeLower.includes('van') && !loadTypeLower.includes('truck')) {
-                          return false;
+                      // Check if any of the selected vehicle sizes match
+                      const anyMatch = plan.vehicleSizes.some(size => {
+                        const sizeLower = size.replace(/-/g, ' ').toLowerCase();
+                        if (sizeLower.includes('straight')) {
+                          return loadTypeLower.includes('straight') || loadTypeLower.includes('van') || loadTypeLower.includes('truck');
                         }
+                        return loadTypeLower.includes(sizeLower) || sizeLower.includes(loadTypeLower);
+                      });
+                      
+                      if (!anyMatch) {
+                        return false;
                       }
                     }
 
@@ -2215,10 +2235,10 @@ export default function LoadHunterTab() {
                   {/* Hunt Plan Details */}
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="font-medium">Vehicle Size:</span>
-                      <span>{(() => {
+                      <span className="font-medium">Vehicle Types:</span>
+                      <span className="text-right max-w-[200px]">{(() => {
                         const labels: Record<string, string> = {
-                          'large-straight': 'Large Straight, Small Straight',
+                          'large-straight': 'Large Straight',
                           'large-straight-only': 'Large Straight Only',
                           'small-straight': 'Small Straight',
                           'cargo-van': 'Cargo Van',
@@ -2238,7 +2258,7 @@ export default function LoadHunterTab() {
                           'semi': 'Semi',
                           'reefer-sprinter': 'Reefer Sprinter Van',
                         };
-                        return labels[plan.vehicleSize] || plan.vehicleSize;
+                        return plan.vehicleSizes.map(s => labels[s] || s).join(', ');
                       })()}</span>
                     </div>
                     <div className="flex justify-between">
@@ -2308,40 +2328,50 @@ export default function LoadHunterTab() {
               />
             </div>
 
-            {/* Vehicle Size */}
+            {/* Vehicle Types - Multi-select */}
             <div className="space-y-2">
-              <Label htmlFor="vehicleSize">
-                Vehicle Size <span className="text-destructive">*</span>
+              <Label>
+                Vehicle Types <span className="text-destructive">*</span>
               </Label>
-              <Select 
-                value={huntFormData.vehicleSize}
-                onValueChange={(value) => setHuntFormData({...huntFormData, vehicleSize: value})}
-              >
-                <SelectTrigger id="vehicleSize">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="large-straight">Large Straight, Small Straight</SelectItem>
-                  <SelectItem value="large-straight-only">Large Straight Only</SelectItem>
-                  <SelectItem value="small-straight">Small Straight</SelectItem>
-                  <SelectItem value="cargo-van">Cargo Van</SelectItem>
-                  <SelectItem value="cube-van">Cube Van</SelectItem>
-                  <SelectItem value="sprinter">Sprinter</SelectItem>
-                  <SelectItem value="sprinter-van">Sprinter Van</SelectItem>
-                  <SelectItem value="sprinter-team">Sprinter Team</SelectItem>
-                  <SelectItem value="van">Van</SelectItem>
-                  <SelectItem value="straight">Straight</SelectItem>
-                  <SelectItem value="straight-truck">Straight Truck</SelectItem>
-                  <SelectItem value="straight-liftgate">Straight With Liftgate</SelectItem>
-                  <SelectItem value="dock-high-straight">Dock High Straight</SelectItem>
-                  <SelectItem value="large-straight-team">Large Straight Team</SelectItem>
-                  <SelectItem value="lift-gate-truck">Lift Gate Truck</SelectItem>
-                  <SelectItem value="flatbed">Flatbed</SelectItem>
-                  <SelectItem value="tractor">Tractor</SelectItem>
-                  <SelectItem value="semi">Semi</SelectItem>
-                  <SelectItem value="reefer-sprinter">Reefer Sprinter Van</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-3 bg-background">
+                {[
+                  { value: 'large-straight', label: 'Large Straight' },
+                  { value: 'large-straight-only', label: 'Large Straight Only' },
+                  { value: 'small-straight', label: 'Small Straight' },
+                  { value: 'cargo-van', label: 'Cargo Van' },
+                  { value: 'cube-van', label: 'Cube Van' },
+                  { value: 'sprinter', label: 'Sprinter' },
+                  { value: 'sprinter-van', label: 'Sprinter Van' },
+                  { value: 'sprinter-team', label: 'Sprinter Team' },
+                  { value: 'van', label: 'Van' },
+                  { value: 'straight', label: 'Straight' },
+                  { value: 'straight-truck', label: 'Straight Truck' },
+                  { value: 'straight-liftgate', label: 'Straight With Liftgate' },
+                  { value: 'dock-high-straight', label: 'Dock High Straight' },
+                  { value: 'large-straight-team', label: 'Large Straight Team' },
+                  { value: 'lift-gate-truck', label: 'Lift Gate Truck' },
+                  { value: 'flatbed', label: 'Flatbed' },
+                  { value: 'tractor', label: 'Tractor' },
+                  { value: 'semi', label: 'Semi' },
+                  { value: 'reefer-sprinter', label: 'Reefer Sprinter Van' },
+                ].map((type) => (
+                  <div key={type.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`create-${type.value}`}
+                      checked={huntFormData.vehicleSizes.includes(type.value)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setHuntFormData({...huntFormData, vehicleSizes: [...huntFormData.vehicleSizes, type.value]});
+                        } else {
+                          setHuntFormData({...huntFormData, vehicleSizes: huntFormData.vehicleSizes.filter(v => v !== type.value)});
+                        }
+                      }}
+                    />
+                    <label htmlFor={`create-${type.value}`} className="text-sm cursor-pointer">{type.label}</label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">{huntFormData.vehicleSizes.length} selected</p>
             </div>
 
             {/* Zip Code, Available feet, Partial */}
@@ -2507,40 +2537,50 @@ export default function LoadHunterTab() {
               />
             </div>
 
-            {/* Vehicle Size */}
+            {/* Vehicle Types - Multi-select */}
             <div className="space-y-2">
-              <Label htmlFor="edit-vehicleSize">
-                Vehicle Size <span className="text-destructive">*</span>
+              <Label>
+                Vehicle Types <span className="text-destructive">*</span>
               </Label>
-              <Select 
-                value={huntFormData.vehicleSize}
-                onValueChange={(value) => setHuntFormData({...huntFormData, vehicleSize: value})}
-              >
-                <SelectTrigger id="edit-vehicleSize">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="large-straight">Large Straight, Small Straight</SelectItem>
-                  <SelectItem value="large-straight-only">Large Straight Only</SelectItem>
-                  <SelectItem value="small-straight">Small Straight</SelectItem>
-                  <SelectItem value="cargo-van">Cargo Van</SelectItem>
-                  <SelectItem value="cube-van">Cube Van</SelectItem>
-                  <SelectItem value="sprinter">Sprinter</SelectItem>
-                  <SelectItem value="sprinter-van">Sprinter Van</SelectItem>
-                  <SelectItem value="sprinter-team">Sprinter Team</SelectItem>
-                  <SelectItem value="van">Van</SelectItem>
-                  <SelectItem value="straight">Straight</SelectItem>
-                  <SelectItem value="straight-truck">Straight Truck</SelectItem>
-                  <SelectItem value="straight-liftgate">Straight With Liftgate</SelectItem>
-                  <SelectItem value="dock-high-straight">Dock High Straight</SelectItem>
-                  <SelectItem value="large-straight-team">Large Straight Team</SelectItem>
-                  <SelectItem value="lift-gate-truck">Lift Gate Truck</SelectItem>
-                  <SelectItem value="flatbed">Flatbed</SelectItem>
-                  <SelectItem value="tractor">Tractor</SelectItem>
-                  <SelectItem value="semi">Semi</SelectItem>
-                  <SelectItem value="reefer-sprinter">Reefer Sprinter Van</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-3 bg-background">
+                {[
+                  { value: 'large-straight', label: 'Large Straight' },
+                  { value: 'large-straight-only', label: 'Large Straight Only' },
+                  { value: 'small-straight', label: 'Small Straight' },
+                  { value: 'cargo-van', label: 'Cargo Van' },
+                  { value: 'cube-van', label: 'Cube Van' },
+                  { value: 'sprinter', label: 'Sprinter' },
+                  { value: 'sprinter-van', label: 'Sprinter Van' },
+                  { value: 'sprinter-team', label: 'Sprinter Team' },
+                  { value: 'van', label: 'Van' },
+                  { value: 'straight', label: 'Straight' },
+                  { value: 'straight-truck', label: 'Straight Truck' },
+                  { value: 'straight-liftgate', label: 'Straight With Liftgate' },
+                  { value: 'dock-high-straight', label: 'Dock High Straight' },
+                  { value: 'large-straight-team', label: 'Large Straight Team' },
+                  { value: 'lift-gate-truck', label: 'Lift Gate Truck' },
+                  { value: 'flatbed', label: 'Flatbed' },
+                  { value: 'tractor', label: 'Tractor' },
+                  { value: 'semi', label: 'Semi' },
+                  { value: 'reefer-sprinter', label: 'Reefer Sprinter Van' },
+                ].map((type) => (
+                  <div key={type.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`edit-${type.value}`}
+                      checked={huntFormData.vehicleSizes.includes(type.value)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setHuntFormData({...huntFormData, vehicleSizes: [...huntFormData.vehicleSizes, type.value]});
+                        } else {
+                          setHuntFormData({...huntFormData, vehicleSizes: huntFormData.vehicleSizes.filter(v => v !== type.value)});
+                        }
+                      }}
+                    />
+                    <label htmlFor={`edit-${type.value}`} className="text-sm cursor-pointer">{type.label}</label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">{huntFormData.vehicleSizes.length} selected</p>
             </div>
 
             {/* Zip Code, Available feet, Partial */}
