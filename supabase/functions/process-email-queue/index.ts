@@ -25,9 +25,28 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
   // Extract broker email from subject
   data.broker_email = extractBrokerEmail(subject, bodyText);
   
+  // Extract order number - look for "Bid on Order #" pattern first (most common in Sylectus)
+  const bidOrderMatch = bodyText?.match(/Bid on Order #(\d+)/i);
+  if (bidOrderMatch) {
+    data.order_number = bidOrderMatch[1];
+  } else {
+    // Fallback to other order patterns
+    const orderPatterns = [
+      /Order\s*#\s*(\d+)/i,
+      /Order\s*Number\s*:?\s*(\d+)/i,
+      /Order\s*:?\s*#?\s*(\d+)/i,
+    ];
+    for (const pattern of orderPatterns) {
+      const match = bodyText?.match(pattern);
+      if (match) {
+        data.order_number = match[1];
+        break;
+      }
+    }
+  }
+  
   // Parse key fields
   const patterns: Record<string, RegExp> = {
-    order_number: /Order\s*#?\s*:?\s*(\d+)/i,
     broker_name: /(?:Contact|Rep|Agent)[\s:]+([A-Za-z\s]+?)(?:\n|$)/i,
     broker_company: /(?:Company|Broker)[\s:]+([^\n]+)/i,
     broker_phone: /(?:Phone|Tel|Ph)[\s:]+([0-9\s\-\(\)\.]+)/i,
