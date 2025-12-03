@@ -27,6 +27,7 @@ import CarrierDetail from "./pages/CarrierDetail";
 import LoadHunterTab from "./pages/LoadHunterTab";
 import DevelopmentTab from "./pages/DevelopmentTab";
 import FlowDiagramTab from "./pages/FlowDiagramTab";
+import ChangelogTab from "./pages/ChangelogTab";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
           <Route path="/dashboard/development" element={<DashboardLayout><DevelopmentTab /></DashboardLayout>} />
+          <Route path="/dashboard/changelog" element={<DashboardLayout><ChangelogTab /></DashboardLayout>} />
           <Route path="/dashboard/flow" element={<DashboardLayout><FlowDiagramTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<DashboardLayout><ApplicationDetail /></DashboardLayout>} />
           <Route path="/dashboard/vehicle/:id" element={<DashboardLayout><VehicleDetail /></DashboardLayout>} />
