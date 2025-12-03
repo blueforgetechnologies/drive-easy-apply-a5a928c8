@@ -19,6 +19,19 @@ export default function ChangelogTab() {
           
           <div className="border-l-4 border-primary pl-4">
             <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="font-mono">#010</Badge>
+              <Badge>Dec 3, 2024</Badge>
+              <span className="text-sm font-semibold">Original Email & Customer Name Fixes</span>
+            </div>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li><strong>Original Email Fix:</strong> LoadEmailDetail now fetches body_text from DB when not present in view data</li>
+              <li><strong>Customer Name Fix:</strong> Improved parsing for "Posted by  - Company Name" format</li>
+              <li><strong>Root cause:</strong> unreviewed_matches view didn't include body_text/body_html columns</li>
+            </ul>
+          </div>
+
+          <div className="border-l-4 border-primary pl-4">
+            <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="font-mono">#009</Badge>
               <Badge>Dec 3, 2024</Badge>
               <span className="text-sm font-semibold">Server-Side Hunt Matching Implemented</span>

@@ -28,7 +28,34 @@ const LoadEmailDetail = ({
   const [bidAmount, setBidAmount] = useState("");
   const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
   const [toEmail, setToEmail] = useState<string | null>(null);
+  const [fullEmailData, setFullEmailData] = useState<any>(null);
   const data = email.parsed_data || {};
+
+  // Fetch full email data (including body_text) if not present in email prop
+  useEffect(() => {
+    const fetchFullEmail = async () => {
+      // If body_text is missing, fetch it from database
+      if (!email.body_text && !email.body_html && email.id) {
+        try {
+          const { data: fullEmail, error } = await supabase
+            .from('load_emails')
+            .select('body_text, body_html')
+            .eq('id', email.id)
+            .single();
+          
+          if (!error && fullEmail) {
+            setFullEmailData(fullEmail);
+          }
+        } catch (e) {
+          console.error('Error fetching full email:', e);
+        }
+      }
+    };
+    fetchFullEmail();
+  }, [email.id, email.body_text, email.body_html]);
+
+  // Use fetched data or prop data
+  const emailBody = fullEmailData?.body_html || fullEmailData?.body_text || email.body_html || email.body_text || "";
   
   const originCity = data.origin_city || "ATLANTA";
   const originState = data.origin_state || "GA";
@@ -146,10 +173,9 @@ const LoadEmailDetail = ({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const raw = (email.body_html || email.body_text || "") as string;
-                      if (!raw) return;
+                      if (!emailBody) return;
 
-                      const blob = new Blob([raw], { type: "text/html;charset=utf-8" });
+                      const blob = new Blob([emailBody], { type: "text/html;charset=utf-8" });
                       const url = URL.createObjectURL(blob);
                       window.open(url, "_blank", "noopener,noreferrer");
                     }}
@@ -158,17 +184,16 @@ const LoadEmailDetail = ({
                   </Button>
                 </div>
                 {(() => {
-                  const raw = (email.body_html || email.body_text || "") as string;
-                  if (!raw) {
+                  if (!emailBody) {
                     return (
                       <div className="text-sm text-muted-foreground">No email content available</div>
                     );
                   }
 
-                  const hasHtmlTag = raw.toLowerCase().includes("<html");
+                  const hasHtmlTag = emailBody.toLowerCase().includes("<html");
                   const docHtml = hasHtmlTag
-                    ? raw
-                    : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${raw}</body></html>`;
+                    ? emailBody
+                    : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${emailBody}</body></html>`;
 
                   return (
                     <div className="space-y-2">
@@ -182,7 +207,7 @@ const LoadEmailDetail = ({
                           View raw source
                         </summary>
                         <pre className="whitespace-pre-wrap font-mono px-2 pb-2">
-                          {raw.slice(0, 4000)}
+                          {emailBody.slice(0, 4000)}
                         </pre>
                       </details>
                     </div>
