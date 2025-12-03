@@ -169,7 +169,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </TabsTrigger>
                     <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Target className="h-3.5 w-3.5" />
-                      <span>Hunter</span>
+                      <span>Load Hunter</span>
                     </TabsTrigger>
                     <TabsTrigger value="business" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
                       <Briefcase className="h-3.5 w-3.5" />
