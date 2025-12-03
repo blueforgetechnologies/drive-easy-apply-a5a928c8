@@ -478,28 +478,8 @@ export default function LoadHunterTab() {
     }
   }, [loadEmails.length, huntPlans.length, loadEmails, huntPlans]);
 
-  // Process email queue every 10 seconds - controlled batch processing
-  useEffect(() => {
-    const processQueue = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('process-email-queue');
-        if (data?.processed > 0) {
-          console.log(`📧 Queue processed: ${data.processed} emails`);
-          // Refresh ALL data after processing so new emails show immediately
-          loadLoadEmails();
-          loadUnreviewedMatches();
-        }
-      } catch (e) {
-        // Silent fail - queue processor runs in background
-      }
-    };
-    
-    // Process immediately, then every 10 seconds
-    processQueue();
-    const interval = setInterval(processQueue, 10 * 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // DISABLED: Process email queue - queue processing disabled per user request
+  // The queue processing has been disabled to stop pulling old emails
 
   // BACKUP: Periodic re-match every 30 seconds (primary matching is in gmail-webhook)
   // This catches any loads that failed initial matching
