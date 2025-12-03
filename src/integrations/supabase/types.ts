@@ -27,7 +27,6 @@ export type Database = {
           document_upload: Json
           driver_address: string | null
           driver_dispatch_sheet: Json
-          driver_password: string | null
           driver_record_expiry: string | null
           driver_salary: string | null
           driver_status: string | null
@@ -71,7 +70,6 @@ export type Database = {
           document_upload: Json
           driver_address?: string | null
           driver_dispatch_sheet: Json
-          driver_password?: string | null
           driver_record_expiry?: string | null
           driver_salary?: string | null
           driver_status?: string | null
@@ -115,7 +113,6 @@ export type Database = {
           document_upload?: Json
           driver_address?: string | null
           driver_dispatch_sheet?: Json
-          driver_password?: string | null
           driver_record_expiry?: string | null
           driver_salary?: string | null
           driver_status?: string | null

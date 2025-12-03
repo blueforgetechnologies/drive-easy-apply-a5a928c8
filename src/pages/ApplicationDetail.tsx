@@ -291,19 +291,6 @@ export default function ApplicationDetail() {
               </div>
             </div>
 
-            {/* Login Info */}
-            <div className="pt-4">
-              <h3 className="font-semibold mb-3">Login Info</h3>
-              <div className="space-y-2">
-                <Label>Password</Label>
-                <Input 
-                  type="password"
-                  value={formData.driver_password || ''} 
-                  onChange={(e) => updateField('driver_password', e.target.value)}
-                  placeholder="Enter password"
-                />
-              </div>
-            </div>
 
             {/* Score Card */}
             <div className="space-y-2">
