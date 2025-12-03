@@ -19,7 +19,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.get-mapbox-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fetch-carrier-data]
 verify_jwt = false
