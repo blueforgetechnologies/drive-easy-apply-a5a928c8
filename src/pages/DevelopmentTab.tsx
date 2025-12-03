@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw } from "lucide-react";
+import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, History } from "lucide-react";
 
 export default function DevelopmentTab() {
   return (
@@ -11,7 +11,63 @@ export default function DevelopmentTab() {
         <p className="text-muted-foreground">Comprehensive step-by-step documentation of Load Hunter system</p>
       </div>
 
-      <Accordion type="multiple" className="w-full space-y-4" defaultValue={["step-by-step"]}>
+      <Accordion type="multiple" className="w-full space-y-4" defaultValue={["changelog", "step-by-step"]}>
+        {/* CHANGELOG - All changes tracked here, never removed */}
+        <AccordionItem value="changelog" className="border rounded-lg px-6 border-primary/50 bg-primary/5">
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold">Changelog</span>
+              <Badge variant="outline" className="ml-2">Always Forward</Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <CardContent className="space-y-4 pt-4">
+              <p className="text-sm text-muted-foreground italic mb-4">
+                All changes are logged here chronologically. Entries are never removed, only added.
+              </p>
+              
+              {/* December 3, 2024 */}
+              <div className="border-l-4 border-primary pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge>Dec 3, 2024</Badge>
+                  <span className="text-sm font-semibold">Hunter Tab Badge Removed</span>
+                </div>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Removed the unreviewed count badge from Hunter tab in header navigation</li>
+                  <li>Removed unreviewedLoadsCount state and loadUnreviewedLoads function from DashboardLayout</li>
+                  <li>Removed badge prop from MobileNav component</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-primary pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge>Dec 3, 2024</Badge>
+                  <span className="text-sm font-semibold">ALL Tab Always Visible</span>
+                </div>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Removed "Hide All / Show All" toggle button from Load Hunter filter bar</li>
+                  <li>ALL tab is now permanently visible in the filter buttons</li>
+                  <li>Removed showAllTab state variable</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-primary pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge>Dec 3, 2024</Badge>
+                  <span className="text-sm font-semibold">Changelog Section Added</span>
+                </div>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Added this Changelog section to Development tab</li>
+                  <li>All future changes will be documented here chronologically</li>
+                  <li>Entries are append-only - never removed, only added</li>
+                </ul>
+              </div>
+
+              {/* Add new changelog entries above this line */}
+            </CardContent>
+          </AccordionContent>
+        </AccordionItem>
         {/* Step-by-Step Flow */}
         <AccordionItem value="step-by-step" className="border rounded-lg px-6">
           <AccordionTrigger className="hover:no-underline py-4">
