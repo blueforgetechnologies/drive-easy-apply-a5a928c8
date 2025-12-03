@@ -133,7 +133,6 @@ export default function LoadHunterTab() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
-  const [showAllTab, setShowAllTab] = useState<boolean>(false);
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1792,49 +1791,28 @@ export default function LoadHunterTab() {
             </Button>
           </div>
 
-          {/* Toggle All Tab */}
-          <div className="pr-3 border-r flex-shrink-0">
-            <Button 
-              size="sm" 
-              variant={showAllTab ? 'default' : 'outline'}
-              className={`h-7 px-3 text-xs ${showAllTab ? 'bg-gray-800 hover:bg-gray-900' : ''}`}
-              onClick={() => {
-                setShowAllTab(!showAllTab);
-                if (activeFilter === 'all' && showAllTab) {
-                  setActiveFilter('unreviewed');
-                }
-              }}
-            >
-              {showAllTab ? 'Hide All' : 'Show All'}
-            </Button>
-          </div>
-
           {/* Filter Buttons */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
-              {showAllTab && (
-                <>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className={`h-7 px-4 text-xs gap-1.5 rounded-none border-0 ${
-                      activeFilter === 'all' 
-                        ? 'bg-gray-800 text-white hover:bg-gray-900' 
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => {
-                      setActiveFilter('all');
-                      setSelectedVehicle(null);
-                      setSelectedEmailForDetail(null);
-                    }}
-                  >
-                    All
-                    <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{loadEmails.length}</Badge>
-                  </Button>
-                  
-                  <div className="w-px h-5 bg-gray-300"></div>
-                </>
-              )}
+              <Button 
+                size="sm" 
+                variant="ghost"
+                className={`h-7 px-4 text-xs gap-1.5 rounded-none border-0 ${
+                  activeFilter === 'all' 
+                    ? 'bg-gray-800 text-white hover:bg-gray-900' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  setActiveFilter('all');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                All
+                <Badge variant="secondary" className={`h-4 px-1.5 text-[10px] ml-1 ${activeFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{loadEmails.length}</Badge>
+              </Button>
+              
+              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button
                 size="sm" 
