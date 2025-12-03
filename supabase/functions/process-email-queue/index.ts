@@ -22,15 +22,12 @@ function extractBrokerEmail(subject: string, bodyText: string): string | null {
 function parseSylectusEmail(subject: string, bodyText: string): Record<string, any> {
   const data: Record<string, any> = {};
   
-  // Extract broker email from subject
   data.broker_email = extractBrokerEmail(subject, bodyText);
   
-  // Extract order number - look for "Bid on Order #" pattern first (most common in Sylectus)
   const bidOrderMatch = bodyText?.match(/Bid on Order #(\d+)/i);
   if (bidOrderMatch) {
     data.order_number = bidOrderMatch[1];
   } else {
-    // Fallback to other order patterns
     const orderPatterns = [
       /Order\s*#\s*(\d+)/i,
       /Order\s*Number\s*:?\s*(\d+)/i,
@@ -45,7 +42,6 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
   
-  // Parse key fields
   const patterns: Record<string, RegExp> = {
     broker_name: /(?:Contact|Rep|Agent)[\s:]+([A-Za-z\s]+?)(?:\n|$)/i,
     broker_company: /(?:Company|Broker)[\s:]+([^\n]+)/i,
@@ -73,7 +69,6 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
-  // Extract vehicle type for matching
   const vehicleTypes = ['CARGO VAN', 'SPRINTER', 'SMALL STRAIGHT', 'LARGE STRAIGHT', 'FLATBED', 'TRACTOR', 'VAN'];
   for (const vt of vehicleTypes) {
     if (bodyText?.toUpperCase().includes(vt)) {
@@ -107,11 +102,9 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
   return null;
 }
 
-// Improved parsing from subject line (like old gmail-webhook)
 function parseSubjectLine(subject: string): Record<string, any> {
   const data: Record<string, any> = {};
   
-  // Extract vehicle type, origin, destination from subject
   const subjectMatch = subject.match(/^([A-Z\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER)[A-Z\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
   if (subjectMatch) {
     data.vehicle_type = subjectMatch[1].trim().toUpperCase();
@@ -121,25 +114,21 @@ function parseSubjectLine(subject: string): Record<string, any> {
     data.destination_state = subjectMatch[5].trim();
   }
   
-  // Extract broker email from subject (in parentheses)
   const brokerEmailMatch = subject.match(/\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/);
   if (brokerEmailMatch) {
     data.broker_email = brokerEmailMatch[1];
   }
   
-  // Extract miles
   const milesMatch = subject.match(/:\s*(\d+)\s*miles/i);
   if (milesMatch) {
     data.loaded_miles = parseInt(milesMatch[1], 10);
   }
   
-  // Extract weight
   const weightMatch = subject.match(/(\d+)\s*lbs/i);
   if (weightMatch) {
     data.weight = weightMatch[1];
   }
   
-  // Extract customer/broker name
   const customerMatch = subject.match(/Posted by ([^(]+)\s*\(/);
   if (customerMatch) {
     data.customer = customerMatch[1].trim();
@@ -157,15 +146,31 @@ serve(async (req) => {
   const startTime = Date.now();
   let processed = 0;
   let errors = 0;
+  let lastProcessedReceivedAt: string | null = null;
+  let lastProcessedLoadId: string | null = null;
 
   try {
-    // Get pending queue items - limit to 2 to avoid Gmail rate limiting
+    // Get current processing state (cursor checkpoint)
+    const { data: stateData } = await supabase
+      .from('processing_state')
+      .select('*')
+      .eq('id', 'email_processor')
+      .maybeSingle();
+    
+    // Use checkpoint or floor as starting point
+    const checkpointReceivedAt = stateData?.last_processed_received_at || stateData?.floor_received_at || '2025-12-03T00:46:12Z';
+    const floorReceivedAt = stateData?.floor_received_at || '2025-12-03T00:46:12Z';
+    
+    console.log(`📍 Checkpoint: ${checkpointReceivedAt}, Floor: ${floorReceivedAt}`);
+
+    // Get pending queue items - ONLY newer than checkpoint, limit to 20
     const { data: queueItems, error: queueError } = await supabase
       .from('email_queue')
       .select('*')
       .eq('status', 'pending')
-      .order('queued_at', { ascending: true })
-      .limit(2);
+      .gt('queued_at', checkpointReceivedAt) // Only items NEWER than checkpoint
+      .order('queued_at', { ascending: true }) // Process oldest first (moving forward in time)
+      .limit(20);
 
     if (queueError) {
       console.error('Queue fetch error:', queueError);
@@ -176,13 +181,14 @@ serve(async (req) => {
     }
 
     if (!queueItems?.length) {
-      return new Response(JSON.stringify({ processed: 0, message: 'Queue empty' }), {
+      console.log('📭 No new items in queue after checkpoint');
+      return new Response(JSON.stringify({ processed: 0, message: 'No new items' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`📧 Processing ${queueItems.length} queued emails`);
+    console.log(`📧 Processing ${queueItems.length} queued emails (after checkpoint)`);
 
     // Get access token
     const { data: tokenData } = await supabase
@@ -229,7 +235,7 @@ serve(async (req) => {
       }
     }
 
-    // Process each queued item sequentially (controlled rate)
+    // Process each queued item sequentially
     for (const item of queueItems) {
       try {
         // Mark as processing
@@ -245,12 +251,13 @@ serve(async (req) => {
           .eq('email_id', item.gmail_message_id);
 
         if (count && count > 0) {
-          // Already processed, mark complete
+          // Already processed, mark complete and update checkpoint
           await supabase
             .from('email_queue')
             .update({ status: 'completed', processed_at: new Date().toISOString() })
             .eq('id', item.id);
           processed++;
+          lastProcessedReceivedAt = item.queued_at;
           continue;
         }
 
@@ -272,8 +279,6 @@ serve(async (req) => {
 
         const subject = getHeader('Subject') || '';
         const from = getHeader('From') || '';
-        // Use Gmail's internalDate (when Gmail actually received the email) - NOT the Date header
-        // internalDate is in milliseconds since epoch
         const receivedAt = message.internalDate 
           ? new Date(parseInt(message.internalDate, 10)) 
           : new Date();
@@ -297,8 +302,6 @@ serve(async (req) => {
         // Parse from subject (primary) then body (fallback)
         const subjectData = parseSubjectLine(subject);
         const bodyData = parseSylectusEmail(subject, bodyText);
-        
-        // Merge: prefer subject data, fill gaps from body
         const parsedData = { ...bodyData, ...subjectData };
 
         // Geocode if we have origin location
@@ -321,8 +324,8 @@ serve(async (req) => {
         const fromName = fromMatch ? fromMatch[1].trim() : from;
         const fromEmail = fromMatch ? fromMatch[2] : from;
 
-        // Insert into load_emails - let database trigger generate load_id
-        const { error: insertError } = await supabase
+        // Insert into load_emails
+        const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
           .upsert({
             email_id: item.gmail_message_id,
@@ -337,7 +340,9 @@ serve(async (req) => {
             status: 'new',
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
-          }, { onConflict: 'email_id' });
+          }, { onConflict: 'email_id' })
+          .select('load_id, received_at')
+          .single();
 
         if (insertError) {
           throw insertError;
@@ -350,13 +355,17 @@ serve(async (req) => {
           .eq('id', item.id);
 
         processed++;
-        console.log(`✅ Processed: ${subject.substring(0, 50)}`);
+        lastProcessedReceivedAt = item.queued_at;
+        if (insertedEmail?.load_id) {
+          lastProcessedLoadId = insertedEmail.load_id;
+        }
+        
+        console.log(`✅ Processed: ${subject.substring(0, 50)} -> ${lastProcessedLoadId}`);
 
       } catch (error) {
         console.error(`Error processing ${item.gmail_message_id}:`, error);
         errors++;
         
-        // Mark as failed if too many attempts
         const newStatus = item.attempts >= 3 ? 'failed' : 'pending';
         await supabase
           .from('email_queue')
@@ -368,10 +377,34 @@ serve(async (req) => {
       }
     }
 
-    const elapsed = Date.now() - startTime;
-    console.log(`✅ Processed ${processed}, errors ${errors}, elapsed ${elapsed}ms`);
+    // Update checkpoint to the newest processed item (moving forward)
+    if (lastProcessedReceivedAt) {
+      const { error: updateError } = await supabase
+        .from('processing_state')
+        .upsert({
+          id: 'email_processor',
+          last_processed_received_at: lastProcessedReceivedAt,
+          last_processed_load_id: lastProcessedLoadId,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      
+      if (updateError) {
+        console.error('Failed to update checkpoint:', updateError);
+      } else {
+        console.log(`📍 Checkpoint updated to: ${lastProcessedReceivedAt} (${lastProcessedLoadId})`);
+      }
+    }
 
-    return new Response(JSON.stringify({ processed, errors, elapsed }), {
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ Batch complete: ${processed} processed, ${errors} errors, ${elapsed}ms`);
+
+    return new Response(JSON.stringify({ 
+      processed, 
+      errors, 
+      elapsed,
+      checkpoint: lastProcessedReceivedAt,
+      lastLoadId: lastProcessedLoadId
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

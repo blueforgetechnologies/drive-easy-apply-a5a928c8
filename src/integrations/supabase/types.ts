@@ -1828,6 +1828,33 @@ export type Database = {
         }
         Relationships: []
       }
+      processing_state: {
+        Row: {
+          floor_load_id: string
+          floor_received_at: string
+          id: string
+          last_processed_load_id: string | null
+          last_processed_received_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          floor_load_id?: string
+          floor_received_at?: string
+          id?: string
+          last_processed_load_id?: string | null
+          last_processed_received_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          floor_load_id?: string
+          floor_received_at?: string
+          id?: string
+          last_processed_load_id?: string | null
+          last_processed_received_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
