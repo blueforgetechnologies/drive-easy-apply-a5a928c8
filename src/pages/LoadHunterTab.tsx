@@ -89,6 +89,8 @@ interface HuntPlan {
   lastModified: Date;
   huntCoordinates?: { lat: number; lng: number } | null;
   enabled: boolean;
+  floorLoadId?: string | null;
+  initialMatchDone?: boolean;
 }
 
 export default function LoadHunterTab() {
@@ -357,27 +359,38 @@ export default function LoadHunterTab() {
     return { matches: false };
   };
 
-  // Effect to search through loads when hunts change and persist ALL matches to database
-  // 24/7 MATCHING: Processes ALL loads with status 'new' regardless of age
+  // CURSOR-BASED MATCHING: Only processes loads with load_id > floor_load_id (forward-only)
+  // When a hunt is enabled, it does a one-time 15-min backfill then only looks forward
   useEffect(() => {
     const searchLoadsForHunts = async () => {
-      console.log('🔍 Running hunt matching logic. LoadEmails:', loadEmails.length, 'Hunt plans:', huntPlans.length);
+      console.log('🔍 Running cursor-based hunt matching. LoadEmails:', loadEmails.length, 'Hunt plans:', huntPlans.length);
       
-      const enabledHunts = huntPlans.filter(h => h.enabled);
+      const enabledHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
       if (enabledHunts.length === 0) {
-        console.log('❌ No enabled hunt plans');
-        setMatchedLoadIds(new Set());
-        setLoadDistances(new Map());
-        setLoadHuntMap(new Map());
+        console.log('❌ No enabled hunt plans with initial match done');
         return;
       }
       
-      console.log('✅ Found', enabledHunts.length, 'enabled hunt plans');
+      console.log('✅ Found', enabledHunts.length, 'enabled hunt plans ready for matching');
       
-      // 24/7: Consider ALL loads with "new" status regardless of age
-      const candidateLoads = loadEmails.filter(email => email.status === 'new');
+      // CURSOR-BASED: Only process loads AFTER each hunt's floor_load_id
+      const candidateLoads = loadEmails.filter(email => {
+        if (email.status !== 'new') return false;
+        
+        // Check if this load is past ANY enabled hunt's floor
+        return enabledHunts.some(hunt => {
+          if (!hunt.floorLoadId) return true; // No floor = match all
+          // Compare load_id strings - they're sequential like LH-YYMMDD-NNNNN
+          return email.load_id > hunt.floorLoadId;
+        });
+      });
       
-      console.log('📧 Candidate loads for matching (24/7):', candidateLoads.length);
+      console.log('📧 Candidate loads for matching (cursor-based):', candidateLoads.length);
+      
+      if (candidateLoads.length === 0) {
+        console.log('📭 No new loads past floor cursor');
+        return;
+      }
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
@@ -394,40 +407,42 @@ export default function LoadHunterTab() {
         is_active: boolean;
       }> = [];
       
-      // Check each load against ALL hunt plans and create matches for ALL that match
+      // Check each load against hunt plans (only if load_id > that hunt's floor)
       for (const email of candidateLoads) {
         const loadData = extractLoadLocation(email);
         
-        // Better location data logging for debugging
         if (!loadData.originCityState && !loadData.originZip) {
           skippedCount++;
           continue;
         }
         
-        // Find ALL hunts that match this load (async now because of geocoding)
+        // Only check hunts where this load is past their floor
+        const applicableHunts = enabledHunts.filter(hunt => {
+          if (!hunt.floorLoadId) return true;
+          return email.load_id > hunt.floorLoadId;
+        });
+        
         const matchResults = await Promise.all(
-          enabledHunts.map(hunt => doesLoadMatchHunt(loadData, hunt))
+          applicableHunts.map(hunt => doesLoadMatchHunt(loadData, hunt))
         );
         
-        const matchingHunts = enabledHunts.filter((_, index) => matchResults[index].matches);
+        const matchingHunts = applicableHunts.filter((_, index) => matchResults[index].matches);
         
         if (matchingHunts.length > 0) {
           matchCount++;
-          console.log('✅ Match found:', email.subject?.substring(0, 50), '→', matchingHunts.length, 'hunt(s)');
+          console.log('✅ Match found:', email.load_id, '→', matchingHunts.length, 'hunt(s)');
           
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunts[0].id);
           
-          // Calculate distance from first match for display
-          const firstMatchDistance = matchResults[enabledHunts.indexOf(matchingHunts[0])].distance;
+          const firstMatchDistance = matchResults[applicableHunts.indexOf(matchingHunts[0])].distance;
           if (firstMatchDistance) {
             newDistances.set(email.id, Math.round(firstMatchDistance));
           }
           
-          // Collect matches for batch insert
           for (let i = 0; i < matchingHunts.length; i++) {
             const matchingHunt = matchingHunts[i];
-            const matchIndex = enabledHunts.indexOf(matchingHunt);
+            const matchIndex = applicableHunts.indexOf(matchingHunt);
             const matchDistance = matchResults[matchIndex].distance;
             
             allMatches.push({
@@ -457,25 +472,22 @@ export default function LoadHunterTab() {
       
       console.log('🎯 Matching complete:', matchCount, 'matched,', skippedCount, 'skipped (no location)');
       
-      setMatchedLoadIds(newMatchedIds);
-      setLoadDistances(newDistances);
-      setLoadHuntMap(newHuntMap);
+      setMatchedLoadIds(prev => new Set([...prev, ...newMatchedIds]));
+      setLoadDistances(prev => new Map([...prev, ...newDistances]));
+      setLoadHuntMap(prev => new Map([...prev, ...newHuntMap]));
       
-      // Reload matches after creating them
+      // Reload matches and refresh UI
       await loadHuntMatches();
-      await loadUnreviewedMatches(); // Refresh server-side view for Unreviewed tab
+      await loadUnreviewedMatches();
     };
     
-    if (huntPlans.length > 0 && loadEmails.length > 0) {
-      console.log('🚀 Triggering hunt matching');
+    // Only trigger if we have enabled hunts with initialMatchDone
+    const readyHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
+    if (readyHunts.length > 0 && loadEmails.length > 0) {
+      console.log('🚀 Triggering cursor-based hunt matching');
       searchLoadsForHunts();
-    } else if (huntPlans.length === 0) {
-      console.log('⚠️ No hunt plans available');
-      setMatchedLoadIds(new Set());
-      setLoadDistances(new Map());
-      setLoadHuntMap(new Map());
     }
-  }, [loadEmails.length, huntPlans.length, loadEmails, huntPlans]);
+  }, [loadEmails.length, huntPlans]);
 
   // Process email queue every 20 seconds - cursor-based pagination (never goes older than floor)
   useEffect(() => {
@@ -506,24 +518,25 @@ export default function LoadHunterTab() {
     return () => clearInterval(interval);
   }, []);
 
-  // BACKUP: Periodic re-match every 30 seconds (primary matching is in gmail-webhook)
+  // BACKUP: Periodic re-match every 20 seconds (primary matching is in gmail-webhook)
   // This catches any loads that failed initial matching
   useEffect(() => {
-    if (huntPlans.length === 0) return;
+    const readyHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
+    if (readyHunts.length === 0) return;
     
-    console.log('⏰ Starting backup periodic re-match (every 30 seconds)');
+    console.log('⏰ Starting backup periodic re-match (every 20 seconds)');
     
     const interval = setInterval(() => {
       console.log('⏰ Backup re-match triggered');
       // Force re-matching by updating state (triggers the matching useEffect above)
       setLoadEmails(current => [...current]);
-    }, 30 * 1000); // Every 30 seconds (backup only)
+    }, 20 * 1000); // Every 20 seconds
     
     return () => {
       console.log('⏰ Stopping backup periodic re-match');
       clearInterval(interval);
     };
-  }, [huntPlans.length]);
+  }, [huntPlans]);
 
   // Use saved distance from match - no recalculation needed
   useEffect(() => {
@@ -1155,6 +1168,8 @@ export default function LoadHunterTab() {
             lastModified: new Date(plan.last_modified),
             huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
             enabled: plan.enabled !== false,
+            floorLoadId: plan.floor_load_id || null,
+            initialMatchDone: plan.initial_match_done || false,
           };
         });
         
@@ -1544,64 +1559,155 @@ export default function LoadHunterTab() {
 
   const handleToggleHunt = async (id: string, currentEnabled: boolean) => {
     try {
-      const { error } = await supabase
-        .from("hunt_plans")
-        .update({ enabled: !currentEnabled })
-        .eq("id", id);
-
-      if (error) throw error;
-      
-      // Reload hunt plans from database
-      await loadHuntPlans();
-      
-      // If enabling the hunt (was disabled, now enabled), retroactively check loads from last 30 min
-      if (currentEnabled === false) {
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      if (!currentEnabled) {
+        // ENABLING the hunt - set floor_load_id and do 15-min backfill
+        console.log('🎯 Enabling hunt - setting floor_load_id and doing 15-min backfill');
         
-        // Get loads from the last 30 minutes that are currently in "new" or "missed" status
-        const { data: recentLoads, error: fetchError } = await supabase
+        // Get the current highest load_id as the floor (never go older than this after initial backfill)
+        const { data: latestLoad } = await supabase
           .from('load_emails')
-          .select('*')
-          .gte('received_at', thirtyMinutesAgo.toISOString())
-          .in('status', ['new', 'missed']);
+          .select('load_id')
+          .order('load_id', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         
-        if (!fetchError && recentLoads) {
-          // Get the updated hunt plan
-          const { data: updatedHunt } = await supabase
-            .from('hunt_plans')
-            .select('*')
-            .eq('id', id)
-            .single();
+        const floorLoadId = latestLoad?.load_id || null;
+        console.log('📍 Setting floor_load_id:', floorLoadId);
+        
+        // Update hunt with enabled=true, floor_load_id, but NOT initial_match_done yet
+        const { error: updateError } = await supabase
+          .from("hunt_plans")
+          .update({ 
+            enabled: true,
+            floor_load_id: floorLoadId,
+            initial_match_done: false
+          })
+          .eq("id", id);
+
+        if (updateError) throw updateError;
+        
+        // Get the hunt plan details for matching
+        const { data: huntPlan } = await supabase
+          .from('hunt_plans')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (huntPlan) {
+          // Do 15-minute backfill
+          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+          console.log('⏰ Backfilling loads from:', fifteenMinutesAgo.toISOString());
           
-          if (updatedHunt) {
-            // Check each recent load against the hunt criteria
-            for (const load of recentLoads) {
+          const { data: backfillLoads, error: fetchError } = await supabase
+            .from('load_emails')
+            .select('*')
+            .gte('received_at', fifteenMinutesAgo.toISOString())
+            .eq('status', 'new');
+          
+          if (!fetchError && backfillLoads && backfillLoads.length > 0) {
+            console.log(`📧 Found ${backfillLoads.length} loads for 15-min backfill`);
+            
+            // Parse vehicle_sizes
+            let vehicleSizes: string[] = [];
+            if (huntPlan.vehicle_size) {
+              try {
+                const parsed = JSON.parse(huntPlan.vehicle_size);
+                vehicleSizes = Array.isArray(parsed) ? parsed : [huntPlan.vehicle_size];
+              } catch {
+                vehicleSizes = [huntPlan.vehicle_size];
+              }
+            }
+            
+            const transformedHunt: HuntPlan = {
+              id: huntPlan.id,
+              vehicleId: huntPlan.vehicle_id,
+              planName: huntPlan.plan_name,
+              vehicleSizes,
+              zipCode: huntPlan.zip_code || "",
+              availableFeet: huntPlan.available_feet || "",
+              partial: huntPlan.partial || false,
+              pickupRadius: huntPlan.pickup_radius || "100",
+              mileLimit: huntPlan.mile_limit || "",
+              loadCapacity: huntPlan.load_capacity || "",
+              availableDate: huntPlan.available_date || "",
+              availableTime: huntPlan.available_time || "",
+              destinationZip: huntPlan.destination_zip || "",
+              destinationRadius: huntPlan.destination_radius || "",
+              notes: huntPlan.notes || "",
+              createdBy: huntPlan.created_by || "",
+              createdAt: new Date(huntPlan.created_at),
+              lastModified: new Date(huntPlan.last_modified),
+              huntCoordinates: huntPlan.hunt_coordinates as { lat: number; lng: number } | null,
+              enabled: true,
+              floorLoadId: floorLoadId,
+              initialMatchDone: false,
+            };
+            
+            // Match backfill loads
+            const backfillMatches: Array<{
+              load_email_id: string;
+              hunt_plan_id: string;
+              vehicle_id: string;
+              distance_miles: number | null;
+              is_active: boolean;
+            }> = [];
+            
+            for (const load of backfillLoads) {
               const loadData = extractLoadLocation(load);
+              if (!loadData.originCityState && !loadData.originZip) continue;
               
-              // Simple matching logic (you can expand this to use the full loadMatchesHunt logic)
-              let matches = true;
-              
-              // Match by load type if specified
-              if (updatedHunt.vehicle_size && loadData.loadType) {
-                matches = loadData.loadType.toLowerCase().includes(updatedHunt.vehicle_size.toLowerCase());
+              const matchResult = await doesLoadMatchHunt(loadData, transformedHunt);
+              if (matchResult.matches) {
+                console.log('✅ Backfill match:', load.load_id);
+                backfillMatches.push({
+                  load_email_id: load.id,
+                  hunt_plan_id: id,
+                  vehicle_id: huntPlan.vehicle_id,
+                  distance_miles: matchResult.distance || null,
+                  is_active: true,
+                });
               }
-              
-              // If matches, ensure it's marked as "new" so it appears in unreviewed
-              if (matches && load.status === 'missed') {
-                await supabase
-                  .from('load_emails')
-                  .update({ status: 'new' })
-                  .eq('id', load.id);
-              }
+            }
+            
+            if (backfillMatches.length > 0) {
+              console.log(`💾 Saving ${backfillMatches.length} backfill matches`);
+              await supabase
+                .from('load_hunt_matches')
+                .upsert(backfillMatches, { onConflict: 'load_email_id,hunt_plan_id' });
             }
           }
         }
+        
+        // Mark initial match as done - now forward-only matching will take over
+        await supabase
+          .from("hunt_plans")
+          .update({ initial_match_done: true })
+          .eq("id", id);
+        
+        console.log('✅ Hunt enabled with 15-min backfill complete, switching to forward-only mode');
+        toast.success("Hunt enabled - 15-min backfill complete, now forward-only");
+        
+      } else {
+        // DISABLING the hunt
+        const { error } = await supabase
+          .from("hunt_plans")
+          .update({ 
+            enabled: false,
+            floor_load_id: null,
+            initial_match_done: false
+          })
+          .eq("id", id);
+
+        if (error) throw error;
+        toast.success("Hunt disabled");
       }
       
-      // Trigger re-filtering of loads
+      // Reload hunt plans from database
+      await loadHuntPlans();
       await loadLoadEmails();
+      await loadHuntMatches();
+      await loadUnreviewedMatches();
       
-      toast.success(currentEnabled ? "Hunt disabled" : "Hunt enabled - checking recent loads");
     } catch (error) {
       console.error("Error toggling hunt:", error);
       toast.error("Failed to toggle hunt");
