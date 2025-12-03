@@ -1487,7 +1487,18 @@ export default function LoadHunterTab() {
         createdBy = profile?.full_name || user.email || "Unknown";
       }
 
-      // Save to database
+      // Get the current highest load_id as the floor
+      const { data: latestLoad } = await supabase
+        .from('load_emails')
+        .select('load_id')
+        .order('load_id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      const floorLoadId = latestLoad?.load_id || null;
+      console.log('📍 New hunt - Setting floor_load_id:', floorLoadId);
+
+      // Save to database with floor_load_id set
       const { data, error } = await supabase
         .from("hunt_plans")
         .insert({
@@ -1508,6 +1519,8 @@ export default function LoadHunterTab() {
           hunt_coordinates: huntCoordinates,
           created_by: user?.id,
           enabled: true,
+          floor_load_id: floorLoadId,
+          initial_match_done: false,
         })
         .select()
         .single();
@@ -1515,13 +1528,101 @@ export default function LoadHunterTab() {
       if (error) throw error;
       
       setCreateHuntOpen(false);
-      toast.success("Hunt plan created successfully");
+      toast.info("Hunt created - searching 15 minutes back...");
+      
+      // Do 15-minute backfill for new hunt
+      if (data && huntCoordinates) {
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+        console.log('⏰ New hunt backfill from:', fifteenMinutesAgo.toISOString());
+        
+        const { data: backfillLoads } = await supabase
+          .from('load_emails')
+          .select('*')
+          .gte('received_at', fifteenMinutesAgo.toISOString())
+          .eq('status', 'new');
+        
+        if (backfillLoads && backfillLoads.length > 0) {
+          console.log(`📧 Found ${backfillLoads.length} loads for 15-min backfill`);
+          
+          const transformedHunt: HuntPlan = {
+            id: data.id,
+            vehicleId: selectedVehicle.id,
+            planName: huntFormData.planName,
+            vehicleSizes: huntFormData.vehicleSizes,
+            zipCode: huntFormData.zipCode,
+            availableFeet: huntFormData.availableFeet,
+            partial: huntFormData.partial,
+            pickupRadius: huntFormData.pickupRadius,
+            mileLimit: huntFormData.mileLimit,
+            loadCapacity: huntFormData.loadCapacity,
+            availableDate: huntFormData.availableDate,
+            availableTime: huntFormData.availableTime,
+            destinationZip: huntFormData.destinationZip,
+            destinationRadius: huntFormData.destinationRadius,
+            notes: huntFormData.notes,
+            createdBy: user?.id || "",
+            createdAt: new Date(),
+            lastModified: new Date(),
+            huntCoordinates,
+            enabled: true,
+            floorLoadId,
+            initialMatchDone: false,
+          };
+          
+          const backfillMatches: Array<{
+            load_email_id: string;
+            hunt_plan_id: string;
+            vehicle_id: string;
+            distance_miles: number | null;
+            is_active: boolean;
+          }> = [];
+          
+          for (const load of backfillLoads) {
+            const loadData = extractLoadLocation(load);
+            if (!loadData.originCityState && !loadData.originZip) continue;
+            
+            const matchResult = await doesLoadMatchHunt(loadData, transformedHunt);
+            if (matchResult.matches) {
+              console.log('✅ New hunt backfill match:', load.load_id);
+              backfillMatches.push({
+                load_email_id: load.id,
+                hunt_plan_id: data.id,
+                vehicle_id: selectedVehicle.id,
+                distance_miles: matchResult.distance || null,
+                is_active: true,
+              });
+            }
+          }
+          
+          if (backfillMatches.length > 0) {
+            console.log(`💾 Saving ${backfillMatches.length} backfill matches for new hunt`);
+            await supabase
+              .from('load_hunt_matches')
+              .upsert(backfillMatches, { onConflict: 'load_email_id,hunt_plan_id' });
+            toast.success(`Hunt created - found ${backfillMatches.length} matches from last 15 min`);
+          } else {
+            toast.success("Hunt created - no matches in last 15 min, now watching for new loads");
+          }
+        } else {
+          toast.success("Hunt created - no loads in last 15 min, now watching for new loads");
+        }
+        
+        // Mark initial match as done
+        await supabase
+          .from("hunt_plans")
+          .update({ initial_match_done: true })
+          .eq("id", data.id);
+      } else {
+        toast.success("Hunt plan created - now watching for new loads");
+      }
       
       // Reload hunt plans from database
       await loadHuntPlans();
       
       // Trigger re-filtering of loads
       await loadLoadEmails();
+      await loadHuntMatches();
+      await loadUnreviewedMatches();
       
       // Reset form
       setHuntFormData({
