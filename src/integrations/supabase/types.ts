@@ -737,8 +737,10 @@ export type Database = {
           destination_radius: string | null
           destination_zip: string | null
           enabled: boolean
+          floor_load_id: string | null
           hunt_coordinates: Json | null
           id: string
+          initial_match_done: boolean | null
           last_modified: string
           load_capacity: string | null
           mile_limit: string | null
@@ -760,8 +762,10 @@ export type Database = {
           destination_radius?: string | null
           destination_zip?: string | null
           enabled?: boolean
+          floor_load_id?: string | null
           hunt_coordinates?: Json | null
           id?: string
+          initial_match_done?: boolean | null
           last_modified?: string
           load_capacity?: string | null
           mile_limit?: string | null
@@ -783,8 +787,10 @@ export type Database = {
           destination_radius?: string | null
           destination_zip?: string | null
           enabled?: boolean
+          floor_load_id?: string | null
           hunt_coordinates?: Json | null
           id?: string
+          initial_match_done?: boolean | null
           last_modified?: string
           load_capacity?: string | null
           mile_limit?: string | null
