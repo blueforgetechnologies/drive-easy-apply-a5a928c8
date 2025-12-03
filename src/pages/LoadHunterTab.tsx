@@ -917,37 +917,8 @@ export default function LoadHunterTab() {
     };
   }, []);
 
-  // Watch for increases in load email count to trigger sound and background notifications
-  const previousEmailCountRef = useRef<number | null>(null);
-  useEffect(() => {
-    const currentCount = loadEmails.length;
-
-    if (previousEmailCountRef.current === null) {
-      // Initialize on first run, no sound
-      previousEmailCountRef.current = currentCount;
-      return;
-    }
-
-    if (currentCount > previousEmailCountRef.current) {
-      const newLoadsCount = currentCount - previousEmailCountRef.current;
-      console.log('📥 Load email count increased:', previousEmailCountRef.current, '→', currentCount);
-      
-      // Play sound if tab is visible and not muted
-      if (!isTabHiddenRef.current) {
-        playAlertSound();
-      }
-      
-      // Show system notification (works even when tab is hidden/inactive)
-      if (notificationsEnabled) {
-        showSystemNotification(
-          `${newLoadsCount} New Load${newLoadsCount > 1 ? 's' : ''} Received`,
-          'Click to view in Load Hunter'
-        );
-      }
-    }
-
-    previousEmailCountRef.current = currentCount;
-  }, [loadEmails.length, notificationsEnabled]);
+  // DISABLED: Sound notifications - not supposed to notify
+  // Sound and system notifications have been disabled per user request
 
   // DISABLED: Auto-mark loads for missed tracking - logic was incorrect
   // The missed marking logic has been disabled per user request
