@@ -1164,14 +1164,14 @@ export default function LoadHunterTab() {
     console.log('📧 Loading emails...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        // Only fetch emails from the last 48 hours to avoid showing old backlog
-        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        // Only fetch emails from the last 4 hours - show CURRENT/PRESENT emails only
+        const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
         
         // Sort by created_at (when WE processed the email) so newly processed emails appear at top
         const { data, error } = await supabase
           .from("load_emails")
           .select("*")
-          .gte("created_at", fortyEightHoursAgo)
+          .gte("created_at", fourHoursAgo)
           .order("created_at", { ascending: false })
           .limit(5000);
 
