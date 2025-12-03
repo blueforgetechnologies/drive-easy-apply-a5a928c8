@@ -2502,6 +2502,14 @@ export default function LoadHunterTab() {
               .filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id))
               .map((vehicle) => {
               const hasEnabledHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id && plan.enabled);
+              // Calculate unreviewed count for this vehicle from view data
+              const unreviewedCount = unreviewedViewData.filter(m => 
+                m.vehicle_id === vehicle.id
+              ).length;
+              // Calculate missed count for this vehicle from missedHistory
+              const missedCount = missedHistory.filter(m => m.vehicle_id === vehicle.id).length;
+              // Calculate skipped count for this vehicle
+              const skippedCount = skippedMatches.filter(m => m.vehicle_id === vehicle.id).length;
               return (
                 <Card 
                   key={vehicle.id} 
@@ -2524,13 +2532,13 @@ export default function LoadHunterTab() {
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
                       <div className="h-4 w-4 rounded-sm bg-red-500 flex items-center justify-center text-white text-[9px] font-medium">
-                        0
+                        {unreviewedCount}
                       </div>
                       <div className="h-4 w-4 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[9px] font-medium">
-                        0
+                        {missedCount}
                       </div>
                       <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
-                        0
+                        {skippedCount}
                       </div>
                     </div>
                   </div>
