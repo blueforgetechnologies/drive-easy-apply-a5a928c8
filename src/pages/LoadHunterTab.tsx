@@ -1164,12 +1164,15 @@ export default function LoadHunterTab() {
     console.log('📧 Loading emails...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        // Fetch ALL emails for the "All" tab - no status filter
-        // Sort by received_at (when Gmail received the email) so newest emails appear at top
+        // Only fetch emails from the last 48 hours to avoid showing old backlog
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        
+        // Sort by created_at (when WE processed the email) so newly processed emails appear at top
         const { data, error } = await supabase
           .from("load_emails")
           .select("*")
-          .order("received_at", { ascending: false })
+          .gte("created_at", fortyEightHoursAgo)
+          .order("created_at", { ascending: false })
           .limit(5000);
 
         if (error) {
@@ -1181,7 +1184,7 @@ export default function LoadHunterTab() {
           await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
           continue;
         }
-        console.log(`✅ Loaded ${data?.length || 0} emails`);
+        console.log(`✅ Loaded ${data?.length || 0} emails (last 48h by created_at)`);
         setLoadEmails(data || []);
         return;
       } catch (err) {
@@ -3187,11 +3190,12 @@ export default function LoadHunterTab() {
                             id: (item as any).match_id || (item as any).id,
                           } : null;
                           const data = email.parsed_data || {};
-                          const receivedDate = new Date(email.received_at);
+                          // Use created_at (when WE processed the email) for time display
+                          const processedDate = new Date(email.created_at);
                           const now = new Date();
                           
-                          // Calculate time since Gmail received the email
-                          const diffMs = now.getTime() - receivedDate.getTime();
+                          // Calculate time since we processed the email
+                          const diffMs = now.getTime() - processedDate.getTime();
                           const diffMins = Math.floor(diffMs / 60000);
                           const diffHours = Math.floor(diffMins / 60);
                           const diffDays = Math.floor(diffHours / 24);
