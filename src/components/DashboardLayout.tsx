@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, GitBranch } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, GitBranch, History } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'development'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'development', 'changelog'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
       navigate(`/dashboard/${value}?subtab=users`);
-    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development') {
+    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development' || value === 'changelog') {
       navigate(`/dashboard/${value}`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
@@ -205,6 +205,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <FileCode className="h-3.5 w-3.5" />
                       <span>Dev</span>
                     </TabsTrigger>
+                    <TabsTrigger value="changelog" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
+                      <History className="h-3.5 w-3.5" />
+                      <span>Log</span>
+                    </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -232,6 +236,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           { value: "maintenance", icon: Wrench, label: "Maintenance" },
                           { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
                           { value: "development", icon: FileCode, label: "DEV" },
+                          { value: "changelog", icon: History, label: "Changelog" },
                           { value: "flow", icon: GitBranch, label: "FLOW" },
                         ].map((item) => {
                           const Icon = item.icon;
