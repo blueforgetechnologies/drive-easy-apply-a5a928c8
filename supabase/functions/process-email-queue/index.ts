@@ -107,8 +107,8 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
-  // Parse expiration datetime from "Expiration" or "Expires" section
-  const expirationMatch = bodyText?.match(/(?:Expiration|Expires?)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  // Parse expiration datetime from "Expires" section (handles HTML tags like <strong>Expires: </strong>)
+  const expirationMatch = bodyText?.match(/Expires?[:\s]*(?:<[^>]*>)*\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (expirationMatch) {
     const dateStr = expirationMatch[1];
     const timeStr = expirationMatch[2];
@@ -128,7 +128,7 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
       let hours = parseInt(timeStr.split(':')[0]);
       const minutes = parseInt(timeStr.split(':')[1]);
       
-      // Handle AM/PM
+      // Handle AM/PM if present
       if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
       if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
       
@@ -142,6 +142,7 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
       const expiresDate = new Date(Date.UTC(year, month, day, hours - offset, minutes, 0));
       if (!isNaN(expiresDate.getTime())) {
         data.expires_at = expiresDate.toISOString();
+        console.log(`📅 Parsed expiration: ${data.expires_datetime} -> ${data.expires_at}`);
       }
     } catch (e) {
       console.error('Error parsing expiration date:', e);
