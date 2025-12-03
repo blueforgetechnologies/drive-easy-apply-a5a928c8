@@ -550,9 +550,15 @@ export default function LoadHunterTab() {
   }, [selectedMatchForDetail]);
   
   // Filter based on active filter - for unreviewed, use matches instead of emails
+  // IMPORTANT: Matched emails should ONLY appear in Unreviewed tab, nowhere else
   const filteredEmails = activeFilter === 'unreviewed' 
-    ? [] // Don't use emails for unreviewed
+    ? [] // Don't use emails for unreviewed - use filteredMatches instead
     : loadEmails.filter(email => {
+        // Exclude emails that have active matches - they belong in Unreviewed only
+        if (matchedLoadIds.has(email.id)) {
+          return false;
+        }
+        
         // CRITICAL: Skipped and waitlist loads should always be visible
         if (email.status === 'skipped' || email.status === 'waitlist') {
           if (activeFilter === 'skipped') return email.status === 'skipped';
