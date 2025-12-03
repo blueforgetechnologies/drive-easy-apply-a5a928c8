@@ -949,78 +949,8 @@ export default function LoadHunterTab() {
     previousEmailCountRef.current = currentCount;
   }, [loadEmails.length, notificationsEnabled]);
 
-  // Auto-mark loads for missed tracking after 15 minutes (without changing status)
-  useEffect(() => {
-    const checkMissedLoads = async () => {
-      const now = new Date();
-      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
-      
-      // Find all 'new' status loads that are older than 15 minutes and not yet marked for missed tracking
-      const loadsToMark = loadEmails.filter(email => {
-        const emailTime = new Date(email.received_at);
-        return email.status === 'new' && !email.marked_missed_at && emailTime <= fifteenMinutesAgo;
-      });
-
-      if (loadsToMark.length > 0) {
-        console.log(`Marking ${loadsToMark.length} loads for missed tracking (keeping in unreviewed)`);
-        
-        const timestamp = new Date().toISOString();
-        const loadIds = loadsToMark.map(load => load.id);
-        
-        // Batch update in chunks of 50 to avoid URL length limits
-        const CHUNK_SIZE = 50;
-        let hasError = false;
-        
-        for (let i = 0; i < loadIds.length; i += CHUNK_SIZE) {
-          const chunk = loadIds.slice(i, i + CHUNK_SIZE);
-          const { error } = await supabase
-            .from('load_emails')
-            .update({ marked_missed_at: timestamp })
-            .in('id', chunk);
-          
-          if (error) {
-            console.error(`Error batch marking chunk ${i}-${i + chunk.length}:`, error);
-            hasError = true;
-          }
-        }
-
-        if (hasError) {
-          console.error('Some batches failed when marking loads for missed tracking');
-        } else {
-          // Prepare history records for batch insert
-          const historyRecords = loadsToMark.map(load => ({
-            load_email_id: load.id,
-            missed_at: timestamp,
-            from_email: load.from_email,
-            subject: load.subject,
-            received_at: load.received_at,
-          }));
-
-          // Log all marked loads to history in one batch
-          const { error: historyError } = await supabase
-            .from('missed_loads_history')
-            .insert(historyRecords);
-          
-          if (historyError) {
-            console.error('Error logging to missed_loads_history:', historyError);
-          } else {
-            console.log(`Logged ${historyRecords.length} loads to missed history`);
-          }
-
-          // Refresh the load emails list
-          await loadLoadEmails();
-        }
-      }
-    };
-
-    // Check immediately on mount
-    checkMissedLoads();
-
-    // Then check every minute
-    const interval = setInterval(checkMissedLoads, 60000);
-
-    return () => clearInterval(interval);
-  }, [loadEmails]);
+  // DISABLED: Auto-mark loads for missed tracking - logic was incorrect
+  // The missed marking logic has been disabled per user request
 
   const fetchMapboxToken = async () => {
     try {
