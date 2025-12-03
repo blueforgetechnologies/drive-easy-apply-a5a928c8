@@ -224,16 +224,28 @@ export function UserActivityTracker() {
                   .in('vehicle_id', vehicleIds)
                   .eq('is_active', false);
 
-                // Count missed loads (from load_emails with status 'missed')
-                const { count: missedCount } = await supabase
-                  .from('load_emails')
-                  .select('*', { count: 'exact', head: true })
-                  .eq('status', 'missed');
+                // Count missed loads - loads with marked_missed_at set that match this dispatcher's vehicles
+                // First get matches for this dispatcher's vehicles
+                const { data: vehicleMatches } = await supabase
+                  .from('load_hunt_matches')
+                  .select('load_email_id')
+                  .in('vehicle_id', vehicleIds);
+
+                let missedCount = 0;
+                if (vehicleMatches && vehicleMatches.length > 0) {
+                  const loadEmailIds = vehicleMatches.map(m => m.load_email_id);
+                  const { count } = await supabase
+                    .from('load_emails')
+                    .select('*', { count: 'exact', head: true })
+                    .in('id', loadEmailIds)
+                    .not('marked_missed_at', 'is', null);
+                  missedCount = count || 0;
+                }
 
                 stats = {
                   unreviewed: unreviewedCount || 0,
                   skipped: skippedCount || 0,
-                  missed: missedCount || 0,
+                  missed: missedCount,
                 };
               }
             }
