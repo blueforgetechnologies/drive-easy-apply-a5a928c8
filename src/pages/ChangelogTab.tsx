@@ -19,6 +19,20 @@ export default function ChangelogTab() {
           
           <div className="border-l-4 border-primary pl-4">
             <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="font-mono">#008</Badge>
+              <Badge>Dec 3, 2024</Badge>
+              <span className="text-sm font-semibold">Expiration Time Parsing Added</span>
+            </div>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li>Added expiration datetime parsing to process-email-queue edge function</li>
+              <li>Parses "Expiration:" field from Sylectus emails (format: MM/DD/YY HH:MM AM/PM TZ)</li>
+              <li>Converts to ISO timestamp and stores in expires_at column</li>
+              <li>New emails will now have expiration times displayed in Load Hunter</li>
+            </ul>
+          </div>
+
+          <div className="border-l-4 border-primary pl-4">
+            <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="font-mono">#007</Badge>
               <Badge>Dec 3, 2024</Badge>
               <span className="text-sm font-semibold">Load Hunter Shows Expiration Instead of Processed</span>

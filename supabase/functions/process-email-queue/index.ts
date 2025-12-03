@@ -107,6 +107,47 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
+  // Parse expiration datetime from "Expiration" or "Expires" section
+  const expirationMatch = bodyText?.match(/(?:Expiration|Expires?)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  if (expirationMatch) {
+    const dateStr = expirationMatch[1];
+    const timeStr = expirationMatch[2];
+    const ampm = expirationMatch[3] || '';
+    const timezone = expirationMatch[4] || 'EST';
+    
+    data.expires_datetime = `${dateStr} ${timeStr} ${ampm} ${timezone}`.trim();
+    
+    // Convert to ISO timestamp for expires_at column
+    try {
+      const dateParts = dateStr.split('/');
+      let year = parseInt(dateParts[2]);
+      if (year < 100) year += 2000;
+      const month = parseInt(dateParts[0]) - 1;
+      const day = parseInt(dateParts[1]);
+      
+      let hours = parseInt(timeStr.split(':')[0]);
+      const minutes = parseInt(timeStr.split(':')[1]);
+      
+      // Handle AM/PM
+      if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+      if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      
+      // Timezone offsets
+      const tzOffsets: Record<string, number> = {
+        'EST': -5, 'EDT': -4, 'CST': -6, 'CDT': -5,
+        'MST': -7, 'MDT': -6, 'PST': -8, 'PDT': -7
+      };
+      const offset = tzOffsets[timezone.toUpperCase()] || -5;
+      
+      const expiresDate = new Date(Date.UTC(year, month, day, hours - offset, minutes, 0));
+      if (!isNaN(expiresDate.getTime())) {
+        data.expires_at = expiresDate.toISOString();
+      }
+    } catch (e) {
+      console.error('Error parsing expiration date:', e);
+    }
+  }
+
   return data;
 }
 
@@ -367,6 +408,7 @@ serve(async (req) => {
             body_html: null,
             received_at: receivedAt.toISOString(),
             parsed_data: parsedData,
+            expires_at: parsedData.expires_at || null,
             status: 'new',
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
