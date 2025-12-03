@@ -51,7 +51,6 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     posted_amount: /Posted\s*Amount[\s:]*\$?([\d,]+(?:\.\d{2})?)/i,
     vehicle_type: /(?:Equipment|Vehicle|Truck)[\s:]+([^\n]+)/i,
     load_type: /(?:Load\s*Type|Type)[\s:]+([^\n]+)/i,
-    pickup_date: /(?:Pick\s*up|Ready)[\s:]+(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
   };
 
   for (const [key, pattern] of Object.entries(patterns)) {
@@ -66,6 +65,37 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
       } else {
         data[key] = match[1].trim();
       }
+    }
+  }
+
+  // Parse pickup datetime from "Pick-Up" section - format: MM/DD/YY HH:MM TZ
+  const pickupSection = bodyText?.match(/Pick-Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  if (pickupSection) {
+    data.pickup_date = pickupSection[1];
+    data.pickup_time = pickupSection[2] + (pickupSection[3] ? ' ' + pickupSection[3] : '');
+  }
+
+  // Parse delivery datetime from "Delivery" section - format: MM/DD/YY HH:MM TZ
+  const deliverySection = bodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  if (deliverySection) {
+    data.delivery_date = deliverySection[1];
+    data.delivery_time = deliverySection[2] + (deliverySection[3] ? ' ' + deliverySection[3] : '');
+  }
+
+  // Fallback: Try leginfo format with separate date/time
+  if (!data.pickup_date) {
+    const legPickup = bodyText?.match(/Pick-Up.*?<p>(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/is);
+    if (legPickup) {
+      data.pickup_date = legPickup[1];
+      data.pickup_time = legPickup[2] + (legPickup[3] ? ' ' + legPickup[3] : '');
+    }
+  }
+
+  if (!data.delivery_date) {
+    const legDelivery = bodyText?.match(/Delivery.*?<p>(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/is);
+    if (legDelivery) {
+      data.delivery_date = legDelivery[1];
+      data.delivery_time = legDelivery[2] + (legDelivery[3] ? ' ' + legDelivery[3] : '');
     }
   }
 

@@ -19,6 +19,31 @@ export default function ChangelogTab() {
           
           <div className="border-l-4 border-primary pl-4">
             <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="font-mono">#006</Badge>
+              <Badge>Dec 3, 2024</Badge>
+              <span className="text-sm font-semibold">Pickup/Delivery Time Parsing Fixed</span>
+            </div>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li>Updated process-email-queue edge function to parse pickup_time and delivery_time</li>
+              <li>Added patterns for "Pick-Up" and "Delivery" sections in Sylectus emails</li>
+              <li>Format parsed: MM/DD/YY HH:MM TZ (e.g., "12/03/25 13:00 EST")</li>
+              <li>Added fallback patterns for leginfo HTML format</li>
+            </ul>
+          </div>
+
+          <div className="border-l-4 border-primary pl-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="font-mono">#005</Badge>
+              <Badge>Dec 3, 2024</Badge>
+              <span className="text-sm font-semibold">Header Tab Renamed</span>
+            </div>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li>Renamed "Hunter" tab to "Load Hunter" in header navigation</li>
+            </ul>
+          </div>
+
+          <div className="border-l-4 border-primary pl-4">
+            <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="font-mono">#004</Badge>
               <Badge>Dec 3, 2024</Badge>
               <span className="text-sm font-semibold">Changelog Moved to Own Tab</span>
