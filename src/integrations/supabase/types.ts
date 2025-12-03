@@ -1747,41 +1747,64 @@ export type Database = {
           created_at: string | null
           dispatcher_id: string | null
           from_email: string | null
+          hunt_plan_id: string | null
           id: string
           load_email_id: string
+          match_id: string | null
           missed_at: string
           received_at: string | null
           reset_at: string | null
           subject: string | null
+          vehicle_id: string | null
         }
         Insert: {
           created_at?: string | null
           dispatcher_id?: string | null
           from_email?: string | null
+          hunt_plan_id?: string | null
           id?: string
           load_email_id: string
+          match_id?: string | null
           missed_at?: string
           received_at?: string | null
           reset_at?: string | null
           subject?: string | null
+          vehicle_id?: string | null
         }
         Update: {
           created_at?: string | null
           dispatcher_id?: string | null
           from_email?: string | null
+          hunt_plan_id?: string | null
           id?: string
           load_email_id?: string
+          match_id?: string | null
           missed_at?: string
           received_at?: string | null
           reset_at?: string | null
           subject?: string | null
+          vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "missed_loads_history_hunt_plan_id_fkey"
+            columns: ["hunt_plan_id"]
+            isOneToOne: false
+            referencedRelation: "hunt_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "missed_loads_history_load_email_id_fkey"
             columns: ["load_email_id"]
             isOneToOne: false
             referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missed_loads_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
