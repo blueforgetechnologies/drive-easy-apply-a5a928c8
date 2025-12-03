@@ -3349,7 +3349,7 @@ export default function LoadHunterTab() {
                                   )}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
-                                  Processed: {exactProcessed} ({receivedAgo})
+                                  Expires: {email.expires_at ? new Date(email.expires_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '—'} ({expiresIn})
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
