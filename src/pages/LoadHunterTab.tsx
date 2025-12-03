@@ -478,8 +478,34 @@ export default function LoadHunterTab() {
     }
   }, [loadEmails.length, huntPlans.length, loadEmails, huntPlans]);
 
-  // DISABLED: Process email queue - queue processing disabled per user request
-  // The queue processing has been disabled to stop pulling old emails
+  // Process email queue every 20 seconds - cursor-based pagination (never goes older than floor)
+  useEffect(() => {
+    const processQueue = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('process-email-queue');
+        if (error) {
+          console.error('📧 Queue processor error:', error);
+          return;
+        }
+        if (data?.processed > 0) {
+          console.log(`📧 Queue processed: ${data.processed} emails, checkpoint: ${data.checkpoint}, lastLoadId: ${data.lastLoadId}`);
+          // Refresh ALL data after processing so new emails show immediately
+          loadLoadEmails();
+          loadUnreviewedMatches();
+        } else {
+          console.log('📭 No new emails to process');
+        }
+      } catch (e) {
+        console.error('📧 Queue processor exception:', e);
+      }
+    };
+    
+    // Process immediately, then every 20 seconds
+    processQueue();
+    const interval = setInterval(processQueue, 20 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // BACKUP: Periodic re-match every 30 seconds (primary matching is in gmail-webhook)
   // This catches any loads that failed initial matching
