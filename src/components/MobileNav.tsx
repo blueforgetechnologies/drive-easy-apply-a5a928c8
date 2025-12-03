@@ -5,10 +5,9 @@ import { cn } from "@/lib/utils";
 interface MobileNavProps {
   alertCount: number;
   integrationAlertCount: number;
-  unreviewedLoadsCount: number;
 }
 
-export default function MobileNav({ alertCount, integrationAlertCount, unreviewedLoadsCount }: MobileNavProps) {
+export default function MobileNav({ alertCount, integrationAlertCount }: MobileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,7 +20,7 @@ export default function MobileNav({ alertCount, integrationAlertCount, unreviewe
 
   const navItems = [
     { value: "map", icon: Map, label: "Map" },
-    { value: "load-hunter", icon: Target, label: "Hunter", badge: unreviewedLoadsCount },
+    { value: "load-hunter", icon: Target, label: "Hunter" },
     { value: "business", icon: Briefcase, label: "Business", badge: alertCount },
     { value: "loads", icon: Package, label: "Loads" },
     { value: "accounting", icon: Calculator, label: "Account" },
