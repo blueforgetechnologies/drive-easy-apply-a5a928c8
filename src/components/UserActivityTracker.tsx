@@ -225,10 +225,11 @@ export function UserActivityTracker() {
                   .eq('is_active', false);
 
                 // Count missed loads from missed_loads_history table - same source as Missed filter
+                // Query by vehicle_id since dispatcher_id may not be populated
                 const { count: missedCount } = await supabase
                   .from('missed_loads_history')
                   .select('*', { count: 'exact', head: true })
-                  .eq('dispatcher_id', dispatcher.id);
+                  .in('vehicle_id', vehicleIds);
 
                 stats = {
                   unreviewed: unreviewedCount || 0,
