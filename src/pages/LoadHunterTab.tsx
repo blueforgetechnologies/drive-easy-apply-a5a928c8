@@ -1074,12 +1074,12 @@ export default function LoadHunterTab() {
         // Only fetch emails processed in the last 30 minutes - fresh emails only
         const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         
-        // Sort by created_at (when WE processed the email) so newly processed emails appear at top
+        // Sort by received_at (when email was originally received) - most recent first
         const { data, error } = await supabase
           .from("load_emails")
           .select("*")
           .gte("created_at", thirtyMinutesAgo)
-          .order("created_at", { ascending: false })
+          .order("received_at", { ascending: false })
           .limit(5000);
 
         if (error) {
