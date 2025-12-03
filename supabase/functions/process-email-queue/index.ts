@@ -441,6 +441,107 @@ serve(async (req) => {
         
         console.log(`✅ Processed: ${subject.substring(0, 50)} -> ${lastProcessedLoadId}`);
 
+        // === SERVER-SIDE HUNT MATCHING ===
+        // Match this load against all enabled hunt plans immediately
+        if (insertedEmail && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+          try {
+            // Get all enabled hunt plans
+            const { data: enabledHunts } = await supabase
+              .from('hunt_plans')
+              .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id')
+              .eq('enabled', true);
+
+            if (enabledHunts && enabledHunts.length > 0) {
+              const loadCoords = parsedData.pickup_coordinates;
+              const loadVehicleType = parsedData.vehicle_type?.toLowerCase().replace(/[^a-z]/g, '');
+              
+              // Haversine distance calculation
+              const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+                const R = 3959; // Earth radius in miles
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+              };
+
+              let matchesCreated = 0;
+              for (const hunt of enabledHunts) {
+                // Skip if load is before floor_load_id
+                if (hunt.floor_load_id && insertedEmail.load_id && insertedEmail.load_id <= hunt.floor_load_id) {
+                  continue;
+                }
+
+                const huntCoords = hunt.hunt_coordinates as { lat: number; lng: number } | null;
+                if (!huntCoords?.lat || !huntCoords?.lng) continue;
+
+                // Check distance
+                const distance = haversineDistance(
+                  loadCoords.lat, loadCoords.lng,
+                  huntCoords.lat, huntCoords.lng
+                );
+                const radius = parseFloat(hunt.pickup_radius || '200');
+                
+                if (distance > radius) continue;
+
+                // Check vehicle type match
+                const huntVehicleSize = hunt.vehicle_size?.toLowerCase().replace(/[^a-z]/g, '');
+                if (huntVehicleSize && loadVehicleType && !loadVehicleType.includes(huntVehicleSize) && !huntVehicleSize.includes(loadVehicleType)) {
+                  // Check if matches any variant
+                  const vehicleMatches = 
+                    (loadVehicleType.includes('cargo') && huntVehicleSize.includes('cargo')) ||
+                    (loadVehicleType.includes('sprinter') && huntVehicleSize.includes('sprinter')) ||
+                    (loadVehicleType.includes('straight') && huntVehicleSize.includes('straight')) ||
+                    (loadVehicleType.includes('flatbed') && huntVehicleSize.includes('flatbed'));
+                  if (!vehicleMatches) continue;
+                }
+
+                // Get load_email id for this load
+                const { data: loadEmail } = await supabase
+                  .from('load_emails')
+                  .select('id')
+                  .eq('load_id', insertedEmail.load_id)
+                  .single();
+
+                if (!loadEmail) continue;
+
+                // Check if match already exists
+                const { count: existingMatch } = await supabase
+                  .from('load_hunt_matches')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('load_email_id', loadEmail.id)
+                  .eq('hunt_plan_id', hunt.id);
+
+                if (existingMatch && existingMatch > 0) continue;
+
+                // Create match
+                const { error: matchError } = await supabase
+                  .from('load_hunt_matches')
+                  .insert({
+                    load_email_id: loadEmail.id,
+                    hunt_plan_id: hunt.id,
+                    vehicle_id: hunt.vehicle_id,
+                    distance_miles: Math.round(distance),
+                    is_active: true,
+                    matched_at: new Date().toISOString(),
+                  });
+
+                if (!matchError) {
+                  matchesCreated++;
+                }
+              }
+
+              if (matchesCreated > 0) {
+                console.log(`🎯 SERVER MATCH: Load ${insertedEmail.load_id} matched to ${matchesCreated} hunt plan(s)`);
+              }
+            }
+          } catch (matchErr) {
+            console.error('Server-side matching error:', matchErr);
+            // Don't fail the whole process if matching fails
+          }
+        }
+
       } catch (error) {
         console.error(`Error processing ${item.gmail_message_id}:`, error);
         errors++;

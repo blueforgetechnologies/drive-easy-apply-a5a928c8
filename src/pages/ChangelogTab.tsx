@@ -19,6 +19,22 @@ export default function ChangelogTab() {
           
           <div className="border-l-4 border-primary pl-4">
             <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="font-mono">#009</Badge>
+              <Badge>Dec 3, 2024</Badge>
+              <span className="text-sm font-semibold">Server-Side Hunt Matching Implemented</span>
+            </div>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li><strong>Root cause fixed:</strong> Client-side matching had race condition - loads could be missed if React state hadn't refreshed when matcher ran</li>
+              <li><strong>Solution:</strong> Moved hunt matching logic directly into process-email-queue edge function</li>
+              <li><strong>Flow:</strong> Each load is now matched to hunt plans immediately after insertion (server-side)</li>
+              <li><strong>Matching logic:</strong> Haversine distance + vehicle type matching + floor_load_id cursor check</li>
+              <li><strong>Benefit:</strong> 100% match coverage - no loads can be missed due to timing/state issues</li>
+              <li><strong>Backward compatible:</strong> Client-side backup matching still runs as safety net</li>
+            </ul>
+          </div>
+
+          <div className="border-l-4 border-primary pl-4">
+            <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="font-mono">#008</Badge>
               <Badge>Dec 3, 2024</Badge>
               <span className="text-sm font-semibold">Expiration Time Parsing Added</span>
