@@ -3192,6 +3192,7 @@ export default function LoadHunterTab() {
                           const data = email.parsed_data || {};
                           // Use created_at (when WE processed the email) for time display
                           const processedDate = new Date(email.created_at);
+                          const receivedDate = new Date(email.received_at);
                           const now = new Date();
                           
                           // Calculate time since we processed the email
@@ -3200,6 +3201,20 @@ export default function LoadHunterTab() {
                           const diffHours = Math.floor(diffMins / 60);
                           const diffDays = Math.floor(diffHours / 24);
                           const isNewlyProcessed = diffMins <= 2;
+                          
+                          // Format exact date/time for display
+                          const formatDateTime = (date: Date) => {
+                            return date.toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            });
+                          };
+                          
+                          const exactReceived = formatDateTime(receivedDate);
+                          const exactProcessed = formatDateTime(processedDate);
                           
                           let receivedAgo = '';
                           if (diffDays > 0) receivedAgo = `${diffDays}d ${diffHours % 24}h ago`;
@@ -3443,13 +3458,13 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[11px] leading-tight whitespace-nowrap">{receivedAgo}</span>
+                                  <span className="text-[11px] leading-tight whitespace-nowrap font-medium">{exactReceived}</span>
                                   {isNewlyProcessed && (
                                     <Badge variant="default" className="h-4 px-1 text-[9px] bg-green-500 hover:bg-green-500">NEW</Badge>
                                   )}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
-                                  {expiresIn}
+                                  Processed: {exactProcessed} ({receivedAgo})
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
