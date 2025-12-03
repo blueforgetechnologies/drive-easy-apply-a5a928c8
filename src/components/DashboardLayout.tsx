@@ -138,32 +138,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const loadUnreviewedLoads = async () => {
     try {
-      const { data, error } = await supabase
+      // Only count emails processed (created_at) in the last 30 minutes - matches LoadHunterTab logic
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      
+      const { count, error } = await supabase
         .from("load_emails")
-        .select("*")
-        .eq("status", "new");
+        .select("*", { count: 'exact', head: true })
+        .eq("status", "new")
+        .gte("created_at", thirtyMinutesAgo);
       
       if (error) {
         console.error("Error loading unreviewed loads:", error);
         return;
       }
       
-      // Apply same filtering logic as Load Hunter page
-      const now = new Date();
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-      
-      const filteredCount = (data || []).filter(e => {
-        const emailTime = new Date(e.received_at);
-        
-        // Remove loads without expiration after 30 minutes
-        if (e.status === 'new' && !e.expires_at && emailTime <= thirtyMinutesAgo) {
-          return false;
-        }
-        
-        return true;
-      }).length;
-      
-      setUnreviewedLoadsCount(filteredCount);
+      setUnreviewedLoadsCount(count || 0);
     } catch (error) {
       console.error("Error counting unreviewed loads:", error);
     }
