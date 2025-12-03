@@ -377,19 +377,25 @@ serve(async (req) => {
         const parsedData = { ...bodyData, ...subjectData };
 
         // Geocode if we have origin location
+        let geocodeFailed = false;
         if (parsedData.origin_city && parsedData.origin_state) {
           const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
           if (coords) {
             parsedData.pickup_coordinates = coords;
+            console.log(`✅ Geocoded ${parsedData.origin_city}, ${parsedData.origin_state} → ${coords.lat}, ${coords.lng}`);
+          } else {
+            geocodeFailed = true;
+            console.warn(`⚠️ Geocoding FAILED for ${parsedData.origin_city}, ${parsedData.origin_state}`);
           }
         }
 
-        // Check for issues
-        const hasIssues = !parsedData.broker_email || !parsedData.origin_city || !parsedData.vehicle_type;
+        // Check for issues - include geocoding failures
+        const hasIssues = !parsedData.broker_email || !parsedData.origin_city || !parsedData.vehicle_type || geocodeFailed;
         const issueNotes = [];
         if (!parsedData.broker_email) issueNotes.push('Missing broker email');
         if (!parsedData.origin_city) issueNotes.push('Missing origin location');
         if (!parsedData.vehicle_type) issueNotes.push('Missing vehicle type');
+        if (geocodeFailed) issueNotes.push('Geocoding failed - no coordinates');
 
         // Extract sender info
         const fromMatch = from.match(/^(.+?)\s*<(.+?)>$/);
