@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, GitBranch } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -275,7 +275,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           { value: "accounting", icon: Calculator, label: "Accounting" },
                           { value: "maintenance", icon: Wrench, label: "Maintenance" },
                           { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
-                          { value: "development", icon: FileCode, label: "Development" },
+                          { value: "development", icon: FileCode, label: "DEV" },
+                          { value: "flow", icon: GitBranch, label: "FLOW" },
                         ].map((item) => {
                           const Icon = item.icon;
                           const isActive = activeTab === item.value;
