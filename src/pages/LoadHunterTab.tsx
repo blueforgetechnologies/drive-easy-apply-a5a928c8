@@ -101,6 +101,7 @@ export default function LoadHunterTab() {
   const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (is_active = true)
   const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Skipped/inactive matches
   const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
+  const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -567,8 +568,9 @@ export default function LoadHunterTab() {
           return false;
         }
         
+        // Missed tab now uses missedHistory, not loadEmails
         if (activeFilter === 'missed') {
-          return email.marked_missed_at !== null;
+          return false; // Return empty - we use missedHistory data directly
         }
         if (activeFilter === 'issues') {
           return email.has_issues === true;
@@ -609,7 +611,7 @@ export default function LoadHunterTab() {
     return true;
   }).length;
   
-  const missedCount = loadEmails.filter(e => e.marked_missed_at !== null).length;
+  const missedCount = missedHistory.length; // Use missed history count
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = skippedMatches.length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
@@ -852,6 +854,7 @@ export default function LoadHunterTab() {
     loadHuntPlans();
     loadHuntMatches();
     loadUnreviewedMatches(); // Load from efficient server-side view
+    loadMissedHistory(); // Load missed history for Missed tab
     loadCarriersAndPayees();
     fetchMapboxToken();
 
@@ -944,8 +947,21 @@ export default function LoadHunterTab() {
   // DISABLED: Sound notifications - not supposed to notify
   // Sound and system notifications have been disabled per user request
 
-  // DISABLED: Auto-mark loads for missed tracking - logic was incorrect
-  // The missed marking logic has been disabled per user request
+  // Interval to check for missed loads (15 min) and deactivate stale matches (30 min)
+  useEffect(() => {
+    // Run immediately on mount
+    checkAndMarkMissedLoads();
+    deactivateStaleMatches();
+    
+    // Run every 30 seconds
+    const missedCheckInterval = setInterval(() => {
+      console.log('⏰ Running missed load check (15 min) and stale match check (30 min)');
+      checkAndMarkMissedLoads();
+      deactivateStaleMatches();
+    }, 30 * 1000);
+    
+    return () => clearInterval(missedCheckInterval);
+  }, []);
 
   const fetchMapboxToken = async () => {
     try {
@@ -1278,6 +1294,186 @@ export default function LoadHunterTab() {
         }
         await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
       }
+    }
+  };
+
+  // Load missed history from database - shows all loads that went 15+ min without action
+  const loadMissedHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('missed_loads_history')
+        .select(`
+          id,
+          load_email_id,
+          hunt_plan_id,
+          vehicle_id,
+          match_id,
+          missed_at,
+          received_at,
+          from_email,
+          subject,
+          dispatcher_id
+        `)
+        .order('missed_at', { ascending: false })
+        .limit(500);
+
+      if (error) {
+        console.error('Error loading missed history:', error);
+        return;
+      }
+
+      // Fetch full email data for each missed record
+      if (data && data.length > 0) {
+        const emailIds = [...new Set(data.map(m => m.load_email_id))];
+        const { data: emails } = await supabase
+          .from('load_emails')
+          .select('*')
+          .in('id', emailIds);
+
+        const emailMap = new Map(emails?.map(e => [e.id, e]) || []);
+        
+        // Enrich missed history with full email data
+        const enrichedData = data.map(m => ({
+          ...m,
+          email: emailMap.get(m.load_email_id) || null
+        }));
+
+        console.log(`📊 Loaded ${enrichedData.length} missed history records`);
+        setMissedHistory(enrichedData);
+      } else {
+        setMissedHistory([]);
+      }
+    } catch (err) {
+      console.error('Error in loadMissedHistory:', err);
+    }
+  };
+
+  // Check for matches that are 15+ minutes old and create copies in missed_loads_history
+  const checkAndMarkMissedLoads = async () => {
+    try {
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      
+      // Get active matches that are older than 15 minutes
+      const { data: oldMatches, error: matchError } = await supabase
+        .from('load_hunt_matches')
+        .select(`
+          id,
+          load_email_id,
+          hunt_plan_id,
+          vehicle_id,
+          matched_at,
+          load_emails!inner (
+            id,
+            from_email,
+            subject,
+            received_at
+          )
+        `)
+        .eq('is_active', true)
+        .lt('matched_at', fifteenMinutesAgo);
+
+      if (matchError) {
+        console.error('Error fetching old matches:', matchError);
+        return;
+      }
+
+      if (!oldMatches || oldMatches.length === 0) {
+        return;
+      }
+
+      // Check which matches are already in missed_loads_history
+      const matchIds = oldMatches.map(m => m.id);
+      const { data: existingMissed } = await supabase
+        .from('missed_loads_history')
+        .select('match_id')
+        .in('match_id', matchIds);
+
+      const existingMatchIds = new Set(existingMissed?.map(m => m.match_id) || []);
+      
+      // Filter to only matches not already in history
+      const newMissedMatches = oldMatches.filter(m => !existingMatchIds.has(m.id));
+
+      if (newMissedMatches.length === 0) {
+        return;
+      }
+
+      console.log(`⚠️ Found ${newMissedMatches.length} new missed matches (15+ min old)`);
+
+      // Insert new missed records
+      const missedRecords = newMissedMatches.map(m => ({
+        load_email_id: m.load_email_id,
+        hunt_plan_id: m.hunt_plan_id,
+        vehicle_id: m.vehicle_id,
+        match_id: m.id,
+        missed_at: new Date().toISOString(),
+        from_email: (m.load_emails as any)?.from_email || null,
+        subject: (m.load_emails as any)?.subject || null,
+        received_at: (m.load_emails as any)?.received_at || null
+      }));
+
+      const { error: insertError } = await supabase
+        .from('missed_loads_history')
+        .insert(missedRecords);
+
+      if (insertError) {
+        console.error('Error inserting missed records:', insertError);
+        return;
+      }
+
+      console.log(`✅ Created ${missedRecords.length} missed history records`);
+      
+      // Reload missed history
+      await loadMissedHistory();
+    } catch (err) {
+      console.error('Error in checkAndMarkMissedLoads:', err);
+    }
+  };
+
+  // Deactivate matches that are 30+ minutes old (remove from Unreviewed)
+  const deactivateStaleMatches = async () => {
+    try {
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      
+      // Find active matches older than 30 minutes
+      const { data: staleMatches, error: fetchError } = await supabase
+        .from('load_hunt_matches')
+        .select('id')
+        .eq('is_active', true)
+        .lt('matched_at', thirtyMinutesAgo);
+
+      if (fetchError) {
+        console.error('Error fetching stale matches:', fetchError);
+        return;
+      }
+
+      if (!staleMatches || staleMatches.length === 0) {
+        return;
+      }
+
+      console.log(`🕐 Found ${staleMatches.length} stale matches (30+ min old) - deactivating`);
+
+      // Deactivate in batches of 50 to avoid URL length limits
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < staleMatches.length; i += BATCH_SIZE) {
+        const batch = staleMatches.slice(i, i + BATCH_SIZE);
+        const batchIds = batch.map(m => m.id);
+        
+        const { error: updateError } = await supabase
+          .from('load_hunt_matches')
+          .update({ is_active: false })
+          .in('id', batchIds);
+
+        if (updateError) {
+          console.error(`Error deactivating batch ${i / BATCH_SIZE + 1}:`, updateError);
+        }
+      }
+
+      console.log(`✅ Deactivated ${staleMatches.length} stale matches`);
+      
+      // Reload unreviewed matches
+      await loadUnreviewedMatches();
+    } catch (err) {
+      console.error('Error in deactivateStaleMatches:', err);
     }
   };
 
@@ -3213,12 +3409,17 @@ export default function LoadHunterTab() {
           <Card className="flex-1 flex flex-col">
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="border-t">
-                {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 : filteredEmails.length === 0) ? (
+                {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
+                  : activeFilter === 'missed' ? missedHistory.length === 0 
+                  : activeFilter === 'skipped' ? skippedMatches.length === 0
+                  : filteredEmails.length === 0) ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     {activeFilter === 'skipped' 
                       ? 'No skipped loads yet.' 
                       : activeFilter === 'unreviewed'
                       ? 'No matched loads. Create hunt plans to see matches here.'
+                      : activeFilter === 'missed'
+                      ? 'No missed loads. Loads that go 15+ minutes without action appear here.'
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
@@ -3251,15 +3452,16 @@ export default function LoadHunterTab() {
                           
                           // Show all skipped matches - they persist until midnight reset
                           return true;
-                        }) : filteredEmails)
+                        }) : activeFilter === 'missed' ? missedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed, item is from view with email data included
                           // For skipped, item is a match that needs email lookup
+                          // For missed, item is from missedHistory with email data
                           // For others, item is an email
-                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped';
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'missed';
                           
-                          // Get email data - from view (unreviewed) or lookup (skipped) or item itself (other)
+                          // Get email data - from view (unreviewed) or lookup (skipped) or missedHistory (missed) or item itself (other)
                           let email: any;
                           if (activeFilter === 'unreviewed') {
                             // View data includes email fields directly
@@ -3276,6 +3478,17 @@ export default function LoadHunterTab() {
                             };
                           } else if (activeFilter === 'skipped') {
                             email = loadEmails.find(e => e.id === (item as any).load_email_id);
+                          } else if (activeFilter === 'missed') {
+                            // Missed history item has enriched email data
+                            const missedItem = item as any;
+                            email = missedItem.email || {
+                              id: missedItem.load_email_id,
+                              received_at: missedItem.received_at,
+                              from_email: missedItem.from_email,
+                              subject: missedItem.subject,
+                              parsed_data: missedItem.email?.parsed_data || {},
+                              load_id: missedItem.email?.load_id,
+                            };
                           } else {
                             email = item;
                           }
@@ -3487,8 +3700,8 @@ export default function LoadHunterTab() {
                                   // Get broker info from parsed data
                                   const brokerName = data.broker || data.customer || email.from_name || email.from_email.split('@')[0];
                                   
-                                  if (activeFilter === 'unreviewed' && match) {
-                                    // For unreviewed (matches), show the matched truck directly
+                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed') && match) {
+                                    // For unreviewed/missed (matches), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
