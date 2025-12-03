@@ -203,8 +203,24 @@ function parseSubjectLine(subject: string): Record<string, any> {
   
   const customerMatch = subject.match(/Posted by ([^(]+)\s*\(/);
   if (customerMatch) {
-    data.customer = customerMatch[1].trim();
-    data.broker_company = customerMatch[1].trim();
+    const rawCustomer = customerMatch[1].trim();
+    // Handle case where customer name is empty before "-" but company is after "-"
+    // e.g., "Posted by  - Alliance Posted Load ("
+    if (rawCustomer.startsWith('-')) {
+      const afterDash = rawCustomer.substring(1).trim();
+      if (afterDash) {
+        data.customer = afterDash;
+        data.broker_company = afterDash;
+      }
+    } else if (rawCustomer.includes(' - ')) {
+      // Has both name and company like "John Smith - Alliance"
+      const parts = rawCustomer.split(' - ');
+      data.customer = parts[0].trim() || parts[1]?.trim();
+      data.broker_company = parts[1]?.trim() || parts[0].trim();
+    } else if (rawCustomer) {
+      data.customer = rawCustomer;
+      data.broker_company = rawCustomer;
+    }
   }
   
   return data;
