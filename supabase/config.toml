@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.snapshot-geocode-stats]
 verify_jwt = true
+
+[functions.snapshot-email-volume]
+verify_jwt = false
+
+[functions.snapshot-monthly-usage]
+verify_jwt = true
