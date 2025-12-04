@@ -190,22 +190,20 @@ const UsageCostsTab = () => {
       const now = new Date();
       const hourStart = new Date(now);
       hourStart.setMinutes(0, 0, 0);
-      const hourAgo = new Date(hourStart);
-      hourAgo.setHours(hourAgo.getHours() - 1);
       
-      // Get emails received in current hour
+      // Get emails received in CURRENT hour (from hourStart to now)
       const { count: receivedThisHour } = await supabase
         .from('load_emails')
         .select('*', { count: 'exact', head: true })
-        .gte('received_at', hourAgo.toISOString())
-        .lt('received_at', hourStart.toISOString());
+        .gte('received_at', hourStart.toISOString());
       
       // Get pending emails using RPC (email_queue has RLS blocking client access)
       const { data: pendingCount } = await supabase
         .rpc('get_email_queue_pending_count');
 
-      // Calculate emails per minute (last hour)
-      const emailsPerMinute = ((receivedThisHour || 0) / 60).toFixed(2);
+      // Calculate minutes elapsed this hour for accurate rate
+      const minutesElapsed = Math.max(1, now.getMinutes() + (now.getSeconds() / 60));
+      const emailsPerMinute = ((receivedThisHour || 0) / minutesElapsed).toFixed(2);
       
       return {
         receivedThisHour: receivedThisHour || 0,
@@ -213,7 +211,7 @@ const UsageCostsTab = () => {
         emailsPerMinute
       };
     },
-    refetchInterval: 60000 // Refresh every minute
+    refetchInterval: 30000 // Refresh every 30 seconds
   });
 
   // Fetch Directions API tracking (current month)
@@ -660,7 +658,7 @@ const UsageCostsTab = () => {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Processing Rate</p>
-              <p className="text-2xl font-semibold">60/min</p>
+              <p className="text-2xl font-semibold">~300/min</p>
             </div>
           </div>
 
