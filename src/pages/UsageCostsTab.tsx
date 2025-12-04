@@ -1,16 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, Settings } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const UsageCostsTab = () => {
   const [aiTestResult, setAiTestResult] = useState<string>("");
   const [emailSource, setEmailSource] = useState<string>("sylectus");
+  const [mapboxRefreshInterval, setMapboxRefreshInterval] = useState<number>(20000); // 20 seconds default
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const queryClient = useQueryClient();
 
   // Test AI mutation
   const testAiMutation = useMutation({
@@ -35,7 +39,7 @@ const UsageCostsTab = () => {
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   // Fetch current month usage from mapbox_monthly_usage table
-  const { data: currentMonthUsage } = useQuery({
+  const { data: currentMonthUsage, dataUpdatedAt: usageUpdatedAt } = useQuery({
     queryKey: ["current-month-usage", currentMonth],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,7 +50,8 @@ const UsageCostsTab = () => {
       
       if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
       return data;
-    }
+    },
+    refetchInterval: mapboxRefreshInterval
   });
 
   // Fetch new geocode cache entries created AFTER the baseline was set (Dec 4, 2025 at current time)
@@ -63,7 +68,8 @@ const UsageCostsTab = () => {
       
       if (error) throw error;
       return count || 0;
-    }
+    },
+    refetchInterval: mapboxRefreshInterval
   });
 
   // Fetch geocode cache stats for cache performance display
@@ -87,7 +93,8 @@ const UsageCostsTab = () => {
         estimatedSavings: estimatedSavings.toFixed(2),
         cacheHitRate: totalLocations > 0 ? ((totalHits - totalLocations) / totalHits * 100).toFixed(1) : '0'
       };
-    }
+    },
+    refetchInterval: mapboxRefreshInterval
   });
 
   // Fetch historical geocode cache stats
@@ -167,7 +174,8 @@ const UsageCostsTab = () => {
         .eq('month_year', currentMonth);
       
       return count || 0;
-    }
+    },
+    refetchInterval: mapboxRefreshInterval
   });
 
   // Fetch email volume stats (hourly history)
@@ -226,7 +234,8 @@ const UsageCostsTab = () => {
         .eq('month_year', currentMonth);
       
       return count || 0;
-    }
+    },
+    refetchInterval: mapboxRefreshInterval
   });
 
   // Fetch historical monthly usage
@@ -241,8 +250,16 @@ const UsageCostsTab = () => {
       
       if (error) throw error;
       return data || [];
-    }
+    },
+    refetchInterval: mapboxRefreshInterval
   });
+
+  // Update last refresh time when data updates
+  useEffect(() => {
+    if (usageUpdatedAt) {
+      setLastRefresh(new Date(usageUpdatedAt));
+    }
+  }, [usageUpdatedAt]);
 
   // Mapbox pricing tiers (tiered pricing)
   const MAPBOX_GEOCODING_FREE_TIER = 100000;
@@ -467,11 +484,55 @@ const UsageCostsTab = () => {
       {/* Mapbox Usage */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Map className="h-5 w-5" />
-            Mapbox Usage & Billing - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-          </CardTitle>
-          <CardDescription>Current month geocoding and map rendering costs (resets monthly)</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Map className="h-5 w-5" />
+                Mapbox Usage & Billing - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </CardTitle>
+              <CardDescription>Current month geocoding and map rendering costs (resets monthly)</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                Auto-refresh: {mapboxRefreshInterval / 1000}s
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1">
+                    <Settings className="h-3.5 w-3.5" />
+                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Auto-refresh interval</p>
+                    <Select
+                      value={mapboxRefreshInterval.toString()}
+                      onValueChange={(value) => {
+                        setMapboxRefreshInterval(parseInt(value));
+                        toast.success(`Refresh rate set to ${parseInt(value) / 1000}s`);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5000">5 seconds</SelectItem>
+                        <SelectItem value="10000">10 seconds</SelectItem>
+                        <SelectItem value="20000">20 seconds</SelectItem>
+                        <SelectItem value="30000">30 seconds</SelectItem>
+                        <SelectItem value="60000">1 minute</SelectItem>
+                        <SelectItem value="300000">5 minutes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Last updated: {lastRefresh.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Geocoding API */}
