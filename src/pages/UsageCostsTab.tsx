@@ -124,9 +124,16 @@ const UsageCostsTab = () => {
   const MAPBOX_MAP_LOADS_FREE_TIER = 50000;
   const MAPBOX_MAP_LOADS_RATE = 5.00; // $5.00 per 1,000 after free tier
 
-  // Calculate geocoding cost (total hits from cache = total API calls we would have made)
-  const totalGeocodingCalls = geocodeStats?.totalHits || 0;
-  const billableGeocodingCalls = Math.max(0, totalGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
+  // Cache stats: totalLocations = unique API calls made, totalHits = total requests served
+  // Cache hits that saved API calls = totalHits - totalLocations
+  const cachedLocations = geocodeStats?.totalLocations || 0;
+  const totalRequestsServed = geocodeStats?.totalHits || 0;
+  const cacheSavedCalls = Math.max(0, totalRequestsServed - cachedLocations);
+  
+  // For Mapbox billing tracking - user should check Mapbox dashboard for exact numbers
+  // We can estimate based on cached locations (each was an API call)
+  const estimatedApiCalls = cachedLocations; // Each unique cached location = 1 Mapbox API call
+  const billableGeocodingCalls = Math.max(0, estimatedApiCalls - MAPBOX_GEOCODING_FREE_TIER);
   const geocodingCost = (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
 
   // Estimate map loads (each page with a map = 1 load)
@@ -136,8 +143,11 @@ const UsageCostsTab = () => {
 
   const estimatedCosts = {
     mapbox: {
-      geocodingCalls: totalGeocodingCalls,
-      geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - totalGeocodingCalls),
+      // Actual API calls (unique locations cached)
+      geocodingApiCalls: cachedLocations,
+      // Requests served from cache (saved API calls)
+      geocodingCacheSaved: cacheSavedCalls,
+      geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - estimatedApiCalls),
       geocodingBillable: billableGeocodingCalls,
       geocodingCost: geocodingCost.toFixed(2),
       mapLoads: estimatedMapLoads,
@@ -255,10 +265,14 @@ const UsageCostsTab = () => {
           {/* Geocoding API */}
           <div className="space-y-2">
             <p className="text-sm font-medium">Geocoding API</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Total Calls</p>
-                <p className="text-lg font-semibold">{estimatedCosts.mapbox.geocodingCalls.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">API Calls Made</p>
+                <p className="text-lg font-semibold">{estimatedCosts.mapbox.geocodingApiCalls.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Cache Saved</p>
+                <p className="text-lg font-semibold text-green-600">{estimatedCosts.mapbox.geocodingCacheSaved.toLocaleString()}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Free Tier (100K)</p>
@@ -277,7 +291,7 @@ const UsageCostsTab = () => {
                 <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.geocodingCost}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Rate: $0.75/1,000 after 100K free</p>
+            <p className="text-xs text-muted-foreground">Rate: $0.75/1,000 after 100K free • Check <a href="https://console.mapbox.com/account/invoices" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox dashboard</a> for exact billing</p>
           </div>
           
           {/* Map Loads */}
