@@ -46,6 +46,22 @@ const UsageCostsTab = () => {
     }
   });
 
+  // Fetch new geocode cache entries created TODAY or later (actual new API calls since base was set)
+  const { data: newCacheEntriesThisMonth } = useQuery({
+    queryKey: ["new-cache-entries-since-base"],
+    queryFn: async () => {
+      // Only count entries created after Dec 4, 2025 (when baseline was established)
+      const baselineDate = '2025-12-04T00:00:00Z';
+      const { count, error } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true })
+        .gt('created_at', baselineDate);
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
   // Fetch geocode cache stats for cache performance display
   const { data: geocodeStats } = useQuery({
     queryKey: ["geocode-cache-stats"],
@@ -223,10 +239,13 @@ const UsageCostsTab = () => {
     return cost;
   };
 
-  // Current month geocoding API calls - use mapbox_monthly_usage if available
-  const currentMonthGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
+  // Current month geocoding API calls - base from mapbox_monthly_usage + new cache misses this month
+  const baseGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
+  const newGeocodingCalls = newCacheEntriesThisMonth || 0;
+  // If we have a stored base, add new calls on top. Otherwise just use new calls.
+  const currentMonthGeocodingCalls = baseGeocodingCalls > 0 ? baseGeocodingCalls + newGeocodingCalls : newGeocodingCalls;
   const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
-  const geocodingCost = currentMonthUsage?.geocoding_cost || calculateGeocodingCost(currentMonthGeocodingCalls);
+  const geocodingCost = calculateGeocodingCost(currentMonthGeocodingCalls);
 
   // Current month map loads - use mapbox_monthly_usage if available
   const currentMonthMapLoads = currentMonthUsage?.map_loads || mapLoadStats || 0;
