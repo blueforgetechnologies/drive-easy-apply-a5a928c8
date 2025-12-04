@@ -168,7 +168,6 @@ const UsageCostsTab = () => {
   // Mapbox pricing tiers (tiered pricing)
   const MAPBOX_GEOCODING_FREE_TIER = 100000;
   const MAPBOX_MAP_LOADS_FREE_TIER = 50000;
-  const MAPBOX_MAP_LOADS_RATE = 5.00; // $5.00 per 1,000 after free tier
 
   // Calculate tiered geocoding cost
   const calculateGeocodingCost = (calls: number): number => {
@@ -197,6 +196,33 @@ const UsageCostsTab = () => {
     return cost;
   };
 
+  // Calculate tiered map loads cost
+  const calculateMapLoadsCost = (loads: number): number => {
+    if (loads <= MAPBOX_MAP_LOADS_FREE_TIER) return 0;
+    
+    let cost = 0;
+    let remaining = loads - MAPBOX_MAP_LOADS_FREE_TIER;
+    
+    // Tier 1: 50,001 - 100,000 @ $5.00/1,000
+    const tier1 = Math.min(remaining, 50000);
+    cost += (tier1 / 1000) * 5.00;
+    remaining -= tier1;
+    
+    if (remaining <= 0) return cost;
+    
+    // Tier 2: 100,001 - 200,000 @ $4.00/1,000
+    const tier2 = Math.min(remaining, 100000);
+    cost += (tier2 / 1000) * 4.00;
+    remaining -= tier2;
+    
+    if (remaining <= 0) return cost;
+    
+    // Tier 3: 200,001+ @ $3.00/1,000
+    cost += (remaining / 1000) * 3.00;
+    
+    return cost;
+  };
+
   // Current month geocoding API calls - use mapbox_monthly_usage if available
   const currentMonthGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
   const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
@@ -205,7 +231,7 @@ const UsageCostsTab = () => {
   // Current month map loads - use mapbox_monthly_usage if available
   const currentMonthMapLoads = currentMonthUsage?.map_loads || mapLoadStats || 0;
   const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
-  const mapLoadsCost = currentMonthUsage?.map_loads_cost || (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
+  const mapLoadsCost = currentMonthUsage?.map_loads_cost || calculateMapLoadsCost(currentMonthMapLoads);
 
   // Cache stats for display
   const cachedLocations = geocodeStats?.totalLocations || 0;
@@ -390,7 +416,7 @@ const UsageCostsTab = () => {
                 <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.mapLoadsCost}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Rate: $5.00/1,000 after 50K free</p>
+            <p className="text-xs text-muted-foreground">Rate: $5.00/1K (50K-100K) • $4.00/1K (100K-200K) • $3.00/1K (200K+)</p>
           </div>
 
           {/* Monthly History */}
