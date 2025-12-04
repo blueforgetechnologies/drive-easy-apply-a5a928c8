@@ -290,14 +290,14 @@ serve(async (req) => {
     
     console.log(`📍 Checkpoint: ${checkpointReceivedAt}, Floor: ${floorReceivedAt}`);
 
-    // Get pending queue items - ONLY newer than checkpoint, limit to 20
+    // Get pending queue items - ONLY newer than checkpoint, limit to 100 for maximum throughput
     const { data: queueItems, error: queueError } = await supabase
       .from('email_queue')
       .select('*')
       .eq('status', 'pending')
       .gt('queued_at', checkpointReceivedAt) // Only items NEWER than checkpoint
       .order('queued_at', { ascending: true }) // Process oldest first (moving forward in time)
-      .limit(20);
+      .limit(100); // Increased from 20 to 100 for zero backlog
 
     if (queueError) {
       console.error('Queue fetch error:', queueError);
