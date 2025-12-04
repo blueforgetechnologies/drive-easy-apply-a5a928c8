@@ -1900,6 +1900,7 @@ export type Database = {
           geocoding_api_calls: number
           geocoding_cost: number
           id: string
+          last_synced_at: string | null
           map_loads: number
           map_loads_cost: number
           month_year: string
@@ -1912,6 +1913,7 @@ export type Database = {
           geocoding_api_calls?: number
           geocoding_cost?: number
           id?: string
+          last_synced_at?: string | null
           map_loads?: number
           map_loads_cost?: number
           month_year: string
@@ -1924,6 +1926,7 @@ export type Database = {
           geocoding_api_calls?: number
           geocoding_cost?: number
           id?: string
+          last_synced_at?: string | null
           map_loads?: number
           map_loads_cost?: number
           month_year?: string
