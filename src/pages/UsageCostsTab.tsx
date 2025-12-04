@@ -46,16 +46,17 @@ const UsageCostsTab = () => {
     }
   });
 
-  // Fetch new geocode cache entries created TODAY or later (actual new API calls since base was set)
+  // Fetch new geocode cache entries created AFTER the baseline was set (Dec 4, 2025 at current time)
   const { data: newCacheEntriesThisMonth } = useQuery({
     queryKey: ["new-cache-entries-since-base"],
     queryFn: async () => {
-      // Only count entries created after Dec 4, 2025 (when baseline was established)
-      const baselineDate = '2025-12-04T00:00:00Z';
+      // Only count entries created after Dec 4, 2025 ~18:00 UTC (when baseline of 210,623 was established)
+      // Using end of day to ensure we don't double-count today's entries that are already in the baseline
+      const baselineDate = '2025-12-05T00:00:00Z';
       const { count, error } = await supabase
         .from('geocode_cache')
         .select('*', { count: 'exact', head: true })
-        .gt('created_at', baselineDate);
+        .gte('created_at', baselineDate);
       
       if (error) throw error;
       return count || 0;
