@@ -200,11 +200,9 @@ const UsageCostsTab = () => {
         .gte('received_at', hourAgo.toISOString())
         .lt('received_at', hourStart.toISOString());
       
-      // Get pending emails
-      const { count: pendingCount } = await supabase
-        .from('email_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+      // Get pending emails using RPC (email_queue has RLS blocking client access)
+      const { data: pendingCount } = await supabase
+        .rpc('get_email_queue_pending_count');
 
       // Calculate emails per minute (last hour)
       const emailsPerMinute = ((receivedThisHour || 0) / 60).toFixed(2);

@@ -2606,6 +2606,7 @@ export type Database = {
         Args: { target_date: string }
         Returns: string
       }
+      get_email_queue_pending_count: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
