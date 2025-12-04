@@ -694,6 +694,39 @@ export type Database = {
           },
         ]
       }
+      geocode_cache: {
+        Row: {
+          city: string | null
+          created_at: string
+          hit_count: number | null
+          id: string
+          latitude: number
+          location_key: string
+          longitude: number
+          state: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          hit_count?: number | null
+          id?: string
+          latitude: number
+          location_key: string
+          longitude: number
+          state?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          hit_count?: number | null
+          id?: string
+          latitude?: number
+          location_key?: string
+          longitude?: number
+          state?: string | null
+        }
+        Relationships: []
+      }
       gmail_tokens: {
         Row: {
           access_token: string
