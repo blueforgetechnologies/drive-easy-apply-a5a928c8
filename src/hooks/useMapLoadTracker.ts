@@ -12,12 +12,14 @@ export function useMapLoadTracker(componentName: string) {
     const trackMapLoad = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
         
         await supabase
           .from('map_load_tracking')
           .insert({
             component_name: componentName,
-            user_id: user?.id || null
+            user_id: user?.id || null,
+            month_year: currentMonth
           });
       } catch (error) {
         // Silently fail - don't break map functionality for tracking
