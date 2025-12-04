@@ -156,7 +156,30 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
   const mapboxToken = Deno.env.get('VITE_MAPBOX_TOKEN');
   if (!mapboxToken || !city || !state) return null;
 
+  // Normalize the location key (lowercase, trimmed)
+  const locationKey = `${city.toLowerCase().trim()}, ${state.toLowerCase().trim()}`;
+
   try {
+    // 1. Check cache first
+    const { data: cached } = await supabase
+      .from('geocode_cache')
+      .select('latitude, longitude, id, hit_count')
+      .eq('location_key', locationKey)
+      .maybeSingle();
+
+    if (cached) {
+      // Cache hit - increment hit count (fire and forget)
+      supabase
+        .from('geocode_cache')
+        .update({ hit_count: (cached.hit_count || 1) + 1 })
+        .eq('id', cached.id)
+        .then(() => {});
+      
+      console.log(`📍 Cache HIT: ${city}, ${state}`);
+      return { lat: Number(cached.latitude), lng: Number(cached.longitude) };
+    }
+
+    // 2. Cache miss - call Mapbox API
     const query = encodeURIComponent(`${city}, ${state}, USA`);
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&limit=1`
@@ -165,7 +188,21 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
     if (response.ok) {
       const data = await response.json();
       if (data.features?.[0]?.center) {
-        return { lng: data.features[0].center[0], lat: data.features[0].center[1] };
+        const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
+        
+        // 3. Store in cache for future use
+        await supabase
+          .from('geocode_cache')
+          .upsert({
+            location_key: locationKey,
+            city: city.trim(),
+            state: state.trim(),
+            latitude: coords.lat,
+            longitude: coords.lng,
+          }, { onConflict: 'location_key' });
+        
+        console.log(`📍 Cache MISS (stored): ${city}, ${state}`);
+        return coords;
       }
     }
   } catch (e) {
