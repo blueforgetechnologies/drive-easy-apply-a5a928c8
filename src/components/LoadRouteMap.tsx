@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from './ui/card';
 import { DollarSign, Leaf } from 'lucide-react';
+import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
 
 interface LoadRouteMapProps {
   stops: any[];
@@ -15,6 +16,8 @@ interface LoadRouteMapProps {
 }
 
 export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [], vehicle, onOptimize, optimizing = false }: LoadRouteMapProps) {
+  useMapLoadTracker('LoadRouteMap');
+  
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);

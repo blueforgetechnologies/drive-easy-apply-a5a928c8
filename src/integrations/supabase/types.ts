@@ -1805,6 +1805,27 @@ export type Database = {
           },
         ]
       }
+      map_load_tracking: {
+        Row: {
+          component_name: string
+          created_at: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          component_name: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          component_name?: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       missed_loads_history: {
         Row: {
           created_at: string | null
