@@ -31,16 +31,25 @@ const UsageCostsTab = () => {
   // Get current month in YYYY-MM format
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Fetch current month geocode stats
-  const { data: geocodeStats } = useQuery({
-    queryKey: ["geocode-cache-stats", currentMonth],
+  // Fetch current month usage from mapbox_monthly_usage table
+  const { data: currentMonthUsage } = useQuery({
+    queryKey: ["current-month-usage", currentMonth],
     queryFn: async () => {
-      // Get current month's geocoding calls
-      const { count: currentMonthCalls } = await supabase
-        .from('geocode_cache')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_created', currentMonth);
+      const { data, error } = await supabase
+        .from('mapbox_monthly_usage')
+        .select('*')
+        .eq('month_year', currentMonth)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+      return data;
+    }
+  });
 
+  // Fetch geocode cache stats for cache performance display
+  const { data: geocodeStats } = useQuery({
+    queryKey: ["geocode-cache-stats"],
+    queryFn: async () => {
       // Get all-time stats for cache performance
       const { data, error } = await supabase
         .from('geocode_cache')
@@ -53,7 +62,6 @@ const UsageCostsTab = () => {
       const estimatedSavings = totalHits * 0.00075;
       
       return {
-        currentMonthCalls: currentMonthCalls || 0,
         totalLocations,
         totalHits,
         estimatedSavings: estimatedSavings.toFixed(2),
@@ -163,13 +171,13 @@ const UsageCostsTab = () => {
   const MAPBOX_MAP_LOADS_FREE_TIER = 50000;
   const MAPBOX_MAP_LOADS_RATE = 5.00; // $5.00 per 1,000 after free tier
 
-  // Current month geocoding API calls
-  const currentMonthGeocodingCalls = geocodeStats?.currentMonthCalls || 0;
+  // Current month geocoding API calls - use mapbox_monthly_usage if available, fall back to map_load_tracking count
+  const currentMonthGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
   const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
-  const geocodingCost = (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
+  const geocodingCost = currentMonthUsage?.geocoding_cost || (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
 
-  // Current month map loads
-  const currentMonthMapLoads = mapLoadStats || 0;
+  // Current month map loads - use mapbox_monthly_usage if available
+  const currentMonthMapLoads = currentMonthUsage?.map_loads || mapLoadStats || 0;
   const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
   const mapLoadsCost = (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
 
