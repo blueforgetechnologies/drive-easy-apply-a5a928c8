@@ -38,74 +38,40 @@ const UsageCostsTab = () => {
   // Get current month in YYYY-MM format
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Fetch baseline from mapbox_monthly_usage table (synced from Mapbox dashboard)
-  const { data: baselineUsage, isFetching: isUsageFetching } = useQuery({
-    queryKey: ["mapbox-baseline", currentMonth],
+  // Fetch real-time usage directly from tracking tables (not from snapshot table)
+  const { data: currentMonthUsage, isFetching: isUsageFetching } = useQuery({
+    queryKey: ["mapbox-realtime-usage", currentMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mapbox_monthly_usage')
-        .select('*')
-        .eq('month_year', currentMonth)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    },
-    refetchInterval: mapboxRefreshInterval,
-    staleTime: 0, // Always fetch fresh on mount
-  });
-
-  // Fetch incremental calls since last sync (new calls made by the app)
-  const { data: incrementalCalls } = useQuery({
-    queryKey: ["mapbox-incremental", currentMonth, baselineUsage?.last_synced_at],
-    queryFn: async () => {
-      const lastSyncedAt = baselineUsage?.last_synced_at;
-      
-      if (!lastSyncedAt) {
-        setLastRefresh(new Date());
-        return { geocoding: 0, mapLoads: 0, directions: 0 };
-      }
-      
-      // Count new geocoding calls since last sync
+      // Count geocoding calls for current month directly from geocode_cache
       const { count: geocodingCount } = await supabase
         .from('geocode_cache')
         .select('*', { count: 'exact', head: true })
-        .gt('created_at', lastSyncedAt)
         .eq('month_created', currentMonth);
       
-      // Count new map loads since last sync
+      // Count map loads for current month directly from map_load_tracking
       const { count: mapLoadsCount } = await supabase
         .from('map_load_tracking')
         .select('*', { count: 'exact', head: true })
-        .gt('created_at', lastSyncedAt)
         .eq('month_year', currentMonth);
       
-      // Count new directions API calls since last sync
+      // Count directions API calls for current month directly from directions_api_tracking
       const { count: directionsCount } = await supabase
         .from('directions_api_tracking')
         .select('*', { count: 'exact', head: true })
-        .gt('created_at', lastSyncedAt)
         .eq('month_year', currentMonth);
       
       setLastRefresh(new Date());
+      
       return {
-        geocoding: geocodingCount || 0,
-        mapLoads: mapLoadsCount || 0,
-        directions: directionsCount || 0
+        month_year: currentMonth,
+        geocoding_api_calls: geocodingCount || 0,
+        map_loads: mapLoadsCount || 0,
+        directions_api_calls: directionsCount || 0,
       };
     },
-    enabled: !!baselineUsage?.last_synced_at,
     refetchInterval: mapboxRefreshInterval,
-    staleTime: 0, // Always consider data stale to ensure fresh fetches
+    staleTime: 0,
   });
-
-  // Combined usage: baseline + incremental
-  const currentMonthUsage = baselineUsage ? {
-    ...baselineUsage,
-    geocoding_api_calls: (baselineUsage.geocoding_api_calls || 0) + (incrementalCalls?.geocoding || 0),
-    map_loads: (baselineUsage.map_loads || 0) + (incrementalCalls?.mapLoads || 0),
-    directions_api_calls: (baselineUsage.directions_api_calls || 0) + (incrementalCalls?.directions || 0),
-  } : null;
 
   // Fetch geocode cache stats for cache performance display
   const { data: geocodeStats } = useQuery({
