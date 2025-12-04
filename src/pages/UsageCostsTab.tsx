@@ -118,6 +118,22 @@ const UsageCostsTab = () => {
     }
   });
 
+  // Fetch map load tracking (last 30 days)
+  const { data: mapLoadStats } = useQuery({
+    queryKey: ["usage-map-loads"],
+    queryFn: async () => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { count } = await supabase
+        .from('map_load_tracking')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      return count || 0;
+    }
+  });
+
   // Mapbox pricing tiers
   const MAPBOX_GEOCODING_FREE_TIER = 100000;
   const MAPBOX_GEOCODING_RATE = 0.75; // $0.75 per 1,000 after free tier
@@ -136,9 +152,9 @@ const UsageCostsTab = () => {
   const billableGeocodingCalls = Math.max(0, estimatedApiCalls - MAPBOX_GEOCODING_FREE_TIER);
   const geocodingCost = (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
 
-  // Estimate map loads (each page with a map = 1 load)
-  const estimatedMapLoads = (recentActivity?.loads || 0) * 3; // ~3 map views per load (list, detail, route)
-  const billableMapLoads = Math.max(0, estimatedMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
+  // Map loads from tracking table (actual count)
+  const actualMapLoads = mapLoadStats || 0;
+  const billableMapLoads = Math.max(0, actualMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
   const mapLoadsCost = (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
 
   const estimatedCosts = {
@@ -150,8 +166,8 @@ const UsageCostsTab = () => {
       geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - estimatedApiCalls),
       geocodingBillable: billableGeocodingCalls,
       geocodingCost: geocodingCost.toFixed(2),
-      mapLoads: estimatedMapLoads,
-      mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - estimatedMapLoads),
+      mapLoads: actualMapLoads,
+      mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - actualMapLoads),
       mapLoadsBillable: billableMapLoads,
       mapLoadsCost: mapLoadsCost.toFixed(2)
     },
@@ -296,10 +312,10 @@ const UsageCostsTab = () => {
           
           {/* Map Loads */}
           <div className="space-y-2 pt-3 border-t">
-            <p className="text-sm font-medium">Map Loads (GL JS)</p>
+            <p className="text-sm font-medium">Map Loads (GL JS) - Tracked</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Total Loads</p>
+                <p className="text-xs text-muted-foreground">Total Loads (30d)</p>
                 <p className="text-lg font-semibold">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
               </div>
               <div className="space-y-1">
@@ -319,7 +335,7 @@ const UsageCostsTab = () => {
                 <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.mapLoadsCost}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Rate: $5.00/1,000 after 50K free</p>
+            <p className="text-xs text-muted-foreground">Rate: $5.00/1,000 after 50K free • Tracking started {new Date().toLocaleDateString()}</p>
           </div>
         </CardContent>
       </Card>

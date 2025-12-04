@@ -4,12 +4,15 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
 import { RefreshCw, MapIcon, Satellite, Cloud } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
 
 const MapTab = () => {
+  useMapLoadTracker('MapTab');
+  
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [vehicles, setVehicles] = useState<any[]>([]);
