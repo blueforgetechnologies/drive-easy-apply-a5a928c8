@@ -51,6 +51,21 @@ const UsageCostsTab = () => {
     }
   });
 
+  // Fetch historical geocode cache stats
+  const { data: dailyStats } = useQuery({
+    queryKey: ["geocode-daily-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('geocode_cache_daily_stats')
+        .select('*')
+        .order('recorded_at', { ascending: false })
+        .limit(7);
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   // Fetch table counts
   const { data: tableCounts } = useQuery({
     queryKey: ["usage-table-counts"],
@@ -179,9 +194,30 @@ const UsageCostsTab = () => {
               <p className="text-2xl font-semibold text-green-600">${geocodeStats?.estimatedSavings || '0.00'}</p>
             </div>
           </div>
+          
+          {/* Daily Stats History */}
+          {dailyStats && dailyStats.length > 0 && (
+            <div className="pt-4 border-t">
+              <p className="text-sm font-medium mb-3">Daily History (Last 7 Days)</p>
+              <div className="space-y-2">
+                {dailyStats.map((stat: any) => (
+                  <div key={stat.id} className="flex justify-between items-center text-sm py-1 px-2 rounded bg-muted/50">
+                    <span className="text-muted-foreground">{new Date(stat.recorded_at).toLocaleDateString()}</span>
+                    <div className="flex gap-4">
+                      <span>+{stat.new_locations_today} new</span>
+                      <span>{stat.hits_today} hits</span>
+                      <span className="text-green-600 font-medium">${Number(stat.estimated_savings).toFixed(2)} saved</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="pt-2 border-t text-xs text-muted-foreground">
             <p>• Each cache hit saves one Mapbox API call ($0.00075)</p>
             <p>• 2,596 unique locations backfilled from existing data</p>
+            <p>• Stats snapshot daily at midnight ET</p>
           </div>
         </CardContent>
       </Card>
