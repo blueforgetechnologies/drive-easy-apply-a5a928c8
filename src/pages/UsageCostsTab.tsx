@@ -118,12 +118,32 @@ const UsageCostsTab = () => {
     }
   });
 
+  // Mapbox pricing tiers
+  const MAPBOX_GEOCODING_FREE_TIER = 100000;
+  const MAPBOX_GEOCODING_RATE = 0.75; // $0.75 per 1,000 after free tier
+  const MAPBOX_MAP_LOADS_FREE_TIER = 50000;
+  const MAPBOX_MAP_LOADS_RATE = 5.00; // $5.00 per 1,000 after free tier
+
+  // Calculate geocoding cost (total hits from cache = total API calls we would have made)
+  const totalGeocodingCalls = geocodeStats?.totalHits || 0;
+  const billableGeocodingCalls = Math.max(0, totalGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
+  const geocodingCost = (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
+
+  // Estimate map loads (each page with a map = 1 load)
+  const estimatedMapLoads = (recentActivity?.loads || 0) * 3; // ~3 map views per load (list, detail, route)
+  const billableMapLoads = Math.max(0, estimatedMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
+  const mapLoadsCost = (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
+
   const estimatedCosts = {
     mapbox: {
-      geocodingCalls: (tableCounts?.load_hunt_matches || 0),
-      estimatedCost: ((tableCounts?.load_hunt_matches || 0) * 0.006).toFixed(2), // $6 per 1000 calls
-      mapLoads: (recentActivity?.loads || 0) * 2, // Estimate 2 map loads per load
-      mapLoadsCost: ((recentActivity?.loads || 0) * 2 * 0.00075).toFixed(2) // $0.75 per 1000 loads
+      geocodingCalls: totalGeocodingCalls,
+      geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - totalGeocodingCalls),
+      geocodingBillable: billableGeocodingCalls,
+      geocodingCost: geocodingCost.toFixed(2),
+      mapLoads: estimatedMapLoads,
+      mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - estimatedMapLoads),
+      mapLoadsBillable: billableMapLoads,
+      mapLoadsCost: mapLoadsCost.toFixed(2)
     },
     resend: {
       emailsSent: recentActivity?.emails || 0,
@@ -136,8 +156,8 @@ const UsageCostsTab = () => {
   };
 
   const totalEstimatedMonthlyCost = (
-    parseFloat(estimatedCosts.mapbox.estimatedCost) +
-    parseFloat(estimatedCosts.mapbox.mapLoadsCost) +
+    geocodingCost +
+    mapLoadsCost +
     parseFloat(estimatedCosts.resend.estimatedCost)
   ).toFixed(2);
 
@@ -215,8 +235,8 @@ const UsageCostsTab = () => {
           )}
           
           <div className="pt-2 border-t text-xs text-muted-foreground">
-            <p>• Each cache hit saves one Mapbox API call ($0.00075)</p>
-            <p>• 2,596 unique locations backfilled from existing data</p>
+            <p>• Each cache hit saves one Mapbox API call ($0.75/1,000 = $0.00075)</p>
+            <p>• Savings calculated based on cache hits that would have been billable API calls</p>
             <p>• Stats snapshot daily at midnight ET</p>
           </div>
         </CardContent>
@@ -227,29 +247,65 @@ const UsageCostsTab = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Map className="h-5 w-5" />
-            Mapbox Usage
+            Mapbox Usage & Billing
           </CardTitle>
-          <CardDescription>Geocoding and map rendering costs</CardDescription>
+          <CardDescription>Geocoding and map rendering costs with free tier tracking</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Geocoding API Calls (Total)</p>
-              <p className="text-2xl font-semibold">{estimatedCosts.mapbox.geocodingCalls.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">
-                Est. Cost: ${estimatedCosts.mapbox.estimatedCost}
-              </p>
+          {/* Geocoding API */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Geocoding API</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Total Calls</p>
+                <p className="text-lg font-semibold">{estimatedCosts.mapbox.geocodingCalls.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Free Tier (100K)</p>
+                <p className="text-lg font-semibold text-green-600">
+                  {estimatedCosts.mapbox.geocodingFreeRemaining > 0 
+                    ? `${estimatedCosts.mapbox.geocodingFreeRemaining.toLocaleString()} left` 
+                    : 'Exceeded'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Billable Calls</p>
+                <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.geocodingBillable.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Est. Cost</p>
+                <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.geocodingCost}</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Map Loads (30 days)</p>
-              <p className="text-2xl font-semibold">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">
-                Est. Cost: ${estimatedCosts.mapbox.mapLoadsCost}
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">Rate: $0.75/1,000 after 100K free</p>
           </div>
-          <div className="pt-2 border-t">
-            <p className="text-sm text-muted-foreground">Note: Geocoding occurs when loads match hunt plans with location criteria</p>
+          
+          {/* Map Loads */}
+          <div className="space-y-2 pt-3 border-t">
+            <p className="text-sm font-medium">Map Loads (GL JS)</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Total Loads</p>
+                <p className="text-lg font-semibold">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Free Tier (50K)</p>
+                <p className="text-lg font-semibold text-green-600">
+                  {estimatedCosts.mapbox.mapLoadsFreeRemaining > 0 
+                    ? `${estimatedCosts.mapbox.mapLoadsFreeRemaining.toLocaleString()} left` 
+                    : 'Exceeded'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Billable Loads</p>
+                <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.mapLoadsBillable.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Est. Cost</p>
+                <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.mapLoadsCost}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Rate: $5.00/1,000 after 50K free</p>
           </div>
         </CardContent>
       </Card>
