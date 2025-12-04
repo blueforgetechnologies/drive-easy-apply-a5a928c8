@@ -111,22 +111,48 @@ const UsageCostsTab = () => {
   const { data: geocodeStats } = useQuery({
     queryKey: ["geocode-cache-stats"],
     queryFn: async () => {
-      // Get all-time stats for cache performance
-      const { data, error } = await supabase
+      // Get total locations count
+      const { count: totalLocations } = await supabase
         .from('geocode_cache')
-        .select('hit_count, created_at');
+        .select('*', { count: 'exact', head: true });
+      
+      // Get sum of hit_count using a manual aggregation query
+      const { data: hitData, error } = await supabase
+        .from('geocode_cache')
+        .select('hit_count');
       
       if (error) throw error;
       
-      const totalLocations = data?.length || 0;
-      const totalHits = data?.reduce((sum, row) => sum + (row.hit_count || 1), 0) || 0;
-      const estimatedSavings = totalHits * 0.00075;
+      // Since we can't easily sum in Supabase client, fetch in batches if needed
+      // For now, use a workaround: fetch all hit_counts with pagination
+      let totalHits = 0;
+      let offset = 0;
+      const batchSize = 1000;
+      
+      while (true) {
+        const { data: batch, error: batchError } = await supabase
+          .from('geocode_cache')
+          .select('hit_count')
+          .range(offset, offset + batchSize - 1);
+        
+        if (batchError) throw batchError;
+        if (!batch || batch.length === 0) break;
+        
+        totalHits += batch.reduce((sum, row) => sum + (row.hit_count || 1), 0);
+        
+        if (batch.length < batchSize) break;
+        offset += batchSize;
+      }
+      
+      const cacheSaved = Math.max(0, totalHits - (totalLocations || 0));
+      const estimatedSavings = cacheSaved * 0.00075;
       
       return {
-        totalLocations,
+        totalLocations: totalLocations || 0,
         totalHits,
+        cacheSaved,
         estimatedSavings: estimatedSavings.toFixed(2),
-        cacheHitRate: totalLocations > 0 ? ((totalHits - totalLocations) / totalHits * 100).toFixed(1) : '0'
+        cacheHitRate: totalHits > 0 ? (cacheSaved / totalHits * 100).toFixed(1) : '0'
       };
     },
     refetchInterval: mapboxRefreshInterval
@@ -386,10 +412,8 @@ const UsageCostsTab = () => {
   const billableDirectionsCalls = Math.max(0, currentMonthDirectionsCalls - MAPBOX_DIRECTIONS_FREE_TIER);
   const directionsCost = calculateDirectionsCost(currentMonthDirectionsCalls);
 
-  // Cache stats for display
-  const cachedLocations = geocodeStats?.totalLocations || 0;
-  const totalRequestsServed = geocodeStats?.totalHits || 0;
-  const cacheSavedCalls = Math.max(0, totalRequestsServed - cachedLocations);
+  // Cache stats for display - use pre-calculated values from query
+  const cacheSavedCalls = geocodeStats?.cacheSaved || 0;
 
   const estimatedCosts = {
     mapbox: {
