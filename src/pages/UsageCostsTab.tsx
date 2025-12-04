@@ -51,18 +51,20 @@ const UsageCostsTab = () => {
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     },
-    refetchInterval: mapboxRefreshInterval
+    refetchInterval: mapboxRefreshInterval,
+    staleTime: 0, // Always fetch fresh on mount
   });
 
   // Fetch incremental calls since last sync (new calls made by the app)
   const { data: incrementalCalls } = useQuery({
     queryKey: ["mapbox-incremental", currentMonth, baselineUsage?.last_synced_at],
     queryFn: async () => {
-      if (!baselineUsage?.last_synced_at) {
+      const lastSyncedAt = baselineUsage?.last_synced_at;
+      
+      if (!lastSyncedAt) {
+        setLastRefresh(new Date());
         return { geocoding: 0, mapLoads: 0, directions: 0 };
       }
-      
-      const lastSyncedAt = baselineUsage.last_synced_at;
       
       // Count new geocoding calls since last sync
       const { count: geocodingCount } = await supabase
@@ -92,8 +94,9 @@ const UsageCostsTab = () => {
         directions: directionsCount || 0
       };
     },
-    enabled: !!baselineUsage,
-    refetchInterval: mapboxRefreshInterval
+    enabled: !!baselineUsage?.last_synced_at,
+    refetchInterval: mapboxRefreshInterval,
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
   });
 
   // Combined usage: baseline + incremental
