@@ -362,8 +362,8 @@ serve(async (req) => {
       }
     }
 
-    // Process each queued item sequentially
-    for (const item of queueItems) {
+    // Helper function to process a single email
+    const processEmail = async (item: any): Promise<{ success: boolean; queuedAt: string; loadId?: string; error?: string }> => {
       try {
         // Mark as processing
         await supabase
@@ -378,14 +378,11 @@ serve(async (req) => {
           .eq('email_id', item.gmail_message_id);
 
         if (count && count > 0) {
-          // Already processed, mark complete and update checkpoint
           await supabase
             .from('email_queue')
             .update({ status: 'completed', processed_at: new Date().toISOString() })
             .eq('id', item.id);
-          processed++;
-          lastProcessedReceivedAt = item.queued_at;
-          continue;
+          return { success: true, queuedAt: item.queued_at };
         }
 
         // Fetch full message from Gmail
@@ -437,20 +434,18 @@ serve(async (req) => {
           const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
           if (coords) {
             parsedData.pickup_coordinates = coords;
-            console.log(`✅ Geocoded ${parsedData.origin_city}, ${parsedData.origin_state} → ${coords.lat}, ${coords.lng}`);
           } else {
             geocodeFailed = true;
-            console.warn(`⚠️ Geocoding FAILED for ${parsedData.origin_city}, ${parsedData.origin_state}`);
           }
         }
 
-        // Check for issues - include geocoding failures
+        // Check for issues
         const hasIssues = !parsedData.broker_email || !parsedData.origin_city || !parsedData.vehicle_type || geocodeFailed;
         const issueNotes = [];
         if (!parsedData.broker_email) issueNotes.push('Missing broker email');
         if (!parsedData.origin_city) issueNotes.push('Missing origin location');
         if (!parsedData.vehicle_type) issueNotes.push('Missing vehicle type');
-        if (geocodeFailed) issueNotes.push('Geocoding failed - no coordinates');
+        if (geocodeFailed) issueNotes.push('Geocoding failed');
 
         // Extract sender info
         const fromMatch = from.match(/^(.+?)\s*<(.+?)>$/);
@@ -475,12 +470,10 @@ serve(async (req) => {
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
           }, { onConflict: 'email_id' })
-          .select('load_id, received_at')
+          .select('id, load_id, received_at')
           .single();
 
-        if (insertError) {
-          throw insertError;
-        }
+        if (insertError) throw insertError;
 
         // Mark queue item as completed
         await supabase
@@ -488,127 +481,103 @@ serve(async (req) => {
           .update({ status: 'completed', processed_at: new Date().toISOString() })
           .eq('id', item.id);
 
-        processed++;
-        lastProcessedReceivedAt = item.queued_at;
-        if (insertedEmail?.load_id) {
-          lastProcessedLoadId = insertedEmail.load_id;
-        }
-        
-        console.log(`✅ Processed: ${subject.substring(0, 50)} -> ${lastProcessedLoadId}`);
-
-        // === SERVER-SIDE HUNT MATCHING ===
-        // Match this load against all enabled hunt plans immediately
+        // Hunt matching (fire and forget for speed)
         if (insertedEmail && parsedData.pickup_coordinates && parsedData.vehicle_type) {
-          try {
-            // Get all enabled hunt plans
-            const { data: enabledHunts } = await supabase
-              .from('hunt_plans')
-              .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id')
-              .eq('enabled', true);
-
-            if (enabledHunts && enabledHunts.length > 0) {
-              const loadCoords = parsedData.pickup_coordinates;
-              const loadVehicleType = parsedData.vehicle_type?.toLowerCase().replace(/[^a-z]/g, '');
-              
-              // Haversine distance calculation
-              const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-                const R = 3959; // Earth radius in miles
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-              };
-
-              let matchesCreated = 0;
-              for (const hunt of enabledHunts) {
-                // Skip if load is before floor_load_id
-                if (hunt.floor_load_id && insertedEmail.load_id && insertedEmail.load_id <= hunt.floor_load_id) {
-                  continue;
-                }
-
-                const huntCoords = hunt.hunt_coordinates as { lat: number; lng: number } | null;
-                if (!huntCoords?.lat || !huntCoords?.lng) continue;
-
-                // Check distance
-                const distance = haversineDistance(
-                  loadCoords.lat, loadCoords.lng,
-                  huntCoords.lat, huntCoords.lng
-                );
-                const radius = parseFloat(hunt.pickup_radius || '200');
-                
-                if (distance > radius) continue;
-
-                // Check vehicle type match
-                const huntVehicleSize = hunt.vehicle_size?.toLowerCase().replace(/[^a-z]/g, '');
-                if (huntVehicleSize && loadVehicleType && !loadVehicleType.includes(huntVehicleSize) && !huntVehicleSize.includes(loadVehicleType)) {
-                  // Check if matches any variant
-                  const vehicleMatches = 
-                    (loadVehicleType.includes('cargo') && huntVehicleSize.includes('cargo')) ||
-                    (loadVehicleType.includes('sprinter') && huntVehicleSize.includes('sprinter')) ||
-                    (loadVehicleType.includes('straight') && huntVehicleSize.includes('straight')) ||
-                    (loadVehicleType.includes('flatbed') && huntVehicleSize.includes('flatbed'));
-                  if (!vehicleMatches) continue;
-                }
-
-                // Get load_email id for this load
-                const { data: loadEmail } = await supabase
-                  .from('load_emails')
-                  .select('id')
-                  .eq('load_id', insertedEmail.load_id)
-                  .single();
-
-                if (!loadEmail) continue;
-
-                // Check if match already exists
-                const { count: existingMatch } = await supabase
-                  .from('load_hunt_matches')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('load_email_id', loadEmail.id)
-                  .eq('hunt_plan_id', hunt.id);
-
-                if (existingMatch && existingMatch > 0) continue;
-
-                // Create match
-                const { error: matchError } = await supabase
-                  .from('load_hunt_matches')
-                  .insert({
-                    load_email_id: loadEmail.id,
-                    hunt_plan_id: hunt.id,
-                    vehicle_id: hunt.vehicle_id,
-                    distance_miles: Math.round(distance),
-                    is_active: true,
-                    matched_at: new Date().toISOString(),
-                  });
-
-                if (!matchError) {
-                  matchesCreated++;
-                }
-              }
-
-              if (matchesCreated > 0) {
-                console.log(`🎯 SERVER MATCH: Load ${insertedEmail.load_id} matched to ${matchesCreated} hunt plan(s)`);
-              }
-            }
-          } catch (matchErr) {
-            console.error('Server-side matching error:', matchErr);
-            // Don't fail the whole process if matching fails
-          }
+          matchLoadToHunts(insertedEmail.id, insertedEmail.load_id, parsedData).catch(() => {});
         }
 
+        return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id };
       } catch (error) {
-        console.error(`Error processing ${item.gmail_message_id}:`, error);
-        errors++;
-        
         const newStatus = item.attempts >= 3 ? 'failed' : 'pending';
         await supabase
           .from('email_queue')
-          .update({ 
-            status: newStatus, 
-            last_error: String(error),
-          })
+          .update({ status: newStatus, last_error: String(error) })
           .eq('id', item.id);
+        return { success: false, queuedAt: item.queued_at, error: String(error) };
+      }
+    };
+
+    // Helper function for hunt matching
+    const matchLoadToHunts = async (loadEmailId: string, loadId: string, parsedData: any) => {
+      const { data: enabledHunts } = await supabase
+        .from('hunt_plans')
+        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id')
+        .eq('enabled', true);
+
+      if (!enabledHunts?.length) return;
+
+      const loadCoords = parsedData.pickup_coordinates;
+      const loadVehicleType = parsedData.vehicle_type?.toLowerCase().replace(/[^a-z]/g, '');
+
+      const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 3959;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      };
+
+      for (const hunt of enabledHunts) {
+        if (hunt.floor_load_id && loadId <= hunt.floor_load_id) continue;
+
+        const huntCoords = hunt.hunt_coordinates as { lat: number; lng: number } | null;
+        if (!huntCoords?.lat || !huntCoords?.lng) continue;
+
+        const distance = haversineDistance(loadCoords.lat, loadCoords.lng, huntCoords.lat, huntCoords.lng);
+        if (distance > parseFloat(hunt.pickup_radius || '200')) continue;
+
+        const huntVehicleSize = hunt.vehicle_size?.toLowerCase().replace(/[^a-z]/g, '');
+        if (huntVehicleSize && loadVehicleType) {
+          const matches = loadVehicleType.includes(huntVehicleSize) || huntVehicleSize.includes(loadVehicleType) ||
+            (loadVehicleType.includes('cargo') && huntVehicleSize.includes('cargo')) ||
+            (loadVehicleType.includes('sprinter') && huntVehicleSize.includes('sprinter')) ||
+            (loadVehicleType.includes('straight') && huntVehicleSize.includes('straight'));
+          if (!matches) continue;
+        }
+
+        const { count: existingMatch } = await supabase
+          .from('load_hunt_matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('load_email_id', loadEmailId)
+          .eq('hunt_plan_id', hunt.id);
+
+        if (existingMatch && existingMatch > 0) continue;
+
+        await supabase.from('load_hunt_matches').insert({
+          load_email_id: loadEmailId,
+          hunt_plan_id: hunt.id,
+          vehicle_id: hunt.vehicle_id,
+          distance_miles: Math.round(distance),
+          is_active: true,
+          matched_at: new Date().toISOString(),
+        });
+      }
+    };
+
+    // Process emails in parallel batches of 10 for ~10x speedup
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < queueItems.length; i += BATCH_SIZE) {
+      const batch = queueItems.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(batch.map(item => processEmail(item)));
+      
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          if (result.value.success) {
+            processed++;
+            if (result.value.queuedAt > (lastProcessedReceivedAt || '')) {
+              lastProcessedReceivedAt = result.value.queuedAt;
+            }
+            if (result.value.loadId) {
+              lastProcessedLoadId = result.value.loadId;
+            }
+          } else {
+            errors++;
+          }
+        } else {
+          errors++;
+        }
       }
     }
 
