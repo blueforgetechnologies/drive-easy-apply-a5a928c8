@@ -34,17 +34,42 @@ Deno.serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('month_year', monthYear);
 
-    // Calculate costs
+    // Calculate costs using tiered pricing
     const GEOCODING_FREE_TIER = 100000;
-    const GEOCODING_RATE = 0.75; // per 1,000
     const MAP_LOADS_FREE_TIER = 50000;
     const MAP_LOADS_RATE = 5.00; // per 1,000
+
+    // Tiered geocoding cost calculation
+    const calculateGeocodingCost = (calls: number): number => {
+      if (calls <= GEOCODING_FREE_TIER) return 0;
+      
+      let cost = 0;
+      let remaining = calls - GEOCODING_FREE_TIER;
+      
+      // Tier 1: 100,001 - 500,000 @ $0.75/1,000
+      const tier1 = Math.min(remaining, 400000);
+      cost += (tier1 / 1000) * 0.75;
+      remaining -= tier1;
+      
+      if (remaining <= 0) return cost;
+      
+      // Tier 2: 500,001 - 1,000,000 @ $0.60/1,000
+      const tier2 = Math.min(remaining, 500000);
+      cost += (tier2 / 1000) * 0.60;
+      remaining -= tier2;
+      
+      if (remaining <= 0) return cost;
+      
+      // Tier 3: 1,000,000+ @ $0.45/1,000
+      cost += (remaining / 1000) * 0.45;
+      
+      return cost;
+    };
 
     const geocodingCount = geocodingCalls || 0;
     const mapLoadsCount = mapLoads || 0;
 
-    const billableGeocoding = Math.max(0, geocodingCount - GEOCODING_FREE_TIER);
-    const geocodingCost = (billableGeocoding / 1000) * GEOCODING_RATE;
+    const geocodingCost = calculateGeocodingCost(geocodingCount);
 
     const billableMapLoads = Math.max(0, mapLoadsCount - MAP_LOADS_FREE_TIER);
     const mapLoadsCost = (billableMapLoads / 1000) * MAP_LOADS_RATE;
