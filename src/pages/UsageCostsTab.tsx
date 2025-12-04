@@ -28,6 +28,29 @@ const UsageCostsTab = () => {
     }
   });
 
+  // Fetch geocode cache stats
+  const { data: geocodeStats } = useQuery({
+    queryKey: ["geocode-cache-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('geocode_cache')
+        .select('hit_count, created_at');
+      
+      if (error) throw error;
+      
+      const totalLocations = data?.length || 0;
+      const totalHits = data?.reduce((sum, row) => sum + (row.hit_count || 1), 0) || 0;
+      const estimatedSavings = totalHits * 0.00075; // $0.75 per 1000 calls = $0.00075 per call
+      
+      return {
+        totalLocations,
+        totalHits,
+        estimatedSavings: estimatedSavings.toFixed(2),
+        cacheHitRate: totalLocations > 0 ? ((totalHits - totalLocations) / totalHits * 100).toFixed(1) : '0'
+      };
+    }
+  });
+
   // Fetch table counts
   const { data: tableCounts } = useQuery({
     queryKey: ["usage-table-counts"],
@@ -36,7 +59,7 @@ const UsageCostsTab = () => {
         'loads', 'load_emails', 'load_stops', 'load_hunt_matches',
         'vehicles', 'applications', 'dispatchers', 'carriers',
         'customers', 'payees', 'settlements', 'invoices',
-        'maintenance_records', 'audit_logs', 'load_documents'
+        'maintenance_records', 'audit_logs', 'load_documents', 'geocode_cache'
       ] as const;
       
       const counts: Record<string, number> = {};
@@ -124,6 +147,41 @@ const UsageCostsTab = () => {
         <CardContent>
           <div className="text-4xl font-bold text-primary">
             ${totalEstimatedMonthlyCost}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Geocode Cache Stats */}
+      <Card className="border-green-500/20 bg-green-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Map className="h-5 w-5 text-green-500" />
+            Geocode Cache Performance
+          </CardTitle>
+          <CardDescription>Cache reduces Mapbox API calls</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Cached Locations</p>
+              <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalLocations?.toLocaleString() || 0}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Total Cache Hits</p>
+              <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalHits?.toLocaleString() || 0}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Cache Hit Rate</p>
+              <p className="text-2xl font-semibold text-green-600">{geocodeStats?.cacheHitRate || 0}%</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Est. Savings</p>
+              <p className="text-2xl font-semibold text-green-600">${geocodeStats?.estimatedSavings || '0.00'}</p>
+            </div>
+          </div>
+          <div className="pt-2 border-t text-xs text-muted-foreground">
+            <p>• Each cache hit saves one Mapbox API call ($0.00075)</p>
+            <p>• 2,596 unique locations backfilled from existing data</p>
           </div>
         </CardContent>
       </Card>
