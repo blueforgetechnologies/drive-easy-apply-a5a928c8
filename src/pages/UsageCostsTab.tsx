@@ -13,7 +13,9 @@ const UsageCostsTab = () => {
   const [aiTestResult, setAiTestResult] = useState<string>("");
   const [emailSource, setEmailSource] = useState<string>("sylectus");
   const [mapboxRefreshInterval, setMapboxRefreshInterval] = useState<number>(20000); // 20 seconds default
+  const [geocodeCacheRefreshInterval, setGeocodeCacheRefreshInterval] = useState<number>(30000); // 30 seconds default
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [lastGeocodeRefresh, setLastGeocodeRefresh] = useState<Date>(new Date());
   const queryClient = useQueryClient();
 
   // Test AI mutation
@@ -146,9 +148,10 @@ const UsageCostsTab = () => {
   }, [baselineUsage, incrementalCalls, currentMonthUsage]);
 
   // Fetch geocode cache stats for cache performance display
-  const { data: geocodeStats } = useQuery({
-    queryKey: ["geocode-cache-stats"],
+  const { data: geocodeStats, isFetching: isGeocodeStatsFetching, refetch: refetchGeocodeStats } = useQuery({
+    queryKey: ["geocode-cache-stats", geocodeCacheRefreshInterval],
     queryFn: async () => {
+      console.log('[Geocode Cache] Fetching stats...');
       // Get total locations count
       const { count: totalLocations } = await supabase
         .from('geocode_cache')
@@ -185,6 +188,9 @@ const UsageCostsTab = () => {
       const cacheSaved = Math.max(0, totalHits - (totalLocations || 0));
       const estimatedSavings = cacheSaved * 0.00075;
       
+      setLastGeocodeRefresh(new Date());
+      console.log('[Geocode Cache] Stats:', { totalLocations, totalHits, cacheSaved });
+      
       return {
         totalLocations: totalLocations || 0,
         totalHits,
@@ -193,7 +199,9 @@ const UsageCostsTab = () => {
         cacheHitRate: totalHits > 0 ? (cacheSaved / totalHits * 100).toFixed(1) : '0'
       };
     },
-    refetchInterval: mapboxRefreshInterval
+    refetchInterval: geocodeCacheRefreshInterval,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
   });
 
   // Fetch historical geocode cache stats
@@ -516,11 +524,66 @@ const UsageCostsTab = () => {
       {/* Geocode Cache Stats */}
       <Card className="border-green-500/20 bg-green-500/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Map className="h-5 w-5 text-green-500" />
-            Geocode Cache Performance
-          </CardTitle>
-          <CardDescription>Cache reduces Mapbox API calls</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Map className="h-5 w-5 text-green-500" />
+                Geocode Cache Performance
+              </CardTitle>
+              <CardDescription>Cache reduces Mapbox API calls</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {isGeocodeStatsFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              <span className="text-xs text-muted-foreground">
+                {isGeocodeStatsFetching ? 'Refreshing...' : `Last: ${lastGeocodeRefresh.toLocaleTimeString()}`} • {geocodeCacheRefreshInterval / 1000}s
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1">
+                    <Settings className="h-3.5 w-3.5" />
+                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Auto-refresh interval</p>
+                    <Select
+                      value={geocodeCacheRefreshInterval.toString()}
+                      onValueChange={(value) => {
+                        setGeocodeCacheRefreshInterval(parseInt(value));
+                        toast.success(`Geocode cache refresh rate set to ${parseInt(value) / 1000}s`);
+                        refetchGeocodeStats();
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10000">10 seconds</SelectItem>
+                        <SelectItem value="20000">20 seconds</SelectItem>
+                        <SelectItem value="30000">30 seconds</SelectItem>
+                        <SelectItem value="60000">1 minute</SelectItem>
+                        <SelectItem value="120000">2 minutes</SelectItem>
+                        <SelectItem value="300000">5 minutes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Last updated: {lastGeocodeRefresh.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => refetchGeocodeStats()}
+                disabled={isGeocodeStatsFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isGeocodeStatsFetching ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
