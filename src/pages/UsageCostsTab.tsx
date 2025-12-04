@@ -776,21 +776,21 @@ const UsageCostsTab = () => {
         </CardContent>
       </Card>
 
-      {/* Email Usage (Resend) */}
+      {/* Load Emails Received (NOT Resend - that's for outbound) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Email Usage (Resend)
+            Load Emails Received
           </CardTitle>
-          <CardDescription>Email delivery costs</CardDescription>
+          <CardDescription>Incoming Sylectus load emails (30 days)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Emails Sent (30 days)</p>
-            <p className="text-2xl font-semibold">{estimatedCosts.resend.emailsSent.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Emails Received</p>
+            <p className="text-2xl font-semibold">{recentActivity?.emails?.toLocaleString() || 0}</p>
             <p className="text-xs text-muted-foreground">
-              Est. Cost: ${estimatedCosts.resend.estimatedCost}
+              These are incoming load emails from Sylectus, not outbound emails
             </p>
           </div>
         </CardContent>
