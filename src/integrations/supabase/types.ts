@@ -727,6 +727,39 @@ export type Database = {
         }
         Relationships: []
       }
+      geocode_cache_daily_stats: {
+        Row: {
+          created_at: string
+          estimated_savings: number
+          hits_today: number
+          id: string
+          new_locations_today: number
+          recorded_at: string
+          total_hits: number
+          total_locations: number
+        }
+        Insert: {
+          created_at?: string
+          estimated_savings?: number
+          hits_today?: number
+          id?: string
+          new_locations_today?: number
+          recorded_at?: string
+          total_hits?: number
+          total_locations?: number
+        }
+        Update: {
+          created_at?: string
+          estimated_savings?: number
+          hits_today?: number
+          id?: string
+          new_locations_today?: number
+          recorded_at?: string
+          total_hits?: number
+          total_locations?: number
+        }
+        Relationships: []
+      }
       gmail_tokens: {
         Row: {
           access_token: string
