@@ -673,11 +673,13 @@ const UsageCostsTab = () => {
             <TabsContent value="hourly" className="space-y-2 mt-4">
               <div className="max-h-[300px] overflow-y-auto space-y-1">
                 {emailVolumeStats?.slice(0, 24).map((stat: any) => {
-                  const hourDate = new Date(stat.hour_start);
+                  const hourStart = new Date(stat.hour_start);
+                  const hourEnd = new Date(hourStart);
+                  hourEnd.setHours(hourEnd.getHours() + 1);
                   return (
                     <div key={stat.id} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
                       <span className="text-muted-foreground">
-                        {hourDate.toLocaleDateString()} {hourDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {hourStart.toLocaleDateString()} {hourStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {hourEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <div className="flex gap-4">
                         <span className="text-green-600">{stat.emails_received} received</span>
