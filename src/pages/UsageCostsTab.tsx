@@ -39,7 +39,7 @@ const UsageCostsTab = () => {
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   // Fetch current month usage from mapbox_monthly_usage table
-  const { data: currentMonthUsage, dataUpdatedAt: usageUpdatedAt } = useQuery({
+  const { data: currentMonthUsage, isFetching: isUsageFetching } = useQuery({
     queryKey: ["current-month-usage", currentMonth],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -49,6 +49,7 @@ const UsageCostsTab = () => {
         .single();
       
       if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+      setLastRefresh(new Date()); // Update timestamp on each fetch
       return data;
     },
     refetchInterval: mapboxRefreshInterval
@@ -254,12 +255,8 @@ const UsageCostsTab = () => {
     refetchInterval: mapboxRefreshInterval
   });
 
-  // Update last refresh time when data updates
-  useEffect(() => {
-    if (usageUpdatedAt) {
-      setLastRefresh(new Date(usageUpdatedAt));
-    }
-  }, [usageUpdatedAt]);
+  // Track if any mapbox query is fetching
+  const isRefreshing = isUsageFetching;
 
   // Mapbox pricing tiers (tiered pricing)
   const MAPBOX_GEOCODING_FREE_TIER = 100000;
@@ -493,8 +490,9 @@ const UsageCostsTab = () => {
               <CardDescription>Current month geocoding and map rendering costs (resets monthly)</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              {isRefreshing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
               <span className="text-xs text-muted-foreground">
-                Auto-refresh: {mapboxRefreshInterval / 1000}s
+                {isRefreshing ? 'Refreshing...' : `Last: ${lastRefresh.toLocaleTimeString()}`} • {mapboxRefreshInterval / 1000}s
               </span>
               <Popover>
                 <PopoverTrigger asChild>
