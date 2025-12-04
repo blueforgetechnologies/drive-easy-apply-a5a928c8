@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, Settings } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, Settings, HardDrive } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,13 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+
+// Storage tier limits in MB
+const STORAGE_LIMITS = {
+  standard: 500, // 500 MB
+  pro: 8000, // 8 GB
+};
 
 const UsageCostsTab = () => {
   const [aiTestResult, setAiTestResult] = useState<string>("");
@@ -1046,12 +1053,64 @@ const UsageCostsTab = () => {
           <CardDescription>Lovable Cloud database usage</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Current Usage */}
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total Records</p>
-            <p className="text-2xl font-semibold">{estimatedCosts.storage.totalRecords.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">
-              Estimated Size: ~{estimatedCosts.storage.estimatedSize} MB
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Total Records</p>
+              <p className="text-lg font-semibold">{estimatedCosts.storage.totalRecords.toLocaleString()}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Estimated Size</p>
+              <p className="text-lg font-semibold">~{estimatedCosts.storage.estimatedSize} MB</p>
+            </div>
+          </div>
+          
+          {/* Storage Limit Progress - Standard Tier */}
+          <div className="pt-4 border-t space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <HardDrive className="h-4 w-4" />
+                Standard Tier Limit
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {estimatedCosts.storage.estimatedSize} / {STORAGE_LIMITS.standard} MB
+              </p>
+            </div>
+            <Progress 
+              value={(parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.standard) * 100} 
+              className="h-2"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{((parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.standard) * 100).toFixed(1)}% used</span>
+              <span>{(STORAGE_LIMITS.standard - parseFloat(estimatedCosts.storage.estimatedSize)).toFixed(1)} MB remaining</span>
+            </div>
+          </div>
+
+          {/* Storage Limit Progress - Pro Tier */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-primary" />
+                Pro Tier Limit
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {estimatedCosts.storage.estimatedSize} / {(STORAGE_LIMITS.pro / 1000).toFixed(0)} GB
+              </p>
+            </div>
+            <Progress 
+              value={(parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.pro) * 100} 
+              className="h-2"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{((parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.pro) * 100).toFixed(2)}% used</span>
+              <span>{((STORAGE_LIMITS.pro - parseFloat(estimatedCosts.storage.estimatedSize)) / 1000).toFixed(2)} GB remaining</span>
+            </div>
+          </div>
+
+          {/* Tier Info */}
+          <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
+            <p>• <strong>Standard:</strong> 500 MB included</p>
+            <p>• <strong>Pro:</strong> 8 GB included, then $0.125/GB</p>
           </div>
           
           <div className="pt-4 border-t space-y-2">
