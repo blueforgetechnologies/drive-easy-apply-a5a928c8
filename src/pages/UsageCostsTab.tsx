@@ -211,7 +211,7 @@ const UsageCostsTab = () => {
         emailsPerMinute
       };
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 20000 // Refresh every 20 seconds
   });
 
   // Fetch Directions API tracking (current month)
@@ -768,9 +768,9 @@ const UsageCostsTab = () => {
 
           <div className="pt-2 border-t flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              <p>• Stats snapshot every 60 minutes automatically</p>
-              <p>• Processing rate: 100 emails/batch with parallel processing (~300/min capacity)</p>
-              <p>• High pending counts indicate processing backlog</p>
+              <p>• Live stats refresh every 20 seconds</p>
+              <p>• Hourly snapshots recorded at the top of each hour</p>
+              <p>• Processing rate: 100 emails/batch (~300/min capacity)</p>
             </div>
             <Button
               variant="outline"
