@@ -38,30 +38,39 @@ const UsageCostsTab = () => {
   // Get current month in YYYY-MM format
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // IMPORTANT: Baseline comes from mapbox_monthly_usage (manually synced from Mapbox dashboard)
-  // Then we ADD incremental counts from tracking tables since last_synced_at
-  // This preserves the user's baseline data while showing real-time updates
-  const { data: baselineUsage, isFetching: isUsageFetching } = useQuery({
+  // CRITICAL: BASELINE + INCREMENTAL ARCHITECTURE (DO NOT CHANGE)
+  // 1. Baseline comes from mapbox_monthly_usage table (synced from Mapbox dashboard)
+  // 2. Incremental counts from tracking tables SINCE last_synced_at are added on top
+  // 3. This preserves user's baseline data while showing real-time updates
+  
+  const { data: baselineUsage, isFetching: isUsageFetching, refetch: refetchBaseline } = useQuery({
     queryKey: ["mapbox-baseline", currentMonth],
     queryFn: async () => {
+      console.log('[Mapbox] Fetching baseline for month:', currentMonth);
       const { data, error } = await supabase
         .from('mapbox_monthly_usage')
         .select('*')
         .eq('month_year', currentMonth)
         .maybeSingle();
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Mapbox] Baseline fetch error:', error);
+        throw error;
+      }
+      console.log('[Mapbox] Baseline data:', data);
       return data;
     },
     refetchInterval: mapboxRefreshInterval,
+    refetchIntervalInBackground: true, // Keep refetching even when tab is not focused
     staleTime: 0,
   });
 
   // Fetch incremental calls since last sync (new calls made by the app AFTER baseline was recorded)
-  const { data: incrementalCalls } = useQuery({
+  const { data: incrementalCalls, refetch: refetchIncremental } = useQuery({
     queryKey: ["mapbox-incremental", currentMonth, baselineUsage?.last_synced_at],
     queryFn: async () => {
       const lastSyncedAt = baselineUsage?.last_synced_at;
+      console.log('[Mapbox] Fetching incremental since:', lastSyncedAt);
       
       if (!lastSyncedAt) {
         setLastRefresh(new Date());
@@ -89,17 +98,33 @@ const UsageCostsTab = () => {
         .gt('created_at', lastSyncedAt)
         .eq('month_year', currentMonth);
       
-      setLastRefresh(new Date());
-      return {
+      const result = {
         geocoding: geocodingCount || 0,
         mapLoads: mapLoadsCount || 0,
         directions: directionsCount || 0
       };
+      console.log('[Mapbox] Incremental data:', result);
+      setLastRefresh(new Date());
+      return result;
     },
     enabled: !!baselineUsage,
     refetchInterval: mapboxRefreshInterval,
+    refetchIntervalInBackground: true,
     staleTime: 0,
   });
+
+  // FALLBACK: Manual interval to force refresh if React Query fails to auto-refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('[Mapbox] Manual interval refresh triggered');
+      refetchBaseline();
+      if (baselineUsage) {
+        refetchIncremental();
+      }
+    }, mapboxRefreshInterval);
+    
+    return () => clearInterval(interval);
+  }, [mapboxRefreshInterval, refetchBaseline, refetchIncremental, baselineUsage]);
 
   // Combined usage: baseline (from Mapbox dashboard) + incremental (new calls since sync)
   const currentMonthUsage = baselineUsage ? {
@@ -108,6 +133,17 @@ const UsageCostsTab = () => {
     map_loads: (baselineUsage.map_loads || 0) + (incrementalCalls?.mapLoads || 0),
     directions_api_calls: (baselineUsage.directions_api_calls || 0) + (incrementalCalls?.directions || 0),
   } : null;
+  
+  // Log combined usage for debugging
+  useEffect(() => {
+    if (baselineUsage) {
+      console.log('[Mapbox] Combined usage:', {
+        baseline: baselineUsage.geocoding_api_calls,
+        incremental: incrementalCalls?.geocoding || 0,
+        total: currentMonthUsage?.geocoding_api_calls
+      });
+    }
+  }, [baselineUsage, incrementalCalls, currentMonthUsage]);
 
   // Fetch geocode cache stats for cache performance display
   const { data: geocodeStats } = useQuery({
