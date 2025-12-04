@@ -632,6 +632,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_volume_stats: {
+        Row: {
+          avg_processing_time_ms: number | null
+          created_at: string
+          emails_failed: number
+          emails_pending: number
+          emails_processed: number
+          emails_received: number
+          hour_start: string
+          id: string
+          recorded_at: string
+        }
+        Insert: {
+          avg_processing_time_ms?: number | null
+          created_at?: string
+          emails_failed?: number
+          emails_pending?: number
+          emails_processed?: number
+          emails_received?: number
+          hour_start: string
+          id?: string
+          recorded_at?: string
+        }
+        Update: {
+          avg_processing_time_ms?: number | null
+          created_at?: string
+          emails_failed?: number
+          emails_pending?: number
+          emails_processed?: number
+          emails_received?: number
+          hour_start?: string
+          id?: string
+          recorded_at?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string | null
