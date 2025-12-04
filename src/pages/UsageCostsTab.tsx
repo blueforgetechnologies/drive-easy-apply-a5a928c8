@@ -167,6 +167,19 @@ const UsageCostsTab = () => {
     }
   });
 
+  // Fetch Directions API tracking (current month)
+  const { data: directionsApiStats } = useQuery({
+    queryKey: ["usage-directions-api", currentMonth],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('directions_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      return count || 0;
+    }
+  });
+
   // Fetch historical monthly usage
   const { data: monthlyHistory } = useQuery({
     queryKey: ["mapbox-monthly-history"],
@@ -240,6 +253,27 @@ const UsageCostsTab = () => {
     return cost;
   };
 
+  // Calculate Directions API cost
+  const MAPBOX_DIRECTIONS_FREE_TIER = 100000;
+  const calculateDirectionsCost = (requests: number): number => {
+    if (requests <= MAPBOX_DIRECTIONS_FREE_TIER) return 0;
+    
+    let cost = 0;
+    let remaining = requests - MAPBOX_DIRECTIONS_FREE_TIER;
+    
+    // Tier 1: 100,001 - 500,000 @ $0.50/1,000
+    const tier1 = Math.min(remaining, 400000);
+    cost += (tier1 / 1000) * 0.50;
+    remaining -= tier1;
+    
+    if (remaining <= 0) return cost;
+    
+    // Tier 2: 500,001+ @ $0.40/1,000
+    cost += (remaining / 1000) * 0.40;
+    
+    return cost;
+  };
+
   // Current month geocoding API calls - base from mapbox_monthly_usage + new cache misses this month
   const baseGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
   const newGeocodingCalls = newCacheEntriesThisMonth || 0;
@@ -252,6 +286,13 @@ const UsageCostsTab = () => {
   const currentMonthMapLoads = currentMonthUsage?.map_loads || mapLoadStats || 0;
   const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
   const mapLoadsCost = currentMonthUsage?.map_loads_cost || calculateMapLoadsCost(currentMonthMapLoads);
+
+  // Current month directions API - baseline from mapbox_monthly_usage + new tracking
+  const baseDirectionsCalls = currentMonthUsage?.directions_api_calls || 0;
+  const newDirectionsCalls = directionsApiStats || 0;
+  const currentMonthDirectionsCalls = baseDirectionsCalls > 0 ? baseDirectionsCalls + newDirectionsCalls : newDirectionsCalls;
+  const billableDirectionsCalls = Math.max(0, currentMonthDirectionsCalls - MAPBOX_DIRECTIONS_FREE_TIER);
+  const directionsCost = calculateDirectionsCost(currentMonthDirectionsCalls);
 
   // Cache stats for display
   const cachedLocations = geocodeStats?.totalLocations || 0;
@@ -270,7 +311,11 @@ const UsageCostsTab = () => {
       mapLoads: currentMonthMapLoads,
       mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - currentMonthMapLoads),
       mapLoadsBillable: billableMapLoads,
-      mapLoadsCost: mapLoadsCost.toFixed(2)
+      mapLoadsCost: mapLoadsCost.toFixed(2),
+      directionsApiCalls: currentMonthDirectionsCalls,
+      directionsFreeRemaining: Math.max(0, MAPBOX_DIRECTIONS_FREE_TIER - currentMonthDirectionsCalls),
+      directionsBillable: billableDirectionsCalls,
+      directionsCost: directionsCost.toFixed(2)
     },
     resend: {
       emailsSent: recentActivity?.emails || 0,
@@ -285,6 +330,7 @@ const UsageCostsTab = () => {
   const totalEstimatedMonthlyCost = (
     geocodingCost +
     mapLoadsCost +
+    directionsCost +
     parseFloat(estimatedCosts.resend.estimatedCost)
   ).toFixed(2);
 
@@ -439,6 +485,34 @@ const UsageCostsTab = () => {
             <p className="text-xs text-muted-foreground">Rate: $5.00/1K (50K-100K) • $4.00/1K (100K-200K) • $3.00/1K (200K+)</p>
           </div>
 
+          {/* Directions API */}
+          <div className="space-y-2 pt-3 border-t">
+            <p className="text-sm font-medium">Directions API (Navigation) - Current Month</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Total Requests</p>
+                <p className="text-lg font-semibold">{estimatedCosts.mapbox.directionsApiCalls.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Free Tier (100K)</p>
+                <p className="text-lg font-semibold text-green-600">
+                  {estimatedCosts.mapbox.directionsFreeRemaining > 0 
+                    ? `${estimatedCosts.mapbox.directionsFreeRemaining.toLocaleString()} left` 
+                    : 'Exceeded'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Billable Requests</p>
+                <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.directionsBillable.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Est. Cost</p>
+                <p className="text-lg font-semibold text-green-600">${estimatedCosts.mapbox.directionsCost}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Rate: $0.50/1K (100K-500K) • $0.40/1K (500K+) • Used for route optimization</p>
+          </div>
+
           {/* Monthly History */}
           {monthlyHistory && monthlyHistory.length > 0 && (
             <div className="pt-4 border-t">
@@ -447,10 +521,11 @@ const UsageCostsTab = () => {
                 {monthlyHistory.map((month: any) => (
                   <div key={month.id} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
                     <span className="font-medium">{month.month_year}</span>
-                    <div className="flex gap-6">
-                      <span>Geocoding: {month.geocoding_api_calls.toLocaleString()}</span>
-                      <span>Map Loads: {month.map_loads.toLocaleString()}</span>
-                      <span className="text-red-600 font-medium">${Number(month.total_cost).toFixed(2)}</span>
+                    <div className="flex gap-4 text-xs md:text-sm">
+                      <span>Geocoding: {month.geocoding_api_calls?.toLocaleString() || 0}</span>
+                      <span>Maps: {month.map_loads?.toLocaleString() || 0}</span>
+                      <span>Directions: {month.directions_api_calls?.toLocaleString() || 0}</span>
+                      <span className="text-red-600 font-medium">${Number(month.total_cost || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 ))}

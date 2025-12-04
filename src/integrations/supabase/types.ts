@@ -455,6 +455,30 @@ export type Database = {
         }
         Relationships: []
       }
+      directions_api_tracking: {
+        Row: {
+          created_at: string
+          id: string
+          load_id: string | null
+          month_year: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          load_id?: string | null
+          month_year?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          load_id?: string | null
+          month_year?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       dispatchers: {
         Row: {
           address: string | null
@@ -1835,6 +1859,8 @@ export type Database = {
       mapbox_monthly_usage: {
         Row: {
           created_at: string
+          directions_api_calls: number | null
+          directions_cost: number | null
           geocoding_api_calls: number
           geocoding_cost: number
           id: string
@@ -1845,6 +1871,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          directions_api_calls?: number | null
+          directions_cost?: number | null
           geocoding_api_calls?: number
           geocoding_cost?: number
           id?: string
@@ -1855,6 +1883,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          directions_api_calls?: number | null
+          directions_cost?: number | null
           geocoding_api_calls?: number
           geocoding_cost?: number
           id?: string

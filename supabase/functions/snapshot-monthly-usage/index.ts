@@ -34,6 +34,12 @@ Deno.serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('month_year', monthYear);
 
+    // Count directions API calls for the month
+    const { count: directionsCalls } = await supabase
+      .from('directions_api_tracking')
+      .select('*', { count: 'exact', head: true })
+      .eq('month_year', monthYear);
+
     // Calculate costs using tiered pricing
     const GEOCODING_FREE_TIER = 100000;
     const MAP_LOADS_FREE_TIER = 50000;
@@ -92,13 +98,36 @@ Deno.serve(async (req) => {
       return cost;
     };
 
+    // Tiered directions API cost calculation
+    const DIRECTIONS_FREE_TIER = 100000;
+    const calculateDirectionsCost = (requests: number): number => {
+      if (requests <= DIRECTIONS_FREE_TIER) return 0;
+      
+      let cost = 0;
+      let remaining = requests - DIRECTIONS_FREE_TIER;
+      
+      // Tier 1: 100,001 - 500,000 @ $0.50/1,000
+      const tier1 = Math.min(remaining, 400000);
+      cost += (tier1 / 1000) * 0.50;
+      remaining -= tier1;
+      
+      if (remaining <= 0) return cost;
+      
+      // Tier 2: 500,001+ @ $0.40/1,000
+      cost += (remaining / 1000) * 0.40;
+      
+      return cost;
+    };
+
     const geocodingCount = geocodingCalls || 0;
     const mapLoadsCount = mapLoads || 0;
+    const directionsCount = directionsCalls || 0;
 
     const geocodingCost = calculateGeocodingCost(geocodingCount);
     const mapLoadsCost = calculateMapLoadsCost(mapLoadsCount);
+    const directionsCost = calculateDirectionsCost(directionsCount);
 
-    const totalCost = geocodingCost + mapLoadsCost;
+    const totalCost = geocodingCost + mapLoadsCost + directionsCost;
 
     // Upsert monthly usage record
     const { error: upsertError } = await supabase
@@ -107,8 +136,10 @@ Deno.serve(async (req) => {
         month_year: monthYear,
         geocoding_api_calls: geocodingCount,
         map_loads: mapLoadsCount,
+        directions_api_calls: directionsCount,
         geocoding_cost: geocodingCost,
         map_loads_cost: mapLoadsCost,
+        directions_cost: directionsCost,
         total_cost: totalCost
       }, { onConflict: 'month_year' });
 
@@ -117,7 +148,7 @@ Deno.serve(async (req) => {
       throw upsertError;
     }
 
-    console.log(`✅ Monthly usage saved: Geocoding=${geocodingCount}, MapLoads=${mapLoadsCount}, Cost=$${totalCost.toFixed(2)}`);
+    console.log(`✅ Monthly usage saved: Geocoding=${geocodingCount}, MapLoads=${mapLoadsCount}, Directions=${directionsCount}, Cost=$${totalCost.toFixed(2)}`);
 
     return new Response(
       JSON.stringify({
@@ -125,8 +156,10 @@ Deno.serve(async (req) => {
         month_year: monthYear,
         geocoding_api_calls: geocodingCount,
         map_loads: mapLoadsCount,
+        directions_api_calls: directionsCount,
         geocoding_cost: geocodingCost,
         map_loads_cost: mapLoadsCost,
+        directions_cost: directionsCost,
         total_cost: totalCost
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
