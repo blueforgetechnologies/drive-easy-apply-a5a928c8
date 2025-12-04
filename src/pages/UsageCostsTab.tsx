@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const UsageCostsTab = () => {
   const [aiTestResult, setAiTestResult] = useState<string>("");
+  const [emailSource, setEmailSource] = useState<string>("sylectus");
 
   // Test AI mutation
   const testAiMutation = useMutation({
@@ -633,13 +635,40 @@ const UsageCostsTab = () => {
       {/* Email Volume Tracking */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Email Volume Tracking
-          </CardTitle>
-          <CardDescription>Incoming load emails per hour - snapshots every 60 minutes</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Email Volume Tracking
+              </CardTitle>
+              <CardDescription>Incoming load emails by source - snapshots every 60 minutes</CardDescription>
+            </div>
+            <Select value={emailSource} onValueChange={setEmailSource}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sylectus">Sylectus</SelectItem>
+                {/* Future sources can be added here */}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Source Summary */}
+          <div className="p-3 rounded-lg bg-muted/50 border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium capitalize">{emailSource}</span>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold">{recentActivity?.emails?.toLocaleString() || 0}</p>
+                <p className="text-xs text-muted-foreground">emails (30 days)</p>
+              </div>
+            </div>
+          </div>
+
           {/* Current Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
@@ -790,26 +819,6 @@ const UsageCostsTab = () => {
               <RefreshCw className="h-3 w-3" />
               Snapshot Now
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Load Emails Received (NOT Resend - that's for outbound) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Load Emails Received
-          </CardTitle>
-          <CardDescription>Incoming Sylectus load emails (30 days)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Emails Received</p>
-            <p className="text-2xl font-semibold">{recentActivity?.emails?.toLocaleString() || 0}</p>
-            <p className="text-xs text-muted-foreground">
-              These are incoming load emails from Sylectus, not outbound emails
-            </p>
           </div>
         </CardContent>
       </Card>
