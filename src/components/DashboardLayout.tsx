@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, GitBranch, History } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
+import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -289,6 +290,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <main className="mx-auto max-w-[1700px] px-3 sm:px-4 py-3 sm:py-4 pb-20 md:pb-4">
         {children}
       </main>
+
+      {/* Mapbox Usage Alert - checks on login */}
+      <MapboxUsageAlert />
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
