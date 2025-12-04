@@ -1,10 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2 } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const UsageCostsTab = () => {
   const [aiTestResult, setAiTestResult] = useState<string>("");
@@ -165,6 +166,56 @@ const UsageCostsTab = () => {
       
       return count || 0;
     }
+  });
+
+  // Fetch email volume stats (hourly history)
+  const { data: emailVolumeStats, refetch: refetchEmailVolume } = useQuery({
+    queryKey: ["email-volume-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('email_volume_stats')
+        .select('*')
+        .order('hour_start', { ascending: false })
+        .limit(168); // Last 7 days worth of hourly data
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Get current hour stats for display
+  const { data: currentHourEmailStats } = useQuery({
+    queryKey: ["current-hour-email-stats"],
+    queryFn: async () => {
+      const now = new Date();
+      const hourStart = new Date(now);
+      hourStart.setMinutes(0, 0, 0);
+      const hourAgo = new Date(hourStart);
+      hourAgo.setHours(hourAgo.getHours() - 1);
+      
+      // Get emails received in current hour
+      const { count: receivedThisHour } = await supabase
+        .from('load_emails')
+        .select('*', { count: 'exact', head: true })
+        .gte('received_at', hourAgo.toISOString())
+        .lt('received_at', hourStart.toISOString());
+      
+      // Get pending emails
+      const { count: pendingCount } = await supabase
+        .from('email_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      // Calculate emails per minute (last hour)
+      const emailsPerMinute = ((receivedThisHour || 0) / 60).toFixed(2);
+      
+      return {
+        receivedThisHour: receivedThisHour || 0,
+        pendingCount: pendingCount || 0,
+        emailsPerMinute
+      };
+    },
+    refetchInterval: 60000 // Refresh every minute
   });
 
   // Fetch Directions API tracking (current month)
@@ -579,6 +630,148 @@ const UsageCostsTab = () => {
             <p>• Usage-based pricing per AI request</p>
             <p>• Check credit balance in Lovable workspace settings</p>
             <p>• Free monthly usage included, then pay-as-you-go</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Email Volume Tracking */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Email Volume Tracking
+          </CardTitle>
+          <CardDescription>Incoming load emails per hour - snapshots every 60 minutes</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Current Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Last Hour</p>
+              <p className="text-2xl font-semibold">{currentHourEmailStats?.receivedThisHour || 0}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Emails/Minute</p>
+              <p className="text-2xl font-semibold text-primary">{currentHourEmailStats?.emailsPerMinute || '0.00'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Pending Queue</p>
+              <p className={`text-2xl font-semibold ${(currentHourEmailStats?.pendingCount || 0) > 50 ? 'text-red-600' : 'text-green-600'}`}>
+                {currentHourEmailStats?.pendingCount || 0}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Processing Rate</p>
+              <p className="text-2xl font-semibold">60/min</p>
+            </div>
+          </div>
+
+          {/* Historical Data Tabs */}
+          <Tabs defaultValue="hourly" className="pt-4 border-t">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="hourly">Last 24 Hours</TabsTrigger>
+              <TabsTrigger value="daily">Last 7 Days</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="hourly" className="space-y-2 mt-4">
+              <div className="max-h-[300px] overflow-y-auto space-y-1">
+                {emailVolumeStats?.slice(0, 24).map((stat: any) => {
+                  const hourDate = new Date(stat.hour_start);
+                  return (
+                    <div key={stat.id} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
+                      <span className="text-muted-foreground">
+                        {hourDate.toLocaleDateString()} {hourDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div className="flex gap-4">
+                        <span className="text-green-600">{stat.emails_received} received</span>
+                        <span>{stat.emails_processed} processed</span>
+                        {stat.emails_pending > 0 && (
+                          <span className="text-amber-600">{stat.emails_pending} pending</span>
+                        )}
+                        {stat.emails_failed > 0 && (
+                          <span className="text-red-600">{stat.emails_failed} failed</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {(!emailVolumeStats || emailVolumeStats.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No hourly data yet. Stats are recorded every hour.</p>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="daily" className="space-y-2 mt-4">
+              <div className="space-y-1">
+                {(() => {
+                  // Aggregate by day
+                  const dailyData: Record<string, { received: number; processed: number; failed: number }> = {};
+                  emailVolumeStats?.forEach((stat: any) => {
+                    const day = new Date(stat.hour_start).toLocaleDateString();
+                    if (!dailyData[day]) {
+                      dailyData[day] = { received: 0, processed: 0, failed: 0 };
+                    }
+                    dailyData[day].received += stat.emails_received || 0;
+                    dailyData[day].processed += stat.emails_processed || 0;
+                    dailyData[day].failed += stat.emails_failed || 0;
+                  });
+                  
+                  return Object.entries(dailyData).slice(0, 7).map(([day, data]) => (
+                    <div key={day} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
+                      <span className="font-medium">{day}</span>
+                      <div className="flex gap-4">
+                        <span className="text-green-600">{data.received.toLocaleString()} received</span>
+                        <span>{data.processed.toLocaleString()} processed</span>
+                        {data.failed > 0 && <span className="text-red-600">{data.failed} failed</span>}
+                        <span className="text-muted-foreground">{(data.received / 24).toFixed(1)}/hr avg</span>
+                      </div>
+                    </div>
+                  ));
+                })()}
+                {(!emailVolumeStats || emailVolumeStats.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No daily data yet.</p>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="monthly" className="space-y-2 mt-4">
+              <div className="space-y-1">
+                {(() => {
+                  // Aggregate by month
+                  const monthlyData: Record<string, { received: number; processed: number; failed: number }> = {};
+                  emailVolumeStats?.forEach((stat: any) => {
+                    const month = new Date(stat.hour_start).toLocaleDateString('default', { year: 'numeric', month: 'long' });
+                    if (!monthlyData[month]) {
+                      monthlyData[month] = { received: 0, processed: 0, failed: 0 };
+                    }
+                    monthlyData[month].received += stat.emails_received || 0;
+                    monthlyData[month].processed += stat.emails_processed || 0;
+                    monthlyData[month].failed += stat.emails_failed || 0;
+                  });
+                  
+                  return Object.entries(monthlyData).map(([month, data]) => (
+                    <div key={month} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
+                      <span className="font-medium">{month}</span>
+                      <div className="flex gap-4">
+                        <span className="text-green-600">{data.received.toLocaleString()} received</span>
+                        <span>{data.processed.toLocaleString()} processed</span>
+                        {data.failed > 0 && <span className="text-red-600">{data.failed} failed</span>}
+                      </div>
+                    </div>
+                  ));
+                })()}
+                {(!emailVolumeStats || emailVolumeStats.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No monthly data yet.</p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="pt-2 border-t text-xs text-muted-foreground">
+            <p>• Stats snapshot every 60 minutes automatically</p>
+            <p>• Processing rate: 20 emails per 20 seconds = 60/min capacity</p>
+            <p>• High pending counts indicate processing backlog</p>
           </div>
         </CardContent>
       </Card>
