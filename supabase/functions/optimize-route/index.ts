@@ -155,7 +155,7 @@ serve(async (req) => {
     });
 
     // Step 5: Calculate total distance and duration for optimized route
-    const optimizedMetrics = await calculateRouteMetrics(optimizedSequence, MAPBOX_TOKEN);
+    const optimizedMetrics = await calculateRouteMetrics(optimizedSequence, MAPBOX_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
     // Step 6: Calculate HOS compliance and required breaks
     const hosAnalysis = calculateHOSCompliance(optimizedSequence, optimizedMetrics, isTeam);
@@ -194,7 +194,7 @@ serve(async (req) => {
     const originalStopsWithCoords = originalSequence
       .map(stop => stopsWithCoords.find(s => s.id === stop.id))
       .filter(s => s !== undefined) as Stop[];
-    const originalMetrics = await calculateRouteMetrics(originalStopsWithCoords, MAPBOX_TOKEN);
+    const originalMetrics = await calculateRouteMetrics(originalStopsWithCoords, MAPBOX_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const result: OptimizationResult = {
       optimizedSequence,
@@ -289,7 +289,12 @@ async function optimizeStopGroup(stops: Stop[], mapboxToken: string): Promise<St
   return optimized;
 }
 
-async function calculateRouteMetrics(stops: Stop[], mapboxToken: string): Promise<{ distance: number; duration: number }> {
+async function calculateRouteMetrics(
+  stops: Stop[], 
+  mapboxToken: string, 
+  supabaseUrl?: string, 
+  supabaseKey?: string
+): Promise<{ distance: number; duration: number }> {
   if (stops.length < 2) return { distance: 0, duration: 0 };
 
   const coordinates = stops
@@ -302,6 +307,27 @@ async function calculateRouteMetrics(stops: Stop[], mapboxToken: string): Promis
     const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?access_token=${mapboxToken}&overview=full&geometries=geojson`;
     const response = await fetch(directionsUrl);
     const data = await response.json();
+
+    // Track Directions API call
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        await fetch(`${supabaseUrl}/rest/v1/directions_api_tracking`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            month_year: currentMonth
+          })
+        });
+      } catch (trackingError) {
+        console.error('Failed to track Directions API call:', trackingError);
+      }
+    }
 
     if (data.routes && data.routes.length > 0) {
       return {
