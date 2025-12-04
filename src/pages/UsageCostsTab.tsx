@@ -165,21 +165,47 @@ const UsageCostsTab = () => {
     }
   });
 
-  // Mapbox pricing tiers
+  // Mapbox pricing tiers (tiered pricing)
   const MAPBOX_GEOCODING_FREE_TIER = 100000;
-  const MAPBOX_GEOCODING_RATE = 0.75; // $0.75 per 1,000 after free tier
   const MAPBOX_MAP_LOADS_FREE_TIER = 50000;
   const MAPBOX_MAP_LOADS_RATE = 5.00; // $5.00 per 1,000 after free tier
 
-  // Current month geocoding API calls - use mapbox_monthly_usage if available, fall back to map_load_tracking count
+  // Calculate tiered geocoding cost
+  const calculateGeocodingCost = (calls: number): number => {
+    if (calls <= MAPBOX_GEOCODING_FREE_TIER) return 0;
+    
+    let cost = 0;
+    let remaining = calls - MAPBOX_GEOCODING_FREE_TIER;
+    
+    // Tier 1: 100,001 - 500,000 @ $0.75/1,000
+    const tier1 = Math.min(remaining, 400000);
+    cost += (tier1 / 1000) * 0.75;
+    remaining -= tier1;
+    
+    if (remaining <= 0) return cost;
+    
+    // Tier 2: 500,001 - 1,000,000 @ $0.60/1,000
+    const tier2 = Math.min(remaining, 500000);
+    cost += (tier2 / 1000) * 0.60;
+    remaining -= tier2;
+    
+    if (remaining <= 0) return cost;
+    
+    // Tier 3: 1,000,000+ @ $0.45/1,000
+    cost += (remaining / 1000) * 0.45;
+    
+    return cost;
+  };
+
+  // Current month geocoding API calls - use mapbox_monthly_usage if available
   const currentMonthGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
   const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
-  const geocodingCost = currentMonthUsage?.geocoding_cost || (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
+  const geocodingCost = currentMonthUsage?.geocoding_cost || calculateGeocodingCost(currentMonthGeocodingCalls);
 
   // Current month map loads - use mapbox_monthly_usage if available
   const currentMonthMapLoads = currentMonthUsage?.map_loads || mapLoadStats || 0;
   const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
-  const mapLoadsCost = (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
+  const mapLoadsCost = currentMonthUsage?.map_loads_cost || (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
 
   // Cache stats for display
   const cachedLocations = geocodeStats?.totalLocations || 0;
@@ -336,7 +362,7 @@ const UsageCostsTab = () => {
                 <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.geocodingCost}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Rate: $0.75/1,000 after 100K free • Check <a href="https://console.mapbox.com/account/invoices" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox dashboard</a> for exact billing</p>
+            <p className="text-xs text-muted-foreground">Rate: $0.75/1K (100K-500K) • $0.60/1K (500K-1M) • $0.45/1K (1M+) • Check <a href="https://console.mapbox.com/account/invoices" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox dashboard</a> for exact billing</p>
           </div>
           
           {/* Map Loads */}
