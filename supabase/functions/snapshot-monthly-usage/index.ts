@@ -15,12 +15,11 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get previous month (the month we're closing out)
+    // Get CURRENT month (real-time tracking)
     const now = new Date();
-    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const monthYear = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+    const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    console.log(`📊 Snapshotting usage for ${monthYear}`);
+    console.log(`📊 Snapshotting usage for ${monthYear} (current month)`);
 
     // Count geocoding API calls for the month (unique locations created that month)
     const { count: geocodingCalls } = await supabase
