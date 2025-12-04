@@ -191,6 +191,7 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
         const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
         
         // 3. Store in cache for future use
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
         await supabase
           .from('geocode_cache')
           .upsert({
@@ -199,6 +200,7 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
             state: state.trim(),
             latitude: coords.lat,
             longitude: coords.lng,
+            month_created: currentMonth,
           }, { onConflict: 'location_key' });
         
         console.log(`📍 Cache MISS (stored): ${city}, ${state}`);
