@@ -28,10 +28,20 @@ const UsageCostsTab = () => {
     }
   });
 
-  // Fetch geocode cache stats
+  // Get current month in YYYY-MM format
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+  // Fetch current month geocode stats
   const { data: geocodeStats } = useQuery({
-    queryKey: ["geocode-cache-stats"],
+    queryKey: ["geocode-cache-stats", currentMonth],
     queryFn: async () => {
+      // Get current month's geocoding calls
+      const { count: currentMonthCalls } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_created', currentMonth);
+
+      // Get all-time stats for cache performance
       const { data, error } = await supabase
         .from('geocode_cache')
         .select('hit_count, created_at');
@@ -40,9 +50,10 @@ const UsageCostsTab = () => {
       
       const totalLocations = data?.length || 0;
       const totalHits = data?.reduce((sum, row) => sum + (row.hit_count || 1), 0) || 0;
-      const estimatedSavings = totalHits * 0.00075; // $0.75 per 1000 calls = $0.00075 per call
+      const estimatedSavings = totalHits * 0.00075;
       
       return {
+        currentMonthCalls: currentMonthCalls || 0,
         totalLocations,
         totalHits,
         estimatedSavings: estimatedSavings.toFixed(2),
@@ -118,19 +129,31 @@ const UsageCostsTab = () => {
     }
   });
 
-  // Fetch map load tracking (last 30 days)
+  // Fetch map load tracking (current month)
   const { data: mapLoadStats } = useQuery({
-    queryKey: ["usage-map-loads"],
+    queryKey: ["usage-map-loads", currentMonth],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
       const { count } = await supabase
         .from('map_load_tracking')
         .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
+        .eq('month_year', currentMonth);
       
       return count || 0;
+    }
+  });
+
+  // Fetch historical monthly usage
+  const { data: monthlyHistory } = useQuery({
+    queryKey: ["mapbox-monthly-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mapbox_monthly_usage')
+        .select('*')
+        .order('month_year', { ascending: false })
+        .limit(12);
+      
+      if (error) throw error;
+      return data || [];
     }
   });
 
@@ -140,34 +163,32 @@ const UsageCostsTab = () => {
   const MAPBOX_MAP_LOADS_FREE_TIER = 50000;
   const MAPBOX_MAP_LOADS_RATE = 5.00; // $5.00 per 1,000 after free tier
 
-  // Cache stats: totalLocations = unique API calls made, totalHits = total requests served
-  // Cache hits that saved API calls = totalHits - totalLocations
+  // Current month geocoding API calls
+  const currentMonthGeocodingCalls = geocodeStats?.currentMonthCalls || 0;
+  const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
+  const geocodingCost = (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
+
+  // Current month map loads
+  const currentMonthMapLoads = mapLoadStats || 0;
+  const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
+  const mapLoadsCost = (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
+
+  // Cache stats for display
   const cachedLocations = geocodeStats?.totalLocations || 0;
   const totalRequestsServed = geocodeStats?.totalHits || 0;
   const cacheSavedCalls = Math.max(0, totalRequestsServed - cachedLocations);
-  
-  // For Mapbox billing tracking - user should check Mapbox dashboard for exact numbers
-  // We can estimate based on cached locations (each was an API call)
-  const estimatedApiCalls = cachedLocations; // Each unique cached location = 1 Mapbox API call
-  const billableGeocodingCalls = Math.max(0, estimatedApiCalls - MAPBOX_GEOCODING_FREE_TIER);
-  const geocodingCost = (billableGeocodingCalls / 1000) * MAPBOX_GEOCODING_RATE;
-
-  // Map loads from tracking table (actual count)
-  const actualMapLoads = mapLoadStats || 0;
-  const billableMapLoads = Math.max(0, actualMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
-  const mapLoadsCost = (billableMapLoads / 1000) * MAPBOX_MAP_LOADS_RATE;
 
   const estimatedCosts = {
     mapbox: {
-      // Actual API calls (unique locations cached)
-      geocodingApiCalls: cachedLocations,
-      // Requests served from cache (saved API calls)
+      // Current month API calls
+      geocodingApiCalls: currentMonthGeocodingCalls,
+      // Cache savings (all-time)
       geocodingCacheSaved: cacheSavedCalls,
-      geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - estimatedApiCalls),
+      geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - currentMonthGeocodingCalls),
       geocodingBillable: billableGeocodingCalls,
       geocodingCost: geocodingCost.toFixed(2),
-      mapLoads: actualMapLoads,
-      mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - actualMapLoads),
+      mapLoads: currentMonthMapLoads,
+      mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - currentMonthMapLoads),
       mapLoadsBillable: billableMapLoads,
       mapLoadsCost: mapLoadsCost.toFixed(2)
     },
@@ -273,17 +294,17 @@ const UsageCostsTab = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Map className="h-5 w-5" />
-            Mapbox Usage & Billing
+            Mapbox Usage & Billing - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
           </CardTitle>
-          <CardDescription>Geocoding and map rendering costs with free tier tracking</CardDescription>
+          <CardDescription>Current month geocoding and map rendering costs (resets monthly)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Geocoding API */}
           <div className="space-y-2">
-            <p className="text-sm font-medium">Geocoding API</p>
+            <p className="text-sm font-medium">Geocoding API (Current Month)</p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">API Calls Made</p>
+                <p className="text-xs text-muted-foreground">API Calls</p>
                 <p className="text-lg font-semibold">{estimatedCosts.mapbox.geocodingApiCalls.toLocaleString()}</p>
               </div>
               <div className="space-y-1">
@@ -312,10 +333,10 @@ const UsageCostsTab = () => {
           
           {/* Map Loads */}
           <div className="space-y-2 pt-3 border-t">
-            <p className="text-sm font-medium">Map Loads (GL JS) - Tracked</p>
+            <p className="text-sm font-medium">Map Loads (GL JS) - Current Month</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Total Loads (30d)</p>
+                <p className="text-xs text-muted-foreground">Total Loads</p>
                 <p className="text-lg font-semibold">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
               </div>
               <div className="space-y-1">
@@ -335,8 +356,27 @@ const UsageCostsTab = () => {
                 <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.mapLoadsCost}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Rate: $5.00/1,000 after 50K free • Tracking started {new Date().toLocaleDateString()}</p>
+            <p className="text-xs text-muted-foreground">Rate: $5.00/1,000 after 50K free</p>
           </div>
+
+          {/* Monthly History */}
+          {monthlyHistory && monthlyHistory.length > 0 && (
+            <div className="pt-4 border-t">
+              <p className="text-sm font-medium mb-3">Monthly History</p>
+              <div className="space-y-2">
+                {monthlyHistory.map((month: any) => (
+                  <div key={month.id} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
+                    <span className="font-medium">{month.month_year}</span>
+                    <div className="flex gap-6">
+                      <span>Geocoding: {month.geocoding_api_calls.toLocaleString()}</span>
+                      <span>Map Loads: {month.map_loads.toLocaleString()}</span>
+                      <span className="text-red-600 font-medium">${Number(month.total_cost).toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
