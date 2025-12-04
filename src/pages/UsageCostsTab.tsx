@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3 } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -766,10 +766,30 @@ const UsageCostsTab = () => {
             </TabsContent>
           </Tabs>
 
-          <div className="pt-2 border-t text-xs text-muted-foreground">
-            <p>• Stats snapshot every 60 minutes automatically</p>
-            <p>• Processing rate: 20 emails per 20 seconds = 60/min capacity</p>
-            <p>• High pending counts indicate processing backlog</p>
+          <div className="pt-2 border-t flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              <p>• Stats snapshot every 60 minutes automatically</p>
+              <p>• Processing rate: 100 emails/batch with parallel processing (~300/min capacity)</p>
+              <p>• High pending counts indicate processing backlog</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.functions.invoke('snapshot-email-volume');
+                  if (error) throw error;
+                  toast.success("Snapshot triggered - refreshing...");
+                  setTimeout(() => window.location.reload(), 2000);
+                } catch (err) {
+                  toast.error("Failed to trigger snapshot");
+                }
+              }}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Snapshot Now
+            </Button>
           </div>
         </CardContent>
       </Card>
