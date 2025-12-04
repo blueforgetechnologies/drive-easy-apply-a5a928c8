@@ -38,35 +38,19 @@ const UsageCostsTab = () => {
   // Get current month in YYYY-MM format
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Fetch LIVE current month usage by counting source tables directly
+  // Fetch current month usage from mapbox_monthly_usage table (authoritative source)
   const { data: currentMonthUsage, isFetching: isUsageFetching } = useQuery({
-    queryKey: ["current-month-usage-live", currentMonth],
+    queryKey: ["current-month-usage", currentMonth],
     queryFn: async () => {
-      // Count geocoding calls from geocode_cache for current month
-      const { count: geocodingCount } = await supabase
-        .from('geocode_cache')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_created', currentMonth);
+      const { data, error } = await supabase
+        .from('mapbox_monthly_usage')
+        .select('*')
+        .eq('month_year', currentMonth)
+        .single();
       
-      // Count map loads for current month
-      const { count: mapLoadsCount } = await supabase
-        .from('map_load_tracking')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_year', currentMonth);
-      
-      // Count directions API calls for current month
-      const { count: directionsCount } = await supabase
-        .from('directions_api_tracking')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_year', currentMonth);
-      
+      if (error && error.code !== 'PGRST116') throw error;
       setLastRefresh(new Date());
-      
-      return {
-        geocoding_api_calls: geocodingCount || 0,
-        map_loads: mapLoadsCount || 0,
-        directions_api_calls: directionsCount || 0
-      };
+      return data;
     },
     refetchInterval: mapboxRefreshInterval
   });
@@ -353,20 +337,20 @@ const UsageCostsTab = () => {
     return cost;
   };
 
-  // Current month geocoding API calls - LIVE count from geocode_cache
+  // Current month geocoding API calls - from mapbox_monthly_usage (synced from Mapbox dashboard)
   const currentMonthGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
   const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
-  const geocodingCost = calculateGeocodingCost(currentMonthGeocodingCalls);
+  const geocodingCost = currentMonthUsage?.geocoding_cost || calculateGeocodingCost(currentMonthGeocodingCalls);
 
-  // Current month map loads - LIVE count from map_load_tracking
+  // Current month map loads - from mapbox_monthly_usage
   const currentMonthMapLoads = currentMonthUsage?.map_loads || 0;
   const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
-  const mapLoadsCost = calculateMapLoadsCost(currentMonthMapLoads);
+  const mapLoadsCost = currentMonthUsage?.map_loads_cost || calculateMapLoadsCost(currentMonthMapLoads);
 
-  // Current month directions API - LIVE count from directions_api_tracking
+  // Current month directions API - from mapbox_monthly_usage
   const currentMonthDirectionsCalls = currentMonthUsage?.directions_api_calls || 0;
   const billableDirectionsCalls = Math.max(0, currentMonthDirectionsCalls - MAPBOX_DIRECTIONS_FREE_TIER);
-  const directionsCost = calculateDirectionsCost(currentMonthDirectionsCalls);
+  const directionsCost = currentMonthUsage?.directions_cost || calculateDirectionsCost(currentMonthDirectionsCalls);
 
   // Cache stats for display
   const cachedLocations = geocodeStats?.totalLocations || 0;
@@ -381,15 +365,15 @@ const UsageCostsTab = () => {
       geocodingCacheSaved: cacheSavedCalls,
       geocodingFreeRemaining: Math.max(0, MAPBOX_GEOCODING_FREE_TIER - currentMonthGeocodingCalls),
       geocodingBillable: billableGeocodingCalls,
-      geocodingCost: geocodingCost.toFixed(2),
+      geocodingCost: Number(geocodingCost).toFixed(2),
       mapLoads: currentMonthMapLoads,
       mapLoadsFreeRemaining: Math.max(0, MAPBOX_MAP_LOADS_FREE_TIER - currentMonthMapLoads),
       mapLoadsBillable: billableMapLoads,
-      mapLoadsCost: mapLoadsCost.toFixed(2),
+      mapLoadsCost: Number(mapLoadsCost).toFixed(2),
       directionsApiCalls: currentMonthDirectionsCalls,
       directionsFreeRemaining: Math.max(0, MAPBOX_DIRECTIONS_FREE_TIER - currentMonthDirectionsCalls),
       directionsBillable: billableDirectionsCalls,
-      directionsCost: directionsCost.toFixed(2)
+      directionsCost: Number(directionsCost).toFixed(2)
     },
     resend: {
       emailsSent: recentActivity?.emails || 0,
