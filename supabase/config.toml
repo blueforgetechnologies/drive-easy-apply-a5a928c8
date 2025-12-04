@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.process-email-queue]
 verify_jwt = false
+
+[functions.snapshot-geocode-stats]
+verify_jwt = true
