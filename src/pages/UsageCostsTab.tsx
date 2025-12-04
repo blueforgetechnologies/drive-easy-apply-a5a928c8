@@ -38,19 +38,35 @@ const UsageCostsTab = () => {
   // Get current month in YYYY-MM format
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Fetch current month usage from mapbox_monthly_usage table
+  // Fetch LIVE current month usage by counting source tables directly
   const { data: currentMonthUsage, isFetching: isUsageFetching } = useQuery({
-    queryKey: ["current-month-usage", currentMonth],
+    queryKey: ["current-month-usage-live", currentMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mapbox_monthly_usage')
-        .select('*')
-        .eq('month_year', currentMonth)
-        .single();
+      // Count geocoding calls from geocode_cache for current month
+      const { count: geocodingCount } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_created', currentMonth);
       
-      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-      setLastRefresh(new Date()); // Update timestamp on each fetch
-      return data;
+      // Count map loads for current month
+      const { count: mapLoadsCount } = await supabase
+        .from('map_load_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      // Count directions API calls for current month
+      const { count: directionsCount } = await supabase
+        .from('directions_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      setLastRefresh(new Date());
+      
+      return {
+        geocoding_api_calls: geocodingCount || 0,
+        map_loads: mapLoadsCount || 0,
+        directions_api_calls: directionsCount || 0
+      };
     },
     refetchInterval: mapboxRefreshInterval
   });
@@ -337,23 +353,18 @@ const UsageCostsTab = () => {
     return cost;
   };
 
-  // Current month geocoding API calls - base from mapbox_monthly_usage + new cache misses this month
-  const baseGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
-  const newGeocodingCalls = newCacheEntriesThisMonth || 0;
-  // If we have a stored base, add new calls on top. Otherwise just use new calls.
-  const currentMonthGeocodingCalls = baseGeocodingCalls > 0 ? baseGeocodingCalls + newGeocodingCalls : newGeocodingCalls;
+  // Current month geocoding API calls - LIVE count from geocode_cache
+  const currentMonthGeocodingCalls = currentMonthUsage?.geocoding_api_calls || 0;
   const billableGeocodingCalls = Math.max(0, currentMonthGeocodingCalls - MAPBOX_GEOCODING_FREE_TIER);
   const geocodingCost = calculateGeocodingCost(currentMonthGeocodingCalls);
 
-  // Current month map loads - use mapbox_monthly_usage if available
-  const currentMonthMapLoads = currentMonthUsage?.map_loads || mapLoadStats || 0;
+  // Current month map loads - LIVE count from map_load_tracking
+  const currentMonthMapLoads = currentMonthUsage?.map_loads || 0;
   const billableMapLoads = Math.max(0, currentMonthMapLoads - MAPBOX_MAP_LOADS_FREE_TIER);
-  const mapLoadsCost = currentMonthUsage?.map_loads_cost || calculateMapLoadsCost(currentMonthMapLoads);
+  const mapLoadsCost = calculateMapLoadsCost(currentMonthMapLoads);
 
-  // Current month directions API - baseline from mapbox_monthly_usage + new tracking
-  const baseDirectionsCalls = currentMonthUsage?.directions_api_calls || 0;
-  const newDirectionsCalls = directionsApiStats || 0;
-  const currentMonthDirectionsCalls = baseDirectionsCalls > 0 ? baseDirectionsCalls + newDirectionsCalls : newDirectionsCalls;
+  // Current month directions API - LIVE count from directions_api_tracking
+  const currentMonthDirectionsCalls = currentMonthUsage?.directions_api_calls || 0;
   const billableDirectionsCalls = Math.max(0, currentMonthDirectionsCalls - MAPBOX_DIRECTIONS_FREE_TIER);
   const directionsCost = calculateDirectionsCost(currentMonthDirectionsCalls);
 
