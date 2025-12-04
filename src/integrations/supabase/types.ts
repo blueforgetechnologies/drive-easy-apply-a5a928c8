@@ -703,6 +703,7 @@ export type Database = {
           latitude: number
           location_key: string
           longitude: number
+          month_created: string | null
           state: string | null
         }
         Insert: {
@@ -713,6 +714,7 @@ export type Database = {
           latitude: number
           location_key: string
           longitude: number
+          month_created?: string | null
           state?: string | null
         }
         Update: {
@@ -723,6 +725,7 @@ export type Database = {
           latitude?: number
           location_key?: string
           longitude?: number
+          month_created?: string | null
           state?: string | null
         }
         Relationships: []
@@ -1810,19 +1813,55 @@ export type Database = {
           component_name: string
           created_at: string
           id: string
+          month_year: string | null
           user_id: string | null
         }
         Insert: {
           component_name: string
           created_at?: string
           id?: string
+          month_year?: string | null
           user_id?: string | null
         }
         Update: {
           component_name?: string
           created_at?: string
           id?: string
+          month_year?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      mapbox_monthly_usage: {
+        Row: {
+          created_at: string
+          geocoding_api_calls: number
+          geocoding_cost: number
+          id: string
+          map_loads: number
+          map_loads_cost: number
+          month_year: string
+          total_cost: number
+        }
+        Insert: {
+          created_at?: string
+          geocoding_api_calls?: number
+          geocoding_cost?: number
+          id?: string
+          map_loads?: number
+          map_loads_cost?: number
+          month_year: string
+          total_cost?: number
+        }
+        Update: {
+          created_at?: string
+          geocoding_api_calls?: number
+          geocoding_cost?: number
+          id?: string
+          map_loads?: number
+          map_loads_cost?: number
+          month_year?: string
+          total_cost?: number
         }
         Relationships: []
       }
