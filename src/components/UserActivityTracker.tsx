@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, ChevronDown, ChevronUp, Circle } from "lucide-react";
+import { Users, ChevronDown, ChevronUp, Circle, X } from "lucide-react";
 import { startOfDay, subHours } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface UserPresence {
   id: string;
@@ -26,6 +27,7 @@ interface UserWithStats extends UserPresence {
 }
 
 export function UserActivityTracker() {
+  const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -307,6 +309,106 @@ export function UserActivityTracker() {
 
   const onlineCount = users.filter(u => u.isOnline).length;
 
+  // MOBILE: Full-screen sheet when expanded, small FAB when collapsed
+  if (isMobile) {
+    return (
+      <>
+        {/* Floating Action Button */}
+        {!isExpanded && (
+          <Button
+            onClick={() => setIsExpanded(true)}
+            className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-primary"
+          >
+            <Users className="h-5 w-5" />
+            {onlineCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                {onlineCount}
+              </Badge>
+            )}
+          </Button>
+        )}
+
+        {/* Full Screen Sheet */}
+        {isExpanded && (
+          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom">
+            <div className="sticky top-0 bg-card border-b px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Team Activity</span>
+                <Badge variant="secondary">{onlineCount} online</Badge>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsExpanded(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <ScrollArea className="h-[calc(100vh-60px)]">
+              {loading ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Loading team activity...
+                </div>
+              ) : users.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  No team members logged in today
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {users.map((user) => (
+                    <div 
+                      key={user.id} 
+                      className={`p-4 ${user.id === currentUserId ? 'bg-primary/5' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Circle 
+                            className={`h-3 w-3 ${
+                              user.isOnline ? 'fill-green-500 text-green-500' : 'fill-muted text-muted'
+                            }`} 
+                          />
+                          <span className="font-medium">
+                            {user.fullName}
+                            {user.id === currentUserId && (
+                              <span className="text-xs text-muted-foreground ml-1">(you)</span>
+                            )}
+                          </span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {user.isOnline ? 'Active' : formatLastActivity(user.lastActivity)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30"
+                        >
+                          {user.stats.unreviewed} unreviewed
+                        </Badge>
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
+                        >
+                          {user.stats.skipped} skipped
+                        </Badge>
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-red-500/10 text-red-600 border-red-500/30"
+                        >
+                          {user.stats.missed} missed
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // DESKTOP: Original floating card
   return (
     <Card className="absolute bottom-4 right-4 w-80 z-50 shadow-lg border-border/50 bg-card/95 backdrop-blur-sm">
       <CardHeader 
