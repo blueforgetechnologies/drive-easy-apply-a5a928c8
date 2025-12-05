@@ -586,20 +586,20 @@ export default function VehiclesTab() {
             <div className="overflow-x-auto">
               <Table className="text-sm">
                 <TableHeader>
-                  <TableRow className="bg-muted/50 h-8">
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Status</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Unit ID</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Carrier/Payee</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Drivers</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Dispatcher</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Type/Susp</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Dimensions</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Payload</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Lift-Gate</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Oil Change</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Registration</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold">Insurance</TableHead>
-                    <TableHead className="py-1 px-2 text-xs font-semibold w-[80px]">Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Unit ID</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Carrier/Payee</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Drivers</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Dispatcher</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Type/Susp</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Dimensions</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Payload</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Lift-Gate</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Oil Change</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Registration</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Insurance</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
