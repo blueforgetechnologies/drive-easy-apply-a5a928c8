@@ -483,14 +483,15 @@ const UsageCostsTab = () => {
     refetchIntervalInBackground: true,
   });
 
-  // Fetch Lovable AI tracking (current month)
+  // Fetch Lovable AI tracking (current month) - comprehensive stats
   const { data: aiStats, refetch: refetchAi } = useQuery({
     queryKey: ["usage-ai", currentMonth],
     queryFn: async () => {
       const { data, error, count } = await supabase
         .from('ai_usage_tracking')
-        .select('model, prompt_tokens, completion_tokens, total_tokens', { count: 'exact' })
-        .eq('month_year', currentMonth);
+        .select('model, prompt_tokens, completion_tokens, total_tokens, created_at', { count: 'exact' })
+        .eq('month_year', currentMonth)
+        .order('created_at', { ascending: true });
       
       if (error) throw error;
       
@@ -498,14 +499,67 @@ const UsageCostsTab = () => {
       const totalCompletionTokens = data?.reduce((sum, row) => sum + (row.completion_tokens || 0), 0) || 0;
       const totalTokens = data?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
       
+      // Model breakdown
+      const modelBreakdown: Record<string, { count: number; tokens: number; promptTokens: number; completionTokens: number }> = {};
+      data?.forEach(row => {
+        const model = row.model || 'unknown';
+        if (!modelBreakdown[model]) {
+          modelBreakdown[model] = { count: 0, tokens: 0, promptTokens: 0, completionTokens: 0 };
+        }
+        modelBreakdown[model].count++;
+        modelBreakdown[model].tokens += row.total_tokens || 0;
+        modelBreakdown[model].promptTokens += row.prompt_tokens || 0;
+        modelBreakdown[model].completionTokens += row.completion_tokens || 0;
+      });
+      
+      // Calculate days of data for projections
+      let daysOfData = 1;
+      if (data && data.length >= 2) {
+        const firstRequest = new Date(data[0].created_at);
+        const lastRequest = new Date(data[data.length - 1].created_at);
+        daysOfData = Math.max(1, (lastRequest.getTime() - firstRequest.getTime()) / (1000 * 60 * 60 * 24));
+      }
+      
+      // Daily averages and projections
+      const requestCount = count || 0;
+      const requestsPerDay = requestCount / daysOfData;
+      const tokensPerDay = totalTokens / daysOfData;
+      const projected30DayRequests = Math.round(requestsPerDay * 30);
+      const projected30DayTokens = Math.round(tokensPerDay * 30);
+      
+      // Average tokens per request
+      const avgTokensPerRequest = requestCount > 0 ? Math.round(totalTokens / requestCount) : 0;
+      const avgPromptTokens = requestCount > 0 ? Math.round(totalPromptTokens / requestCount) : 0;
+      const avgCompletionTokens = requestCount > 0 ? Math.round(totalCompletionTokens / requestCount) : 0;
+      
+      // Estimated cost calculation (approximate based on typical Lovable AI pricing)
+      // Gemini Flash: ~$0.075 per 1M input, ~$0.30 per 1M output
+      // Gemini Pro: ~$1.25 per 1M input, ~$5.00 per 1M output
+      let estimatedCost = 0;
+      Object.entries(modelBreakdown).forEach(([model, stats]) => {
+        const isFlash = model.toLowerCase().includes('flash');
+        const inputCostPer1M = isFlash ? 0.075 : 1.25;
+        const outputCostPer1M = isFlash ? 0.30 : 5.00;
+        estimatedCost += (stats.promptTokens / 1_000_000) * inputCostPer1M;
+        estimatedCost += (stats.completionTokens / 1_000_000) * outputCostPer1M;
+      });
+      
       setLastAiRefresh(new Date());
       return { 
-        count: count || 0,
+        count: requestCount,
         totalPromptTokens,
         totalCompletionTokens,
         totalTokens,
-        // Lovable AI is usage-based, estimate based on typical costs
-        estimatedCost: 'Usage-based'
+        modelBreakdown,
+        daysOfData: daysOfData.toFixed(1),
+        requestsPerDay: Math.round(requestsPerDay),
+        tokensPerDay: Math.round(tokensPerDay),
+        projected30DayRequests,
+        projected30DayTokens,
+        avgTokensPerRequest,
+        avgPromptTokens,
+        avgCompletionTokens,
+        estimatedCost: estimatedCost > 0 ? `$${estimatedCost.toFixed(4)}` : 'Free tier'
       };
     },
     refetchInterval: aiRefreshInterval,
@@ -988,21 +1042,62 @@ const UsageCostsTab = () => {
           {/* AI Usage Stats from tracking */}
           {aiStats && aiStats.count > 0 && (
             <div className={`${isCompactView ? 'pt-1 border-t' : 'pt-3 border-t'}`}>
-              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>This Month's Usage</p>
-              <div className={`grid ${isCompactView ? 'grid-cols-3 gap-2' : 'grid-cols-3 gap-4'}`}>
+              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>This Month's Usage ({aiStats.daysOfData} days)</p>
+              
+              {/* Main stats grid */}
+              <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
                 <div className="space-y-0.5">
                   <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Requests</p>
                   <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.count}</p>
+                  <p className="text-xs text-muted-foreground">~{aiStats.requestsPerDay}/day</p>
                 </div>
                 <div className="space-y-0.5">
                   <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Tokens</p>
                   <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.totalTokens.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">~{aiStats.avgTokensPerRequest}/req</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>30-Day Projection</p>
+                  <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.projected30DayTokens.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">~{aiStats.projected30DayRequests} requests</p>
                 </div>
                 <div className="space-y-0.5">
                   <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
-                  <p className={`font-semibold text-blue-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.estimatedCost}</p>
+                  <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.estimatedCost}</p>
+                  <p className="text-xs text-muted-foreground">This month</p>
                 </div>
               </div>
+              
+              {/* Token breakdown */}
+              {!isCompactView && (
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Input Tokens (Prompt)</p>
+                    <p className="font-semibold text-sm">{aiStats.totalPromptTokens.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">~{aiStats.avgPromptTokens} avg/request</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Output Tokens (Completion)</p>
+                    <p className="font-semibold text-sm">{aiStats.totalCompletionTokens.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">~{aiStats.avgCompletionTokens} avg/request</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Model breakdown */}
+              {!isCompactView && aiStats.modelBreakdown && Object.keys(aiStats.modelBreakdown).length > 0 && (
+                <div className="mt-3 pt-2 border-t">
+                  <p className="text-xs font-medium mb-2">Usage by Model</p>
+                  <div className="space-y-1">
+                    {Object.entries(aiStats.modelBreakdown).map(([model, stats]) => (
+                      <div key={model} className="flex justify-between items-center text-xs">
+                        <span className="text-muted-foreground truncate max-w-[180px]">{model}</span>
+                        <span className="font-medium">{stats.count} requests • {stats.tokens.toLocaleString()} tokens</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
