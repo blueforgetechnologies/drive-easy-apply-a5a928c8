@@ -316,7 +316,7 @@ export default function PayeesTab() {
               </TableHeader>
               <TableBody>
                 {filteredPayees.map((payee) => (
-                  <TableRow key={payee.id} className="h-10">
+                  <TableRow key={payee.id} className="h-10 cursor-pointer hover:bg-muted/50">
                     <TableCell className="py-1 px-2 font-medium">{payee.name}</TableCell>
                     <TableCell className="py-1 px-2">{payee.type || "N/A"}</TableCell>
                     <TableCell className="py-1 px-2">{payee.payment_method || "N/A"}</TableCell>

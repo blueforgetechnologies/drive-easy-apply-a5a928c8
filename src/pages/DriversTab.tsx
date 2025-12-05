@@ -437,7 +437,7 @@ export default function DriversTab() {
                         : null;
                       
                       return (
-                        <TableRow key={app.id} className="h-10">
+                        <TableRow key={app.id} className="h-10 cursor-pointer hover:bg-muted/50" onClick={() => viewApplication(app.id)}>
                           <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
                               <div 

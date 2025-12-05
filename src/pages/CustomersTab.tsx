@@ -465,7 +465,7 @@ export default function CustomersTab() {
                 </TableHeader>
                 <TableBody>
                   {filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id} className="h-10 hover:bg-muted/50">
+                    <TableRow key={customer.id} className="h-10 hover:bg-muted/50 cursor-pointer">
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
