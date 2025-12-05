@@ -258,7 +258,7 @@ export default function UsersTab() {
                     <TableRow key={invite.id}>
                       <TableCell className="font-medium">{invite.email}</TableCell>
                       <TableCell>
-                        {invite.invited_at ? format(new Date(invite.invited_at), "MMM d, yyyy") : "N/A"}
+                        {invite.invited_at ? format(new Date(invite.invited_at), "MM/dd/yyyy") : "N/A"}
                       </TableCell>
                       <TableCell>
                         {invite.accepted_at ? (
@@ -328,7 +328,7 @@ export default function UsersTab() {
                         <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          {format(new Date(user.created_at), "MMM d, yyyy")}
+                          {format(new Date(user.created_at), "MM/dd/yyyy")}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -370,7 +370,7 @@ export default function UsersTab() {
                         </TableCell>
                         <TableCell>{log.profile?.email || "N/A"}</TableCell>
                         <TableCell>
-                          {format(new Date(log.logged_in_at), "MMM d, yyyy h:mm a")}
+                          {format(new Date(log.logged_in_at), "MM/dd/yyyy h:mm a")}
                         </TableCell>
                         <TableCell>{log.ip_address || "N/A"}</TableCell>
                         <TableCell>{log.location || "N/A"}</TableCell>

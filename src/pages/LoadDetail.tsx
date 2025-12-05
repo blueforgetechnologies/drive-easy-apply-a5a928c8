@@ -1209,7 +1209,7 @@ export default function LoadDetail() {
                   {stop.scheduled_date && (
                     <div className="text-sm">
                       <span className="text-muted-foreground">Scheduled: </span>
-                      {format(new Date(stop.scheduled_date), "MMM d, yyyy")}
+                      {format(new Date(stop.scheduled_date), "MM/dd/yyyy")}
                       {stop.scheduled_time_start && ` ${stop.scheduled_time_start}`}
                       {stop.scheduled_time_end && ` - ${stop.scheduled_time_end}`}
                     </div>
@@ -1219,7 +1219,7 @@ export default function LoadDetail() {
                     <div className="text-sm flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <span className="text-muted-foreground">Arrived: </span>
-                      {format(new Date(stop.actual_arrival), "MMM d, yyyy h:mm a")}
+                      {format(new Date(stop.actual_arrival), "MM/dd/yyyy h:mm a")}
                     </div>
                   )}
 
@@ -1227,7 +1227,7 @@ export default function LoadDetail() {
                     <div className="text-sm flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <span className="text-muted-foreground">Departed: </span>
-                      {format(new Date(stop.actual_departure), "MMM d, yyyy h:mm a")}
+                      {format(new Date(stop.actual_departure), "MM/dd/yyyy h:mm a")}
                     </div>
                   )}
 
@@ -1352,7 +1352,7 @@ export default function LoadDetail() {
                       {expense.description && <p className="text-sm">{expense.description}</p>}
                       {expense.incurred_date && (
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(expense.incurred_date), "MMM d, yyyy")}
+                          {format(new Date(expense.incurred_date), "MM/dd/yyyy")}
                         </p>
                       )}
                     </div>

@@ -113,7 +113,7 @@ export default function AuditLogsTab() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>By: {log.user_name || "System"}</span>
                     <span>•</span>
-                    <span>{format(new Date(log.timestamp), "MMM d, yyyy h:mm a")}</span>
+                    <span>{format(new Date(log.timestamp), "MM/dd/yyyy h:mm a")}</span>
                     {log.ip_address && (
                       <>
                         <span>•</span>

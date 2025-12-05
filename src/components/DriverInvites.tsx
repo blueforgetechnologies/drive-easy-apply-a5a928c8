@@ -84,13 +84,13 @@ export function DriverInvites() {
                 </TableCell>
                 <TableCell>{invite.email}</TableCell>
                 <TableCell>
-                  {format(new Date(invite.invited_at), "MMM d, yyyy h:mm a")}
+                  {format(new Date(invite.invited_at), "MM/dd/yyyy h:mm a")}
                 </TableCell>
                 <TableCell>
                   {invite.application_started_at ? (
                     <Badge variant="default">Application Started</Badge>
                   ) : invite.opened_at ? (
-                    <Badge variant="secondary">Opened {format(new Date(invite.opened_at), "MMM d, h:mm a")}</Badge>
+                    <Badge variant="secondary">Opened {format(new Date(invite.opened_at), "MM/dd/yyyy h:mm a")}</Badge>
                   ) : (
                     <Badge variant="outline">Not Opened</Badge>
                   )}

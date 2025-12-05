@@ -476,7 +476,7 @@ export default function SettlementsTab() {
                     <TableRow key={settlement.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewSettlementDetail(settlement.id)}>
                       <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                       <TableCell>
-                        {format(new Date(settlement.period_start), "MMM d")} - {format(new Date(settlement.period_end), "MMM d, yyyy")}
+                        {format(new Date(settlement.period_start), "MM/dd")} - {format(new Date(settlement.period_end), "MM/dd/yyyy")}
                       </TableCell>
                       <TableCell>{settlement.total_loads || 0}</TableCell>
                       <TableCell>{settlement.total_miles || 0}</TableCell>
