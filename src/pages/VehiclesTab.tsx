@@ -628,7 +628,7 @@ export default function VehiclesTab() {
                             value={vehicle.status}
                             onValueChange={(value) => handleStatusChange(vehicle.id, value)}
                           >
-                            <SelectTrigger className={`w-[75px] h-6 text-xs px-1 ${
+                            <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
                               vehicle.status === "active"
                                 ? "bg-green-100 text-green-800 border-green-200"
                                 : vehicle.status === "pending"
@@ -638,9 +638,9 @@ export default function VehiclesTab() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="active" className="text-xs">Active</SelectItem>
-                              <SelectItem value="pending" className="text-xs">Pending</SelectItem>
-                              <SelectItem value="inactive" className="text-xs">Inactive</SelectItem>
+                              <SelectItem value="active" className="text-sm">Active</SelectItem>
+                              <SelectItem value="pending" className="text-sm">Pending</SelectItem>
+                              <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -656,7 +656,7 @@ export default function VehiclesTab() {
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="space-y-0">
                           <div
-                            className="text-primary underline cursor-pointer hover:text-primary/80 text-xs"
+                            className="text-primary underline cursor-pointer hover:text-primary/80 text-sm"
                             onClick={() => handleOpenAssignDialog(vehicle.id, "driver1")}
                           >
                             {vehicle.driver_1_id
@@ -664,7 +664,7 @@ export default function VehiclesTab() {
                               : "Assign"}
                           </div>
                           <div
-                            className="text-primary underline cursor-pointer hover:text-primary/80 text-xs"
+                            className="text-primary underline cursor-pointer hover:text-primary/80 text-sm"
                             onClick={() => handleOpenAssignDialog(vehicle.id, "driver2")}
                           >
                             {vehicle.driver_2_id
@@ -675,7 +675,7 @@ export default function VehiclesTab() {
                       </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div
-                          className="text-primary underline cursor-pointer hover:text-primary/80 text-xs"
+                          className="text-primary underline cursor-pointer hover:text-primary/80 text-sm"
                           onClick={() => handleOpenAssignDialog(vehicle.id, "dispatcher")}
                         >
                           {vehicle.primary_dispatcher_id
