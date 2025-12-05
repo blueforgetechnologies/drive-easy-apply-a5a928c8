@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,6 +34,7 @@ interface Customer {
 }
 
 export default function CustomersTab() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -483,7 +484,7 @@ export default function CustomersTab() {
                 </TableHeader>
                 <TableBody>
                   {filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id} className="h-10 hover:bg-muted/50 cursor-pointer">
+                    <TableRow key={customer.id} className="h-10 hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/dashboard/customer/${customer.id}`)}>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
@@ -527,7 +528,7 @@ export default function CustomersTab() {
                       <TableCell className="py-1 px-2">
                         {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
                       </TableCell>
-                      <TableCell className="py-1 px-2">
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEdit(customer)}>
                             <Edit className="h-3.5 w-3.5" />

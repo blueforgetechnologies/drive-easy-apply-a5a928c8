@@ -24,6 +24,7 @@ import AccountingTab from "./pages/AccountingTab";
 import BusinessManagerTab from "./pages/BusinessManagerTab";
 import SettingsTab from "./pages/SettingsTab";
 import CarrierDetail from "./pages/CarrierDetail";
+import CustomerDetail from "./pages/CustomerDetail";
 import LoadHunterTab from "./pages/LoadHunterTab";
 import DevelopmentTab from "./pages/DevelopmentTab";
 import FlowDiagramTab from "./pages/FlowDiagramTab";
@@ -61,6 +62,7 @@ const App = () => (
           <Route path="/dashboard/settlement/:id" element={<DashboardLayout><SettlementDetail /></DashboardLayout>} />
           <Route path="/dashboard/invoice/:id" element={<DashboardLayout><InvoiceDetail /></DashboardLayout>} />
           <Route path="/dashboard/carrier/:id" element={<DashboardLayout><CarrierDetail /></DashboardLayout>} />
+          <Route path="/dashboard/customer/:id" element={<DashboardLayout><CustomerDetail /></DashboardLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
