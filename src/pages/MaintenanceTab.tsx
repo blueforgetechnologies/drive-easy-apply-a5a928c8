@@ -333,7 +333,7 @@ export default function MaintenanceTab() {
                   <p className="text-muted-foreground">Service Date</p>
                   <p className="font-medium flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(new Date(record.service_date), "MMM d, yyyy")}
+                    {format(new Date(record.service_date), "MM/dd/yyyy")}
                   </p>
                 </div>
                 
@@ -362,7 +362,7 @@ export default function MaintenanceTab() {
               {record.next_service_date && (
                 <div className="text-sm">
                   <p className="text-muted-foreground">
-                    Next service due: {format(new Date(record.next_service_date), "MMM d, yyyy")}
+                    Next service due: {format(new Date(record.next_service_date), "MM/dd/yyyy")}
                     {record.next_service_odometer && ` at ${record.next_service_odometer.toLocaleString()} mi`}
                   </p>
                 </div>

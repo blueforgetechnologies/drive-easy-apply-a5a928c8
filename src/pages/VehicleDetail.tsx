@@ -602,7 +602,7 @@ export default function VehicleDetail() {
                     <div className="grid grid-cols-5 gap-1 text-[10px] items-center">
                       <div>Next Service</div>
                       <div>Date</div>
-                      <div>{format(new Date(formData.next_service_date), "yyyy-MM-dd")}</div>
+                      <div>{format(new Date(formData.next_service_date), "MM/dd/yyyy")}</div>
                       <div>-</div>
                       <div className="flex gap-1 justify-end">
                         <Button

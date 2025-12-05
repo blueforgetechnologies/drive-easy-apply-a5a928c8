@@ -208,11 +208,11 @@ export default function SettlementDetail() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Period Start</p>
-                    <p className="font-medium">{format(new Date(settlement.period_start), "MMM d, yyyy")}</p>
+                    <p className="font-medium">{format(new Date(settlement.period_start), "MM/dd/yyyy")}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Period End</p>
-                    <p className="font-medium">{format(new Date(settlement.period_end), "MMM d, yyyy")}</p>
+                    <p className="font-medium">{format(new Date(settlement.period_end), "MM/dd/yyyy")}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Loads</p>
@@ -358,7 +358,7 @@ export default function SettlementDetail() {
                     <Separator />
                     <div>
                       <p className="text-sm text-muted-foreground">Payment Date</p>
-                      <p className="font-medium">{format(new Date(settlement.payment_date), "MMM d, yyyy")}</p>
+                      <p className="font-medium">{format(new Date(settlement.payment_date), "MM/dd/yyyy")}</p>
                     </div>
                   </>
                 )}

@@ -164,7 +164,7 @@ export default function Dashboard() {
                       <TableCell>{app.personal_info.email}</TableCell>
                       <TableCell>{app.personal_info.phone}</TableCell>
                       <TableCell>
-                        {format(new Date(app.submitted_at), "MMM d, yyyy")}
+                        {format(new Date(app.submitted_at), "MM/dd/yyyy")}
                       </TableCell>
                       <TableCell>
                         <Badge variant={app.status === "pending" ? "secondary" : "default"}>

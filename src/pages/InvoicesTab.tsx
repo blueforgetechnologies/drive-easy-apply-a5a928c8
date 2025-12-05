@@ -359,8 +359,8 @@ export default function InvoicesTab() {
                     <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>{invoice.customer_name}</TableCell>
-                      <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MMM d, yyyy") : "—"}</TableCell>
-                      <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MMM d, yyyy") : "—"}</TableCell>
+                      <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MM/dd/yyyy") : "—"}</TableCell>
+                      <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MM/dd/yyyy") : "—"}</TableCell>
                       <TableCell>${invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
                       <TableCell className="text-green-600">${invoice.amount_paid?.toFixed(2) || "0.00"}</TableCell>
                       <TableCell className="font-semibold">${invoice.balance_due?.toFixed(2) || "0.00"}</TableCell>

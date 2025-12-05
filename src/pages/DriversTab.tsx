@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, differenceInYears } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
@@ -337,12 +337,12 @@ export default function DriversTab() {
                       <TableCell className="font-medium">{invite.name || "N/A"}</TableCell>
                       <TableCell>{invite.email}</TableCell>
                       <TableCell>
-                        {invite.invited_at ? format(new Date(invite.invited_at), "MMM d, yyyy") : "N/A"}
+                        {invite.invited_at ? format(new Date(invite.invited_at), "MM/dd/yyyy") : "N/A"}
                       </TableCell>
                       <TableCell>
                         {invite.opened_at ? (
                           <div className="text-sm">
-                            <div>{format(new Date(invite.opened_at), "MMM d, yyyy")}</div>
+                            <div>{format(new Date(invite.opened_at), "MM/dd/yyyy")}</div>
                             <div className="text-muted-foreground">{format(new Date(invite.opened_at), "h:mm a")}</div>
                           </div>
                         ) : (
@@ -419,7 +419,7 @@ export default function DriversTab() {
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Age/DOB</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DL Class</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">License Exp</TableHead>
-                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DOT Exp</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DOT EXP</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Record Exp</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">SS#</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">App/DD</TableHead>
@@ -428,10 +428,13 @@ export default function DriversTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredApplications.map((app) => {
+                    {filteredApplications.map((app: any) => {
                       const licenseInfo = app.license_info || {};
                       const personalInfo = app.personal_info || {};
                       const directDeposit = app.direct_deposit || {};
+                      const age = personalInfo.dateOfBirth 
+                        ? differenceInYears(new Date(), new Date(personalInfo.dateOfBirth))
+                        : null;
                       
                       return (
                         <TableRow key={app.id} className="h-10">
@@ -477,9 +480,9 @@ export default function DriversTab() {
                             {app.payroll_policy?.salary || "N/A"}
                           </TableCell>
                           <TableCell className="py-1 px-2">
-                            <div>{personalInfo.age || "N/A"}</div>
+                            <div>{age !== null ? age : "N/A"}</div>
                             <div className="text-xs text-muted-foreground">
-                              {personalInfo.dateOfBirth ? format(new Date(personalInfo.dateOfBirth), "yyyy-MM-dd") : "N/A"}
+                              {personalInfo.dateOfBirth ? format(new Date(personalInfo.dateOfBirth), "MM/dd/yyyy") : "N/A"}
                             </div>
                           </TableCell>
                           <TableCell className="py-1 px-2">
@@ -487,13 +490,13 @@ export default function DriversTab() {
                             <div className="text-xs text-muted-foreground">{licenseInfo.endorsements || "None"}</div>
                           </TableCell>
                           <TableCell className="py-1 px-2">
-                            {licenseInfo.expirationDate ? format(new Date(licenseInfo.expirationDate), "yyyy-MM-dd") : "N/A"}
+                            {licenseInfo.expirationDate ? format(new Date(licenseInfo.expirationDate), "MM/dd/yyyy") : "N/A"}
                           </TableCell>
                           <TableCell className="py-1 px-2">
-                            {licenseInfo.dotCardExpiration ? format(new Date(licenseInfo.dotCardExpiration), "yyyy-MM-dd") : "N/A"}
+                            {app.driver_record_expiry ? format(new Date(app.driver_record_expiry), "MM/dd/yyyy") : "N/A"}
                           </TableCell>
                           <TableCell className="py-1 px-2">
-                            {licenseInfo.driverRecordExpiry ? format(new Date(licenseInfo.driverRecordExpiry), "yyyy-MM-dd") : "N/A"}
+                            {licenseInfo.driverRecordExpiry ? format(new Date(licenseInfo.driverRecordExpiry), "MM/dd/yyyy") : "N/A"}
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             <div>{personalInfo.ssCard ? "Yes" : "No"}</div>
@@ -501,7 +504,7 @@ export default function DriversTab() {
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             <div>
-                              {app.submitted_at ? format(new Date(app.submitted_at), "yyyy-MM-dd'T'HH:mm:ss.SSS'-'SS':'SS") : "N/A"}
+                              {app.submitted_at ? format(new Date(app.submitted_at), "MM/dd/yyyy") : "N/A"}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {directDeposit.accountNumber ? "Yes" : "No"}
@@ -509,9 +512,11 @@ export default function DriversTab() {
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             <div>
-                              {app.submitted_at ? format(new Date(app.submitted_at), "yyyy-MM-dd") : "N/A"}
+                              {app.hired_date ? format(new Date(app.hired_date), "MM/dd/yyyy") : "N/A"}
                             </div>
-                            <div className="text-xs text-muted-foreground">N/A</div>
+                            <div className="text-xs text-muted-foreground">
+                              {app.termination_date ? format(new Date(app.termination_date), "MM/dd/yyyy") : "N/A"}
+                            </div>
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             <div className="flex gap-1">
