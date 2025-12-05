@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Truck, X } from "lucide-react";
+import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface LoadEmailDetailProps {
   email: any;
@@ -24,11 +25,13 @@ const LoadEmailDetail = ({
   carriersMap = {},
   onClose
 }: LoadEmailDetailProps) => {
+  const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
   const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
   const [toEmail, setToEmail] = useState<string | null>(null);
   const [fullEmailData, setFullEmailData] = useState<any>(null);
+  const [mobileSection, setMobileSection] = useState<'details' | 'map' | 'bid'>('details');
   const data = email.parsed_data || {};
 
   // Fetch full email data (including body_text) if not present in email prop
@@ -137,6 +140,314 @@ const LoadEmailDetail = ({
     resolveToEmail();
   }, [match, email.from_email, data.broker_email]);
 
+  // MOBILE LAYOUT
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        {/* Mobile Header */}
+        <div className="sticky top-0 z-50 bg-card border-b px-3 py-2">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 px-2">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <div className="text-sm font-medium">
+              {data.order_number ? `#${data.order_number}` : 'Load Details'}
+            </div>
+            <div className="w-16" />
+          </div>
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        <div className="border-b bg-card px-2 py-1">
+          <div className="flex gap-1">
+            {[
+              { id: 'details', label: 'Details', icon: Truck },
+              { id: 'map', label: 'Map', icon: MapPin },
+              { id: 'bid', label: 'Bid', icon: DollarSign },
+            ].map(tab => (
+              <Button
+                key={tab.id}
+                size="sm"
+                variant={mobileSection === tab.id ? 'default' : 'ghost'}
+                className="flex-1 h-9 text-xs"
+                onClick={() => setMobileSection(tab.id as any)}
+              >
+                <tab.icon className="h-4 w-4 mr-1" />
+                {tab.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Content */}
+        <div className="flex-1 overflow-auto p-3">
+          {mobileSection === 'details' && (
+            <div className="space-y-3">
+              {/* Route Summary */}
+              <Card className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">Route</span>
+                  {data.vehicle_type && (
+                    <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                      {data.vehicle_type}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="font-medium">{originCity}, {originState}</span>
+                  </div>
+                  <span className="text-muted-foreground">→</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span className="font-medium">{destCity}, {destState}</span>
+                  </div>
+                </div>
+                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                  <span>Empty: {emptyDriveDistance ? `${Math.round(emptyDriveDistance)}mi` : '—'}</span>
+                  <span>Loaded: {data.loaded_miles ? `${Math.round(data.loaded_miles)}mi` : '—'}</span>
+                </div>
+              </Card>
+
+              {/* Truck Info */}
+              {vehicle && (
+                <Card className="p-3">
+                  <div className="text-xs text-muted-foreground mb-2">Matched Truck</div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
+                      <Truck className="h-5 w-5 text-blue-600" />
+                      <div className="text-[10px] font-semibold text-blue-600">{vehicle?.vehicle_number || "N/A"}</div>
+                    </div>
+                    <div className="flex-1 text-sm">
+                      <div className="font-medium">{driver1Name || "No Driver"}</div>
+                      <div className="text-xs text-muted-foreground">{carrierName || "No Carrier"}</div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Broker Info */}
+              <Card className="p-3">
+                <div className="text-xs text-muted-foreground mb-2">Broker</div>
+                <div className="text-sm font-medium">{brokerName}</div>
+                {toEmail && (
+                  <div className="text-xs text-muted-foreground mt-1">{toEmail}</div>
+                )}
+              </Card>
+
+              {/* Posted Rate */}
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Posted Rate</span>
+                  <span className="text-lg font-bold text-green-600">
+                    {data.rate ? `$${data.rate.toLocaleString()}` : 'N/A'}
+                  </span>
+                </div>
+              </Card>
+
+              {/* View Original Email */}
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowOriginalEmail(true)}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                View Original Email
+              </Button>
+            </div>
+          )}
+
+          {mobileSection === 'map' && (
+            <Card className="h-[400px] overflow-hidden rounded-md">
+              <LoadRouteMap 
+                stops={[
+                  {
+                    location_city: originCity,
+                    location_state: originState,
+                    location_address: `${originCity}, ${originState}`,
+                    stop_type: "pickup"
+                  },
+                  {
+                    location_city: destCity,
+                    location_state: destState,
+                    location_address: `${destCity}, ${destState}`,
+                    stop_type: "delivery"
+                  }
+                ]} 
+              />
+            </Card>
+          )}
+
+          {mobileSection === 'bid' && (
+            <div className="space-y-3">
+              {/* Bid Input */}
+              <Card className="p-4">
+                <div className="text-xs text-muted-foreground mb-3">Your Bid</div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-1 bg-blue-500 text-white rounded-full h-12 px-4 flex-1">
+                    <span className="text-xl font-bold">$</span>
+                    <input
+                      type="text"
+                      value={bidAmount}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setBidAmount(val);
+                      }}
+                      placeholder={data.rate?.toString() || "3000"}
+                      className="bg-transparent border-none outline-none text-xl font-bold text-white w-full placeholder:text-blue-200"
+                    />
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => {
+                    const finalBid = bidAmount || data.rate?.toString() || "3000";
+                    setBidAmount(finalBid);
+                    setShowBidCardOnMap(true);
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700 h-11 font-semibold"
+                >
+                  Set Bid
+                </Button>
+              </Card>
+
+              {/* Stats */}
+              <Card className="p-4">
+                <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Average</div>
+                    <div className="text-sm font-semibold">—</div>
+                  </div>
+                  <div className="bg-blue-50 rounded p-2">
+                    <div className="text-[10px] text-muted-foreground">Bid</div>
+                    <div className="text-base font-bold text-blue-600">
+                      ${bidAmount || data.rate || '1,282'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Booked</div>
+                    <div className="text-sm font-semibold">N/A</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm border-t pt-3">
+                  <div className="flex justify-between">
+                    <span>Loaded Miles</span>
+                    <span className="font-semibold">{data.loaded_miles || 375}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Miles</span>
+                    <span className="font-semibold">
+                      {Math.round((data.loaded_miles || 375) + (emptyDriveDistance || 0))}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Actions */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="destructive" onClick={handleSkip}>
+                  Skip
+                </Button>
+                <Button className="bg-blue-500 hover:bg-blue-600">
+                  Undecided
+                </Button>
+                <Button className="bg-blue-500 hover:bg-blue-600">
+                  Wait
+                </Button>
+                <Button variant="outline">
+                  Mark Unreviewed
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Original Email Sheet for Mobile */}
+        {showOriginalEmail && (
+          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom">
+            <div className="sticky top-0 bg-background border-b p-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Original Email</h2>
+              <Button variant="ghost" size="icon" onClick={() => setShowOriginalEmail(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-3 overflow-auto h-[calc(100vh-60px)]">
+              <div className="space-y-3">
+                <div className="text-sm">
+                  <span className="font-semibold">From:</span> {email.from_name || email.from_email}
+                </div>
+                <div className="text-sm">
+                  <span className="font-semibold">Subject:</span> {email.subject || 'No subject'}
+                </div>
+                <div className="border-t pt-3">
+                  {emailBody ? (
+                    <iframe
+                      srcDoc={emailBody.toLowerCase().includes("<html") ? emailBody : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${emailBody}</body></html>`}
+                      className="w-full h-[500px] border rounded-md bg-background"
+                      title="Email Content"
+                    />
+                  ) : (
+                    <p className="text-muted-foreground">No email content available</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bid Card Sheet for Mobile */}
+        {showBidCardOnMap && (
+          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom">
+            <div className="sticky top-0 bg-background border-b p-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Bid Email Preview</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowBidCardOnMap(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-3 overflow-auto h-[calc(100vh-60px)]">
+              <div className="space-y-3">
+                <Card className="p-3">
+                  <div className="text-xs text-muted-foreground mb-1">To:</div>
+                  <div className="text-sm">{toEmail || 'No email found'}</div>
+                </Card>
+                <Card className="p-3">
+                  <div className="text-xs text-muted-foreground mb-1">Subject:</div>
+                  <div className="text-sm">
+                    Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}
+                  </div>
+                </Card>
+                <Card className="p-3 text-sm space-y-2">
+                  <p>Hello,</p>
+                  <p>I have a {displaySize}{displayType}.</p>
+                  <p className="text-blue-600">Please let me know if I can help on this load:</p>
+                  <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity} to {destCity}]</p>
+                  <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
+                    <p><strong>We have:</strong> {data.equipment_details || '[10 straps] [2 load bars] [2 E-Tracks] [10 blankets]'}</p>
+                    <p><strong>Truck Dimension:</strong> {data.truck_dimensions || 'L x W x H: ( 288 x 97 x 102 ) inches'}</p>
+                  </div>
+                </Card>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button size="sm" className="bg-blue-500 hover:bg-blue-600">
+                    Email Bid
+                  </Button>
+                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
+                    Place Bid
+                  </Button>
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                    Book
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // DESKTOP LAYOUT (original)
   return (
     <div className="flex-1 overflow-auto relative">
       {/* Original Email Sidebar - Slides in from left */}
