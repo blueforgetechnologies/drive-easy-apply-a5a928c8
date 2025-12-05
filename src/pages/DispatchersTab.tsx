@@ -148,14 +148,14 @@ export default function DispatchersTab() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Dispatcher Management</h2>
+    <div className="space-y-3">
+      {/* Compact Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-bold">Dispatcher Management</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
+            <Button size="sm" className="gap-1.5 h-8">
+              <Plus className="h-3.5 w-3.5" />
               Add Dispatcher
             </Button>
           </DialogTrigger>
@@ -208,49 +208,51 @@ export default function DispatchersTab() {
         </Dialog>
       </div>
 
-      {/* Tabs and Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-wrap gap-2">
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1">
           <Button
             variant={filter === "active" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "active" });
               setSearchQuery("");
             }}
-            className={filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}
           >
             Active
           </Button>
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "inactive" });
               setSearchQuery("");
             }}
-            className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
           >
             Inactive
           </Button>
           <Button
             variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "all" });
               setSearchQuery("");
             }}
-            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
           >
             All
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-48 ml-auto">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search dispatchers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-8 h-7 text-sm"
           />
         </div>
       </div>
