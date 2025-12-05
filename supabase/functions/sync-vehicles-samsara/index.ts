@@ -31,10 +31,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch all vehicles from database
+    // Fetch all vehicles from database (include oil_change_due for recalculation)
     const { data: dbVehicles, error: dbError } = await supabase
       .from('vehicles')
-      .select('id, vin, vehicle_number')
+      .select('id, vin, vehicle_number, oil_change_due')
       .not('vin', 'is', null);
 
     if (dbError) {
@@ -111,7 +111,13 @@ serve(async (req) => {
 
       // Extract odometer from obdOdometerMeters array (convert meters to miles)
       if (samsaraVehicle.obdOdometerMeters?.[0]?.value) {
-        updateData.odometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
+        const newOdometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
+        updateData.odometer = newOdometer;
+        
+        // Recalculate oil_change_remaining if oil_change_due is set
+        if (dbVehicle.oil_change_due) {
+          updateData.oil_change_remaining = dbVehicle.oil_change_due - newOdometer;
+        }
       }
 
       // Extract speed from GPS array (round to integer)
