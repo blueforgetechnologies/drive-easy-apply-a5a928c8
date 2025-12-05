@@ -1,14 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, Settings, HardDrive } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
+import { RefreshControl } from "@/components/RefreshControl";
 
 // Storage tier limits in MB
 const STORAGE_LIMITS = {
@@ -552,57 +551,13 @@ const UsageCostsTab = () => {
               </CardTitle>
               <CardDescription>Cache reduces Mapbox API calls</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              {isGeocodeStatsFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-              <span className="text-xs text-muted-foreground">
-                {isGeocodeStatsFetching ? 'Refreshing...' : `Last: ${lastGeocodeRefresh.toLocaleTimeString()}`} • {geocodeCacheRefreshInterval / 1000}s
-              </span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Settings className="h-3.5 w-3.5" />
-                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Auto-refresh interval</p>
-                    <Select
-                      value={geocodeCacheRefreshInterval.toString()}
-                      onValueChange={(value) => {
-                        setGeocodeCacheRefreshInterval(parseInt(value));
-                        toast.success(`Geocode cache refresh rate set to ${parseInt(value) / 1000}s`);
-                        refetchGeocodeStats();
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10000">10 seconds</SelectItem>
-                        <SelectItem value="20000">20 seconds</SelectItem>
-                        <SelectItem value="30000">30 seconds</SelectItem>
-                        <SelectItem value="60000">1 minute</SelectItem>
-                        <SelectItem value="120000">2 minutes</SelectItem>
-                        <SelectItem value="300000">5 minutes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated: {lastGeocodeRefresh.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8"
-                onClick={() => refetchGeocodeStats()}
-                disabled={isGeocodeStatsFetching}
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isGeocodeStatsFetching ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
+            <RefreshControl
+              lastRefresh={lastGeocodeRefresh}
+              refreshInterval={geocodeCacheRefreshInterval}
+              onIntervalChange={setGeocodeCacheRefreshInterval}
+              onRefresh={() => refetchGeocodeStats()}
+              isRefreshing={isGeocodeStatsFetching}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -663,47 +618,13 @@ const UsageCostsTab = () => {
               </CardTitle>
               <CardDescription>Current month geocoding and map rendering costs (resets monthly)</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              {isRefreshing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-              <span className="text-xs text-muted-foreground">
-                {isRefreshing ? 'Refreshing...' : `Last: ${lastRefresh.toLocaleTimeString()}`} • {mapboxRefreshInterval / 1000}s
-              </span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Settings className="h-3.5 w-3.5" />
-                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Auto-refresh interval</p>
-                    <Select
-                      value={mapboxRefreshInterval.toString()}
-                      onValueChange={(value) => {
-                        setMapboxRefreshInterval(parseInt(value));
-                        toast.success(`Refresh rate set to ${parseInt(value) / 1000}s`);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5000">5 seconds</SelectItem>
-                        <SelectItem value="10000">10 seconds</SelectItem>
-                        <SelectItem value="20000">20 seconds</SelectItem>
-                        <SelectItem value="30000">30 seconds</SelectItem>
-                        <SelectItem value="60000">1 minute</SelectItem>
-                        <SelectItem value="300000">5 minutes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated: {lastRefresh.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <RefreshControl
+              lastRefresh={lastRefresh}
+              refreshInterval={mapboxRefreshInterval}
+              onIntervalChange={setMapboxRefreshInterval}
+              onRefresh={() => { refetchBaseline(); refetchIncremental(); }}
+              isRefreshing={isRefreshing}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -876,59 +797,16 @@ const UsageCostsTab = () => {
               </CardTitle>
               <CardDescription>Incoming load emails by source - snapshots every 60 minutes</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Last: {lastEmailRefresh.toLocaleTimeString()} • {emailRefreshInterval / 1000}s
-              </span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Settings className="h-3.5 w-3.5" />
-                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Auto-refresh interval</p>
-                    <Select
-                      value={emailRefreshInterval.toString()}
-                      onValueChange={(value) => {
-                        setEmailRefreshInterval(parseInt(value));
-                        toast.success(`Email stats refresh rate set to ${parseInt(value) / 1000}s`);
-                        refetchEmailVolume();
-                        refetchCurrentHourStats();
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10000">10 seconds</SelectItem>
-                        <SelectItem value="20000">20 seconds</SelectItem>
-                        <SelectItem value="30000">30 seconds</SelectItem>
-                        <SelectItem value="60000">1 minute</SelectItem>
-                        <SelectItem value="120000">2 minutes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated: {lastEmailRefresh.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8"
-                onClick={() => {
-                  refetchEmailVolume();
-                  refetchCurrentHourStats();
-                  setLastEmailRefresh(new Date());
-                }}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <RefreshControl
+              lastRefresh={lastEmailRefresh}
+              refreshInterval={emailRefreshInterval}
+              onIntervalChange={setEmailRefreshInterval}
+              onRefresh={() => {
+                refetchEmailVolume();
+                refetchCurrentHourStats();
+                setLastEmailRefresh(new Date());
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1132,57 +1010,15 @@ const UsageCostsTab = () => {
               </CardTitle>
               <CardDescription>Lovable Cloud database usage</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Last: {lastDatabaseRefresh.toLocaleTimeString()} • {databaseRefreshInterval / 1000}s
-              </span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Settings className="h-3.5 w-3.5" />
-                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Auto-refresh interval</p>
-                    <Select
-                      value={databaseRefreshInterval.toString()}
-                      onValueChange={(value) => {
-                        setDatabaseRefreshInterval(parseInt(value));
-                        toast.success(`Database stats refresh rate set to ${parseInt(value) / 1000}s`);
-                        queryClient.invalidateQueries({ queryKey: ["table-counts"] });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10000">10 seconds</SelectItem>
-                        <SelectItem value="20000">20 seconds</SelectItem>
-                        <SelectItem value="30000">30 seconds</SelectItem>
-                        <SelectItem value="60000">1 minute</SelectItem>
-                        <SelectItem value="120000">2 minutes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated: {lastDatabaseRefresh.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8"
-                onClick={() => {
-                  queryClient.invalidateQueries({ queryKey: ["table-counts"] });
-                  setLastDatabaseRefresh(new Date());
-                }}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <RefreshControl
+              lastRefresh={lastDatabaseRefresh}
+              refreshInterval={databaseRefreshInterval}
+              onIntervalChange={setDatabaseRefreshInterval}
+              onRefresh={() => {
+                queryClient.invalidateQueries({ queryKey: ["usage-table-counts"] });
+                setLastDatabaseRefresh(new Date());
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1274,54 +1110,12 @@ const UsageCostsTab = () => {
               </CardTitle>
               <CardDescription>System usage statistics</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Last: {lastActivityRefresh.toLocaleTimeString()} • {activityRefreshInterval / 1000}s
-              </span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Settings className="h-3.5 w-3.5" />
-                    <span className="sr-only md:not-sr-only md:inline">Refresh Rate</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Auto-refresh interval</p>
-                    <Select
-                      value={activityRefreshInterval.toString()}
-                      onValueChange={(value) => {
-                        setActivityRefreshInterval(parseInt(value));
-                        toast.success(`Activity stats refresh rate set to ${parseInt(value) / 1000}s`);
-                        refetchRecentActivity();
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10000">10 seconds</SelectItem>
-                        <SelectItem value="20000">20 seconds</SelectItem>
-                        <SelectItem value="30000">30 seconds</SelectItem>
-                        <SelectItem value="60000">1 minute</SelectItem>
-                        <SelectItem value="120000">2 minutes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated: {lastActivityRefresh.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8"
-                onClick={() => refetchRecentActivity()}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <RefreshControl
+              lastRefresh={lastActivityRefresh}
+              refreshInterval={activityRefreshInterval}
+              onIntervalChange={setActivityRefreshInterval}
+              onRefresh={() => refetchRecentActivity()}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
