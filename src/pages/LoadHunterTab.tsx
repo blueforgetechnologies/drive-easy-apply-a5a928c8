@@ -270,7 +270,7 @@ export default function LoadHunterTab() {
     vehicleType?: string;
     pickupDate?: string;
   }, hunt: HuntPlan): Promise<{ matches: boolean; distance?: number }> => {
-    // Match by date if specified
+    // Match by date if specified - load pickup must be ON OR AFTER hunt's available date
     if (hunt.availableDate && loadData.pickupDate) {
       const huntDateObj = new Date(hunt.availableDate);
       const loadDateObj = new Date(loadData.pickupDate);
@@ -279,9 +279,10 @@ export default function LoadHunterTab() {
         return { matches: false };
       }
 
-      const huntDate = huntDateObj.toISOString().split('T')[0];
-      const loadDate = loadDateObj.toISOString().split('T')[0];
-      if (huntDate !== loadDate) {
+      // Load pickup date must be >= hunt available date
+      const huntDateNormalized = new Date(huntDateObj.toISOString().split('T')[0]);
+      const loadDateNormalized = new Date(loadDateObj.toISOString().split('T')[0]);
+      if (loadDateNormalized < huntDateNormalized) {
         return { matches: false };
       }
     }
