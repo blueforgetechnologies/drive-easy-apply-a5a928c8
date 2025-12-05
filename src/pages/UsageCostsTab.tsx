@@ -35,11 +35,17 @@ const UsageCostsTab = () => {
   const [emailRefreshInterval, setEmailRefreshInterval] = useState<number>(30000); // 30 seconds default
   const [databaseRefreshInterval, setDatabaseRefreshInterval] = useState<number>(30000); // 30 seconds default
   const [activityRefreshInterval, setActivityRefreshInterval] = useState<number>(30000); // 30 seconds default
+  const [pubsubRefreshInterval, setPubsubRefreshInterval] = useState<number>(60000); // 1 minute default
+  const [resendRefreshInterval, setResendRefreshInterval] = useState<number>(60000); // 1 minute default
+  const [aiRefreshInterval, setAiRefreshInterval] = useState<number>(60000); // 1 minute default
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [lastGeocodeRefresh, setLastGeocodeRefresh] = useState<Date>(new Date());
   const [lastEmailRefresh, setLastEmailRefresh] = useState<Date>(new Date());
   const [lastDatabaseRefresh, setLastDatabaseRefresh] = useState<Date>(new Date());
   const [lastActivityRefresh, setLastActivityRefresh] = useState<Date>(new Date());
+  const [lastPubsubRefresh, setLastPubsubRefresh] = useState<Date>(new Date());
+  const [lastResendRefresh, setLastResendRefresh] = useState<Date>(new Date());
+  const [lastAiRefresh, setLastAiRefresh] = useState<Date>(new Date());
   const [isCompactView, setIsCompactView] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
@@ -378,7 +384,7 @@ const UsageCostsTab = () => {
   });
 
   // Fetch Pub/Sub tracking (current month) - Google Cloud costs
-  const { data: pubsubStats } = useQuery({
+  const { data: pubsubStats, refetch: refetchPubsub } = useQuery({
     queryKey: ["usage-pubsub", currentMonth],
     queryFn: async () => {
       const { data, error, count } = await supabase
@@ -389,6 +395,7 @@ const UsageCostsTab = () => {
       if (error) throw error;
       
       const totalBytes = data?.reduce((sum, row) => sum + (row.message_size_bytes || 0), 0) || 0;
+      setLastPubsubRefresh(new Date());
       return { 
         count: count || 0, 
         totalBytes,
@@ -396,11 +403,12 @@ const UsageCostsTab = () => {
         estimatedCost: ((count || 0) / 1000000 * 0.40).toFixed(4)
       };
     },
-    refetchInterval: 60000 // 1 minute
+    refetchInterval: pubsubRefreshInterval,
+    refetchIntervalInBackground: true,
   });
 
   // Fetch Resend email tracking (current month)
-  const { data: resendStats } = useQuery({
+  const { data: resendStats, refetch: refetchResend } = useQuery({
     queryKey: ["usage-resend", currentMonth],
     queryFn: async () => {
       const { data, error, count } = await supabase
@@ -416,6 +424,7 @@ const UsageCostsTab = () => {
         byType[row.email_type] = (byType[row.email_type] || 0) + 1;
       });
       
+      setLastResendRefresh(new Date());
       return { 
         count: count || 0, 
         byType,
@@ -425,11 +434,12 @@ const UsageCostsTab = () => {
         estimatedCost: Math.max(0, ((count || 0) - 3000) * 0.001).toFixed(2)
       };
     },
-    refetchInterval: 60000
+    refetchInterval: resendRefreshInterval,
+    refetchIntervalInBackground: true,
   });
 
   // Fetch Lovable AI tracking (current month)
-  const { data: aiStats } = useQuery({
+  const { data: aiStats, refetch: refetchAi } = useQuery({
     queryKey: ["usage-ai", currentMonth],
     queryFn: async () => {
       const { data, error, count } = await supabase
@@ -443,6 +453,7 @@ const UsageCostsTab = () => {
       const totalCompletionTokens = data?.reduce((sum, row) => sum + (row.completion_tokens || 0), 0) || 0;
       const totalTokens = data?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
       
+      setLastAiRefresh(new Date());
       return { 
         count: count || 0,
         totalPromptTokens,
@@ -452,7 +463,8 @@ const UsageCostsTab = () => {
         estimatedCost: 'Usage-based'
       };
     },
-    refetchInterval: 60000
+    refetchInterval: aiRefreshInterval,
+    refetchIntervalInBackground: true,
   });
 
   // Fetch historical monthly usage
@@ -882,6 +894,12 @@ const UsageCostsTab = () => {
               </CardTitle>
               {!isCompactView && <CardDescription>AI model requests and costs</CardDescription>}
             </div>
+            <RefreshControl
+              lastRefresh={lastAiRefresh}
+              refreshInterval={aiRefreshInterval}
+              onIntervalChange={setAiRefreshInterval}
+              onRefresh={() => refetchAi()}
+            />
           </div>
         </CardHeader>
         <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
@@ -948,13 +966,21 @@ const UsageCostsTab = () => {
       {/* Google Cloud Pub/Sub Usage */}
       <Card className={`border-orange-500/20 bg-orange-500/5 ${isCompactView ? 'py-0' : ''}`}>
         <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
-          <div className="space-y-0.5">
-            <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
-              <Mail className={`text-orange-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
-              Google Cloud Pub/Sub
-              <InfoTooltip text="Tracks Gmail push notifications via Google Cloud Pub/Sub. Each webhook call = 1 message. Pricing: ~$0.40 per million messages." />
-            </CardTitle>
-            {!isCompactView && <CardDescription>Gmail push notification costs - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</CardDescription>}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+                <Mail className={`text-orange-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                Google Cloud Pub/Sub
+                <InfoTooltip text="Tracks Gmail push notifications via Google Cloud Pub/Sub. Each webhook call = 1 message. Pricing: ~$0.40 per million messages." />
+              </CardTitle>
+              {!isCompactView && <CardDescription>Gmail push notification costs - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</CardDescription>}
+            </div>
+            <RefreshControl
+              lastRefresh={lastPubsubRefresh}
+              refreshInterval={pubsubRefreshInterval}
+              onIntervalChange={setPubsubRefreshInterval}
+              onRefresh={() => refetchPubsub()}
+            />
           </div>
         </CardHeader>
         <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
@@ -981,13 +1007,21 @@ const UsageCostsTab = () => {
       {/* Resend Email Costs */}
       <Card className={`border-purple-500/20 bg-purple-500/5 ${isCompactView ? 'py-0' : ''}`}>
         <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
-          <div className="space-y-0.5">
-            <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
-              <Mail className={`text-purple-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
-              Resend Email Service
-              <InfoTooltip text="Tracks outbound emails sent via Resend (driver invites, admin invites). First 3,000 emails/month free, then $0.001 per email." />
-            </CardTitle>
-            {!isCompactView && <CardDescription>Outbound email costs - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</CardDescription>}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+                <Mail className={`text-purple-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                Resend Email Service
+                <InfoTooltip text="Tracks outbound emails sent via Resend (driver invites, admin invites). First 3,000 emails/month free, then $0.001 per email." />
+              </CardTitle>
+              {!isCompactView && <CardDescription>Outbound email costs - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</CardDescription>}
+            </div>
+            <RefreshControl
+              lastRefresh={lastResendRefresh}
+              refreshInterval={resendRefreshInterval}
+              onIntervalChange={setResendRefreshInterval}
+              onRefresh={() => refetchResend()}
+            />
           </div>
         </CardHeader>
         <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
