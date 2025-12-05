@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,19 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { RefreshControl } from "@/components/RefreshControl";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+// Info tooltip component for explanations
+const InfoTooltip = ({ text }: { text: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help inline-flex ml-1" />
+    </TooltipTrigger>
+    <TooltipContent className="max-w-xs text-xs">
+      <p>{text}</p>
+    </TooltipContent>
+  </Tooltip>
+);
 // Storage tier limits in MB
 const STORAGE_LIMITS = {
   standard: 500, // 500 MB
@@ -517,6 +529,7 @@ const UsageCostsTab = () => {
   ).toFixed(2);
 
   return (
+    <TooltipProvider>
     <div className={`space-y-${isCompactView ? '3' : '6'} p-${isCompactView ? '4' : '6'}`}>
       <div className="flex items-center justify-between">
         <div>
@@ -552,6 +565,7 @@ const UsageCostsTab = () => {
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
               {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
+              <InfoTooltip text="Sum of all estimated service costs (Mapbox geocoding, map loads, directions). Based on current month usage and tiered pricing." />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -599,19 +613,31 @@ const UsageCostsTab = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Cached Locations</p>
+                <p className="text-sm text-muted-foreground">
+                  Cached Locations
+                  <InfoTooltip text="Unique addresses stored in cache. Each represents one initial API call made to Mapbox." />
+                </p>
                 <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalLocations?.toLocaleString() || 0}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Total Cache Hits</p>
+                <p className="text-sm text-muted-foreground">
+                  Total Lookups
+                  <InfoTooltip text="Total times the cache was accessed (both first-time and repeat lookups)." />
+                </p>
                 <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalHits?.toLocaleString() || 0}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Cache Hit Rate</p>
+                <p className="text-sm text-muted-foreground">
+                  Cache Hit Rate
+                  <InfoTooltip text="Percentage of lookups that used cached data instead of making a new API call." />
+                </p>
                 <p className="text-2xl font-semibold text-green-600">{geocodeStats?.cacheHitRate || 0}%</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Est. Savings</p>
+                <p className="text-sm text-muted-foreground">
+                  Est. Savings
+                  <InfoTooltip text="Estimated money saved by using cache instead of making API calls. Calculated as (Total Lookups - Cached Locations) × $0.00075." />
+                </p>
                 <p className="text-2xl font-semibold text-green-600">${geocodeStats?.estimatedSavings || '0.00'}</p>
               </div>
             </div>
@@ -678,15 +704,24 @@ const UsageCostsTab = () => {
               <p className="text-sm font-medium">Geocoding API (Current Month)</p>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">API Calls</p>
+                  <p className="text-xs text-muted-foreground">
+                    API Calls
+                    <InfoTooltip text="Total geocoding API requests made to Mapbox this month (baseline from dashboard + new calls)." />
+                  </p>
                   <p className="text-lg font-semibold">{estimatedCosts.mapbox.geocodingApiCalls.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Cache Saved</p>
+                  <p className="text-xs text-muted-foreground">
+                    Calls Saved
+                    <InfoTooltip text="API calls avoided by using cached data. Equals Total Lookups minus Cached Locations." />
+                  </p>
                   <p className="text-lg font-semibold text-green-600">{estimatedCosts.mapbox.geocodingCacheSaved.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Free Tier (100K)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Free Tier (100K)
+                    <InfoTooltip text="Mapbox provides 100,000 free geocoding requests per month. Shows remaining or if exceeded." />
+                  </p>
                   <p className="text-lg font-semibold text-green-600">
                     {estimatedCosts.mapbox.geocodingFreeRemaining > 0 
                       ? `${estimatedCosts.mapbox.geocodingFreeRemaining.toLocaleString()} left` 
@@ -694,11 +729,17 @@ const UsageCostsTab = () => {
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Billable Calls</p>
+                  <p className="text-xs text-muted-foreground">
+                    Billable Calls
+                    <InfoTooltip text="API calls exceeding the free tier that will be charged. API Calls minus 100,000 free tier." />
+                  </p>
                   <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.geocodingBillable.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Est. Cost</p>
+                  <p className="text-xs text-muted-foreground">
+                    Est. Cost
+                    <InfoTooltip text="Estimated cost based on tiered pricing: $0.75/1K (100K-500K), $0.60/1K (500K-1M), $0.45/1K (1M+)." />
+                  </p>
                   <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.geocodingCost}</p>
                 </div>
               </div>
@@ -707,14 +748,23 @@ const UsageCostsTab = () => {
             
             {/* Map Loads */}
             <div className="space-y-2 pt-3 border-t">
-              <p className="text-sm font-medium">Map Loads (GL JS) - Current Month</p>
+              <p className="text-sm font-medium">
+                Map Loads (GL JS) - Current Month
+                <InfoTooltip text="Each time a map component renders in the browser counts as one map load." />
+              </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Total Loads</p>
+                  <p className="text-xs text-muted-foreground">
+                    Total Loads
+                    <InfoTooltip text="Total map renders this month across all users and pages." />
+                  </p>
                   <p className="text-lg font-semibold">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Free Tier (50K)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Free Tier (50K)
+                    <InfoTooltip text="Mapbox provides 50,000 free map loads per month. Shows remaining or if exceeded." />
+                  </p>
                   <p className="text-lg font-semibold text-green-600">
                     {estimatedCosts.mapbox.mapLoadsFreeRemaining > 0 
                       ? `${estimatedCosts.mapbox.mapLoadsFreeRemaining.toLocaleString()} left` 
@@ -722,11 +772,17 @@ const UsageCostsTab = () => {
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Billable Loads</p>
+                  <p className="text-xs text-muted-foreground">
+                    Billable Loads
+                    <InfoTooltip text="Map loads exceeding the free tier. Each time a map is rendered counts as one load." />
+                  </p>
                   <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.mapLoadsBillable.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Est. Cost</p>
+                  <p className="text-xs text-muted-foreground">
+                    Est. Cost
+                    <InfoTooltip text="Estimated cost: $5/1K (50K-100K), $4/1K (100K-200K), $3/1K (200K+)." />
+                  </p>
                   <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.mapLoadsCost}</p>
                 </div>
               </div>
@@ -735,14 +791,23 @@ const UsageCostsTab = () => {
 
             {/* Directions API */}
             <div className="space-y-2 pt-3 border-t">
-              <p className="text-sm font-medium">Directions API (Navigation) - Current Month</p>
+              <p className="text-sm font-medium">
+                Directions API (Navigation) - Current Month
+                <InfoTooltip text="Used for route optimization and navigation. Each route calculation counts as one request." />
+              </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Total Requests</p>
+                  <p className="text-xs text-muted-foreground">
+                    Total Requests
+                    <InfoTooltip text="Total route optimization requests made to Mapbox this month." />
+                  </p>
                   <p className="text-lg font-semibold">{estimatedCosts.mapbox.directionsApiCalls.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Free Tier (100K)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Free Tier (100K)
+                    <InfoTooltip text="Mapbox provides 100,000 free directions requests per month." />
+                  </p>
                   <p className="text-lg font-semibold text-green-600">
                     {estimatedCosts.mapbox.directionsFreeRemaining > 0 
                       ? `${estimatedCosts.mapbox.directionsFreeRemaining.toLocaleString()} left` 
@@ -750,11 +815,17 @@ const UsageCostsTab = () => {
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Billable Requests</p>
+                  <p className="text-xs text-muted-foreground">
+                    Billable Requests
+                    <InfoTooltip text="Directions requests exceeding the 100K free tier." />
+                  </p>
                   <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.directionsBillable.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Est. Cost</p>
+                  <p className="text-xs text-muted-foreground">
+                    Est. Cost
+                    <InfoTooltip text="Estimated cost: $0.50/1K (100K-500K), $0.40/1K (500K+)." />
+                  </p>
                   <p className="text-lg font-semibold text-green-600">${estimatedCosts.mapbox.directionsCost}</p>
                 </div>
               </div>
@@ -899,21 +970,33 @@ const UsageCostsTab = () => {
             {/* Current Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Last Hour</p>
+                <p className="text-sm text-muted-foreground">
+                  Last Hour
+                  <InfoTooltip text="Number of load emails received in the current hour." />
+                </p>
                 <p className="text-2xl font-semibold">{currentHourEmailStats?.receivedThisHour || 0}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Emails/Minute</p>
+                <p className="text-sm text-muted-foreground">
+                  Emails/Minute
+                  <InfoTooltip text="Average rate of incoming emails this hour." />
+                </p>
                 <p className="text-2xl font-semibold text-primary">{currentHourEmailStats?.emailsPerMinute || '0.00'}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Pending Queue</p>
+                <p className="text-sm text-muted-foreground">
+                  Pending Queue
+                  <InfoTooltip text="Emails waiting to be processed. Should stay near zero. High values indicate processing backlog." />
+                </p>
                 <p className={`text-2xl font-semibold ${(currentHourEmailStats?.pendingCount || 0) > 50 ? 'text-red-600' : 'text-green-600'}`}>
                   {currentHourEmailStats?.pendingCount || 0}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Processing Rate</p>
+                <p className="text-sm text-muted-foreground">
+                  Processing Rate
+                  <InfoTooltip text="Maximum email processing capacity per minute with parallel batch processing." />
+                </p>
                 <p className="text-2xl font-semibold">~300/min</p>
               </div>
             </div>
@@ -1064,6 +1147,7 @@ const UsageCostsTab = () => {
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <Database className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
                 {isCompactView ? 'Database' : 'Database Storage'}
+                <InfoTooltip text="Total records stored across all database tables. Size is estimated based on average record size." />
               </CardTitle>
               {isCompactView && (
                 <div className="flex items-center gap-3 text-sm">
@@ -1089,11 +1173,17 @@ const UsageCostsTab = () => {
             {/* Current Usage */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Total Records</p>
+                <p className="text-sm text-muted-foreground">
+                  Total Records
+                  <InfoTooltip text="Sum of all rows across all database tables (loads, emails, vehicles, etc.)." />
+                </p>
                 <p className="text-lg font-semibold">{estimatedCosts.storage.totalRecords.toLocaleString()}</p>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Estimated Size</p>
+                <p className="text-sm text-muted-foreground">
+                  Estimated Size
+                  <InfoTooltip text="Rough estimate based on record count × average record size (~1KB per record)." />
+                </p>
                 <p className="text-lg font-semibold">~{estimatedCosts.storage.estimatedSize} MB</p>
               </div>
             </div>
@@ -1104,6 +1194,7 @@ const UsageCostsTab = () => {
                 <p className="text-sm font-medium flex items-center gap-2">
                   <HardDrive className="h-4 w-4" />
                   Standard Tier Limit
+                  <InfoTooltip text="Free tier includes 500 MB of database storage." />
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {estimatedCosts.storage.estimatedSize} / {STORAGE_LIMITS.standard} MB
@@ -1125,6 +1216,7 @@ const UsageCostsTab = () => {
                 <p className="text-sm font-medium flex items-center gap-2">
                   <HardDrive className="h-4 w-4 text-primary" />
                   Pro Tier Limit
+                  <InfoTooltip text="Pro tier includes 8 GB of database storage." />
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {estimatedCosts.storage.estimatedSize} / {(STORAGE_LIMITS.pro / 1000).toFixed(0)} GB
@@ -1172,6 +1264,7 @@ const UsageCostsTab = () => {
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <Activity className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
                 {isCompactView ? 'Activity (30d)' : 'Recent Activity (30 Days)'}
+                <InfoTooltip text="Summary of system activity over the last 30 days including emails processed, hunt matches created, and loads managed." />
               </CardTitle>
               {isCompactView && (
                 <div className="flex items-center gap-3 text-sm">
@@ -1256,6 +1349,7 @@ const UsageCostsTab = () => {
         </Card>
       )}
     </div>
+    </TooltipProvider>
   );
 };
 
