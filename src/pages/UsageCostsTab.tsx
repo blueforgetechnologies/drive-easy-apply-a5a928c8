@@ -383,24 +383,56 @@ const UsageCostsTab = () => {
     refetchInterval: mapboxRefreshInterval
   });
 
-  // Fetch Pub/Sub tracking (current month) - Google Cloud costs
+  // Fetch Pub/Sub tracking (current month) - Google Cloud costs based on email volume
   const { data: pubsubStats, refetch: refetchPubsub } = useQuery({
     queryKey: ["usage-pubsub", currentMonth],
     queryFn: async () => {
-      const { data, error, count } = await supabase
-        .from('pubsub_tracking')
-        .select('message_size_bytes', { count: 'exact' })
-        .eq('month_year', currentMonth);
+      // Get email count and date range from load_emails for accurate Pub/Sub calculation
+      const { data: emailData, count: emailCount } = await supabase
+        .from('load_emails')
+        .select('received_at', { count: 'exact' })
+        .order('received_at', { ascending: true });
       
-      if (error) throw error;
+      const totalEmails = emailCount || 0;
       
-      const totalBytes = data?.reduce((sum, row) => sum + (row.message_size_bytes || 0), 0) || 0;
+      // Calculate days of data
+      let daysOfData = 1;
+      if (emailData && emailData.length >= 2) {
+        const firstEmail = new Date(emailData[0].received_at);
+        const lastEmail = new Date(emailData[emailData.length - 1].received_at);
+        daysOfData = Math.max(1, (lastEmail.getTime() - firstEmail.getTime()) / (1000 * 60 * 60 * 24));
+      }
+      
+      // Each Pub/Sub notification is ~1.5KB average
+      const avgMessageSize = 1500; // bytes
+      const totalBytes = totalEmails * avgMessageSize;
+      const totalMB = totalBytes / (1024 * 1024);
+      const totalGB = totalMB / 1024;
+      
+      // Project to 30 days
+      const emailsPerDay = totalEmails / daysOfData;
+      const projected30DayEmails = Math.round(emailsPerDay * 30);
+      const projected30DayGB = (projected30DayEmails * avgMessageSize) / (1024 * 1024 * 1024);
+      
+      // Free tier is 10GB, cost is ~$40 per TiB after that
+      const FREE_TIER_GB = 10;
+      const estimatedCost = projected30DayGB > FREE_TIER_GB 
+        ? ((projected30DayGB - FREE_TIER_GB) * 0.04).toFixed(2) 
+        : '0.00';
+      
       setLastPubsubRefresh(new Date());
       return { 
-        count: count || 0, 
+        count: totalEmails,
         totalBytes,
-        // Pub/Sub pricing: ~$0.40 per million messages
-        estimatedCost: ((count || 0) / 1000000 * 0.40).toFixed(4)
+        totalMB: totalMB.toFixed(2),
+        totalGB: totalGB.toFixed(3),
+        daysOfData: daysOfData.toFixed(1),
+        emailsPerDay: Math.round(emailsPerDay),
+        projected30DayEmails,
+        projected30DayGB: projected30DayGB.toFixed(2),
+        freeTierGB: FREE_TIER_GB,
+        withinFreeTier: projected30DayGB <= FREE_TIER_GB,
+        estimatedCost
       };
     },
     refetchInterval: pubsubRefreshInterval,
@@ -984,22 +1016,38 @@ const UsageCostsTab = () => {
           </div>
         </CardHeader>
         <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
-          <div className={`grid ${isCompactView ? 'grid-cols-3 gap-2' : 'grid-cols-3 gap-4'}`}>
+          <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
             <div className="space-y-0.5">
-              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Messages</p>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Emails Received</p>
               <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{pubsubStats?.count?.toLocaleString() || 0}</p>
+              <p className="text-xs text-muted-foreground">{pubsubStats?.daysOfData || 0} days of data</p>
             </div>
             <div className="space-y-0.5">
               <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Data Transfer</p>
-              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{((pubsubStats?.totalBytes || 0) / 1024).toFixed(1)} KB</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>
+                {Number(pubsubStats?.totalMB || 0) >= 1000 
+                  ? `${pubsubStats?.totalGB || '0'} GB` 
+                  : `${pubsubStats?.totalMB || '0'} MB`}
+              </p>
+              <p className="text-xs text-muted-foreground">~1.5 KB per message</p>
             </div>
             <div className="space-y-0.5">
-              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Est. Cost</p>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>30-Day Projection</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{pubsubStats?.projected30DayGB || '0'} GB</p>
+              <p className="text-xs text-muted-foreground">~{pubsubStats?.projected30DayEmails?.toLocaleString() || 0} emails</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Est. Monthly Cost</p>
               <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>${pubsubStats?.estimatedCost || '0.00'}</p>
+              <p className={`text-xs ${pubsubStats?.withinFreeTier ? 'text-green-600' : 'text-orange-500'}`}>
+                {pubsubStats?.withinFreeTier ? '✓ Within 10GB free tier' : 'Exceeds free tier'}
+              </p>
             </div>
           </div>
           {!isCompactView && (
-            <p className="text-xs text-muted-foreground mt-2">Rate: $0.40 per million messages • 1M free tier</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Free: 10GB/month • After: ~$40 per TiB • Gmail API requests are FREE
+            </p>
           )}
         </CardContent>
       </Card>
