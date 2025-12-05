@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_tracking: {
+        Row: {
+          completion_tokens: number | null
+          created_at: string
+          id: string
+          model: string | null
+          month_year: string | null
+          prompt_tokens: number | null
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completion_tokens?: number | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          month_year?: string | null
+          prompt_tokens?: number | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completion_tokens?: number | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          month_year?: string | null
+          prompt_tokens?: number | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           account_name: string | null
@@ -629,6 +662,33 @@ export type Database = {
           processed_at?: string | null
           queued_at?: string
           status?: string
+        }
+        Relationships: []
+      }
+      email_send_tracking: {
+        Row: {
+          created_at: string
+          email_type: string
+          id: string
+          month_year: string | null
+          recipient_email: string | null
+          success: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          id?: string
+          month_year?: string | null
+          recipient_email?: string | null
+          success?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          id?: string
+          month_year?: string | null
+          recipient_email?: string | null
+          success?: boolean | null
         }
         Relationships: []
       }
@@ -2100,6 +2160,30 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pubsub_tracking: {
+        Row: {
+          created_at: string
+          id: string
+          message_size_bytes: number | null
+          message_type: string | null
+          month_year: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_size_bytes?: number | null
+          message_type?: string | null
+          month_year?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_size_bytes?: number | null
+          message_type?: string | null
+          month_year?: string | null
         }
         Relationships: []
       }

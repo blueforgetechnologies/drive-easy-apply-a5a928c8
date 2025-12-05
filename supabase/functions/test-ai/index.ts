@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Service client for tracking
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
 
   try {
     const { prompt } = await req.json();
@@ -58,6 +65,23 @@ serve(async (req) => {
 
     const data = await response.json();
     const aiResponse = data.choices?.[0]?.message?.content;
+    
+    // Extract token usage if available
+    const usage = data.usage || {};
+    const promptTokens = usage.prompt_tokens || 0;
+    const completionTokens = usage.completion_tokens || 0;
+    const totalTokens = usage.total_tokens || promptTokens + completionTokens;
+
+    // Track AI usage
+    await supabase
+      .from('ai_usage_tracking')
+      .insert({
+        model: 'google/gemini-2.5-flash',
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+      });
+    console.log('📊 Lovable AI usage tracked:', { promptTokens, completionTokens, totalTokens });
 
     console.log("AI response received successfully");
 
@@ -65,7 +89,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         response: aiResponse,
-        model: "google/gemini-2.5-flash"
+        model: "google/gemini-2.5-flash",
+        usage: { promptTokens, completionTokens, totalTokens }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

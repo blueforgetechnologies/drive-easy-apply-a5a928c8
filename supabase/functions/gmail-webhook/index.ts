@@ -19,6 +19,16 @@ serve(async (req) => {
   const startTime = Date.now();
   
   try {
+    // Track Pub/Sub usage (each webhook call = 1 Pub/Sub message)
+    const messageSize = req.headers.get('content-length') || '0';
+    supabase
+      .from('pubsub_tracking')
+      .insert({
+        message_type: 'gmail_notification',
+        message_size_bytes: parseInt(messageSize, 10),
+      })
+      .then(() => console.log('📊 Pub/Sub usage tracked'));
+
     // Parse Pub/Sub message (optional)
     let historyId: string | null = null;
     try {
