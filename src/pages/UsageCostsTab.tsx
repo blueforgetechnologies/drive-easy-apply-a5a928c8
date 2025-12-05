@@ -584,20 +584,13 @@ const UsageCostsTab = () => {
 
       {/* Geocode Cache Stats */}
       <Card className={`border-green-500/20 bg-green-500/5 ${isCompactView ? 'py-0' : ''}`}>
-        <CardHeader className={isCompactView ? 'py-3 px-4' : ''}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
           <div className="flex items-center justify-between">
-            <div className={isCompactView ? 'flex items-center gap-4' : 'space-y-1'}>
+            <div className="space-y-0.5">
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <Map className={`text-green-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
                 {isCompactView ? 'Geocode Cache' : 'Geocode Cache Performance'}
               </CardTitle>
-              {isCompactView && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-green-600 font-medium">{geocodeStats?.totalLocations?.toLocaleString() || 0} cached</span>
-                  <span className="text-green-600 font-medium">{geocodeStats?.cacheHitRate || 0}% hit rate</span>
-                  <span className="text-green-600 font-medium">${geocodeStats?.estimatedSavings || '0.00'} saved</span>
-                </div>
-              )}
               {!isCompactView && <CardDescription>Cache reduces Mapbox API calls</CardDescription>}
             </div>
             <RefreshControl
@@ -609,90 +602,83 @@ const UsageCostsTab = () => {
             />
           </div>
         </CardHeader>
-        {!isCompactView && (
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Cached Locations
-                  <InfoTooltip text="Unique addresses stored in cache. Each represents one initial API call made to Mapbox." />
-                </p>
-                <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalLocations?.toLocaleString() || 0}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Total Lookups
-                  <InfoTooltip text="Total times the cache was accessed (both first-time and repeat lookups)." />
-                </p>
-                <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalHits?.toLocaleString() || 0}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Calls Saved
-                  <InfoTooltip text="API calls avoided by using cached data. Equals Total Lookups minus Cached Locations." />
-                </p>
-                <p className="text-2xl font-semibold text-green-600">{geocodeStats?.cacheSaved?.toLocaleString() || 0}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Cache Hit Rate
-                  <InfoTooltip text="Percentage of lookups that used cached data instead of making a new API call." />
-                </p>
-                <p className="text-2xl font-semibold text-green-600">{geocodeStats?.cacheHitRate || 0}%</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Est. Savings
-                  <InfoTooltip text="Estimated money saved by using cache instead of making API calls. Calculated as (Total Lookups - Cached Locations) × $0.00075." />
-                </p>
-                <p className="text-2xl font-semibold text-green-600">${geocodeStats?.estimatedSavings || '0.00'}</p>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
+          <div className={`grid ${isCompactView ? 'grid-cols-5 gap-2' : 'grid-cols-2 md:grid-cols-5 gap-4'}`}>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                Cached Locations
+                {!isCompactView && <InfoTooltip text="Unique addresses stored in cache. Each represents one initial API call made to Mapbox." />}
+              </p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{geocodeStats?.totalLocations?.toLocaleString() || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                Total Lookups
+                {!isCompactView && <InfoTooltip text="Total times the cache was accessed (both first-time and repeat lookups)." />}
+              </p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{geocodeStats?.totalHits?.toLocaleString() || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                Calls Saved
+                {!isCompactView && <InfoTooltip text="API calls avoided by using cached data. Equals Total Lookups minus Cached Locations." />}
+              </p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{geocodeStats?.cacheSaved?.toLocaleString() || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                Hit Rate
+                {!isCompactView && <InfoTooltip text="Percentage of lookups that used cached data instead of making a new API call." />}
+              </p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{geocodeStats?.cacheHitRate || 0}%</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                Est. Savings
+                {!isCompactView && <InfoTooltip text="Estimated money saved by using cache instead of making API calls. Calculated as (Total Lookups - Cached Locations) × $0.00075." />}
+              </p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>${geocodeStats?.estimatedSavings || '0.00'}</p>
+            </div>
+          </div>
+          
+          {/* Daily Stats History */}
+          {dailyStats && dailyStats.length > 0 && (
+            <div className={isCompactView ? 'pt-2 border-t' : 'pt-4 border-t'}>
+              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-3'}`}>Daily History (Last 7 Days)</p>
+              <div className={isCompactView ? 'space-y-0.5' : 'space-y-2'}>
+                {dailyStats.slice(0, isCompactView ? 3 : 7).map((stat: any) => (
+                  <div key={stat.id} className={`flex justify-between items-center rounded bg-muted/50 ${isCompactView ? 'text-xs py-1 px-2' : 'text-sm py-1 px-2'}`}>
+                    <span className="text-muted-foreground">{new Date(stat.recorded_at).toLocaleDateString()}</span>
+                    <div className={`flex ${isCompactView ? 'gap-2' : 'gap-4'}`}>
+                      <span>+{stat.new_locations_today} new</span>
+                      <span>{stat.hits_today} hits</span>
+                      <span className="text-green-600 font-medium">${Number(stat.estimated_savings).toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            {/* Daily Stats History */}
-            {dailyStats && dailyStats.length > 0 && (
-              <div className="pt-4 border-t">
-                <p className="text-sm font-medium mb-3">Daily History (Last 7 Days)</p>
-                <div className="space-y-2">
-                  {dailyStats.map((stat: any) => (
-                    <div key={stat.id} className="flex justify-between items-center text-sm py-1 px-2 rounded bg-muted/50">
-                      <span className="text-muted-foreground">{new Date(stat.recorded_at).toLocaleDateString()}</span>
-                      <div className="flex gap-4">
-                        <span>+{stat.new_locations_today} new</span>
-                        <span>{stat.hits_today} hits</span>
-                        <span className="text-green-600 font-medium">${Number(stat.estimated_savings).toFixed(2)} saved</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
+          )}
+          
+          {!isCompactView && (
             <div className="pt-2 border-t text-xs text-muted-foreground">
               <p>• Each cache hit saves one Mapbox API call ($0.75/1,000 = $0.00075)</p>
               <p>• Savings calculated based on cache hits that would have been billable API calls</p>
               <p>• Stats snapshot daily at midnight ET</p>
             </div>
-          </CardContent>
-        )}
+          )}
+        </CardContent>
       </Card>
 
       {/* Mapbox Usage */}
       <Card className={isCompactView ? 'py-0' : ''}>
-        <CardHeader className={isCompactView ? 'py-3 px-4' : ''}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
           <div className="flex items-center justify-between">
-            <div className={isCompactView ? 'flex items-center gap-4' : 'space-y-1'}>
+            <div className="space-y-0.5">
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <Map className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
-                {isCompactView ? 'Mapbox' : `Mapbox Usage & Billing - ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`}
+                {isCompactView ? 'Mapbox Usage' : `Mapbox Usage & Billing - ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`}
               </CardTitle>
-              {isCompactView && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span>Geocoding: <span className="font-medium">{estimatedCosts.mapbox.geocodingApiCalls.toLocaleString()}</span></span>
-                  <span>Maps: <span className="font-medium">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</span></span>
-                  <span className="text-red-600 font-medium">${(geocodingCost + mapLoadsCost + directionsCost).toFixed(2)}</span>
-                </div>
-              )}
               {!isCompactView && <CardDescription>Current month geocoding and map rendering costs (resets monthly)</CardDescription>}
             </div>
             <RefreshControl
@@ -704,225 +690,170 @@ const UsageCostsTab = () => {
             />
           </div>
         </CardHeader>
-        {!isCompactView && (
-          <CardContent className="space-y-4">
-            {/* Geocoding API */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Geocoding API (Current Month)</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    API Calls
-                    <InfoTooltip text="Total geocoding API requests made to Mapbox this month (baseline from dashboard + new calls)." />
-                  </p>
-                  <p className="text-lg font-semibold">{estimatedCosts.mapbox.geocodingApiCalls.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Free Tier (100K)
-                    <InfoTooltip text="Mapbox provides 100,000 free geocoding requests per month. Shows remaining or if exceeded." />
-                  </p>
-                  <p className={`text-lg font-semibold ${estimatedCosts.mapbox.geocodingFreeRemaining > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {estimatedCosts.mapbox.geocodingFreeRemaining > 0 
-                      ? `${estimatedCosts.mapbox.geocodingFreeRemaining.toLocaleString()} left` 
-                      : 'Exceeded'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Billable Calls
-                    <InfoTooltip text="API calls exceeding the free tier that will be charged. API Calls minus 100,000 free tier." />
-                  </p>
-                  <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.geocodingBillable.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Est. Cost
-                    <InfoTooltip text="Estimated cost based on tiered pricing: $0.75/1K (100K-500K), $0.60/1K (500K-1M), $0.45/1K (1M+)." />
-                  </p>
-                  <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.geocodingCost}</p>
-                </div>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
+          {/* Geocoding API */}
+          <div className={isCompactView ? 'space-y-1' : 'space-y-2'}>
+            <p className={`font-medium ${isCompactView ? 'text-xs' : 'text-sm'}`}>Geocoding API</p>
+            <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-3'}`}>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>API Calls</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.mapbox.geocodingApiCalls.toLocaleString()}</p>
               </div>
-              <p className="text-xs text-muted-foreground">Rate: $0.75/1K (100K-500K) • $0.60/1K (500K-1M) • $0.45/1K (1M+) • Check <a href="https://console.mapbox.com/account/invoices" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox dashboard</a> for exact billing</p>
-            </div>
-            
-            {/* Map Loads */}
-            <div className="space-y-2 pt-3 border-t">
-              <p className="text-sm font-medium">
-                Map Loads (GL JS) - Current Month
-                <InfoTooltip text="Each time a map component renders in the browser counts as one map load." />
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Total Loads
-                    <InfoTooltip text="Total map renders this month across all users and pages." />
-                  </p>
-                  <p className="text-lg font-semibold">{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Free Tier (50K)
-                    <InfoTooltip text="Mapbox provides 50,000 free map loads per month. Shows remaining or if exceeded." />
-                  </p>
-                  <p className="text-lg font-semibold text-green-600">
-                    {estimatedCosts.mapbox.mapLoadsFreeRemaining > 0 
-                      ? `${estimatedCosts.mapbox.mapLoadsFreeRemaining.toLocaleString()} left` 
-                      : 'Exceeded'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Billable Loads
-                    <InfoTooltip text="Map loads exceeding the free tier. Each time a map is rendered counts as one load." />
-                  </p>
-                  <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.mapLoadsBillable.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Est. Cost
-                    <InfoTooltip text="Estimated cost: $5/1K (50K-100K), $4/1K (100K-200K), $3/1K (200K+)." />
-                  </p>
-                  <p className="text-lg font-semibold text-red-600">${estimatedCosts.mapbox.mapLoadsCost}</p>
-                </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Free Tier</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'} ${estimatedCosts.mapbox.geocodingFreeRemaining > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {estimatedCosts.mapbox.geocodingFreeRemaining > 0 ? `${estimatedCosts.mapbox.geocodingFreeRemaining.toLocaleString()} left` : 'Exceeded'}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">Rate: $5.00/1K (50K-100K) • $4.00/1K (100K-200K) • $3.00/1K (200K+)</p>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Billable</p>
+                <p className={`font-semibold text-amber-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.mapbox.geocodingBillable.toLocaleString()}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
+                <p className={`font-semibold text-red-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>${estimatedCosts.mapbox.geocodingCost}</p>
+              </div>
             </div>
+            {!isCompactView && <p className="text-xs text-muted-foreground">Rate: $0.75/1K (100K-500K) • $0.60/1K (500K-1M) • $0.45/1K (1M+) • Check <a href="https://console.mapbox.com/account/invoices" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox dashboard</a> for exact billing</p>}
+          </div>
+          
+          {/* Map Loads */}
+          <div className={`${isCompactView ? 'space-y-1 pt-1 border-t' : 'space-y-2 pt-3 border-t'}`}>
+            <p className={`font-medium ${isCompactView ? 'text-xs' : 'text-sm'}`}>Map Loads (GL JS)</p>
+            <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-3'}`}>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Loads</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.mapbox.mapLoads.toLocaleString()}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Free Tier</p>
+                <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>
+                  {estimatedCosts.mapbox.mapLoadsFreeRemaining > 0 ? `${estimatedCosts.mapbox.mapLoadsFreeRemaining.toLocaleString()} left` : 'Exceeded'}
+                </p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Billable</p>
+                <p className={`font-semibold text-amber-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.mapbox.mapLoadsBillable.toLocaleString()}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
+                <p className={`font-semibold text-red-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>${estimatedCosts.mapbox.mapLoadsCost}</p>
+              </div>
+            </div>
+            {!isCompactView && <p className="text-xs text-muted-foreground">Rate: $5.00/1K (50K-100K) • $4.00/1K (100K-200K) • $3.00/1K (200K+)</p>}
+          </div>
 
-            {/* Directions API */}
-            <div className="space-y-2 pt-3 border-t">
-              <p className="text-sm font-medium">
-                Directions API (Navigation) - Current Month
-                <InfoTooltip text="Used for route optimization and navigation. Each route calculation counts as one request." />
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Total Requests
-                    <InfoTooltip text="Total route optimization requests made to Mapbox this month." />
-                  </p>
-                  <p className="text-lg font-semibold">{estimatedCosts.mapbox.directionsApiCalls.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Free Tier (100K)
-                    <InfoTooltip text="Mapbox provides 100,000 free directions requests per month." />
-                  </p>
-                  <p className="text-lg font-semibold text-green-600">
-                    {estimatedCosts.mapbox.directionsFreeRemaining > 0 
-                      ? `${estimatedCosts.mapbox.directionsFreeRemaining.toLocaleString()} left` 
-                      : 'Exceeded'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Billable Requests
-                    <InfoTooltip text="Directions requests exceeding the 100K free tier." />
-                  </p>
-                  <p className="text-lg font-semibold text-amber-600">{estimatedCosts.mapbox.directionsBillable.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Est. Cost
-                    <InfoTooltip text="Estimated cost: $0.50/1K (100K-500K), $0.40/1K (500K+)." />
-                  </p>
-                  <p className="text-lg font-semibold text-green-600">${estimatedCosts.mapbox.directionsCost}</p>
-                </div>
+          {/* Directions API */}
+          <div className={`${isCompactView ? 'space-y-1 pt-1 border-t' : 'space-y-2 pt-3 border-t'}`}>
+            <p className={`font-medium ${isCompactView ? 'text-xs' : 'text-sm'}`}>Directions API</p>
+            <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-3'}`}>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Requests</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.mapbox.directionsApiCalls.toLocaleString()}</p>
               </div>
-              <p className="text-xs text-muted-foreground">Rate: $0.50/1K (100K-500K) • $0.40/1K (500K+) • Used for route optimization</p>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Free Tier</p>
+                <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>
+                  {estimatedCosts.mapbox.directionsFreeRemaining > 0 ? `${estimatedCosts.mapbox.directionsFreeRemaining.toLocaleString()} left` : 'Exceeded'}
+                </p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Billable</p>
+                <p className={`font-semibold text-amber-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.mapbox.directionsBillable.toLocaleString()}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
+                <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>${estimatedCosts.mapbox.directionsCost}</p>
+              </div>
             </div>
+            {!isCompactView && <p className="text-xs text-muted-foreground">Rate: $0.50/1K (100K-500K) • $0.40/1K (500K+) • Used for route optimization</p>}
+          </div>
 
-            {/* Monthly History */}
-            {monthlyHistory && monthlyHistory.length > 0 && (
-              <div className="pt-4 border-t">
-                <p className="text-sm font-medium mb-3">Monthly History</p>
-                <div className="space-y-2">
-                  {monthlyHistory.map((month: any) => (
-                    <div key={month.id} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
-                      <span className="font-medium">{month.month_year}</span>
-                      <div className="flex gap-4 text-xs md:text-sm">
-                        <span>Geocoding: {month.geocoding_api_calls?.toLocaleString() || 0}</span>
-                        <span>Maps: {month.map_loads?.toLocaleString() || 0}</span>
-                        <span>Directions: {month.directions_api_calls?.toLocaleString() || 0}</span>
-                        <span className="text-red-600 font-medium">${Number(month.total_cost || 0).toFixed(2)}</span>
-                      </div>
+          {/* Monthly History */}
+          {monthlyHistory && monthlyHistory.length > 0 && (
+            <div className={isCompactView ? 'pt-1 border-t' : 'pt-4 border-t'}>
+              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-3'}`}>Monthly History</p>
+              <div className={isCompactView ? 'space-y-0.5' : 'space-y-2'}>
+                {monthlyHistory.slice(0, isCompactView ? 2 : undefined).map((month: any) => (
+                  <div key={month.id} className={`flex justify-between items-center rounded bg-muted/50 ${isCompactView ? 'text-xs py-1 px-2' : 'text-sm py-2 px-3'}`}>
+                    <span className="font-medium">{month.month_year}</span>
+                    <div className={`flex ${isCompactView ? 'gap-2' : 'gap-4 text-xs md:text-sm'}`}>
+                      <span>Geo: {month.geocoding_api_calls?.toLocaleString() || 0}</span>
+                      <span>Maps: {month.map_loads?.toLocaleString() || 0}</span>
+                      <span>Dir: {month.directions_api_calls?.toLocaleString() || 0}</span>
+                      <span className="text-red-600 font-medium">${Number(month.total_cost || 0).toFixed(2)}</span>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        )}
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Lovable AI Usage */}
-      {!isCompactView && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Lovable AI Usage
-            </CardTitle>
-            <CardDescription>AI model requests and costs</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Model</p>
-              <p className="text-lg font-medium">google/gemini-2.5-flash</p>
+      <Card className={isCompactView ? 'py-0' : ''}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+                <Sparkles className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
+                Lovable AI Usage
+              </CardTitle>
+              {!isCompactView && <CardDescription>AI model requests and costs</CardDescription>}
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Test AI Integration</p>
-              <Button 
-                onClick={() => testAiMutation.mutate()}
-                disabled={testAiMutation.isPending}
-                className="w-full"
-              >
-                {testAiMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testing AI...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Test AI
-                  </>
-                )}
-              </Button>
-              {aiTestResult && (
-                <div className="mt-3 p-3 bg-muted rounded-md">
-                  <p className="text-sm font-medium mb-1">AI Response:</p>
-                  <p className="text-sm text-muted-foreground">{aiTestResult}</p>
-                </div>
+          </div>
+        </CardHeader>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
+          <div className={`flex ${isCompactView ? 'items-center gap-4' : 'flex-col space-y-2'}`}>
+            <div className={isCompactView ? 'flex items-center gap-2' : 'space-y-2'}>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Model:</p>
+              <p className={`font-medium ${isCompactView ? 'text-sm' : 'text-lg'}`}>google/gemini-2.5-flash</p>
+            </div>
+            <Button 
+              onClick={() => testAiMutation.mutate()}
+              disabled={testAiMutation.isPending}
+              size={isCompactView ? 'sm' : 'default'}
+              className={isCompactView ? 'h-7 text-xs' : 'w-full'}
+            >
+              {testAiMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-1 h-3 w-3" />
+                  Test AI
+                </>
               )}
+            </Button>
+          </div>
+          {aiTestResult && (
+            <div className={`bg-muted rounded-md ${isCompactView ? 'p-2' : 'mt-3 p-3'}`}>
+              <p className={`font-medium ${isCompactView ? 'text-xs mb-0.5' : 'text-sm mb-1'}`}>Response:</p>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>{aiTestResult}</p>
             </div>
+          )}
+          {!isCompactView && (
             <div className="pt-2 border-t text-xs text-muted-foreground">
               <p>• Usage-based pricing per AI request</p>
               <p>• Check credit balance in Lovable workspace settings</p>
               <p>• Free monthly usage included, then pay-as-you-go</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Email Volume Tracking */}
       <Card className={isCompactView ? 'py-0' : ''}>
-        <CardHeader className={isCompactView ? 'py-3 px-4' : ''}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
           <div className="flex items-center justify-between">
-            <div className={isCompactView ? 'flex items-center gap-4' : ''}>
+            <div className="space-y-0.5">
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <BarChart3 className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
                 {isCompactView ? 'Email Volume' : 'Email Volume Tracking'}
               </CardTitle>
-              {isCompactView && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span>Last hr: <span className="font-medium">{currentHourEmailStats?.receivedThisHour || 0}</span></span>
-                  <span className={`font-medium ${(currentHourEmailStats?.pendingCount || 0) > 50 ? 'text-red-600' : 'text-green-600'}`}>
-                    {currentHourEmailStats?.pendingCount || 0} pending
-                  </span>
-                  <span>{currentHourEmailStats?.emailsPerMinute || '0.00'}/min</span>
-                </div>
-              )}
               {!isCompactView && <CardDescription>Incoming load emails by source - snapshots every 60 minutes</CardDescription>}
             </div>
             <RefreshControl
@@ -937,9 +868,22 @@ const UsageCostsTab = () => {
             />
           </div>
         </CardHeader>
-        {!isCompactView && (
-          <CardContent className="space-y-4">
-            {/* Source Summary */}
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
+          {/* Source Summary - compact inline */}
+          {isCompactView ? (
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <Mail className="h-3 w-3 text-muted-foreground" />
+                <span className="capitalize">{emailSource}:</span>
+                <span className="font-medium">{recentActivity?.emails?.toLocaleString() || 0}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Activity className="h-3 w-3 text-muted-foreground" />
+                <span>Matches:</span>
+                <span className="font-medium">{recentActivity?.matches?.toLocaleString() || 0}</span>
+              </div>
+            </div>
+          ) : (
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-muted/50 border">
                 <div className="flex items-center justify-between">
@@ -966,150 +910,123 @@ const UsageCostsTab = () => {
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Current Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Last Hour
-                  <InfoTooltip text="Number of load emails received in the current hour." />
-                </p>
-                <p className="text-2xl font-semibold">{currentHourEmailStats?.receivedThisHour || 0}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Emails/Minute
-                  <InfoTooltip text="Average rate of incoming emails this hour." />
-                </p>
-                <p className="text-2xl font-semibold text-primary">{currentHourEmailStats?.emailsPerMinute || '0.00'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Pending Queue
-                  <InfoTooltip text="Emails waiting to be processed. Should stay near zero. High values indicate processing backlog." />
-                </p>
-                <p className={`text-2xl font-semibold ${(currentHourEmailStats?.pendingCount || 0) > 50 ? 'text-red-600' : 'text-green-600'}`}>
-                  {currentHourEmailStats?.pendingCount || 0}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Processing Rate
-                  <InfoTooltip text="Maximum email processing capacity per minute with parallel batch processing." />
-                </p>
-                <p className="text-2xl font-semibold">~300/min</p>
-              </div>
+          {/* Current Stats */}
+          <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-4'}`}>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Last Hour</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{currentHourEmailStats?.receivedThisHour || 0}</p>
             </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Emails/Min</p>
+              <p className={`font-semibold text-primary ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{currentHourEmailStats?.emailsPerMinute || '0.00'}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Pending</p>
+              <p className={`font-semibold ${(currentHourEmailStats?.pendingCount || 0) > 50 ? 'text-red-600' : 'text-green-600'} ${isCompactView ? 'text-sm' : 'text-2xl'}`}>
+                {currentHourEmailStats?.pendingCount || 0}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Capacity</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>~300/min</p>
+            </div>
+          </div>
 
-            {/* Historical Data Tabs */}
-            <Tabs defaultValue="hourly" className="pt-4 border-t">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="hourly">Last 24 Hours</TabsTrigger>
-                <TabsTrigger value="daily">Last 7 Days</TabsTrigger>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="hourly" className="space-y-2 mt-4">
-                <div className="max-h-[300px] overflow-y-auto space-y-1">
-                  {emailVolumeStats?.slice(0, 24).map((stat: any) => {
-                    const hourStart = new Date(stat.hour_start);
-                    const hourEnd = new Date(hourStart);
-                    hourEnd.setHours(hourEnd.getHours() + 1);
-                    return (
-                      <div key={stat.id} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
-                        <span className="text-muted-foreground">
-                          {hourStart.toLocaleDateString()} {hourStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {hourEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <div className="flex gap-4">
-                          <span className="text-green-600">{stat.emails_received} received</span>
-                          <span>{stat.emails_processed} processed</span>
-                          {(stat.matches_count > 0 || stat.matches_count === 0) && (
-                            <span className="text-blue-600">{stat.matches_count || 0} matched</span>
-                          )}
-                          {stat.emails_pending > 0 && (
-                            <span className="text-amber-600">{stat.emails_pending} pending</span>
-                          )}
-                          {stat.emails_failed > 0 && (
-                            <span className="text-red-600">{stat.emails_failed} failed</span>
-                          )}
-                        </div>
+          {/* Historical Data Tabs */}
+          <Tabs defaultValue="hourly" className={isCompactView ? 'pt-1 border-t' : 'pt-4 border-t'}>
+            <TabsList className={`grid w-full grid-cols-3 ${isCompactView ? 'h-7' : ''}`}>
+              <TabsTrigger value="hourly" className={isCompactView ? 'text-xs py-1' : ''}>24 Hours</TabsTrigger>
+              <TabsTrigger value="daily" className={isCompactView ? 'text-xs py-1' : ''}>7 Days</TabsTrigger>
+              <TabsTrigger value="monthly" className={isCompactView ? 'text-xs py-1' : ''}>Monthly</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="hourly" className={`space-y-1 ${isCompactView ? 'mt-1' : 'mt-4'}`}>
+              <div className={`overflow-y-auto ${isCompactView ? 'max-h-[120px] space-y-0.5' : 'max-h-[300px] space-y-1'}`}>
+                {emailVolumeStats?.slice(0, isCompactView ? 6 : 24).map((stat: any) => {
+                  const hourStart = new Date(stat.hour_start);
+                  const hourEnd = new Date(hourStart);
+                  hourEnd.setHours(hourEnd.getHours() + 1);
+                  return (
+                    <div key={stat.id} className={`flex justify-between items-center rounded bg-muted/50 ${isCompactView ? 'text-xs py-1 px-2' : 'text-sm py-2 px-3'}`}>
+                      <span className="text-muted-foreground">
+                        {hourStart.toLocaleDateString()} {hourStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div className={`flex ${isCompactView ? 'gap-2' : 'gap-4'}`}>
+                        <span className="text-green-600">{stat.emails_received} rcv</span>
+                        <span>{stat.emails_processed} proc</span>
+                        <span className="text-blue-600">{stat.matches_count || 0} match</span>
                       </div>
-                    );
-                  })}
-                  {(!emailVolumeStats || emailVolumeStats.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No hourly data yet. Stats are recorded every hour.</p>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="daily" className="space-y-2 mt-4">
-                <div className="space-y-1">
-                  {(() => {
-                    const dailyData: Record<string, { received: number; processed: number; failed: number; matched: number }> = {};
-                    emailVolumeStats?.forEach((stat: any) => {
-                      const day = new Date(stat.hour_start).toLocaleDateString();
-                      if (!dailyData[day]) {
-                        dailyData[day] = { received: 0, processed: 0, failed: 0, matched: 0 };
-                      }
-                      dailyData[day].received += stat.emails_received || 0;
-                      dailyData[day].processed += stat.emails_processed || 0;
-                      dailyData[day].failed += stat.emails_failed || 0;
-                      dailyData[day].matched += stat.matches_count || 0;
-                    });
-                    
-                    return Object.entries(dailyData).slice(0, 7).map(([day, data]) => (
-                      <div key={day} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
-                        <span className="font-medium">{day}</span>
-                        <div className="flex gap-4">
-                          <span className="text-green-600">{data.received.toLocaleString()} received</span>
-                          <span>{data.processed.toLocaleString()} processed</span>
-                          <span className="text-blue-600">{data.matched.toLocaleString()} matched</span>
-                          {data.failed > 0 && <span className="text-red-600">{data.failed} failed</span>}
-                          <span className="text-muted-foreground">{(data.received / 24).toFixed(1)}/hr avg</span>
-                        </div>
+                    </div>
+                  );
+                })}
+                {(!emailVolumeStats || emailVolumeStats.length === 0) && (
+                  <p className={`text-muted-foreground text-center py-2 ${isCompactView ? 'text-xs' : 'text-sm'}`}>No hourly data yet.</p>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="daily" className={`space-y-1 ${isCompactView ? 'mt-1' : 'mt-4'}`}>
+              <div className={isCompactView ? 'space-y-0.5' : 'space-y-1'}>
+                {(() => {
+                  const dailyData: Record<string, { received: number; processed: number; failed: number; matched: number }> = {};
+                  emailVolumeStats?.forEach((stat: any) => {
+                    const day = new Date(stat.hour_start).toLocaleDateString();
+                    if (!dailyData[day]) {
+                      dailyData[day] = { received: 0, processed: 0, failed: 0, matched: 0 };
+                    }
+                    dailyData[day].received += stat.emails_received || 0;
+                    dailyData[day].processed += stat.emails_processed || 0;
+                    dailyData[day].failed += stat.emails_failed || 0;
+                    dailyData[day].matched += stat.matches_count || 0;
+                  });
+                  
+                  return Object.entries(dailyData).slice(0, isCompactView ? 4 : 7).map(([day, data]) => (
+                    <div key={day} className={`flex justify-between items-center rounded bg-muted/50 ${isCompactView ? 'text-xs py-1 px-2' : 'text-sm py-2 px-3'}`}>
+                      <span className="font-medium">{day}</span>
+                      <div className={`flex ${isCompactView ? 'gap-2' : 'gap-4'}`}>
+                        <span className="text-green-600">{data.received.toLocaleString()} rcv</span>
+                        <span>{data.processed.toLocaleString()} proc</span>
+                        <span className="text-blue-600">{data.matched.toLocaleString()} match</span>
                       </div>
-                    ));
-                  })()}
-                  {(!emailVolumeStats || emailVolumeStats.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No daily data yet.</p>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="monthly" className="space-y-2 mt-4">
-                <div className="space-y-1">
-                  {(() => {
-                    const monthlyData: Record<string, { received: number; processed: number; failed: number; matched: number }> = {};
-                    emailVolumeStats?.forEach((stat: any) => {
-                      const month = new Date(stat.hour_start).toLocaleDateString('default', { year: 'numeric', month: 'long' });
-                      if (!monthlyData[month]) {
-                        monthlyData[month] = { received: 0, processed: 0, failed: 0, matched: 0 };
-                      }
-                      monthlyData[month].received += stat.emails_received || 0;
-                      monthlyData[month].processed += stat.emails_processed || 0;
-                      monthlyData[month].failed += stat.emails_failed || 0;
-                      monthlyData[month].matched += stat.matches_count || 0;
-                    });
-                    
-                    return Object.entries(monthlyData).map(([month, data]) => (
-                      <div key={month} className="flex justify-between items-center text-sm py-2 px-3 rounded bg-muted/50">
-                        <span className="font-medium">{month}</span>
-                        <div className="flex gap-4">
-                          <span className="text-green-600">{data.received.toLocaleString()} received</span>
-                          <span>{data.processed.toLocaleString()} processed</span>
-                          <span className="text-blue-600">{data.matched.toLocaleString()} matched</span>
-                          {data.failed > 0 && <span className="text-red-600">{data.failed} failed</span>}
-                        </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="monthly" className={`space-y-1 ${isCompactView ? 'mt-1' : 'mt-4'}`}>
+              <div className={isCompactView ? 'space-y-0.5' : 'space-y-1'}>
+                {(() => {
+                  const monthlyData: Record<string, { received: number; processed: number; failed: number; matched: number }> = {};
+                  emailVolumeStats?.forEach((stat: any) => {
+                    const month = new Date(stat.hour_start).toLocaleDateString('default', { year: 'numeric', month: 'short' });
+                    if (!monthlyData[month]) {
+                      monthlyData[month] = { received: 0, processed: 0, failed: 0, matched: 0 };
+                    }
+                    monthlyData[month].received += stat.emails_received || 0;
+                    monthlyData[month].processed += stat.emails_processed || 0;
+                    monthlyData[month].failed += stat.emails_failed || 0;
+                    monthlyData[month].matched += stat.matches_count || 0;
+                  });
+                  
+                  return Object.entries(monthlyData).map(([month, data]) => (
+                    <div key={month} className={`flex justify-between items-center rounded bg-muted/50 ${isCompactView ? 'text-xs py-1 px-2' : 'text-sm py-2 px-3'}`}>
+                      <span className="font-medium">{month}</span>
+                      <div className={`flex ${isCompactView ? 'gap-2' : 'gap-4'}`}>
+                        <span className="text-green-600">{data.received.toLocaleString()} rcv</span>
+                        <span>{data.processed.toLocaleString()} proc</span>
+                        <span className="text-blue-600">{data.matched.toLocaleString()} match</span>
                       </div>
-                    ));
-                  })()}
-                  {(!emailVolumeStats || emailVolumeStats.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No monthly data yet.</p>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </TabsContent>
+          </Tabs>
 
+          {!isCompactView && (
             <div className="pt-2 border-t flex items-center justify-between">
               <div className="text-xs text-muted-foreground">
                 <p>• Hourly snapshots recorded at top of each hour</p>
@@ -1135,26 +1052,19 @@ const UsageCostsTab = () => {
                 Snapshot Now
               </Button>
             </div>
-          </CardContent>
-        )}
+          )}
+        </CardContent>
       </Card>
 
       {/* Database Storage */}
       <Card className={isCompactView ? 'py-0' : ''}>
-        <CardHeader className={isCompactView ? 'py-3 px-4' : ''}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
           <div className="flex items-center justify-between">
-            <div className={isCompactView ? 'flex items-center gap-4' : ''}>
+            <div className="space-y-0.5">
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <Database className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
                 {isCompactView ? 'Database' : 'Database Storage'}
-                <InfoTooltip text="Total records stored across all database tables. Size is estimated based on average record size." />
               </CardTitle>
-              {isCompactView && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="font-medium">{estimatedCosts.storage.totalRecords.toLocaleString()} records</span>
-                  <span>~{estimatedCosts.storage.estimatedSize} MB</span>
-                </div>
-              )}
               {!isCompactView && <CardDescription>Lovable Cloud database usage</CardDescription>}
             </div>
             <RefreshControl
@@ -1168,111 +1078,91 @@ const UsageCostsTab = () => {
             />
           </div>
         </CardHeader>
-        {!isCompactView && (
-          <CardContent className="space-y-4">
-            {/* Current Usage */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Total Records
-                  <InfoTooltip text="Sum of all rows across all database tables (loads, emails, vehicles, etc.)." />
-                </p>
-                <p className="text-lg font-semibold">{estimatedCosts.storage.totalRecords.toLocaleString()}</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Estimated Size
-                  <InfoTooltip text="Rough estimate based on record count × average record size (~1KB per record)." />
-                </p>
-                <p className="text-lg font-semibold">~{estimatedCosts.storage.estimatedSize} MB</p>
-              </div>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
+          {/* Current Usage */}
+          <div className={`flex ${isCompactView ? 'items-center gap-4' : 'flex-col space-y-2'}`}>
+            <div className={`flex ${isCompactView ? 'items-center gap-2' : 'items-center justify-between'}`}>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Records:</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{estimatedCosts.storage.totalRecords.toLocaleString()}</p>
             </div>
-            
-            {/* Storage Limit Progress - Standard Tier */}
-            <div className="pt-4 border-t space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <HardDrive className="h-4 w-4" />
-                  Standard Tier Limit
-                  <InfoTooltip text="Free tier includes 500 MB of database storage." />
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {estimatedCosts.storage.estimatedSize} / {STORAGE_LIMITS.standard} MB
-                </p>
-              </div>
-              <Progress 
-                value={(parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.standard) * 100} 
-                className="h-2"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{((parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.standard) * 100).toFixed(1)}% used</span>
-                <span>{(STORAGE_LIMITS.standard - parseFloat(estimatedCosts.storage.estimatedSize)).toFixed(1)} MB remaining</span>
-              </div>
+            <div className={`flex ${isCompactView ? 'items-center gap-2' : 'items-center justify-between'}`}>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Size:</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>~{estimatedCosts.storage.estimatedSize} MB</p>
             </div>
+          </div>
+          
+          {/* Storage Progress */}
+          <div className={isCompactView ? 'pt-1 border-t space-y-1' : 'pt-4 border-t space-y-3'}>
+            <div className="flex items-center justify-between">
+              <p className={`font-medium flex items-center gap-1 ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                <HardDrive className={isCompactView ? 'h-3 w-3' : 'h-4 w-4'} />
+                Standard (500 MB)
+              </p>
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                {((parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.standard) * 100).toFixed(1)}%
+              </p>
+            </div>
+            <Progress 
+              value={(parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.standard) * 100} 
+              className={isCompactView ? 'h-1.5' : 'h-2'}
+            />
+          </div>
 
-            {/* Storage Limit Progress - Pro Tier */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <HardDrive className="h-4 w-4 text-primary" />
-                  Pro Tier Limit
-                  <InfoTooltip text="Pro tier includes 8 GB of database storage." />
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {estimatedCosts.storage.estimatedSize} / {(STORAGE_LIMITS.pro / 1000).toFixed(0)} GB
-                </p>
+          {!isCompactView && (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <HardDrive className="h-4 w-4 text-primary" />
+                    Pro Tier Limit
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {estimatedCosts.storage.estimatedSize} / {(STORAGE_LIMITS.pro / 1000).toFixed(0)} GB
+                  </p>
+                </div>
+                <Progress 
+                  value={(parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.pro) * 100} 
+                  className="h-2"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{((parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.pro) * 100).toFixed(2)}% used</span>
+                  <span>{((STORAGE_LIMITS.pro - parseFloat(estimatedCosts.storage.estimatedSize)) / 1000).toFixed(2)} GB remaining</span>
+                </div>
               </div>
-              <Progress 
-                value={(parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.pro) * 100} 
-                className="h-2"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{((parseFloat(estimatedCosts.storage.estimatedSize) / STORAGE_LIMITS.pro) * 100).toFixed(2)}% used</span>
-                <span>{((STORAGE_LIMITS.pro - parseFloat(estimatedCosts.storage.estimatedSize)) / 1000).toFixed(2)} GB remaining</span>
+              <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
+                <p>• <strong>Standard:</strong> 500 MB included</p>
+                <p>• <strong>Pro:</strong> 8 GB included, then $0.125/GB</p>
               </div>
+            </>
+          )}
+          
+          {/* Top Tables */}
+          <div className={isCompactView ? 'pt-1 border-t space-y-1' : 'pt-4 border-t space-y-2'}>
+            <p className={`font-medium ${isCompactView ? 'text-xs' : 'text-sm'}`}>Top Tables</p>
+            <div className={isCompactView ? 'space-y-0.5' : 'space-y-1'}>
+              {tableCounts && Object.entries(tableCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, isCompactView ? 3 : 5)
+                .map(([table, count]) => (
+                  <div key={table} className={`flex justify-between ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                    <span className="text-muted-foreground capitalize">{table.replace(/_/g, ' ')}</span>
+                    <span className="font-medium">{count.toLocaleString()}</span>
+                  </div>
+                ))}
             </div>
-
-            {/* Tier Info */}
-            <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
-              <p>• <strong>Standard:</strong> 500 MB included</p>
-              <p>• <strong>Pro:</strong> 8 GB included, then $0.125/GB</p>
-            </div>
-            
-            <div className="pt-4 border-t space-y-2">
-              <p className="text-sm font-medium">Top Tables by Record Count</p>
-              <div className="space-y-1">
-                {tableCounts && Object.entries(tableCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5)
-                  .map(([table, count]) => (
-                    <div key={table} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground capitalize">{table.replace(/_/g, ' ')}</span>
-                      <span className="font-medium">{count.toLocaleString()}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </CardContent>
-        )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Recent Activity */}
       <Card className={isCompactView ? 'py-0' : ''}>
-        <CardHeader className={isCompactView ? 'py-3 px-4' : ''}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
           <div className="flex items-center justify-between">
-            <div className={isCompactView ? 'flex items-center gap-4' : ''}>
+            <div className="space-y-0.5">
               <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
                 <Activity className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
                 {isCompactView ? 'Activity (30d)' : 'Recent Activity (30 Days)'}
-                <InfoTooltip text="Summary of system activity over the last 30 days including emails processed, hunt matches created, and loads managed." />
               </CardTitle>
-              {isCompactView && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span>{(recentActivity?.emails || 0).toLocaleString()} emails</span>
-                  <span>{(recentActivity?.matches || 0).toLocaleString()} matches</span>
-                  <span>{(recentActivity?.loads || 0).toLocaleString()} loads</span>
-                </div>
-              )}
               {!isCompactView && <CardDescription>System usage statistics</CardDescription>}
             </div>
             <RefreshControl
@@ -1283,71 +1173,61 @@ const UsageCostsTab = () => {
             />
           </div>
         </CardHeader>
-        {!isCompactView && (
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Sylectus</span>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-semibold">{(recentActivity?.emails || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">emails (30 days)</p>
-              </div>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-1' : 'space-y-3'}>
+          <div className={`flex items-center justify-between ${isCompactView ? 'py-1' : 'py-2 border-b'}`}>
+            <div className="flex items-center gap-2">
+              <Mail className={isCompactView ? 'h-3 w-3 text-muted-foreground' : 'h-4 w-4 text-muted-foreground'} />
+              <span className={isCompactView ? 'text-xs' : 'text-sm'}>Sylectus</span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Hunt Matches</span>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-semibold">{(recentActivity?.matches || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">matches (30 days)</p>
-              </div>
+            <div className={isCompactView ? '' : 'text-right'}>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-xl'}`}>{(recentActivity?.emails || 0).toLocaleString()}</p>
+              {!isCompactView && <p className="text-xs text-muted-foreground">emails (30 days)</p>}
             </div>
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Loads Created</span>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-semibold">{(recentActivity?.loads || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">loads (30 days)</p>
-              </div>
+          </div>
+          <div className={`flex items-center justify-between ${isCompactView ? 'py-1' : 'py-2 border-b'}`}>
+            <div className="flex items-center gap-2">
+              <Activity className={isCompactView ? 'h-3 w-3 text-muted-foreground' : 'h-4 w-4 text-muted-foreground'} />
+              <span className={isCompactView ? 'text-xs' : 'text-sm'}>Hunt Matches</span>
             </div>
-          </CardContent>
-        )}
+            <div className={isCompactView ? '' : 'text-right'}>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-xl'}`}>{(recentActivity?.matches || 0).toLocaleString()}</p>
+              {!isCompactView && <p className="text-xs text-muted-foreground">matches (30 days)</p>}
+            </div>
+          </div>
+          <div className={`flex items-center justify-between ${isCompactView ? 'py-1' : 'py-2'}`}>
+            <div className="flex items-center gap-2">
+              <Database className={isCompactView ? 'h-3 w-3 text-muted-foreground' : 'h-4 w-4 text-muted-foreground'} />
+              <span className={isCompactView ? 'text-xs' : 'text-sm'}>Loads Created</span>
+            </div>
+            <div className={isCompactView ? '' : 'text-right'}>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-xl'}`}>{(recentActivity?.loads || 0).toLocaleString()}</p>
+              {!isCompactView && <p className="text-xs text-muted-foreground">loads (30 days)</p>}
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Cost Optimization Tips - hide in compact mode */}
-      {!isCompactView && (
-        <Card className="border-amber-500/20 bg-amber-500/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-amber-500" />
-              Cost Optimization Tips
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="flex gap-2">
-              <span>•</span>
-              <span>Disable hunt plans when not actively searching to avoid geocoding costs</span>
-            </p>
-            <p className="flex gap-2">
-              <span>•</span>
-              <span>Geocoding only occurs when loads match hunt plans with location criteria</span>
-            </p>
-            <p className="flex gap-2">
-              <span>•</span>
-              <span>Regular database cleanup of old records can help manage storage</span>
-            </p>
-            <p className="flex gap-2">
-              <span>•</span>
-              <span>Lovable Cloud includes generous free tiers for most services</span>
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Cost Optimization Tips */}
+      <Card className={`border-amber-500/20 bg-amber-500/5 ${isCompactView ? 'py-0' : ''}`}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
+          <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+            <TrendingUp className={`text-amber-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+            Cost Optimization Tips
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
+          <div className={`space-y-1 ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+            <p className="flex gap-1"><span>•</span><span>Disable hunt plans when not actively searching</span></p>
+            <p className="flex gap-1"><span>•</span><span>Geocoding only occurs when loads match hunt criteria</span></p>
+            {!isCompactView && (
+              <>
+                <p className="flex gap-2"><span>•</span><span>Regular database cleanup of old records can help manage storage</span></p>
+                <p className="flex gap-2"><span>•</span><span>Lovable Cloud includes generous free tiers for most services</span></p>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
     </TooltipProvider>
   );
