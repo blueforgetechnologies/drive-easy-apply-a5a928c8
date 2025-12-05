@@ -113,11 +113,16 @@ serve(async (req) => {
       if (samsaraVehicle.obdOdometerMeters?.[0]?.value) {
         const newOdometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
         updateData.odometer = newOdometer;
+        console.log(`Vehicle ${dbVehicle.vehicle_number}: new odometer = ${newOdometer}`);
         
         // Recalculate oil_change_remaining if oil_change_due is set
         if (dbVehicle.oil_change_due) {
-          updateData.oil_change_remaining = dbVehicle.oil_change_due - newOdometer;
+          const newRemaining = dbVehicle.oil_change_due - newOdometer;
+          updateData.oil_change_remaining = newRemaining;
+          console.log(`Vehicle ${dbVehicle.vehicle_number}: oil_change_due=${dbVehicle.oil_change_due}, new_remaining=${newRemaining}`);
         }
+      } else {
+        console.log(`Vehicle ${dbVehicle.vehicle_number}: no odometer data from Samsara`);
       }
 
       // Extract speed from GPS array (round to integer)
