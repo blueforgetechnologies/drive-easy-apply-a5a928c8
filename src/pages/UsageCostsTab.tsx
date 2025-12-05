@@ -611,7 +611,7 @@ const UsageCostsTab = () => {
         </CardHeader>
         {!isCompactView && (
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
                   Cached Locations
@@ -625,6 +625,13 @@ const UsageCostsTab = () => {
                   <InfoTooltip text="Total times the cache was accessed (both first-time and repeat lookups)." />
                 </p>
                 <p className="text-2xl font-semibold text-green-600">{geocodeStats?.totalHits?.toLocaleString() || 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Calls Saved
+                  <InfoTooltip text="API calls avoided by using cached data. Equals Total Lookups minus Cached Locations." />
+                </p>
+                <p className="text-2xl font-semibold text-green-600">{geocodeStats?.cacheSaved?.toLocaleString() || 0}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
@@ -702,7 +709,7 @@ const UsageCostsTab = () => {
             {/* Geocoding API */}
             <div className="space-y-2">
               <p className="text-sm font-medium">Geocoding API (Current Month)</p>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
                     API Calls
@@ -712,17 +719,10 @@ const UsageCostsTab = () => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
-                    Calls Saved
-                    <InfoTooltip text="API calls avoided by using cached data. Equals Total Lookups minus Cached Locations." />
-                  </p>
-                  <p className="text-lg font-semibold text-green-600">{estimatedCosts.mapbox.geocodingCacheSaved.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
                     Free Tier (100K)
                     <InfoTooltip text="Mapbox provides 100,000 free geocoding requests per month. Shows remaining or if exceeded." />
                   </p>
-                  <p className="text-lg font-semibold text-green-600">
+                  <p className={`text-lg font-semibold ${estimatedCosts.mapbox.geocodingFreeRemaining > 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {estimatedCosts.mapbox.geocodingFreeRemaining > 0 
                       ? `${estimatedCosts.mapbox.geocodingFreeRemaining.toLocaleString()} left` 
                       : 'Exceeded'}
