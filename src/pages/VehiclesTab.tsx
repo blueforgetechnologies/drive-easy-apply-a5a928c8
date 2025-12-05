@@ -584,22 +584,22 @@ export default function VehiclesTab() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-xs">
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[80px]">Asset Status</TableHead>
-                    <TableHead>Unit ID<br/>Leased ID</TableHead>
-                    <TableHead>Carrier<br/>Payee</TableHead>
-                    <TableHead>Drivers</TableHead>
-                    <TableHead>Primary<br/>Dispatcher</TableHead>
-                    <TableHead>Asset Type<br/>Susp</TableHead>
-                    <TableHead>Dimensions<br/>Door Dims</TableHead>
-                    <TableHead>Payload<br/>Clearance</TableHead>
-                    <TableHead>Lift-Gate<br/>Dock High</TableHead>
-                    <TableHead>Oil Change</TableHead>
-                    <TableHead>Registration<br/>Renewal</TableHead>
-                    <TableHead>Insurance<br/>Renewal</TableHead>
-                    <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableRow className="bg-muted/50 h-8">
+                    <TableHead className="py-1 px-2 text-xs">Status</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Unit ID</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Carrier/Payee</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Drivers</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Dispatcher</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Type/Susp</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Dimensions</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Payload</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Lift-Gate</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Oil Change</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Registration</TableHead>
+                    <TableHead className="py-1 px-2 text-xs">Insurance</TableHead>
+                    <TableHead className="py-1 px-2 text-xs w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -608,13 +608,13 @@ export default function VehiclesTab() {
                     return (
                     <TableRow 
                       key={vehicle.id} 
-                      className={`cursor-pointer hover:bg-muted/50 ${isOilChangeDue ? "bg-red-50 dark:bg-red-950/30" : ""}`} 
+                      className={`cursor-pointer hover:bg-muted/50 h-9 ${isOilChangeDue ? "bg-red-50 dark:bg-red-950/30" : ""}`} 
                       onClick={() => viewVehicle(vehicle.id)}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
                           <div 
-                            className={`w-8 h-8 rounded flex items-center justify-center font-bold text-xs text-white ${
+                            className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] text-white ${
                               vehicle.status === "active" 
                                 ? "bg-green-600" 
                                 : vehicle.status === "pending"
@@ -628,7 +628,7 @@ export default function VehiclesTab() {
                             value={vehicle.status}
                             onValueChange={(value) => handleStatusChange(vehicle.id, value)}
                           >
-                            <SelectTrigger className={`w-[100px] h-7 text-xs ${
+                            <SelectTrigger className={`w-[70px] h-5 text-[10px] px-1 ${
                               vehicle.status === "active"
                                 ? "bg-green-100 text-green-800 border-green-200"
                                 : vehicle.status === "pending"
@@ -638,78 +638,78 @@ export default function VehiclesTab() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
+                              <SelectItem value="active" className="text-xs">Active</SelectItem>
+                              <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+                              <SelectItem value="inactive" className="text-xs">Inactive</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="py-1 px-2 font-medium">
                         <div>{vehicle.vehicle_number || "N/A"}</div>
-                        <div className="text-sm text-muted-foreground">0</div>
+                        <div className="text-[10px] text-muted-foreground">0</div>
                       </TableCell>
-                      <TableCell>
-                        <div>{vehicle.carrier ? carriersMap[vehicle.carrier] || "N/A" : "N/A"}</div>
-                        <div className="text-sm text-muted-foreground">{vehicle.payee ? payeesMap[vehicle.payee] || "N/A" : "N/A"}</div>
+                      <TableCell className="py-1 px-2">
+                        <div className="truncate max-w-[120px]">{vehicle.carrier ? carriersMap[vehicle.carrier] || "N/A" : "N/A"}</div>
+                        <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">{vehicle.payee ? payeesMap[vehicle.payee] || "N/A" : "N/A"}</div>
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="text-sm space-y-1">
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-0.5">
                           <div
-                            className="text-primary underline cursor-pointer hover:text-primary/80"
+                            className="text-primary underline cursor-pointer hover:text-primary/80 text-[10px]"
                             onClick={() => handleOpenAssignDialog(vehicle.id, "driver1")}
                           >
                             {vehicle.driver_1_id
                               ? driversMap[vehicle.driver_1_id] || "Driver 1"
-                              : "Assign Driver"}
+                              : "Assign"}
                           </div>
                           <div
-                            className="text-primary underline cursor-pointer hover:text-primary/80"
+                            className="text-primary underline cursor-pointer hover:text-primary/80 text-[10px]"
                             onClick={() => handleOpenAssignDialog(vehicle.id, "driver2")}
                           >
                             {vehicle.driver_2_id
                               ? driversMap[vehicle.driver_2_id] || "Driver 2"
-                              : "Assign Driver"}
+                              : "Assign"}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div
-                          className="text-primary underline cursor-pointer hover:text-primary/80"
+                          className="text-primary underline cursor-pointer hover:text-primary/80 text-[10px]"
                           onClick={() => handleOpenAssignDialog(vehicle.id, "dispatcher")}
                         >
                           {vehicle.primary_dispatcher_id
-                            ? dispatchersMap[vehicle.primary_dispatcher_id] || "Assigned Dispatcher"
-                            : "Assign Dispatcher"}
+                            ? dispatchersMap[vehicle.primary_dispatcher_id] || "Assigned"
+                            : "Assign"}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div>
+                      <TableCell className="py-1 px-2">
+                        <div className="text-[10px]">
                           {vehicle.dimensions_length && vehicle.asset_subtype
                             ? `${vehicle.dimensions_length}' ${vehicle.asset_subtype}`
                             : vehicle.asset_type || "N/A"}
                         </div>
-                        <div className="text-sm text-muted-foreground">Air Ride</div>
+                        <div className="text-[10px] text-muted-foreground">Air Ride</div>
                       </TableCell>
-                      <TableCell>
-                        <div>
+                      <TableCell className="py-1 px-2">
+                        <div className="text-[10px]">
                           {vehicle.dimensions_length && vehicle.dimensions_width && vehicle.dimensions_height
-                            ? `${vehicle.dimensions_length}L x ${vehicle.dimensions_width}W x ${vehicle.dimensions_height}H`
+                            ? `${vehicle.dimensions_length}x${vehicle.dimensions_width}x${vehicle.dimensions_height}`
                             : "N/A"}
                         </div>
-                        <div className="text-sm text-muted-foreground">96H x 94W</div>
+                        <div className="text-[10px] text-muted-foreground">96x94</div>
                       </TableCell>
-                      <TableCell>
-                        <div>{vehicle.payload ? `${vehicle.payload}` : "N/A"}</div>
-                        <div className="text-sm text-muted-foreground">13"</div>
+                      <TableCell className="py-1 px-2">
+                        <div className="text-[10px]">{vehicle.payload ? `${vehicle.payload}` : "N/A"}</div>
+                        <div className="text-[10px] text-muted-foreground">13"</div>
                       </TableCell>
-                      <TableCell>
-                        <div>{vehicle.lift_gate ? "Yes" : "No"}</div>
-                        <div className="text-sm text-muted-foreground">Dock High</div>
+                      <TableCell className="py-1 px-2">
+                        <div className="text-[10px]">{vehicle.lift_gate ? "Yes" : "No"}</div>
+                        <div className="text-[10px] text-muted-foreground">Dock</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1 px-2">
                         {vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined ? (
-                          <div className={`text-sm font-semibold ${
+                          <div className={`text-[10px] font-semibold ${
                             vehicle.oil_change_remaining < 0 
                               ? "text-destructive" 
                               : ""
@@ -717,36 +717,36 @@ export default function VehiclesTab() {
                             {vehicle.oil_change_remaining} mi
                           </div>
                         ) : (
-                          <div className="text-sm text-muted-foreground">N/A</div>
+                          <div className="text-[10px] text-muted-foreground">N/A</div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1 px-2 text-[10px]">
                         {vehicle.registration_exp_date 
-                          ? format(new Date(vehicle.registration_exp_date), "yyyy-MM-dd") 
+                          ? format(new Date(vehicle.registration_exp_date), "MM/dd/yy") 
                           : "N/A"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1 px-2 text-[10px]">
                         {vehicle.insurance_expiry 
-                          ? format(new Date(vehicle.insurance_expiry), "yyyy-MM-dd") 
+                          ? format(new Date(vehicle.insurance_expiry), "MM/dd/yy") 
                           : "N/A"}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-1 px-2">
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button 
                             size="icon" 
                             variant="ghost" 
-                            className="h-8 w-8"
+                            className="h-6 w-6"
                             onClick={() => viewVehicle(vehicle.id)}
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3 w-3" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            className="h-6 w-6"
                             onClick={() => handleDeleteVehicle(vehicle.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </TableCell>
