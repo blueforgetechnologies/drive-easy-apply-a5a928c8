@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Building2, Phone, Mail, MapPin } from "lucide-react";
+import { ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search } from "lucide-react";
 
 interface CustomerData {
   id: string;
@@ -30,6 +30,8 @@ interface CustomerData {
   payment_terms: string | null;
   credit_limit: number | null;
   notes: string | null;
+  mc_number: string | null;
+  dot_number: string | null;
 }
 
 export default function CustomerDetail() {
@@ -38,6 +40,8 @@ export default function CustomerDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
+  const [usdotLookup, setUsdotLookup] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   useEffect(() => {
     loadCustomer();
@@ -53,6 +57,7 @@ export default function CustomerDetail() {
 
       if (error) throw error;
       setCustomer(data);
+      setUsdotLookup(data.dot_number || "");
     } catch (error: any) {
       toast.error("Failed to load customer details");
       console.error(error);
@@ -85,6 +90,8 @@ export default function CustomerDetail() {
           payment_terms: customer.payment_terms,
           credit_limit: customer.credit_limit,
           notes: customer.notes,
+          mc_number: customer.mc_number,
+          dot_number: customer.dot_number,
         })
         .eq("id", id);
 
@@ -100,6 +107,51 @@ export default function CustomerDetail() {
   const updateField = (field: keyof CustomerData, value: any) => {
     if (customer) {
       setCustomer({ ...customer, [field]: value });
+    }
+  };
+
+  const handleUsdotLookup = async () => {
+    if (!usdotLookup.trim()) {
+      toast.error("Please enter a USDOT number");
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ usdot: usdotLookup }),
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Company not found");
+      }
+
+      const data = await response.json();
+      
+      if (customer) {
+        setCustomer({
+          ...customer,
+          name: data.dba_name || data.name || customer.name,
+          mc_number: data.mc_number || customer.mc_number,
+          dot_number: data.usdot || usdotLookup,
+          phone: data.phone || customer.phone,
+          address: data.physical_address || customer.address,
+        });
+      }
+      
+      toast.success("Company information loaded from FMCSA");
+    } catch (error: any) {
+      toast.error("Failed to fetch FMCSA data: " + error.message);
+    } finally {
+      setLookupLoading(false);
     }
   };
 
@@ -215,6 +267,40 @@ export default function CustomerDetail() {
                   onChange={(e) => updateField("zip", e.target.value)}
                 />
               </div>
+            </div>
+
+            <Separator />
+
+            <Separator />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>USDOT Number</Label>
+                <Input
+                  value={usdotLookup}
+                  onChange={(e) => setUsdotLookup(e.target.value)}
+                  placeholder="Enter USDOT"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  onClick={handleUsdotLookup} 
+                  disabled={lookupLoading}
+                  className="w-full bg-blue-500 hover:bg-blue-600"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  {lookupLoading ? "Searching..." : "Search FMCSA"}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label>MC Number</Label>
+              <Input
+                value={customer.mc_number || ""}
+                onChange={(e) => updateField("mc_number", e.target.value)}
+                placeholder="MC-XXXXXX"
+              />
             </div>
 
             <Separator />
