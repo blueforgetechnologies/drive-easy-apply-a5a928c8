@@ -455,29 +455,43 @@ export default function LoadHunterMobile({
 
                     {/* Matched Vehicle (for unreviewed) */}
                     {vehicle && (
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
-                          <div>
-                            <p className="text-xs font-medium">{vehicle.vehicle_number}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {getDriverName(vehicle.driver_1_id) || 'No Driver'}
-                            </p>
+                      <div className="pt-2 border-t space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                            <div>
+                              <p className="text-xs font-medium">{vehicle.vehicle_number}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {getDriverName(vehicle.driver_1_id) || 'No Driver'}
+                              </p>
+                            </div>
                           </div>
+                          {activeFilter === 'unreviewed' && match && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSkipMatch(match.match_id || match.id);
+                              }}
+                            >
+                              <SkipForward className="h-3 w-3 mr-1" />
+                              Skip
+                            </Button>
+                          )}
                         </div>
-                        {activeFilter === 'unreviewed' && match && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSkipMatch(match.match_id || match.id);
-                            }}
-                          >
-                            <SkipForward className="h-3 w-3 mr-1" />
-                            Skip
-                          </Button>
+                        {/* Carrier Name */}
+                        {vehicle.carrier && carriersMap[vehicle.carrier] && (
+                          <p className="text-[10px] text-muted-foreground pl-3.5">
+                            Carrier: <span className="font-medium text-foreground">{carriersMap[vehicle.carrier]}</span>
+                          </p>
+                        )}
+                        {/* Hunt Plan Notes */}
+                        {match?.hunt_plan_notes && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-3.5 italic">
+                            Note: {match.hunt_plan_notes}
+                          </p>
                         )}
                       </div>
                     )}
