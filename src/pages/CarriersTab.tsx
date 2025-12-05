@@ -532,7 +532,7 @@ export default function CarriersTab() {
                         </TableCell>
                       )}
                       <TableCell 
-                        className="cursor-pointer"
+                        className="py-1 px-2 cursor-pointer"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
                         <Badge
@@ -556,35 +556,35 @@ export default function CarriersTab() {
                         </Badge>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer"
+                        className="py-1 px-2 cursor-pointer"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
                         <div className="font-medium text-blue-600 hover:underline">{carrier.name}</div>
                         <div className="text-xs text-muted-foreground">{carrier.dot_number || ""}</div>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer"
+                        className="py-1 px-2 cursor-pointer"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
-                        <div className="text-sm">{carrier.contact_name || ""}</div>
+                        <div>{carrier.contact_name || ""}</div>
                         <div className="text-xs text-muted-foreground">{carrier.phone || ""}</div>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer hidden lg:table-cell"
+                        className="py-1 px-2 cursor-pointer hidden lg:table-cell"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
-                        <div className="text-sm truncate max-w-[200px]">{carrier.address || "—"}</div>
+                        <div className="truncate max-w-[200px]">{carrier.address || "—"}</div>
                         <div className="text-xs text-muted-foreground truncate max-w-[200px]">{carrier.email || "—"}</div>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer hidden xl:table-cell"
+                        className="py-1 px-2 cursor-pointer hidden xl:table-cell"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
-                        <div className="text-sm">—</div>
+                        <div>—</div>
                         <div className="text-xs text-muted-foreground">—</div>
                       </TableCell>
                       <TableCell 
-                        className="cursor-pointer"
+                        className="py-1 px-2 cursor-pointer"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
                         <div className="text-sm">
