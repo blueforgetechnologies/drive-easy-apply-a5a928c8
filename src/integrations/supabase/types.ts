@@ -642,6 +642,7 @@ export type Database = {
           emails_received: number
           hour_start: string
           id: string
+          matches_count: number | null
           recorded_at: string
         }
         Insert: {
@@ -653,6 +654,7 @@ export type Database = {
           emails_received?: number
           hour_start: string
           id?: string
+          matches_count?: number | null
           recorded_at?: string
         }
         Update: {
@@ -664,6 +666,7 @@ export type Database = {
           emails_received?: number
           hour_start?: string
           id?: string
+          matches_count?: number | null
           recorded_at?: string
         }
         Relationships: []
