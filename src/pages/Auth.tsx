@@ -20,7 +20,7 @@ export default function Auth() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/dashboard");
+        navigate("/dashboard/business", { replace: true });
       }
     };
     checkUser();
@@ -50,7 +50,7 @@ export default function Auth() {
         }
 
         toast.success("Logged in successfully!");
-        navigate("/dashboard");
+        navigate("/dashboard/business", { replace: true });
       } else {
         // Check if email is invited before allowing signup
         const { data: isInvited, error: checkError } = await supabase
@@ -77,7 +77,7 @@ export default function Auth() {
 
         if (error) throw error;
         toast.success("Account created successfully!");
-        navigate("/dashboard");
+        navigate("/dashboard/business", { replace: true });
       }
     } catch (error: any) {
       toast.error(error.message);
