@@ -5,6 +5,8 @@ import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
 import { UserActivityTracker } from "@/components/UserActivityTracker";
+import LoadHunterMobile from "@/components/LoadHunterMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +96,7 @@ interface HuntPlan {
 }
 
 export default function LoadHunterTab() {
+  const isMobile = useIsMobile();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
@@ -2163,6 +2166,73 @@ export default function LoadHunterTab() {
       setEditingNotes(false);
     }
   }, [selectedVehicle?.id]);
+
+  // Mobile view
+  if (isMobile) {
+    return (
+      <>
+        <LoadHunterMobile
+          vehicles={vehicles}
+          huntPlans={huntPlans}
+          loadEmails={loadEmails}
+          unreviewedViewData={unreviewedViewData}
+          skippedMatches={skippedMatches}
+          missedHistory={missedHistory}
+          loadMatches={loadMatches}
+          loading={loading}
+          refreshing={refreshing}
+          activeFilter={activeFilter}
+          activeMode={activeMode}
+          myVehicleIds={myVehicleIds}
+          isSoundMuted={isSoundMuted}
+          carriersMap={carriersMap}
+          onRefresh={handleRefreshLoads}
+          onFilterChange={(filter) => {
+            setActiveFilter(filter);
+            setSelectedVehicle(null);
+            setSelectedEmailForDetail(null);
+          }}
+          onModeChange={setActiveMode}
+          onToggleSound={() => setIsSoundMuted(!isSoundMuted)}
+          onSelectLoad={(email, match) => {
+            setSelectedEmailForDetail(email);
+            setSelectedMatchForDetail(match);
+            if (match?.distance_miles) {
+              setSelectedEmailDistance(match.distance_miles);
+            }
+          }}
+          onSkipMatch={handleSkipMatch}
+          onToggleHunt={handleToggleHunt}
+          getDriverName={getDriverName}
+        />
+        
+        {/* Load Email Detail Dialog for Mobile */}
+        {selectedEmailForDetail && (
+          <Dialog open={!!selectedEmailForDetail} onOpenChange={() => {
+            setSelectedEmailForDetail(null);
+            setSelectedMatchForDetail(null);
+          }}>
+            <DialogContent className="max-w-full h-[90vh] p-0 overflow-hidden">
+              <LoadEmailDetail
+                email={selectedEmailForDetail}
+                onClose={() => {
+                  setSelectedEmailForDetail(null);
+                  setSelectedMatchForDetail(null);
+                }}
+                emptyDriveDistance={selectedEmailDistance}
+                match={selectedMatchForDetail}
+                vehicles={vehicles}
+                drivers={drivers}
+                carriersMap={carriersMap}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+        
+        <UserActivityTracker />
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
