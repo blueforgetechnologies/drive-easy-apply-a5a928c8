@@ -452,6 +452,7 @@ export default function CustomersTab() {
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Company Name</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Contact</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
@@ -459,24 +460,12 @@ export default function CustomersTab() {
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Location</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Terms</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Credit Limit</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCustomers.map((customer) => (
                     <TableRow key={customer.id} className="h-10 hover:bg-muted/50">
-                      <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
-                      <TableCell className="py-1 px-2">{customer.contact_name || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">{customer.email || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">{customer.phone || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">
-                        {customer.city && customer.state ? `${customer.city}, ${customer.state}` : "—"}
-                      </TableCell>
-                      <TableCell className="py-1 px-2">{customer.payment_terms || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">
-                        {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
-                      </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
@@ -508,6 +497,17 @@ export default function CustomersTab() {
                             </SelectContent>
                           </Select>
                         </div>
+                      </TableCell>
+                      <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
+                      <TableCell className="py-1 px-2">{customer.contact_name || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">{customer.email || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">{customer.phone || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">
+                        {customer.city && customer.state ? `${customer.city}, ${customer.state}` : "—"}
+                      </TableCell>
+                      <TableCell className="py-1 px-2">{customer.payment_terms || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">
+                        {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
                       </TableCell>
                       <TableCell className="py-1 px-2">
                         <div className="flex gap-1">
