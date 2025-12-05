@@ -299,7 +299,7 @@ export default function LoadHunterMobile({
                               className={`h-8 text-xs ${hunt.enabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onToggleHunt(hunt.id, !hunt.enabled);
+                                onToggleHunt(hunt.id, hunt.enabled);
                               }}
                             >
                               {hunt.enabled ? '● Hunting' : 'Start Hunt'}
