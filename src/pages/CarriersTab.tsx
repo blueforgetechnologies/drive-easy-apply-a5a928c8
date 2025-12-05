@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -154,6 +155,21 @@ export default function CarriersTab() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to update carriers: " + error.message);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("carriers" as any)
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Status updated");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update status: " + error.message);
     }
   };
 
@@ -532,28 +548,39 @@ export default function CarriersTab() {
                         </TableCell>
                       )}
                       <TableCell 
-                        className="py-1 px-2 cursor-pointer"
-                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
+                        className="py-1 px-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Badge
-                          variant={
-                            carrier.status === "active"
-                              ? "default"
+                        <div className="flex items-center gap-1">
+                          <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
+                            carrier.status === "active" 
+                              ? "bg-green-600" 
                               : carrier.status === "pending"
-                              ? "secondary"
-                              : "outline"
-                          }
-                          className={`w-full justify-center ${
-                            carrier.status === "active"
-                              ? "bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
-                              : carrier.status === "pending"
-                              ? "bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200"
-                              : "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200"
-                          }`}
-                        >
-                          <span className="mr-1">0</span>
-                          {carrier.status.charAt(0).toUpperCase() + carrier.status.slice(1)}
-                        </Badge>
+                              ? "bg-orange-500"
+                              : "bg-gray-500"
+                          }`}>
+                            0
+                          </div>
+                          <Select
+                            value={carrier.status}
+                            onValueChange={(value) => handleStatusChange(carrier.id, value)}
+                          >
+                            <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
+                              carrier.status === "active"
+                                ? "bg-green-100 text-green-800 border-green-200"
+                                : carrier.status === "pending"
+                                ? "bg-orange-100 text-orange-800 border-orange-200"
+                                : "bg-gray-100 text-gray-800 border-gray-200"
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active" className="text-sm">Active</SelectItem>
+                              <SelectItem value="pending" className="text-sm">Pending</SelectItem>
+                              <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                       <TableCell 
                         className="py-1 px-2 cursor-pointer"

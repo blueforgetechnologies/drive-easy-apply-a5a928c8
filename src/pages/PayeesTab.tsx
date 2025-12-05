@@ -3,11 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2 } from "lucide-react";
 
@@ -117,6 +117,21 @@ export default function PayeesTab() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to delete payee: " + error.message);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("payees" as any)
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Status updated");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update status: " + error.message);
     }
   };
 
@@ -308,16 +323,37 @@ export default function PayeesTab() {
                     <TableCell className="py-1 px-2">{payee.bank_name || "N/A"}</TableCell>
                     <TableCell className="py-1 px-2">{payee.email || "N/A"}</TableCell>
                     <TableCell className="py-1 px-2">{payee.phone || "N/A"}</TableCell>
-                    <TableCell className="py-1 px-2">
-                      <Badge
-                        className={
-                          payee.status === "active"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-gray-500 hover:bg-gray-600"
-                        }
-                      >
-                        {payee.status.charAt(0).toUpperCase() + payee.status.slice(1)}
-                      </Badge>
+                    <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
+                          payee.status === "active" 
+                            ? "bg-green-600" 
+                            : payee.status === "pending"
+                            ? "bg-orange-500"
+                            : "bg-gray-500"
+                        }`}>
+                          0
+                        </div>
+                        <Select
+                          value={payee.status}
+                          onValueChange={(value) => handleStatusChange(payee.id, value)}
+                        >
+                          <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
+                            payee.status === "active"
+                              ? "bg-green-100 text-green-800 border-green-200"
+                              : payee.status === "pending"
+                              ? "bg-orange-100 text-orange-800 border-orange-200"
+                              : "bg-gray-100 text-gray-800 border-gray-200"
+                          }`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active" className="text-sm">Active</SelectItem>
+                            <SelectItem value="pending" className="text-sm">Pending</SelectItem>
+                            <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </TableCell>
                     <TableCell className="py-1 px-2">
                       <div className="flex gap-1">

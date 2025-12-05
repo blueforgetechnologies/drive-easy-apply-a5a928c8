@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
@@ -196,6 +197,21 @@ export default function DriversTab() {
 
   const viewApplication = (id: string) => {
     navigate(`/dashboard/application/${id}`);
+  };
+
+  const handleDriverStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ driver_status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Status updated");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update status: " + error.message);
+    }
   };
 
   const filteredApplications = applications.filter((app) => {
@@ -419,7 +435,7 @@ export default function DriversTab() {
                       
                       return (
                         <TableRow key={app.id} className="h-10">
-                          <TableCell className="py-1 px-2">
+                          <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
                               <div 
                                 className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs text-white ${
@@ -432,18 +448,25 @@ export default function DriversTab() {
                               >
                                 0
                               </div>
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-xs ${
-                                  app.driver_status === "active"
-                                    ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                    : app.driver_status === "pending"
-                                    ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
-                                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                                }`}
+                              <Select
+                                value={app.driver_status || "pending"}
+                                onValueChange={(value) => handleDriverStatusChange(app.id, value)}
                               >
-                                {app.driver_status ? app.driver_status.charAt(0).toUpperCase() + app.driver_status.slice(1) : "Unknown"}
-                              </Badge>
+                                <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
+                                  app.driver_status === "active"
+                                    ? "bg-green-100 text-green-800 border-green-200"
+                                    : app.driver_status === "pending"
+                                    ? "bg-orange-100 text-orange-800 border-orange-200"
+                                    : "bg-gray-100 text-gray-800 border-gray-200"
+                                }`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active" className="text-sm">Active</SelectItem>
+                                  <SelectItem value="pending" className="text-sm">Pending</SelectItem>
+                                  <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </TableCell>
                           <TableCell className="py-1 px-2 font-medium">
