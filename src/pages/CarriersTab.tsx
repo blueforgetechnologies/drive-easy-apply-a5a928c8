@@ -486,42 +486,42 @@ export default function CarriersTab() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-sm">
                 <TableHeader>
-                  <TableRow className="bg-muted/30">
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
                     {showCheckboxes && (
-                      <TableHead className="w-[40px]">
+                      <TableHead className="py-2 px-2 w-[40px]">
                         <Checkbox
                           checked={selectedCarriers.length === filteredCarriers.length && filteredCarriers.length > 0}
                           onCheckedChange={toggleSelectAll}
                         />
                       </TableHead>
                     )}
-                    <TableHead className="w-[70px]">Status</TableHead>
-                    <TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[70px]">Status</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Carrier Name</div>
                       <div className="text-xs font-normal text-muted-foreground">USDOT #</div>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Contact</div>
                       <div className="text-xs font-normal text-muted-foreground">Phone</div>
                     </TableHead>
-                    <TableHead className="hidden lg:table-cell">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide hidden lg:table-cell">
                       <div>Address</div>
                       <div className="text-xs font-normal text-muted-foreground">Email</div>
                     </TableHead>
-                    <TableHead className="hidden xl:table-cell">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide hidden xl:table-cell">
                       <div>Authority</div>
                       <div className="text-xs font-normal text-muted-foreground">Safety Rating</div>
                     </TableHead>
-                    <TableHead className="w-[60px]"></TableHead>
+                    <TableHead className="py-2 px-2 w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCarriers.map((carrier) => (
                     <TableRow 
                       key={carrier.id} 
-                      className="hover:bg-muted/30"
+                      className="h-10 hover:bg-muted/30"
                     >
                       {showCheckboxes && (
                         <TableCell onClick={(e) => e.stopPropagation()}>

@@ -304,15 +304,15 @@ export default function DriversTab() {
                 {searchQuery ? "No invitations match your search" : "No invitations sent yet"}
               </p>
             ) : (
-              <Table>
+              <Table className="text-sm">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Invited</TableHead>
-                    <TableHead>Opened</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Name</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Invited</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Opened</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -394,21 +394,21 @@ export default function DriversTab() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="text-sm">
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[80px]">Status</TableHead>
-                      <TableHead>Driver Name<br/>Phone</TableHead>
-                      <TableHead>Driver Salary</TableHead>
-                      <TableHead>Age<br/>DOB</TableHead>
-                      <TableHead>DL Class<br/>Endorsements</TableHead>
-                      <TableHead>Driver's License<br/>Expiration Date</TableHead>
-                      <TableHead>DOT Card<br/>Expiration Date</TableHead>
-                      <TableHead>Driver Record<br/>Expiry Date</TableHead>
-                      <TableHead>SS Card<br/>SS#</TableHead>
-                      <TableHead>Application<br/>Direct Deposit</TableHead>
-                      <TableHead>Hired Date<br/>Termination Date</TableHead>
-                      <TableHead className="w-[120px]">Actions</TableHead>
+                    <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Status</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Name/Phone</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Salary</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Age/DOB</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DL Class</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">License Exp</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DOT Exp</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Record Exp</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">SS#</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">App/DD</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Hired/Term</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

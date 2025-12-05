@@ -252,26 +252,26 @@ export default function DispatchersTab() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-sm">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">Status</TableHead>
-                    <TableHead>Dispatcher Name</TableHead>
-                    <TableHead>Phone #</TableHead>
-                    <TableHead>Pay Rate %</TableHead>
-                    <TableHead>Assigned Trucks</TableHead>
-                    <TableHead>Physical Address</TableHead>
-                    <TableHead>Email Address</TableHead>
-                    <TableHead>Age</TableHead>
-                    <TableHead>Driver License</TableHead>
-                    <TableHead>DOB</TableHead>
-                    <TableHead>Expiration Date</TableHead>
-                    <TableHead>Application</TableHead>
-                    <TableHead>Direct Deposit</TableHead>
-                    <TableHead>Contract Agreement</TableHead>
-                    <TableHead>Hired Date</TableHead>
-                    <TableHead>Termination Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-12">Status</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Name</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Phone</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Pay %</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Trucks</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Address</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Age</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">License</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DOB</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Exp Date</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">App</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DD</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Contract</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Hired</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Term</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -281,66 +281,66 @@ export default function DispatchersTab() {
                       : null;
                     
                     return (
-                      <TableRow key={dispatcher.id}>
-                        <TableCell>
-                          <div className={`w-8 h-8 rounded flex items-center justify-center text-white font-bold ${
+                      <TableRow key={dispatcher.id} className="h-10">
+                        <TableCell className="py-1 px-2">
+                          <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
                             dispatcher.status === "active" 
                               ? "bg-green-600" 
                               : dispatcher.status === "pending"
                               ? "bg-orange-500"
                               : "bg-gray-500"
                           }`}>
-                            {dispatcher.status === "active" ? "0" : dispatcher.status === "pending" ? "0" : "0"}
+                            0
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="py-1 px-2 font-medium">
                           {dispatcher.first_name} {dispatcher.last_name}
                         </TableCell>
-                        <TableCell>{dispatcher.phone || "-"}</TableCell>
-                        <TableCell>{dispatcher.pay_percentage || "-"}</TableCell>
-                        <TableCell>{dispatcher.assigned_trucks || "0"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{dispatcher.address || "-"}</TableCell>
-                        <TableCell>{dispatcher.email}</TableCell>
-                        <TableCell>{age || "-"}</TableCell>
-                        <TableCell>{dispatcher.license_number || "-"}</TableCell>
-                        <TableCell>
-                          {dispatcher.dob ? format(new Date(dispatcher.dob), "MM/dd/yyyy") : "-"}
+                        <TableCell className="py-1 px-2">{dispatcher.phone || "-"}</TableCell>
+                        <TableCell className="py-1 px-2">{dispatcher.pay_percentage || "-"}</TableCell>
+                        <TableCell className="py-1 px-2">{dispatcher.assigned_trucks || "0"}</TableCell>
+                        <TableCell className="py-1 px-2 max-w-[150px] truncate">{dispatcher.address || "-"}</TableCell>
+                        <TableCell className="py-1 px-2">{dispatcher.email}</TableCell>
+                        <TableCell className="py-1 px-2">{age || "-"}</TableCell>
+                        <TableCell className="py-1 px-2">{dispatcher.license_number || "-"}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          {dispatcher.dob ? format(new Date(dispatcher.dob), "MM/dd/yy") : "-"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-1 px-2">
                           {dispatcher.license_expiration_date 
-                            ? format(new Date(dispatcher.license_expiration_date), "MM/dd/yyyy") 
+                            ? format(new Date(dispatcher.license_expiration_date), "MM/dd/yy") 
                             : "-"}
                         </TableCell>
-                        <TableCell>{dispatcher.application_status || "-"}</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell>{dispatcher.contract_agreement ? "Yes" : "-"}</TableCell>
-                        <TableCell>
+                        <TableCell className="py-1 px-2">{dispatcher.application_status || "-"}</TableCell>
+                        <TableCell className="py-1 px-2">-</TableCell>
+                        <TableCell className="py-1 px-2">{dispatcher.contract_agreement ? "Yes" : "-"}</TableCell>
+                        <TableCell className="py-1 px-2">
                           {dispatcher.hire_date
-                            ? format(new Date(dispatcher.hire_date), "MM/dd/yyyy")
+                            ? format(new Date(dispatcher.hire_date), "MM/dd/yy")
                             : "-"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-1 px-2">
                           {dispatcher.termination_date
-                            ? format(new Date(dispatcher.termination_date), "MM/dd/yyyy")
+                            ? format(new Date(dispatcher.termination_date), "MM/dd/yy")
                             : "-"}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2 justify-end">
+                        <TableCell className="py-1 px-2">
+                          <div className="flex gap-1 justify-end">
                             <Button 
                               size="icon" 
                               variant="ghost" 
-                              className="h-8 w-8"
+                              className="h-6 w-6"
                               onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
                             >
-                              <FileText className="h-4 w-4" />
+                              <FileText className="h-3.5 w-3.5" />
                             </Button>
                             <Button 
                               size="icon" 
                               variant="ghost" 
-                              className="h-8 w-8"
+                              className="h-6 w-6"
                               onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
                             >
-                              <User className="h-4 w-4" />
+                              <User className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
