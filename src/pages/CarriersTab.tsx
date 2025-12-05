@@ -444,6 +444,17 @@ export default function CarriersTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1">
           <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+          >
+            All
+          </Button>
+          <Button
             variant={filter === "active" ? "default" : "outline"}
             size="sm"
             className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
@@ -453,17 +464,6 @@ export default function CarriersTab() {
             }}
           >
             Active
-          </Button>
-          <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
-          >
-            Pending
           </Button>
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
@@ -477,15 +477,15 @@ export default function CarriersTab() {
             Inactive
           </Button>
           <Button
-            variant={filter === "all" ? "default" : "outline"}
+            variant={filter === "pending" ? "default" : "outline"}
             size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "all" });
+              setSearchParams({ filter: "pending" });
               setSearchQuery("");
             }}
           >
-            All
+            Pending
           </Button>
         </div>
 

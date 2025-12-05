@@ -530,17 +530,6 @@ export default function VehiclesTab() {
             Active
           </Button>
           <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-accent text-accent-foreground" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
-          >
-            Pending
-          </Button>
-          <Button
             variant={filter === "inactive" ? "default" : "outline"}
             size="sm"
             className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
@@ -550,6 +539,17 @@ export default function VehiclesTab() {
             }}
           >
             Inactive
+          </Button>
+          <Button
+            variant={filter === "pending" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
+            onClick={() => {
+              setSearchParams({ filter: "pending" });
+              setSearchQuery("");
+            }}
+          >
+            Pending
           </Button>
           <Button
             variant={showServiceDue ? "default" : "outline"}

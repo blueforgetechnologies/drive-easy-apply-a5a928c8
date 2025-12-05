@@ -245,26 +245,15 @@ export default function DriversTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1">
           <Button
-            variant={filter === "invitations" ? "default" : "outline"}
+            variant={filter === "all" ? "default" : "outline"}
             size="sm"
-            className={`h-7 px-2.5 ${filter === "invitations" ? "bg-primary text-primary-foreground" : ""}`}
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "invitations" });
+              setSearchParams({ filter: "all" });
               setSearchQuery("");
             }}
           >
-            Invitations
-          </Button>
-          <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-accent text-accent-foreground" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
-          >
-            Pending
+            All
           </Button>
           <Button
             variant={filter === "active" ? "default" : "outline"}
@@ -289,15 +278,26 @@ export default function DriversTab() {
             Inactive
           </Button>
           <Button
-            variant={filter === "all" ? "default" : "outline"}
+            variant={filter === "pending" ? "default" : "outline"}
             size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "all" });
+              setSearchParams({ filter: "pending" });
               setSearchQuery("");
             }}
           >
-            All
+            Pending
+          </Button>
+          <Button
+            variant={filter === "invitations" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "invitations" ? "bg-primary text-primary-foreground" : ""}`}
+            onClick={() => {
+              setSearchParams({ filter: "invitations" });
+              setSearchQuery("");
+            }}
+          >
+            Invitations
           </Button>
         </div>
 
