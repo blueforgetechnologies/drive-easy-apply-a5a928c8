@@ -584,22 +584,22 @@ export default function VehiclesTab() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table className="text-xs">
+              <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-muted/50 h-8">
-                    <TableHead className="py-1 px-2 text-xs">Status</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Unit ID</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Carrier/Payee</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Drivers</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Dispatcher</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Type/Susp</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Dimensions</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Payload</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Lift-Gate</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Oil Change</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Registration</TableHead>
-                    <TableHead className="py-1 px-2 text-xs">Insurance</TableHead>
-                    <TableHead className="py-1 px-2 text-xs w-[80px]">Actions</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Status</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Unit ID</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Carrier/Payee</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Drivers</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Dispatcher</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Type/Susp</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Dimensions</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Payload</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Lift-Gate</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Oil Change</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Registration</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold">Insurance</TableHead>
+                    <TableHead className="py-1 px-2 text-xs font-semibold w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -608,13 +608,13 @@ export default function VehiclesTab() {
                     return (
                     <TableRow 
                       key={vehicle.id} 
-                      className={`cursor-pointer hover:bg-muted/50 h-9 ${isOilChangeDue ? "bg-red-50 dark:bg-red-950/30" : ""}`} 
+                      className={`cursor-pointer hover:bg-muted/50 h-10 ${isOilChangeDue ? "bg-red-50 dark:bg-red-950/30" : ""}`} 
                       onClick={() => viewVehicle(vehicle.id)}
                     >
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <div 
-                            className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] text-white ${
+                            className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs text-white ${
                               vehicle.status === "active" 
                                 ? "bg-green-600" 
                                 : vehicle.status === "pending"
@@ -628,7 +628,7 @@ export default function VehiclesTab() {
                             value={vehicle.status}
                             onValueChange={(value) => handleStatusChange(vehicle.id, value)}
                           >
-                            <SelectTrigger className={`w-[70px] h-5 text-[10px] px-1 ${
+                            <SelectTrigger className={`w-[75px] h-6 text-xs px-1 ${
                               vehicle.status === "active"
                                 ? "bg-green-100 text-green-800 border-green-200"
                                 : vehicle.status === "pending"
@@ -645,18 +645,18 @@ export default function VehiclesTab() {
                           </Select>
                         </div>
                       </TableCell>
-                      <TableCell className="py-1 px-2 font-medium">
+                      <TableCell className="py-1 px-2 font-medium text-sm">
                         <div>{vehicle.vehicle_number || "N/A"}</div>
-                        <div className="text-[10px] text-muted-foreground">0</div>
+                        <div className="text-xs text-muted-foreground">0</div>
                       </TableCell>
-                      <TableCell className="py-1 px-2">
-                        <div className="truncate max-w-[120px]">{vehicle.carrier ? carriersMap[vehicle.carrier] || "N/A" : "N/A"}</div>
-                        <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">{vehicle.payee ? payeesMap[vehicle.payee] || "N/A" : "N/A"}</div>
+                      <TableCell className="py-1 px-2 text-sm">
+                        <div className="truncate max-w-[140px]">{vehicle.carrier ? carriersMap[vehicle.carrier] || "N/A" : "N/A"}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[140px]">{vehicle.payee ? payeesMap[vehicle.payee] || "N/A" : "N/A"}</div>
                       </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="space-y-0.5">
+                        <div className="space-y-0">
                           <div
-                            className="text-primary underline cursor-pointer hover:text-primary/80 text-[10px]"
+                            className="text-primary underline cursor-pointer hover:text-primary/80 text-xs"
                             onClick={() => handleOpenAssignDialog(vehicle.id, "driver1")}
                           >
                             {vehicle.driver_1_id
@@ -664,7 +664,7 @@ export default function VehiclesTab() {
                               : "Assign"}
                           </div>
                           <div
-                            className="text-primary underline cursor-pointer hover:text-primary/80 text-[10px]"
+                            className="text-primary underline cursor-pointer hover:text-primary/80 text-xs"
                             onClick={() => handleOpenAssignDialog(vehicle.id, "driver2")}
                           >
                             {vehicle.driver_2_id
@@ -675,7 +675,7 @@ export default function VehiclesTab() {
                       </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div
-                          className="text-primary underline cursor-pointer hover:text-primary/80 text-[10px]"
+                          className="text-primary underline cursor-pointer hover:text-primary/80 text-xs"
                           onClick={() => handleOpenAssignDialog(vehicle.id, "dispatcher")}
                         >
                           {vehicle.primary_dispatcher_id
@@ -684,32 +684,32 @@ export default function VehiclesTab() {
                         </div>
                       </TableCell>
                       <TableCell className="py-1 px-2">
-                        <div className="text-[10px]">
+                        <div className="text-sm">
                           {vehicle.dimensions_length && vehicle.asset_subtype
                             ? `${vehicle.dimensions_length}' ${vehicle.asset_subtype}`
                             : vehicle.asset_type || "N/A"}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">Air Ride</div>
+                        <div className="text-xs text-muted-foreground">Air Ride</div>
                       </TableCell>
                       <TableCell className="py-1 px-2">
-                        <div className="text-[10px]">
+                        <div className="text-sm">
                           {vehicle.dimensions_length && vehicle.dimensions_width && vehicle.dimensions_height
                             ? `${vehicle.dimensions_length}x${vehicle.dimensions_width}x${vehicle.dimensions_height}`
                             : "N/A"}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">96x94</div>
+                        <div className="text-xs text-muted-foreground">96x94</div>
                       </TableCell>
                       <TableCell className="py-1 px-2">
-                        <div className="text-[10px]">{vehicle.payload ? `${vehicle.payload}` : "N/A"}</div>
-                        <div className="text-[10px] text-muted-foreground">13"</div>
+                        <div className="text-sm">{vehicle.payload ? `${vehicle.payload}` : "N/A"}</div>
+                        <div className="text-xs text-muted-foreground">13"</div>
                       </TableCell>
                       <TableCell className="py-1 px-2">
-                        <div className="text-[10px]">{vehicle.lift_gate ? "Yes" : "No"}</div>
-                        <div className="text-[10px] text-muted-foreground">Dock</div>
+                        <div className="text-sm">{vehicle.lift_gate ? "Yes" : "No"}</div>
+                        <div className="text-xs text-muted-foreground">Dock</div>
                       </TableCell>
                       <TableCell className="py-1 px-2">
                         {vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined ? (
-                          <div className={`text-[10px] font-semibold ${
+                          <div className={`text-sm font-semibold ${
                             vehicle.oil_change_remaining < 0 
                               ? "text-destructive" 
                               : ""
@@ -717,15 +717,15 @@ export default function VehiclesTab() {
                             {vehicle.oil_change_remaining} mi
                           </div>
                         ) : (
-                          <div className="text-[10px] text-muted-foreground">N/A</div>
+                          <div className="text-sm text-muted-foreground">N/A</div>
                         )}
                       </TableCell>
-                      <TableCell className="py-1 px-2 text-[10px]">
+                      <TableCell className="py-1 px-2 text-sm">
                         {vehicle.registration_exp_date 
                           ? format(new Date(vehicle.registration_exp_date), "MM/dd/yy") 
                           : "N/A"}
                       </TableCell>
-                      <TableCell className="py-1 px-2 text-[10px]">
+                      <TableCell className="py-1 px-2 text-sm">
                         {vehicle.insurance_expiry 
                           ? format(new Date(vehicle.insurance_expiry), "MM/dd/yy") 
                           : "N/A"}
@@ -738,7 +738,7 @@ export default function VehiclesTab() {
                             className="h-6 w-6"
                             onClick={() => viewVehicle(vehicle.id)}
                           >
-                            <Edit className="h-3 w-3" />
+                            <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="icon"
@@ -746,7 +746,7 @@ export default function VehiclesTab() {
                             className="h-6 w-6"
                             onClick={() => handleDeleteVehicle(vehicle.id)}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>
