@@ -418,11 +418,11 @@ export default function DriversTab() {
                       const directDeposit = app.direct_deposit || {};
                       
                       return (
-                        <TableRow key={app.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                        <TableRow key={app.id} className="h-10">
+                          <TableCell className="py-1 px-2">
+                            <div className="flex items-center gap-1">
                               <div 
-                                className={`w-8 h-8 rounded flex items-center justify-center font-bold text-xs text-white ${
+                                className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs text-white ${
                                   app.driver_status === "active" 
                                     ? "bg-green-600" 
                                     : app.driver_status === "pending"
@@ -434,7 +434,7 @@ export default function DriversTab() {
                               </div>
                               <Badge 
                                 variant="secondary" 
-                                className={`${
+                                className={`text-xs ${
                                   app.driver_status === "active"
                                     ? "bg-green-100 text-green-800 hover:bg-green-100"
                                     : app.driver_status === "pending"
@@ -446,66 +446,66 @@ export default function DriversTab() {
                               </Badge>
                             </div>
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="py-1 px-2 font-medium">
                             <div>{personalInfo.firstName} {personalInfo.lastName}</div>
-                            <div className="text-sm text-muted-foreground">{personalInfo.phone}</div>
+                            <div className="text-xs text-muted-foreground">{personalInfo.phone}</div>
                           </TableCell>
-                          <TableCell className="text-destructive font-medium">
+                          <TableCell className="py-1 px-2 text-destructive font-medium">
                             {app.payroll_policy?.salary || "N/A"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1 px-2">
                             <div>{personalInfo.age || "N/A"}</div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {personalInfo.dateOfBirth ? format(new Date(personalInfo.dateOfBirth), "yyyy-MM-dd") : "N/A"}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1 px-2">
                             <div>{licenseInfo.class || "N/A"}</div>
-                            <div className="text-sm text-muted-foreground">{licenseInfo.endorsements || "None"}</div>
+                            <div className="text-xs text-muted-foreground">{licenseInfo.endorsements || "None"}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1 px-2">
                             {licenseInfo.expirationDate ? format(new Date(licenseInfo.expirationDate), "yyyy-MM-dd") : "N/A"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1 px-2">
                             {licenseInfo.dotCardExpiration ? format(new Date(licenseInfo.dotCardExpiration), "yyyy-MM-dd") : "N/A"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1 px-2">
                             {licenseInfo.driverRecordExpiry ? format(new Date(licenseInfo.driverRecordExpiry), "yyyy-MM-dd") : "N/A"}
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{personalInfo.ssCard ? "Yes" : "No"}</div>
-                            <div className="text-sm text-muted-foreground">{personalInfo.ssn || "N/A"}</div>
+                          <TableCell className="py-1 px-2">
+                            <div>{personalInfo.ssCard ? "Yes" : "No"}</div>
+                            <div className="text-xs text-muted-foreground">{personalInfo.ssn || "N/A"}</div>
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
+                          <TableCell className="py-1 px-2">
+                            <div>
                               {app.submitted_at ? format(new Date(app.submitted_at), "yyyy-MM-dd'T'HH:mm:ss.SSS'-'SS':'SS") : "N/A"}
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {directDeposit.accountNumber ? "Yes" : "No"}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
+                          <TableCell className="py-1 px-2">
+                            <div>
                               {app.submitted_at ? format(new Date(app.submitted_at), "yyyy-MM-dd") : "N/A"}
                             </div>
-                            <div className="text-sm text-muted-foreground">N/A</div>
+                            <div className="text-xs text-muted-foreground">N/A</div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
+                          <TableCell className="py-1 px-2">
+                            <div className="flex gap-1">
                               <Button
                                 onClick={() => viewApplication(app.id)}
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8"
+                                className="h-6 w-6"
                               >
-                                <FileText className="h-4 w-4" />
+                                <FileText className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8"
+                                className="h-6 w-6"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </TableCell>
