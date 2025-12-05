@@ -434,46 +434,46 @@ export default function CustomersTab() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-sm">
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Company Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Payment Terms</TableHead>
-                    <TableHead>Credit Limit</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Company Name</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Contact</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Phone</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Location</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Terms</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Credit Limit</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{customer.name}</TableCell>
-                      <TableCell>{customer.contact_name || "—"}</TableCell>
-                      <TableCell>{customer.email || "—"}</TableCell>
-                      <TableCell>{customer.phone || "—"}</TableCell>
-                      <TableCell>
+                    <TableRow key={customer.id} className="h-10 hover:bg-muted/50">
+                      <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
+                      <TableCell className="py-1 px-2">{customer.contact_name || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">{customer.email || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">{customer.phone || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">
                         {customer.city && customer.state ? `${customer.city}, ${customer.state}` : "—"}
                       </TableCell>
-                      <TableCell>{customer.payment_terms || "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="py-1 px-2">{customer.payment_terms || "—"}</TableCell>
+                      <TableCell className="py-1 px-2">
                         {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1 px-2">
                         <Badge className={customer.status === "active" ? "bg-green-600" : "bg-gray-500"}>
                           {customer.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(customer)}>
-                            <Edit className="h-4 w-4" />
+                      <TableCell className="py-1 px-2">
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEdit(customer)}>
+                            <Edit className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleDelete(customer.id)}>
-                            <Trash2 className="h-4 w-4" />
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDelete(customer.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>

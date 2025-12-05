@@ -286,29 +286,29 @@ export default function PayeesTab() {
               {searchQuery ? "No payees match your search" : "No payees found"}
             </p>
           ) : (
-            <Table>
+            <Table className="text-sm">
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>Bank</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Name</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Type</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Payment Method</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Bank</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Phone</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
+                  <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPayees.map((payee) => (
-                  <TableRow key={payee.id}>
-                    <TableCell className="font-medium">{payee.name}</TableCell>
-                    <TableCell>{payee.type || "N/A"}</TableCell>
-                    <TableCell>{payee.payment_method || "N/A"}</TableCell>
-                    <TableCell>{payee.bank_name || "N/A"}</TableCell>
-                    <TableCell>{payee.email || "N/A"}</TableCell>
-                    <TableCell>{payee.phone || "N/A"}</TableCell>
-                    <TableCell>
+                  <TableRow key={payee.id} className="h-10">
+                    <TableCell className="py-1 px-2 font-medium">{payee.name}</TableCell>
+                    <TableCell className="py-1 px-2">{payee.type || "N/A"}</TableCell>
+                    <TableCell className="py-1 px-2">{payee.payment_method || "N/A"}</TableCell>
+                    <TableCell className="py-1 px-2">{payee.bank_name || "N/A"}</TableCell>
+                    <TableCell className="py-1 px-2">{payee.email || "N/A"}</TableCell>
+                    <TableCell className="py-1 px-2">{payee.phone || "N/A"}</TableCell>
+                    <TableCell className="py-1 px-2">
                       <Badge
                         className={
                           payee.status === "active"
@@ -319,18 +319,18 @@ export default function PayeesTab() {
                         {payee.status.charAt(0).toUpperCase() + payee.status.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8">
-                          <Edit className="h-4 w-4" />
+                    <TableCell className="py-1 px-2">
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" className="h-6 w-6">
+                          <Edit className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8"
+                          className="h-6 w-6"
                           onClick={() => handleDeletePayee(payee.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
