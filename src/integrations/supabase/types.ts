@@ -429,9 +429,11 @@ export type Database = {
           contact_name: string | null
           created_at: string | null
           credit_limit: number | null
+          dot_number: string | null
           email: string | null
           email_secondary: string | null
           id: string
+          mc_number: string | null
           name: string
           notes: string | null
           payment_terms: string | null
@@ -450,9 +452,11 @@ export type Database = {
           contact_name?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          dot_number?: string | null
           email?: string | null
           email_secondary?: string | null
           id?: string
+          mc_number?: string | null
           name: string
           notes?: string | null
           payment_terms?: string | null
@@ -471,9 +475,11 @@ export type Database = {
           contact_name?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          dot_number?: string | null
           email?: string | null
           email_secondary?: string | null
           id?: string
+          mc_number?: string | null
           name?: string
           notes?: string | null
           payment_terms?: string | null

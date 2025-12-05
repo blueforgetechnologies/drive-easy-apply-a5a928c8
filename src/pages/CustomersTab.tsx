@@ -31,6 +31,8 @@ interface Customer {
   payment_terms: string | null;
   credit_limit: number | null;
   notes: string | null;
+  mc_number: string | null;
+  dot_number: string | null;
 }
 
 export default function CustomersTab() {
@@ -42,6 +44,8 @@ export default function CustomersTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [usdotLookup, setUsdotLookup] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   const aiUpdateMutation = useMutation({
     mutationFn: async () => {
@@ -76,6 +80,8 @@ export default function CustomersTab() {
     payment_terms: "Net 30",
     credit_limit: "",
     notes: "",
+    mc_number: "",
+    dot_number: "",
   });
 
   useEffect(() => {
@@ -156,7 +162,10 @@ export default function CustomersTab() {
       payment_terms: customer.payment_terms || "Net 30",
       credit_limit: customer.credit_limit?.toString() || "",
       notes: customer.notes || "",
+      mc_number: customer.mc_number || "",
+      dot_number: customer.dot_number || "",
     });
+    setUsdotLookup(customer.dot_number || "");
     setDialogOpen(true);
   };
 
@@ -192,6 +201,7 @@ export default function CustomersTab() {
 
   const resetForm = () => {
     setEditingCustomer(null);
+    setUsdotLookup("");
     setFormData({
       name: "",
       contact_name: "",
@@ -208,7 +218,52 @@ export default function CustomersTab() {
       payment_terms: "Net 30",
       credit_limit: "",
       notes: "",
+      mc_number: "",
+      dot_number: "",
     });
+  };
+
+  const handleUsdotLookup = async () => {
+    if (!usdotLookup.trim()) {
+      toast.error("Please enter a USDOT number");
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ usdot: usdotLookup }),
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Company not found");
+      }
+
+      const data = await response.json();
+      
+      setFormData({
+        ...formData,
+        name: data.dba_name || data.name || formData.name,
+        mc_number: data.mc_number || formData.mc_number,
+        dot_number: data.usdot || usdotLookup,
+        phone: data.phone || formData.phone,
+        address: data.physical_address || formData.address,
+      });
+      
+      toast.success("Company information loaded from FMCSA");
+    } catch (error: any) {
+      toast.error("Failed to fetch FMCSA data: " + error.message);
+    } finally {
+      setLookupLoading(false);
+    }
   };
 
   const filteredCustomers = customers.filter((customer) => {
@@ -252,7 +307,46 @@ export default function CustomersTab() {
               <DialogTitle>{editingCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* FMCSA Lookup Section */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <Label className="text-sm font-semibold text-blue-700 dark:text-blue-400">Search FMCSA by USDOT</Label>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={usdotLookup}
+                    onChange={(e) => setUsdotLookup(e.target.value)}
+                    placeholder="Enter USDOT number"
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button"
+                    onClick={handleUsdotLookup} 
+                    disabled={lookupLoading}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    {lookupLoading ? "Searching..." : "Search"}
+                  </Button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="dot_number">USDOT Number</Label>
+                  <Input
+                    id="dot_number"
+                    value={formData.dot_number}
+                    onChange={(e) => setFormData({ ...formData, dot_number: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mc_number">MC Number</Label>
+                  <Input
+                    id="mc_number"
+                    value={formData.mc_number}
+                    onChange={(e) => setFormData({ ...formData, mc_number: e.target.value })}
+                    placeholder="MC-XXXXXX"
+                  />
+                </div>
                 <div className="col-span-2">
                   <Label htmlFor="name">Company Name *</Label>
                   <Input
