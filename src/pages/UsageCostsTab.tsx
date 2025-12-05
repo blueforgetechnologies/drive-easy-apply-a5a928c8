@@ -409,6 +409,13 @@ const UsageCostsTab = () => {
       const totalMB = totalBytes / (1024 * 1024);
       const totalGB = totalMB / 1024;
       
+      // Gmail API calls estimation (~45 API calls per email processed)
+      // Breakdown: token refresh, list messages, get message details, mark as read, retries
+      const API_CALLS_PER_EMAIL = 45;
+      const totalApiCalls = totalEmails * API_CALLS_PER_EMAIL;
+      const apiCallsPerDay = totalApiCalls / daysOfData;
+      const projected30DayApiCalls = Math.round(apiCallsPerDay * 30);
+      
       // Project to 30 days
       const emailsPerDay = totalEmails / daysOfData;
       const projected30DayEmails = Math.round(emailsPerDay * 30);
@@ -432,7 +439,13 @@ const UsageCostsTab = () => {
         projected30DayGB: projected30DayGB.toFixed(2),
         freeTierGB: FREE_TIER_GB,
         withinFreeTier: projected30DayGB <= FREE_TIER_GB,
-        estimatedCost
+        estimatedCost,
+        // API calls tracking
+        totalApiCalls,
+        apiCallsPerDay: Math.round(apiCallsPerDay),
+        projected30DayApiCalls,
+        apiCallsInMillions: (totalApiCalls / 1_000_000).toFixed(2),
+        projected30DayApiCallsInMillions: (projected30DayApiCalls / 1_000_000).toFixed(2)
       };
     },
     refetchInterval: pubsubRefreshInterval,
@@ -1016,11 +1029,20 @@ const UsageCostsTab = () => {
           </div>
         </CardHeader>
         <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
-          <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
+          <div className={`grid ${isCompactView ? 'grid-cols-5 gap-2' : 'grid-cols-5 gap-4'}`}>
             <div className="space-y-0.5">
               <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Emails Received</p>
               <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{pubsubStats?.count?.toLocaleString() || 0}</p>
               <p className="text-xs text-muted-foreground">{pubsubStats?.daysOfData || 0} days of data</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Gmail API Calls</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>
+                {pubsubStats?.totalApiCalls && pubsubStats.totalApiCalls >= 1_000_000 
+                  ? `${pubsubStats.apiCallsInMillions}M` 
+                  : (pubsubStats?.totalApiCalls?.toLocaleString() || 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">~45 calls/email</p>
             </div>
             <div className="space-y-0.5">
               <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Data Transfer</p>
@@ -1033,20 +1055,24 @@ const UsageCostsTab = () => {
             </div>
             <div className="space-y-0.5">
               <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>30-Day Projection</p>
-              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{pubsubStats?.projected30DayGB || '0'} GB</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>
+                {pubsubStats?.projected30DayApiCalls && pubsubStats.projected30DayApiCalls >= 1_000_000 
+                  ? `${pubsubStats.projected30DayApiCallsInMillions}M calls` 
+                  : `${pubsubStats?.projected30DayApiCalls?.toLocaleString() || 0} calls`}
+              </p>
               <p className="text-xs text-muted-foreground">~{pubsubStats?.projected30DayEmails?.toLocaleString() || 0} emails</p>
             </div>
             <div className="space-y-0.5">
               <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Est. Monthly Cost</p>
               <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>${pubsubStats?.estimatedCost || '0.00'}</p>
               <p className={`text-xs ${pubsubStats?.withinFreeTier ? 'text-green-600' : 'text-orange-500'}`}>
-                {pubsubStats?.withinFreeTier ? '✓ Within 10GB free tier' : 'Exceeds free tier'}
+                {pubsubStats?.withinFreeTier ? '✓ Within free tiers' : 'Exceeds free tier'}
               </p>
             </div>
           </div>
           {!isCompactView && (
             <p className="text-xs text-muted-foreground mt-2">
-              Free: 10GB/month • After: ~$40 per TiB • Gmail API requests are FREE
+              Pub/Sub: 10GB/month free, ~$40/TiB after • Gmail API: FREE (unlimited requests)
             </p>
           )}
         </CardContent>
