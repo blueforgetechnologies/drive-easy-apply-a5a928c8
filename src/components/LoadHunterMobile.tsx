@@ -85,8 +85,8 @@ export default function LoadHunterMobile({
   getDriverName,
 }: LoadHunterMobileProps) {
   const [vehicleSheetOpen, setVehicleSheetOpen] = useState(false);
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'trucks' | 'loads'>('loads');
 
   // Filter counts
   const getFilterCount = (filter: string) => {
@@ -147,16 +147,13 @@ export default function LoadHunterMobile({
   const displayData = getDisplayData();
   const filteredVehicles = vehicles.filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id));
 
-  // Filter options
-  const filterOptions = [
-    { id: 'unreviewed', label: 'Unreviewed', color: 'bg-green-600', icon: Target },
-    { id: 'skipped', label: 'Skipped', color: 'bg-blue-600', icon: SkipForward },
-    { id: 'missed', label: 'Missed', color: 'bg-orange-600', icon: AlertTriangle },
-    { id: 'issues', label: 'Issues', color: 'bg-red-600', icon: AlertTriangle },
-    { id: 'all', label: 'All Loads', color: 'bg-gray-600', icon: List },
+  // Filter options for bottom tabs
+  const filterTabs = [
+    { id: 'unreviewed', label: 'Unreviewed', icon: Target },
+    { id: 'skipped', label: 'Skipped', icon: SkipForward },
+    { id: 'missed', label: 'Missed', icon: AlertTriangle },
+    { id: 'all', label: 'All', icon: List },
   ];
-
-  const activeFilterOption = filterOptions.find(f => f.id === activeFilter) || filterOptions[0];
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -206,117 +203,127 @@ export default function LoadHunterMobile({
           </div>
         </div>
 
-        {/* Second Row - Filter & Vehicle Selection */}
-        <div className="flex items-center gap-2">
-          {/* Filter Button */}
-          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-            <SheetTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className={`h-9 flex-1 justify-between ${activeFilterOption.color} text-white border-0`}
-              >
-                <div className="flex items-center gap-2">
-                  <activeFilterOption.icon className="h-4 w-4" />
-                  <span>{activeFilterOption.label}</span>
-                </div>
-                <Badge variant="secondary" className="bg-white/20 text-white">
-                  {getFilterCount(activeFilter)}
-                </Badge>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="h-auto max-h-[50vh]">
-              <SheetHeader>
-                <SheetTitle>Select Filter</SheetTitle>
-              </SheetHeader>
-              <div className="grid grid-cols-2 gap-2 py-4">
-                {filterOptions.map(filter => (
-                  <Button
-                    key={filter.id}
-                    variant={activeFilter === filter.id ? 'default' : 'outline'}
-                    className="h-14 flex-col gap-1"
-                    onClick={() => {
-                      onFilterChange(filter.id);
-                      setFilterSheetOpen(false);
-                    }}
-                  >
-                    <filter.icon className="h-5 w-5" />
-                    <span className="text-xs">{filter.label} ({getFilterCount(filter.id)})</span>
-                  </Button>
-                ))}
-              </div>
-            </SheetContent>
-          </Sheet>
+      </div>
 
-          {/* Vehicle Filter Button */}
-          <Sheet open={vehicleSheetOpen} onOpenChange={setVehicleSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 px-3">
-                <Truck className="h-4 w-4 mr-1" />
-                {selectedVehicleId 
-                  ? vehicles.find(v => v.id === selectedVehicleId)?.vehicle_number || 'Truck'
-                  : 'All'
-                }
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="h-[70vh]">
-              <SheetHeader>
-                <SheetTitle>Select Truck</SheetTitle>
-              </SheetHeader>
-              <ScrollArea className="h-full py-4">
-                <Button
-                  variant={!selectedVehicleId ? 'default' : 'ghost'}
-                  className="w-full justify-start mb-2"
-                  onClick={() => {
-                    setSelectedVehicleId(null);
-                    setVehicleSheetOpen(false);
-                  }}
-                >
-                  <Truck className="h-4 w-4 mr-2" />
-                  All Trucks
-                </Button>
-                {filteredVehicles.map(vehicle => {
-                  const hasEnabledHunt = huntPlans.some(p => p.vehicleId === vehicle.id && p.enabled);
-                  const unreviewedCount = unreviewedViewData.filter(m => m.vehicle_id === vehicle.id).length;
-                  
-                  return (
-                    <Button
-                      key={vehicle.id}
-                      variant={selectedVehicleId === vehicle.id ? 'default' : 'ghost'}
-                      className="w-full justify-between mb-1 h-auto py-2"
-                      onClick={() => {
-                        setSelectedVehicleId(vehicle.id);
-                        setVehicleSheetOpen(false);
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {hasEnabledHunt && <div className="w-1.5 h-8 bg-blue-500 rounded-full" />}
-                        <div className="text-left">
-                          <div className="font-medium">{vehicle.vehicle_number || 'N/A'}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {getDriverName(vehicle.driver_1_id) || 'No Driver'}
-                          </div>
-                        </div>
-                      </div>
-                      {unreviewedCount > 0 && (
-                        <Badge variant="destructive" className="h-5">
-                          {unreviewedCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  );
-                })}
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
+      {/* Bottom Tab Bar - Filter Navigation */}
+      <div className="border-b bg-card px-1 py-1">
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {/* My Trucks Tab */}
+          <Button
+            size="sm"
+            variant={activeTab === 'trucks' ? 'default' : 'ghost'}
+            className="h-9 px-3 text-xs flex-shrink-0"
+            onClick={() => setActiveTab('trucks')}
+          >
+            <Truck className="h-4 w-4 mr-1" />
+            My Trucks
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+              {filteredVehicles.length}
+            </Badge>
+          </Button>
+          
+          {/* Filter Tabs */}
+          {filterTabs.map(tab => (
+            <Button
+              key={tab.id}
+              size="sm"
+              variant={activeTab === 'loads' && activeFilter === tab.id ? 'default' : 'ghost'}
+              className="h-9 px-3 text-xs flex-shrink-0"
+              onClick={() => {
+                setActiveTab('loads');
+                onFilterChange(tab.id);
+              }}
+            >
+              <tab.icon className="h-4 w-4 mr-1" />
+              {tab.label}
+              <Badge 
+                variant={getFilterCount(tab.id) > 0 ? 'destructive' : 'secondary'} 
+                className="ml-1 h-5 px-1.5 text-[10px]"
+              >
+                {getFilterCount(tab.id)}
+              </Badge>
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* Load Cards List */}
+      {/* Content Area */}
       <ScrollArea className="flex-1 px-3 py-2">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : activeTab === 'trucks' ? (
+          /* Trucks List View */
+          <div className="space-y-2 pb-20">
+            {filteredVehicles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Truck className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">No trucks found</p>
+              </div>
+            ) : (
+              filteredVehicles.map(vehicle => {
+                const hasEnabledHunt = huntPlans.some(p => p.vehicleId === vehicle.id && p.enabled);
+                const unreviewedCount = unreviewedViewData.filter(m => m.vehicle_id === vehicle.id).length;
+                const hunt = huntPlans.find(p => p.vehicleId === vehicle.id);
+                
+                return (
+                  <Card 
+                    key={vehicle.id}
+                    className={`overflow-hidden ${hasEnabledHunt ? 'border-blue-500' : ''}`}
+                  >
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          {hasEnabledHunt && <div className="w-1.5 h-10 bg-blue-500 rounded-full" />}
+                          <div>
+                            <p className="font-semibold">{vehicle.vehicle_number || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {getDriverName(vehicle.driver_1_id) || 'No Driver'}
+                            </p>
+                            {vehicle.carrier && (
+                              <p className="text-xs text-muted-foreground">
+                                {carriersMap[vehicle.carrier] || vehicle.carrier}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {unreviewedCount > 0 && (
+                            <Badge variant="destructive">{unreviewedCount}</Badge>
+                          )}
+                          {hunt && (
+                            <Button
+                              size="sm"
+                              variant={hunt.enabled ? 'default' : 'outline'}
+                              className="h-8 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleHunt(hunt.id, !hunt.enabled);
+                              }}
+                            >
+                              {hunt.enabled ? 'Hunting' : 'Start Hunt'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {hunt && (
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {hunt.zipCode || 'No location'}
+                          </span>
+                          <span>{hunt.pickupRadius} mi radius</span>
+                          {hunt.vehicleSizes?.length > 0 && (
+                            <span>{hunt.vehicleSizes.slice(0, 2).join(', ')}{hunt.vehicleSizes.length > 2 ? '...' : ''}</span>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         ) : displayData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
