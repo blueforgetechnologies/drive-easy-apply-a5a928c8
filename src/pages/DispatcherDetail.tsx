@@ -109,7 +109,7 @@ export default function DispatcherDetail() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/dispatchers")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/business?subtab=dispatchers")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
