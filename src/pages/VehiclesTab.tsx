@@ -397,33 +397,35 @@ export default function VehiclesTab() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
+    <div className="space-y-3">
+      {/* Compact Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
           <Button 
-            variant="outline" 
-            size="icon"
+            variant="ghost" 
+            size="sm"
+            className="h-8 w-8 p-0"
             onClick={() => navigate('/dashboard')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-2xl font-bold">Asset Management</h2>
+          <h2 className="text-xl font-bold">Asset Management</h2>
         </div>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
-            className="gap-2" 
+            size="sm"
+            className="gap-1.5 h-8" 
             onClick={handleSyncSamsara}
             disabled={syncing}
           >
-            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
             {syncing ? 'Syncing...' : 'Sync Samsara'}
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
+              <Button size="sm" className="gap-1.5 h-8">
+                <Plus className="h-3.5 w-3.5" />
                 Add Asset
               </Button>
             </DialogTrigger>
@@ -502,77 +504,81 @@ export default function VehiclesTab() {
         </div>
       </div>
 
-      {/* Tabs and Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-wrap gap-2">
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1">
           <Button
             variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "all" });
               setSearchQuery("");
             }}
-            className={filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
           >
             All
           </Button>
           <Button
             variant={filter === "active" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "active" });
               setSearchQuery("");
             }}
-            className={filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}
           >
             Active
           </Button>
           <Button
             variant={filter === "pending" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-accent text-accent-foreground" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "pending" });
               setSearchQuery("");
             }}
-            className={filter === "pending" ? "bg-accent text-accent-foreground" : ""}
           >
             Pending
           </Button>
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "inactive" });
               setSearchQuery("");
             }}
-            className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
           >
             Inactive
           </Button>
           <Button
             variant={showServiceDue ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${showServiceDue ? "bg-red-600 text-white hover:bg-red-700" : ""}`}
             onClick={() => setShowServiceDue(!showServiceDue)}
-            className={showServiceDue ? "bg-red-600 text-white hover:bg-red-700" : ""}
           >
             Service Due
           </Button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 ml-auto">
           <Button
             variant="outline"
+            size="sm"
+            className="h-7 px-2.5 gap-1"
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="gap-2"
           >
             Unit # {sortOrder === "asc" ? "↑" : "↓"}
           </Button>
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search assets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+          <div className="relative w-48">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search assets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-7 text-sm"
+            />
+          </div>
         </div>
       </div>
 
