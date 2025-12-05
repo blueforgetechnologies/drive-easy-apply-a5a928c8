@@ -3,11 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, Sparkles } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
@@ -171,6 +171,21 @@ export default function CustomersTab() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to delete customer: " + error.message);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("customers" as any)
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Status updated");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update status: " + error.message);
     }
   };
 
@@ -462,10 +477,37 @@ export default function CustomersTab() {
                       <TableCell className="py-1 px-2">
                         {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
                       </TableCell>
-                      <TableCell className="py-1 px-2">
-                        <Badge className={customer.status === "active" ? "bg-green-600" : "bg-gray-500"}>
-                          {customer.status}
-                        </Badge>
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
+                            customer.status === "active" 
+                              ? "bg-green-600" 
+                              : customer.status === "pending"
+                              ? "bg-orange-500"
+                              : "bg-gray-500"
+                          }`}>
+                            0
+                          </div>
+                          <Select
+                            value={customer.status}
+                            onValueChange={(value) => handleStatusChange(customer.id, value)}
+                          >
+                            <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
+                              customer.status === "active"
+                                ? "bg-green-100 text-green-800 border-green-200"
+                                : customer.status === "pending"
+                                ? "bg-orange-100 text-orange-800 border-orange-200"
+                                : "bg-gray-100 text-gray-800 border-gray-200"
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active" className="text-sm">Active</SelectItem>
+                              <SelectItem value="pending" className="text-sm">Pending</SelectItem>
+                              <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                       <TableCell className="py-1 px-2">
                         <div className="flex gap-1">
