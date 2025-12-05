@@ -876,15 +876,29 @@ const UsageCostsTab = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Source Summary */}
-          <div className="p-3 rounded-lg bg-muted/50 border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium capitalize">{emailSource}</span>
+          <div className="space-y-2">
+            <div className="p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium capitalize">{emailSource}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold">{recentActivity?.emails?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">emails (30 days)</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">{recentActivity?.emails?.toLocaleString() || 0}</p>
-                <p className="text-xs text-muted-foreground">emails (30 days)</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Hunt Matches</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold">{recentActivity?.matches?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">matches (30 days)</p>
+                </div>
               </div>
             </div>
           </div>
