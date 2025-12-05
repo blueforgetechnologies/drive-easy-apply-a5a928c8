@@ -947,6 +947,9 @@ const UsageCostsTab = () => {
                       <div className="flex gap-4">
                         <span className="text-green-600">{stat.emails_received} received</span>
                         <span>{stat.emails_processed} processed</span>
+                        {(stat.matches_count > 0 || stat.matches_count === 0) && (
+                          <span className="text-blue-600">{stat.matches_count || 0} matched</span>
+                        )}
                         {stat.emails_pending > 0 && (
                           <span className="text-amber-600">{stat.emails_pending} pending</span>
                         )}
@@ -967,15 +970,16 @@ const UsageCostsTab = () => {
               <div className="space-y-1">
                 {(() => {
                   // Aggregate by day
-                  const dailyData: Record<string, { received: number; processed: number; failed: number }> = {};
+                  const dailyData: Record<string, { received: number; processed: number; failed: number; matched: number }> = {};
                   emailVolumeStats?.forEach((stat: any) => {
                     const day = new Date(stat.hour_start).toLocaleDateString();
                     if (!dailyData[day]) {
-                      dailyData[day] = { received: 0, processed: 0, failed: 0 };
+                      dailyData[day] = { received: 0, processed: 0, failed: 0, matched: 0 };
                     }
                     dailyData[day].received += stat.emails_received || 0;
                     dailyData[day].processed += stat.emails_processed || 0;
                     dailyData[day].failed += stat.emails_failed || 0;
+                    dailyData[day].matched += stat.matches_count || 0;
                   });
                   
                   return Object.entries(dailyData).slice(0, 7).map(([day, data]) => (
@@ -984,6 +988,7 @@ const UsageCostsTab = () => {
                       <div className="flex gap-4">
                         <span className="text-green-600">{data.received.toLocaleString()} received</span>
                         <span>{data.processed.toLocaleString()} processed</span>
+                        <span className="text-blue-600">{data.matched.toLocaleString()} matched</span>
                         {data.failed > 0 && <span className="text-red-600">{data.failed} failed</span>}
                         <span className="text-muted-foreground">{(data.received / 24).toFixed(1)}/hr avg</span>
                       </div>
@@ -1000,15 +1005,16 @@ const UsageCostsTab = () => {
               <div className="space-y-1">
                 {(() => {
                   // Aggregate by month
-                  const monthlyData: Record<string, { received: number; processed: number; failed: number }> = {};
+                  const monthlyData: Record<string, { received: number; processed: number; failed: number; matched: number }> = {};
                   emailVolumeStats?.forEach((stat: any) => {
                     const month = new Date(stat.hour_start).toLocaleDateString('default', { year: 'numeric', month: 'long' });
                     if (!monthlyData[month]) {
-                      monthlyData[month] = { received: 0, processed: 0, failed: 0 };
+                      monthlyData[month] = { received: 0, processed: 0, failed: 0, matched: 0 };
                     }
                     monthlyData[month].received += stat.emails_received || 0;
                     monthlyData[month].processed += stat.emails_processed || 0;
                     monthlyData[month].failed += stat.emails_failed || 0;
+                    monthlyData[month].matched += stat.matches_count || 0;
                   });
                   
                   return Object.entries(monthlyData).map(([month, data]) => (
@@ -1017,6 +1023,7 @@ const UsageCostsTab = () => {
                       <div className="flex gap-4">
                         <span className="text-green-600">{data.received.toLocaleString()} received</span>
                         <span>{data.processed.toLocaleString()} processed</span>
+                        <span className="text-blue-600">{data.matched.toLocaleString()} matched</span>
                         {data.failed > 0 && <span className="text-red-600">{data.failed} failed</span>}
                       </div>
                     </div>

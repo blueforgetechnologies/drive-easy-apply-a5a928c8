@@ -72,6 +72,17 @@ serve(async (req) => {
       console.error('Error counting pending emails:', pendingError);
     }
 
+    // Count hunt matches created in the previous hour
+    const { count: matchesCount, error: matchesError } = await supabase
+      .from('load_hunt_matches')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', prevHourStart.toISOString())
+      .lt('created_at', hourStart.toISOString());
+
+    if (matchesError) {
+      console.error('Error counting matches:', matchesError);
+    }
+
     // Insert or update the hourly snapshot
     const { data, error: insertError } = await supabase
       .from('email_volume_stats')
@@ -81,6 +92,7 @@ serve(async (req) => {
         emails_processed: processedCount || 0,
         emails_pending: pendingCount || 0,
         emails_failed: failedCount || 0,
+        matches_count: matchesCount || 0,
         recorded_at: now.toISOString()
       }, {
         onConflict: 'hour_start'
@@ -93,7 +105,7 @@ serve(async (req) => {
       throw insertError;
     }
 
-    console.log(`✅ Snapshot saved: ${receivedCount} received, ${processedCount} processed, ${pendingCount} pending, ${failedCount} failed`);
+    console.log(`✅ Snapshot saved: ${receivedCount} received, ${processedCount} processed, ${pendingCount} pending, ${failedCount} failed, ${matchesCount} matched`);
 
     return new Response(
       JSON.stringify({
@@ -103,7 +115,8 @@ serve(async (req) => {
           received: receivedCount || 0,
           processed: processedCount || 0,
           pending: pendingCount || 0,
-          failed: failedCount || 0
+          failed: failedCount || 0,
+          matched: matchesCount || 0
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
