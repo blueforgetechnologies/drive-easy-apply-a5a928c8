@@ -21,8 +21,10 @@ const UsageCostsTab = () => {
   const [emailSource, setEmailSource] = useState<string>("sylectus");
   const [mapboxRefreshInterval, setMapboxRefreshInterval] = useState<number>(20000); // 20 seconds default
   const [geocodeCacheRefreshInterval, setGeocodeCacheRefreshInterval] = useState<number>(30000); // 30 seconds default
+  const [emailRefreshInterval, setEmailRefreshInterval] = useState<number>(30000); // 30 seconds default
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [lastGeocodeRefresh, setLastGeocodeRefresh] = useState<Date>(new Date());
+  const [lastEmailRefresh, setLastEmailRefresh] = useState<Date>(new Date());
   const queryClient = useQueryClient();
 
   // Test AI mutation
@@ -303,12 +305,15 @@ const UsageCostsTab = () => {
         .limit(168); // Last 7 days worth of hourly data
       
       if (error) throw error;
+      setLastEmailRefresh(new Date());
       return data || [];
-    }
+    },
+    refetchInterval: emailRefreshInterval,
+    refetchIntervalInBackground: true,
   });
 
   // Get current hour stats for display
-  const { data: currentHourEmailStats } = useQuery({
+  const { data: currentHourEmailStats, refetch: refetchCurrentHourStats } = useQuery({
     queryKey: ["current-hour-email-stats"],
     queryFn: async () => {
       const now = new Date();
@@ -335,7 +340,8 @@ const UsageCostsTab = () => {
         emailsPerMinute
       };
     },
-    refetchInterval: 20000 // Refresh every 20 seconds
+    refetchInterval: emailRefreshInterval,
+    refetchIntervalInBackground: true,
   });
 
   // Fetch Directions API tracking (current month)
@@ -1037,10 +1043,32 @@ const UsageCostsTab = () => {
           </Tabs>
 
           <div className="pt-2 border-t flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">
-              <p>• Live stats refresh every 20 seconds</p>
-              <p>• Hourly snapshots recorded at the top of each hour</p>
-              <p>• Processing rate: 100 emails/batch (~300/min capacity)</p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span>Last: {lastEmailRefresh.toLocaleTimeString()} • {emailRefreshInterval / 1000}s</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <Settings className="h-3 w-3 mr-1" />
+                    Refresh Rate
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="start">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Select refresh interval</p>
+                    {[10, 20, 30, 45, 60].map((seconds) => (
+                      <Button
+                        key={seconds}
+                        variant={emailRefreshInterval === seconds * 1000 ? "default" : "ghost"}
+                        size="sm"
+                        className="w-full justify-start text-xs"
+                        onClick={() => setEmailRefreshInterval(seconds * 1000)}
+                      >
+                        {seconds} seconds
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <Button
               variant="outline"
@@ -1050,7 +1078,8 @@ const UsageCostsTab = () => {
                   const { error } = await supabase.functions.invoke('snapshot-email-volume');
                   if (error) throw error;
                   toast.success("Snapshot triggered - refreshing...");
-                  setTimeout(() => window.location.reload(), 2000);
+                  refetchEmailVolume();
+                  refetchCurrentHourStats();
                 } catch (err) {
                   toast.error("Failed to trigger snapshot");
                 }
