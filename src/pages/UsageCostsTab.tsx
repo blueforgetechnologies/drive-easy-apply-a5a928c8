@@ -1139,19 +1139,35 @@ const UsageCostsTab = () => {
           </CardTitle>
           <CardDescription>System usage statistics</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Load Emails</p>
-              <p className="text-2xl font-semibold">{recentActivity?.emails || 0}</p>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between py-2 border-b">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Sylectus</span>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Loads Created</p>
-              <p className="text-2xl font-semibold">{recentActivity?.loads || 0}</p>
+            <div className="text-right">
+              <p className="text-xl font-semibold">{(recentActivity?.emails || 0).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">emails (30 days)</p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Hunt Matches</p>
-              <p className="text-2xl font-semibold">{recentActivity?.matches || 0}</p>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Hunt Matches</span>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-semibold">{(recentActivity?.matches || 0).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">matches (30 days)</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Loads Created</span>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-semibold">{(recentActivity?.loads || 0).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">loads (30 days)</p>
             </div>
           </div>
         </CardContent>
