@@ -296,13 +296,13 @@ export default function LoadHunterMobile({
                             <Button
                               size="sm"
                               variant={hunt.enabled ? 'default' : 'outline'}
-                              className="h-8 text-xs"
+                              className={`h-8 text-xs ${hunt.enabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleHunt(hunt.id, !hunt.enabled);
                               }}
                             >
-                              {hunt.enabled ? 'Hunting' : 'Start Hunt'}
+                              {hunt.enabled ? '● Hunting' : 'Start Hunt'}
                             </Button>
                           )}
                         </div>
