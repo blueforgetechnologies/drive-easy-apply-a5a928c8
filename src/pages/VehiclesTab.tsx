@@ -582,8 +582,14 @@ export default function VehiclesTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredVehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewVehicle(vehicle.id)}>
+                {filteredVehicles.map((vehicle) => {
+                    const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined && vehicle.oil_change_remaining <= 0;
+                    return (
+                    <TableRow 
+                      key={vehicle.id} 
+                      className={`cursor-pointer hover:bg-muted/50 ${isOilChangeDue ? "bg-red-50 dark:bg-red-950/30" : ""}`} 
+                      onClick={() => viewVehicle(vehicle.id)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div 
@@ -717,7 +723,8 @@ export default function VehiclesTab() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
