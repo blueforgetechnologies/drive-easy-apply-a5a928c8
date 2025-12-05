@@ -145,6 +145,17 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
+    // Track email send
+    const success = !emailResponse.error;
+    await supabaseService
+      .from('email_send_tracking')
+      .insert({
+        email_type: 'driver_invite',
+        recipient_email: email,
+        success,
+      });
+    console.log('📊 Resend usage tracked');
+
     console.log("Driver invite email sent successfully:", emailResponse);
 
     return new Response(

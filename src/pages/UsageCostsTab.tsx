@@ -377,6 +377,84 @@ const UsageCostsTab = () => {
     refetchInterval: mapboxRefreshInterval
   });
 
+  // Fetch Pub/Sub tracking (current month) - Google Cloud costs
+  const { data: pubsubStats } = useQuery({
+    queryKey: ["usage-pubsub", currentMonth],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from('pubsub_tracking')
+        .select('message_size_bytes', { count: 'exact' })
+        .eq('month_year', currentMonth);
+      
+      if (error) throw error;
+      
+      const totalBytes = data?.reduce((sum, row) => sum + (row.message_size_bytes || 0), 0) || 0;
+      return { 
+        count: count || 0, 
+        totalBytes,
+        // Pub/Sub pricing: ~$0.40 per million messages
+        estimatedCost: ((count || 0) / 1000000 * 0.40).toFixed(4)
+      };
+    },
+    refetchInterval: 60000 // 1 minute
+  });
+
+  // Fetch Resend email tracking (current month)
+  const { data: resendStats } = useQuery({
+    queryKey: ["usage-resend", currentMonth],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from('email_send_tracking')
+        .select('email_type, success', { count: 'exact' })
+        .eq('month_year', currentMonth);
+      
+      if (error) throw error;
+      
+      const byType: Record<string, number> = {};
+      const successCount = data?.filter(r => r.success).length || 0;
+      data?.forEach(row => {
+        byType[row.email_type] = (byType[row.email_type] || 0) + 1;
+      });
+      
+      return { 
+        count: count || 0, 
+        byType,
+        successCount,
+        failedCount: (count || 0) - successCount,
+        // Resend pricing: $0.001 per email after 3k free
+        estimatedCost: Math.max(0, ((count || 0) - 3000) * 0.001).toFixed(2)
+      };
+    },
+    refetchInterval: 60000
+  });
+
+  // Fetch Lovable AI tracking (current month)
+  const { data: aiStats } = useQuery({
+    queryKey: ["usage-ai", currentMonth],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from('ai_usage_tracking')
+        .select('model, prompt_tokens, completion_tokens, total_tokens', { count: 'exact' })
+        .eq('month_year', currentMonth);
+      
+      if (error) throw error;
+      
+      const totalPromptTokens = data?.reduce((sum, row) => sum + (row.prompt_tokens || 0), 0) || 0;
+      const totalCompletionTokens = data?.reduce((sum, row) => sum + (row.completion_tokens || 0), 0) || 0;
+      const totalTokens = data?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
+      
+      return { 
+        count: count || 0,
+        totalPromptTokens,
+        totalCompletionTokens,
+        totalTokens,
+        // Lovable AI is usage-based, estimate based on typical costs
+        estimatedCost: 'Usage-based'
+      };
+    },
+    refetchInterval: 60000
+  });
+
   // Fetch historical monthly usage
   const { data: monthlyHistory } = useQuery({
     queryKey: ["mapbox-monthly-history"],
@@ -525,7 +603,9 @@ const UsageCostsTab = () => {
     geocodingCost +
     mapLoadsCost +
     directionsCost +
-    parseFloat(estimatedCosts.resend.estimatedCost)
+    parseFloat(estimatedCosts.resend.estimatedCost) +
+    parseFloat(pubsubStats?.estimatedCost || '0') +
+    parseFloat(resendStats?.estimatedCost || '0')
   ).toFixed(2);
 
   return (
@@ -841,6 +921,108 @@ const UsageCostsTab = () => {
               <p>• Check credit balance in Lovable workspace settings</p>
               <p>• Free monthly usage included, then pay-as-you-go</p>
             </div>
+          )}
+          {/* AI Usage Stats from tracking */}
+          {aiStats && aiStats.count > 0 && (
+            <div className={`${isCompactView ? 'pt-1 border-t' : 'pt-3 border-t'}`}>
+              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>This Month's Usage</p>
+              <div className={`grid ${isCompactView ? 'grid-cols-3 gap-2' : 'grid-cols-3 gap-4'}`}>
+                <div className="space-y-0.5">
+                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Requests</p>
+                  <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.count}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Tokens</p>
+                  <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.totalTokens.toLocaleString()}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
+                  <p className={`font-semibold text-blue-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.estimatedCost}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Google Cloud Pub/Sub Usage */}
+      <Card className={`border-orange-500/20 bg-orange-500/5 ${isCompactView ? 'py-0' : ''}`}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
+          <div className="space-y-0.5">
+            <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+              <Mail className={`text-orange-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+              Google Cloud Pub/Sub
+              <InfoTooltip text="Tracks Gmail push notifications via Google Cloud Pub/Sub. Each webhook call = 1 message. Pricing: ~$0.40 per million messages." />
+            </CardTitle>
+            {!isCompactView && <CardDescription>Gmail push notification costs - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</CardDescription>}
+          </div>
+        </CardHeader>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
+          <div className={`grid ${isCompactView ? 'grid-cols-3 gap-2' : 'grid-cols-3 gap-4'}`}>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Messages</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{pubsubStats?.count?.toLocaleString() || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Data Transfer</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{((pubsubStats?.totalBytes || 0) / 1024).toFixed(1)} KB</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Est. Cost</p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>${pubsubStats?.estimatedCost || '0.00'}</p>
+            </div>
+          </div>
+          {!isCompactView && (
+            <p className="text-xs text-muted-foreground mt-2">Rate: $0.40 per million messages • 1M free tier</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Resend Email Costs */}
+      <Card className={`border-purple-500/20 bg-purple-500/5 ${isCompactView ? 'py-0' : ''}`}>
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
+          <div className="space-y-0.5">
+            <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+              <Mail className={`text-purple-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+              Resend Email Service
+              <InfoTooltip text="Tracks outbound emails sent via Resend (driver invites, admin invites). First 3,000 emails/month free, then $0.001 per email." />
+            </CardTitle>
+            {!isCompactView && <CardDescription>Outbound email costs - {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</CardDescription>}
+          </div>
+        </CardHeader>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
+          <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Emails Sent</p>
+              <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{resendStats?.count || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Successful</p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{resendStats?.successCount || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Failed</p>
+              <p className={`font-semibold text-red-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>{resendStats?.failedCount || 0}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Est. Cost</p>
+              <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-2xl'}`}>${resendStats?.estimatedCost || '0.00'}</p>
+            </div>
+          </div>
+          {resendStats?.byType && Object.keys(resendStats.byType).length > 0 && (
+            <div className={`${isCompactView ? 'mt-1 pt-1 border-t' : 'mt-3 pt-3 border-t'}`}>
+              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>By Type</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(resendStats.byType).map(([type, count]) => (
+                  <span key={type} className={`px-2 py-0.5 bg-muted rounded ${isCompactView ? 'text-xs' : 'text-sm'}`}>
+                    {type}: {count as number}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {!isCompactView && (
+            <p className="text-xs text-muted-foreground mt-2">Rate: $0.001/email after 3,000 free tier</p>
           )}
         </CardContent>
       </Card>

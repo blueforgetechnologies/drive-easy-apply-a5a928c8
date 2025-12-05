@@ -30,6 +30,12 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
+    // Service client for tracking
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     // Verify the user is authenticated and is an admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -91,6 +97,17 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       `,
     });
+
+    // Track email send
+    const success = !emailResponse.error;
+    await supabaseService
+      .from('email_send_tracking')
+      .insert({
+        email_type: 'invite',
+        recipient_email: email,
+        success,
+      });
+    console.log('📊 Resend usage tracked');
 
     console.log("Email sent successfully:", emailResponse);
 
