@@ -1040,66 +1040,64 @@ const UsageCostsTab = () => {
             </div>
           )}
           {/* AI Usage Stats from tracking */}
-          {aiStats && aiStats.count > 0 && (
-            <div className={`${isCompactView ? 'pt-1 border-t' : 'pt-3 border-t'}`}>
-              <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>This Month's Usage ({aiStats.daysOfData} days)</p>
+          <div className={`${isCompactView ? 'pt-1 border-t' : 'pt-3 border-t'}`}>
+            <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>This Month's Usage ({aiStats?.daysOfData || 0} days)</p>
+            
+            {/* Main stats grid */}
+            <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Requests</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats?.count || 0}</p>
+                <p className="text-xs text-muted-foreground">~{aiStats?.requestsPerDay || 0}/day</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Tokens</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{(aiStats?.totalTokens || 0).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">~{aiStats?.avgTokensPerRequest || 0}/req</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>30-Day Projection</p>
+                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{(aiStats?.projected30DayTokens || 0).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">~{aiStats?.projected30DayRequests || 0} requests</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
+                <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats?.estimatedCost || 'Free tier'}</p>
+                <p className="text-xs text-muted-foreground">This month</p>
+              </div>
+            </div>
               
-              {/* Main stats grid */}
-              <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
+            {/* Token breakdown */}
+            {!isCompactView && (
+              <div className="mt-3 grid grid-cols-2 gap-4">
                 <div className="space-y-0.5">
-                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Requests</p>
-                  <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.count}</p>
-                  <p className="text-xs text-muted-foreground">~{aiStats.requestsPerDay}/day</p>
+                  <p className="text-xs text-muted-foreground">Input Tokens (Prompt)</p>
+                  <p className="font-semibold text-sm">{(aiStats?.totalPromptTokens || 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">~{aiStats?.avgPromptTokens || 0} avg/request</p>
                 </div>
                 <div className="space-y-0.5">
-                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Tokens</p>
-                  <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.totalTokens.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">~{aiStats.avgTokensPerRequest}/req</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>30-Day Projection</p>
-                  <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.projected30DayTokens.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">~{aiStats.projected30DayRequests} requests</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
-                  <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats.estimatedCost}</p>
-                  <p className="text-xs text-muted-foreground">This month</p>
+                  <p className="text-xs text-muted-foreground">Output Tokens (Completion)</p>
+                  <p className="font-semibold text-sm">{(aiStats?.totalCompletionTokens || 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">~{aiStats?.avgCompletionTokens || 0} avg/request</p>
                 </div>
               </div>
-              
-              {/* Token breakdown */}
-              {!isCompactView && (
-                <div className="mt-3 grid grid-cols-2 gap-4">
-                  <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Input Tokens (Prompt)</p>
-                    <p className="font-semibold text-sm">{aiStats.totalPromptTokens.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">~{aiStats.avgPromptTokens} avg/request</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Output Tokens (Completion)</p>
-                    <p className="font-semibold text-sm">{aiStats.totalCompletionTokens.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">~{aiStats.avgCompletionTokens} avg/request</p>
-                  </div>
+            )}
+            
+            {/* Model breakdown */}
+            {!isCompactView && aiStats?.modelBreakdown && Object.keys(aiStats.modelBreakdown).length > 0 && (
+              <div className="mt-3 pt-2 border-t">
+                <p className="text-xs font-medium mb-2">Usage by Model</p>
+                <div className="space-y-1">
+                  {Object.entries(aiStats.modelBreakdown).map(([model, stats]) => (
+                    <div key={model} className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground truncate max-w-[180px]">{model}</span>
+                      <span className="font-medium">{stats.count} requests • {stats.tokens.toLocaleString()} tokens</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-              
-              {/* Model breakdown */}
-              {!isCompactView && aiStats.modelBreakdown && Object.keys(aiStats.modelBreakdown).length > 0 && (
-                <div className="mt-3 pt-2 border-t">
-                  <p className="text-xs font-medium mb-2">Usage by Model</p>
-                  <div className="space-y-1">
-                    {Object.entries(aiStats.modelBreakdown).map(([model, stats]) => (
-                      <div key={model} className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground truncate max-w-[180px]">{model}</span>
-                        <span className="font-medium">{stats.count} requests • {stats.tokens.toLocaleString()} tokens</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
