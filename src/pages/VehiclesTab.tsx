@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, Edit, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
@@ -315,6 +316,26 @@ export default function VehiclesTab() {
     }
   };
 
+  const handleStatusChange = async (vehicleId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ status: newStatus })
+        .eq("id", vehicleId);
+
+      if (error) throw error;
+
+      // Update local state
+      setVehicles(prev => prev.map(v => 
+        v.id === vehicleId ? { ...v, status: newStatus } : v
+      ));
+      
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (error: any) {
+      toast.error("Failed to update status: " + error.message);
+    }
+  };
+
   const viewVehicle = (id: string) => {
     navigate(`/dashboard/vehicle/${id}`);
   };
@@ -590,7 +611,7 @@ export default function VehiclesTab() {
                       className={`cursor-pointer hover:bg-muted/50 ${isOilChangeDue ? "bg-red-50 dark:bg-red-950/30" : ""}`} 
                       onClick={() => viewVehicle(vehicle.id)}
                     >
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <div 
                             className={`w-8 h-8 rounded flex items-center justify-center font-bold text-xs text-white ${
@@ -603,18 +624,25 @@ export default function VehiclesTab() {
                           >
                             0
                           </div>
-                          <Badge 
-                            variant="secondary" 
-                            className={`${
-                              vehicle.status === "active"
-                                ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                : vehicle.status === "pending"
-                                ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
-                                : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                            }`}
+                          <Select
+                            value={vehicle.status}
+                            onValueChange={(value) => handleStatusChange(vehicle.id, value)}
                           >
-                            {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
-                          </Badge>
+                            <SelectTrigger className={`w-[100px] h-7 text-xs ${
+                              vehicle.status === "active"
+                                ? "bg-green-100 text-green-800 border-green-200"
+                                : vehicle.status === "pending"
+                                ? "bg-orange-100 text-orange-800 border-orange-200"
+                                : "bg-gray-100 text-gray-800 border-gray-200"
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
