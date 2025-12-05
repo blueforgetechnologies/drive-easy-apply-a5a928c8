@@ -61,8 +61,7 @@ export default function DispatchersTab() {
         .order("created_at", { ascending: false });
       
       if (filter !== "all") {
-        const statusFilter = filter === "active" ? "active" : "inactive";
-        query = query.eq("status", statusFilter);
+        query = query.eq("status", filter);
       }
       
       const { data, error } = await query;
@@ -212,6 +211,17 @@ export default function DispatchersTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1">
           <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+          >
+            All
+          </Button>
+          <Button
             variant={filter === "active" ? "default" : "outline"}
             size="sm"
             className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
@@ -234,15 +244,15 @@ export default function DispatchersTab() {
             Inactive
           </Button>
           <Button
-            variant={filter === "all" ? "default" : "outline"}
+            variant={filter === "pending" ? "default" : "outline"}
             size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "all" });
+              setSearchParams({ filter: "pending" });
               setSearchQuery("");
             }}
           >
-            All
+            Pending
           </Button>
         </div>
 

@@ -403,6 +403,17 @@ export default function CustomersTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1">
           <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => {
+              setSearchParams({ filter: "all" });
+              setSearchQuery("");
+            }}
+          >
+            All
+          </Button>
+          <Button
             variant={filter === "active" ? "default" : "outline"}
             size="sm"
             className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
@@ -416,7 +427,7 @@ export default function CustomersTab() {
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
             size="sm"
-            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-gray-500 text-white hover:bg-gray-600" : ""}`}
+            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
             onClick={() => {
               setSearchParams({ filter: "inactive" });
               setSearchQuery("");
@@ -425,15 +436,15 @@ export default function CustomersTab() {
             Inactive
           </Button>
           <Button
-            variant={filter === "all" ? "default" : "outline"}
+            variant={filter === "pending" ? "default" : "outline"}
             size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "all" });
+              setSearchParams({ filter: "pending" });
               setSearchQuery("");
             }}
           >
-            All
+            Pending
           </Button>
         </div>
 
