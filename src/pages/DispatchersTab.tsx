@@ -296,7 +296,7 @@ export default function DispatchersTab() {
                       : null;
                     
                     return (
-                      <TableRow key={dispatcher.id} className="h-10">
+                      <TableRow key={dispatcher.id} className="h-10 cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}>
                         <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
                             <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${

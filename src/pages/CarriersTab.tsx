@@ -537,7 +537,8 @@ export default function CarriersTab() {
                   {filteredCarriers.map((carrier) => (
                     <TableRow 
                       key={carrier.id} 
-                      className="h-10 hover:bg-muted/30"
+                      className="h-10 hover:bg-muted/30 cursor-pointer"
+                      onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                     >
                       {showCheckboxes && (
                         <TableCell onClick={(e) => e.stopPropagation()}>
