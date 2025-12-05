@@ -1050,6 +1050,7 @@ const UsageCostsTab = () => {
                 {Number(pubsubStats?.totalMB || 0) >= 1000 
                   ? `${pubsubStats?.totalGB || '0'} GB` 
                   : `${pubsubStats?.totalMB || '0'} MB`}
+                <span className="text-muted-foreground font-normal text-sm"> /10GB</span>
               </p>
               <p className="text-xs text-muted-foreground">~1.5 KB per message</p>
             </div>
