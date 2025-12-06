@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
-import { RotateCw, Search, Trash2 } from "lucide-react";
+import { KeyRound, RotateCw, Search, Trash2 } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -159,6 +159,19 @@ export default function UsersTab() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to delete invitation: " + error.message);
+    }
+  };
+
+  const handleResetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+
+      if (error) throw error;
+      toast.success(`Password reset email sent to ${email}`);
+    } catch (error: any) {
+      toast.error("Failed to send password reset: " + error.message);
     }
   };
 
@@ -320,6 +333,7 @@ export default function UsersTab() {
                       <TableHead>Email</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -336,6 +350,17 @@ export default function UsersTab() {
                           >
                             {filter === "active" ? "Active" : "Inactive"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            onClick={() => handleResetPassword(user.email)}
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                          >
+                            <KeyRound className="h-4 w-4" />
+                            Reset Password
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
