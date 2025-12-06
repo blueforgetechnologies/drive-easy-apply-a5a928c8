@@ -87,6 +87,54 @@ const LoadEmailDetail = ({
     ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` 
     : null;
   const carrierName = vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null;
+
+  // Build equipment details from vehicle data
+  const buildEquipmentDetails = () => {
+    if (!vehicle) return '[10 straps] [2 load bars] [2 horizontal E-Tracks] [10 blankets]';
+    const parts: string[] = [];
+    if (vehicle.straps_count) parts.push(`[${vehicle.straps_count} straps]`);
+    if (vehicle.load_bars_etrack) parts.push(`[${vehicle.load_bars_etrack} load bars]`);
+    if (vehicle.horizontal_etracks) parts.push(`[${vehicle.horizontal_etracks} horizontal E-Tracks]`);
+    if (vehicle.blankets) parts.push(`[${vehicle.blankets} blankets]`);
+    return parts.length > 0 ? parts.join(' ') : '[Equipment details not available]';
+  };
+
+  // Build truck dimensions from vehicle data
+  const buildTruckDimensions = () => {
+    if (!vehicle) return 'L x W x H: ( 288 x 97 x 102 ) inches';
+    const l = vehicle.dimensions_length ? vehicle.dimensions_length * 12 : null; // feet to inches
+    const w = vehicle.dimensions_width;
+    const h = vehicle.dimensions_height;
+    if (l && w && h) return `L x W x H: ( ${l} x ${w} x ${h} ) inches`;
+    return 'Dimensions not available';
+  };
+
+  // Build door dimensions from vehicle data
+  const buildDoorDimensions = () => {
+    if (!vehicle) return 'Roll Up W x H ( 94 x 96 ) inches';
+    const w = vehicle.door_dims_width;
+    const h = vehicle.door_dims_height;
+    const type = vehicle.door_type || 'Roll Up';
+    if (w && h) return `${type} W x H ( ${w} x ${h} ) inches`;
+    return 'Door dimensions not available';
+  };
+
+  // Build features from vehicle data
+  const buildFeatures = () => {
+    if (!vehicle) return '[Dock High] [Air Ride] [Lift Gate] [Trailer Tracking] [Pallet Jack]';
+    const features: string[] = [];
+    features.push('[Dock High]'); // Always included
+    if (vehicle.air_ride) features.push('[Air Ride]');
+    if (vehicle.lift_gate) features.push('[Lift Gate]');
+    if (vehicle.trailer_tracking) features.push('[Trailer Tracking]');
+    if (vehicle.pallet_jack) features.push('[Pallet Jack]');
+    return features.length > 0 ? features.join(' ') : '[Features not available]';
+  };
+
+  const equipmentDetails = buildEquipmentDetails();
+  const truckDimensions = buildTruckDimensions();
+  const doorDimensions = buildDoorDimensions();
+  const vehicleFeatures = buildFeatures();
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
@@ -440,8 +488,10 @@ const LoadEmailDetail = ({
                   <p className="text-blue-600">Please let me know if I can help on this load:</p>
                   <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity} to {destCity}]</p>
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
-                    <p><strong>We have:</strong> {data.equipment_details || '[10 straps] [2 load bars] [2 E-Tracks] [10 blankets]'}</p>
-                    <p><strong>Truck Dimension:</strong> {data.truck_dimensions || 'L x W x H: ( 288 x 97 x 102 ) inches'}</p>
+                    <p><strong>We have:</strong> {equipmentDetails}</p>
+                    <p><strong>Truck Dimension:</strong> {truckDimensions}</p>
+                    <p><strong>Door:</strong> {doorDimensions}</p>
+                    <p><strong>Features:</strong> {vehicleFeatures}</p>
                   </div>
                 </Card>
                 <div className="grid grid-cols-3 gap-2">
@@ -843,10 +893,10 @@ const LoadEmailDetail = ({
                         <p className="text-blue-600">Order Number: {data.order_number || '85174'} [{originCity} to {destCity}]</p>
                         
                         <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">
-                          <div><strong>We have:</strong> {data.equipment_details || '[10 straps] [2 load bars] [2 horizontal E-Tracks] [10 blankets]'}</div>
-                          <div><strong>Truck Dimension:</strong> {data.truck_dimensions || 'L x W x H: ( 288 x 97 x 102 ) inches'}</div>
-                          <div><strong>Door:</strong> {data.door_dimensions || 'Roll Up W x H ( 94 x 96 ) inches'}</div>
-                          <div><strong>Features:</strong> {data.features || '[Dock High] [Air Ride] [Lift Gate] [Trailer Tracking] [Pallet Jack]'}</div>
+                          <div><strong>We have:</strong> {equipmentDetails}</div>
+                          <div><strong>Truck Dimension:</strong> {truckDimensions}</div>
+                          <div><strong>Door:</strong> {doorDimensions}</div>
+                          <div><strong>Features:</strong> {vehicleFeatures}</div>
                         </div>
                         
                         <div className="bg-blue-50 p-2 rounded mt-2">
