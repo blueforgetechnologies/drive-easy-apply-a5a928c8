@@ -19,8 +19,8 @@ interface LoadEmailDetailProps {
   onClose: () => void;
   onBidPlaced?: (matchId: string, loadEmailId: string) => void;
   onUndecided?: (matchId: string) => void;
-  onSkip?: (matchId: string) => void;
-  onWait?: (matchId: string) => void;
+  onSkip?: (matchId: string) => Promise<void> | void;
+  onWait?: (matchId: string) => Promise<void> | void;
 }
 
 const LoadEmailDetail = ({
@@ -188,17 +188,18 @@ const LoadEmailDetail = ({
         return;
       }
 
-      // Notify parent first so matchActionTaken is set
-      if (onSkip) {
-        onSkip(match.id);
-      }
-
+      // Update database FIRST, then notify parent to refresh
       const { error } = await supabase
         .from("load_hunt_matches")
         .update({ is_active: false, match_status: 'skipped' })
         .eq("id", match.id);
 
       if (error) throw error;
+      
+      // Now notify parent - data is already updated
+      if (onSkip) {
+        await onSkip(match.id);
+      }
       
       // Close the detail view and return to unreviewed list
       onClose();
@@ -223,18 +224,18 @@ const LoadEmailDetail = ({
         return;
       }
 
-      // Notify parent first so matchActionTaken is set
-      if (onWait) {
-        onWait(match.id);
-      }
-
-      // Update load_hunt_matches status to waitlist (similar to skip)
+      // Update database FIRST, then notify parent to refresh
       const { error: matchError } = await supabase
         .from("load_hunt_matches")
         .update({ is_active: false, match_status: 'waitlist' })
         .eq("id", match.id);
 
       if (matchError) throw matchError;
+      
+      // Now notify parent - data is already updated
+      if (onWait) {
+        await onWait(match.id);
+      }
       
       onClose();
     } catch (error) {

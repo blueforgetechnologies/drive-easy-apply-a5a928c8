@@ -116,6 +116,7 @@ export default function LoadHunterTab() {
   const [selectedEmailDistance, setSelectedEmailDistance] = useState<number | undefined>(undefined);
   const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<any | null>(null);
   const [matchActionTaken, setMatchActionTaken] = useState(false); // Track if user took action on current match
+  const matchActionTakenRef = useRef(false); // Sync ref for immediate checks in onClose
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
@@ -2405,15 +2406,18 @@ export default function LoadHunterTab() {
                 onBidPlaced={handleBidPlaced}
                 onUndecided={async (matchId: string) => {
                   setMatchActionTaken(true);
+                  matchActionTakenRef.current = true;
                   await handleMoveToUndecided(matchId);
                 }}
                 onSkip={async () => {
                   setMatchActionTaken(true);
+                  matchActionTakenRef.current = true;
                   await loadHuntMatches();
                   await loadUnreviewedMatches();
                 }}
                 onWait={async () => {
                   setMatchActionTaken(true);
+                  matchActionTakenRef.current = true;
                   await loadHuntMatches();
                   await loadUnreviewedMatches();
                 }}
@@ -3600,25 +3604,30 @@ export default function LoadHunterTab() {
             carriersMap={carriersMap}
             onClose={async () => {
               // If match was viewed from unreviewed and no action taken, move to undecided
-              if (selectedMatchForDetail && !matchActionTaken && selectedMatchForDetail.match_status === 'active') {
+              // Use ref for synchronous check since state might not be updated yet
+              if (selectedMatchForDetail && !matchActionTakenRef.current && selectedMatchForDetail.match_status === 'active') {
                 await handleMoveToUndecided(selectedMatchForDetail.id);
               }
               setSelectedEmailForDetail(null);
               setSelectedMatchForDetail(null);
-              setMatchActionTaken(false); // Reset for next match
+              setMatchActionTaken(false);
+              matchActionTakenRef.current = false; // Reset ref for next match
             }}
             onBidPlaced={handleBidPlaced}
             onUndecided={async (matchId: string) => {
               setMatchActionTaken(true);
+              matchActionTakenRef.current = true;
               await handleMoveToUndecided(matchId);
             }}
             onSkip={async () => {
               setMatchActionTaken(true);
+              matchActionTakenRef.current = true;
               await loadHuntMatches();
               await loadUnreviewedMatches();
             }}
             onWait={async () => {
               setMatchActionTaken(true);
+              matchActionTakenRef.current = true;
               await loadHuntMatches();
               await loadUnreviewedMatches();
             }}
