@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, MapPin, Search } from "lucide-react";
+import { ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 
 interface CarrierData {
   id: string;
@@ -37,6 +37,24 @@ interface CarrierData {
   emergency_contact_email: string | null;
 }
 
+interface HighwayData {
+  configured: boolean;
+  found?: boolean;
+  message?: string;
+  error?: string;
+  data?: {
+    contact_name?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    compliance_status?: string;
+    onboarding_status?: string;
+    rightful_owner_validated?: boolean;
+    dispatch_service_detected?: boolean;
+    insurance_valid?: boolean;
+    fleet_size?: number;
+  };
+}
+
 export default function CarrierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -45,6 +63,8 @@ export default function CarrierDetail() {
   const [carrier, setCarrier] = useState<CarrierData | null>(null);
   const [usdotLookup, setUsdotLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [highwayData, setHighwayData] = useState<HighwayData | null>(null);
+  const [highwayLoading, setHighwayLoading] = useState(false);
 
   useEffect(() => {
     loadCarrier();
@@ -61,11 +81,46 @@ export default function CarrierDetail() {
       if (error) throw error;
       setCarrier(data);
       setUsdotLookup(data.dot_number || "");
+      
+      // Auto-fetch Highway data if DOT number exists
+      if (data.dot_number) {
+        fetchHighwayData(data.dot_number);
+      }
     } catch (error: any) {
       toast.error("Failed to load carrier details");
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHighwayData = async (dotNumber: string) => {
+    if (!dotNumber) return;
+    
+    setHighwayLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-highway-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ dot_number: dotNumber }),
+        }
+      );
+      
+      const data = await response.json();
+      setHighwayData(data);
+      
+      if (data.configured && data.found && data.data?.contact_email) {
+        toast.success("Highway data loaded successfully");
+      }
+    } catch (error: any) {
+      console.error('Highway API error:', error);
+      setHighwayData({ configured: false, error: error.message });
+    } finally {
+      setHighwayLoading(false);
     }
   };
 
@@ -317,6 +372,107 @@ export default function CarrierDetail() {
                   onChange={(e) => updateField("personal_business", e.target.value)}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Highway Data */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Highway Data
+                  {!highwayData?.configured && (
+                    <Badge variant="outline" className="text-xs">Not Configured</Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => carrier?.dot_number && fetchHighwayData(carrier.dot_number)}
+                  disabled={highwayLoading || !carrier?.dot_number}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${highwayLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!highwayData ? (
+                <p className="text-sm text-muted-foreground">
+                  {carrier?.dot_number ? 'Loading Highway data...' : 'Enter DOT number to fetch Highway data'}
+                </p>
+              ) : !highwayData.configured ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">Highway API not configured</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Add HIGHWAY_API_KEY to enable carrier verification, contact enrichment, and fraud prevention.
+                  </p>
+                </div>
+              ) : highwayData.error ? (
+                <div className="flex items-center gap-2 text-destructive">
+                  <XCircle className="h-4 w-4" />
+                  <span className="text-sm">{highwayData.error}</span>
+                </div>
+              ) : !highwayData.found ? (
+                <p className="text-sm text-muted-foreground">Carrier not found in Highway database</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Contact Email</Label>
+                      <p className="font-medium">{highwayData.data?.contact_email || '—'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Contact Phone</Label>
+                      <p className="font-medium">{highwayData.data?.contact_phone || '—'}</p>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Rightful Owner</span>
+                      {highwayData.data?.rightful_owner_validated ? (
+                        <Badge variant="default" className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Validated</Badge>
+                      ) : (
+                        <Badge variant="outline">Pending</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Dispatch Service</span>
+                      {highwayData.data?.dispatch_service_detected ? (
+                        <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> Detected</Badge>
+                      ) : (
+                        <Badge variant="default" className="bg-green-600">None Detected</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Insurance</span>
+                      {highwayData.data?.insurance_valid ? (
+                        <Badge variant="default" className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Valid</Badge>
+                      ) : (
+                        <Badge variant="outline">Unknown</Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {highwayData.data?.fleet_size && (
+                    <>
+                      <Separator />
+                      <div className="text-sm">
+                        <Label className="text-xs text-muted-foreground">Fleet Size</Label>
+                        <p className="font-medium">{highwayData.data.fleet_size} vehicles</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
