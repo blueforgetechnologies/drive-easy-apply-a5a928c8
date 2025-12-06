@@ -460,7 +460,9 @@ const LoadEmailDetail = ({
           mc_number: mcNumber,
           dot_number: dotNumber,
           order_number: data.order_number || 'N/A',
+          origin_city: originCity,
           origin_state: originState,
+          dest_city: destCity,
           dest_state: destState,
           vehicle_size: displaySize,
           vehicle_type: displayType,
@@ -574,7 +576,7 @@ const LoadEmailDetail = ({
             <p>Hello ,</p>
             <p>I have a {displaySize}{displayType}.</p>
             <p>Please let me know if I can help on this load:</p>
-            <p>Order Number: {data.order_number || 'N/A'} [{originState} to {destState}]</p>
+            <p>Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
             
             <div className="space-y-1 mt-4">
               <p><strong>Truck Carries:</strong> {equipmentDetails}</p>
@@ -907,7 +909,7 @@ const LoadEmailDetail = ({
                   <p>Hello,</p>
                   <p>I have a {displaySize}{displayType}.</p>
                   <p className="text-blue-600">Please let me know if I can help on this load:</p>
-                  <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity} to {destCity}]</p>
+                  <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
                     <p><strong>We have:</strong> {equipmentDetails}</p>
                     <p><strong>Truck Dimension:</strong> {truckDimensions}</p>
@@ -1317,7 +1319,7 @@ const LoadEmailDetail = ({
                          <p>Hello ,</p>
                         <p>I have a {displaySize}{displayType}.</p>
                          <p className="text-blue-600">Please let me know if I can help on this load:</p>
-                        <p className="text-blue-600">Order Number: {data.order_number || '85174'} [{originCity} to {destCity}]</p>
+                        <p className="text-blue-600">Order Number: {data.order_number || '85174'} [{originCity}, {originState} to {destCity}, {destState}]</p>
                         
                         <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">
                           <div><strong>We have:</strong> {equipmentDetails}</div>

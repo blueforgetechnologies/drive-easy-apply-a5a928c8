@@ -16,7 +16,9 @@ interface BidEmailRequest {
   mc_number: string;
   dot_number: string;
   order_number: string;
+  origin_city: string;
   origin_state: string;
+  dest_city: string;
   dest_state: string;
   vehicle_size: string;
   vehicle_type: string;
@@ -70,7 +72,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         <p>Please let me know if I can help on this load:</p>
         
-        <p>Order Number: ${data.order_number} [${data.origin_state} to ${data.dest_state}]</p>
+        <p>Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]</p>
         
         <div style="margin-top: 20px;">
           <p><strong>Truck Carries:</strong> ${data.equipment_details}</p>
@@ -109,7 +111,7 @@ I have a ${data.vehicle_size}${data.vehicle_type}.
 
 Please let me know if I can help on this load:
 
-Order Number: ${data.order_number} [${data.origin_state} to ${data.dest_state}]
+Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]
 
 Truck Carries: ${data.equipment_details}
 Truck Size: ${data.truck_dimensions}
