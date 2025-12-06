@@ -413,6 +413,7 @@ export default function LoadHunterTab() {
         vehicle_id: string;
         distance_miles: number | null;
         is_active: boolean;
+        match_status: string;
       }> = [];
       
       // Check each load against hunt plans (only if load_id > that hunt's floor)
@@ -459,6 +460,7 @@ export default function LoadHunterTab() {
               vehicle_id: matchingHunt.vehicleId,
               distance_miles: matchDistance || null,
               is_active: true,
+              match_status: 'active',
             });
           }
         }
@@ -1852,6 +1854,7 @@ export default function LoadHunterTab() {
             vehicle_id: string;
             distance_miles: number | null;
             is_active: boolean;
+            match_status: string;
           }> = [];
           
           for (const load of backfillLoads) {
@@ -1867,6 +1870,7 @@ export default function LoadHunterTab() {
                 vehicle_id: selectedVehicle.id,
                 distance_miles: matchResult.distance || null,
                 is_active: true,
+                match_status: 'active',
               });
             }
           }
@@ -2034,6 +2038,7 @@ export default function LoadHunterTab() {
               vehicle_id: string;
               distance_miles: number | null;
               is_active: boolean;
+              match_status: string;
             }> = [];
             
             for (const load of backfillLoads) {
@@ -2049,6 +2054,7 @@ export default function LoadHunterTab() {
                   vehicle_id: huntPlan.vehicle_id,
                   distance_miles: matchResult.distance || null,
                   is_active: true,
+                  match_status: 'active',
                 });
               }
             }
