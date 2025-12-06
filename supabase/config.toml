@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.snapshot-monthly-usage]
 verify_jwt = true
+
+[functions.fetch-highway-data]
+verify_jwt = false

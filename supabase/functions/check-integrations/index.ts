@@ -192,6 +192,44 @@ serve(async (req) => {
       });
     }
 
+    // Check Highway API
+    try {
+      const highwayKey = Deno.env.get('HIGHWAY_API_KEY');
+      if (!highwayKey) {
+        integrations.push({
+          id: "highway",
+          name: "Highway",
+          description: "Carrier identity verification and fraud prevention",
+          status: "down",
+          error: "API key not configured",
+        });
+      } else {
+        // Test the API with a simple health check or minimal request
+        const response = await fetch('https://api.highway.com/v1/health', {
+          headers: {
+            'Authorization': `Bearer ${highwayKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        integrations.push({
+          id: "highway",
+          name: "Highway",
+          description: "Carrier identity verification and fraud prevention",
+          status: response.ok ? "operational" : "degraded",
+          error: !response.ok ? `HTTP ${response.status}` : undefined,
+        });
+      }
+    } catch (error) {
+      integrations.push({
+        id: "highway",
+        name: "Highway",
+        description: "Carrier identity verification and fraud prevention",
+        status: "down",
+        error: error instanceof Error ? error.message : "Connection failed",
+      });
+    }
+
     return new Response(
       JSON.stringify({ integrations }),
       { 
