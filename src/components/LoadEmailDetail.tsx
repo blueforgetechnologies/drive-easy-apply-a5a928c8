@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -30,6 +31,7 @@ const LoadEmailDetail = ({
   const [bidAmount, setBidAmount] = useState("");
   const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
   const [toEmail, setToEmail] = useState<string | null>(null);
+  const [ccEmail, setCcEmail] = useState("");
   const [fullEmailData, setFullEmailData] = useState<any>(null);
   const [mobileSection, setMobileSection] = useState<'details' | 'map' | 'bid'>('details');
   const data = email.parsed_data || {};
@@ -410,7 +412,21 @@ const LoadEmailDetail = ({
               <div className="space-y-3">
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">To:</div>
-                  <div className="text-sm">{toEmail || 'No email found'}</div>
+                  <Input 
+                    value={toEmail || ''} 
+                    onChange={(e) => setToEmail(e.target.value)}
+                    placeholder="Enter email address"
+                    className="h-8 text-sm"
+                  />
+                </Card>
+                <Card className="p-3">
+                  <div className="text-xs text-muted-foreground mb-1">CC:</div>
+                  <Input 
+                    value={ccEmail} 
+                    onChange={(e) => setCcEmail(e.target.value)}
+                    placeholder="Add CC email (optional)"
+                    className="h-8 text-sm"
+                  />
                 </Card>
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">Subject:</div>
@@ -795,12 +811,22 @@ const LoadEmailDetail = ({
                     <div className="space-y-3">
                       <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">To:</div>
-                        <div className="text-muted-foreground">{toEmail || 'No email found for this match'}</div>
+                        <Input 
+                          value={toEmail || ''} 
+                          onChange={(e) => setToEmail(e.target.value)}
+                          placeholder="Enter email address"
+                          className="h-7 text-xs"
+                        />
                       </div>
                       
                       <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">CC:</div>
-                        <div className="text-muted-foreground">—</div>
+                        <Input 
+                          value={ccEmail} 
+                          onChange={(e) => setCcEmail(e.target.value)}
+                          placeholder="Add CC email (optional)"
+                          className="h-7 text-xs"
+                        />
                       </div>
                       
                        <div className="bg-muted/50 p-2 rounded text-xs">
