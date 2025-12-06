@@ -902,7 +902,7 @@ const LoadEmailDetail = ({
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">Subject:</div>
                   <div className="text-sm">
-                    Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}
+                    Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'} -MC {mcNumber}
                   </div>
                 </Card>
                 <Card className="p-3 text-sm space-y-2">
@@ -1311,7 +1311,7 @@ const LoadEmailDetail = ({
                        <div className="bg-muted/50 p-2 rounded text-xs">
                         <div className="font-semibold mb-1">Subject:</div>
                         <div className="text-muted-foreground">
-                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}
+                          Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'} -MC {mcNumber}
                         </div>
                       </div>
                       
