@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, Sparkles } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -48,6 +48,8 @@ export default function CustomersTab() {
   const [lookupValue, setLookupValue] = useState("");
   const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 50;
 
   const aiUpdateMutation = useMutation({
     mutationFn: async () => {
@@ -279,6 +281,18 @@ export default function CustomersTab() {
       (customer.email || "").toLowerCase().includes(searchLower)
     );
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredCustomers.length / ROWS_PER_PAGE);
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery]);
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -619,7 +633,7 @@ export default function CustomersTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustomers.map((customer) => (
+                  {paginatedCustomers.map((customer) => (
                     <TableRow key={customer.id} className="h-10 hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/dashboard/customer/${customer.id}`)}>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
@@ -697,6 +711,58 @@ export default function CustomersTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {filteredCustomers.length > ROWS_PER_PAGE && (
+        <div className="flex items-center justify-between px-2">
+          <span className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
