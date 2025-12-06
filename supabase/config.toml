@@ -77,6 +77,3 @@ verify_jwt = true
 
 [functions.fetch-highway-data]
 verify_jwt = false
-
-[functions.decode-vin]
-verify_jwt = false
