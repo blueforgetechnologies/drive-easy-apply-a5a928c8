@@ -1321,6 +1321,7 @@ export type Database = {
           is_active: boolean
           load_email_id: string
           match_score: number | null
+          match_status: string
           matched_at: string
           updated_at: string
           vehicle_id: string
@@ -1333,6 +1334,7 @@ export type Database = {
           is_active?: boolean
           load_email_id: string
           match_score?: number | null
+          match_status?: string
           matched_at?: string
           updated_at?: string
           vehicle_id: string
@@ -1345,6 +1347,7 @@ export type Database = {
           is_active?: boolean
           load_email_id?: string
           match_score?: number | null
+          match_status?: string
           matched_at?: string
           updated_at?: string
           vehicle_id?: string

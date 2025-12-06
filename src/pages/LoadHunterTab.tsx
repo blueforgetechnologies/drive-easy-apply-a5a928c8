@@ -102,8 +102,9 @@ export default function LoadHunterTab() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [loadEmails, setLoadEmails] = useState<any[]>([]);
-  const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (is_active = true)
-  const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Skipped/inactive matches
+  const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (match_status = 'active')
+  const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Manually skipped matches (match_status = 'skipped')
+  const [bidMatches, setBidMatches] = useState<any[]>([]); // Matches with bids placed (match_status = 'bid')
   const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
   const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
   const [loading, setLoading] = useState(true);
@@ -620,6 +621,7 @@ export default function LoadHunterTab() {
   const missedCount = missedHistory.length; // Use missed history count
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = skippedMatches.length;
+  const bidCount = bidMatches.length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
 
   // Function to play alert sound
@@ -1217,7 +1219,7 @@ export default function LoadHunterTab() {
     console.log('🔗 Loading hunt matches...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        // Get midnight ET for today (skipped only shows today's matches)
+        // Get midnight ET for today (skipped/bids only show today's matches)
         const now = new Date();
         const etOffset = -5; // EST offset (use -4 for EDT)
         const utcHour = now.getUTCHours();
@@ -1226,21 +1228,28 @@ export default function LoadHunterTab() {
         midnightET.setUTCHours(utcHour - etHour, 0, 0, 0);
         const midnightETIso = midnightET.toISOString();
 
-        // Fetch active matches
+        // Fetch active matches (match_status = 'active')
         const { data: activeData, error: activeError } = await supabase
           .from("load_hunt_matches")
           .select("*")
-          .eq('is_active', true);
+          .eq('match_status', 'active');
 
-        // Fetch skipped matches (only from today - since midnight ET)
+        // Fetch manually skipped matches (match_status = 'skipped', today only)
         const { data: skippedData, error: skippedError } = await supabase
           .from("load_hunt_matches")
           .select("*")
-          .eq('is_active', false)
+          .eq('match_status', 'skipped')
           .gte('updated_at', midnightETIso);
 
-        if (activeError || skippedError) {
-          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError);
+        // Fetch bid matches (match_status = 'bid', today only - clears at midnight)
+        const { data: bidData, error: bidError } = await supabase
+          .from("load_hunt_matches")
+          .select("*")
+          .eq('match_status', 'bid')
+          .gte('updated_at', midnightETIso);
+
+        if (activeError || skippedError || bidError) {
+          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError);
           if (attempt === retries) {
             toast.error('Failed to load hunt matches - please refresh');
             return;
@@ -1251,11 +1260,13 @@ export default function LoadHunterTab() {
         
         const active = activeData || [];
         const skipped = skippedData || [];
+        const bids = bidData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped (today only)`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids (today only)`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
+        setBidMatches(bids);
         
         const huntMap = new Map<string, string>();
         const distances = new Map<string, number>();
@@ -1451,17 +1462,17 @@ export default function LoadHunterTab() {
     }
   };
 
-  // Deactivate matches that are 30+ minutes old (remove from Unreviewed)
+  // DELETE matches that are 40+ minutes old (completely remove from Unreviewed)
   const deactivateStaleMatches = async () => {
     try {
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const fortyMinutesAgo = new Date(Date.now() - 40 * 60 * 1000).toISOString();
       
-      // Find active matches older than 30 minutes
+      // Find active matches older than 40 minutes
       const { data: staleMatches, error: fetchError } = await supabase
         .from('load_hunt_matches')
         .select('id')
-        .eq('is_active', true)
-        .lt('matched_at', thirtyMinutesAgo);
+        .eq('match_status', 'active')
+        .lt('matched_at', fortyMinutesAgo);
 
       if (fetchError) {
         console.error('Error fetching stale matches:', fetchError);
@@ -1472,25 +1483,25 @@ export default function LoadHunterTab() {
         return;
       }
 
-      console.log(`🕐 Found ${staleMatches.length} stale matches (30+ min old) - deactivating`);
+      console.log(`🕐 Found ${staleMatches.length} stale matches (40+ min old) - DELETING`);
 
-      // Deactivate in batches of 50 to avoid URL length limits
+      // DELETE in batches of 50 to avoid URL length limits
       const BATCH_SIZE = 50;
       for (let i = 0; i < staleMatches.length; i += BATCH_SIZE) {
         const batch = staleMatches.slice(i, i + BATCH_SIZE);
         const batchIds = batch.map(m => m.id);
         
-        const { error: updateError } = await supabase
+        const { error: deleteError } = await supabase
           .from('load_hunt_matches')
-          .update({ is_active: false })
+          .delete()
           .in('id', batchIds);
 
-        if (updateError) {
-          console.error(`Error deactivating batch ${i / BATCH_SIZE + 1}:`, updateError);
+        if (deleteError) {
+          console.error(`Error deleting batch ${i / BATCH_SIZE + 1}:`, deleteError);
         }
       }
 
-      console.log(`✅ Deactivated ${staleMatches.length} stale matches`);
+      console.log(`✅ Deleted ${staleMatches.length} stale matches`);
       
       // Reload unreviewed matches
       await loadUnreviewedMatches();
@@ -1567,7 +1578,7 @@ export default function LoadHunterTab() {
     try {
       const { error } = await supabase
         .from('load_hunt_matches')
-        .update({ is_active: false })
+        .update({ match_status: 'skipped', is_active: false })
         .eq('id', matchId);
 
       if (error) throw error;
@@ -1578,6 +1589,54 @@ export default function LoadHunterTab() {
     } catch (error) {
       console.error('Error skipping match:', error);
       toast.error('Failed to skip match');
+    }
+  };
+
+  // Handle bid placed - move match to MY BIDS and skip all sibling matches
+  const handleBidPlaced = async (matchId: string, loadEmailId: string) => {
+    try {
+      console.log('💰 Bid placed for match:', matchId, 'load:', loadEmailId);
+      
+      // 1. Set this match to 'bid' status
+      const { error: bidError } = await supabase
+        .from('load_hunt_matches')
+        .update({ match_status: 'bid', is_active: false })
+        .eq('id', matchId);
+
+      if (bidError) throw bidError;
+
+      // 2. Find and skip all sibling matches (same load_email_id, different match)
+      const { data: siblingMatches, error: fetchError } = await supabase
+        .from('load_hunt_matches')
+        .select('id')
+        .eq('load_email_id', loadEmailId)
+        .neq('id', matchId)
+        .eq('match_status', 'active');
+
+      if (fetchError) {
+        console.error('Error fetching sibling matches:', fetchError);
+      } else if (siblingMatches && siblingMatches.length > 0) {
+        console.log(`📋 Found ${siblingMatches.length} sibling matches to skip`);
+        
+        const siblingIds = siblingMatches.map(m => m.id);
+        const { error: skipError } = await supabase
+          .from('load_hunt_matches')
+          .update({ match_status: 'skipped', is_active: false })
+          .in('id', siblingIds);
+
+        if (skipError) {
+          console.error('Error skipping sibling matches:', skipError);
+        } else {
+          console.log(`✅ Skipped ${siblingMatches.length} sibling matches`);
+        }
+      }
+
+      await loadHuntMatches();
+      await loadUnreviewedMatches();
+      toast.success('Bid placed - moved to My Bids');
+    } catch (error) {
+      console.error('Error placing bid:', error);
+      toast.error('Failed to update match status');
     }
   };
 
@@ -2242,6 +2301,7 @@ export default function LoadHunterTab() {
                 vehicles={vehicles}
                 drivers={drivers}
                 carriersMap={carriersMap}
+                onBidPlaced={handleBidPlaced}
               />
             </DialogContent>
           </Dialog>
@@ -2436,7 +2496,7 @@ export default function LoadHunterTab() {
               }}
             >
               My Bids
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">85</Badge>
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-blue-400 text-white">{bidCount}</Badge>
             </Button>
             
             <Button
@@ -3422,6 +3482,7 @@ export default function LoadHunterTab() {
               setSelectedEmailForDetail(null);
               setSelectedMatchForDetail(null);
             }}
+            onBidPlaced={handleBidPlaced}
           />
         ) : activeFilter === 'vehicle-assignment' ? (
           /* Vehicle Assignment View */
@@ -3524,6 +3585,7 @@ export default function LoadHunterTab() {
                 {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
+                  : activeFilter === 'mybids' ? bidMatches.length === 0
                   : filteredEmails.length === 0) ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     {activeFilter === 'skipped' 
@@ -3532,6 +3594,8 @@ export default function LoadHunterTab() {
                       ? 'No matched loads. Create hunt plans to see matches here.'
                       : activeFilter === 'missed'
                       ? 'No missed loads. Loads that go 15+ minutes without action appear here.'
+                      : activeFilter === 'mybids'
+                      ? 'No bids placed yet. Send a bid on a load to see it here.'
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
@@ -3575,21 +3639,29 @@ export default function LoadHunterTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(activeFilter === 'unreviewed' ? filteredMatches : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => {
+                        {(activeFilter === 'unreviewed' ? filteredMatches 
+                          : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => {
                           // Skipped matches stay visible until midnight ET regardless of expiration
                           const email = loadEmails.find(e => e.id === match.load_email_id);
                           if (!email) return false;
                           
                           // Show all skipped matches - they persist until midnight reset
                           return true;
-                        }) : activeFilter === 'missed' ? missedHistory : filteredEmails)
+                        }) 
+                          : activeFilter === 'mybids' ? bidMatches.filter((match: any) => {
+                          // Bids stay visible until midnight ET
+                          const email = loadEmails.find(e => e.id === match.load_email_id);
+                          if (!email) return false;
+                          return true;
+                        }) 
+                          : activeFilter === 'missed' ? missedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed, item is from view with email data included
-                          // For skipped, item is a match that needs email lookup
+                          // For skipped/mybids, item is a match that needs email lookup
                           // For missed, item is from missedHistory with email data
                           // For others, item is an email
-                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'missed';
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'missed';
                           
                           // Get email data - from view (unreviewed) or lookup (skipped) or missedHistory (missed) or item itself (other)
                           let email: any;
@@ -3606,7 +3678,7 @@ export default function LoadHunterTab() {
                               load_id: (item as any).load_id,
                               status: (item as any).email_status,
                             };
-                          } else if (activeFilter === 'skipped') {
+                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids') {
                             email = loadEmails.find(e => e.id === (item as any).load_email_id);
                           } else if (activeFilter === 'missed') {
                             // Missed history item has enriched email data
