@@ -68,7 +68,7 @@ const LoadEmailDetail = ({
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
   
-  // Use asset's Trailer Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
+  // Use asset's Vehicle Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
   const truckLengthFeet = vehicle?.dimensions_length;
   const truckSubtype = vehicle?.asset_subtype;
 
