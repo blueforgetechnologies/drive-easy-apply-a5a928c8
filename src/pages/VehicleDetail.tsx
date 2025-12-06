@@ -663,7 +663,7 @@ export default function VehicleDetail() {
               <CardContent className="pt-2 space-y-2">
                 <div className="space-y-1">
                   <Label className="text-[10px]">Year</Label>
-                  <Input value={formData.year || ''} onChange={(e) => updateField('year', parseInt(e.target.value))} className="h-7 text-xs" />
+                  <Input type="number" value={formData.year ?? ''} onChange={(e) => updateField('year', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                 </div>
 
                 <div className="space-y-1">
@@ -696,7 +696,7 @@ export default function VehicleDetail() {
                     <div className="space-y-1">
                       <Label className="text-[10px]">Trailer Size</Label>
                       <div className="flex gap-1 items-center">
-                        <Input placeholder="26" value={formData.dimensions_length || ''} onChange={(e) => updateField('dimensions_length', e.target.value)} className="h-7 text-xs" />
+                        <Input type="number" placeholder="26" value={formData.trailer_size ?? ''} onChange={(e) => updateField('trailer_size', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                         <span className="text-[10px]">ft.</span>
                       </div>
                     </div>
@@ -718,7 +718,7 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Axles</Label>
-                  <Input type="number" value={formData.axles || '1'} onChange={(e) => updateField('axles', e.target.value)} className="h-7 text-xs" />
+                  <Input type="number" value={formData.axles ?? ''} onChange={(e) => updateField('axles', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                 </div>
 
                 <div className="space-y-1">
@@ -739,7 +739,7 @@ export default function VehicleDetail() {
                 <div className="space-y-1">
                   <Label className="text-[10px]">Payload</Label>
                   <div className="grid grid-cols-2 gap-1 items-center">
-                    <Input value={formData.payload || '9000'} onChange={(e) => updateField('payload', e.target.value)} className="h-7 text-xs" />
+                    <Input type="number" value={formData.payload ?? ''} onChange={(e) => updateField('payload', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                     <span className="text-[10px]">lbs</span>
                   </div>
                 </div>
@@ -779,20 +779,20 @@ export default function VehicleDetail() {
                 <div className="space-y-1">
                   <Label className="text-[10px]">Dimensions LxWxH (inch)</Label>
                   <div className="grid grid-cols-5 gap-1 items-center">
-                    <Input placeholder="312" value={formData.dimensions_length || ''} onChange={(e) => updateField('dimensions_length', e.target.value)} className="h-7 text-xs" />
+                    <Input type="number" placeholder="312" value={formData.dimensions_length ?? ''} onChange={(e) => updateField('dimensions_length', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                     <span className="text-[10px]">X</span>
-                    <Input placeholder="97" value={formData.dimensions_width || ''} onChange={(e) => updateField('dimensions_width', e.target.value)} className="h-7 text-xs" />
+                    <Input type="number" placeholder="97" value={formData.dimensions_width ?? ''} onChange={(e) => updateField('dimensions_width', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                     <span className="text-[10px]">X</span>
-                    <Input placeholder="97" value={formData.dimensions_height || ''} onChange={(e) => updateField('dimensions_height', e.target.value)} className="h-7 text-xs" />
+                    <Input type="number" placeholder="97" value={formData.dimensions_height ?? ''} onChange={(e) => updateField('dimensions_height', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Door Dims HxW (inch)</Label>
                   <div className="grid grid-cols-4 gap-1 items-center">
-                    <Input placeholder="88" value={formData.door_dims_height || ''} onChange={(e) => updateField('door_dims_height', e.target.value)} className="h-7 text-xs" />
+                    <Input type="number" placeholder="88" value={formData.door_dims_height ?? ''} onChange={(e) => updateField('door_dims_height', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                     <span className="text-[10px]">X</span>
-                    <Input placeholder="93" value={formData.door_dims_width || ''} onChange={(e) => updateField('door_dims_width', e.target.value)} className="h-7 text-xs" />
+                    <Input type="number" placeholder="93" value={formData.door_dims_width ?? ''} onChange={(e) => updateField('door_dims_width', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                   </div>
                 </div>
 
@@ -827,12 +827,12 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Vertical E-Track Rows</Label>
-                  <Input type="number" value={formData.vertical_etrack_rows || '0'} onChange={(e) => updateField('vertical_etrack_rows', e.target.value)} className="h-7 text-xs" />
+                  <Input type="number" value={formData.vertical_etrack_rows ?? ''} onChange={(e) => updateField('vertical_etrack_rows', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Horizontal E-Tracks</Label>
-                  <Input type="number" value={formData.horizontal_etracks || '2'} onChange={(e) => updateField('horizontal_etracks', e.target.value)} className="h-7 text-xs" />
+                  <Input type="number" value={formData.horizontal_etracks ?? ''} onChange={(e) => updateField('horizontal_etracks', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                 </div>
 
                 <div className="space-y-1">
@@ -853,7 +853,7 @@ export default function VehicleDetail() {
 
                 <div className="space-y-1">
                   <Label className="text-[10px]">Lift Gate Capacity</Label>
-                  <Input type="number" value={formData.lift_gate_capacity || '0'} onChange={(e) => updateField('lift_gate_capacity', e.target.value)} className="h-7 text-xs" />
+                  <Input type="number" value={formData.lift_gate_capacity ?? ''} onChange={(e) => updateField('lift_gate_capacity', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                 </div>
 
                 <div className="space-y-1">
