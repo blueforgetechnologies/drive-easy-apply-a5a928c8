@@ -52,6 +52,74 @@ const LoadEmailDetail = ({
   const [currentDispatcher, setCurrentDispatcher] = useState<any>(null);
   const data = email.parsed_data || {};
 
+  // Email templates - editable and selectable
+  const DEFAULT_TEMPLATES = {
+    nearby: 'Our truck is nearby ( {distance} away ). We can pick up on time and deliver as scheduled.',
+    driver: 'Driver is U.S. citizen with birth certificate in hand. Clean criminal record.',
+    fuel: 'Due to increased fuel costs, this bid includes a $ {fuel_surcharge} fuel surcharge.'
+  };
+
+  const getStoredTemplates = (dispatcherEmail: string) => {
+    const key = `bid_templates_${dispatcherEmail}`;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : null;
+  };
+
+  const saveTemplates = (dispatcherEmail: string, templates: Record<string, string>) => {
+    const key = `bid_templates_${dispatcherEmail}`;
+    localStorage.setItem(key, JSON.stringify(templates));
+  };
+
+  const [selectedTemplates, setSelectedTemplates] = useState<Record<string, boolean>>({
+    nearby: false,
+    driver: false,
+    fuel: false
+  });
+  const [templateTexts, setTemplateTexts] = useState<Record<string, string>>(DEFAULT_TEMPLATES);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+
+  // Load dispatcher's custom templates when dispatcher is identified
+  useEffect(() => {
+    if (currentDispatcher?.email) {
+      const stored = getStoredTemplates(currentDispatcher.email);
+      if (stored) {
+        setTemplateTexts(prev => ({ ...prev, ...stored }));
+      }
+    }
+  }, [currentDispatcher?.email]);
+
+  const handleTemplateToggle = (templateKey: string) => {
+    setSelectedTemplates(prev => ({ ...prev, [templateKey]: !prev[templateKey] }));
+  };
+
+  const handleTemplateTextChange = (templateKey: string, text: string) => {
+    setTemplateTexts(prev => {
+      const updated = { ...prev, [templateKey]: text };
+      // Save to localStorage if dispatcher is known
+      if (currentDispatcher?.email) {
+        saveTemplates(currentDispatcher.email, updated);
+      }
+      return updated;
+    });
+  };
+
+  // Get rendered template text with dynamic values
+  const getRenderedTemplate = (templateKey: string) => {
+    const text = templateTexts[templateKey];
+    const distance = emptyDriveDistance ? `${Math.round(emptyDriveDistance)}mi` : '252mi';
+    const fuelSurcharge = data.fuel_surcharge || '375.00';
+    return text
+      .replace('{distance}', distance)
+      .replace('{fuel_surcharge}', fuelSurcharge);
+  };
+
+  // Get selected templates for email body
+  const getSelectedTemplateTexts = () => {
+    return Object.entries(selectedTemplates)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([key]) => getRenderedTemplate(key));
+  };
+
   // Fetch full email data (including body_text) if not present in email prop
   useEffect(() => {
     const fetchFullEmail = async () => {
@@ -405,6 +473,7 @@ const LoadEmailDetail = ({
           company_address: companyAddress,
           company_phone: companyPhone,
           reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
+          selected_templates: getSelectedTemplateTexts(),
         },
       });
 
@@ -1248,16 +1317,81 @@ const LoadEmailDetail = ({
                           <div><strong>Features:</strong> {vehicleFeatures}</div>
                         </div>
                         
-                        <div className="bg-blue-50 p-2 rounded mt-2">
-                          <p>Our truck is nearby ( {emptyDriveDistance ? `${Math.round(emptyDriveDistance)}mi` : '252mi'} away ). We can pick up on time and deliver as scheduled.</p>
-                        </div>
-                        
-                        <div className="bg-slate-50 p-2 rounded">
-                          <p>Driver is U.S. citizen with birth certificate in hand. Clean criminal record.</p>
-                        </div>
-                        
-                        <div className="bg-blue-50 p-2 rounded">
-                          <p>Due to increased fuel costs, this bid includes a $ {data.fuel_surcharge || '375.00'} fuel surcharge.</p>
+                        {/* Selectable & Editable Templates */}
+                        <div className="space-y-2 mt-2">
+                          <p className="text-xs text-muted-foreground">Click to select templates to include in email. Double-click to edit.</p>
+                          
+                          {/* Nearby Template */}
+                          <div 
+                            className={`p-2 rounded cursor-pointer border-2 transition-colors ${
+                              selectedTemplates.nearby 
+                                ? 'bg-blue-100 border-blue-500' 
+                                : 'bg-slate-50 border-transparent hover:border-slate-300'
+                            }`}
+                            onClick={() => handleTemplateToggle('nearby')}
+                            onDoubleClick={() => setEditingTemplate('nearby')}
+                          >
+                            {editingTemplate === 'nearby' ? (
+                              <textarea
+                                className="w-full text-sm bg-white border rounded p-1 min-h-[60px]"
+                                value={templateTexts.nearby}
+                                onChange={(e) => handleTemplateTextChange('nearby', e.target.value)}
+                                onBlur={() => setEditingTemplate(null)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                              />
+                            ) : (
+                              <p className="text-sm">{getRenderedTemplate('nearby')}</p>
+                            )}
+                          </div>
+                          
+                          {/* Driver Template */}
+                          <div 
+                            className={`p-2 rounded cursor-pointer border-2 transition-colors ${
+                              selectedTemplates.driver 
+                                ? 'bg-blue-100 border-blue-500' 
+                                : 'bg-slate-50 border-transparent hover:border-slate-300'
+                            }`}
+                            onClick={() => handleTemplateToggle('driver')}
+                            onDoubleClick={() => setEditingTemplate('driver')}
+                          >
+                            {editingTemplate === 'driver' ? (
+                              <textarea
+                                className="w-full text-sm bg-white border rounded p-1 min-h-[60px]"
+                                value={templateTexts.driver}
+                                onChange={(e) => handleTemplateTextChange('driver', e.target.value)}
+                                onBlur={() => setEditingTemplate(null)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                              />
+                            ) : (
+                              <p className="text-sm">{getRenderedTemplate('driver')}</p>
+                            )}
+                          </div>
+                          
+                          {/* Fuel Template */}
+                          <div 
+                            className={`p-2 rounded cursor-pointer border-2 transition-colors ${
+                              selectedTemplates.fuel 
+                                ? 'bg-blue-100 border-blue-500' 
+                                : 'bg-slate-50 border-transparent hover:border-slate-300'
+                            }`}
+                            onClick={() => handleTemplateToggle('fuel')}
+                            onDoubleClick={() => setEditingTemplate('fuel')}
+                          >
+                            {editingTemplate === 'fuel' ? (
+                              <textarea
+                                className="w-full text-sm bg-white border rounded p-1 min-h-[60px]"
+                                value={templateTexts.fuel}
+                                onChange={(e) => handleTemplateTextChange('fuel', e.target.value)}
+                                onBlur={() => setEditingTemplate(null)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                              />
+                            ) : (
+                              <p className="text-sm">{getRenderedTemplate('fuel')}</p>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="flex gap-2 mt-3">
