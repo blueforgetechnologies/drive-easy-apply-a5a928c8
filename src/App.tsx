@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
+import Apply from "./pages/Apply";
 import Install from "./pages/Install";
 import InstallApp from "./pages/InstallApp";
 import NotFound from "./pages/NotFound";
@@ -41,6 +42,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/apply" element={<Apply />} />
           <Route path="/install" element={<Install />} />
           <Route path="/install-app" element={<InstallApp />} />
           <Route path="/auth" element={<Auth />} />
