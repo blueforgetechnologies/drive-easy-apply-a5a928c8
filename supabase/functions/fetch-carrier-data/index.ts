@@ -11,11 +11,11 @@ serve(async (req) => {
   }
 
   try {
-    const { usdot } = await req.json();
+    const { usdot, mc } = await req.json();
 
-    if (!usdot) {
+    if (!usdot && !mc) {
       return new Response(
-        JSON.stringify({ error: 'USDOT number is required' }),
+        JSON.stringify({ error: 'USDOT or MC number is required' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400 
@@ -23,16 +23,27 @@ serve(async (req) => {
       );
     }
 
-    // Try the official FMCSA website first (free, no auth required)
-    // This scrapes the public webpage since FMCSA doesn't provide a public API
-    const fmcsaUrl = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${usdot}`;
+    let fmcsaUrl: string;
+    let queryValue: string;
+
+    if (usdot) {
+      // Search by USDOT
+      queryValue = usdot;
+      fmcsaUrl = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${usdot}`;
+    } else {
+      // Search by MC number - clean the MC number (remove MC- prefix if present)
+      queryValue = mc.replace(/^MC-?/i, '').trim();
+      fmcsaUrl = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=MC_MX&query_string=${queryValue}`;
+    }
+    
+    console.log('Fetching from:', fmcsaUrl);
     
     const fmcsaResponse = await fetch(fmcsaUrl);
     const html = await fmcsaResponse.text();
 
     // Parse the HTML to extract carrier information
     const carrierData: any = {
-      usdot: usdot,
+      usdot: '',
       name: '',
       dba_name: '',
       physical_address: '',
@@ -43,6 +54,15 @@ serve(async (req) => {
     };
 
     console.log('Fetched HTML length:', html.length);
+
+    // Extract USDOT Number
+    const usdotMatch = html.match(/USDOT Number:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (usdotMatch) {
+      carrierData.usdot = usdotMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      console.log('Found USDOT:', carrierData.usdot);
+    } else if (usdot) {
+      carrierData.usdot = usdot;
+    }
 
     // Extract Legal Name - looking for the pattern after "Legal Name:" label
     const legalNameMatch = html.match(/Legal Name:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
@@ -115,7 +135,7 @@ serve(async (req) => {
       console.log('No carrier data found in HTML');
       return new Response(
         JSON.stringify({ 
-          error: 'Carrier not found with this USDOT number',
+          error: mc ? 'Carrier not found with this MC number' : 'Carrier not found with this USDOT number',
           found: false
         }),
         { 
