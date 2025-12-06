@@ -3832,7 +3832,7 @@ export default function LoadHunterTab() {
                                             {vehicle.vehicle_number || "N/A"} - {driverName}
                                           </div>
                                           <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                            {carrierName} • {brokerName}
+                                            {carrierName}
                                           </div>
                                         </div>
                                       );
@@ -3855,7 +3855,7 @@ export default function LoadHunterTab() {
                                               {vehicle.vehicle_number || "N/A"} - {driverName}
                                             </div>
                                             <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                              {carrierName} • {brokerName}
+                                              {carrierName}
                                             </div>
                                           </div>
                                         );
