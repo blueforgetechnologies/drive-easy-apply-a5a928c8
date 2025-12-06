@@ -3917,8 +3917,8 @@ export default function LoadHunterTab() {
                                   // Get broker info from parsed data
                                   const brokerName = data.broker || data.customer || email.from_name || email.from_email.split('@')[0];
                                   
-                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed') && match) {
-                                    // For unreviewed/missed (matches), show the matched truck directly
+                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids') && match) {
+                                    // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
