@@ -40,8 +40,11 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const data: BidEmailRequest = await req.json();
     
+    // Normalize email domain to lowercase for Resend domain verification compatibility
+    const normalizedFromEmail = data.from_email?.toLowerCase() || 'dispatch@nexustechsolution.com';
+    
     console.log("Sending bid email to:", data.to);
-    console.log("From:", data.from_name, "<", data.from_email, ">");
+    console.log("From:", data.from_name, "<", normalizedFromEmail, ">");
 
     // Build the HTML email body
     const htmlBody = `
@@ -119,12 +122,12 @@ Reference #: ${data.reference_id}
     }
 
     const emailPayload: any = {
-      from: `${data.from_name} <${data.from_email}>`,
+      from: `${data.from_name} <${normalizedFromEmail}>`,
       to: [data.to],
       subject: data.subject,
       html: htmlBody,
       text: textBody,
-      reply_to: data.from_email,
+      reply_to: normalizedFromEmail,
     };
 
     // Add CC if provided
