@@ -19,6 +19,8 @@ interface LoadEmailDetailProps {
   onClose: () => void;
   onBidPlaced?: (matchId: string, loadEmailId: string) => void;
   onUndecided?: (matchId: string) => void;
+  onSkip?: (matchId: string) => void;
+  onWait?: (matchId: string) => void;
 }
 
 const LoadEmailDetail = ({
@@ -30,7 +32,9 @@ const LoadEmailDetail = ({
   carriersMap = {},
   onClose,
   onBidPlaced,
-  onUndecided
+  onUndecided,
+  onSkip,
+  onWait
 }: LoadEmailDetailProps) => {
   const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -184,9 +188,14 @@ const LoadEmailDetail = ({
         return;
       }
 
+      // Notify parent first so matchActionTaken is set
+      if (onSkip) {
+        onSkip(match.id);
+      }
+
       const { error } = await supabase
         .from("load_hunt_matches")
-        .update({ is_active: false })
+        .update({ is_active: false, match_status: 'skipped' })
         .eq("id", match.id);
 
       if (error) throw error;
@@ -204,6 +213,35 @@ const LoadEmailDetail = ({
       onUndecided(match.id);
     }
     onClose();
+  };
+
+  // Handle Wait button click - moves match to waitlist
+  const handleWait = async () => {
+    try {
+      if (!match?.id) {
+        console.error("No match ID available for wait");
+        return;
+      }
+
+      // Notify parent first so matchActionTaken is set
+      if (onWait) {
+        onWait(match.id);
+      }
+
+      // Update load_emails status to waitlist
+      if (match?.load_email_id) {
+        const { error } = await supabase
+          .from("load_emails")
+          .update({ status: 'waitlist' })
+          .eq("id", match.load_email_id);
+
+        if (error) throw error;
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("Error setting wait status:", error);
+    }
   };
 
   // Ensure we use the broker_email from parsed_data for the bid email
@@ -630,7 +668,7 @@ const LoadEmailDetail = ({
                 <Button className="bg-blue-500 hover:bg-blue-600" onClick={handleUndecided}>
                   Undecided
                 </Button>
-                <Button className="bg-blue-500 hover:bg-blue-600">
+                <Button className="bg-blue-500 hover:bg-blue-600" onClick={handleWait}>
                   Wait
                 </Button>
                 <Button variant="outline">
@@ -1046,7 +1084,7 @@ const LoadEmailDetail = ({
                   <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium">
                     Mark Unreviewed
                   </Button>
-                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium">
+                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleWait}>
                     Wait
                   </Button>
                 </div>
