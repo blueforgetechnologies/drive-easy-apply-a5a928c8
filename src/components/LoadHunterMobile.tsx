@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { 
   RefreshCw, ChevronRight, MapPin, Truck, Target, 
   Filter, Clock, Package, ArrowRight, X, Check, 
-  SkipForward, AlertTriangle, Volume2, VolumeX, List
+  SkipForward, AlertTriangle, Volume2, VolumeX, List, Droplet
 } from "lucide-react";
 
 interface Vehicle {
@@ -22,6 +22,8 @@ interface Vehicle {
   driver_1_id: string | null;
   status: string;
   last_location: string | null;
+  oil_change_remaining: number | null;
+  fault_codes: any;
 }
 
 interface HuntPlan {
@@ -266,6 +268,8 @@ export default function LoadHunterMobile({
                 const hasEnabledHunt = huntPlans.some(p => p.vehicleId === vehicle.id && p.enabled);
                 const unreviewedCount = unreviewedViewData.filter(m => m.vehicle_id === vehicle.id).length;
                 const hunt = huntPlans.find(p => p.vehicleId === vehicle.id);
+                const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+                const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
                 
                 return (
                   <Card 
@@ -277,7 +281,19 @@ export default function LoadHunterMobile({
                         <div className="flex items-center gap-2">
                           {hasEnabledHunt && <div className="w-1.5 h-10 bg-blue-500 rounded-full" />}
                           <div>
-                            <p className="font-semibold">{vehicle.vehicle_number || 'N/A'}</p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-semibold">{vehicle.vehicle_number || 'N/A'}</p>
+                              {isOilChangeDue && (
+                                <span title="Oil change due">
+                                  <Droplet className="h-3.5 w-3.5 text-amber-500" />
+                                </span>
+                              )}
+                              {hasFaultCodes && (
+                                <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`}>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {getDriverName(vehicle.driver_1_id) || 'No Driver'}
                             </p>
