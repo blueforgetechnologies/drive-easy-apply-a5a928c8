@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search } from "lucide-react";
+import { ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search, CheckCircle, XCircle } from "lucide-react";
 
 interface CustomerData {
   id: string;
@@ -35,6 +36,17 @@ interface CustomerData {
   factoring_approval: string | null;
 }
 
+interface FMCSAResult {
+  name: string;
+  dba_name: string | null;
+  mc_number: string | null;
+  usdot: string;
+  phone: string | null;
+  physical_address: string | null;
+  safer_status: string | null;
+  safety_rating: string | null;
+}
+
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,6 +55,9 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [usdotLookup, setUsdotLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupDialogOpen, setLookupDialogOpen] = useState(false);
+  const [lookupResult, setLookupResult] = useState<FMCSAResult | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   useEffect(() => {
     loadCustomer();
@@ -119,6 +134,9 @@ export default function CustomerDetail() {
     }
 
     setLookupLoading(true);
+    setLookupResult(null);
+    setLookupError(null);
+    
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
@@ -133,28 +151,43 @@ export default function CustomerDetail() {
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Company not found");
+        setLookupError(error.error || "Company not found in FMCSA database");
+        setLookupDialogOpen(true);
+        return;
       }
 
       const data = await response.json();
-      
-      if (customer) {
-        setCustomer({
-          ...customer,
-          name: data.dba_name || data.name || customer.name,
-          mc_number: data.mc_number || customer.mc_number,
-          dot_number: data.usdot || usdotLookup,
-          phone: data.phone || customer.phone,
-          address: data.physical_address || customer.address,
-        });
-      }
-      
-      toast.success("Company information loaded from FMCSA");
+      setLookupResult(data);
+      setLookupDialogOpen(true);
     } catch (error: any) {
-      toast.error("Failed to fetch FMCSA data: " + error.message);
+      setLookupError(error.message || "Failed to fetch FMCSA data");
+      setLookupDialogOpen(true);
     } finally {
       setLookupLoading(false);
     }
+  };
+
+  const handleApplyLookupResult = () => {
+    if (customer && lookupResult) {
+      setCustomer({
+        ...customer,
+        name: lookupResult.dba_name || lookupResult.name || customer.name,
+        mc_number: lookupResult.mc_number || customer.mc_number,
+        dot_number: lookupResult.usdot || usdotLookup,
+        phone: lookupResult.phone || customer.phone,
+        address: lookupResult.physical_address || customer.address,
+      });
+      toast.success("Company information applied");
+    }
+    setLookupDialogOpen(false);
+    setLookupResult(null);
+    setLookupError(null);
+  };
+
+  const handleDiscardLookupResult = () => {
+    setLookupDialogOpen(false);
+    setLookupResult(null);
+    setLookupError(null);
   };
 
   if (loading) {
@@ -426,6 +459,90 @@ export default function CustomerDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* FMCSA Lookup Result Dialog */}
+      <Dialog open={lookupDialogOpen} onOpenChange={setLookupDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {lookupError ? (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  Company Not Found
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  Company Found
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {lookupError ? (
+            <div className="py-4">
+              <p className="text-muted-foreground">{lookupError}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Please verify the USDOT number and try again.
+              </p>
+            </div>
+          ) : lookupResult && (
+            <div className="space-y-3 py-4">
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">Company:</span>
+                <span className="col-span-2">{lookupResult.dba_name || lookupResult.name || '—'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">Legal Name:</span>
+                <span className="col-span-2">{lookupResult.name || '—'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">USDOT:</span>
+                <span className="col-span-2">{lookupResult.usdot || '—'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">MC Number:</span>
+                <span className="col-span-2">{lookupResult.mc_number || '—'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">Phone:</span>
+                <span className="col-span-2">{lookupResult.phone || '—'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">Address:</span>
+                <span className="col-span-2">{lookupResult.physical_address || '—'}</span>
+              </div>
+              {lookupResult.safer_status && (
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <span className="font-medium text-muted-foreground">SAFER Status:</span>
+                  <span className="col-span-2">
+                    <Badge variant={lookupResult.safer_status === 'NOT AUTHORIZED' ? 'destructive' : 'default'}>
+                      {lookupResult.safer_status}
+                    </Badge>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            {lookupError ? (
+              <Button variant="outline" onClick={handleDiscardLookupResult}>
+                Close
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={handleDiscardLookupResult}>
+                  Discard
+                </Button>
+                <Button onClick={handleApplyLookupResult} className="bg-green-600 hover:bg-green-700">
+                  Apply to Customer
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
