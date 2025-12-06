@@ -43,7 +43,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
     clearance: "",
     lift_gate: false,
     lift_gate_capacity: "",
-    dock_high: false,
   });
 
   useEffect(() => {
@@ -155,7 +154,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
           clearance: formData.clearance ? parseInt(formData.clearance) : null,
           lift_gate: formData.lift_gate,
           lift_gate_capacity: formData.lift_gate_capacity ? parseInt(formData.lift_gate_capacity) : null,
-          dock_high: formData.dock_high,
           status: "active",
         }])
         .select()
@@ -202,7 +200,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
       clearance: "",
       lift_gate: false,
       lift_gate_capacity: "",
-      dock_high: false,
     });
   };
 
@@ -501,14 +498,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
                 onCheckedChange={(checked) => setFormData({ ...formData, lift_gate: checked })}
               />
               <Label htmlFor="lift_gate">Lift Gate</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="dock_high"
-                checked={formData.dock_high}
-                onCheckedChange={(checked) => setFormData({ ...formData, dock_high: checked })}
-              />
-              <Label htmlFor="dock_high">Dock High</Label>
             </div>
           </div>
 
