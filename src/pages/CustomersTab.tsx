@@ -341,14 +341,38 @@ export default function CustomersTab() {
     }
   };
 
-  const filteredCustomers = customers.filter((customer) => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      customer.name.toLowerCase().includes(searchLower) ||
-      (customer.contact_name || "").toLowerCase().includes(searchLower) ||
-      (customer.email || "").toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredCustomers = customers
+    .filter((customer) => {
+      if (!searchQuery) return true;
+      const searchLower = searchQuery.toLowerCase();
+      return (
+        customer.name.toLowerCase().includes(searchLower) ||
+        (customer.contact_name || "").toLowerCase().includes(searchLower) ||
+        (customer.email || "").toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      if (!searchQuery) return a.name.localeCompare(b.name);
+      const searchLower = searchQuery.toLowerCase();
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      
+      // Prioritize names starting with search term
+      const aStartsWith = aName.startsWith(searchLower);
+      const bStartsWith = bName.startsWith(searchLower);
+      
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      
+      // Then prioritize earlier position of match
+      const aIndex = aName.indexOf(searchLower);
+      const bIndex = bName.indexOf(searchLower);
+      
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      
+      // Fall back to alphabetical
+      return aName.localeCompare(bName);
+    });
 
   // Pagination
   const totalPages = Math.ceil(filteredCustomers.length / ROWS_PER_PAGE);
