@@ -23,19 +23,23 @@ export default function AccountingTab() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold">Accounting</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage invoices, settlements, and audit logs
-        </p>
+      <div className="mobile-page-header">
+        <div>
+          <h2 className="mobile-page-title">Accounting</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Manage invoices, settlements, and audit logs
+          </p>
+        </div>
       </div>
 
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
-        <TabsList>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="settlements">Settlements</TabsTrigger>
-          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="invoices" className="text-xs sm:text-sm">Invoices</TabsTrigger>
+            <TabsTrigger value="settlements" className="text-xs sm:text-sm">Settlements</TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit Logs</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="invoices" className="mt-4">
           <InvoicesTab />

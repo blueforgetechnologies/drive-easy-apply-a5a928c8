@@ -11,7 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import { MobileDataCard, MobileDataList } from "@/components/ui/mobile-data-card";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Vehicle {
   id: string;
@@ -41,6 +49,7 @@ interface Vehicle {
 }
 
 export default function VehiclesTab() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
@@ -414,17 +423,7 @@ export default function VehiclesTab() {
     <div className="space-y-3">
       {/* Compact Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => navigate('/dashboard')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-bold">Asset Management</h2>
-        </div>
+        <h2 className="text-lg sm:text-xl font-bold">Asset Management</h2>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -518,93 +517,163 @@ export default function VehiclesTab() {
         </div>
       </div>
 
-      {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-1">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "all" });
-              setSearchQuery("");
-            }}
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "active" });
-              setSearchQuery("");
-            }}
-          >
-            Active
-          </Button>
-          <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "inactive" });
-              setSearchQuery("");
-            }}
-          >
-            Inactive
-          </Button>
-          <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
-          >
-            Pending
-          </Button>
-          <Button
-            variant={showServiceDue ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${showServiceDue ? "bg-red-600 text-white hover:bg-red-700" : ""}`}
-            onClick={() => setShowServiceDue(!showServiceDue)}
-          >
-            Service Due
-          </Button>
+      {/* Filters Row - Mobile Optimized */}
+      <div className="space-y-2">
+        {/* Filter buttons - scrollable on mobile */}
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <div className="flex gap-1 w-max sm:w-auto">
+            <Button
+              variant={filter === "all" ? "default" : "outline"}
+              size="sm"
+              className={`h-7 px-2 text-xs sm:text-sm ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+              onClick={() => {
+                setSearchParams({ filter: "all" });
+                setSearchQuery("");
+              }}
+            >
+              All
+            </Button>
+            <Button
+              variant={filter === "active" ? "default" : "outline"}
+              size="sm"
+              className={`h-7 px-2 text-xs sm:text-sm ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+              onClick={() => {
+                setSearchParams({ filter: "active" });
+                setSearchQuery("");
+              }}
+            >
+              Active
+            </Button>
+            <Button
+              variant={filter === "inactive" ? "default" : "outline"}
+              size="sm"
+              className={`h-7 px-2 text-xs sm:text-sm ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
+              onClick={() => {
+                setSearchParams({ filter: "inactive" });
+                setSearchQuery("");
+              }}
+            >
+              Inactive
+            </Button>
+            <Button
+              variant={filter === "pending" ? "default" : "outline"}
+              size="sm"
+              className={`h-7 px-2 text-xs sm:text-sm ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
+              onClick={() => {
+                setSearchParams({ filter: "pending" });
+                setSearchQuery("");
+              }}
+            >
+              Pending
+            </Button>
+            <Button
+              variant={showServiceDue ? "default" : "outline"}
+              size="sm"
+              className={`h-7 px-2 text-xs sm:text-sm ${showServiceDue ? "bg-red-600 text-white hover:bg-red-700" : ""}`}
+              onClick={() => setShowServiceDue(!showServiceDue)}
+            >
+              Service
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2.5 gap-1"
-            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-          >
-            Unit # {sortOrder === "asc" ? "↑" : "↓"}
-          </Button>
-          <div className="relative w-48">
+        {/* Search and sort */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search assets..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-7 text-sm"
+              className="pl-8 h-8 text-sm"
             />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2 gap-1 shrink-0"
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+          >
+            <span className="hidden sm:inline">Unit #</span> {sortOrder === "asc" ? "↑" : "↓"}
+          </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {filteredVehicles.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+      {/* Content */}
+      {filteredVehicles.length === 0 ? (
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
               {searchQuery ? "No assets match your search" : "No assets found"}
             </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="text-sm">
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile Card View */}
+          <MobileDataList>
+            {paginatedVehicles.map((vehicle) => {
+              const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+              return (
+                <MobileDataCard
+                  key={vehicle.id}
+                  title={vehicle.vehicle_number || "N/A"}
+                  subtitle={vehicle.carrier ? carriersMap[vehicle.carrier] : undefined}
+                  badge={{
+                    text: vehicle.status,
+                    variant: vehicle.status === "active" ? "default" : vehicle.status === "pending" ? "secondary" : "outline"
+                  }}
+                  onClick={() => viewVehicle(vehicle.id)}
+                  className={isOilChangeDue ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : ""}
+                  rows={[
+                    { 
+                      label: "Driver", 
+                      value: vehicle.driver_1_id ? driversMap[vehicle.driver_1_id] || "Assigned" : "—" 
+                    },
+                    { 
+                      label: "Dispatcher", 
+                      value: vehicle.primary_dispatcher_id ? dispatchersMap[vehicle.primary_dispatcher_id] || "Assigned" : "—" 
+                    },
+                    { 
+                      label: "Type", 
+                      value: vehicle.asset_type || "N/A" 
+                    },
+                    { 
+                      label: "Oil Change", 
+                      value: vehicle.oil_change_remaining !== null ? `${vehicle.oil_change_remaining} mi` : "N/A",
+                      className: vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining < 0 ? "text-red-600" : ""
+                    },
+                  ]}
+                  actions={
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => viewVehicle(vehicle.id)}>
+                          <Edit className="h-4 w-4 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteVehicle(vehicle.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
+                />
+              );
+            })}
+          </MobileDataList>
+
+          {/* Desktop Table View */}
+          <Card className="hidden md:block">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
@@ -776,38 +845,40 @@ export default function VehiclesTab() {
                 </TableBody>
               </Table>
             </div>
-          )}
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredVehicles.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredVehicles.length)} of {filteredVehicles.length}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="h-7 px-2"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                Page {currentPage} of {Math.max(1, totalPages)}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="h-7 px-2"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pagination - shared between mobile and desktop */}
+        <div className="flex items-center justify-between px-2 sm:px-4 py-3 border rounded-lg bg-card">
+          <div className="text-xs sm:text-sm text-muted-foreground">
+            {filteredVehicles.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredVehicles.length)} of {filteredVehicles.length}
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-8 px-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs sm:text-sm">
+              {currentPage}/{Math.max(1, totalPages)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="h-8 px-2"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        </>
+      )}
 
       {/* Assignment Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>

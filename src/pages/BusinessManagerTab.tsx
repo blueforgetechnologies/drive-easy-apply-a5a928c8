@@ -83,36 +83,40 @@ export default function BusinessManagerTab() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold">Business Manager</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage assets, carriers, payees, drivers, dispatchers, and customers
-        </p>
+      <div className="mobile-page-header">
+        <div>
+          <h2 className="mobile-page-title">Business Manager</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Manage assets, carriers, payees, drivers, dispatchers, and customers
+          </p>
+        </div>
       </div>
 
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
-        <TabsList>
-          <TabsTrigger value="assets" className="relative">
-            Assets
-            {assetAlertCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                {assetAlertCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="carriers" className="relative">
-            Carriers
-            {carrierAlertCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                {carrierAlertCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="payees">Payees</TabsTrigger>
-          <TabsTrigger value="drivers">Drivers</TabsTrigger>
-          <TabsTrigger value="dispatchers">Dispatchers</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="assets" className="relative text-xs sm:text-sm">
+              Assets
+              {assetAlertCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[9px] sm:text-[10px] font-bold text-white bg-red-500 rounded-full">
+                  {assetAlertCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="carriers" className="relative text-xs sm:text-sm">
+              Carriers
+              {carrierAlertCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[9px] sm:text-[10px] font-bold text-white bg-red-500 rounded-full">
+                  {carrierAlertCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="payees" className="text-xs sm:text-sm">Payees</TabsTrigger>
+            <TabsTrigger value="drivers" className="text-xs sm:text-sm">Drivers</TabsTrigger>
+            <TabsTrigger value="dispatchers" className="text-xs sm:text-sm">Dispatchers</TabsTrigger>
+            <TabsTrigger value="customers" className="text-xs sm:text-sm">Customers</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="assets" className="mt-4">
           <VehiclesTab />

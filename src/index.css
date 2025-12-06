@@ -136,4 +136,125 @@ All colors MUST be HSL.
   /* Mobile safe areas */
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .safe-area-inset-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}
+
+@layer components {
+  /* Mobile-first responsive table wrapper */
+  .mobile-table-wrapper {
+    @apply w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0;
+  }
+  
+  /* Mobile card layout for tables */
+  .mobile-card-list {
+    @apply flex flex-col gap-3 md:hidden;
+  }
+  
+  .mobile-card-item {
+    @apply p-4 rounded-lg border bg-card;
+  }
+  
+  .mobile-card-row {
+    @apply flex justify-between items-center py-1.5;
+  }
+  
+  .mobile-card-label {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  .mobile-card-value {
+    @apply text-sm font-medium text-right;
+  }
+  
+  /* Hide on mobile, show on desktop */
+  .desktop-only {
+    @apply hidden md:block;
+  }
+  
+  .desktop-only-flex {
+    @apply hidden md:flex;
+  }
+  
+  .desktop-only-table {
+    @apply hidden md:table;
+  }
+  
+  .desktop-only-table-row-group {
+    @apply hidden md:table-row-group;
+  }
+  
+  /* Show on mobile, hide on desktop */
+  .mobile-only {
+    @apply block md:hidden;
+  }
+  
+  .mobile-only-flex {
+    @apply flex md:hidden;
+  }
+  
+  /* Responsive filter bar */
+  .filter-bar {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+  
+  .filter-actions {
+    @apply flex flex-wrap gap-2 items-center;
+  }
+  
+  /* Mobile-friendly tabs */
+  .mobile-tabs-list {
+    @apply flex overflow-x-auto pb-1 gap-1 -mx-3 px-3 md:mx-0 md:px-0 scrollbar-hide;
+  }
+  
+  /* Touch-friendly buttons */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Responsive grid */
+  .responsive-grid-2 {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-3;
+  }
+  
+  .responsive-grid-3 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3;
+  }
+  
+  .responsive-grid-4 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3;
+  }
+  
+  /* Mobile-friendly form layout */
+  .mobile-form-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+  }
+  
+  /* Scrollbar hide utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Mobile page header */
+  .mobile-page-header {
+    @apply flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+  
+  .mobile-page-title {
+    @apply text-lg sm:text-xl font-bold;
+  }
+  
+  /* Responsive dialog */
+  .mobile-dialog {
+    @apply w-[95vw] max-w-lg sm:max-w-xl md:max-w-2xl;
+  }
+  
+  /* Mobile-friendly badge group */
+  .badge-group {
+    @apply flex flex-wrap gap-1;
+  }
 }
