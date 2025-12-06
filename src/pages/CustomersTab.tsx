@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMerge } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 interface Customer {
   id: string;
@@ -49,7 +50,42 @@ export default function CustomersTab() {
   const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [duplicateCount, setDuplicateCount] = useState(0);
+  const [totalCustomerCount, setTotalCustomerCount] = useState(0);
   const ROWS_PER_PAGE = 50;
+
+  // Function to normalize names for duplicate detection
+  const normalizeName = (name: string): string => {
+    return name
+      .toUpperCase()
+      .replace(/\./g, '')
+      .replace(/,/g, '')
+      .replace(/\s+(LLC|INC|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|LOGISTICS|TRANSPORT|TRANSPORTATION|TRUCKING|FREIGHT|SERVICES|SERVICE|GROUP|ENTERPRISES?|SOLUTIONS?)\.?$/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Count duplicates
+  const countDuplicates = (allCustomers: Customer[]) => {
+    const normalizedNames = new Map<string, string[]>();
+    
+    allCustomers.forEach(customer => {
+      const normalized = normalizeName(customer.name);
+      if (!normalizedNames.has(normalized)) {
+        normalizedNames.set(normalized, []);
+      }
+      normalizedNames.get(normalized)!.push(customer.id);
+    });
+
+    let duplicateRecords = 0;
+    normalizedNames.forEach((ids) => {
+      if (ids.length > 1) {
+        duplicateRecords += ids.length;
+      }
+    });
+
+    return duplicateRecords;
+  };
 
   const aiUpdateMutation = useMutation({
     mutationFn: async () => {
@@ -96,6 +132,17 @@ export default function CustomersTab() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Get all customers for duplicate detection
+      const { data: allData, error: allError } = await supabase
+        .from("customers" as any)
+        .select("id, name")
+        .order("name", { ascending: true });
+
+      if (!allError && allData) {
+        setTotalCustomerCount(allData.length);
+        setDuplicateCount(countDuplicates(allData as any));
+      }
+
       let query = supabase
         .from("customers" as any)
         .select("*")
@@ -302,16 +349,26 @@ export default function CustomersTab() {
     <div className="space-y-3">
       {/* Compact Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold">Customers</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold">Customers</h2>
+          <Badge variant="secondary" className="text-xs">
+            {totalCustomerCount.toLocaleString()}
+          </Badge>
+        </div>
         <div className="flex gap-1.5">
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 h-8"
+            className="gap-1.5 h-8 relative"
             onClick={() => navigate("/dashboard/duplicate-customers")}
           >
             <GitMerge className="h-3.5 w-3.5" />
             Merge Duplicates
+            {duplicateCount > 0 && (
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 min-w-5 px-1 text-xs">
+                {duplicateCount}
+              </Badge>
+            )}
           </Button>
           <Button
             variant="outline"
