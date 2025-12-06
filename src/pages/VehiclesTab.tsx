@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Vehicle {
   id: string;
@@ -51,6 +51,8 @@ export default function VehiclesTab() {
   const [syncing, setSyncing] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showServiceDue, setShowServiceDue] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 50;
   const [driversMap, setDriversMap] = useState<Record<string, string>>({});
   const [dispatchersMap, setDispatchersMap] = useState<Record<string, string>>({});
   const [carriersMap, setCarriersMap] = useState<Record<string, string>>({});
@@ -392,6 +394,18 @@ export default function VehiclesTab() {
     return 0;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredVehicles.length / ROWS_PER_PAGE);
+  const paginatedVehicles = filteredVehicles.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery, showServiceDue]);
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -609,7 +623,7 @@ export default function VehiclesTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                {filteredVehicles.map((vehicle) => {
+                {paginatedVehicles.map((vehicle) => {
                     const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined && vehicle.oil_change_remaining <= 0;
                     return (
                     <TableRow 
@@ -763,6 +777,35 @@ export default function VehiclesTab() {
               </Table>
             </div>
           )}
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredVehicles.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredVehicles.length)} of {filteredVehicles.length}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-7 px-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">
+                Page {currentPage} of {Math.max(1, totalPages)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="h-7 px-2"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
