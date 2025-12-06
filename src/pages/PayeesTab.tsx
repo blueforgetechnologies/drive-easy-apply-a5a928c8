@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Payee {
   id: string;
@@ -34,6 +34,8 @@ export default function PayeesTab() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
     type: "driver",
@@ -142,6 +144,18 @@ export default function PayeesTab() {
       (payee.email || "").toLowerCase().includes(searchLower)
     );
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredPayees.length / ROWS_PER_PAGE);
+  const paginatedPayees = filteredPayees.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery]);
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -330,7 +344,7 @@ export default function PayeesTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayees.map((payee) => (
+                {paginatedPayees.map((payee) => (
                   <TableRow key={payee.id} className="h-10 cursor-pointer hover:bg-muted/50">
                     <TableCell className="py-1 px-2 font-medium">{payee.name}</TableCell>
                     <TableCell className="py-1 px-2">{payee.type || "N/A"}</TableCell>
@@ -389,6 +403,37 @@ export default function PayeesTab() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredPayees.length)} of {filteredPayees.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-7 px-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-7 px-2"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
