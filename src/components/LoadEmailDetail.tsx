@@ -364,7 +364,7 @@ const LoadEmailDetail = ({
       ? `${companyProfile.address || ''} ${companyProfile.city || ''}, ${companyProfile.state || ''} ${companyProfile.zip || ''}`.trim()
       : 'Company Address');
   const companyPhone = bidAsCarrier?.phone || companyProfile?.phone || '(000) 000-0000';
-  const emailSubject = `Order# ${data.order_number || 'N/A'} [${originState} to ${destState}] ${displaySize}${displayType} - $${bidAmount || '0'}`;
+  const emailSubject = `Order# ${data.order_number || 'N/A'} [${originState} to ${destState}] ${displaySize}${displayType} - $${bidAmount || '0'} -MC ${mcNumber}`;
 
   const [isSending, setIsSending] = useState(false);
 
