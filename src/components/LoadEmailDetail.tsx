@@ -120,18 +120,28 @@ const LoadEmailDetail = ({
   useEffect(() => {
     const fetchBidAsCarrier = async () => {
       if (vehicle?.bid_as) {
+        console.log('Fetching bid_as carrier for vehicle:', vehicle.id, 'bid_as:', vehicle.bid_as);
         try {
+          // bid_as is stored as text but contains a UUID, cast it for the query
           const { data: carrier, error } = await supabase
             .from('carriers')
             .select('*')
             .eq('id', vehicle.bid_as)
-            .single();
+            .maybeSingle();
+          
+          console.log('Carrier fetch result:', { carrier, error });
+          
           if (!error && carrier) {
             setBidAsCarrier(carrier);
+          } else if (error) {
+            console.error('Error fetching bid_as carrier:', error);
           }
         } catch (e) {
           console.error('Error fetching bid_as carrier:', e);
         }
+      } else {
+        console.log('No bid_as set on vehicle:', vehicle?.id);
+        setBidAsCarrier(null);
       }
     };
     fetchBidAsCarrier();
