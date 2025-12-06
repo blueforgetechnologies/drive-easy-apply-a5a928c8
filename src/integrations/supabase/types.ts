@@ -2462,6 +2462,7 @@ export type Database = {
           trailer_tracking: boolean | null
           updated_at: string | null
           vehicle_number: string | null
+          vehicle_size: number | null
           vertical_etrack_rows: number | null
           vin: string | null
           year: number | null
@@ -2554,6 +2555,7 @@ export type Database = {
           trailer_tracking?: boolean | null
           updated_at?: string | null
           vehicle_number?: string | null
+          vehicle_size?: number | null
           vertical_etrack_rows?: number | null
           vin?: string | null
           year?: number | null
@@ -2646,6 +2648,7 @@ export type Database = {
           trailer_tracking?: boolean | null
           updated_at?: string | null
           vehicle_number?: string | null
+          vehicle_size?: number | null
           vertical_etrack_rows?: number | null
           vin?: string | null
           year?: number | null
