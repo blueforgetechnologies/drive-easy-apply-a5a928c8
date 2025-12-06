@@ -52,7 +52,9 @@ const Index = () => {
       </header>
 
       {/* Application Form */}
-      <ApplicationForm />
+      <main>
+        <ApplicationForm />
+      </main>
 
       {/* Footer */}
       <footer className="bg-card border-t mt-16 py-8">
