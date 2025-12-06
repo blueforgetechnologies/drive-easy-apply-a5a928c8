@@ -216,7 +216,7 @@ const LoadEmailDetail = ({
   }, [vehicle?.bid_as]);
   
   // Use asset's Vehicle Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
-  const truckLengthFeet = vehicle?.dimensions_length;
+  const truckLengthFeet = vehicle?.vehicle_size; // Use feet from vehicle_size field
   const truckSubtype = vehicle?.asset_subtype;
 
   const displaySize = vehicle && truckLengthFeet ? `${truckLengthFeet}' ` : "";
