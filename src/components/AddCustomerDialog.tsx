@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,6 +14,9 @@ interface AddCustomerDialogProps {
 export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupValue, setLookupValue] = useState("");
+  const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
   const [formData, setFormData] = useState({
     name: "",
     contact_name: "",
@@ -23,7 +26,51 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
     city: "",
     state: "",
     zip: "",
+    dot_number: "",
+    mc_number: "",
   });
+
+  const handleLookup = async () => {
+    if (!lookupValue.trim()) {
+      toast.error(`Please enter a ${lookupType === "usdot" ? "USDOT" : "MC"} number`);
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lookupType === "usdot" ? { usdot: lookupValue } : { mc: lookupValue }),
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.error || data.found === false) {
+        toast.error(data.error || "Company not found");
+        return;
+      }
+
+      setFormData({
+        ...formData,
+        name: data.dba_name || data.name || formData.name,
+        phone: data.phone || formData.phone,
+        address: data.physical_address || formData.address,
+        dot_number: data.usdot || formData.dot_number,
+        mc_number: data.mc_number || formData.mc_number,
+      });
+      
+      toast.success("Company information loaded");
+    } catch (error: any) {
+      toast.error("Failed to fetch company data");
+      console.error(error);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +93,8 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
           city: formData.city || null,
           state: formData.state || null,
           zip: formData.zip || null,
+          dot_number: formData.dot_number || null,
+          mc_number: formData.mc_number || null,
           status: "active",
         }])
         .select()
@@ -64,7 +113,10 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
         city: "",
         state: "",
         zip: "",
+        dot_number: "",
+        mc_number: "",
       });
+      setLookupValue("");
       
       if (onCustomerAdded && data) {
         onCustomerAdded(data.id);
@@ -88,6 +140,37 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
         <DialogHeader>
           <DialogTitle>Add New Customer</DialogTitle>
         </DialogHeader>
+        
+        {/* FMCSA Lookup Section */}
+        <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+          <Label className="text-sm font-medium">Search by USDOT or MC Number</Label>
+          <div className="flex gap-2">
+            <select
+              value={lookupType}
+              onChange={(e) => setLookupType(e.target.value as "usdot" | "mc")}
+              className="px-3 py-2 border rounded-md bg-background text-sm"
+            >
+              <option value="usdot">USDOT</option>
+              <option value="mc">MC</option>
+            </select>
+            <Input
+              placeholder={lookupType === "usdot" ? "Enter USDOT number" : "Enter MC number"}
+              value={lookupValue}
+              onChange={(e) => setLookupValue(e.target.value)}
+              className="flex-1"
+            />
+            <Button 
+              type="button" 
+              onClick={handleLookup} 
+              disabled={lookupLoading}
+              variant="secondary"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              {lookupLoading ? "Searching..." : "Search"}
+            </Button>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -105,6 +188,25 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
                 id="contact_name"
                 value={formData.contact_name}
                 onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="dot_number">USDOT Number</Label>
+              <Input
+                id="dot_number"
+                value={formData.dot_number}
+                onChange={(e) => setFormData({ ...formData, dot_number: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="mc_number">MC Number</Label>
+              <Input
+                id="mc_number"
+                value={formData.mc_number}
+                onChange={(e) => setFormData({ ...formData, mc_number: e.target.value })}
               />
             </div>
           </div>
