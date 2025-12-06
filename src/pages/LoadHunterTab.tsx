@@ -3811,10 +3811,10 @@ export default function LoadHunterTab() {
                       </TableHeader>
                       <TableBody>
                         {(activeFilter === 'unreviewed' ? filteredMatches 
-                          : activeFilter === 'skipped' ? skippedMatches
-                          : activeFilter === 'mybids' ? bidMatches
+                          : activeFilter === 'skipped' ? [...skippedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
+                          : activeFilter === 'mybids' ? [...bidMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'undecided' ? undecidedMatches
-                          : activeFilter === 'waitlist' ? waitlistMatches
+                          : activeFilter === 'waitlist' ? [...waitlistMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'missed' ? missedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
