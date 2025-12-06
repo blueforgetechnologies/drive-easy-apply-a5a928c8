@@ -72,7 +72,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         <p>Please let me know if I can help on this load:</p>
         
-        <p>Order# ${data.order_number} [${data.origin_state} to ${data.dest_state}] ${data.vehicle_size}${data.vehicle_type} - $${data.bid_amount}</p>
+        <p>Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]</p>
         
         <div style="margin-top: 20px;">
           <p><strong>Truck Carries:</strong> ${data.equipment_details}</p>
@@ -111,7 +111,7 @@ I have a ${data.vehicle_size}${data.vehicle_type}.
 
 Please let me know if I can help on this load:
 
-Order# ${data.order_number} [${data.origin_state} to ${data.dest_state}] ${data.vehicle_size}${data.vehicle_type} - $${data.bid_amount}
+Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]
 
 Truck Carries: ${data.equipment_details}
 Truck Size: ${data.truck_dimensions}
