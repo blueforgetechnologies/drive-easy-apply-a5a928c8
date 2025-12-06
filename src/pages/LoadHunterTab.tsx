@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, AlertTriangle, Droplet } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -39,6 +39,7 @@ interface Vehicle {
   oil_change_remaining: number | null;
   next_service_date: string | null;
   notes: string | null;
+  fault_codes: any;
 }
 
 interface Driver {
@@ -2581,6 +2582,10 @@ export default function LoadHunterTab() {
               const missedCount = missedHistory.filter(m => m.vehicle_id === vehicle.id).length;
               // Calculate skipped count for this vehicle
               const skippedCount = skippedMatches.filter(m => m.vehicle_id === vehicle.id).length;
+              // Check if oil change is due (negative remaining miles)
+              const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+              // Check if vehicle has active fault codes
+              const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
               return (
                 <Card 
                   key={vehicle.id} 
@@ -2591,8 +2596,19 @@ export default function LoadHunterTab() {
                 >
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="flex-1 min-w-0 space-y-0.5">
-                      <div className="font-medium text-xs leading-tight text-foreground">
+                      <div className="font-medium text-xs leading-tight text-foreground flex items-center gap-1">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
+                        {/* Maintenance & Fault Indicators */}
+                        {isOilChangeDue && (
+                          <span title="Oil change due">
+                            <Droplet className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                          </span>
+                        )}
+                        {hasFaultCodes && (
+                          <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`}>
+                            <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-muted-foreground leading-tight">
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
