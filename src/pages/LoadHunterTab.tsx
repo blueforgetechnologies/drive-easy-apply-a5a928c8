@@ -162,6 +162,11 @@ export default function LoadHunterTab() {
   const loadVehiclesRef = useRef<() => Promise<void>>();
   const refreshMyVehicleIdsRef = useRef<() => Promise<void>>();
 
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter]);
+
   // Helper to get current time (recalculates each render for accurate filtering)
   const getCurrentTime = () => new Date();
   const getThirtyMinutesAgo = () => new Date(getCurrentTime().getTime() - 30 * 60 * 1000);
