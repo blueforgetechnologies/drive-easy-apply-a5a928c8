@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, AlertTriangle, Droplet } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, AlertTriangle, Droplet, Plus, Minus } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -140,6 +140,7 @@ export default function LoadHunterTab() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
+  const [showIdColumns, setShowIdColumns] = useState(false);
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -3523,9 +3524,27 @@ export default function LoadHunterTab() {
                     <Table>
                       <TableHeader>
                         <TableRow className="h-7">
-                          <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
-                          <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
-                          <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
+                          <TableHead className="w-[30px] py-0 px-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowIdColumns(!showIdColumns);
+                              }}
+                              title={showIdColumns ? "Hide ID columns" : "Show ID columns"}
+                            >
+                              {showIdColumns ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                            </Button>
+                          </TableHead>
+                          {showIdColumns && (
+                            <>
+                              <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
+                              <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
+                              <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
+                            </>
+                          )}
                           <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
                           <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
@@ -3772,24 +3791,30 @@ export default function LoadHunterTab() {
                                 }
                               }}
                             >
-                              {/* Order Number from Sylectus */}
-                              <TableCell className="py-1">
-                                <div className="text-[11px] font-semibold leading-tight whitespace-nowrap">
-                                  {data.order_number ? `#${data.order_number}` : '—'}
-                                </div>
-                              </TableCell>
-                              {/* Our internal Load ID */}
-                              <TableCell className="py-1">
-                                <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
-                                  {email.load_id || '—'}
-                                </div>
-                              </TableCell>
-                              {/* Load Hunt Match ID (dev only) */}
-                              <TableCell className="py-1">
-                                <div className="text-[10px] font-mono text-muted-foreground leading-tight whitespace-nowrap">
-                                  {activeFilter === 'unreviewed' && match ? (match as any).id.substring(0, 8) : '—'}
-                                </div>
-                              </TableCell>
+                              {/* Expand/collapse placeholder cell */}
+                              <TableCell className="py-1 px-1 w-[30px]" />
+                              {showIdColumns && (
+                                <>
+                                  {/* Order Number from Sylectus */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[11px] font-semibold leading-tight whitespace-nowrap">
+                                      {data.order_number ? `#${data.order_number}` : '—'}
+                                    </div>
+                                  </TableCell>
+                                  {/* Our internal Load ID */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
+                                      {email.load_id || '—'}
+                                    </div>
+                                  </TableCell>
+                                  {/* Load Hunt Match ID (dev only) */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[10px] font-mono text-muted-foreground leading-tight whitespace-nowrap">
+                                      {activeFilter === 'unreviewed' && match ? (match as any).id.substring(0, 8) : '—'}
+                                    </div>
+                                  </TableCell>
+                                </>
+                              )}
                               <TableCell className="py-1">
                                 {(() => {
                                   // Get broker info from parsed data
