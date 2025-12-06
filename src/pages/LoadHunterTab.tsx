@@ -1239,17 +1239,29 @@ export default function LoadHunterTab() {
           .select("*")
           .eq('match_status', 'active');
 
-        // Fetch manually skipped matches (match_status = 'skipped', today only)
+        // Fetch manually skipped matches (match_status = 'skipped', today only) - include email data
         const { data: skippedData, error: skippedError } = await supabase
           .from("load_hunt_matches")
-          .select("*")
+          .select(`
+            *,
+            load_emails (
+              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
+              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
+            )
+          `)
           .eq('match_status', 'skipped')
           .gte('updated_at', midnightETIso);
 
-        // Fetch bid matches (match_status = 'bid', today only - clears at midnight)
+        // Fetch bid matches (match_status = 'bid', today only - clears at midnight) - include email data
         const { data: bidData, error: bidError } = await supabase
           .from("load_hunt_matches")
-          .select("*")
+          .select(`
+            *,
+            load_emails (
+              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
+              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
+            )
+          `)
           .eq('match_status', 'bid')
           .gte('updated_at', midnightETIso);
 
@@ -3663,7 +3675,8 @@ export default function LoadHunterTab() {
                         {(activeFilter === 'unreviewed' ? filteredMatches 
                           : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => {
                           // Skipped matches stay visible until midnight ET regardless of expiration
-                          const email = loadEmails.find(e => e.id === match.load_email_id);
+                          // Email data is now included in the match from the join
+                          const email = match.load_emails || loadEmails.find(e => e.id === match.load_email_id);
                           if (!email) return false;
                           
                           // Show all skipped matches - they persist until midnight reset
@@ -3671,7 +3684,8 @@ export default function LoadHunterTab() {
                         }) 
                           : activeFilter === 'mybids' ? bidMatches.filter((match: any) => {
                           // Bids stay visible until midnight ET
-                          const email = loadEmails.find(e => e.id === match.load_email_id);
+                          // Email data is now included in the match from the join
+                          const email = match.load_emails || loadEmails.find(e => e.id === match.load_email_id);
                           if (!email) return false;
                           return true;
                         }) 
@@ -3700,7 +3714,9 @@ export default function LoadHunterTab() {
                               status: (item as any).email_status,
                             };
                           } else if (activeFilter === 'skipped' || activeFilter === 'mybids') {
-                            email = loadEmails.find(e => e.id === (item as any).load_email_id);
+                            // Skipped/bid matches now include email data from the join
+                            const matchItem = item as any;
+                            email = matchItem.load_emails || loadEmails.find(e => e.id === matchItem.load_email_id);
                           } else if (activeFilter === 'missed') {
                             // Missed history item has enriched email data
                             const missedItem = item as any;
