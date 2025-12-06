@@ -2387,6 +2387,10 @@ export default function LoadHunterTab() {
                 drivers={drivers}
                 carriersMap={carriersMap}
                 onBidPlaced={handleBidPlaced}
+                onUndecided={async (matchId: string) => {
+                  setMatchActionTaken(true);
+                  await handleMoveToUndecided(matchId);
+                }}
               />
             </DialogContent>
           </Dialog>
@@ -3578,6 +3582,10 @@ export default function LoadHunterTab() {
               setMatchActionTaken(false); // Reset for next match
             }}
             onBidPlaced={handleBidPlaced}
+            onUndecided={async (matchId: string) => {
+              setMatchActionTaken(true);
+              await handleMoveToUndecided(matchId);
+            }}
           />
         ) : activeFilter === 'vehicle-assignment' ? (
           /* Vehicle Assignment View */
