@@ -31,6 +31,7 @@ interface BidEmailRequest {
   company_address: string;
   company_phone: string;
   reference_id: string;
+  contact_first_name?: string;
   selected_templates?: string[];
 }
 
@@ -59,6 +60,18 @@ const handler = async (req: Request): Promise<Response> => {
       ? '\n' + data.selected_templates.join('\n\n') + '\n'
       : '';
 
+    // Get time-based greeting
+    const hour = new Date().getHours();
+    let timeGreeting = 'Good morning';
+    if (hour >= 12 && hour < 17) {
+      timeGreeting = 'Good afternoon';
+    } else if (hour >= 17) {
+      timeGreeting = 'Good evening';
+    }
+    const greeting = data.contact_first_name 
+      ? `${timeGreeting} ${data.contact_first_name},` 
+      : `${timeGreeting},`;
+
     // Build the HTML email body
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -66,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">MC#: ${data.mc_number}</p><br/>
         <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number}</p>
         
-        <p style="margin-top: 20px;">Hello,</p>
+        <p style="margin-top: 20px;">${greeting}</p>
         
         <p>I have a ${data.vehicle_size}${data.vehicle_type}.</p>
         
@@ -105,7 +118,7 @@ Rate: $ ${data.bid_amount}
 MC#: ${data.mc_number}
 USDOT#: ${data.dot_number}
 
-Hello,
+${greeting}
 
 I have a ${data.vehicle_size}${data.vehicle_type}.
 

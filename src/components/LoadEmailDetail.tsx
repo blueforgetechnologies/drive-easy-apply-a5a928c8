@@ -103,6 +103,23 @@ const LoadEmailDetail = ({
     });
   };
 
+  // Get time-based greeting with contact's first name
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    let timeGreeting = 'Good morning';
+    if (hour >= 12 && hour < 17) {
+      timeGreeting = 'Good afternoon';
+    } else if (hour >= 17) {
+      timeGreeting = 'Good evening';
+    }
+    
+    // Extract first name from broker_name (e.g., "NM Steele" -> "NM", "Toni Castro" -> "Toni")
+    const brokerName = data.broker_name || '';
+    const firstName = brokerName.split(' ')[0] || '';
+    
+    return firstName ? `${timeGreeting} ${firstName},` : `${timeGreeting},`;
+  };
+
   // Get rendered template text with dynamic values
   const getRenderedTemplate = (templateKey: string) => {
     const text = templateTexts[templateKey];
@@ -476,6 +493,7 @@ const LoadEmailDetail = ({
           company_phone: companyPhone,
           reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
           selected_templates: getSelectedTemplateTexts(),
+          contact_first_name: (data.broker_name || '').split(' ')[0] || undefined,
         },
       });
 
@@ -573,7 +591,7 @@ const LoadEmailDetail = ({
           </div>
           
           <div className="border-t pt-4 space-y-3 text-sm">
-            <p>Hello ,</p>
+            <p>{getGreeting()}</p>
             <p>I have a {displaySize}{displayType}.</p>
             <p>Please let me know if I can help on this load:</p>
             <p>Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
@@ -906,7 +924,7 @@ const LoadEmailDetail = ({
                   </div>
                 </Card>
                 <Card className="p-3 text-sm space-y-2">
-                  <p>Hello,</p>
+                  <p>{getGreeting()}</p>
                   <p>I have a {displaySize}{displayType}.</p>
                   <p className="text-blue-600">Please let me know if I can help on this load:</p>
                   <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
@@ -1316,7 +1334,7 @@ const LoadEmailDetail = ({
                       </div>
                       
                       <div className="border rounded p-3 text-xs space-y-2">
-                         <p>Hello ,</p>
+                         <p>{getGreeting()}</p>
                         <p>I have a {displaySize}{displayType}.</p>
                          <p className="text-blue-600">Please let me know if I can help on this load:</p>
                         <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
