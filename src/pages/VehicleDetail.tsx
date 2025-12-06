@@ -696,7 +696,7 @@ export default function VehicleDetail() {
                     <div className="space-y-1">
                       <Label className="text-[10px]">Vehicle Size</Label>
                       <div className="flex gap-1 items-center">
-                        <Input type="number" placeholder="26" value={formData.dimensions_length ?? ''} onChange={(e) => updateField('dimensions_length', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
+                        <Input type="number" placeholder="26" value={formData.vehicle_size ?? ''} onChange={(e) => updateField('vehicle_size', e.target.value ? parseInt(e.target.value) : null)} className="h-7 text-xs" />
                         <span className="text-[10px]">ft.</span>
                       </div>
                     </div>
