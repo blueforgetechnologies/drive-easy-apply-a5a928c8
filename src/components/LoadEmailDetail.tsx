@@ -583,6 +583,15 @@ const LoadEmailDetail = ({
               <p><strong>Truck Features:</strong> {vehicleFeatures}</p>
             </div>
             
+            {/* Selected Templates */}
+            {getSelectedTemplateTexts().length > 0 && (
+              <div className="space-y-2 mt-4">
+                {getSelectedTemplateTexts().map((text, idx) => (
+                  <p key={idx} className="bg-blue-50 p-2 rounded text-sm">{text}</p>
+                ))}
+              </div>
+            )}
+            
             <div className="mt-6 space-y-1">
               <p className="font-bold">{dispatcherName}</p>
               <p>Dispatch</p>
