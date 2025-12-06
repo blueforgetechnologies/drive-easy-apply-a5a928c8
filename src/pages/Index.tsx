@@ -55,7 +55,7 @@ const Index = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
               <Truck className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">NexusTMS</span>
+              <span className="text-xl font-bold text-foreground">NexusTech Solution</span>
             </div>
             <div className="flex items-center gap-4">
               <Link to="/apply">
@@ -168,7 +168,7 @@ const Index = () => {
               Ready to Transform Your Fleet Operations?
             </h2>
             <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join hundreds of trucking companies that trust NexusTMS to manage their operations efficiently.
+              Join hundreds of trucking companies that trust NexusTech Solution to manage their operations efficiently.
             </p>
             <Link to="/auth">
               <Button size="lg" className="gap-2">
@@ -185,10 +185,10 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Truck className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-foreground">NexusTMS</span>
+              <span className="font-semibold text-foreground">NexusTech Solution</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} NexusTMS. All rights reserved.
+              © {new Date().getFullYear()} NexusTech Solution. All rights reserved.
             </p>
             <div className="flex gap-4">
               <Link to="/apply" className="text-sm text-muted-foreground hover:text-primary">

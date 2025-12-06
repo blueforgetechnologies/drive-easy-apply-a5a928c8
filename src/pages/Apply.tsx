@@ -69,7 +69,7 @@ const Apply = () => {
       {/* Footer */}
       <footer className="bg-card border-t mt-16 py-8">
         <div className="max-w-4xl mx-auto px-4 text-center text-muted-foreground text-sm">
-          <p>© {new Date().getFullYear()} NexusTMS. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} NexusTech Solution. All rights reserved.</p>
           <p className="mt-2">
             Questions? Contact us at{" "}
             <a href="mailto:hr@nexustechsolution.com" className="text-primary hover:underline">
