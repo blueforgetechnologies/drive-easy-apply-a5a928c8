@@ -4261,11 +4261,13 @@ export default function LoadHunterTab() {
                       <span>
                         {(() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
-                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
-                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'undecided' ? undecidedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'waitlist' ? waitlistMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
                             : activeFilter === 'missed' ? missedHistory.length
                             : filteredEmails.length;
-                          return `${Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - ${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems}`;
+                          return totalItems === 0 ? '0 - 0 of 0' : `${Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - ${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems}`;
                         })()}
                       </span>
                     </div>
@@ -4294,16 +4296,20 @@ export default function LoadHunterTab() {
                         className="h-8 w-8"
                         onClick={() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
-                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
-                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'undecided' ? undecidedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'waitlist' ? waitlistMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
                             : activeFilter === 'missed' ? missedHistory.length
                             : filteredEmails.length;
                           setCurrentPage(Math.min(Math.ceil(totalItems / itemsPerPage), currentPage + 1));
                         }}
                         disabled={(() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
-                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
-                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'undecided' ? undecidedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'waitlist' ? waitlistMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
                             : activeFilter === 'missed' ? missedHistory.length
                             : filteredEmails.length;
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
@@ -4317,16 +4323,20 @@ export default function LoadHunterTab() {
                         className="h-8 w-8"
                         onClick={() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
-                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
-                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'undecided' ? undecidedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'waitlist' ? waitlistMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
                             : activeFilter === 'missed' ? missedHistory.length
                             : filteredEmails.length;
                           setCurrentPage(Math.ceil(totalItems / itemsPerPage));
                         }}
                         disabled={(() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
-                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
-                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'undecided' ? undecidedMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'waitlist' ? waitlistMatches.filter((match: any) => match.load_emails || loadEmails.find(e => e.id === match.load_email_id)).length
                             : activeFilter === 'missed' ? missedHistory.length
                             : filteredEmails.length;
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
