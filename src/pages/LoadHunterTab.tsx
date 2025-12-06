@@ -27,6 +27,7 @@ interface Vehicle {
   id: string;
   vehicle_number: string | null;
   carrier: string | null;
+  bid_as: string | null;
   asset_type: string | null;
   asset_subtype: string | null;
   dimensions_length: number | null;
