@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -144,17 +143,28 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
         
         {/* FMCSA Lookup Section */}
         <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-          <Label className="text-sm font-medium">Search FMCSA by USDOT or MC</Label>
+          <Label className="text-sm font-medium">Search FMCSA</Label>
+          <div className="flex gap-1 mb-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={lookupType === "usdot" ? "default" : "outline"}
+              onClick={() => setLookupType("usdot")}
+              className="flex-1"
+            >
+              By USDOT
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={lookupType === "mc" ? "default" : "outline"}
+              onClick={() => setLookupType("mc")}
+              className="flex-1"
+            >
+              By MC
+            </Button>
+          </div>
           <div className="flex gap-2">
-            <Select value={lookupType} onValueChange={(val) => setLookupType(val as "usdot" | "mc")}>
-              <SelectTrigger className="w-[120px] bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="usdot">USDOT</SelectItem>
-                <SelectItem value="mc">MC</SelectItem>
-              </SelectContent>
-            </Select>
             <Input
               placeholder={lookupType === "usdot" ? "Enter USDOT number" : "Enter MC number"}
               value={lookupValue}
