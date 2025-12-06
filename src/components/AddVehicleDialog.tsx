@@ -227,7 +227,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
           <DialogTitle>Add New Asset</DialogTitle>
         </DialogHeader>
 
-        {/* VIN Lookup Section */}
         <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
           <Label className="text-sm font-medium">VIN Lookup (Free NHTSA Database)</Label>
           <div className="flex gap-2">
@@ -254,7 +253,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Basic Info */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="vehicle_number">Unit ID *</Label>
@@ -262,7 +260,7 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
                 id="vehicle_number"
                 value={formData.vehicle_number}
                 onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
-                placeholder="e.g., TAL-3, NATL-6"
+                placeholder="e.g., TAL-3"
                 required
               />
             </div>
@@ -294,7 +292,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
             </div>
           </div>
 
-          {/* Carrier, Payee, Dispatcher */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="carrier">Carrier</Label>
@@ -337,7 +334,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
             </div>
           </div>
 
-          {/* Vehicle Details */}
           <div className="grid grid-cols-4 gap-4">
             <div>
               <Label htmlFor="make">Make</Label>
@@ -382,12 +378,11 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
             </div>
           </div>
 
-          {/* Dimensions */}
           <div className="border rounded-lg p-4 space-y-3">
             <Label className="text-sm font-medium">Dimensions (inches)</Label>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="dimensions_length" className="text-xs text-muted-foreground">Length (L)</Label>
+                <Label htmlFor="dimensions_length" className="text-xs text-muted-foreground">Length</Label>
                 <Input
                   id="dimensions_length"
                   type="number"
@@ -397,7 +392,7 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="dimensions_width" className="text-xs text-muted-foreground">Width (W)</Label>
+                <Label htmlFor="dimensions_width" className="text-xs text-muted-foreground">Width</Label>
                 <Input
                   id="dimensions_width"
                   type="number"
@@ -407,7 +402,7 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="dimensions_height" className="text-xs text-muted-foreground">Height (H)</Label>
+                <Label htmlFor="dimensions_height" className="text-xs text-muted-foreground">Height</Label>
                 <Input
                   id="dimensions_height"
                   type="number"
@@ -419,7 +414,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
             </div>
           </div>
 
-          {/* Door Dimensions */}
           <div className="border rounded-lg p-4 space-y-3">
             <Label className="text-sm font-medium">Door Dimensions (inches)</Label>
             <div className="grid grid-cols-2 gap-4">
@@ -446,7 +440,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
             </div>
           </div>
 
-          {/* Payload, Clearance, Lift Gate */}
           <div className="grid grid-cols-4 gap-4">
             <div>
               <Label htmlFor="payload">Payload (lbs)</Label>
@@ -489,7 +482,6 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
             </div>
           </div>
 
-          {/* Toggles */}
           <div className="flex gap-8">
             <div className="flex items-center gap-2">
               <Switch
