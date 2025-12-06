@@ -4094,7 +4094,11 @@ export default function LoadHunterTab() {
                       <span>Items per page: {itemsPerPage}</span>
                       <span>
                         {(() => {
-                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length;
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'missed' ? missedHistory.length
+                            : filteredEmails.length;
                           return `${Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - ${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems}`;
                         })()}
                       </span>
@@ -4123,10 +4127,21 @@ export default function LoadHunterTab() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
-                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length;
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'missed' ? missedHistory.length
+                            : filteredEmails.length;
                           setCurrentPage(Math.min(Math.ceil(totalItems / itemsPerPage), currentPage + 1));
                         }}
-                        disabled={currentPage >= Math.ceil((activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length) / itemsPerPage)}
+                        disabled={(() => {
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'missed' ? missedHistory.length
+                            : filteredEmails.length;
+                          return currentPage >= Math.ceil(totalItems / itemsPerPage);
+                        })()}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -4135,10 +4150,21 @@ export default function LoadHunterTab() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
-                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length;
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'missed' ? missedHistory.length
+                            : filteredEmails.length;
                           setCurrentPage(Math.ceil(totalItems / itemsPerPage));
                         }}
-                        disabled={currentPage >= Math.ceil((activeFilter === 'unreviewed' ? filteredMatches.length : filteredEmails.length) / itemsPerPage)}
+                        disabled={(() => {
+                          const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
+                            : activeFilter === 'skipped' ? skippedMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'mybids' ? bidMatches.filter((match: any) => loadEmails.find(e => e.id === match.load_email_id)).length
+                            : activeFilter === 'missed' ? missedHistory.length
+                            : filteredEmails.length;
+                          return currentPage >= Math.ceil(totalItems / itemsPerPage);
+                        })()}
                       >
                         <ChevronsRight className="h-4 w-4" />
                       </Button>
