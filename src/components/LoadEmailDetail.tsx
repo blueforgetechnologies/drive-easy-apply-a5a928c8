@@ -3,9 +3,11 @@ import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft }
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 interface LoadEmailDetailProps {
   email: any;
@@ -34,6 +36,10 @@ const LoadEmailDetail = ({
   const [ccEmail, setCcEmail] = useState("");
   const [fullEmailData, setFullEmailData] = useState<any>(null);
   const [mobileSection, setMobileSection] = useState<'details' | 'map' | 'bid'>('details');
+  const [showEmailConfirmDialog, setShowEmailConfirmDialog] = useState(false);
+  const [bidConfirmed, setBidConfirmed] = useState(false);
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
+  const [currentDispatcher, setCurrentDispatcher] = useState<any>(null);
   const data = email.parsed_data || {};
 
   // Fetch full email data (including body_text) if not present in email prop
@@ -58,6 +64,34 @@ const LoadEmailDetail = ({
     };
     fetchFullEmail();
   }, [email.id, email.body_text, email.body_html]);
+
+  // Fetch company profile and current dispatcher for email signature
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        // Fetch company profile
+        const { data: profile } = await supabase
+          .from('company_profile')
+          .select('*')
+          .single();
+        if (profile) setCompanyProfile(profile);
+
+        // Fetch current user's dispatcher info
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          const { data: dispatcher } = await supabase
+            .from('dispatchers')
+            .select('*')
+            .ilike('email', user.email)
+            .single();
+          if (dispatcher) setCurrentDispatcher(dispatcher);
+        }
+      } catch (e) {
+        console.error('Error fetching profile data:', e);
+      }
+    };
+    fetchProfileData();
+  }, []);
 
   // Use fetched data or prop data
   const emailBody = fullEmailData?.body_html || fullEmailData?.body_text || email.body_html || email.body_text || "";
@@ -189,6 +223,122 @@ const LoadEmailDetail = ({
 
     resolveToEmail();
   }, [match, email.from_email, data.broker_email]);
+
+  // Dispatcher signature info for email
+  const dispatcherName = currentDispatcher 
+    ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` 
+    : 'Dispatcher Name';
+  const dispatcherEmailAddr = currentDispatcher?.email || 'dispatch@company.com';
+  const companyName = companyProfile?.company_name || 'COMPANY NAME';
+  const mcNumber = companyProfile?.mc_number || 'MC#';
+  const dotNumber = companyProfile?.dot_number || 'USDOT#';
+  const companyAddress = companyProfile 
+    ? `${companyProfile.address || ''} ${companyProfile.city || ''}, ${companyProfile.state || ''} ${companyProfile.zip || ''}`.trim()
+    : 'Company Address';
+  const companyPhone = companyProfile?.phone || '(000) 000-0000';
+  const emailSubject = `Order# ${data.order_number || 'N/A'} [${originState} to ${destState}] ${displaySize}${displayType} - $${bidAmount || '0'}`;
+
+  // Reusable Email Confirmation Dialog
+  const EmailConfirmDialog = (
+    <Dialog open={showEmailConfirmDialog} onOpenChange={(open) => {
+      setShowEmailConfirmDialog(open);
+      if (!open) setBidConfirmed(false);
+    }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Confirm Before Sending Bid!</DialogTitle>
+        </DialogHeader>
+        
+        <div className="flex gap-2 mb-4">
+          <Button 
+            className={`flex-1 flex flex-col items-center py-3 ${bidConfirmed ? 'bg-green-600 hover:bg-green-700' : 'bg-pink-500 hover:bg-pink-600'}`}
+            onClick={() => setBidConfirmed(true)}
+          >
+            <span>Confirm Bid</span>
+            <span className="text-xl font-bold">$ {bidAmount || '0'}</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            disabled={!bidConfirmed}
+            onClick={() => toast.success('Bid email sent!')}
+          >
+            Send Bid
+          </Button>
+          <Button 
+            className="flex-1 bg-red-500 hover:bg-red-600"
+            onClick={() => setShowEmailConfirmDialog(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+        
+        <div className="border rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-4">
+            <span className="font-semibold w-20">Mail To:</span>
+            <Input 
+              value={toEmail || ''} 
+              onChange={(e) => setToEmail(e.target.value)}
+              placeholder="Enter email address"
+              className="flex-1"
+            />
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <span className="font-semibold w-20">CC:</span>
+            <Input 
+              value={ccEmail} 
+              onChange={(e) => setCcEmail(e.target.value)}
+              placeholder="Add CC email (optional)"
+              className="flex-1"
+            />
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <span className="font-semibold w-20">Subject:</span>
+            <span>{emailSubject}</span>
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <span className="font-semibold w-20">Message:</span>
+            <div className="flex-1 space-y-1">
+              <span className="bg-yellow-300 px-1 font-bold">Rate: $ {bidAmount || '0'}</span><br />
+              <span className="bg-yellow-300 px-1 font-bold">MC#: {mcNumber}</span><br />
+              <span className="bg-yellow-300 px-1 font-bold">USDOT#: {dotNumber}</span>
+            </div>
+          </div>
+          
+          <div className="border-t pt-4 space-y-3 text-sm">
+            <p>Hello ,</p>
+            <p>I have a {displaySize}{displayType}.</p>
+            <p>Please let me know if I can help on this load:</p>
+            <p>Order Number: {data.order_number || 'N/A'} [{originState} to {destState}]</p>
+            
+            <div className="space-y-1 mt-4">
+              <p><strong>Truck Carries:</strong> {equipmentDetails}</p>
+              <p><strong>Truck Size:</strong> {truckDimensions}</p>
+              <p><strong>Door Type and Size:</strong> {doorDimensions}</p>
+              <p><strong>Truck Features:</strong> {vehicleFeatures}</p>
+            </div>
+            
+            <div className="mt-6 space-y-1">
+              <p className="font-bold">{dispatcherName}</p>
+              <p>Dispatch</p>
+              <p>{companyName}</p>
+              <p className="font-bold">MC#: {mcNumber} USDOT#: {dotNumber}</p>
+              <p>{companyAddress}</p>
+              <p>Cell: <strong>{companyPhone}</strong></p>
+              <p>Email: {dispatcherEmailAddr}</p>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-muted-foreground">Reference #: {match?.id ? match.id.slice(0, 8) : 'N/A'}-{email.id?.slice(0, 8) || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   // MOBILE LAYOUT
   if (isMobile) {
@@ -495,7 +645,11 @@ const LoadEmailDetail = ({
                   </div>
                 </Card>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button size="sm" className="bg-blue-500 hover:bg-blue-600">
+                  <Button 
+                    size="sm" 
+                    className="bg-blue-500 hover:bg-blue-600"
+                    onClick={() => setShowEmailConfirmDialog(true)}
+                  >
                     Email Bid
                   </Button>
                   <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
@@ -509,12 +663,14 @@ const LoadEmailDetail = ({
             </div>
           </div>
         )}
+        {EmailConfirmDialog}
       </div>
     );
   }
 
   // DESKTOP LAYOUT (original)
   return (
+    <>
     <div className="flex-1 overflow-auto relative">
       {/* Original Email Sidebar - Slides in from left */}
       {showOriginalEmail && (
@@ -912,7 +1068,11 @@ const LoadEmailDetail = ({
                         </div>
                         
                         <div className="flex gap-2 mt-3">
-                          <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-xs h-8">
+                          <Button 
+                            size="sm" 
+                            className="bg-blue-500 hover:bg-blue-600 text-xs h-8"
+                            onClick={() => setShowEmailConfirmDialog(true)}
+                          >
                             Email Bid
                           </Button>
                           <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs h-8">
@@ -975,6 +1135,8 @@ const LoadEmailDetail = ({
         </div>
       </div>
     </div>
+    {EmailConfirmDialog}
+    </>
   );
 };
 
