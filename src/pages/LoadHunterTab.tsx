@@ -2692,6 +2692,8 @@ export default function LoadHunterTab() {
               const missedCount = missedHistory.filter(m => m.vehicle_id === vehicle.id).length;
               // Calculate skipped count for this vehicle
               const skippedCount = skippedMatches.filter(m => m.vehicle_id === vehicle.id).length;
+              // Calculate bid count for this vehicle
+              const bidCount = bidMatches.filter(m => m.vehicle_id === vehicle.id).length;
               // Check if oil change is due (negative remaining miles)
               const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
               // Check if vehicle has active fault codes
@@ -2728,14 +2730,17 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
+                      {/* RED = Unreviewed */}
                       <div className="h-4 w-4 rounded-sm bg-red-500 flex items-center justify-center text-white text-[9px] font-medium">
                         {unreviewedCount}
                       </div>
+                      {/* ORANGE = Skipped */}
                       <div className="h-4 w-4 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[9px] font-medium">
-                        {missedCount}
-                      </div>
-                      <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
                         {skippedCount}
+                      </div>
+                      {/* BLUE = My Bids */}
+                      <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
+                        {bidCount}
                       </div>
                     </div>
                   </div>
