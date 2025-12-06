@@ -20,6 +20,7 @@ interface UserStats {
   unreviewed: number;
   skipped: number;
   missed: number;
+  bids: number;
 }
 
 interface UserWithStats extends UserPresence {
@@ -200,7 +201,7 @@ export function UserActivityTracker() {
               .ilike('email', profile.email)
               .maybeSingle();
 
-            let stats: UserStats = { unreviewed: 0, skipped: 0, missed: 0 };
+            let stats: UserStats = { unreviewed: 0, skipped: 0, missed: 0, bids: 0 };
 
             if (dispatcher) {
               // Get vehicles assigned to this dispatcher
@@ -217,6 +218,7 @@ export function UserActivityTracker() {
                   .from('load_hunt_matches')
                   .select('*', { count: 'exact', head: true })
                   .in('vehicle_id', vehicleIds)
+                  .eq('match_status', 'active')
                   .eq('is_active', true);
 
                 // Count skipped matches
@@ -224,7 +226,14 @@ export function UserActivityTracker() {
                   .from('load_hunt_matches')
                   .select('*', { count: 'exact', head: true })
                   .in('vehicle_id', vehicleIds)
-                  .eq('is_active', false);
+                  .eq('match_status', 'skipped');
+
+                // Count bid matches
+                const { count: bidCount } = await supabase
+                  .from('load_hunt_matches')
+                  .select('*', { count: 'exact', head: true })
+                  .in('vehicle_id', vehicleIds)
+                  .eq('match_status', 'bid');
 
                 // Count missed loads from missed_loads_history table - same source as Missed filter
                 // Query by vehicle_id since dispatcher_id may not be populated
@@ -237,6 +246,7 @@ export function UserActivityTracker() {
                   unreviewed: unreviewedCount || 0,
                   skipped: skippedCount || 0,
                   missed: missedCount || 0,
+                  bids: bidCount || 0,
                 };
               }
             }
@@ -257,7 +267,7 @@ export function UserActivityTracker() {
               fullName: profile.full_name || profile.email.split('@')[0],
               lastActivity: userLoginMap.get(profile.id) || new Date(),
               isOnline: onlineUserIds.has(profile.id),
-              stats: { unreviewed: 0, skipped: 0, missed: 0 },
+              stats: { unreviewed: 0, skipped: 0, missed: 0, bids: 0 },
             };
           }
         })
@@ -396,6 +406,12 @@ export function UserActivityTracker() {
                         >
                           {user.stats.missed} missed
                         </Badge>
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30"
+                        >
+                          {user.stats.bids} bids
+                        </Badge>
                       </div>
                     </div>
                   ))}
@@ -484,6 +500,12 @@ export function UserActivityTracker() {
                         className="text-xs bg-red-500/10 text-red-600 border-red-500/30"
                       >
                         {user.stats.missed} missed
+                      </Badge>
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30"
+                      >
+                        {user.stats.bids} bids
                       </Badge>
                     </div>
                   </div>
