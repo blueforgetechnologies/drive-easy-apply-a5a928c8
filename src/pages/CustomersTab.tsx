@@ -33,6 +33,7 @@ interface Customer {
   notes: string | null;
   mc_number: string | null;
   dot_number: string | null;
+  factoring_approval: string | null;
 }
 
 export default function CustomersTab() {
@@ -82,6 +83,7 @@ export default function CustomersTab() {
     notes: "",
     mc_number: "",
     dot_number: "",
+    factoring_approval: "pending",
   });
 
   useEffect(() => {
@@ -164,6 +166,7 @@ export default function CustomersTab() {
       notes: customer.notes || "",
       mc_number: customer.mc_number || "",
       dot_number: customer.dot_number || "",
+      factoring_approval: customer.factoring_approval || "pending",
     });
     setUsdotLookup(customer.dot_number || "");
     setDialogOpen(true);
@@ -220,6 +223,7 @@ export default function CustomersTab() {
       notes: "",
       mc_number: "",
       dot_number: "",
+      factoring_approval: "pending",
     });
   };
 
@@ -347,7 +351,23 @@ export default function CustomersTab() {
                     placeholder="MC-XXXXXX"
                   />
                 </div>
-                <div className="col-span-2">
+                <div>
+                  <Label htmlFor="factoring_approval">Factoring Approval</Label>
+                  <Select 
+                    value={formData.factoring_approval} 
+                    onValueChange={(value) => setFormData({ ...formData, factoring_approval: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="not_approved">Not Approved</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="name">Company Name *</Label>
                   <Input
                     id="name"
@@ -566,6 +586,7 @@ export default function CustomersTab() {
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Factoring approval<br/>MC Number</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Company Name</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Contact</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
@@ -609,6 +630,21 @@ export default function CustomersTab() {
                               <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-1 px-2">
+                        <div className="flex flex-col">
+                          <span className={`text-xs font-medium ${
+                            customer.factoring_approval === 'approved' 
+                              ? 'text-green-600' 
+                              : customer.factoring_approval === 'not_approved'
+                              ? 'text-red-600'
+                              : 'text-orange-500'
+                          }`}>
+                            {customer.factoring_approval === 'approved' ? 'Approved' : 
+                             customer.factoring_approval === 'not_approved' ? 'Not Approved' : 'Pending'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{customer.mc_number || '—'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
