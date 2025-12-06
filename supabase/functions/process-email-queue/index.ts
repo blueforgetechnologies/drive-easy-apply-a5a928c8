@@ -550,6 +550,7 @@ serve(async (req) => {
           vehicle_id: hunt.vehicle_id,
           distance_miles: Math.round(distance),
           is_active: true,
+          match_status: 'active',
           matched_at: new Date().toISOString(),
         });
       }
