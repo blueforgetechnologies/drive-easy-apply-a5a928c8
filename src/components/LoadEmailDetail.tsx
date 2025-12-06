@@ -21,6 +21,7 @@ interface LoadEmailDetailProps {
   onUndecided?: (matchId: string) => void;
   onSkip?: (matchId: string) => Promise<void> | void;
   onWait?: (matchId: string) => Promise<void> | void;
+  onMarkUnreviewed?: (matchId: string) => Promise<void> | void;
 }
 
 const LoadEmailDetail = ({
@@ -34,7 +35,8 @@ const LoadEmailDetail = ({
   onBidPlaced,
   onUndecided,
   onSkip,
-  onWait
+  onWait,
+  onMarkUnreviewed
 }: LoadEmailDetailProps) => {
   const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -240,6 +242,47 @@ const LoadEmailDetail = ({
       onClose();
     } catch (error) {
       console.error("Error setting wait status:", error);
+    }
+  };
+
+  // Handle Mark Unreviewed button click - restores match back to active/unreviewed
+  // Only allowed within 40 minutes of original matched_at timestamp
+  const handleMarkUnreviewed = async () => {
+    try {
+      if (!match?.id) {
+        console.error("No match ID available for mark unreviewed");
+        return;
+      }
+
+      // Check if 40 minutes have passed since matched_at
+      const matchedAt = new Date(match.matched_at);
+      const now = new Date();
+      const minutesSinceMatch = (now.getTime() - matchedAt.getTime()) / (1000 * 60);
+
+      if (minutesSinceMatch >= 40) {
+        toast.error("Cannot restore to unreviewed - 40 minute window has passed");
+        return;
+      }
+
+      // Update database - set back to active status
+      const { error } = await supabase
+        .from("load_hunt_matches")
+        .update({ is_active: true, match_status: 'active' })
+        .eq("id", match.id);
+
+      if (error) throw error;
+      
+      toast.success("Match restored to unreviewed");
+      
+      // Notify parent to refresh data
+      if (onMarkUnreviewed) {
+        await onMarkUnreviewed(match.id);
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("Error marking as unreviewed:", error);
+      toast.error("Failed to restore match");
     }
   };
 
@@ -670,7 +713,7 @@ const LoadEmailDetail = ({
                 <Button className="bg-blue-500 hover:bg-blue-600" onClick={handleWait}>
                   Wait
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleMarkUnreviewed}>
                   Mark Unreviewed
                 </Button>
               </div>
@@ -1080,7 +1123,7 @@ const LoadEmailDetail = ({
                   <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleUndecided}>
                     Undecided
                   </Button>
-                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium">
+                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleMarkUnreviewed}>
                     Mark Unreviewed
                   </Button>
                   <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleWait}>

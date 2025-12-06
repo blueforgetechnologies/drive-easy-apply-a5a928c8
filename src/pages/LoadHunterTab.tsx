@@ -2426,6 +2426,12 @@ export default function LoadHunterTab() {
                   await loadHuntMatches();
                   await loadUnreviewedMatches();
                 }}
+                onMarkUnreviewed={async () => {
+                  setMatchActionTaken(true);
+                  matchActionTakenRef.current = true;
+                  await loadHuntMatches();
+                  await loadUnreviewedMatches();
+                }}
               />
             </DialogContent>
           </Dialog>
@@ -3631,6 +3637,12 @@ export default function LoadHunterTab() {
               await loadUnreviewedMatches();
             }}
             onWait={async () => {
+              setMatchActionTaken(true);
+              matchActionTakenRef.current = true;
+              await loadHuntMatches();
+              await loadUnreviewedMatches();
+            }}
+            onMarkUnreviewed={async () => {
               setMatchActionTaken(true);
               matchActionTakenRef.current = true;
               await loadHuntMatches();
