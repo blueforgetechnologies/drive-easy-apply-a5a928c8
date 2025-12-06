@@ -2669,6 +2669,7 @@ export type Database = {
           load_email_id: string | null
           load_id: string | null
           match_id: string | null
+          match_status: string | null
           matched_at: string | null
           parsed_data: Json | null
           pickup_radius: string | null
