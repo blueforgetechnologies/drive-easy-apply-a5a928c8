@@ -18,6 +18,7 @@ interface LoadEmailDetailProps {
   carriersMap?: Record<string, string>;
   onClose: () => void;
   onBidPlaced?: (matchId: string, loadEmailId: string) => void;
+  onUndecided?: (matchId: string) => void;
 }
 
 const LoadEmailDetail = ({
@@ -28,7 +29,8 @@ const LoadEmailDetail = ({
   drivers = [],
   carriersMap = {},
   onClose,
-  onBidPlaced
+  onBidPlaced,
+  onUndecided
 }: LoadEmailDetailProps) => {
   const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -194,6 +196,14 @@ const LoadEmailDetail = ({
     } catch (error) {
       console.error("Error skipping match:", error);
     }
+  };
+
+  // Handle Undecided button click - moves match to undecided status
+  const handleUndecided = () => {
+    if (match?.id && onUndecided) {
+      onUndecided(match.id);
+    }
+    onClose();
   };
 
   // Ensure we use the broker_email from parsed_data for the bid email
@@ -617,7 +627,7 @@ const LoadEmailDetail = ({
                 <Button variant="destructive" onClick={handleSkip}>
                   Skip
                 </Button>
-                <Button className="bg-blue-500 hover:bg-blue-600">
+                <Button className="bg-blue-500 hover:bg-blue-600" onClick={handleUndecided}>
                   Undecided
                 </Button>
                 <Button className="bg-blue-500 hover:bg-blue-600">
@@ -1030,7 +1040,7 @@ const LoadEmailDetail = ({
                   >
                     Skip
                   </Button>
-                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium">
+                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleUndecided}>
                     Undecided
                   </Button>
                   <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium">
