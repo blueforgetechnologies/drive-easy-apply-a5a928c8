@@ -75,11 +75,13 @@ const LoadEmailDetail = ({
     fetchFullEmail();
   }, [email.id, email.body_text, email.body_html]);
 
-  // Fetch company profile and current dispatcher for email signature
+  const [bidAsCarrier, setBidAsCarrier] = useState<any>(null);
+
+  // Fetch company profile, current dispatcher, and bid_as carrier for email signature
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        // Fetch company profile
+        // Fetch company profile (fallback)
         const { data: profile } = await supabase
           .from('company_profile')
           .select('*')
@@ -113,6 +115,27 @@ const LoadEmailDetail = ({
 
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
+  
+  // Fetch the carrier from the vehicle's bid_as field
+  useEffect(() => {
+    const fetchBidAsCarrier = async () => {
+      if (vehicle?.bid_as) {
+        try {
+          const { data: carrier, error } = await supabase
+            .from('carriers')
+            .select('*')
+            .eq('id', vehicle.bid_as)
+            .single();
+          if (!error && carrier) {
+            setBidAsCarrier(carrier);
+          }
+        } catch (e) {
+          console.error('Error fetching bid_as carrier:', e);
+        }
+      }
+    };
+    fetchBidAsCarrier();
+  }, [vehicle?.bid_as]);
   
   // Use asset's Vehicle Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
   const truckLengthFeet = vehicle?.dimensions_length;
@@ -316,18 +339,21 @@ const LoadEmailDetail = ({
     resolveToEmail();
   }, [match, email.from_email, data.broker_email]);
 
-  // Dispatcher signature info for email
+  // Dispatcher signature info for email - use bid_as carrier if available, fallback to company_profile
   const dispatcherName = currentDispatcher 
     ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` 
     : 'Dispatcher Name';
   const dispatcherEmailAddr = currentDispatcher?.email || 'dispatch@company.com';
-  const companyName = companyProfile?.company_name || 'COMPANY NAME';
-  const mcNumber = companyProfile?.mc_number || 'MC#';
-  const dotNumber = companyProfile?.dot_number || 'USDOT#';
-  const companyAddress = companyProfile 
-    ? `${companyProfile.address || ''} ${companyProfile.city || ''}, ${companyProfile.state || ''} ${companyProfile.zip || ''}`.trim()
-    : 'Company Address';
-  const companyPhone = companyProfile?.phone || '(000) 000-0000';
+  // Use bid_as carrier info first, then fallback to company_profile
+  const companyName = bidAsCarrier?.name || companyProfile?.company_name || 'COMPANY NAME';
+  const mcNumber = bidAsCarrier?.mc_number || companyProfile?.mc_number || 'MC#';
+  const dotNumber = bidAsCarrier?.dot_number || companyProfile?.dot_number || 'USDOT#';
+  const companyAddress = bidAsCarrier?.address 
+    ? bidAsCarrier.address 
+    : (companyProfile 
+      ? `${companyProfile.address || ''} ${companyProfile.city || ''}, ${companyProfile.state || ''} ${companyProfile.zip || ''}`.trim()
+      : 'Company Address');
+  const companyPhone = bidAsCarrier?.phone || companyProfile?.phone || '(000) 000-0000';
   const emailSubject = `Order# ${data.order_number || 'N/A'} [${originState} to ${destState}] ${displaySize}${displayType} - $${bidAmount || '0'}`;
 
   const [isSending, setIsSending] = useState(false);
