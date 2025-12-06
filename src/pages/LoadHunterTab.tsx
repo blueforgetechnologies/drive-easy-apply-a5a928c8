@@ -4071,7 +4071,7 @@ export default function LoadHunterTab() {
                                   // Get broker info from parsed data
                                   const brokerName = data.broker || data.customer || email.from_name || email.from_email.split('@')[0];
                                   
-                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids') && match) {
+                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
                                     if (vehicle) {
