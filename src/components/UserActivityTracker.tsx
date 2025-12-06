@@ -485,25 +485,25 @@ export function UserActivityTracker() {
                     <div className="flex flex-wrap gap-1 mt-1">
                       <Badge 
                         variant="outline" 
-                        className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30"
+                        className="text-[11px] px-1.5 py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-500/30"
                       >
                         {user.stats.unreviewed} unrev
                       </Badge>
                       <Badge 
                         variant="outline" 
-                        className="text-[10px] px-1.5 py-0 h-4 bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
+                        className="text-[11px] px-1.5 py-0 h-5 bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
                       >
                         {user.stats.skipped} skip
                       </Badge>
                       <Badge 
                         variant="outline" 
-                        className="text-[10px] px-1.5 py-0 h-4 bg-red-500/10 text-red-600 border-red-500/30"
+                        className="text-[11px] px-1.5 py-0 h-5 bg-red-500/10 text-red-600 border-red-500/30"
                       >
                         {user.stats.missed} miss
                       </Badge>
                       <Badge 
                         variant="outline" 
-                        className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30"
+                        className="text-[11px] px-1.5 py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-500/30"
                       >
                         {user.stats.bids} bids
                       </Badge>
