@@ -238,6 +238,65 @@ const LoadEmailDetail = ({
   const companyPhone = companyProfile?.phone || '(000) 000-0000';
   const emailSubject = `Order# ${data.order_number || 'N/A'} [${originState} to ${destState}] ${displaySize}${displayType} - $${bidAmount || '0'}`;
 
+  const [isSending, setIsSending] = useState(false);
+
+  // Handle sending bid email
+  const handleSendBid = async () => {
+    if (!toEmail) {
+      toast.error('Please enter a recipient email address');
+      return;
+    }
+    if (!bidAmount) {
+      toast.error('Please enter a bid amount');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('send-bid-email', {
+        body: {
+          to: toEmail,
+          cc: ccEmail || undefined,
+          from_email: dispatcherEmailAddr,
+          from_name: dispatcherName,
+          subject: emailSubject,
+          bid_amount: bidAmount,
+          mc_number: mcNumber,
+          dot_number: dotNumber,
+          order_number: data.order_number || 'N/A',
+          origin_state: originState,
+          dest_state: destState,
+          vehicle_size: displaySize,
+          vehicle_type: displayType,
+          equipment_details: equipmentDetails,
+          truck_dimensions: truckDimensions,
+          door_dimensions: doorDimensions,
+          truck_features: vehicleFeatures,
+          dispatcher_name: dispatcherName,
+          company_name: companyName,
+          company_address: companyAddress,
+          company_phone: companyPhone,
+          reference_id: `${match?.id ? match.id.slice(0, 8) : 'N/A'}-${email.id?.slice(0, 8) || 'N/A'}`,
+        },
+      });
+
+      if (error) {
+        console.error('Error sending bid email:', error);
+        toast.error(`Failed to send bid email: ${error.message}`);
+        return;
+      }
+
+      toast.success('Bid email sent successfully!');
+      setShowEmailConfirmDialog(false);
+      setBidConfirmed(false);
+    } catch (err: any) {
+      console.error('Error sending bid email:', err);
+      toast.error(`Failed to send bid email: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   // Reusable Email Confirmation Dialog
   const EmailConfirmDialog = (
     <Dialog open={showEmailConfirmDialog} onOpenChange={(open) => {
@@ -260,14 +319,15 @@ const LoadEmailDetail = ({
           <Button 
             variant="outline" 
             className="flex-1"
-            disabled={!bidConfirmed}
-            onClick={() => toast.success('Bid email sent!')}
+            disabled={!bidConfirmed || isSending}
+            onClick={handleSendBid}
           >
-            Send Bid
+            {isSending ? 'Sending...' : 'Send Bid'}
           </Button>
           <Button 
             className="flex-1 bg-red-500 hover:bg-red-600"
             onClick={() => setShowEmailConfirmDialog(false)}
+            disabled={isSending}
           >
             Cancel
           </Button>

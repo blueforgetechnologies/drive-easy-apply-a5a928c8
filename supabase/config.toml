@@ -77,3 +77,6 @@ verify_jwt = true
 
 [functions.fetch-highway-data]
 verify_jwt = false
+
+[functions.send-bid-email]
+verify_jwt = true
