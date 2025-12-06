@@ -87,8 +87,8 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-muted p-4">
+      <Card className="w-full max-w-md border shadow-lg">
         <CardHeader>
           <CardTitle>{isLogin ? "Login" : "Sign Up"}</CardTitle>
           <CardDescription>
