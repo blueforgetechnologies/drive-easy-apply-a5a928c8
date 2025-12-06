@@ -426,32 +426,32 @@ export function UserActivityTracker() {
 
   // DESKTOP: Original floating card
   return (
-    <Card className="absolute bottom-4 right-4 w-80 z-50 shadow-lg border-border/50 bg-card/95 backdrop-blur-sm">
+    <Card className="absolute bottom-4 right-4 w-72 z-50 shadow-lg border-border/50 bg-card/95 backdrop-blur-sm">
       <CardHeader 
-        className="py-2 px-3 cursor-pointer flex flex-row items-center justify-between"
+        className="py-1.5 px-2 cursor-pointer flex flex-row items-center justify-between"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" />
-          <CardTitle className="text-sm font-medium">Team Activity</CardTitle>
-          <Badge variant="secondary" className="text-xs">
+        <div className="flex items-center gap-1.5">
+          <Users className="h-3.5 w-3.5 text-primary" />
+          <CardTitle className="text-xs font-medium">Team Activity</CardTitle>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
             {onlineCount} online
           </Badge>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6">
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        <Button variant="ghost" size="icon" className="h-5 w-5">
+          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
         </Button>
       </CardHeader>
       
       {isExpanded && (
         <CardContent className="p-0">
-          <ScrollArea className="h-64">
+          <ScrollArea className="h-48">
             {loading ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Loading team activity...
+              <div className="p-2 text-center text-xs text-muted-foreground">
+                Loading...
               </div>
             ) : users.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-2 text-center text-xs text-muted-foreground">
                 No team members logged in today
               </div>
             ) : (
@@ -459,53 +459,53 @@ export function UserActivityTracker() {
                 {users.map((user) => (
                   <div 
                     key={user.id} 
-                    className={`p-3 hover:bg-muted/50 transition-colors ${
+                    className={`px-2 py-1.5 hover:bg-muted/50 transition-colors ${
                       user.id === currentUserId ? 'bg-primary/5' : ''
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
                         <Circle 
-                          className={`h-2 w-2 ${
+                          className={`h-1.5 w-1.5 ${
                             user.isOnline ? 'fill-green-500 text-green-500' : 'fill-muted text-muted'
                           }`} 
                         />
-                        <span className="text-sm font-medium truncate max-w-[140px]">
+                        <span className="text-xs font-medium truncate max-w-[100px]">
                           {user.fullName}
                           {user.id === currentUserId && (
-                            <span className="text-xs text-muted-foreground ml-1">(you)</span>
+                            <span className="text-[10px] text-muted-foreground ml-0.5">(you)</span>
                           )}
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground">
                         {user.isOnline ? 'Active' : formatLastActivity(user.lastActivity)}
                       </span>
                     </div>
                     
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-1 mt-1">
                       <Badge 
                         variant="outline" 
-                        className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30"
+                        className="text-[10px] px-1 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30"
                       >
-                        {user.stats.unreviewed} unreviewed
+                        {user.stats.unreviewed}
                       </Badge>
                       <Badge 
                         variant="outline" 
-                        className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
+                        className="text-[10px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
                       >
-                        {user.stats.skipped} skipped
+                        {user.stats.skipped}
                       </Badge>
                       <Badge 
                         variant="outline" 
-                        className="text-xs bg-red-500/10 text-red-600 border-red-500/30"
+                        className="text-[10px] px-1 py-0 h-4 bg-red-500/10 text-red-600 border-red-500/30"
                       >
-                        {user.stats.missed} missed
+                        {user.stats.missed}
                       </Badge>
                       <Badge 
                         variant="outline" 
-                        className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30"
+                        className="text-[10px] px-1 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30"
                       >
-                        {user.stats.bids} bids
+                        {user.stats.bids}
                       </Badge>
                     </div>
                   </div>
