@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -143,16 +144,17 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
         
         {/* FMCSA Lookup Section */}
         <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-          <Label className="text-sm font-medium">Search by USDOT or MC Number</Label>
+          <Label className="text-sm font-medium">Search FMCSA by USDOT or MC</Label>
           <div className="flex gap-2">
-            <select
-              value={lookupType}
-              onChange={(e) => setLookupType(e.target.value as "usdot" | "mc")}
-              className="px-3 py-2 border rounded-md bg-background text-sm"
-            >
-              <option value="usdot">USDOT</option>
-              <option value="mc">MC</option>
-            </select>
+            <Select value={lookupType} onValueChange={(val) => setLookupType(val as "usdot" | "mc")}>
+              <SelectTrigger className="w-[120px] bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="usdot">USDOT</SelectItem>
+                <SelectItem value="mc">MC</SelectItem>
+              </SelectContent>
+            </Select>
             <Input
               placeholder={lookupType === "usdot" ? "Enter USDOT number" : "Enter MC number"}
               value={lookupValue}
@@ -163,7 +165,6 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
               type="button" 
               onClick={handleLookup} 
               disabled={lookupLoading}
-              variant="secondary"
             >
               <Search className="h-4 w-4 mr-2" />
               {lookupLoading ? "Searching..." : "Search"}
