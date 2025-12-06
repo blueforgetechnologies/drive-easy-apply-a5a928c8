@@ -576,7 +576,7 @@ const LoadEmailDetail = ({
             <p>Hello ,</p>
             <p>I have a {displaySize}{displayType}.</p>
             <p>Please let me know if I can help on this load:</p>
-            <p>Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}</p>
+            <p>Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
             
             <div className="space-y-1 mt-4">
               <p><strong>Truck Carries:</strong> {equipmentDetails}</p>
@@ -909,7 +909,7 @@ const LoadEmailDetail = ({
                   <p>Hello,</p>
                   <p>I have a {displaySize}{displayType}.</p>
                   <p className="text-blue-600">Please let me know if I can help on this load:</p>
-                  <p className="text-blue-600">Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}</p>
+                  <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
                     <p><strong>We have:</strong> {equipmentDetails}</p>
                     <p><strong>Truck Dimension:</strong> {truckDimensions}</p>
@@ -1319,7 +1319,7 @@ const LoadEmailDetail = ({
                          <p>Hello ,</p>
                         <p>I have a {displaySize}{displayType}.</p>
                          <p className="text-blue-600">Please let me know if I can help on this load:</p>
-                        <p className="text-blue-600">Order# {data.order_number || 'N/A'} [{originState} to {destState}] {displaySize}{displayType} - ${bidAmount || '0'}</p>
+                        <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
                         
                         <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">
                           <div><strong>We have:</strong> {equipmentDetails}</div>
