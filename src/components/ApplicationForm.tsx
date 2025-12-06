@@ -190,7 +190,7 @@ export const ApplicationForm = () => {
                 Step {currentStep} of {steps.length}
               </span>
             </div>
-            <Progress value={progress} className="mb-4" />
+            <Progress value={progress} className="mb-4" aria-label={`Application progress: step ${currentStep} of ${steps.length}`} />
             
             {/* Step Indicators */}
             <div className="flex justify-between">
