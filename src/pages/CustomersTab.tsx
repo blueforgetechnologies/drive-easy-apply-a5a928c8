@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMerge } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -304,6 +304,15 @@ export default function CustomersTab() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold">Customers</h2>
         <div className="flex gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => navigate("/dashboard/duplicate-customers")}
+          >
+            <GitMerge className="h-3.5 w-3.5" />
+            Merge Duplicates
+          </Button>
           <Button
             variant="outline"
             size="sm"
