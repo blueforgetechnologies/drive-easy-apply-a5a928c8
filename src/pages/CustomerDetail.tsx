@@ -54,10 +54,12 @@ export default function CustomerDetail() {
   const [saving, setSaving] = useState(false);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [usdotLookup, setUsdotLookup] = useState("");
+  const [mcLookup, setMcLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupDialogOpen, setLookupDialogOpen] = useState(false);
   const [lookupResult, setLookupResult] = useState<FMCSAResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
 
   useEffect(() => {
     loadCustomer();
@@ -74,6 +76,7 @@ export default function CustomerDetail() {
       if (error) throw error;
       setCustomer(data);
       setUsdotLookup(data.dot_number || "");
+      setMcLookup(data.mc_number || "");
     } catch (error: any) {
       toast.error("Failed to load customer details");
       console.error(error);
@@ -136,6 +139,7 @@ export default function CustomerDetail() {
     setLookupLoading(true);
     setLookupResult(null);
     setLookupError(null);
+    setLookupType("usdot");
     
     try {
       const response = await fetch(
@@ -157,6 +161,57 @@ export default function CustomerDetail() {
       }
 
       const data = await response.json();
+      if (data.error) {
+        setLookupError(data.error);
+        setLookupDialogOpen(true);
+        return;
+      }
+      setLookupResult(data);
+      setLookupDialogOpen(true);
+    } catch (error: any) {
+      setLookupError(error.message || "Failed to fetch FMCSA data");
+      setLookupDialogOpen(true);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const handleMcLookup = async () => {
+    if (!mcLookup.trim()) {
+      toast.error("Please enter an MC number");
+      return;
+    }
+
+    setLookupLoading(true);
+    setLookupResult(null);
+    setLookupError(null);
+    setLookupType("mc");
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ mc: mcLookup }),
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        setLookupError(error.error || "Company not found in FMCSA database");
+        setLookupDialogOpen(true);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        setLookupError(data.error);
+        setLookupDialogOpen(true);
+        return;
+      }
       setLookupResult(data);
       setLookupDialogOpen(true);
     } catch (error: any) {
@@ -173,10 +228,12 @@ export default function CustomerDetail() {
         ...customer,
         name: lookupResult.dba_name || lookupResult.name || customer.name,
         mc_number: lookupResult.mc_number || customer.mc_number,
-        dot_number: lookupResult.usdot || usdotLookup,
+        dot_number: lookupResult.usdot || customer.dot_number,
         phone: lookupResult.phone || customer.phone,
         address: lookupResult.physical_address || customer.address,
       });
+      setUsdotLookup(lookupResult.usdot || usdotLookup);
+      setMcLookup(lookupResult.mc_number || mcLookup);
       toast.success("Company information applied");
     }
     setLookupDialogOpen(false);
@@ -329,13 +386,25 @@ export default function CustomerDetail() {
               </div>
             </div>
 
-            <div>
-              <Label>MC Number</Label>
-              <Input
-                value={customer.mc_number || ""}
-                onChange={(e) => updateField("mc_number", e.target.value)}
-                placeholder="MC-XXXXXX"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>MC Number</Label>
+                <Input
+                  value={mcLookup}
+                  onChange={(e) => setMcLookup(e.target.value)}
+                  placeholder="Enter MC Number"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  onClick={handleMcLookup} 
+                  disabled={lookupLoading}
+                  className="w-full bg-blue-500 hover:bg-blue-600"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  {lookupLoading && lookupType === "mc" ? "Searching..." : "Search FMCSA"}
+                </Button>
+              </div>
             </div>
 
             <div>
@@ -483,7 +552,7 @@ export default function CustomerDetail() {
             <div className="py-4">
               <p className="text-muted-foreground">{lookupError}</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Please verify the USDOT number and try again.
+                Please verify the {lookupType === "mc" ? "MC" : "USDOT"} number and try again.
               </p>
             </div>
           ) : lookupResult && (
