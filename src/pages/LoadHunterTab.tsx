@@ -1387,11 +1387,13 @@ export default function LoadHunterTab() {
   };
 
   // Check for matches that are 15+ minutes old and create copies in missed_loads_history
+  // ONLY for matches with match_status = 'active' (not skipped, bid, waitlist, undecided)
   const checkAndMarkMissedLoads = async () => {
     try {
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
       
-      // Get active matches that are older than 15 minutes
+      // Get active matches that are older than 15 minutes AND have not been acted upon
+      // Excludes: skipped, bid, waitlist, undecided matches
       const { data: oldMatches, error: matchError } = await supabase
         .from('load_hunt_matches')
         .select(`
@@ -1400,14 +1402,17 @@ export default function LoadHunterTab() {
           hunt_plan_id,
           vehicle_id,
           matched_at,
+          match_status,
           load_emails!inner (
             id,
             from_email,
             subject,
-            received_at
+            received_at,
+            status
           )
         `)
         .eq('is_active', true)
+        .eq('match_status', 'active')  // Only consider truly unacted matches
         .lt('matched_at', fifteenMinutesAgo);
 
       if (matchError) {
@@ -1415,12 +1420,19 @@ export default function LoadHunterTab() {
         return;
       }
 
-      if (!oldMatches || oldMatches.length === 0) {
+      // Filter out matches where the email has been acted upon (waitlist, undecided, etc.)
+      const unactedMatches = (oldMatches || []).filter(m => {
+        const emailStatus = (m.load_emails as any)?.status;
+        // Only consider for missed if email status is 'new' (not waitlist, undecided, skipped, etc.)
+        return emailStatus === 'new';
+      });
+
+      if (unactedMatches.length === 0) {
         return;
       }
 
       // Check which matches are already in missed_loads_history
-      const matchIds = oldMatches.map(m => m.id);
+      const matchIds = unactedMatches.map(m => m.id);
       const { data: existingMissed } = await supabase
         .from('missed_loads_history')
         .select('match_id')
@@ -1429,7 +1441,7 @@ export default function LoadHunterTab() {
       const existingMatchIds = new Set(existingMissed?.map(m => m.match_id) || []);
       
       // Filter to only matches not already in history
-      const newMissedMatches = oldMatches.filter(m => !existingMatchIds.has(m.id));
+      const newMissedMatches = unactedMatches.filter(m => !existingMatchIds.has(m.id));
 
       if (newMissedMatches.length === 0) {
         return;
