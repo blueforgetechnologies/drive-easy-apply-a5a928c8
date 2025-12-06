@@ -6,20 +6,84 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// HMAC-SHA256 signature verification
+async function verifySignature(payload: string, signature: string | null, secret: string): Promise<boolean> {
+  if (!signature) {
+    console.error('Missing X-Samsara-Signature header');
+    return false;
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+    const expectedSignature = Array.from(new Uint8Array(signatureBytes))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Constant-time comparison to prevent timing attacks
+    if (signature.length !== expectedSignature.length) {
+      return false;
+    }
+    
+    let result = 0;
+    for (let i = 0; i < signature.length; i++) {
+      result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+    }
+    
+    return result === 0;
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Get the webhook secret (using the same API key)
+    const webhookSecret = Deno.env.get('SAMSARA_API_KEY');
+    
+    if (!webhookSecret) {
+      console.error('SAMSARA_API_KEY not configured');
+      return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Read the raw body for signature verification
+    const rawBody = await req.text();
+    const signature = req.headers.get('X-Samsara-Signature');
+    
+    // Verify webhook signature
+    const isValid = await verifySignature(rawBody, signature, webhookSecret);
+    if (!isValid) {
+      console.error('Invalid webhook signature');
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse webhook payload
-    const payload = await req.json();
-    console.log('Received Samsara webhook:', JSON.stringify(payload, null, 2));
+    const payload = JSON.parse(rawBody);
+    console.log('Received verified Samsara webhook:', JSON.stringify(payload, null, 2));
 
     // Handle EngineFaultOn event
     if (payload.eventType === 'EngineFaultOn') {
