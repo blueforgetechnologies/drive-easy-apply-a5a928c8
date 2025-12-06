@@ -122,7 +122,7 @@ Reference #: ${data.reference_id}
     }
 
     const emailPayload: any = {
-      from: `${data.from_name} <${normalizedFromEmail}>`,
+      from: `${data.company_name} <${normalizedFromEmail}>`,
       to: [data.to],
       subject: data.subject,
       html: htmlBody,
