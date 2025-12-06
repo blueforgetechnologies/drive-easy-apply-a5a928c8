@@ -432,6 +432,7 @@ export type Database = {
           dot_number: string | null
           email: string | null
           email_secondary: string | null
+          factoring_approval: string | null
           id: string
           mc_number: string | null
           name: string
@@ -455,6 +456,7 @@ export type Database = {
           dot_number?: string | null
           email?: string | null
           email_secondary?: string | null
+          factoring_approval?: string | null
           id?: string
           mc_number?: string | null
           name: string
@@ -478,6 +480,7 @@ export type Database = {
           dot_number?: string | null
           email?: string | null
           email_secondary?: string | null
+          factoring_approval?: string | null
           id?: string
           mc_number?: string | null
           name?: string

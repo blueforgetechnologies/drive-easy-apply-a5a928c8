@@ -32,6 +32,7 @@ interface CustomerData {
   notes: string | null;
   mc_number: string | null;
   dot_number: string | null;
+  factoring_approval: string | null;
 }
 
 export default function CustomerDetail() {
@@ -92,6 +93,7 @@ export default function CustomerDetail() {
           notes: customer.notes,
           mc_number: customer.mc_number,
           dot_number: customer.dot_number,
+          factoring_approval: customer.factoring_approval,
         })
         .eq("id", id);
 
@@ -301,6 +303,23 @@ export default function CustomerDetail() {
                 onChange={(e) => updateField("mc_number", e.target.value)}
                 placeholder="MC-XXXXXX"
               />
+            </div>
+
+            <div>
+              <Label>Factoring Approval</Label>
+              <Select 
+                value={customer.factoring_approval || "pending"} 
+                onValueChange={(value) => updateField("factoring_approval", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="not_approved">Not Approved</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Separator />
