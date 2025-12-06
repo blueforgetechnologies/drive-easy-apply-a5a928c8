@@ -197,9 +197,7 @@ export const ApplicationForm = () => {
               {steps.map((step) => (
                 <div
                   key={step.id}
-                  className={`flex flex-col items-center ${
-                    step.id <= currentStep ? "opacity-100" : "opacity-40"
-                  }`}
+                  className="flex flex-col items-center"
                 >
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors ${
@@ -207,7 +205,7 @@ export const ApplicationForm = () => {
                         ? "bg-success text-success-foreground"
                         : step.id === currentStep
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        : "bg-muted text-foreground"
                     }`}
                   >
                     {step.id < currentStep ? (
@@ -216,7 +214,9 @@ export const ApplicationForm = () => {
                       <span className="text-sm font-semibold">{step.id}</span>
                     )}
                   </div>
-                  <span className="text-xs text-center hidden sm:block max-w-[80px]">
+                  <span className={`text-xs text-center hidden sm:block max-w-[80px] ${
+                    step.id <= currentStep ? "text-foreground" : "text-muted-foreground"
+                  }`}>
                     {step.name}
                   </span>
                 </div>
