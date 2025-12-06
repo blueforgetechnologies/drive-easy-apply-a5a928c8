@@ -495,40 +495,40 @@ export default function VehicleDetail() {
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     <div>Physical Coverage</div>
                     <div>
-                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" />
+                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" value={formData.physical_coverage_status || ''} onChange={(e) => updateField('physical_coverage_status', e.target.value)} />
                     </div>
                     <div>
-                      <Input type="date" className="h-6 text-[10px]" />
+                      <Input type="date" className="h-6 text-[10px]" value={formData.physical_coverage_exp || ''} onChange={(e) => updateField('physical_coverage_exp', e.target.value)} />
                     </div>
                     <div></div>
                   </div>
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     <div>Cargo Coverage</div>
                     <div>
-                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" />
+                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" value={formData.cargo_coverage_status || ''} onChange={(e) => updateField('cargo_coverage_status', e.target.value)} />
                     </div>
                     <div>
-                      <Input type="date" className="h-6 text-[10px]" />
+                      <Input type="date" className="h-6 text-[10px]" value={formData.cargo_coverage_exp || ''} onChange={(e) => updateField('cargo_coverage_exp', e.target.value)} />
                     </div>
                     <div></div>
                   </div>
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     <div>Registration</div>
                     <div>
-                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" />
+                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" value={formData.registration_status || ''} onChange={(e) => updateField('registration_status', e.target.value)} />
                     </div>
                     <div>
-                      <Input type="date" className="h-6 text-[10px]" />
+                      <Input type="date" className="h-6 text-[10px]" value={formData.registration_exp || ''} onChange={(e) => updateField('registration_exp', e.target.value)} />
                     </div>
                     <div></div>
                   </div>
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     <div>Liability Coverage</div>
                     <div>
-                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" />
+                      <Input type="text" className="h-6 text-[10px]" placeholder="mm/dd/yyyy" value={formData.liability_coverage_status || ''} onChange={(e) => updateField('liability_coverage_status', e.target.value)} />
                     </div>
                     <div>
-                      <Input type="date" className="h-6 text-[10px]" />
+                      <Input type="date" className="h-6 text-[10px]" value={formData.liability_coverage_exp || ''} onChange={(e) => updateField('liability_coverage_exp', e.target.value)} />
                     </div>
                     <div></div>
                   </div>
@@ -731,7 +731,7 @@ export default function VehicleDetail() {
                   <div className="grid grid-cols-5 gap-1 items-center">
                     <Input value={formData.clearance || '13'} onChange={(e) => updateField('clearance', e.target.value)} className="h-7 text-xs" />
                     <span className="text-[10px]">ft</span>
-                    <Input value="0" className="h-7 text-xs" />
+                    <Input value={formData.clearance_inches || '0'} onChange={(e) => updateField('clearance_inches', e.target.value)} className="h-7 text-xs" />
                     <span className="text-[10px]">in</span>
                   </div>
                 </div>
