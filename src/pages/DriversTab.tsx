@@ -12,7 +12,7 @@ import { format, differenceInYears } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
-import { RotateCw, FileText, Edit, Search } from "lucide-react";
+import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Application {
   id: string;
@@ -44,6 +44,8 @@ export default function DriversTab() {
   const [invites, setInvites] = useState<DriverInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 50;
 
   useEffect(() => {
     loadData();
@@ -225,6 +227,18 @@ export default function DriversTab() {
     const email = invite.email.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase()) || email.includes(searchQuery.toLowerCase());
   });
+
+  // Pagination for applications
+  const totalPages = Math.ceil(filteredApplications.length / ROWS_PER_PAGE);
+  const paginatedApplications = filteredApplications.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery]);
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -432,7 +446,7 @@ export default function DriversTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredApplications.map((app: any) => {
+                    {paginatedApplications.map((app: any) => {
                       const licenseInfo = app.license_info || {};
                       const personalInfo = app.personal_info || {};
                       const directDeposit = app.direct_deposit || {};
@@ -546,6 +560,37 @@ export default function DriversTab() {
                     })}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredApplications.length)} of {filteredApplications.length}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-7 px-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-7 px-2"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Carrier {
@@ -50,6 +50,8 @@ export default function CarriersTab() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [selectedCarriers, setSelectedCarriers] = useState<string[]>([]);
   const [showCheckboxes, setShowCheckboxes] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 50;
 
   useEffect(() => {
     loadData();
@@ -260,6 +262,18 @@ export default function CarriersTab() {
       (carrier.contact_name || "").toLowerCase().includes(searchLower)
     );
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredCarriers.length / ROWS_PER_PAGE);
+  const paginatedCarriers = filteredCarriers.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery]);
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -544,7 +558,7 @@ export default function CarriersTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCarriers.map((carrier) => (
+                  {paginatedCarriers.map((carrier) => (
                     <TableRow 
                       key={carrier.id} 
                       className="h-10 hover:bg-muted/30 cursor-pointer"
@@ -657,6 +671,37 @@ export default function CarriersTab() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredCarriers.length)} of {filteredCarriers.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-7 px-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-7 px-2"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
