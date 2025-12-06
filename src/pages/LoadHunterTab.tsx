@@ -105,6 +105,7 @@ export default function LoadHunterTab() {
   const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (match_status = 'active')
   const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Manually skipped matches (match_status = 'skipped')
   const [bidMatches, setBidMatches] = useState<any[]>([]); // Matches with bids placed (match_status = 'bid')
+  const [undecidedMatches, setUndecidedMatches] = useState<any[]>([]); // Matches viewed but no action (match_status = 'undecided')
   const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
   const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,7 @@ export default function LoadHunterTab() {
   const [selectedEmailForDetail, setSelectedEmailForDetail] = useState<any | null>(null);
   const [selectedEmailDistance, setSelectedEmailDistance] = useState<number | undefined>(undefined);
   const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<any | null>(null);
+  const [matchActionTaken, setMatchActionTaken] = useState(false); // Track if user took action on current match
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
   const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
@@ -627,6 +629,7 @@ export default function LoadHunterTab() {
   const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
   const skippedCount = skippedMatches.length;
   const bidCount = bidMatches.length;
+  const undecidedCount = undecidedMatches.length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
 
   // Function to play alert sound
@@ -1265,8 +1268,21 @@ export default function LoadHunterTab() {
           .eq('match_status', 'bid')
           .gte('updated_at', midnightETIso);
 
-        if (activeError || skippedError || bidError) {
-          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError);
+        // Fetch undecided matches (match_status = 'undecided') - include email data
+        // These are matches that were viewed but no action taken
+        const { data: undecidedData, error: undecidedError } = await supabase
+          .from("load_hunt_matches")
+          .select(`
+            *,
+            load_emails (
+              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
+              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
+            )
+          `)
+          .eq('match_status', 'undecided');
+
+        if (activeError || skippedError || bidError || undecidedError) {
+          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError);
           if (attempt === retries) {
             toast.error('Failed to load hunt matches - please refresh');
             return;
@@ -1278,12 +1294,14 @@ export default function LoadHunterTab() {
         const active = activeData || [];
         const skipped = skippedData || [];
         const bids = bidData || [];
+        const undecided = undecidedData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids (today only)`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
         setBidMatches(bids);
+        setUndecidedMatches(undecided);
         
         const huntMap = new Map<string, string>();
         const distances = new Map<string, number>();
@@ -1491,16 +1509,16 @@ export default function LoadHunterTab() {
     }
   };
 
-  // DELETE matches that are 40+ minutes old (completely remove from Unreviewed)
+  // DELETE matches that are 40+ minutes old (completely remove from Unreviewed AND Undecided)
   const deactivateStaleMatches = async () => {
     try {
       const fortyMinutesAgo = new Date(Date.now() - 40 * 60 * 1000).toISOString();
       
-      // Find active matches older than 40 minutes
+      // Find active OR undecided matches older than 40 minutes (based on matched_at)
       const { data: staleMatches, error: fetchError } = await supabase
         .from('load_hunt_matches')
-        .select('id')
-        .eq('match_status', 'active')
+        .select('id, match_status')
+        .in('match_status', ['active', 'undecided'])
         .lt('matched_at', fortyMinutesAgo);
 
       if (fetchError) {
@@ -1512,7 +1530,9 @@ export default function LoadHunterTab() {
         return;
       }
 
-      console.log(`🕐 Found ${staleMatches.length} stale matches (40+ min old) - DELETING`);
+      const activeCount = staleMatches.filter(m => m.match_status === 'active').length;
+      const undecidedCount = staleMatches.filter(m => m.match_status === 'undecided').length;
+      console.log(`🕐 Found ${staleMatches.length} stale matches (40+ min old) - DELETING (${activeCount} active, ${undecidedCount} undecided)`);
 
       // DELETE in batches of 50 to avoid URL length limits
       const BATCH_SIZE = 50;
@@ -1532,10 +1552,30 @@ export default function LoadHunterTab() {
 
       console.log(`✅ Deleted ${staleMatches.length} stale matches`);
       
-      // Reload unreviewed matches
+      // Reload matches
       await loadUnreviewedMatches();
+      await loadHuntMatches();
     } catch (err) {
       console.error('Error in deactivateStaleMatches:', err);
+    }
+  };
+
+  // Handle moving a viewed match to undecided status (when user closes without action)
+  const handleMoveToUndecided = async (matchId: string) => {
+    try {
+      console.log('🤔 Moving match to undecided:', matchId);
+      const { error } = await supabase
+        .from('load_hunt_matches')
+        .update({ match_status: 'undecided', is_active: false })
+        .eq('id', matchId);
+
+      if (error) throw error;
+
+      await loadHuntMatches();
+      await loadUnreviewedMatches();
+      console.log('✅ Match moved to undecided');
+    } catch (error) {
+      console.error('Error moving match to undecided:', error);
     }
   };
 
@@ -1605,6 +1645,7 @@ export default function LoadHunterTab() {
 
   const handleSkipMatch = async (matchId: string) => {
     try {
+      setMatchActionTaken(true); // Mark that action was taken
       const { error } = await supabase
         .from('load_hunt_matches')
         .update({ match_status: 'skipped', is_active: false })
@@ -1624,6 +1665,7 @@ export default function LoadHunterTab() {
   // Handle bid placed - move match to MY BIDS and skip all sibling matches
   const handleBidPlaced = async (matchId: string, loadEmailId: string) => {
     try {
+      setMatchActionTaken(true); // Mark that action was taken
       console.log('💰 Bid placed for match:', matchId, 'load:', loadEmailId);
       
       // 1. Set this match to 'bid' status
@@ -2318,16 +2360,26 @@ export default function LoadHunterTab() {
         
         {/* Load Email Detail Dialog for Mobile */}
         {selectedEmailForDetail && (
-          <Dialog open={!!selectedEmailForDetail} onOpenChange={() => {
+          <Dialog open={!!selectedEmailForDetail} onOpenChange={async () => {
+            // If match was viewed from unreviewed and no action taken, move to undecided
+            if (selectedMatchForDetail && !matchActionTaken && selectedMatchForDetail.match_status === 'active') {
+              await handleMoveToUndecided(selectedMatchForDetail.id);
+            }
             setSelectedEmailForDetail(null);
             setSelectedMatchForDetail(null);
+            setMatchActionTaken(false);
           }}>
             <DialogContent className="max-w-full h-[90vh] p-0 overflow-hidden">
               <LoadEmailDetail
                 email={selectedEmailForDetail}
-                onClose={() => {
+                onClose={async () => {
+                  // If match was viewed from unreviewed and no action taken, move to undecided
+                  if (selectedMatchForDetail && !matchActionTaken && selectedMatchForDetail.match_status === 'active') {
+                    await handleMoveToUndecided(selectedMatchForDetail.id);
+                  }
                   setSelectedEmailForDetail(null);
                   setSelectedMatchForDetail(null);
+                  setMatchActionTaken(false);
                 }}
                 emptyDriveDistance={selectedEmailDistance}
                 match={selectedMatchForDetail}
@@ -2490,7 +2542,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undecided
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-orange-400 text-white">0</Badge>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] ml-1 bg-orange-400 text-white">{undecidedCount}</Badge>
               </Button>
               
               <div className="w-px h-5 bg-gray-300"></div>
@@ -3516,9 +3568,14 @@ export default function LoadHunterTab() {
             vehicles={vehicles}
             drivers={drivers}
             carriersMap={carriersMap}
-            onClose={() => {
+            onClose={async () => {
+              // If match was viewed from unreviewed and no action taken, move to undecided
+              if (selectedMatchForDetail && !matchActionTaken && selectedMatchForDetail.match_status === 'active') {
+                await handleMoveToUndecided(selectedMatchForDetail.id);
+              }
               setSelectedEmailForDetail(null);
               setSelectedMatchForDetail(null);
+              setMatchActionTaken(false); // Reset for next match
             }}
             onBidPlaced={handleBidPlaced}
           />
@@ -3624,6 +3681,7 @@ export default function LoadHunterTab() {
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
                   : activeFilter === 'mybids' ? bidMatches.length === 0
+                  : activeFilter === 'undecided' ? undecidedMatches.length === 0
                   : filteredEmails.length === 0) ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     {activeFilter === 'skipped' 
@@ -3634,6 +3692,8 @@ export default function LoadHunterTab() {
                       ? 'No missed loads. Loads that go 15+ minutes without action appear here.'
                       : activeFilter === 'mybids'
                       ? 'No bids placed yet. Send a bid on a load to see it here.'
+                      : activeFilter === 'undecided'
+                      ? 'No undecided loads. Loads you viewed but took no action on will appear here.'
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
@@ -3694,6 +3754,12 @@ export default function LoadHunterTab() {
                           if (!email) return false;
                           return true;
                         }) 
+                          : activeFilter === 'undecided' ? undecidedMatches.filter((match: any) => {
+                          // Undecided matches stay visible until 40 minutes from matched_at
+                          const email = match.load_emails || loadEmails.find(e => e.id === match.load_email_id);
+                          if (!email) return false;
+                          return true;
+                        })
                           : activeFilter === 'missed' ? missedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
@@ -3701,9 +3767,9 @@ export default function LoadHunterTab() {
                           // For skipped/mybids, item is a match that needs email lookup
                           // For missed, item is from missedHistory with email data
                           // For others, item is an email
-                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'missed';
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'missed' || activeFilter === 'undecided';
                           
-                          // Get email data - from view (unreviewed) or lookup (skipped) or missedHistory (missed) or item itself (other)
+                          // Get email data - from view (unreviewed) or lookup (skipped/mybids/undecided) or missedHistory (missed) or item itself (other)
                           let email: any;
                           if (activeFilter === 'unreviewed') {
                             // View data includes email fields directly
@@ -3718,8 +3784,8 @@ export default function LoadHunterTab() {
                               load_id: (item as any).load_id,
                               status: (item as any).email_status,
                             };
-                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids') {
-                            // Skipped/bid matches now include email data from the join
+                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided') {
+                            // Skipped/bid/undecided matches now include email data from the join
                             const matchItem = item as any;
                             email = matchItem.load_emails || loadEmails.find(e => e.id === matchItem.load_email_id);
                           } else if (activeFilter === 'missed') {
