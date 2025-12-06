@@ -29,6 +29,7 @@ interface BidEmailRequest {
   company_address: string;
   company_phone: string;
   reference_id: string;
+  selected_templates?: string[];
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -45,6 +46,16 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Sending bid email to:", data.to);
     console.log("From:", data.from_name, "<", normalizedFromEmail, ">");
+
+    // Build selected templates HTML section
+    const selectedTemplatesHtml = data.selected_templates && data.selected_templates.length > 0
+      ? data.selected_templates.map(t => `<p style="background-color: #EBF4FF; padding: 8px; border-radius: 4px; margin: 8px 0;">${t}</p>`).join('')
+      : '';
+
+    // Build selected templates text section
+    const selectedTemplatesText = data.selected_templates && data.selected_templates.length > 0
+      ? '\n' + data.selected_templates.join('\n\n') + '\n'
+      : '';
 
     // Build the HTML email body
     const htmlBody = `
@@ -67,6 +78,8 @@ const handler = async (req: Request): Promise<Response> => {
           <p><strong>Door Type and Size:</strong> ${data.door_dimensions}</p>
           <p><strong>Truck Features:</strong> ${data.truck_features}</p>
         </div>
+        
+        ${selectedTemplatesHtml}
         
         <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">
           <p style="font-weight: bold; margin: 0;">${data.dispatcher_name}</p>
@@ -102,7 +115,7 @@ Truck Carries: ${data.equipment_details}
 Truck Size: ${data.truck_dimensions}
 Door Type and Size: ${data.door_dimensions}
 Truck Features: ${data.truck_features}
-
+${selectedTemplatesText}
 ---
 ${data.dispatcher_name}
 Dispatch
