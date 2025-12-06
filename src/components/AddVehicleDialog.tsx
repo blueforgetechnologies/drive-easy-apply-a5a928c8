@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,6 +17,9 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [vinLookupLoading, setVinLookupLoading] = useState(false);
+  const [carriers, setCarriers] = useState<any[]>([]);
+  const [payees, setPayees] = useState<any[]>([]);
+  const [dispatchers, setDispatchers] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     vehicle_number: "",
     vin: "",
@@ -23,10 +27,41 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
     model: "",
     year: "",
     license_plate: "",
-    asset_type: "Truck",
+    asset_type: "24' Large Straight",
     body_class: "",
     fuel_type: "",
+    carrier: "",
+    payee: "",
+    primary_dispatcher_id: "",
+    suspension: "Air Ride",
+    dimensions_length: "",
+    dimensions_width: "",
+    dimensions_height: "",
+    door_dims_height: "",
+    door_dims_width: "",
+    payload: "",
+    clearance: "",
+    lift_gate: false,
+    lift_gate_capacity: "",
+    dock_high: false,
   });
+
+  useEffect(() => {
+    if (open) {
+      loadDropdownData();
+    }
+  }, [open]);
+
+  const loadDropdownData = async () => {
+    const [carriersRes, payeesRes, dispatchersRes] = await Promise.all([
+      supabase.from("carriers").select("id, name").eq("status", "active"),
+      supabase.from("payees").select("id, name").eq("status", "active"),
+      supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
+    ]);
+    if (carriersRes.data) setCarriers(carriersRes.data);
+    if (payeesRes.data) setPayees(payeesRes.data);
+    if (dispatchersRes.data) setDispatchers(dispatchersRes.data);
+  };
 
   const handleVinLookup = async () => {
     if (!formData.vin || formData.vin.length !== 17) {
@@ -78,11 +113,12 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
   };
 
   const mapBodyClassToAssetType = (bodyClass: string | null): string => {
-    if (!bodyClass) return "Truck";
+    if (!bodyClass) return "24' Large Straight";
     const lowerBody = bodyClass.toLowerCase();
-    if (lowerBody.includes('van')) return "Van";
-    if (lowerBody.includes('trailer')) return "Trailer";
-    return "Truck";
+    if (lowerBody.includes('cargo van')) return "Cargo Van";
+    if (lowerBody.includes('van')) return "Sprinter Van";
+    if (lowerBody.includes('flatbed')) return "Flatbed";
+    return "24' Large Straight";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,6 +142,20 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
           license_plate: formData.license_plate || null,
           asset_type: formData.asset_type,
           fuel_type: formData.fuel_type || null,
+          carrier: formData.carrier || null,
+          payee: formData.payee || null,
+          primary_dispatcher_id: formData.primary_dispatcher_id || null,
+          suspension: formData.suspension || null,
+          dimensions_length: formData.dimensions_length ? parseInt(formData.dimensions_length) : null,
+          dimensions_width: formData.dimensions_width ? parseInt(formData.dimensions_width) : null,
+          dimensions_height: formData.dimensions_height ? parseInt(formData.dimensions_height) : null,
+          door_dims_height: formData.door_dims_height ? parseInt(formData.door_dims_height) : null,
+          door_dims_width: formData.door_dims_width ? parseInt(formData.door_dims_width) : null,
+          payload: formData.payload ? parseInt(formData.payload) : null,
+          clearance: formData.clearance ? parseInt(formData.clearance) : null,
+          lift_gate: formData.lift_gate,
+          lift_gate_capacity: formData.lift_gate_capacity ? parseInt(formData.lift_gate_capacity) : null,
+          dock_high: formData.dock_high,
           status: "active",
         }])
         .select()
@@ -115,17 +165,7 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
 
       toast.success("Asset added successfully");
       setOpen(false);
-      setFormData({
-        vehicle_number: "",
-        vin: "",
-        make: "",
-        model: "",
-        year: "",
-        license_plate: "",
-        asset_type: "Truck",
-        body_class: "",
-        fuel_type: "",
-      });
+      resetForm();
       
       if (onVehicleAdded && data) {
         onVehicleAdded(data.id);
@@ -138,6 +178,46 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      vehicle_number: "",
+      vin: "",
+      make: "",
+      model: "",
+      year: "",
+      license_plate: "",
+      asset_type: "24' Large Straight",
+      body_class: "",
+      fuel_type: "",
+      carrier: "",
+      payee: "",
+      primary_dispatcher_id: "",
+      suspension: "Air Ride",
+      dimensions_length: "",
+      dimensions_width: "",
+      dimensions_height: "",
+      door_dims_height: "",
+      door_dims_width: "",
+      payload: "",
+      clearance: "",
+      lift_gate: false,
+      lift_gate_capacity: "",
+      dock_high: false,
+    });
+  };
+
+  const assetTypes = [
+    "24' Large Straight",
+    "26' Large Straight",
+    "16' Small Straight",
+    "18' Small Straight",
+    "Cargo Van",
+    "Sprinter Van",
+    "Box Truck",
+    "Flatbed",
+    "Trailer",
+  ];
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -145,7 +225,7 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
           <Plus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Asset</DialogTitle>
         </DialogHeader>
@@ -177,14 +257,15 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Basic Info */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="vehicle_number">Unit ID *</Label>
               <Input
                 id="vehicle_number"
                 value={formData.vehicle_number}
                 onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
-                placeholder="e.g., 1, 2, 3..."
+                placeholder="e.g., TAL-3, NATL-6"
                 required
               />
             </div>
@@ -195,15 +276,72 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  <SelectItem value="Truck">Truck</SelectItem>
-                  <SelectItem value="Trailer">Trailer</SelectItem>
-                  <SelectItem value="Van">Van</SelectItem>
+                  {assetTypes.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="suspension">Suspension</Label>
+              <Select value={formData.suspension} onValueChange={(value) => setFormData({ ...formData, suspension: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="Air Ride">Air Ride</SelectItem>
+                  <SelectItem value="Spring">Spring</SelectItem>
+                  <SelectItem value="N/A">N/A</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Carrier, Payee, Dispatcher */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="carrier">Carrier</Label>
+              <Select value={formData.carrier} onValueChange={(value) => setFormData({ ...formData, carrier: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select carrier" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {carriers.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="payee">Payee</Label>
+              <Select value={formData.payee} onValueChange={(value) => setFormData({ ...formData, payee: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payee" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {payees.map((p) => (
+                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="primary_dispatcher_id">Primary Dispatcher</Label>
+              <Select value={formData.primary_dispatcher_id} onValueChange={(value) => setFormData({ ...formData, primary_dispatcher_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select dispatcher" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {dispatchers.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Vehicle Details */}
+          <div className="grid grid-cols-4 gap-4">
             <div>
               <Label htmlFor="make">Make</Label>
               <Input
@@ -219,12 +357,9 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
                 id="model"
                 value={formData.model}
                 onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                placeholder="e.g., Cascadia"
+                placeholder="e.g., M2"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="year">Year</Label>
               <Input
@@ -239,26 +374,142 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
               <Label htmlFor="fuel_type">Fuel Type</Label>
               <Select value={formData.fuel_type} onValueChange={(value) => setFormData({ ...formData, fuel_type: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select fuel type" />
+                  <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
                   <SelectItem value="diesel">Diesel</SelectItem>
                   <SelectItem value="gasoline">Gasoline</SelectItem>
                   <SelectItem value="electric">Electric</SelectItem>
-                  <SelectItem value="hybrid">Hybrid</SelectItem>
-                  <SelectItem value="natural_gas">Natural Gas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="license_plate">License Plate</Label>
-            <Input
-              id="license_plate"
-              value={formData.license_plate}
-              onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
-            />
+          {/* Dimensions */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <Label className="text-sm font-medium">Dimensions (inches)</Label>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="dimensions_length" className="text-xs text-muted-foreground">Length (L)</Label>
+                <Input
+                  id="dimensions_length"
+                  type="number"
+                  value={formData.dimensions_length}
+                  onChange={(e) => setFormData({ ...formData, dimensions_length: e.target.value })}
+                  placeholder="e.g., 288"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dimensions_width" className="text-xs text-muted-foreground">Width (W)</Label>
+                <Input
+                  id="dimensions_width"
+                  type="number"
+                  value={formData.dimensions_width}
+                  onChange={(e) => setFormData({ ...formData, dimensions_width: e.target.value })}
+                  placeholder="e.g., 97"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dimensions_height" className="text-xs text-muted-foreground">Height (H)</Label>
+                <Input
+                  id="dimensions_height"
+                  type="number"
+                  value={formData.dimensions_height}
+                  onChange={(e) => setFormData({ ...formData, dimensions_height: e.target.value })}
+                  placeholder="e.g., 102"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Door Dimensions */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <Label className="text-sm font-medium">Door Dimensions (inches)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="door_dims_height" className="text-xs text-muted-foreground">Height</Label>
+                <Input
+                  id="door_dims_height"
+                  type="number"
+                  value={formData.door_dims_height}
+                  onChange={(e) => setFormData({ ...formData, door_dims_height: e.target.value })}
+                  placeholder="e.g., 96"
+                />
+              </div>
+              <div>
+                <Label htmlFor="door_dims_width" className="text-xs text-muted-foreground">Width</Label>
+                <Input
+                  id="door_dims_width"
+                  type="number"
+                  value={formData.door_dims_width}
+                  onChange={(e) => setFormData({ ...formData, door_dims_width: e.target.value })}
+                  placeholder="e.g., 94"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Payload, Clearance, Lift Gate */}
+          <div className="grid grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="payload">Payload (lbs)</Label>
+              <Input
+                id="payload"
+                type="number"
+                value={formData.payload}
+                onChange={(e) => setFormData({ ...formData, payload: e.target.value })}
+                placeholder="e.g., 9000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="clearance">Clearance (in)</Label>
+              <Input
+                id="clearance"
+                type="number"
+                value={formData.clearance}
+                onChange={(e) => setFormData({ ...formData, clearance: e.target.value })}
+                placeholder="e.g., 130"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lift_gate_capacity">Lift Gate Cap (lbs)</Label>
+              <Input
+                id="lift_gate_capacity"
+                type="number"
+                value={formData.lift_gate_capacity}
+                onChange={(e) => setFormData({ ...formData, lift_gate_capacity: e.target.value })}
+                placeholder="e.g., 5000"
+                disabled={!formData.lift_gate}
+              />
+            </div>
+            <div>
+              <Label htmlFor="license_plate">License Plate</Label>
+              <Input
+                id="license_plate"
+                value={formData.license_plate}
+                onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div className="flex gap-8">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="lift_gate"
+                checked={formData.lift_gate}
+                onCheckedChange={(checked) => setFormData({ ...formData, lift_gate: checked })}
+              />
+              <Label htmlFor="lift_gate">Lift Gate</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="dock_high"
+                checked={formData.dock_high}
+                onCheckedChange={(checked) => setFormData({ ...formData, dock_high: checked })}
+              />
+              <Label htmlFor="dock_high">Dock High</Label>
+            </div>
           </div>
 
           {formData.body_class && (
