@@ -466,12 +466,15 @@ export default function LoadHunterTab() {
         }
       }
       
-      // Batch upsert all matches at once
+      // Batch insert ONLY new matches (don't overwrite existing ones that may be skipped)
       if (allMatches.length > 0) {
         console.log('💾 Batch saving', allMatches.length, 'matches');
         const { error } = await supabase
           .from('load_hunt_matches')
-          .upsert(allMatches, { onConflict: 'load_email_id,hunt_plan_id' });
+          .upsert(allMatches, { 
+            onConflict: 'load_email_id,hunt_plan_id',
+            ignoreDuplicates: true  // Don't overwrite existing matches (preserves skipped status)
+          });
         
         if (error) {
           console.error('❌ Error batch persisting matches:', error);
@@ -1879,7 +1882,7 @@ export default function LoadHunterTab() {
             console.log(`💾 Saving ${backfillMatches.length} backfill matches for new hunt`);
             await supabase
               .from('load_hunt_matches')
-              .upsert(backfillMatches, { onConflict: 'load_email_id,hunt_plan_id' });
+              .upsert(backfillMatches, { onConflict: 'load_email_id,hunt_plan_id', ignoreDuplicates: true });
             toast.success(`Hunt created - found ${backfillMatches.length} matches from last 15 min`);
           } else {
             toast.success("Hunt created - no matches in last 15 min, now watching for new loads");
@@ -2063,7 +2066,7 @@ export default function LoadHunterTab() {
               console.log(`💾 Saving ${backfillMatches.length} backfill matches`);
               await supabase
                 .from('load_hunt_matches')
-                .upsert(backfillMatches, { onConflict: 'load_email_id,hunt_plan_id' });
+                .upsert(backfillMatches, { onConflict: 'load_email_id,hunt_plan_id', ignoreDuplicates: true });
             }
           }
         }

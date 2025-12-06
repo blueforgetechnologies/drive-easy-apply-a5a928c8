@@ -36,7 +36,11 @@ serve(async (req) => {
     if (skippedMatchCount > 0) {
       const { error: resetMatchesError } = await supabaseClient
         .from('load_hunt_matches')
-        .update({ is_active: true, updated_at: new Date().toISOString() })
+        .update({ 
+          is_active: true, 
+          match_status: 'active',
+          updated_at: new Date().toISOString() 
+        })
         .eq('is_active', false);
 
       if (resetMatchesError) {
