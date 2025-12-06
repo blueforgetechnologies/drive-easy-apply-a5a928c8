@@ -32,6 +32,7 @@ interface Vehicle {
   asset_type: string | null;
   asset_subtype: string | null;
   dimensions_length: number | null;
+  vehicle_size: number | null;
   dimensions_width: number | null;
   dimensions_height: number | null;
   payload: number | null;
@@ -774,8 +775,8 @@ export default function VehiclesTab() {
                       </TableCell>
                       <TableCell className="py-1 px-2">
                         <div className="text-sm">
-                          {vehicle.dimensions_length && vehicle.asset_subtype
-                            ? `${vehicle.dimensions_length}' ${vehicle.asset_subtype}`
+                          {vehicle.vehicle_size && vehicle.asset_subtype
+                            ? `${vehicle.vehicle_size}' ${vehicle.asset_subtype}`
                             : vehicle.asset_type || "N/A"}
                         </div>
                         <div className="text-xs text-muted-foreground">Air Ride</div>
