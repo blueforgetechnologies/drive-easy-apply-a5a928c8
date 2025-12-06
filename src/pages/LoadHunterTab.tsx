@@ -106,6 +106,7 @@ export default function LoadHunterTab() {
   const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Manually skipped matches (match_status = 'skipped')
   const [bidMatches, setBidMatches] = useState<any[]>([]); // Matches with bids placed (match_status = 'bid')
   const [undecidedMatches, setUndecidedMatches] = useState<any[]>([]); // Matches viewed but no action (match_status = 'undecided')
+  const [waitlistMatches, setWaitlistMatches] = useState<any[]>([]); // Matches moved to waitlist (match_status = 'waitlist')
   const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
   const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
   const [loading, setLoading] = useState(true);
@@ -626,7 +627,7 @@ export default function LoadHunterTab() {
   }).length;
   
   const missedCount = missedHistory.length; // Use missed history count
-  const waitlistCount = loadEmails.filter(e => e.status === 'waitlist').length;
+  const waitlistCount = waitlistMatches.length; // Use match-based count
   const skippedCount = skippedMatches.length;
   const bidCount = bidMatches.length;
   const undecidedCount = undecidedMatches.length;
@@ -1281,8 +1282,21 @@ export default function LoadHunterTab() {
           `)
           .eq('match_status', 'undecided');
 
-        if (activeError || skippedError || bidError || undecidedError) {
-          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError);
+        // Fetch waitlist matches (match_status = 'waitlist', today only) - include email data
+        const { data: waitlistData, error: waitlistError } = await supabase
+          .from("load_hunt_matches")
+          .select(`
+            *,
+            load_emails (
+              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
+              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
+            )
+          `)
+          .eq('match_status', 'waitlist')
+          .gte('updated_at', midnightETIso);
+
+        if (activeError || skippedError || bidError || undecidedError || waitlistError) {
+          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError);
           if (attempt === retries) {
             toast.error('Failed to load hunt matches - please refresh');
             return;
@@ -1295,13 +1309,15 @@ export default function LoadHunterTab() {
         const skipped = skippedData || [];
         const bids = bidData || [];
         const undecided = undecidedData || [];
+        const waitlist = waitlistData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
         setBidMatches(bids);
         setUndecidedMatches(undecided);
+        setWaitlistMatches(waitlist);
         
         const huntMap = new Map<string, string>();
         const distances = new Map<string, number>();
@@ -2391,8 +2407,16 @@ export default function LoadHunterTab() {
                   setMatchActionTaken(true);
                   await handleMoveToUndecided(matchId);
                 }}
-                onSkip={() => setMatchActionTaken(true)}
-                onWait={() => setMatchActionTaken(true)}
+                onSkip={async () => {
+                  setMatchActionTaken(true);
+                  await loadHuntMatches();
+                  await loadUnreviewedMatches();
+                }}
+                onWait={async () => {
+                  setMatchActionTaken(true);
+                  await loadHuntMatches();
+                  await loadUnreviewedMatches();
+                }}
               />
             </DialogContent>
           </Dialog>
@@ -3588,8 +3612,16 @@ export default function LoadHunterTab() {
               setMatchActionTaken(true);
               await handleMoveToUndecided(matchId);
             }}
-            onSkip={() => setMatchActionTaken(true)}
-            onWait={() => setMatchActionTaken(true)}
+            onSkip={async () => {
+              setMatchActionTaken(true);
+              await loadHuntMatches();
+              await loadUnreviewedMatches();
+            }}
+            onWait={async () => {
+              setMatchActionTaken(true);
+              await loadHuntMatches();
+              await loadUnreviewedMatches();
+            }}
           />
         ) : activeFilter === 'vehicle-assignment' ? (
           /* Vehicle Assignment View */
@@ -3694,6 +3726,7 @@ export default function LoadHunterTab() {
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
                   : activeFilter === 'mybids' ? bidMatches.length === 0
                   : activeFilter === 'undecided' ? undecidedMatches.length === 0
+                  : activeFilter === 'waitlist' ? waitlistMatches.length === 0
                   : filteredEmails.length === 0) ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     {activeFilter === 'skipped' 
@@ -3706,6 +3739,8 @@ export default function LoadHunterTab() {
                       ? 'No bids placed yet. Send a bid on a load to see it here.'
                       : activeFilter === 'undecided'
                       ? 'No undecided loads. Loads you viewed but took no action on will appear here.'
+                      : activeFilter === 'waitlist'
+                      ? 'No waitlisted loads yet. Click Wait on a load to add it here.'
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
@@ -3772,16 +3807,22 @@ export default function LoadHunterTab() {
                           if (!email) return false;
                           return true;
                         })
+                          : activeFilter === 'waitlist' ? waitlistMatches.filter((match: any) => {
+                          // Waitlist matches stay visible until midnight ET
+                          const email = match.load_emails || loadEmails.find(e => e.id === match.load_email_id);
+                          if (!email) return false;
+                          return true;
+                        })
                           : activeFilter === 'missed' ? missedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed, item is from view with email data included
-                          // For skipped/mybids, item is a match that needs email lookup
+                          // For skipped/mybids/undecided/waitlist, item is a match that needs email lookup
                           // For missed, item is from missedHistory with email data
                           // For others, item is an email
-                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'missed' || activeFilter === 'undecided';
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'missed' || activeFilter === 'undecided' || activeFilter === 'waitlist';
                           
-                          // Get email data - from view (unreviewed) or lookup (skipped/mybids/undecided) or missedHistory (missed) or item itself (other)
+                          // Get email data - from view (unreviewed) or lookup (skipped/mybids/undecided/waitlist) or missedHistory (missed) or item itself (other)
                           let email: any;
                           if (activeFilter === 'unreviewed') {
                             // View data includes email fields directly
@@ -3796,8 +3837,8 @@ export default function LoadHunterTab() {
                               load_id: (item as any).load_id,
                               status: (item as any).email_status,
                             };
-                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided') {
-                            // Skipped/bid/undecided matches now include email data from the join
+                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided' || activeFilter === 'waitlist') {
+                            // Skipped/bid/undecided/waitlist matches now include email data from the join
                             const matchItem = item as any;
                             email = matchItem.load_emails || loadEmails.find(e => e.id === matchItem.load_email_id);
                           } else if (activeFilter === 'missed') {
