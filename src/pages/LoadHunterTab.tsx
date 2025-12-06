@@ -1217,12 +1217,30 @@ export default function LoadHunterTab() {
     console.log('🔗 Loading hunt matches...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const { data, error } = await supabase
-          .from("load_hunt_matches")
-          .select("*");
+        // Get midnight ET for today (skipped only shows today's matches)
+        const now = new Date();
+        const etOffset = -5; // EST offset (use -4 for EDT)
+        const utcHour = now.getUTCHours();
+        const etHour = (utcHour + 24 + etOffset) % 24;
+        const midnightET = new Date(now);
+        midnightET.setUTCHours(utcHour - etHour, 0, 0, 0);
+        const midnightETIso = midnightET.toISOString();
 
-        if (error) {
-          console.error(`🔗 Attempt ${attempt} failed:`, error);
+        // Fetch active matches
+        const { data: activeData, error: activeError } = await supabase
+          .from("load_hunt_matches")
+          .select("*")
+          .eq('is_active', true);
+
+        // Fetch skipped matches (only from today - since midnight ET)
+        const { data: skippedData, error: skippedError } = await supabase
+          .from("load_hunt_matches")
+          .select("*")
+          .eq('is_active', false)
+          .gte('updated_at', midnightETIso);
+
+        if (activeError || skippedError) {
+          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError);
           if (attempt === retries) {
             toast.error('Failed to load hunt matches - please refresh');
             return;
@@ -1231,12 +1249,10 @@ export default function LoadHunterTab() {
           continue;
         }
         
-        console.log(`✅ Loaded ${data?.length || 0} hunt matches`);
-        const allMatches = data || [];
-        const active = allMatches.filter((m: any) => m.is_active !== false);
-        const skipped = allMatches.filter((m: any) => m.is_active === false);
+        const active = activeData || [];
+        const skipped = skippedData || [];
 
-        console.log(`   Active: ${active.length}, Skipped: ${skipped.length}`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped (today only)`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
