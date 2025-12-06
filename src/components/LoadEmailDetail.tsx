@@ -404,7 +404,7 @@ const LoadEmailDetail = ({
           company_name: companyName,
           company_address: companyAddress,
           company_phone: companyPhone,
-          reference_id: `${match?.id ? match.id.slice(0, 8) : 'N/A'}-${email.id?.slice(0, 8) || 'N/A'}`,
+          reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
         },
       });
 
@@ -525,7 +525,7 @@ const LoadEmailDetail = ({
             </div>
             
             <div className="mt-4 pt-4 border-t">
-              <p className="text-muted-foreground">Reference #: {match?.id ? match.id.slice(0, 8) : 'N/A'}-{email.id?.slice(0, 8) || 'N/A'}</p>
+              <p className="text-muted-foreground">Reference #: {email.load_id || email.id?.slice(0, 8) || 'N/A'}-{match?.id ? match.id.slice(0, 8) : 'N/A'}-{vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}</p>
             </div>
           </div>
         </div>
