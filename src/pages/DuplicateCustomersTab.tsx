@@ -44,40 +44,53 @@ export default function DuplicateCustomersTab() {
       
       if (queryError) throw queryError;
       
-      // Find duplicates client-side
-      const normalized = new Map<string, Customer[]>();
-      (customers || []).forEach((c: any) => {
-        const customer: Customer = {
-          id: c.id,
-          name: c.name,
-          contact_name: c.contact_name,
-          email: c.email,
-          phone: c.phone,
-          mc_number: c.mc_number,
-          address: c.address,
-          status: c.status
-        };
-        const key = normalizeName(customer.name);
-        if (!normalized.has(key)) {
-          normalized.set(key, []);
-        }
-        normalized.get(key)!.push(customer);
-      });
+      const allCustomers: Customer[] = (customers || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        contact_name: c.contact_name,
+        email: c.email,
+        phone: c.phone,
+        mc_number: c.mc_number,
+        address: c.address,
+        status: c.status
+      }));
+
+      // Find duplicates using multiple strategies
+      const duplicateMap = new Map<string, Set<string>>(); // key -> set of customer IDs
       
-      const pairs: DuplicatePair[] = [];
-      normalized.forEach((group) => {
-        if (group.length > 1) {
-          // Sort by data completeness
-          group.sort((a, b) => getDataScore(b) - getDataScore(a));
-          for (let i = 1; i < group.length; i++) {
-            pairs.push({
-              customer1: group[0],
-              customer2: group[i],
-              resolved: false
-            });
+      allCustomers.forEach((c1, i) => {
+        allCustomers.slice(i + 1).forEach((c2) => {
+          if (arePotentialDuplicates(c1.name, c2.name)) {
+            // Create a consistent pair key
+            const pairKey = [c1.id, c2.id].sort().join('|');
+            if (!duplicateMap.has(pairKey)) {
+              duplicateMap.set(pairKey, new Set([c1.id, c2.id]));
+            }
           }
-        }
+        });
       });
+
+      // Convert to pairs
+      const customerById = new Map(allCustomers.map(c => [c.id, c]));
+      const pairs: DuplicatePair[] = [];
+      
+      duplicateMap.forEach((ids) => {
+        const idArray = Array.from(ids);
+        const c1 = customerById.get(idArray[0])!;
+        const c2 = customerById.get(idArray[1])!;
+        
+        // Sort by data completeness - customer with more data first
+        const sorted = [c1, c2].sort((a, b) => getDataScore(b) - getDataScore(a));
+        
+        pairs.push({
+          customer1: sorted[0],
+          customer2: sorted[1],
+          resolved: false
+        });
+      });
+
+      // Sort pairs by first customer name
+      pairs.sort((a, b) => a.customer1.name.localeCompare(b.customer1.name));
       
       setDuplicates(pairs);
     } catch (error) {
@@ -86,6 +99,34 @@ export default function DuplicateCustomersTab() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Check if two names are potential duplicates
+  const arePotentialDuplicates = (name1: string, name2: string): boolean => {
+    const n1 = normalizeName(name1);
+    const n2 = normalizeName(name2);
+    
+    // Exact match after normalization
+    if (n1 === n2) return true;
+    
+    // First two words match (for cases like "MILLHOUSE LOGISTICS INC" vs "MILLHOUSE LOGISTICS SERVICES LLC")
+    const words1 = n1.split(' ').filter(w => w.length > 0);
+    const words2 = n2.split(' ').filter(w => w.length > 0);
+    
+    if (words1.length >= 2 && words2.length >= 2) {
+      if (words1[0] === words2[0] && words1[1] === words2[1]) {
+        return true;
+      }
+    }
+    
+    // First word matches and it's a substantial word (>5 chars)
+    if (words1.length >= 1 && words2.length >= 1) {
+      if (words1[0] === words2[0] && words1[0].length > 5) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   const normalizeName = (name: string): string => {

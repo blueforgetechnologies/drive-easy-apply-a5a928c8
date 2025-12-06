@@ -57,34 +57,55 @@ export default function CustomersTab() {
   // Function to normalize names for duplicate detection
   const normalizeName = (name: string): string => {
     return name
-      .toUpperCase()
+      .toLowerCase()
       .replace(/\./g, '')
       .replace(/,/g, '')
-      .replace(/\s+(LLC|INC|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|LOGISTICS|TRANSPORT|TRANSPORTATION|TRUCKING|FREIGHT|SERVICES|SERVICE|GROUP|ENTERPRISES?|SOLUTIONS?)\.?$/gi, '')
       .replace(/\s+/g, ' ')
+      .replace(/\s*(llc|inc|corp|incorporated|corporation|co\.?)(\s|$)/gi, '')
       .trim();
   };
 
-  // Count duplicates
-  const countDuplicates = (allCustomers: Customer[]) => {
-    const normalizedNames = new Map<string, string[]>();
+  // Check if two names are potential duplicates
+  const arePotentialDuplicates = (name1: string, name2: string): boolean => {
+    const n1 = normalizeName(name1);
+    const n2 = normalizeName(name2);
     
-    allCustomers.forEach(customer => {
-      const normalized = normalizeName(customer.name);
-      if (!normalizedNames.has(normalized)) {
-        normalizedNames.set(normalized, []);
+    // Exact match after normalization
+    if (n1 === n2) return true;
+    
+    // First two words match
+    const words1 = n1.split(' ').filter(w => w.length > 0);
+    const words2 = n2.split(' ').filter(w => w.length > 0);
+    
+    if (words1.length >= 2 && words2.length >= 2) {
+      if (words1[0] === words2[0] && words1[1] === words2[1]) {
+        return true;
       }
-      normalizedNames.get(normalized)!.push(customer.id);
+    }
+    
+    // First word matches and it's substantial (>5 chars)
+    if (words1.length >= 1 && words2.length >= 1) {
+      if (words1[0] === words2[0] && words1[0].length > 5) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Count duplicates using improved matching
+  const countDuplicates = (allCustomers: { id: string; name: string }[]) => {
+    const duplicatePairs = new Set<string>();
+    
+    allCustomers.forEach((c1, i) => {
+      allCustomers.slice(i + 1).forEach((c2) => {
+        if (arePotentialDuplicates(c1.name, c2.name)) {
+          duplicatePairs.add([c1.id, c2.id].sort().join('|'));
+        }
+      });
     });
 
-    let duplicateRecords = 0;
-    normalizedNames.forEach((ids) => {
-      if (ids.length > 1) {
-        duplicateRecords += ids.length;
-      }
-    });
-
-    return duplicateRecords;
+    return duplicatePairs.size;
   };
 
   const aiUpdateMutation = useMutation({
