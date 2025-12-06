@@ -17,9 +17,36 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting daily missed and skipped loads reset at midnight ET');
+    console.log('Starting midnight ET reset for missed/skipped loads and matches');
 
-    // Get all currently missed and skipped loads, plus loads marked for missed tracking
+    // 1. Reset skipped matches in load_hunt_matches (is_active = false -> true)
+    const { data: skippedMatches, error: fetchMatchesError } = await supabaseClient
+      .from('load_hunt_matches')
+      .select('id')
+      .eq('is_active', false);
+
+    if (fetchMatchesError) {
+      console.error('Error fetching skipped matches:', fetchMatchesError);
+      throw fetchMatchesError;
+    }
+
+    const skippedMatchCount = skippedMatches?.length || 0;
+    console.log(`Found ${skippedMatchCount} skipped matches to reset`);
+
+    if (skippedMatchCount > 0) {
+      const { error: resetMatchesError } = await supabaseClient
+        .from('load_hunt_matches')
+        .update({ is_active: true, updated_at: new Date().toISOString() })
+        .eq('is_active', false);
+
+      if (resetMatchesError) {
+        console.error('Error resetting skipped matches:', resetMatchesError);
+        throw resetMatchesError;
+      }
+      console.log(`Successfully reset ${skippedMatchCount} skipped matches to active`);
+    }
+
+    // 2. Get loads with missed/skipped status or marked_missed_at for history logging
     const { data: loadsToReset, error: fetchError } = await supabaseClient
       .from('load_emails')
       .select('*')
@@ -30,10 +57,9 @@ serve(async (req) => {
       throw fetchError;
     }
 
-    console.log(`Found ${loadsToReset?.length || 0} loads to reset (missed + skipped)`);
+    console.log(`Found ${loadsToReset?.length || 0} load emails to reset (missed + skipped status)`);
 
-    // Log loads to history before resetting
-    // Log loads that have marked_missed_at set (these are the tracked missed loads)
+    // 3. Log loads with marked_missed_at to history before resetting
     const loadsWithMissedTracking = loadsToReset?.filter(load => load.marked_missed_at !== null) || [];
     if (loadsWithMissedTracking.length > 0) {
       const historyRecords = loadsWithMissedTracking.map(load => ({
@@ -57,27 +83,28 @@ serve(async (req) => {
       console.log(`Logged ${historyRecords.length} missed loads to history`);
     }
 
-    // Reset all missed loads back to new status and clear marked_missed_at timestamp
+    // 4. Reset load_emails with missed/skipped status back to 'new'
     const { error: resetError } = await supabaseClient
       .from('load_emails')
       .update({ 
         status: 'new',
         marked_missed_at: null 
       })
-      .or('status.eq.missed,marked_missed_at.not.is.null');
+      .or('status.eq.missed,status.eq.skipped,marked_missed_at.not.is.null');
 
     if (resetError) {
-      console.error('Error resetting missed loads:', resetError);
+      console.error('Error resetting load emails:', resetError);
       throw resetError;
     }
 
-    console.log('Successfully reset loads: cleared skipped status and missed tracking');
+    console.log('Successfully completed midnight reset');
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Reset ${loadsToReset?.length || 0} loads (skipped status + missed tracking)`,
-        count: loadsToReset?.length || 0,
+        message: `Reset ${skippedMatchCount} skipped matches and ${loadsToReset?.length || 0} load emails`,
+        skipped_matches_reset: skippedMatchCount,
+        load_emails_reset: loadsToReset?.length || 0,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
