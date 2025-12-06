@@ -2391,6 +2391,8 @@ export default function LoadHunterTab() {
                   setMatchActionTaken(true);
                   await handleMoveToUndecided(matchId);
                 }}
+                onSkip={() => setMatchActionTaken(true)}
+                onWait={() => setMatchActionTaken(true)}
               />
             </DialogContent>
           </Dialog>
@@ -3586,6 +3588,8 @@ export default function LoadHunterTab() {
               setMatchActionTaken(true);
               await handleMoveToUndecided(matchId);
             }}
+            onSkip={() => setMatchActionTaken(true)}
+            onWait={() => setMatchActionTaken(true)}
           />
         ) : activeFilter === 'vehicle-assignment' ? (
           /* Vehicle Assignment View */
