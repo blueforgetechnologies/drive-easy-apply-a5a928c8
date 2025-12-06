@@ -173,6 +173,27 @@ export default function CustomersTab() {
         status: filter,
       };
 
+      // Check for duplicate when adding new customer
+      if (!editingCustomer) {
+        const normalizedNewName = normalizeName(formData.name);
+        
+        // Fetch all customer names to check for duplicates
+        const { data: existingCustomers, error: fetchError } = await supabase
+          .from("customers" as any)
+          .select("id, name");
+        
+        if (fetchError) throw fetchError;
+        
+        const duplicate = (existingCustomers as any[])?.find(
+          (c) => normalizeName(c.name) === normalizedNewName
+        );
+        
+        if (duplicate) {
+          toast.error(`Duplicate customer detected: "${duplicate.name}" already exists. Please use the existing record or merge duplicates.`);
+          return;
+        }
+      }
+
       if (editingCustomer) {
         const { error } = await supabase
           .from("customers" as any)
