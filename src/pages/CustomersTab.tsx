@@ -45,7 +45,8 @@ export default function CustomersTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [usdotLookup, setUsdotLookup] = useState("");
+  const [lookupValue, setLookupValue] = useState("");
+  const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
   const [lookupLoading, setLookupLoading] = useState(false);
 
   const aiUpdateMutation = useMutation({
@@ -168,7 +169,7 @@ export default function CustomersTab() {
       dot_number: customer.dot_number || "",
       factoring_approval: customer.factoring_approval || "pending",
     });
-    setUsdotLookup(customer.dot_number || "");
+    setLookupValue(customer.dot_number || "");
     setDialogOpen(true);
   };
 
@@ -204,7 +205,7 @@ export default function CustomersTab() {
 
   const resetForm = () => {
     setEditingCustomer(null);
-    setUsdotLookup("");
+    setLookupValue("");
     setFormData({
       name: "",
       contact_name: "",
@@ -227,9 +228,9 @@ export default function CustomersTab() {
     });
   };
 
-  const handleUsdotLookup = async () => {
-    if (!usdotLookup.trim()) {
-      toast.error("Please enter a USDOT number");
+  const handleLookup = async () => {
+    if (!lookupValue.trim()) {
+      toast.error(`Please enter a ${lookupType === "usdot" ? "USDOT" : "MC"} number`);
       return;
     }
 
@@ -242,7 +243,7 @@ export default function CustomersTab() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ usdot: usdotLookup }),
+          body: JSON.stringify(lookupType === "usdot" ? { usdot: lookupValue } : { mc: lookupValue }),
         }
       );
       
@@ -257,7 +258,7 @@ export default function CustomersTab() {
         ...formData,
         name: data.dba_name || data.name || formData.name,
         mc_number: data.mc_number || formData.mc_number,
-        dot_number: data.usdot || usdotLookup,
+        dot_number: data.usdot || lookupValue,
         phone: data.phone || formData.phone,
         address: data.physical_address || formData.address,
       });
@@ -313,17 +314,37 @@ export default function CustomersTab() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* FMCSA Lookup Section */}
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                <Label className="text-sm font-semibold text-blue-700 dark:text-blue-400">Search FMCSA by USDOT</Label>
-                <div className="flex gap-2 mt-2">
+                <Label className="text-sm font-semibold text-blue-700 dark:text-blue-400">Search FMCSA</Label>
+                <div className="flex gap-1 mt-2 mb-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={lookupType === "usdot" ? "default" : "outline"}
+                    onClick={() => setLookupType("usdot")}
+                    className="flex-1"
+                  >
+                    By USDOT
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={lookupType === "mc" ? "default" : "outline"}
+                    onClick={() => setLookupType("mc")}
+                    className="flex-1"
+                  >
+                    By MC
+                  </Button>
+                </div>
+                <div className="flex gap-2">
                   <Input
-                    value={usdotLookup}
-                    onChange={(e) => setUsdotLookup(e.target.value)}
-                    placeholder="Enter USDOT number"
+                    value={lookupValue}
+                    onChange={(e) => setLookupValue(e.target.value)}
+                    placeholder={lookupType === "usdot" ? "Enter USDOT number" : "Enter MC number"}
                     className="flex-1"
                   />
                   <Button 
                     type="button"
-                    onClick={handleUsdotLookup} 
+                    onClick={handleLookup} 
                     disabled={lookupLoading}
                     className="bg-blue-500 hover:bg-blue-600"
                   >
