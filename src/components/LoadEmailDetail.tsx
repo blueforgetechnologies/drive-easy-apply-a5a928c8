@@ -228,15 +228,13 @@ const LoadEmailDetail = ({
         onWait(match.id);
       }
 
-      // Update load_emails status to waitlist
-      if (match?.load_email_id) {
-        const { error } = await supabase
-          .from("load_emails")
-          .update({ status: 'waitlist' })
-          .eq("id", match.load_email_id);
+      // Update load_hunt_matches status to waitlist (similar to skip)
+      const { error: matchError } = await supabase
+        .from("load_hunt_matches")
+        .update({ is_active: false, match_status: 'waitlist' })
+        .eq("id", match.id);
 
-        if (error) throw error;
-      }
+      if (matchError) throw matchError;
       
       onClose();
     } catch (error) {
