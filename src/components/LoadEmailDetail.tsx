@@ -17,6 +17,7 @@ interface LoadEmailDetailProps {
   drivers?: any[];
   carriersMap?: Record<string, string>;
   onClose: () => void;
+  onBidPlaced?: (matchId: string, loadEmailId: string) => void;
 }
 
 const LoadEmailDetail = ({
@@ -26,7 +27,8 @@ const LoadEmailDetail = ({
   vehicles = [],
   drivers = [],
   carriersMap = {},
-  onClose
+  onClose,
+  onBidPlaced
 }: LoadEmailDetailProps) => {
   const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -289,6 +291,11 @@ const LoadEmailDetail = ({
       toast.success('Bid email sent successfully!');
       setShowEmailConfirmDialog(false);
       setBidConfirmed(false);
+      
+      // Notify parent that bid was placed - move to MY BIDS and skip siblings
+      if (onBidPlaced && match?.id && email?.id) {
+        onBidPlaced(match.id, email.id);
+      }
     } catch (err: any) {
       console.error('Error sending bid email:', err);
       toast.error(`Failed to send bid email: ${err.message || 'Unknown error'}`);
