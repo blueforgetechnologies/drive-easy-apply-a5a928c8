@@ -93,18 +93,25 @@ serve(async (req) => {
         const faultVehicles = faultCodesData.data || [];
         console.log(`Found ${faultVehicles.length} vehicles in fault codes response`);
         
+        // Debug: Log a sample vehicle structure
+        if (faultVehicles.length > 0) {
+          console.log('Sample fault vehicle structure:', JSON.stringify(faultVehicles[0], null, 2));
+        }
+        
         // Build map of VIN -> fault codes
         for (const vehicle of faultVehicles) {
           const vin = vehicle.externalIds?.["samsara.vin"];
           if (!vin) continue;
           
           const faultCodes: string[] = [];
-          const latestFaultReading = vehicle.faultCodes?.[0];
           
-          if (latestFaultReading) {
+          // Check for faultCodes array in vehicle data
+          const faultCodesArray = vehicle.faultCodes || [];
+          
+          for (const faultReading of faultCodesArray) {
             // Handle J1939 fault codes (heavy duty vehicles)
-            if (latestFaultReading.j1939?.diagnosticTroubleCodes) {
-              for (const dtc of latestFaultReading.j1939.diagnosticTroubleCodes) {
+            if (faultReading.j1939?.diagnosticTroubleCodes) {
+              for (const dtc of faultReading.j1939.diagnosticTroubleCodes) {
                 const spnId = dtc.spnId || '';
                 const fmiId = dtc.fmiId || '';
                 const description = dtc.spnDescription || dtc.fmiDescription || '';
@@ -114,18 +121,28 @@ serve(async (req) => {
             }
             
             // Handle OBD-II fault codes (passenger/light duty vehicles)
-            if (latestFaultReading.obdii?.diagnosticTroubleCodes) {
-              for (const dtc of latestFaultReading.obdii.diagnosticTroubleCodes) {
+            if (faultReading.obdii?.diagnosticTroubleCodes) {
+              for (const dtc of faultReading.obdii.diagnosticTroubleCodes) {
                 const code = dtc.dtcShortCode || dtc.dtcId || '';
                 const description = dtc.dtcDescription || '';
                 const faultStr = `${code}${description ? ': ' + description : ''}`;
                 faultCodes.push(faultStr);
               }
             }
+            
+            // Also check if fault codes are in a different format (active codes)
+            if (faultReading.diagnosticTroubleCodes) {
+              for (const dtc of faultReading.diagnosticTroubleCodes) {
+                const code = dtc.dtcShortCode || dtc.dtcId || dtc.spnId || '';
+                const description = dtc.dtcDescription || dtc.spnDescription || '';
+                const faultStr = `${code}${description ? ': ' + description : ''}`;
+                if (faultStr.trim()) faultCodes.push(faultStr);
+              }
+            }
           }
           
           if (faultCodes.length > 0) {
-            console.log(`Vehicle VIN ${vin}: ${faultCodes.length} fault codes found`);
+            console.log(`Vehicle VIN ${vin}: ${faultCodes.length} fault codes found:`, faultCodes);
             faultCodesByVin.set(vin, faultCodes);
           }
         }
