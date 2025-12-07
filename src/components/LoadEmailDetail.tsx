@@ -1809,9 +1809,6 @@ const LoadEmailDetail = ({
                   <div className="font-semibold text-blue-600">Vehicle</div>
                   <div className="text-gray-500">{vehicle?.notes ? `Note: ${vehicle.notes}` : 'Note:'}</div>
                   <div className="flex items-center justify-end gap-2 leading-tight">
-                    <span>
-                      <span className="font-semibold">Vehicle Size:</span> {data.vehicle_type || 'N/A'}
-                    </span>
                     <Button 
                       className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold"
                       onClick={() => setShowOriginalEmail(true)}
