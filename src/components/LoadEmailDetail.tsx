@@ -287,14 +287,19 @@ const LoadEmailDetail = ({
   // Uses load_email_id so all matches for the same load share presence
   useEffect(() => {
     const loadEmailId = email?.id;
-    if (!loadEmailId || !currentDispatcher?.email) return;
+    if (!loadEmailId || !currentDispatcher?.email) {
+      console.log('👁️ Presence: Missing loadEmailId or dispatcher email', { loadEmailId, dispatcherEmail: currentDispatcher?.email });
+      return;
+    }
 
     const channelName = `load_presence_${loadEmailId}`;
+    console.log('👁️ Presence: Joining channel', channelName);
     const channel = supabase.channel(channelName);
 
     channel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState();
+        console.log('👁️ Presence sync:', presenceState);
         const viewers: {name: string, email: string}[] = [];
         
         Object.values(presenceState).forEach((presences: any) => {
@@ -309,9 +314,11 @@ const LoadEmailDetail = ({
           });
         });
         
+        console.log('👁️ Other viewers:', viewers);
         setOtherViewers(viewers);
       })
       .subscribe(async (status) => {
+        console.log('👁️ Presence channel status:', status);
         if (status === 'SUBSCRIBED') {
           await channel.track({
             email: currentDispatcher.email,
@@ -320,12 +327,14 @@ const LoadEmailDetail = ({
               : currentDispatcher.email,
             online_at: new Date().toISOString()
           });
+          console.log('👁️ Tracked presence for:', currentDispatcher.email);
         }
       });
 
     channelRef.current = channel;
 
     return () => {
+      console.log('👁️ Leaving presence channel:', channelName);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
       }
