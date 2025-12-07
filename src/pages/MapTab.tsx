@@ -309,15 +309,15 @@ const MapTab = () => {
             bgColor = '#10b981';
             borderColor = '#059669';
             pulseRing = `
-              <circle cx="28" cy="24" r="20" fill="none" stroke="#10b981" stroke-width="3" opacity="0.4">
-                <animate attributeName="r" values="20;28;20" dur="1.5s" repeatCount="indefinite"/>
+              <circle cx="18" cy="16" r="14" fill="none" stroke="#10b981" stroke-width="2" opacity="0.4">
+                <animate attributeName="r" values="14;18;14" dur="1.5s" repeatCount="indefinite"/>
                 <animate attributeName="opacity" values="0.4;0;0.4" dur="1.5s" repeatCount="indefinite"/>
               </circle>
             `;
             // Arrow pointing up (motion)
             statusIcon = `
-              <g transform="translate(20, 14)">
-                <polygon points="8,0 16,14 10,14 10,20 6,20 6,14 0,14" fill="${bgColor}"/>
+              <g transform="translate(12, 10)">
+                <polygon points="6,0 12,10 8,10 8,14 4,14 4,10 0,10" fill="${bgColor}"/>
               </g>
             `;
           } else if (isIdling) {
@@ -326,9 +326,9 @@ const MapTab = () => {
             borderColor = '#d97706';
             // Engine/wave icon
             statusIcon = `
-              <g transform="translate(18, 16)">
-                <path d="M4,4 Q7,0 10,4 Q13,8 16,4" stroke="${bgColor}" stroke-width="3" fill="none" stroke-linecap="round"/>
-                <path d="M4,12 Q7,8 10,12 Q13,16 16,12" stroke="${bgColor}" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <g transform="translate(10, 11)">
+                <path d="M3,3 Q5,0 8,3 Q11,6 13,3" stroke="${bgColor}" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M3,9 Q5,6 8,9 Q11,12 13,9" stroke="${bgColor}" stroke-width="2" fill="none" stroke-linecap="round"/>
               </g>
             `;
           } else {
@@ -337,7 +337,7 @@ const MapTab = () => {
             borderColor = '#2563eb';
             // Bold P icon
             statusIcon = `
-              <text x="28" y="31" font-size="20" font-weight="900" fill="${bgColor}" text-anchor="middle" font-family="system-ui, sans-serif">P</text>
+              <text x="18" y="21" font-size="14" font-weight="900" fill="${bgColor}" text-anchor="middle" font-family="system-ui, sans-serif">P</text>
             `;
           }
           
@@ -352,37 +352,35 @@ const MapTab = () => {
           }
           
           const markerHTML = `
-            <svg width="56" height="68" viewBox="0 0 56 68" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));">
+            <svg width="36" height="46" viewBox="0 0 36 46" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
               <!-- Animated pulse ring for moving vehicles -->
               ${pulseRing}
               
               <!-- Main pin shape -->
-              <path d="M28 62 L16 42 C6 30 6 16 16 8 C26 0 38 0 48 8 C58 16 58 30 48 42 Z" 
-                    fill="${bgColor}" stroke="${borderColor}" stroke-width="2"/>
+              <path d="M18 42 L10 28 C3 20 3 10 10 5 C17 0 25 0 32 5 C39 10 39 20 32 28 Z" 
+                    fill="${bgColor}" stroke="${borderColor}" stroke-width="1.5"/>
               
               <!-- Inner white circle -->
-              <circle cx="28" cy="24" r="16" fill="white"/>
+              <circle cx="18" cy="16" r="10" fill="white"/>
               
               <!-- Status icon -->
               ${statusIcon}
               
               <!-- Alert badge for fault codes -->
               ${hasFaultCodes ? `
-                <circle cx="44" cy="10" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
-                <text x="44" y="15" font-size="14" font-weight="900" fill="white" text-anchor="middle" font-family="system-ui">!</text>
+                <circle cx="28" cy="6" r="6" fill="#ef4444" stroke="white" stroke-width="1.5"/>
+                <text x="28" y="9" font-size="9" font-weight="900" fill="white" text-anchor="middle" font-family="system-ui">!</text>
               ` : ''}
               
               <!-- Service due badge -->
               ${oilChangeDue && !hasFaultCodes ? `
-                <circle cx="44" cy="10" r="10" fill="#f97316" stroke="white" stroke-width="2"/>
-                <g transform="translate(38, 4)">
-                  <path d="M6,2 L6,8 M4,6 L8,6 M6,10 L6,12" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                </g>
+                <circle cx="28" cy="6" r="6" fill="#f97316" stroke="white" stroke-width="1.5"/>
+                <text x="28" y="9" font-size="8" font-weight="700" fill="white" text-anchor="middle">⚠</text>
               ` : ''}
               
               <!-- Unit number pill -->
-              <rect x="8" y="48" width="40" height="16" rx="8" fill="rgba(0,0,0,0.85)"/>
-              <text x="28" y="60" font-size="11" font-weight="700" fill="white" text-anchor="middle" font-family="system-ui, sans-serif">${shortUnit}</text>
+              <rect x="4" y="32" width="28" height="12" rx="6" fill="rgba(0,0,0,0.85)"/>
+              <text x="18" y="41" font-size="8" font-weight="700" fill="white" text-anchor="middle" font-family="system-ui, sans-serif">${shortUnit}</text>
             </svg>
           `;
           
@@ -390,15 +388,15 @@ const MapTab = () => {
           el.className = 'vehicle-marker';
           el.style.cssText = `
             cursor: pointer;
-            width: 56px;
-            height: 68px;
+            width: 36px;
+            height: 46px;
             transition: transform 0.2s ease;
           `;
           el.innerHTML = markerHTML;
           
           // Add hover effect
           el.addEventListener('mouseenter', () => {
-            el.style.transform = 'scale(1.15) translateY(-4px)';
+            el.style.transform = 'scale(1.2) translateY(-3px)';
           });
           el.addEventListener('mouseleave', () => {
             el.style.transform = 'scale(1) translateY(0)';
