@@ -1358,7 +1358,10 @@ const LoadEmailDetail = ({
                 {/* CARRIER ROWS */}
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
-                    <div className={`px-2 py-1 font-bold text-sm flex items-center rounded ${hasCarrierSafetyIssue ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    <div 
+                      className={`px-2 py-1 font-bold text-sm flex items-center rounded truncate ${hasCarrierSafetyIssue ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                      title={carrierName || "No Carrier"}
+                    >
                       {carrierName || "No Carrier"}
                     </div>
                     <div className="text-blue-800 font-bold">
@@ -1387,7 +1390,7 @@ const LoadEmailDetail = ({
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
                     <div 
-                      className="bg-yellow-100 px-2 py-1 font-bold text-sm flex items-center rounded text-yellow-800 truncate max-w-[180px]"
+                      className="bg-yellow-100 px-2 py-1 font-bold text-sm flex items-center rounded text-yellow-800 truncate"
                       title={brokerName}
                     >
                       {brokerName}
