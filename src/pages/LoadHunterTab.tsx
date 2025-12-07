@@ -4559,20 +4559,50 @@ export default function LoadHunterTab() {
         onOpenChange={setShowMultipleMatchesDialog}
         matches={multipleMatches}
         onSelectVehicle={(vehicleId, matchId) => {
-          // Find the email and match to show detail
-          const match = multipleMatches.find(m => m.id === matchId);
-          if (match) {
-            const email = loadEmails.find(e => {
-              // Find the load email that corresponds to this match
-              return loadMatches.some(lm => lm.id === matchId && lm.load_email_id === e.id);
-            });
+          console.log('🎯 Selected vehicle from dialog:', { vehicleId, matchId });
+          
+          // Find the match from multipleMatches
+          const selectedMatch = multipleMatches.find(m => m.id === matchId);
+          console.log('🎯 Found match:', selectedMatch);
+          
+          if (selectedMatch) {
+            // The match should already have load_email_id - find the email
+            const loadEmailId = selectedMatch.load_email_id;
+            const email = loadEmails.find(e => e.id === loadEmailId);
+            
+            console.log('🎯 Looking for email with id:', loadEmailId);
+            console.log('🎯 Found email:', email);
             
             if (email) {
               setSelectedEmailForDetail(email);
-              setSelectedMatchForDetail(match);
-              setSelectedEmailDistance(match.distance_miles);
+              setSelectedMatchForDetail(selectedMatch);
+              setSelectedEmailDistance(selectedMatch.distance_miles);
               setShowMultipleMatchesDialog(false);
+            } else {
+              // Email might not be in loadEmails - fetch it directly
+              console.log('🎯 Email not in loadEmails, fetching...');
+              supabase
+                .from('load_emails')
+                .select('*')
+                .eq('id', loadEmailId)
+                .maybeSingle()
+                .then(({ data: fetchedEmail, error }) => {
+                  if (error) {
+                    console.error('Failed to fetch email:', error);
+                    toast.error('Failed to load email details');
+                    return;
+                  }
+                  if (fetchedEmail) {
+                    setSelectedEmailForDetail(fetchedEmail);
+                    setSelectedMatchForDetail(selectedMatch);
+                    setSelectedEmailDistance(selectedMatch.distance_miles);
+                    setShowMultipleMatchesDialog(false);
+                  }
+                });
             }
+          } else {
+            console.error('Match not found in multipleMatches');
+            toast.error('Failed to find selected match');
           }
         }}
       />
