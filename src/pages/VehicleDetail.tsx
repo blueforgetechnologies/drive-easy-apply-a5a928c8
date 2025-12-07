@@ -1030,19 +1030,41 @@ export default function VehicleDetail() {
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold text-xs">Vehicle Note</h3>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-5 w-5">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5"
+                      onClick={() => updateField('notes', '')}
+                    >
                       <X className="h-3 w-3 text-destructive" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5">
-                      <Save className="h-3 w-3 text-destructive" />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5"
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from("vehicles")
+                            .update({ notes: formData.notes })
+                            .eq("id", id);
+                          if (error) throw error;
+                          toast.success("Vehicle note saved");
+                        } catch (error: any) {
+                          toast.error("Failed to save note: " + error.message);
+                        }
+                      }}
+                    >
+                      <Save className="h-3 w-3 text-primary" />
                     </Button>
                   </div>
                 </div>
                 <Textarea
-                  value={formData.notes || 'Would like to be in Atlanta Georgia this weekend'}
+                  value={formData.notes || ''}
                   onChange={(e) => updateField('notes', e.target.value)}
                   rows={3}
                   className="text-xs"
+                  placeholder="Enter vehicle notes..."
                 />
               </CardContent>
             </Card>
