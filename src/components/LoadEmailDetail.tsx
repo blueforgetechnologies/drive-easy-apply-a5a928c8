@@ -1386,7 +1386,10 @@ const LoadEmailDetail = ({
 
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
-                    <div className="bg-yellow-100 px-2 py-1 font-bold text-sm flex items-center rounded text-yellow-800">
+                    <div 
+                      className="bg-yellow-100 px-2 py-1 font-bold text-sm flex items-center rounded text-yellow-800 truncate max-w-[180px]"
+                      title={brokerName}
+                    >
                       {brokerName}
                     </div>
                     <div>
