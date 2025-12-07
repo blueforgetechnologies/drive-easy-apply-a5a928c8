@@ -3048,9 +3048,9 @@ export default function LoadHunterTab() {
                       >
                         {unreviewedCount}
                       </div>
-                      {/* RED = Skipped */}
+                      {/* GRAY = Skipped */}
                       <div 
-                        className="h-4 px-1.5 bg-red-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-red-600 transition-colors border-l border-white/30"
+                        className="h-4 px-1.5 bg-gray-300 flex items-center justify-center text-gray-700 text-[9px] font-medium cursor-pointer hover:bg-gray-400 transition-colors border-l border-white/30"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
