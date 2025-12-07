@@ -1396,16 +1396,16 @@ const LoadEmailDetail = ({
                       <div className="w-px h-6 bg-slate-300 dark:bg-slate-600" />
                       
                       {/* Drivers - Horizontal */}
-                      <div className="flex gap-3 text-[11px]">
+                      <div className="flex gap-4 text-[11px]">
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-500 text-white text-[9px] font-bold">1</span>
+                          <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-500 text-white text-[9px] font-bold shrink-0">1</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300">{driver1Name || "—"}</span>
-                          {driver1?.vehicle_note && <span className="text-destructive font-bold">⚠</span>}
+                          {driver1?.vehicle_note && <span className="text-destructive font-bold text-[10px]">⚠ {driver1.vehicle_note}</span>}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-slate-400 text-white text-[9px] font-bold">2</span>
+                          <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-slate-400 text-white text-[9px] font-bold shrink-0">2</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300">{driver2Name || "—"}</span>
-                          {driver2?.vehicle_note && <span className="text-destructive font-bold">⚠</span>}
+                          {driver2?.vehicle_note && <span className="text-destructive font-bold text-[10px]">⚠ {driver2.vehicle_note}</span>}
                         </div>
                       </div>
                     </div>
