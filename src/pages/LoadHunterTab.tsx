@@ -1154,7 +1154,7 @@ export default function LoadHunterTab() {
     try {
       const { data, error } = await supabase
         .from("applications")
-        .select("id, personal_info")
+        .select("id, personal_info, vehicle_note")
         .eq("driver_status", "active");
 
       if (error) throw error;
