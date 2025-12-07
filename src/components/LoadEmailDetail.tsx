@@ -707,6 +707,10 @@ const LoadEmailDetail = ({
               className="min-h-[24px] text-sm text-blue-600 border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={1}
             />
+            {/* Selected Templates - appear after Order Number, before Truck Specs */}
+            {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => (
+              <p key={idx} className="text-sm leading-relaxed">{text}</p>
+            ))}
           </div>
           
           {/* Truck Specs - Compact Grid */}
@@ -715,10 +719,6 @@ const LoadEmailDetail = ({
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Truck Size:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{truckDimensions}</span></div>
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Door Type:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{doorDimensions}</span></div>
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
-            {/* Selected Templates - inline in body between equipment and order line */}
-            {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => (
-              <div key={idx} className="pt-1.5 text-xs text-slate-700 dark:text-slate-300">{text}</div>
-            ))}
           </div>
           
           {/* Signature - Compact */}
