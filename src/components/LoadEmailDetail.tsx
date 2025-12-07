@@ -1377,26 +1377,26 @@ const LoadEmailDetail = ({
                 {/* HEADER */}
                 <div className="flex items-center border-b p-2 bg-slate-50">
                   <div 
-                    className={`inline-flex items-center gap-2.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 ${onShowAlternativeMatches ? 'cursor-pointer hover:bg-primary/20 hover:border-primary/30 transition-all group' : ''}`}
+                    className={`flex items-center gap-2 flex-1 ${onShowAlternativeMatches ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg p-1 -m-1 transition-colors' : ''}`}
                     onClick={onShowAlternativeMatches}
                     title={onShowAlternativeMatches ? "Click to view/change vehicle selection" : undefined}
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-                      <Truck className="h-4 w-4 text-primary" />
+                    <div className="flex h-10 w-14 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
+                      <Truck className="h-4 w-4 text-blue-600" />
+                      <div className="text-[10px] font-semibold text-blue-600">{vehicle?.vehicle_number || "N/A"}</div>
+                      <div className="text-[10px] font-semibold text-red-500">Empty</div>
                     </div>
-                    <div className="flex flex-col leading-tight">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-bold text-primary">{vehicle?.vehicle_number || "N/A"}</span>
-                        {onShowAlternativeMatches && (
-                          <ChevronDown className="h-3 w-3 text-primary/70 group-hover:text-primary transition-colors" />
-                        )}
+                    <div className="text-[11px] space-y-0.5">
+                      <div>
+                        <span className="text-gray-500">D1</span> <span className="font-medium">{driver1Name || "No Driver Assigned"}</span>{" "}
+                        <span className="text-gray-400">Note:</span>{" "}
+                        <span className={driver1?.vehicle_note ? "text-destructive font-bold" : "text-gray-400"}>{driver1?.vehicle_note || ""}</span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {driver1Name || "No Driver"}
-                        {driver1?.vehicle_note && (
-                          <span className="text-destructive font-bold ml-1">{driver1?.vehicle_note}</span>
-                        )}
-                      </span>
+                      <div>
+                        <span className="text-gray-500">D2</span> <span className="font-medium">{driver2Name || "No Driver Assigned"}</span>{" "}
+                        <span className="text-gray-400">Note:</span>{" "}
+                        <span className={driver2?.vehicle_note ? "text-destructive font-bold" : "text-gray-400"}>{driver2?.vehicle_note || ""}</span>
+                      </div>
                     </div>
                   </div>
 
