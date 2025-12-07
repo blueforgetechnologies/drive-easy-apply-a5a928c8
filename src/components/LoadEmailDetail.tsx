@@ -681,23 +681,13 @@ const LoadEmailDetail = ({
               rows={1}
             />
             {/* Only show blank line field if it has content */}
-            {editableBlankLine.trim() ? (
+            {editableBlankLine.trim() && (
               <Textarea 
                 value={editableBlankLine}
                 onChange={(e) => setEditableBlankLine(e.target.value)}
                 className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
                 rows={1}
               />
-            ) : (
-              <div 
-                className="min-h-[24px] text-sm text-muted-foreground/50 cursor-text hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded px-1 -mx-1 flex items-center"
-                onClick={() => {
-                  // Focus logic would go here, but for simplicity just show placeholder behavior
-                  setEditableBlankLine(' ');
-                }}
-              >
-                <span className="text-xs italic opacity-60">+ Add optional text...</span>
-              </div>
             )}
             <Textarea 
               value={editableVehicleDesc}
