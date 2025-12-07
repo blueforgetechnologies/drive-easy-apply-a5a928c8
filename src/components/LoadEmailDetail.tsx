@@ -1416,8 +1416,8 @@ const LoadEmailDetail = ({
                 <div className="flex items-center gap-2 px-3 py-1.5">
                   <div className="flex-1 border rounded-lg px-3 py-1.5 text-[11px] flex items-center gap-4">
                     <div className="font-semibold text-blue-600 shrink-0">Original Post</div>
-                    <div className="text-red-400">
-                      <span className="text-muted-foreground">Note:</span>{' '}
+                    <div className="text-orange-500">
+                      <span className="text-muted-foreground">Notes:</span>{' '}
                       <span>{data.notes || ''}</span>
                     </div>
                   </div>
