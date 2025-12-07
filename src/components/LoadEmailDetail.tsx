@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1400,12 +1401,38 @@ const LoadEmailDetail = ({
                         <div className="flex items-center gap-1">
                           <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-blue-500 text-white text-[8px] font-bold shrink-0">1</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300">{driver1Name || "—"}</span>
-                          {driver1?.vehicle_note && <span className="text-destructive font-bold">⚠ {driver1.vehicle_note}</span>}
+                          {driver1?.vehicle_note && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-destructive font-bold max-w-[150px] truncate inline-block align-middle cursor-help">
+                                    ⚠ {driver1.vehicle_note}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-[300px]">
+                                  <p className="text-sm">{driver1.vehicle_note}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-slate-400 text-white text-[8px] font-bold shrink-0">2</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300">{driver2Name || "—"}</span>
-                          {driver2?.vehicle_note && <span className="text-destructive font-bold">⚠ {driver2.vehicle_note}</span>}
+                          {driver2?.vehicle_note && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-destructive font-bold max-w-[150px] truncate inline-block align-middle cursor-help">
+                                    ⚠ {driver2.vehicle_note}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-[300px]">
+                                  <p className="text-sm">{driver2.vehicle_note}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </div>
                     </div>
