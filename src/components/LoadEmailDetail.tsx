@@ -1426,7 +1426,7 @@ const LoadEmailDetail = ({
             
             {/* Original Email Card - Appears on right side over map when Set Bid is clicked */}
             {showBidCardOnMap && !showOriginalEmail && (
-              <div className="absolute right-4 top-4 w-[500px] max-h-[calc(100%-2rem)] z-40 animate-in slide-in-from-right duration-300">
+              <div className="absolute right-4 -top-24 w-[500px] max-h-[calc(100%+6rem)] z-40 animate-in slide-in-from-right duration-300">
                 <Card className="shadow-xl border bg-background flex flex-col max-h-full rounded-xl overflow-hidden">
                   <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 flex items-center justify-between z-10 flex-shrink-0">
                     <h3 className="text-sm font-semibold tracking-wide">Bid Email Preview</h3>
