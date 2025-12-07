@@ -543,6 +543,7 @@ export type Database = {
           license_expiration_date: string | null
           license_issued_date: string | null
           license_number: string | null
+          must_change_password: boolean | null
           notes: string | null
           pay_percentage: number | null
           phone: string | null
@@ -550,6 +551,7 @@ export type Database = {
           status: string | null
           termination_date: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           address?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           license_expiration_date?: string | null
           license_issued_date?: string | null
           license_number?: string | null
+          must_change_password?: boolean | null
           notes?: string | null
           pay_percentage?: number | null
           phone?: string | null
@@ -579,6 +582,7 @@ export type Database = {
           status?: string | null
           termination_date?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           address?: string | null
@@ -601,6 +605,7 @@ export type Database = {
           license_expiration_date?: string | null
           license_issued_date?: string | null
           license_number?: string | null
+          must_change_password?: boolean | null
           notes?: string | null
           pay_percentage?: number | null
           phone?: string | null
@@ -608,6 +613,7 @@ export type Database = {
           status?: string | null
           termination_date?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2723,7 +2729,7 @@ export type Database = {
       is_email_invited: { Args: { check_email: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "dispatcher"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2851,7 +2857,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "dispatcher"],
     },
   },
 } as const
