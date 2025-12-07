@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
-import { KeyRound, RotateCw, Search, Trash2 } from "lucide-react";
+import { KeyRound, Mail, RotateCw, Search, Trash2 } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -172,6 +172,23 @@ export default function UsersTab() {
       toast.success(`Password reset email sent to ${email}`);
     } catch (error: any) {
       toast.error("Failed to send password reset: " + error.message);
+    }
+  };
+
+  const handleSendLogin = async (user: Profile) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-user-login", {
+        body: {
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.full_name || user.email,
+        },
+      });
+
+      if (error) throw error;
+      toast.success(`Login credentials sent to ${user.email}`);
+    } catch (error: any) {
+      toast.error("Failed to send login: " + error.message);
     }
   };
 
@@ -352,15 +369,26 @@ export default function UsersTab() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            onClick={() => handleResetPassword(user.email)}
-                            size="sm"
-                            variant="outline"
-                            className="gap-2"
-                          >
-                            <KeyRound className="h-4 w-4" />
-                            Reset Password
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleSendLogin(user)}
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <Mail className="h-4 w-4" />
+                              Send Login
+                            </Button>
+                            <Button
+                              onClick={() => handleResetPassword(user.email)}
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <KeyRound className="h-4 w-4" />
+                              Reset
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
