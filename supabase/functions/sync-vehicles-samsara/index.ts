@@ -105,11 +105,13 @@ serve(async (req) => {
           
           const faultCodes: string[] = [];
           
-          // Check for faultCodes array in vehicle data
-          const faultCodesArray = vehicle.faultCodes || [];
+          // Check for faultCodes array in vehicle data (can be array or single object)
+          const faultCodesData = vehicle.faultCodes;
+          const faultCodesArray = Array.isArray(faultCodesData) ? faultCodesData : (faultCodesData ? [faultCodesData] : []);
           
           for (const faultReading of faultCodesArray) {
             // Handle J1939 fault codes (heavy duty vehicles)
+            // Structure: j1939.diagnosticTroubleCodes[]
             if (faultReading.j1939?.diagnosticTroubleCodes) {
               for (const dtc of faultReading.j1939.diagnosticTroubleCodes) {
                 const spnId = dtc.spnId || '';
@@ -120,30 +122,65 @@ serve(async (req) => {
               }
             }
             
-            // Handle OBD-II fault codes (passenger/light duty vehicles)
-            if (faultReading.obdii?.diagnosticTroubleCodes) {
-              for (const dtc of faultReading.obdii.diagnosticTroubleCodes) {
-                const code = dtc.dtcShortCode || dtc.dtcId || '';
-                const description = dtc.dtcDescription || '';
-                const faultStr = `${code}${description ? ': ' + description : ''}`;
-                faultCodes.push(faultStr);
+            // Check J1939 check engine lights
+            if (faultReading.j1939?.checkEngineLights) {
+              const lights = faultReading.j1939.checkEngineLights;
+              if (lights.emissionsIsOn || lights.protectIsOn || lights.stopIsOn || lights.warningIsOn) {
+                const activeLights: string[] = [];
+                if (lights.emissionsIsOn) activeLights.push('Emissions');
+                if (lights.protectIsOn) activeLights.push('Protect');
+                if (lights.stopIsOn) activeLights.push('Stop');
+                if (lights.warningIsOn) activeLights.push('Warning');
+                faultCodes.push(`Check Engine Light: ${activeLights.join(', ')}`);
               }
             }
             
-            // Also check if fault codes are in a different format (active codes)
-            if (faultReading.diagnosticTroubleCodes) {
-              for (const dtc of faultReading.diagnosticTroubleCodes) {
-                const code = dtc.dtcShortCode || dtc.dtcId || dtc.spnId || '';
-                const description = dtc.dtcDescription || dtc.spnDescription || '';
-                const faultStr = `${code}${description ? ': ' + description : ''}`;
-                if (faultStr.trim()) faultCodes.push(faultStr);
+            // Handle OBD-II fault codes (passenger/light duty vehicles)
+            // Structure: obdii.diagnosticTroubleCodes[].confirmedDtcs[], pendingDtcs[], permanentDtcs[]
+            if (faultReading.obdii?.diagnosticTroubleCodes) {
+              for (const dtcGroup of faultReading.obdii.diagnosticTroubleCodes) {
+                // Confirmed DTCs (most important - cause check engine light)
+                if (dtcGroup.confirmedDtcs) {
+                  for (const dtc of dtcGroup.confirmedDtcs) {
+                    const code = dtc.dtcShortCode || dtc.dtcId || '';
+                    const description = dtc.dtcDescription || '';
+                    const faultStr = `${code}${description ? ': ' + description : ''}`;
+                    if (faultStr.trim()) faultCodes.push(faultStr);
+                  }
+                }
+                // Pending DTCs
+                if (dtcGroup.pendingDtcs) {
+                  for (const dtc of dtcGroup.pendingDtcs) {
+                    const code = dtc.dtcShortCode || dtc.dtcId || '';
+                    const description = dtc.dtcDescription || '';
+                    const faultStr = `PENDING: ${code}${description ? ': ' + description : ''}`;
+                    if (faultStr.trim()) faultCodes.push(faultStr);
+                  }
+                }
+                // Permanent DTCs
+                if (dtcGroup.permanentDtcs) {
+                  for (const dtc of dtcGroup.permanentDtcs) {
+                    const code = dtc.dtcShortCode || dtc.dtcId || '';
+                    const description = dtc.dtcDescription || '';
+                    const faultStr = `PERMANENT: ${code}${description ? ': ' + description : ''}`;
+                    if (faultStr.trim()) faultCodes.push(faultStr);
+                  }
+                }
               }
+            }
+            
+            // Check OBD-II check engine light
+            if (faultReading.obdii?.checkEngineLightIsOn) {
+              faultCodes.push('Check Engine Light: ON');
             }
           }
           
-          if (faultCodes.length > 0) {
-            console.log(`Vehicle VIN ${vin}: ${faultCodes.length} fault codes found:`, faultCodes);
-            faultCodesByVin.set(vin, faultCodes);
+          // Remove duplicates
+          const uniqueFaults = [...new Set(faultCodes)];
+          
+          if (uniqueFaults.length > 0) {
+            console.log(`Vehicle VIN ${vin}: ${uniqueFaults.length} fault codes found:`, uniqueFaults);
+            faultCodesByVin.set(vin, uniqueFaults);
           }
         }
         console.log(`Total vehicles with fault codes: ${faultCodesByVin.size}`);
