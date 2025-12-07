@@ -381,14 +381,16 @@ export default function LoadHunterMobile({
                         </div>
                       </div>
                       {/* Status Badge - centered on right edge */}
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                        <span className="text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap" style={{
-                          backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
-                          color: 'white'
-                        }}>
-                          {vehicle.stopped_status || '?'}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
-                        </span>
-                      </div>
+                      {vehicle.stopped_status && (
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap" style={{
+                            backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
+                            color: 'white'
+                          }}>
+                            {vehicle.stopped_status}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
+                          </span>
+                        </div>
+                      )}
                       {hunt && (
                         <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1">

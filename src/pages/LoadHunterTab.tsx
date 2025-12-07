@@ -3078,14 +3078,16 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                     {/* Status Badge - centered on right edge */}
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
-                      <span className="text-[8px] px-1 py-0.5 rounded-l whitespace-nowrap" style={{
-                        backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
-                        color: 'white'
-                      }}>
-                        {vehicle.stopped_status || '?'}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
-                      </span>
-                    </div>
+                    {vehicle.stopped_status && (
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
+                        <span className="text-[8px] px-1 py-0.5 rounded-l whitespace-nowrap" style={{
+                          backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
+                          color: 'white'
+                        }}>
+                          {vehicle.stopped_status}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
+                        </span>
+                      </div>
+                    )}
                     {/* Maintenance & Fault Indicators - bottom right corner */}
                     {(isOilChangeDue || hasFaultCodes) && (
                       <div className="absolute bottom-0 right-0 flex items-center gap-0.5 rounded-tl-md rounded-br-sm overflow-hidden border-l border-t border-border/50 bg-background px-1 py-0.5">
