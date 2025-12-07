@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Truck, MapPin, BarChart3, Users, Shield, Clock, ChevronRight, Sparkles, ArrowRight } from "lucide-react";
 
@@ -47,6 +47,14 @@ const features = [
 ];
 
 const Index = () => {
+  const [searchParams] = useSearchParams();
+  const inviteId = searchParams.get("invite");
+
+  // Redirect to apply page if invite token is present
+  if (inviteId) {
+    return <Navigate to={`/apply?invite=${inviteId}`} replace />;
+  }
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Navigation */}
