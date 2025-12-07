@@ -2466,6 +2466,7 @@ export default function LoadHunterTab() {
           loadEmails={loadEmails}
           unreviewedViewData={unreviewedViewData}
           skippedMatches={skippedMatches}
+          bidMatches={bidMatches}
           missedHistory={missedHistory}
           loadMatches={loadMatches}
           loading={loading}
@@ -3018,16 +3019,43 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
-                      {/* RED = Unreviewed */}
-                      <div className="h-4 w-4 rounded-sm bg-red-500 flex items-center justify-center text-white text-[9px] font-medium">
+                      {/* GREEN = Unreviewed */}
+                      <div 
+                        className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilter('unreviewed');
+                          setSelectedVehicle(null);
+                          setSelectedEmailForDetail(null);
+                        }}
+                        title="View Unreviewed Loads"
+                      >
                         {unreviewedCount}
                       </div>
-                      {/* ORANGE = Skipped */}
-                      <div className="h-4 w-4 rounded-sm bg-orange-500 flex items-center justify-center text-white text-[9px] font-medium">
+                      {/* RED = Skipped */}
+                      <div 
+                        className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-red-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilter('skipped');
+                          setSelectedVehicle(null);
+                          setSelectedEmailForDetail(null);
+                        }}
+                        title="View Skipped Loads"
+                      >
                         {skippedCount}
                       </div>
                       {/* BLUE = My Bids */}
-                      <div className="h-4 w-4 rounded-sm bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium">
+                      <div 
+                        className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-blue-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilter('mybids');
+                          setSelectedVehicle(null);
+                          setSelectedEmailForDetail(null);
+                        }}
+                        title="View My Bids"
+                      >
                         {bidCount}
                       </div>
                     </div>
