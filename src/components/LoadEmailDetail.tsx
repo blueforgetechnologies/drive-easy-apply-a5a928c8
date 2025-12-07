@@ -1791,7 +1791,7 @@ const LoadEmailDetail = ({
                 </div>
 
                 {/* ORIGINAL POST */}
-                <div className="flex items-center px-3 py-1.5 text-[11px] gap-4 border-t">
+                <div className="mx-3 my-2 border rounded-lg px-3 py-1.5 text-[11px] flex items-center gap-4">
                   <div className="font-semibold text-blue-600 shrink-0">Original Post</div>
                   <div className="text-red-400">
                     <span className="text-muted-foreground">Note:</span>{' '}
