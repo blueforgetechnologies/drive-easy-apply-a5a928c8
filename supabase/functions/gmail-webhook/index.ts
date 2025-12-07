@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Google Pub/Sub push requests use this User-Agent prefix
+// See: https://cloud.google.com/pubsub/docs/push
+const GOOGLE_PUBSUB_USER_AGENT_PREFIX = "CloudPubSub-Google";
+
 // Initialize Supabase client once
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -19,27 +23,57 @@ serve(async (req) => {
   const startTime = Date.now();
   
   try {
-    // Track Pub/Sub usage (each webhook call = 1 Pub/Sub message)
-    const messageSize = req.headers.get('content-length') || '0';
+    // Security validation: Verify request originates from Google Pub/Sub
+    const userAgent = req.headers.get('user-agent') || '';
+    const isFromPubSub = userAgent.startsWith(GOOGLE_PUBSUB_USER_AGENT_PREFIX);
+    
+    // Clone request to read body for validation while preserving it for later use
+    const bodyText = await req.text();
+    let body: any = {};
+    let historyId: string | null = null;
+    
+    try {
+      body = JSON.parse(bodyText);
+    } catch (e) {
+      // Body might be empty for some requests
+    }
+    
+    // Check for Pub/Sub message structure
+    const hasPubSubStructure = body && typeof body === 'object' && 
+      (body.message !== undefined || body.subscription !== undefined);
+    
+    // Reject requests that don't appear to be from Pub/Sub
+    if (!isFromPubSub && !hasPubSubStructure) {
+      console.warn('[gmail-webhook] Request rejected: Invalid origin. User-Agent:', userAgent);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid request origin' }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log('[gmail-webhook] Request validated as Pub/Sub notification');
+
+    // Track Pub/Sub usage
     supabase
       .from('pubsub_tracking')
       .insert({
         message_type: 'gmail_notification',
-        message_size_bytes: parseInt(messageSize, 10),
+        message_size_bytes: bodyText.length,
       })
       .then(() => console.log('📊 Pub/Sub usage tracked'));
 
-    // Parse Pub/Sub message (optional)
-    let historyId: string | null = null;
+    // Parse Pub/Sub message for historyId
     try {
-      const body = await req.json();
       if (body.message?.data) {
         const decoded = JSON.parse(atob(body.message.data));
         historyId = decoded.historyId;
         console.log('Pub/Sub historyId:', historyId);
       }
     } catch (e) {
-      console.log('Manual trigger (no Pub/Sub data)');
+      console.log('Could not decode Pub/Sub data');
     }
 
     // Get access token - quick single lookup
