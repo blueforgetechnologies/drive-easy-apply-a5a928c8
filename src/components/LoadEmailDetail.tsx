@@ -812,6 +812,9 @@ const LoadEmailDetail = ({
             {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => <p key={idx} className="text-sm leading-relaxed bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 px-2 py-1 rounded -mx-2">{text}</p>)}
           </div>
           
+          {/* Separator line below order number / message body */}
+          <div className="border-t border-dashed" />
+          
           {/* Truck Specs - Compact Grid */}
           <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-800/30 rounded p-2.5 text-[11px] space-y-0.5">
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Truck Carries:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{equipmentDetails}</span></div>
