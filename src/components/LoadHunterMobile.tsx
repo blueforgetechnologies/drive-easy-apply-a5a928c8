@@ -26,6 +26,8 @@ interface Vehicle {
   last_location: string | null;
   oil_change_remaining: number | null;
   fault_codes: any;
+  speed: number | null;
+  stopped_status: string | null;
 }
 
 interface HuntPlan {
@@ -319,11 +321,19 @@ export default function LoadHunterMobile({
                             <p className="text-xs text-muted-foreground">
                               {getDriverName(vehicle.driver_1_id) || 'No Driver'}
                             </p>
-                            {vehicle.carrier && (
-                              <p className="text-xs text-muted-foreground">
-                                {carriersMap[vehicle.carrier] || vehicle.carrier}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              {vehicle.carrier && (
+                                <p className="text-xs text-muted-foreground">
+                                  {carriersMap[vehicle.carrier] || vehicle.carrier}
+                                </p>
+                              )}
+                              <span className="text-[9px] px-1 py-0.5 rounded" style={{
+                                backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
+                                color: 'white'
+                              }}>
+                                {vehicle.stopped_status || '?'}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
