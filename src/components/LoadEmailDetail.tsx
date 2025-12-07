@@ -283,11 +283,13 @@ const LoadEmailDetail = ({
     }
   }, [match?.id, currentDispatcher?.id]);
 
-  // Presence tracking - track who is viewing this match in real-time
+  // Presence tracking - track who is viewing this load email in real-time
+  // Uses load_email_id so all matches for the same load share presence
   useEffect(() => {
-    if (!match?.id || !currentDispatcher?.email) return;
+    const loadEmailId = email?.id;
+    if (!loadEmailId || !currentDispatcher?.email) return;
 
-    const channelName = `match_presence_${match.id}`;
+    const channelName = `load_presence_${loadEmailId}`;
     const channel = supabase.channel(channelName);
 
     channel
@@ -328,7 +330,7 @@ const LoadEmailDetail = ({
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [match?.id, currentDispatcher?.email]);
+  }, [email?.id, currentDispatcher?.email]);
 
   // Use fetched data or prop data
   const emailBody = fullEmailData?.body_html || fullEmailData?.body_text || email.body_html || email.body_text || "";
