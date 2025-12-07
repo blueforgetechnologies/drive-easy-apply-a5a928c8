@@ -298,10 +298,10 @@ export default function LoadHunterMobile({
                 return (
                   <Card 
                     key={vehicle.id}
-                    className={`overflow-hidden ${hasEnabledHunt ? 'border-blue-500' : ''}`}
+                    className={`overflow-hidden relative ${hasEnabledHunt ? 'border-blue-500' : ''}`}
                   >
                     <CardContent className="p-3 space-y-2">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between pr-12">
                         <div className="flex items-center gap-2">
                           {hasEnabledHunt && <div className="w-1.5 h-10 bg-blue-500 rounded-full" />}
                           <div>
@@ -321,19 +321,11 @@ export default function LoadHunterMobile({
                             <p className="text-xs text-muted-foreground">
                               {getDriverName(vehicle.driver_1_id) || 'No Driver'}
                             </p>
-                            <div className="flex items-center gap-1.5">
-                              {vehicle.carrier && (
-                                <p className="text-xs text-muted-foreground">
-                                  {carriersMap[vehicle.carrier] || vehicle.carrier}
-                                </p>
-                              )}
-                              <span className="text-[9px] px-1 py-0.5 rounded" style={{
-                                backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
-                                color: 'white'
-                              }}>
-                                {vehicle.stopped_status || '?'}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
-                              </span>
-                            </div>
+                            {vehicle.carrier && (
+                              <p className="text-xs text-muted-foreground">
+                                {carriersMap[vehicle.carrier] || vehicle.carrier}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -387,6 +379,15 @@ export default function LoadHunterMobile({
                             </Button>
                           )}
                         </div>
+                      </div>
+                      {/* Status Badge - centered on right edge */}
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap" style={{
+                          backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
+                          color: 'white'
+                        }}>
+                          {vehicle.stopped_status || '?'}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
+                        </span>
                       </div>
                       {hunt && (
                         <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">

@@ -3021,18 +3021,12 @@ export default function LoadHunterTab() {
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
                   <div className="flex items-start justify-between gap-1.5">
-                    <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="flex-1 min-w-0 space-y-0.5 pr-14">
                       <div className="font-medium text-xs leading-tight text-foreground flex items-center gap-1">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
-                      <div className="text-[11px] text-muted-foreground leading-tight flex items-center gap-1.5">
-                        <span>{vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}</span>
-                        <span className="text-[9px] px-1 py-0.5 rounded" style={{
-                          backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
-                          color: 'white'
-                        }}>
-                          {vehicle.stopped_status || 'Unknown'}{vehicle.speed !== null ? ` ${vehicle.speed} mph` : ''}
-                        </span>
+                      <div className="text-[11px] text-muted-foreground leading-tight">
+                        {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                       </div>
                       <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
@@ -3082,6 +3076,15 @@ export default function LoadHunterTab() {
                       >
                         {bidCount}
                       </div>
+                    </div>
+                    {/* Status Badge - centered on right edge */}
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
+                      <span className="text-[8px] px-1 py-0.5 rounded-l whitespace-nowrap" style={{
+                        backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
+                        color: 'white'
+                      }}>
+                        {vehicle.stopped_status || '?'}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
+                      </span>
                     </div>
                     {/* Maintenance & Fault Indicators - bottom right corner */}
                     {(isOilChangeDue || hasFaultCodes) && (
