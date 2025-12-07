@@ -19,7 +19,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, AlertTriangle, Droplet, Plus, Minus } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, AlertTriangle, Plus, Minus } from "lucide-react";
+import oilChangeIcon from '@/assets/oil-change-icon.png';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -2999,7 +3000,7 @@ export default function LoadHunterTab() {
                         {/* Maintenance & Fault Indicators */}
                         {isOilChangeDue && (
                           <span title="Oil change due">
-                            <Droplet className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                            <img src={oilChangeIcon} alt="Oil change due" className="h-3.5 w-3.5 flex-shrink-0" />
                           </span>
                         )}
                         {hasFaultCodes && (

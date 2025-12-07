@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import { 
   RefreshCw, ChevronRight, MapPin, Truck, Target, 
   Filter, Clock, Package, ArrowRight, X, Check, 
-  SkipForward, AlertTriangle, Volume2, VolumeX, List, Droplet
+  SkipForward, AlertTriangle, Volume2, VolumeX, List
 } from "lucide-react";
+import oilChangeIcon from '@/assets/oil-change-icon.png';
 
 interface Vehicle {
   id: string;
@@ -283,7 +284,7 @@ export default function LoadHunterMobile({
                               <p className="font-semibold">{vehicle.vehicle_number || 'N/A'}</p>
                               {isOilChangeDue && (
                                 <span title="Oil change due">
-                                  <Droplet className="h-3.5 w-3.5 text-amber-500" />
+                                  <img src={oilChangeIcon} alt="Oil change due" className="h-3.5 w-3.5" />
                                 </span>
                               )}
                               {hasFaultCodes && (
