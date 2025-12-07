@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, Upload, X, Image } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker for v3.x
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface CarrierData {
   id: string;
@@ -35,6 +39,7 @@ interface CarrierData {
   emergency_contact_home_phone: string | null;
   emergency_contact_cell_phone: string | null;
   emergency_contact_email: string | null;
+  logo_url: string | null;
 }
 
 interface HighwayData {
@@ -65,6 +70,8 @@ export default function CarrierDetail() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [highwayData, setHighwayData] = useState<HighwayData | null>(null);
   const [highwayLoading, setHighwayLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCarrier();
@@ -124,6 +131,93 @@ export default function CarrierDetail() {
     }
   };
 
+  const convertPdfToImage = async (file: File): Promise<Blob> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    
+    const scale = 2;
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not get canvas context');
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+    }).promise;
+    
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to convert PDF to image'));
+      }, 'image/png', 1.0);
+    });
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+
+    if (!isImage && !isPdf) {
+      toast.error('Please upload an image or PDF file');
+      return;
+    }
+
+    const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(isPdf ? 'PDF must be less than 10MB' : 'Image must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      let fileToUpload: Blob = file;
+      let fileName: string;
+
+      if (isPdf) {
+        toast.info('Converting PDF to image...');
+        fileToUpload = await convertPdfToImage(file);
+        fileName = `carrier-logo-${id}-${Date.now()}.png`;
+      } else {
+        const fileExt = file.name.split('.').pop();
+        fileName = `carrier-logo-${id}-${Date.now()}.${fileExt}`;
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(fileName, fileToUpload, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(fileName);
+
+      updateField('logo_url', publicUrl);
+      toast.success('Logo uploaded successfully');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload logo');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    updateField('logo_url', null);
+  };
+
   const handleSave = async () => {
     if (!carrier) return;
 
@@ -154,6 +248,7 @@ export default function CarrierDetail() {
           emergency_contact_home_phone: carrier.emergency_contact_home_phone,
           emergency_contact_cell_phone: carrier.emergency_contact_cell_phone,
           emergency_contact_email: carrier.emergency_contact_email,
+          logo_url: carrier.logo_url,
         })
         .eq("id", id);
 
@@ -257,8 +352,59 @@ export default function CarrierDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Safer Status & Dispatch Info */}
+        {/* Left Column - Logo, Safer Status & Dispatch Info */}
         <div className="space-y-6">
+          {/* Carrier Logo Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Carrier Logo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                {carrier?.logo_url ? (
+                  <div className="relative">
+                    <img 
+                      src={carrier.logo_url} 
+                      alt="Carrier Logo" 
+                      className="h-20 w-20 object-contain border rounded-lg bg-white"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6"
+                      onClick={handleRemoveLogo}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="h-20 w-20 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+                    <Image className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, or PDF up to 10MB</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Safer Status Section */}
           <Card>
             <CardContent className="pt-6 space-y-4">
