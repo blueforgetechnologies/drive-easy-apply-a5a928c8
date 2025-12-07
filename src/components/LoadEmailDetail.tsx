@@ -1532,80 +1532,36 @@ const LoadEmailDetail = ({
         </div>
 
         {/* FAR RIGHT COLUMN - Quote Rates */}
-        <div className="w-[200px]">
+        <div className="w-[140px]">
           <Card className="p-2">
             <div className="flex justify-between text-[10px] text-gray-500 pb-1.5 border-b mb-1.5">
               <span>Quote Rate</span>
               <span>$/mi</span>
             </div>
             <div className="space-y-0.5 text-[10px] max-h-[700px] overflow-auto">
-              {[{
-                rate: "$1,782.00",
-                perMile: "$2.28"
-              }, {
-                rate: "$1,732.00",
-                perMile: "$2.21"
-              }, {
-                rate: "$1,682.00",
-                perMile: "$2.15"
-              }, {
-                rate: "$1,632.00",
-                perMile: "$2.08"
-              }, {
-                rate: "$1,582.00",
-                perMile: "$2.02"
-              }, {
-                rate: "$1,532.00",
-                perMile: "$1.96"
-              }, {
-                rate: "$1,482.00",
-                perMile: "$1.89"
-              }, {
-                rate: "$1,432.00",
-                perMile: "$1.83"
-              }, {
-                rate: "$1,382.00",
-                perMile: "$1.77"
-              }, {
-                rate: "$1,332.00",
-                perMile: "$1.70"
-              }, {
-                rate: "$1,282.00",
-                perMile: "$1.64"
-              }, {
-                rate: "$1,232.00",
-                perMile: "$1.57"
-              }, {
-                rate: "$1,182.00",
-                perMile: "$1.51"
-              }, {
-                rate: "$1,132.00",
-                perMile: "$1.45"
-              }, {
-                rate: "$1,082.00",
-                perMile: "$1.38"
-              }, {
-                rate: "$1,032.00",
-                perMile: "$1.32"
-              }, {
-                rate: "$982.00",
-                perMile: "$1.25"
-              }, {
-                rate: "$932.00",
-                perMile: "$1.19"
-              }, {
-                rate: "$882.00",
-                perMile: "$1.13"
-              }, {
-                rate: "$832.00",
-                perMile: "$1.06"
-              }, {
-                rate: "$782.00",
-                perMile: "$1.00"
-              }].map((row, idx) => <div key={idx} className={`flex justify-between px-1.5 py-0.5 rounded ${row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"}`}>
-                  <span>{row.rate}</span>
-                  <span className="text-gray-600">{row.perMile}</span>
-                </div>)}
+              {(() => {
+                const loadedMiles = data.loaded_miles || 375;
+                const rates = [];
+                for (let rate = 1500; rate >= 500; rate -= 50) {
+                  rates.push(rate);
+                }
+                return rates.map((rate) => {
+                  const perMile = (rate / loadedMiles).toFixed(2);
+                  const isSelected = bidAmount === rate.toString();
+                  return (
+                    <div
+                      key={rate}
+                      onClick={() => setBidAmount(rate.toString())}
+                      className={`flex justify-between px-1.5 py-0.5 rounded cursor-pointer ${
+                        isSelected ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <span>${rate.toLocaleString()}.00</span>
+                      <span className="text-gray-600">${perMile}</span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </Card>
         </div>
