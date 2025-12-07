@@ -306,6 +306,38 @@ const LoadEmailDetail = ({
   const truckDimensions = buildTruckDimensions();
   const doorDimensions = buildDoorDimensions();
   const vehicleFeatures = buildFeatures();
+
+  // Build vehicle description with equipment for email intro line
+  // Example: "This unit is a 24' Large Straight, Air Ride with Lift Gate, Pallet Jack, straps & Blankets (See dims below)"
+  const buildVehicleDescription = () => {
+    if (!vehicle) return `I have a ${displaySize}${displayType}.`;
+    
+    const parts: string[] = [];
+    
+    // Add Air Ride first if available
+    if (vehicle.air_ride) parts.push('Air Ride');
+    
+    // Add Lift Gate
+    if (vehicle.lift_gate) parts.push('Lift Gate');
+    
+    // Add Pallet Jack
+    if (vehicle.pallet_jack) parts.push('Pallet Jack');
+    
+    // Add straps if available
+    if (vehicle.straps_count && vehicle.straps_count > 0) parts.push('straps');
+    
+    // Add blankets if available
+    if (vehicle.blankets && vehicle.blankets > 0) parts.push('Blankets');
+    
+    if (parts.length > 0) {
+      const equipmentList = parts.join(', ').replace(/, ([^,]*)$/, ' & $1'); // Replace last comma with &
+      return `This unit is a ${displaySize}${displayType}, ${equipmentList} (See dims below)`;
+    }
+    
+    return `This unit is a ${displaySize}${displayType}.`;
+  };
+
+  const vehicleDescription = buildVehicleDescription();
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
@@ -492,6 +524,7 @@ const LoadEmailDetail = ({
           dest_state: destState,
           vehicle_size: displaySize,
           vehicle_type: displayType,
+          vehicle_description: vehicleDescription,
           equipment_details: equipmentDetails,
           truck_dimensions: truckDimensions,
           door_dimensions: doorDimensions,
@@ -611,7 +644,7 @@ const LoadEmailDetail = ({
           
           <div className="border-t pt-4 space-y-3 text-sm">
             <p>{getGreeting()}</p>
-            <p>I have a {displaySize}{displayType}.</p>
+            <p>{vehicleDescription}</p>
             <p>Please let me know if I can help on this load:</p>
             <p>Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
             
@@ -944,7 +977,7 @@ const LoadEmailDetail = ({
                 </Card>
                 <Card className="p-3 text-sm space-y-2">
                   <p>{getGreeting()}</p>
-                  <p>I have a {displaySize}{displayType}.</p>
+                  <p>{vehicleDescription}</p>
                   <p className="text-blue-600">Please let me know if I can help on this load:</p>
                   <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
@@ -1354,7 +1387,7 @@ const LoadEmailDetail = ({
                       
                       <div className="border rounded p-3 text-xs space-y-2">
                          <p>{getGreeting()}</p>
-                        <p>I have a {displaySize}{displayType}.</p>
+                        <p>{vehicleDescription}</p>
                          <p className="text-blue-600">Please let me know if I can help on this load:</p>
                         <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
                         
