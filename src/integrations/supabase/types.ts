@@ -2015,6 +2015,61 @@ export type Database = {
         }
         Relationships: []
       }
+      match_action_history: {
+        Row: {
+          action_details: Json | null
+          action_type: string
+          created_at: string
+          dispatcher_email: string | null
+          dispatcher_id: string | null
+          dispatcher_name: string | null
+          id: string
+          match_id: string
+        }
+        Insert: {
+          action_details?: Json | null
+          action_type: string
+          created_at?: string
+          dispatcher_email?: string | null
+          dispatcher_id?: string | null
+          dispatcher_name?: string | null
+          id?: string
+          match_id: string
+        }
+        Update: {
+          action_details?: Json | null
+          action_type?: string
+          created_at?: string
+          dispatcher_email?: string | null
+          dispatcher_id?: string | null
+          dispatcher_name?: string | null
+          id?: string
+          match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_action_history_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_action_history_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "load_hunt_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_action_history_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "unreviewed_matches"
+            referencedColumns: ["match_id"]
+          },
+        ]
+      }
       missed_loads_history: {
         Row: {
           created_at: string | null
