@@ -837,9 +837,9 @@ const LoadEmailDetail = ({
               <p className="text-muted-foreground">{companyAddress}</p>
               <p>Cell: <span className="font-medium">{companyPhone}</span> • {dispatcherEmailAddr}</p>
             </div>
-            {companyProfile?.logo_url && (
+            {bidAsCarrier?.logo_url && (
               <div className="flex items-end justify-start">
-                <img src={companyProfile.logo_url} alt={companyName} className="h-14 max-w-[160px] object-contain" />
+                <img src={bidAsCarrier.logo_url} alt={companyName} className="h-14 max-w-[160px] object-contain" />
               </div>
             )}
           </div>
