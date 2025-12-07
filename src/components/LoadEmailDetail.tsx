@@ -1819,8 +1819,14 @@ const LoadEmailDetail = ({
             <div className="w-[280px]">
               <Card className="p-2 h-full flex flex-col justify-between shadow-md">
                 <div>
-                  {/* Average/Bid/Booked Row */}
-                  <div className="grid grid-cols-2 gap-1 text-center mb-2 pb-2 border-b">
+                  {/* Posted Rate/Average Bid/Average Booked Row */}
+                  <div className="grid grid-cols-3 gap-1 text-center mb-2 pb-2 border-b">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground">Posted Rate</div>
+                      <div className="text-xs font-semibold text-red-500">
+                        {data.posted_amount ? `$${data.posted_amount.toLocaleString()}` : '—'}
+                      </div>
+                    </div>
                     <div>
                       <div className="text-[10px] text-muted-foreground">Average Bid</div>
                       <div className="text-xs font-semibold">
