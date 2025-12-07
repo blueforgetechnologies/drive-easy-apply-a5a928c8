@@ -131,10 +131,16 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
-  // Parse dimensions
-  const dimensionsMatch = bodyText?.match(/(?:Dimensions?|Size)[:\s]+([^\n<]+)/i);
-  if (dimensionsMatch) {
-    data.dimensions = dimensionsMatch[1].trim();
+  // Parse dimensions - HTML format: <strong>Dimensions: </strong>48x48x48
+  const dimensionsHtmlMatch = bodyText?.match(/<strong>Dimensions?:\s*<\/strong>\s*([^<\n]+)/i);
+  if (dimensionsHtmlMatch) {
+    data.dimensions = dimensionsHtmlMatch[1].trim();
+  } else {
+    // Fallback: plain text format like "Dimensions: 48x48x48" (must have colon to avoid CSS)
+    const dimensionsPlainMatch = bodyText?.match(/Dimensions?:\s*(\d+[x×X]\d+(?:[x×X]\d+)?)/i);
+    if (dimensionsPlainMatch) {
+      data.dimensions = dimensionsPlainMatch[1].trim();
+    }
   }
 
   // Parse expiration datetime from "Expires" section (handles HTML tags like <strong>Expires: </strong>)
