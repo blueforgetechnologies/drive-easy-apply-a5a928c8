@@ -704,8 +704,8 @@ const MapTab = () => {
         <div ref={mapContainer} className="absolute inset-0 md:rounded-2xl" />
         
         {/* Map controls - repositioned for mobile */}
-        <div className={`absolute z-10 flex gap-2 ${isMobile ? 'top-4 left-4 right-4 justify-between' : 'top-4 right-4 flex-col'}`}>
-          {/* Mobile: Quick stats bar */}
+        <div className={`absolute z-10 flex gap-2 ${isMobile ? 'top-4 left-4' : 'top-4 right-4 flex-col'}`}>
+          {/* Mobile: Quick stats bar with toggle buttons */}
           {isMobile && (
             <div className="flex items-center gap-2 bg-background/90 backdrop-blur-xl rounded-full px-3 py-1.5 shadow-lg border">
               <div className="flex items-center gap-1.5">
@@ -731,43 +731,62 @@ const MapTab = () => {
                   </div>
                 </>
               )}
+              <div className="w-px h-4 bg-border" />
+              <button
+                onClick={toggleMapStyle}
+                className="p-1 rounded-full hover:bg-muted/50"
+              >
+                {mapStyle === 'streets' ? (
+                  <Satellite className="h-4 w-4" />
+                ) : (
+                  <MapIcon className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                onClick={() => setShowWeatherLayer(!showWeatherLayer)}
+                className={`p-1 rounded-full ${showWeatherLayer ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
+              >
+                <Cloud className="h-4 w-4" />
+              </button>
             </div>
           )}
           
-          {/* Control buttons */}
-          <div className={`flex ${isMobile ? 'gap-2' : 'flex-col gap-2'}`}>
-            <Button
-              onClick={toggleMapStyle}
-              size={isMobile ? "icon" : "sm"}
-              variant="secondary"
-              className="shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background"
-            >
-              {mapStyle === 'streets' ? (
-                <>
-                  <Satellite className="h-4 w-4" />
-                  {!isMobile && <span className="ml-2">Satellite</span>}
-                </>
-              ) : (
-                <>
-                  <MapIcon className="h-4 w-4" />
-                  {!isMobile && <span className="ml-2">Streets</span>}
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => setShowWeatherLayer(!showWeatherLayer)}
-              size={isMobile ? "icon" : "sm"}
-              variant={showWeatherLayer ? "default" : "secondary"}
-              className={`shadow-lg ${!showWeatherLayer ? 'backdrop-blur-sm bg-background/90 hover:bg-background' : ''}`}
-            >
-              <Cloud className="h-4 w-4" />
-              {!isMobile && <span className="ml-2">Weather</span>}
-            </Button>
-          </div>
+          {/* Desktop: Control buttons */}
+          {!isMobile && (
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={toggleMapStyle}
+                size="sm"
+                variant="secondary"
+                className="shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background"
+              >
+                {mapStyle === 'streets' ? (
+                  <>
+                    <Satellite className="h-4 w-4" />
+                    <span className="ml-2">Satellite</span>
+                  </>
+                ) : (
+                  <>
+                    <MapIcon className="h-4 w-4" />
+                    <span className="ml-2">Streets</span>
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => setShowWeatherLayer(!showWeatherLayer)}
+                size="sm"
+                variant={showWeatherLayer ? "default" : "secondary"}
+                className={`shadow-lg ${!showWeatherLayer ? 'backdrop-blur-sm bg-background/90 hover:bg-background' : ''}`}
+              >
+                <Cloud className="h-4 w-4" />
+                <span className="ml-2">Weather</span>
+              </Button>
+            </div>
+          )}
         </div>
         
         {/* Legend Button & Panel */}
-        <div className={`absolute z-10 ${isMobile ? 'bottom-32 left-4' : 'bottom-4 left-4'}`}>
+        <div className={`absolute z-10 ${isMobile ? 'bottom-44 left-4' : 'bottom-4 left-4'}`}>
           <Button
             onClick={() => setShowLegend(!showLegend)}
             size="sm"
@@ -860,7 +879,7 @@ const MapTab = () => {
             disabled={syncing}
             size="icon"
             variant="secondary"
-            className="absolute bottom-28 right-4 z-10 shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background h-12 w-12 rounded-full"
+            className="absolute bottom-44 right-4 z-10 shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background h-12 w-12 rounded-full"
           >
             <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
           </Button>
