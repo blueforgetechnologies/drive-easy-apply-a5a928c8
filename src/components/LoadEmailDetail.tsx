@@ -1450,27 +1450,38 @@ const LoadEmailDetail = ({
                   {/* Miles and Costs */}
                   <div className="space-y-1 mb-2 text-xs">
                     <div className="flex justify-end text-[10px] text-muted-foreground">[$/mi]</div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Loaded Miles</span>
-                      <div className="flex gap-3 items-center">
-                        <span className="font-semibold">{data.loaded_miles || 375}</span>
-                        <span className="text-blue-600 font-semibold w-10 text-right">$3.42</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Total Miles</span>
-                      <div className="flex gap-3 items-center">
-                        <span className="font-semibold">{Math.round((data.loaded_miles || 375) + (emptyDriveDistance || 0))}</span>
-                        <span className="text-blue-600 font-semibold w-10 text-right">$1.64</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center pb-1 border-b">
-                      <span className="font-medium">Fuel, Tolls and Driver</span>
-                      <div className="flex gap-3 items-center">
-                        <span className="font-semibold">$0.00</span>
-                        <span className="text-blue-600 font-semibold w-10 text-right">$0.00</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const loadedMiles = data.loaded_miles || 375;
+                      const totalMiles = Math.round(loadedMiles + (emptyDriveDistance || 0));
+                      const currentBid = parseFloat(bidAmount) || 0;
+                      const loadedPerMile = currentBid > 0 ? (currentBid / loadedMiles).toFixed(2) : '—';
+                      const totalPerMile = currentBid > 0 ? (currentBid / totalMiles).toFixed(2) : '—';
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Loaded Miles</span>
+                            <div className="flex gap-3 items-center">
+                              <span className="font-semibold">{loadedMiles}</span>
+                              <span className="text-blue-600 font-semibold w-12 text-right">{currentBid > 0 ? `$${loadedPerMile}` : '—'}</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Total Miles</span>
+                            <div className="flex gap-3 items-center">
+                              <span className="font-semibold">{totalMiles}</span>
+                              <span className="text-blue-600 font-semibold w-12 text-right">{currentBid > 0 ? `$${totalPerMile}` : '—'}</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1 border-b">
+                            <span className="font-medium">Fuel, Tolls and Driver</span>
+                            <div className="flex gap-3 items-center">
+                              <span className="font-semibold">$0.00</span>
+                              <span className="text-blue-600 font-semibold w-12 text-right">$0.00</span>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Bid Input and Button */}
@@ -1541,52 +1552,26 @@ const LoadEmailDetail = ({
             <div className="space-y-0.5 text-[10px] max-h-[700px] overflow-auto">
               {(() => {
                 const loadedMiles = data.loaded_miles || 375;
-                const totalMiles = data.total_miles || loadedMiles;
-                const currentBid = parseFloat(bidAmount) || 0;
                 const rates = [];
                 for (let rate = 1500; rate >= 500; rate -= 50) {
                   rates.push(rate);
                 }
-                return (
-                  <>
-                    {/* Summary based on current bid */}
-                    {currentBid > 0 && (
-                      <div className="mb-2 pb-2 border-b border-dashed space-y-0.5">
-                        <div className="flex justify-between px-1.5">
-                          <span>Loaded Miles</span>
-                          <span className="font-medium">{loadedMiles}</span>
-                          <span className="text-blue-600 font-semibold">${(currentBid / loadedMiles).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between px-1.5">
-                          <span>Total Miles</span>
-                          <span className="font-medium">{totalMiles}</span>
-                          <span className="text-blue-600 font-semibold">${(currentBid / totalMiles).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between px-1.5">
-                          <span>Fuel, Tolls and Driver</span>
-                          <span className="font-medium">$0.00</span>
-                          <span className="text-blue-600 font-semibold">$0.00</span>
-                        </div>
-                      </div>
-                    )}
-                    {rates.map((rate) => {
-                      const perMile = (rate / loadedMiles).toFixed(2);
-                      const isSelected = bidAmount === rate.toString();
-                      return (
-                        <div
-                          key={rate}
-                          onClick={() => setBidAmount(rate.toString())}
-                          className={`flex justify-between px-1.5 py-0.5 rounded cursor-pointer ${
-                            isSelected ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
-                          }`}
-                        >
-                          <span>${rate.toLocaleString()}.00</span>
-                          <span className="text-gray-600">${perMile}</span>
-                        </div>
-                      );
-                    })}
-                  </>
-                );
+                return rates.map((rate) => {
+                  const perMile = (rate / loadedMiles).toFixed(2);
+                  const isSelected = bidAmount === rate.toString();
+                  return (
+                    <div
+                      key={rate}
+                      onClick={() => setBidAmount(rate.toString())}
+                      className={`flex justify-between px-1.5 py-0.5 rounded cursor-pointer ${
+                        isSelected ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <span>${rate.toLocaleString()}.00</span>
+                      <span className="text-gray-600">${perMile}</span>
+                    </div>
+                  );
+                });
               })()}
             </div>
           </Card>
