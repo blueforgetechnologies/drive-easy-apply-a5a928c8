@@ -413,12 +413,8 @@ export default function LoadHunterMobile({
                         </p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-muted-foreground">{diffMins}m ago</p>
-                        {email.expires_at && (
-                          <p className="text-[10px] text-orange-600">
-                            Exp: {Math.max(0, Math.floor((new Date(email.expires_at).getTime() - now.getTime()) / 60000))}m
-                          </p>
-                        )}
+                        <p className="text-sm font-medium text-destructive">{diffMins}</p>
+                        <p className="text-[10px] text-destructive">min</p>
                       </div>
                     </div>
 
