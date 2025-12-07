@@ -1896,17 +1896,17 @@ const LoadEmailDetail = ({
                   undecided: 'Undecided',
                 };
                 return (
-                  <div key={entry.id} className="flex items-center gap-2 py-2 px-1">
-                    <Badge className={`text-[10px] px-1.5 py-0 h-5 ${actionColors[entry.action_type] || 'bg-gray-100 text-gray-700'}`}>
+                  <div key={entry.id} className="flex items-center gap-3 py-2.5 px-1">
+                    <Badge className={`text-xs px-2 py-0.5 ${actionColors[entry.action_type] || 'bg-gray-100 text-gray-700'}`}>
                       {actionLabels[entry.action_type] || entry.action_type}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium truncate">{entry.dispatcher_name || 'Unknown'}</span>
+                      <span className="text-sm font-medium truncate">{entry.dispatcher_name || 'Unknown'}</span>
                       {entry.action_details?.bid_amount && (
-                        <span className="text-[10px] text-green-600 ml-1">${entry.action_details.bid_amount}</span>
+                        <span className="text-xs text-green-600 ml-1.5">${entry.action_details.bid_amount}</span>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(entry.created_at).toLocaleString('en-US', { 
                         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
                       })}
