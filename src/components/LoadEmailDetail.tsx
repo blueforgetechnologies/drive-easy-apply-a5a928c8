@@ -707,9 +707,9 @@ const LoadEmailDetail = ({
               className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={1}
             />
-            {/* Selected Templates - appear after Order Number, before Truck Specs */}
+            {/* Selected Templates - highlighted to stand out */}
             {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => (
-              <p key={idx} className="text-sm leading-relaxed">{text}</p>
+              <p key={idx} className="text-sm leading-relaxed bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 px-2 py-1 rounded -mx-2">{text}</p>
             ))}
           </div>
           
