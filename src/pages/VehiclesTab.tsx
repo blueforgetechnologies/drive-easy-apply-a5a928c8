@@ -11,16 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
-import { MobileDataCard, MobileDataList } from "@/components/ui/mobile-data-card";
-import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
+import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 interface Vehicle {
   id: string;
   vehicle_number: string | null;
@@ -50,7 +41,6 @@ interface Vehicle {
 }
 
 export default function VehiclesTab() {
-  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
@@ -611,67 +601,8 @@ export default function VehiclesTab() {
         </Card>
       ) : (
         <>
-          {/* Mobile Card View */}
-          <MobileDataList>
-            {paginatedVehicles.map((vehicle) => {
-              const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
-              return (
-                <MobileDataCard
-                  key={vehicle.id}
-                  title={vehicle.vehicle_number || "N/A"}
-                  subtitle={vehicle.carrier ? carriersMap[vehicle.carrier] : undefined}
-                  badge={{
-                    text: vehicle.status,
-                    variant: vehicle.status === "active" ? "default" : vehicle.status === "pending" ? "secondary" : "outline"
-                  }}
-                  onClick={() => viewVehicle(vehicle.id)}
-                  className={isOilChangeDue ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : ""}
-                  rows={[
-                    { 
-                      label: "Driver", 
-                      value: vehicle.driver_1_id ? driversMap[vehicle.driver_1_id] || "Assigned" : "—" 
-                    },
-                    { 
-                      label: "Dispatcher", 
-                      value: vehicle.primary_dispatcher_id ? dispatchersMap[vehicle.primary_dispatcher_id] || "Assigned" : "—" 
-                    },
-                    { 
-                      label: "Type", 
-                      value: vehicle.asset_type || "N/A" 
-                    },
-                    { 
-                      label: "Oil Change", 
-                      value: vehicle.oil_change_remaining !== null ? `${vehicle.oil_change_remaining} mi` : "N/A",
-                      className: vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining < 0 ? "text-red-600" : ""
-                    },
-                  ]}
-                  actions={
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => viewVehicle(vehicle.id)}>
-                          <Edit className="h-4 w-4 mr-2" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteVehicle(vehicle.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  }
-                />
-              );
-            })}
-          </MobileDataList>
-
-          {/* Desktop Table View */}
-          <Card className="hidden md:block">
+          {/* Table View */}
+          <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table className="text-sm">
