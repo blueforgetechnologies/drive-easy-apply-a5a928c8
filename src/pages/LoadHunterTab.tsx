@@ -3042,7 +3042,7 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                     {/* Merged badge pill - flush top right edge */}
-                    <div className="absolute top-0 right-0 flex items-center rounded-bl-md rounded-tr-lg overflow-hidden border-l border-b border-border/50">
+                    <div className="absolute top-0 right-0 flex items-center rounded-bl-md rounded-tr-sm overflow-hidden border-l border-b border-border/50">
                       {/* GREEN = Unreviewed */}
                       <div 
                         className="h-4 px-1.5 bg-green-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-600 transition-colors"
