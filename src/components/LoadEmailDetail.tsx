@@ -50,6 +50,13 @@ const LoadEmailDetail = ({
   const [bidConfirmed, setBidConfirmed] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
   const [currentDispatcher, setCurrentDispatcher] = useState<any>(null);
+  
+  // Editable email body lines
+  const [editableGreeting, setEditableGreeting] = useState<string>("");
+  const [editableVehicleDesc, setEditableVehicleDesc] = useState<string>("");
+  const [editableHelpLine, setEditableHelpLine] = useState<string>("Please let me know if I can help on this load:");
+  const [editableOrderLine, setEditableOrderLine] = useState<string>("");
+  
   const data = email.parsed_data || {};
 
   // Email templates - editable and selectable
@@ -339,6 +346,14 @@ const LoadEmailDetail = ({
 
   const vehicleDescription = buildVehicleDescription();
   
+  // Initialize editable body fields with computed values
+  useEffect(() => {
+    setEditableGreeting(getGreeting());
+    setEditableVehicleDesc(vehicleDescription);
+    const orderLine = `Order Number: ${data.order_number || 'N/A'} [${originCity}, ${originState} to ${destCity}, ${destState}]`;
+    setEditableOrderLine(orderLine);
+  }, [vehicle, data.broker_name, data.broker_email, data.order_number, originCity, originState, destCity, destState]);
+  
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
   // Handle Skip button click - skips only this specific match, not the entire load
@@ -524,7 +539,7 @@ const LoadEmailDetail = ({
           dest_state: destState,
           vehicle_size: displaySize,
           vehicle_type: displayType,
-          vehicle_description: vehicleDescription,
+          vehicle_description: editableVehicleDesc,
           equipment_details: equipmentDetails,
           truck_dimensions: truckDimensions,
           door_dimensions: doorDimensions,
@@ -546,6 +561,11 @@ const LoadEmailDetail = ({
             }
             return undefined;
           })(),
+          // Editable body lines
+          greeting_line: editableGreeting,
+          vehicle_line: editableVehicleDesc,
+          help_line: editableHelpLine,
+          order_line: editableOrderLine,
         },
       });
 
@@ -643,10 +663,30 @@ const LoadEmailDetail = ({
           </div>
           
           <div className="border-t pt-4 space-y-3 text-sm">
-            <p>{getGreeting()}</p>
-            <p>{vehicleDescription}</p>
-            <p>Please let me know if I can help on this load:</p>
-            <p>Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
+            <Input 
+              value={editableGreeting}
+              onChange={(e) => setEditableGreeting(e.target.value)}
+              className="h-8 text-sm border-dashed"
+              placeholder="Greeting..."
+            />
+            <Input 
+              value={editableVehicleDesc}
+              onChange={(e) => setEditableVehicleDesc(e.target.value)}
+              className="h-8 text-sm border-dashed"
+              placeholder="Vehicle description..."
+            />
+            <Input 
+              value={editableHelpLine}
+              onChange={(e) => setEditableHelpLine(e.target.value)}
+              className="h-8 text-sm text-blue-600 border-dashed"
+              placeholder="Help line..."
+            />
+            <Input 
+              value={editableOrderLine}
+              onChange={(e) => setEditableOrderLine(e.target.value)}
+              className="h-8 text-sm text-blue-600 border-dashed"
+              placeholder="Order details..."
+            />
             
             <div className="space-y-1 mt-4">
               <p><strong>Truck Carries:</strong> {equipmentDetails}</p>
@@ -976,10 +1016,26 @@ const LoadEmailDetail = ({
                   </div>
                 </Card>
                 <Card className="p-3 text-sm space-y-2">
-                  <p>{getGreeting()}</p>
-                  <p>{vehicleDescription}</p>
-                  <p className="text-blue-600">Please let me know if I can help on this load:</p>
-                  <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
+                  <Input 
+                    value={editableGreeting}
+                    onChange={(e) => setEditableGreeting(e.target.value)}
+                    className="h-7 text-sm border-dashed"
+                  />
+                  <Input 
+                    value={editableVehicleDesc}
+                    onChange={(e) => setEditableVehicleDesc(e.target.value)}
+                    className="h-7 text-sm border-dashed"
+                  />
+                  <Input 
+                    value={editableHelpLine}
+                    onChange={(e) => setEditableHelpLine(e.target.value)}
+                    className="h-7 text-sm text-blue-600 border-dashed"
+                  />
+                  <Input 
+                    value={editableOrderLine}
+                    onChange={(e) => setEditableOrderLine(e.target.value)}
+                    className="h-7 text-sm text-blue-600 border-dashed"
+                  />
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
                     <p><strong>We have:</strong> {equipmentDetails}</p>
                     <p><strong>Truck Dimension:</strong> {truckDimensions}</p>
@@ -1386,10 +1442,26 @@ const LoadEmailDetail = ({
                       </div>
                       
                       <div className="border rounded p-3 text-xs space-y-2">
-                         <p>{getGreeting()}</p>
-                        <p>{vehicleDescription}</p>
-                         <p className="text-blue-600">Please let me know if I can help on this load:</p>
-                        <p className="text-blue-600">Order Number: {data.order_number || 'N/A'} [{originCity}, {originState} to {destCity}, {destState}]</p>
+                        <Input 
+                          value={editableGreeting}
+                          onChange={(e) => setEditableGreeting(e.target.value)}
+                          className="h-6 text-xs border-dashed"
+                        />
+                        <Input 
+                          value={editableVehicleDesc}
+                          onChange={(e) => setEditableVehicleDesc(e.target.value)}
+                          className="h-6 text-xs border-dashed"
+                        />
+                        <Input 
+                          value={editableHelpLine}
+                          onChange={(e) => setEditableHelpLine(e.target.value)}
+                          className="h-6 text-xs text-blue-600 border-dashed"
+                        />
+                        <Input 
+                          value={editableOrderLine}
+                          onChange={(e) => setEditableOrderLine(e.target.value)}
+                          className="h-6 text-xs text-blue-600 border-dashed"
+                        />
                         
                         <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">
                           <div><strong>We have:</strong> {equipmentDetails}</div>
