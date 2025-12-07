@@ -820,16 +820,18 @@ const LoadEmailDetail = ({
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
           </div>
           
-          {/* Signature - Compact */}
-          <div className="text-xs space-y-0.5 pt-2 border-t border-dashed">
+          {/* Signature - Compact with logo on right */}
+          <div className="flex items-start gap-4 pt-2 border-t border-dashed">
+            <div className="text-xs space-y-0.5 flex-1">
+              <p className="font-semibold">{dispatcherName}</p>
+              <p className="text-muted-foreground">Dispatch • {companyName}</p>
+              <p className="font-medium">MC#: {mcNumber} • USDOT#: {dotNumber}</p>
+              <p className="text-muted-foreground">{companyAddress}</p>
+              <p>Cell: <span className="font-medium">{companyPhone}</span> • {dispatcherEmailAddr}</p>
+            </div>
             {companyProfile?.logo_url && (
-              <img src={companyProfile.logo_url} alt={companyName} className="h-10 max-w-[150px] object-contain mb-2" />
+              <img src={companyProfile.logo_url} alt={companyName} className="h-16 max-w-[180px] object-contain" />
             )}
-            <p className="font-semibold">{dispatcherName}</p>
-            <p className="text-muted-foreground">Dispatch • {companyName}</p>
-            <p className="font-medium">MC#: {mcNumber} • USDOT#: {dotNumber}</p>
-            <p className="text-muted-foreground">{companyAddress}</p>
-            <p>Cell: <span className="font-medium">{companyPhone}</span> • {dispatcherEmailAddr}</p>
           </div>
           
           {/* Reference - Subtle */}
