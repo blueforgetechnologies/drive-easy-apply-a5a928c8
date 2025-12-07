@@ -115,14 +115,14 @@ const handler = async (req: Request): Promise<Response> => {
         
         <table style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; width: 100%;">
           <tr>
-            <td style="vertical-align: top;">
+            <td style="vertical-align: bottom;">
               <p style="font-weight: bold; margin: 0;">${data.dispatcher_name}</p>
               <p style="margin: 4px 0;">Dispatch • ${data.company_name}</p>
               <p style="font-weight: bold; margin: 4px 0;">MC#: ${data.mc_number} • USDOT#: ${data.dot_number}</p>
               <p style="margin: 4px 0;">${data.company_address}</p>
               <p style="margin: 4px 0;">Cell: <strong>${data.company_phone}</strong> • ${data.from_email}</p>
             </td>
-            ${data.company_logo_url ? `<td style="vertical-align: top; text-align: right; padding-left: 20px;"><img src="${data.company_logo_url}" alt="${data.company_name}" style="max-height: 80px; max-width: 200px;" /></td>` : ''}
+            ${data.company_logo_url ? `<td style="vertical-align: bottom; text-align: right; padding-left: 12px;"><img src="${data.company_logo_url}" alt="${data.company_name}" style="max-height: 70px; max-width: 180px;" /></td>` : ''}
           </tr>
         </table>
         

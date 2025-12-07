@@ -821,7 +821,7 @@ const LoadEmailDetail = ({
           </div>
           
           {/* Signature - Compact with logo on right */}
-          <div className="flex items-start gap-4 pt-2 border-t border-dashed">
+          <div className="flex items-end gap-3 pt-2 border-t border-dashed">
             <div className="text-xs space-y-0.5 flex-1">
               <p className="font-semibold">{dispatcherName}</p>
               <p className="text-muted-foreground">Dispatch • {companyName}</p>
@@ -830,7 +830,7 @@ const LoadEmailDetail = ({
               <p>Cell: <span className="font-medium">{companyPhone}</span> • {dispatcherEmailAddr}</p>
             </div>
             {companyProfile?.logo_url && (
-              <img src={companyProfile.logo_url} alt={companyName} className="h-16 max-w-[180px] object-contain" />
+              <img src={companyProfile.logo_url} alt={companyName} className="h-14 max-w-[160px] object-contain" />
             )}
           </div>
           
