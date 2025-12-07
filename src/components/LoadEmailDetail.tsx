@@ -113,9 +113,18 @@ const LoadEmailDetail = ({
       timeGreeting = 'Good evening';
     }
     
-    // Extract first name from broker_name (e.g., "NM Steele" -> "NM", "Toni Castro" -> "Toni")
-    const brokerName = data.broker_name || '';
-    const firstName = brokerName.split(' ')[0] || '';
+    // Try broker_name first, then extract from broker_email (e.g., "kristy.pidhoretska@..." -> "Kristy")
+    let firstName = '';
+    if (data.broker_name) {
+      firstName = (data.broker_name || '').split(' ')[0];
+    } else if (data.broker_email) {
+      // Extract first name from email (before @ and before any dots/underscores)
+      const emailPrefix = (data.broker_email || '').split('@')[0];
+      const namePart = emailPrefix.split(/[._-]/)[0];
+      if (namePart && namePart.length > 1) {
+        firstName = namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+      }
+    }
     
     return firstName ? `${timeGreeting} ${firstName},` : `${timeGreeting},`;
   };
@@ -493,7 +502,17 @@ const LoadEmailDetail = ({
           company_phone: companyPhone,
           reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
           selected_templates: getSelectedTemplateTexts(),
-          contact_first_name: (data.broker_name || '').split(' ')[0] || undefined,
+          contact_first_name: (() => {
+            if (data.broker_name) return (data.broker_name || '').split(' ')[0];
+            if (data.broker_email) {
+              const emailPrefix = (data.broker_email || '').split('@')[0];
+              const namePart = emailPrefix.split(/[._-]/)[0];
+              if (namePart && namePart.length > 1) {
+                return namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+              }
+            }
+            return undefined;
+          })(),
         },
       });
 
