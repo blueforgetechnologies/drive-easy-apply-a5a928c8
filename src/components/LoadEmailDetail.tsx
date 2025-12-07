@@ -998,14 +998,14 @@ const LoadEmailDetail = ({
 
         {/* Bid Card Sheet for Mobile */}
         {showBidCardOnMap && (
-          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom">
-            <div className="sticky top-0 bg-background border-b p-3 flex items-center justify-between">
+          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom flex flex-col">
+            <div className="bg-background border-b p-3 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-semibold">Bid Email Preview</h3>
               <Button variant="ghost" size="icon" onClick={() => setShowBidCardOnMap(false)}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="p-3 overflow-auto h-[calc(100vh-60px)]">
+            <div className="flex-1 overflow-auto p-3 pb-20">
               <div className="space-y-3">
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">To:</div>
@@ -1164,21 +1164,24 @@ const LoadEmailDetail = ({
                     )}
                   </div>
                 </Card>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button 
-                    size="sm" 
-                    className="bg-blue-500 hover:bg-blue-600"
-                    onClick={() => setShowEmailConfirmDialog(true)}
-                  >
-                    Email Bid
-                  </Button>
-                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
-                    Place Bid
-                  </Button>
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                    Book
-                  </Button>
-                </div>
+              </div>
+            </div>
+            {/* Sticky Footer with Action Buttons */}
+            <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 safe-area-bottom">
+              <div className="grid grid-cols-3 gap-2">
+                <Button 
+                  size="sm" 
+                  className="bg-blue-500 hover:bg-blue-600 h-11"
+                  onClick={() => setShowEmailConfirmDialog(true)}
+                >
+                  Email Bid
+                </Button>
+                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 h-11">
+                  Place Bid
+                </Button>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-11">
+                  Book
+                </Button>
               </div>
             </div>
           </div>
