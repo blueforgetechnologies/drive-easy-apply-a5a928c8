@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
-import { RefreshCw, MapIcon, Satellite, Cloud } from 'lucide-react';
+import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
-
+import { useIsMobile } from '@/hooks/use-mobile';
 const MapTab = () => {
   useMapLoadTracker('MapTab');
+  const isMobile = useIsMobile();
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -22,7 +22,8 @@ const MapTab = () => {
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
   const [showWeatherLayer, setShowWeatherLayer] = useState(false);
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
-
+  const [mobileSheetExpanded, setMobileSheetExpanded] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   useEffect(() => {
     loadVehicles();
     
@@ -244,6 +245,12 @@ const MapTab = () => {
     
     // Open popup
     popup.addTo(map.current);
+    
+    // Set selected vehicle and collapse sheet on mobile
+    setSelectedVehicle(vehicleId);
+    if (isMobile) {
+      setMobileSheetExpanded(false);
+    }
   };
 
   useEffect(() => {
@@ -453,90 +460,186 @@ const MapTab = () => {
   }, [vehicles, weatherCache]);
 
 
-  return (
-    <div className="h-[calc(100vh-120px)] flex gap-4">
-      {/* Sidebar with asset list */}
-      <aside className="w-80 max-w-sm bg-background/95 backdrop-blur border rounded-lg shadow-lg overflow-hidden flex flex-col">
-        <div className="px-4 py-3 border-b">
-          <h3 className="font-semibold">Assets</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} with live location
-          </p>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {vehicles.map((vehicle) => {
-            const speed = vehicle.speed || 0;
-            const stoppedStatus = vehicle.stopped_status;
-            let statusIcon = '';
-            let statusColor = '';
+  // Count vehicles with issues
+  const movingCount = vehicles.filter(v => (v.speed || 0) > 0).length;
+  const stoppedCount = vehicles.filter(v => (v.speed || 0) === 0).length;
+  const alertCount = vehicles.filter(v => 
+    (v.oil_change_remaining !== null && v.oil_change_remaining <= 0) || 
+    (v.fault_codes && Array.isArray(v.fault_codes) && v.fault_codes.length > 0)
+  ).length;
+
+  // Render vehicle card for both mobile and desktop
+  const renderVehicleCard = (vehicle: any) => {
+    const speed = vehicle.speed || 0;
+    const stoppedStatus = vehicle.stopped_status;
+    const isSelected = selectedVehicle === vehicle.id;
+    
+    let statusIcon: React.ReactNode;
+    let statusBg = '';
+    let statusText = '';
+    
+    if (speed > 0) {
+      statusIcon = <Navigation className="h-3 w-3" />;
+      statusBg = 'bg-emerald-500';
+      statusText = 'Moving';
+    } else if (stoppedStatus === 'stopped' || speed === 0) {
+      statusIcon = <div className="w-2 h-2 rounded-sm bg-white" />;
+      statusBg = 'bg-red-500';
+      statusText = 'Stopped';
+    } else {
+      statusIcon = <div className="flex gap-0.5"><div className="w-0.5 h-2 bg-white rounded" /><div className="w-0.5 h-2 bg-white rounded" /></div>;
+      statusBg = 'bg-amber-500';
+      statusText = 'Idling';
+    }
+    
+    const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
+    const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
+    const hasAlert = oilChangeDue || hasFaultCodes;
+    
+    return (
+      <div
+        key={vehicle.id}
+        onClick={() => handleVehicleClick(vehicle.id)}
+        className={`
+          group relative p-3 rounded-xl cursor-pointer transition-all duration-200 
+          ${isSelected 
+            ? 'bg-primary/10 border-primary/30 shadow-md ring-1 ring-primary/20' 
+            : 'bg-card/50 hover:bg-card/80 border-border/50 hover:border-border hover:shadow-sm'
+          }
+          border backdrop-blur-sm
+          ${hasAlert ? 'border-l-2 border-l-destructive' : ''}
+        `}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Status indicator */}
+            <div className={`
+              flex items-center justify-center w-8 h-8 rounded-lg ${statusBg} 
+              shadow-sm transition-transform group-hover:scale-105
+            `}>
+              {statusIcon}
+            </div>
             
-            if (speed > 0) {
-              statusIcon = '↑'; // Moving
-              statusColor = 'bg-emerald-500';
-            } else if (stoppedStatus === 'stopped' || speed === 0) {
-              statusIcon = '■'; // Stopped
-              statusColor = 'bg-red-500';
-            } else {
-              statusIcon = '‖'; // Idling
-              statusColor = 'bg-emerald-500';
-            }
-            
-            // Check if oil change is due (0 or negative miles remaining)
-            const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
-            // Check if vehicle has fault codes
-            const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
-            
-            return (
-              <div
-                key={vehicle.id}
-                onClick={() => handleVehicleClick(vehicle.id)}
-                className="px-4 py-3 border-b hover:bg-muted/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${statusColor} text-white`}>
-                      {statusIcon}
-                    </span>
-                    <div className="font-medium text-sm">
-                      {vehicle.vehicle_number || 'Unknown'}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {oilChangeDue && (
-                      <span className="flex items-center justify-center w-5 h-5 rounded" title="Oil change due">
-                        <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
-                      </span>
-                    )}
-                    {hasFaultCodes && (
-                      <span className="flex items-center justify-center w-5 h-5 rounded" title={`${vehicle.fault_codes.length} fault code(s)`}>
-                        <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
-                      </span>
-                    )}
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                      {speed} MPH
-                    </span>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
-                </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-foreground truncate">
+                  {vehicle.vehicle_number || 'Unknown'}
+                </span>
+                {hasAlert && (
+                  <AlertTriangle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                )}
               </div>
-            );
-          })}
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Speed badge */}
+          <div className="flex flex-col items-end gap-1">
+            <div className={`
+              px-2.5 py-1 rounded-full text-xs font-bold
+              ${speed > 0 
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' 
+                : 'bg-muted text-muted-foreground'
+              }
+            `}>
+              {speed} mph
+            </div>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              {statusText}
+            </span>
+          </div>
+        </div>
+        
+        {/* Alert icons row */}
+        {hasAlert && (
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+            {oilChangeDue && (
+              <div className="flex items-center gap-1.5 text-xs text-destructive">
+                <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
+                <span>Oil change due</span>
+              </div>
+            )}
+            {hasFaultCodes && (
+              <div className="flex items-center gap-1.5 text-xs text-destructive">
+                <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
+                <span>{vehicle.fault_codes.length} fault code{vehicle.fault_codes.length > 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-120px)] relative flex flex-col md:flex-row md:gap-4">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-80 max-w-sm bg-background/80 backdrop-blur-xl border rounded-2xl shadow-xl overflow-hidden flex-col">
+        {/* Header */}
+        <div className="px-4 py-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Truck className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Fleet Tracker</h3>
+                <p className="text-xs text-muted-foreground">
+                  {vehicles.length} active asset{vehicles.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Quick stats */}
+          <div className="flex gap-2 mt-3">
+            <div className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 text-center">
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{movingCount}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Moving</div>
+            </div>
+            <div className="flex-1 px-3 py-2 rounded-lg bg-red-500/10 text-center">
+              <div className="text-lg font-bold text-red-600 dark:text-red-400">{stoppedCount}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Stopped</div>
+            </div>
+            {alertCount > 0 && (
+              <div className="flex-1 px-3 py-2 rounded-lg bg-destructive/10 text-center">
+                <div className="text-lg font-bold text-destructive">{alertCount}</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Alerts</div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Vehicle list */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {vehicles.map(renderVehicleCard)}
           {vehicles.length === 0 && (
-            <div className="px-4 py-6 text-xs text-muted-foreground text-center">
-              No assets with GPS location yet. Try syncing with Samsara.
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                <Truck className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No assets with GPS</p>
+              <p className="text-xs text-muted-foreground mt-1">Sync with Samsara to get started</p>
             </div>
           )}
         </div>
-        <div className="px-4 py-3 border-t text-xs text-muted-foreground space-y-1">
-          <div>Last updated: {lastUpdate.toLocaleTimeString()}</div>
-          <div>Auto-refresh: every 30s</div>
+        
+        {/* Footer */}
+        <div className="px-4 py-3 border-t bg-muted/30">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+            <span>Updated {lastUpdate.toLocaleTimeString()}</span>
+            <span className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
+          </div>
           <Button 
             onClick={handleSync} 
             disabled={syncing}
             size="sm"
-            className="w-full mt-2"
+            className="w-full"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
             {syncing ? 'Syncing...' : 'Sync with Samsara'}
@@ -544,41 +647,182 @@ const MapTab = () => {
         </div>
       </aside>
 
-      {/* Map container */}
-      <div className="relative flex-1">
-        <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
+      {/* Map container - full width on mobile */}
+      <div className="relative flex-1 h-full">
+        <div ref={mapContainer} className="absolute inset-0 md:rounded-2xl" />
         
-        {/* Map controls */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-          <Button
-            onClick={toggleMapStyle}
-            size="sm"
-            variant="secondary"
-            className="shadow-lg"
-          >
-            {mapStyle === 'streets' ? (
-              <>
-                <Satellite className="h-4 w-4 mr-2" />
-                Satellite
-              </>
-            ) : (
-              <>
-                <MapIcon className="h-4 w-4 mr-2" />
-                Streets
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={() => setShowWeatherLayer(!showWeatherLayer)}
-            size="sm"
-            variant={showWeatherLayer ? "default" : "secondary"}
-            className="shadow-lg"
-          >
-            <Cloud className="h-4 w-4 mr-2" />
-            Weather
-          </Button>
+        {/* Map controls - repositioned for mobile */}
+        <div className={`absolute z-10 flex gap-2 ${isMobile ? 'top-4 left-4 right-4 justify-between' : 'top-4 right-4 flex-col'}`}>
+          {/* Mobile: Quick stats bar */}
+          {isMobile && (
+            <div className="flex items-center gap-2 bg-background/90 backdrop-blur-xl rounded-full px-3 py-1.5 shadow-lg border">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-xs font-medium">{movingCount}</span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="text-xs font-medium">{stoppedCount}</span>
+              </div>
+              {alertCount > 0 && (
+                <>
+                  <div className="w-px h-4 bg-border" />
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                    <span className="text-xs font-medium text-destructive">{alertCount}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* Control buttons */}
+          <div className={`flex ${isMobile ? 'gap-2' : 'flex-col gap-2'}`}>
+            <Button
+              onClick={toggleMapStyle}
+              size={isMobile ? "icon" : "sm"}
+              variant="secondary"
+              className="shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background"
+            >
+              {mapStyle === 'streets' ? (
+                <>
+                  <Satellite className="h-4 w-4" />
+                  {!isMobile && <span className="ml-2">Satellite</span>}
+                </>
+              ) : (
+                <>
+                  <MapIcon className="h-4 w-4" />
+                  {!isMobile && <span className="ml-2">Streets</span>}
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => setShowWeatherLayer(!showWeatherLayer)}
+              size={isMobile ? "icon" : "sm"}
+              variant={showWeatherLayer ? "default" : "secondary"}
+              className={`shadow-lg ${!showWeatherLayer ? 'backdrop-blur-sm bg-background/90 hover:bg-background' : ''}`}
+            >
+              <Cloud className="h-4 w-4" />
+              {!isMobile && <span className="ml-2">Weather</span>}
+            </Button>
+          </div>
         </div>
+        
+        {/* Mobile: Sync button */}
+        {isMobile && (
+          <Button
+            onClick={handleSync}
+            disabled={syncing}
+            size="icon"
+            variant="secondary"
+            className="absolute bottom-28 right-4 z-10 shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background h-12 w-12 rounded-full"
+          >
+            <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
+          </Button>
+        )}
       </div>
+
+      {/* Mobile: Bottom Sheet */}
+      {isMobile && (
+        <div 
+          className={`
+            fixed bottom-0 left-0 right-0 z-20
+            bg-background/95 backdrop-blur-xl border-t rounded-t-3xl shadow-2xl
+            transition-all duration-300 ease-out
+            ${mobileSheetExpanded ? 'h-[70vh]' : 'h-auto'}
+          `}
+        >
+          {/* Handle bar */}
+          <button
+            onClick={() => setMobileSheetExpanded(!mobileSheetExpanded)}
+            className="w-full flex flex-col items-center pt-3 pb-2 touch-manipulation"
+          >
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </button>
+          
+          {/* Header */}
+          <div className="px-4 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Truck className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">Fleet Tracker</h3>
+                <p className="text-xs text-muted-foreground">
+                  {vehicles.length} active • Updated {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileSheetExpanded(!mobileSheetExpanded)}
+              className="h-8 w-8"
+            >
+              {mobileSheetExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+            </Button>
+          </div>
+          
+          {/* Expanded content */}
+          {mobileSheetExpanded && (
+            <div className="flex-1 overflow-y-auto px-4 pb-safe space-y-2" style={{ maxHeight: 'calc(70vh - 80px)' }}>
+              {vehicles.map(renderVehicleCard)}
+              {vehicles.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
+                    <Truck className="h-7 w-7 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No assets with GPS</p>
+                  <p className="text-xs text-muted-foreground mt-1">Sync with Samsara to get started</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Collapsed: Quick vehicle preview */}
+          {!mobileSheetExpanded && vehicles.length > 0 && (
+            <div className="px-4 pb-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                {vehicles.slice(0, 5).map((vehicle) => {
+                  const speed = vehicle.speed || 0;
+                  const hasAlert = (vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0) || 
+                    (vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0);
+                  
+                  return (
+                    <button
+                      key={vehicle.id}
+                      onClick={() => handleVehicleClick(vehicle.id)}
+                      className={`
+                        flex-shrink-0 px-4 py-2.5 rounded-xl border transition-all
+                        ${selectedVehicle === vehicle.id 
+                          ? 'bg-primary/10 border-primary/30' 
+                          : 'bg-card/50 border-border/50 active:scale-95'
+                        }
+                        ${hasAlert ? 'border-l-2 border-l-destructive' : ''}
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${speed > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        <span className="font-medium text-sm">{vehicle.vehicle_number || 'N/A'}</span>
+                        <span className="text-xs text-muted-foreground">{speed} mph</span>
+                      </div>
+                    </button>
+                  );
+                })}
+                {vehicles.length > 5 && (
+                  <button
+                    onClick={() => setMobileSheetExpanded(true)}
+                    className="flex-shrink-0 px-4 py-2.5 rounded-xl border border-dashed border-border/50 text-muted-foreground text-sm"
+                  >
+                    +{vehicles.length - 5} more
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
