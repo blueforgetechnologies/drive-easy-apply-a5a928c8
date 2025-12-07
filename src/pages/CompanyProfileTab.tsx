@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Building2 } from "lucide-react";
+import { Building2, Upload, X, Image } from "lucide-react";
 
 export default function CompanyProfileTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCompanyProfile();
@@ -88,6 +90,56 @@ export default function CompanyProfileTab() {
     }
   };
 
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `company-logo-${Date.now()}.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(fileName);
+
+      updateField('logo_url', publicUrl);
+      toast.success('Logo uploaded successfully');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload logo');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    updateField('logo_url', null);
+  };
+
   const updateField = (field: string, value: any) => {
     setProfile((prev: any) => ({ ...prev, [field]: value }));
   };
@@ -121,6 +173,53 @@ export default function CompanyProfileTab() {
             <CardTitle>Company Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Logo Upload */}
+            <div>
+              <Label>Company Logo</Label>
+              <div className="mt-2 flex items-center gap-4">
+                {profile?.logo_url ? (
+                  <div className="relative">
+                    <img 
+                      src={profile.logo_url} 
+                      alt="Company Logo" 
+                      className="h-20 w-20 object-contain border rounded-lg bg-white"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6"
+                      onClick={handleRemoveLogo}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="h-20 w-20 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+                    <Image className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB</p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label>Company Name *</Label>
               <Input
