@@ -428,7 +428,7 @@ export function UserActivityTracker() {
   return (
     <Card className="absolute bottom-4 right-4 w-72 z-50 shadow-lg border-border/50 bg-card/95 backdrop-blur-sm">
       <CardHeader 
-        className="py-1.5 px-2 cursor-pointer flex flex-row items-center justify-between"
+        className="py-1 px-2 cursor-pointer flex flex-row items-center justify-between"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-1.5">
