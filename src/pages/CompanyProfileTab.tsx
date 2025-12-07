@@ -7,13 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Building2, Upload, X, Image } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
 
-// PDF.js will be loaded dynamically to avoid top-level await issues
-const loadPdfJs = async () => {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
-  return pdfjsLib;
-};
+// Configure PDF.js worker for v3.x
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 export default function CompanyProfileTab() {
   const [loading, setLoading] = useState(true);
@@ -98,7 +95,6 @@ export default function CompanyProfileTab() {
   };
 
   const convertPdfToImage = async (file: File): Promise<Blob> => {
-    const pdfjsLib = await loadPdfJs();
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const page = await pdf.getPage(1);
