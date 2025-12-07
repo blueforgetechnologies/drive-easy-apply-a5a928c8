@@ -701,6 +701,7 @@ const LoadEmailDetail = ({
           company_name: companyName,
           company_address: companyAddress,
           company_phone: companyPhone,
+          company_logo_url: companyProfile?.logo_url || undefined,
           reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
           selected_templates: getSelectedTemplateTexts(),
           contact_first_name: (() => {
@@ -821,6 +822,9 @@ const LoadEmailDetail = ({
           
           {/* Signature - Compact */}
           <div className="text-xs space-y-0.5 pt-2 border-t border-dashed">
+            {companyProfile?.logo_url && (
+              <img src={companyProfile.logo_url} alt={companyName} className="h-10 max-w-[150px] object-contain mb-2" />
+            )}
             <p className="font-semibold">{dispatcherName}</p>
             <p className="text-muted-foreground">Dispatch • {companyName}</p>
             <p className="font-medium">MC#: {mcNumber} • USDOT#: {dotNumber}</p>

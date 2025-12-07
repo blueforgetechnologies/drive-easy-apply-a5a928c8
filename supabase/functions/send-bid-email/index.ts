@@ -31,6 +31,7 @@ interface BidEmailRequest {
   company_name: string;
   company_address: string;
   company_phone: string;
+  company_logo_url?: string;
   reference_id: string;
   contact_first_name?: string;
   selected_templates?: string[];
@@ -113,13 +114,12 @@ const handler = async (req: Request): Promise<Response> => {
         ${selectedTemplatesHtml}
         
         <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">
+          ${data.company_logo_url ? `<img src="${data.company_logo_url}" alt="${data.company_name}" style="max-height: 60px; max-width: 200px; margin-bottom: 12px;" />` : ''}
           <p style="font-weight: bold; margin: 0;">${data.dispatcher_name}</p>
-          <p style="margin: 4px 0;">Dispatch</p>
-          <p style="margin: 4px 0;">${data.company_name}</p>
-          <p style="font-weight: bold; margin: 4px 0;">MC#: ${data.mc_number} USDOT#: ${data.dot_number}</p>
+          <p style="margin: 4px 0;">Dispatch • ${data.company_name}</p>
+          <p style="font-weight: bold; margin: 4px 0;">MC#: ${data.mc_number} • USDOT#: ${data.dot_number}</p>
           <p style="margin: 4px 0;">${data.company_address}</p>
-          <p style="margin: 4px 0;">Cell: <strong>${data.company_phone}</strong></p>
-          <p style="margin: 4px 0;">Email: ${data.from_email}</p>
+          <p style="margin: 4px 0;">Cell: <strong>${data.company_phone}</strong> • ${data.from_email}</p>
         </div>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
