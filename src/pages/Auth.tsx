@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Truck, ArrowLeft, Loader2, Mail, Lock, User } from "lucide-react";
 
 type AuthView = "login" | "signup" | "forgot-password" | "reset-password";
 
@@ -160,190 +161,254 @@ export default function Auth() {
 
   const getTitle = () => {
     switch (view) {
-      case "login": return "Login";
-      case "signup": return "Sign Up";
-      case "forgot-password": return "Reset Password";
-      case "reset-password": return "Set New Password";
+      case "login": return "Welcome back";
+      case "signup": return "Create account";
+      case "forgot-password": return "Reset password";
+      case "reset-password": return "Set new password";
     }
   };
 
   const getDescription = () => {
     switch (view) {
-      case "login": return "Enter your credentials to access the admin dashboard";
-      case "signup": return "Create an account to get started";
-      case "forgot-password": return "Enter your email to receive a password reset link";
-      case "reset-password": return "Enter your new password below";
+      case "login": return "Enter your credentials to access your dashboard";
+      case "signup": return "Fill in your details to create an account";
+      case "forgot-password": return "Enter your email to receive a reset link";
+      case "reset-password": return "Choose a strong password for your account";
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{getTitle()}</CardTitle>
-          <CardDescription>{getDescription()}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Login Form */}
-          {view === "login" && (
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Loading..." : "Login"}
-              </Button>
-              <div className="text-center space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setView("forgot-password")}
-                  className="text-sm text-muted-foreground hover:text-primary hover:underline"
-                >
-                  Forgot your password?
-                </button>
-                <div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-primary/5 via-background to-background">
+      {/* Header */}
+      <header className="p-4">
+        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">Back to home</span>
+        </Link>
+      </header>
+
+      {/* Main content */}
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
+              <Truck className="h-7 w-7 text-primary-foreground" />
+            </div>
+          </div>
+
+          <Card className="border-0 shadow-xl bg-card/80 backdrop-blur-xl">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-2xl font-bold tracking-tight">{getTitle()}</CardTitle>
+              <CardDescription className="text-base">{getDescription()}</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Login Form */}
+              {view === "login" && (
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="you@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-11 rounded-xl text-base font-medium" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+                  </Button>
+                  <div className="space-y-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setView("forgot-password")}
+                      className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Forgot your password?
+                    </button>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">or</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setView("signup")}
+                      className="w-full text-sm text-primary font-medium hover:underline"
+                    >
+                      Don't have an account? Sign up
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Signup Form */}
+              {view === "signup" && (
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="John Doe"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="you@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-11 rounded-xl text-base font-medium" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
+                  </Button>
                   <button
                     type="button"
-                    onClick={() => setView("signup")}
-                    className="text-sm text-primary hover:underline"
+                    onClick={() => setView("login")}
+                    className="w-full text-sm text-primary font-medium hover:underline pt-2"
                   >
-                    Don't have an account? Sign up
+                    Already have an account? Sign in
                   </button>
-                </div>
-              </div>
-            </form>
-          )}
+                </form>
+              )}
 
-          {/* Signup Form */}
-          {view === "signup" && (
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Loading..." : "Sign Up"}
-              </Button>
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setView("login")}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Already have an account? Login
-                </button>
-              </div>
-            </form>
-          )}
+              {/* Forgot Password Form */}
+              {view === "forgot-password" && (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="you@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-11 rounded-xl text-base font-medium" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send reset link"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setView("login")}
+                    className="w-full text-sm text-primary font-medium hover:underline pt-2"
+                  >
+                    Back to login
+                  </button>
+                </form>
+              )}
 
-          {/* Forgot Password Form */}
-          {view === "forgot-password" && (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending..." : "Send Reset Link"}
-              </Button>
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setView("login")}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Back to Login
-                </button>
-              </div>
-            </form>
-          )}
+              {/* Reset Password Form */}
+              {view === "reset-password" && (
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">New Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-11 rounded-xl text-base font-medium" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update password"}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Reset Password Form (after clicking email link) */}
-          {view === "reset-password" && (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  required
-                  minLength={6}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  required
-                  minLength={6}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Updating..." : "Update Password"}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+          {/* Footer */}
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
