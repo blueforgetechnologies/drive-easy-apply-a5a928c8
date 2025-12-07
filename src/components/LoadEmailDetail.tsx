@@ -1,15 +1,26 @@
 import { useEffect, useState } from "react";
-import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check } from "lucide-react";
+import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+
+interface MatchHistoryEntry {
+  id: string;
+  dispatcher_name: string | null;
+  dispatcher_email: string | null;
+  action_type: string;
+  action_details: any;
+  created_at: string;
+}
 
 interface LoadEmailDetailProps {
   email: any;
@@ -52,6 +63,11 @@ const LoadEmailDetail = ({
   const [bidConfirmed, setBidConfirmed] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
   const [currentDispatcher, setCurrentDispatcher] = useState<any>(null);
+  
+  // Match history state
+  const [showMatchHistory, setShowMatchHistory] = useState(false);
+  const [matchHistory, setMatchHistory] = useState<MatchHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   
   // Editable email body lines
   const [editableGreeting, setEditableGreeting] = useState<string>("");
@@ -208,6 +224,55 @@ const LoadEmailDetail = ({
     };
     fetchProfileData();
   }, []);
+
+  // Fetch match history
+  const fetchMatchHistory = async () => {
+    if (!match?.id) return;
+    setLoadingHistory(true);
+    try {
+      const { data: history, error } = await supabase
+        .from('match_action_history')
+        .select('*')
+        .eq('match_id', match.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setMatchHistory(history || []);
+    } catch (e) {
+      console.error('Error fetching match history:', e);
+      toast.error('Failed to load match history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Record action to match history
+  const recordMatchAction = async (actionType: string, actionDetails?: any) => {
+    if (!match?.id) return;
+    try {
+      const { error } = await supabase
+        .from('match_action_history')
+        .insert({
+          match_id: match.id,
+          dispatcher_id: currentDispatcher?.id || null,
+          dispatcher_name: currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : null,
+          dispatcher_email: currentDispatcher?.email || null,
+          action_type: actionType,
+          action_details: actionDetails || null
+        });
+      
+      if (error) throw error;
+    } catch (e) {
+      console.error('Error recording match action:', e);
+    }
+  };
+
+  // Record when detail is opened (viewed)
+  useEffect(() => {
+    if (match?.id && currentDispatcher) {
+      recordMatchAction('viewed');
+    }
+  }, [match?.id, currentDispatcher?.id]);
 
   // Use fetched data or prop data
   const emailBody = fullEmailData?.body_html || fullEmailData?.body_text || email.body_html || email.body_text || "";
@@ -367,6 +432,9 @@ const LoadEmailDetail = ({
         return;
       }
 
+      // Record the action
+      await recordMatchAction('skipped');
+
       // Update database FIRST, then notify parent to refresh
       const { error } = await supabase
         .from("load_hunt_matches")
@@ -388,9 +456,12 @@ const LoadEmailDetail = ({
   };
 
   // Handle Undecided button click - moves match to undecided status
-  const handleUndecided = () => {
-    if (match?.id && onUndecided) {
-      onUndecided(match.id);
+  const handleUndecided = async () => {
+    if (match?.id) {
+      await recordMatchAction('undecided');
+      if (onUndecided) {
+        onUndecided(match.id);
+      }
     }
     onClose();
   };
@@ -402,6 +473,9 @@ const LoadEmailDetail = ({
         console.error("No match ID available for wait");
         return;
       }
+
+      // Record the action
+      await recordMatchAction('waitlist');
 
       // Update database FIRST, then notify parent to refresh
       const { error: matchError } = await supabase
@@ -582,6 +656,9 @@ const LoadEmailDetail = ({
       toast.success('Bid email sent successfully!');
       setShowEmailConfirmDialog(false);
       setBidConfirmed(false);
+      
+      // Record the bid action
+      await recordMatchAction('bid', { bid_amount: bidAmount, to_email: toEmail });
       
       // Notify parent that bid was placed - move to MY BIDS and skip siblings
       if (onBidPlaced && match?.id && email?.id) {
@@ -1510,7 +1587,16 @@ const LoadEmailDetail = ({
                   <div className="flex items-center gap-6">
                     <div>
                       <div className="text-[13px] font-bold mb-0.5">Match ID: {match?.id?.substring(0, 8) || "N/A"}</div>
-                      <button className="text-[10px] text-blue-500 hover:underline">View Match History</button>
+                      <button 
+                        className="text-[10px] text-blue-500 hover:underline flex items-center gap-1"
+                        onClick={() => {
+                          fetchMatchHistory();
+                          setShowMatchHistory(true);
+                        }}
+                      >
+                        <History className="h-3 w-3" />
+                        View Match History
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1773,6 +1859,73 @@ const LoadEmailDetail = ({
       </div>
     </div>
     {EmailConfirmDialog}
+    
+    {/* Match History Dialog */}
+    <Dialog open={showMatchHistory} onOpenChange={setShowMatchHistory}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Match History
+          </DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[400px]">
+          {loadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : matchHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No history recorded for this match yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {matchHistory.map((entry) => {
+                const actionColors: Record<string, string> = {
+                  viewed: 'bg-blue-100 text-blue-800',
+                  skipped: 'bg-orange-100 text-orange-800',
+                  bid: 'bg-green-100 text-green-800',
+                  waitlist: 'bg-purple-100 text-purple-800',
+                  undecided: 'bg-gray-100 text-gray-800',
+                };
+                const actionLabels: Record<string, string> = {
+                  viewed: 'Viewed',
+                  skipped: 'Skipped',
+                  bid: 'Placed Bid',
+                  waitlist: 'Added to Waitlist',
+                  undecided: 'Undecided',
+                };
+                return (
+                  <div key={entry.id} className="border rounded-lg p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Badge className={actionColors[entry.action_type] || 'bg-gray-100 text-gray-800'}>
+                        {actionLabels[entry.action_type] || entry.action_type}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(entry.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">{entry.dispatcher_name || 'Unknown User'}</span>
+                      {entry.dispatcher_email && (
+                        <span className="text-muted-foreground text-xs ml-1">
+                          ({entry.dispatcher_email})
+                        </span>
+                      )}
+                    </div>
+                    {entry.action_details && entry.action_type === 'bid' && (
+                      <div className="text-xs text-muted-foreground">
+                        Bid Amount: ${entry.action_details.bid_amount}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
     </>
   );
 };
