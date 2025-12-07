@@ -362,7 +362,7 @@ const LoadEmailDetail = ({
   // Build truck dimensions from vehicle data
   const buildTruckDimensions = () => {
     if (!vehicle) return 'L x W x H: ( 288 x 97 x 102 ) inches';
-    const l = vehicle.dimensions_length ? vehicle.dimensions_length * 12 : null; // feet to inches
+    const l = vehicle.dimensions_length; // already in inches
     const w = vehicle.dimensions_width;
     const h = vehicle.dimensions_height;
     if (l && w && h) return `L x W x H: ( ${l} x ${w} x ${h} ) inches`;
