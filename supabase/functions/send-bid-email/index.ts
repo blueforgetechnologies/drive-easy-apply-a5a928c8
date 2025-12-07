@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         <p>${orderLine}</p>
         
-        <div style="margin-top: 20px;">
+        <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
           <p><strong>Truck Carries:</strong> ${data.equipment_details}</p>
           <p><strong>Truck Size:</strong> ${data.truck_dimensions}</p>
           <p><strong>Door Type and Size:</strong> ${data.door_dimensions}</p>
