@@ -80,7 +80,7 @@ const LoadEmailDetail = ({
 
   // Email templates - editable and selectable
   const DEFAULT_TEMPLATES = {
-    nearby: 'Our truck is nearby ( {distance} away ). We can pick up on time and deliver as scheduled.',
+    nearby: 'Vehicle {distance} away. We can pick up on time and deliver as scheduled.',
     driver: 'Driver is U.S. citizen with birth certificate in hand. Clean criminal record.',
     fuel: 'Due to increased fuel costs, this bid includes a $ {fuel_surcharge} fuel surcharge.'
   };
