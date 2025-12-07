@@ -2506,6 +2506,39 @@ export default function LoadHunterTab() {
                   await loadHuntMatches();
                   await loadUnreviewedMatches();
                 }}
+                onShowAlternativeMatches={async () => {
+                  if (!selectedEmailForDetail) return;
+                  const matchesForLoad = loadMatches.filter(m => m.load_email_id === selectedEmailForDetail.id);
+                  
+                  if (matchesForLoad.length > 1) {
+                    const vehicleIds = matchesForLoad.map(m => m.vehicle_id);
+                    const { data: vehicleData } = await supabase
+                      .from('vehicles')
+                      .select('*')
+                      .in('id', vehicleIds);
+                    
+                    if (vehicleData) {
+                      const enrichedMatches = matchesForLoad.map(match => {
+                        const vehicle = vehicleData.find(v => v.id === match.vehicle_id);
+                        return {
+                          id: match.id,
+                          vehicle_id: match.vehicle_id,
+                          vehicle_number: vehicle?.vehicle_number || 'Unknown',
+                          distance_miles: match.distance_miles,
+                          current_location: vehicle?.last_location || vehicle?.formatted_address,
+                          last_updated: vehicle?.last_updated,
+                          status: vehicle?.status,
+                          oil_change_due: vehicle?.oil_change_remaining ? vehicle.oil_change_remaining < 0 : false,
+                        };
+                      });
+                      
+                      setMultipleMatches(enrichedMatches);
+                      setShowMultipleMatchesDialog(true);
+                    }
+                  } else {
+                    toast.info("This load only matches one vehicle");
+                  }
+                }}
               />
             </DialogContent>
           </Dialog>
@@ -3763,6 +3796,41 @@ export default function LoadHunterTab() {
               matchActionTakenRef.current = true;
               await loadHuntMatches();
               await loadUnreviewedMatches();
+            }}
+            onShowAlternativeMatches={async () => {
+              // Check if this load has multiple matches
+              if (!selectedEmailForDetail) return;
+              const matchesForLoad = loadMatches.filter(m => m.load_email_id === selectedEmailForDetail.id);
+              
+              if (matchesForLoad.length > 1) {
+                // Fetch vehicle details for all matches
+                const vehicleIds = matchesForLoad.map(m => m.vehicle_id);
+                const { data: vehicleData } = await supabase
+                  .from('vehicles')
+                  .select('*')
+                  .in('id', vehicleIds);
+                
+                if (vehicleData) {
+                  const enrichedMatches = matchesForLoad.map(match => {
+                    const vehicle = vehicleData.find(v => v.id === match.vehicle_id);
+                    return {
+                      id: match.id,
+                      vehicle_id: match.vehicle_id,
+                      vehicle_number: vehicle?.vehicle_number || 'Unknown',
+                      distance_miles: match.distance_miles,
+                      current_location: vehicle?.last_location || vehicle?.formatted_address,
+                      last_updated: vehicle?.last_updated,
+                      status: vehicle?.status,
+                      oil_change_due: vehicle?.oil_change_remaining ? vehicle.oil_change_remaining < 0 : false,
+                    };
+                  });
+                  
+                  setMultipleMatches(enrichedMatches);
+                  setShowMultipleMatchesDialog(true);
+                }
+              } else {
+                toast.info("This load only matches one vehicle");
+              }
             }}
           />
         ) : activeFilter === 'vehicle-assignment' ? (
