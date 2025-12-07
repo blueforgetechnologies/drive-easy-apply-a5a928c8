@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, FileText, User, ChevronLeft, ChevronRight, Mail, Loader2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, User, ChevronLeft, ChevronRight, Mail, Loader2, Phone, MapPin, Calendar } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Dispatcher {
   id: string;
@@ -35,6 +37,7 @@ interface Dispatcher {
 
 export default function DispatchersTab() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
@@ -305,7 +308,7 @@ export default function DispatchersTab() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className={isMobile ? "pb-2" : ""}>
           <CardTitle>Dispatchers</CardTitle>
           <CardDescription>Manage your dispatch team</CardDescription>
         </CardHeader>
@@ -314,7 +317,112 @@ export default function DispatchersTab() {
             <p className="text-center text-muted-foreground py-8">
               {searchQuery ? "No dispatchers match your search" : "No dispatchers found"}
             </p>
+          ) : isMobile ? (
+            // Mobile Card Layout
+            <div className="space-y-3">
+              {paginatedDispatchers.map((dispatcher) => {
+                const age = dispatcher.dob 
+                  ? Math.floor((new Date().getTime() - new Date(dispatcher.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+                  : null;
+                
+                return (
+                  <Card 
+                    key={dispatcher.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
+                  >
+                    <CardContent className="p-3 space-y-2">
+                      {/* Header Row */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant={
+                              dispatcher.status === "active" ? "default" : 
+                              dispatcher.status === "pending" ? "secondary" : "outline"
+                            }
+                            className={
+                              dispatcher.status === "active" ? "bg-green-600 hover:bg-green-700" :
+                              dispatcher.status === "pending" ? "bg-orange-500 hover:bg-orange-600 text-white" :
+                              ""
+                            }
+                          >
+                            {dispatcher.status}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            size="icon" 
+                            variant={sendingLoginTo === dispatcher.id ? "default" : "outline"}
+                            className="h-8 w-8"
+                            title="Send Login Link"
+                            disabled={sendingLoginTo === dispatcher.id}
+                            onClick={() => handleSendLoginLink(dispatcher)}
+                          >
+                            {sendingLoginTo === dispatcher.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Mail className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="outline"
+                            className="h-8 w-8"
+                            title="View Details"
+                            onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Name */}
+                      <div>
+                        <p className="font-semibold text-base">
+                          {dispatcher.first_name} {dispatcher.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{dispatcher.email}</p>
+                      </div>
+
+                      {/* Details Row */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        {dispatcher.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {dispatcher.phone}
+                          </span>
+                        )}
+                        {dispatcher.pay_percentage && (
+                          <span>Pay: {dispatcher.pay_percentage}%</span>
+                        )}
+                        {dispatcher.assigned_trucks && (
+                          <span>Trucks: {dispatcher.assigned_trucks}</span>
+                        )}
+                        {age && <span>Age: {age}</span>}
+                      </div>
+
+                      {/* Dates Row */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground border-t pt-2">
+                        {dispatcher.hire_date && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Hired: {format(new Date(dispatcher.hire_date), "MM/dd/yy")}
+                          </span>
+                        )}
+                        {dispatcher.contract_agreement && (
+                          <span className="text-green-600">✓ Contract</span>
+                        )}
+                        {dispatcher.application_status && (
+                          <span>App: {dispatcher.application_status}</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           ) : (
+            // Desktop Table Layout
             <div className="overflow-x-auto">
               <Table className="text-sm">
                 <TableHeader>
@@ -453,7 +561,7 @@ export default function DispatchersTab() {
             </div>
           )}
           {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-t">
+          <div className={`flex items-center ${isMobile ? "flex-col gap-2" : "justify-between"} px-4 py-3 border-t`}>
             <div className="text-sm text-muted-foreground">
               Showing {filteredDispatchers.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredDispatchers.length)} of {filteredDispatchers.length}
             </div>
