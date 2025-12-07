@@ -569,6 +569,7 @@ export default function ApplicationDetail() {
                 onChange={(e) => updateField('vehicle_note', e.target.value)}
                 rows={4}
                 className="resize-none"
+                placeholder="Dispatcher will be able to view this in the Load Hunter"
               />
             </div>
           </div>
