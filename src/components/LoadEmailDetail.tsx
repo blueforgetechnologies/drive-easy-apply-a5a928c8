@@ -717,11 +717,11 @@ const LoadEmailDetail = ({
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
           </div>
           
-          {/* Selected Templates */}
+          {/* Selected Templates - Show in body between equipment and signature */}
           {getSelectedTemplateTexts().length > 0 && (
-            <div className="space-y-1">
+            <div className="space-y-0.5 text-sm">
               {getSelectedTemplateTexts().map((text, idx) => (
-                <p key={idx} className="bg-blue-50 dark:bg-blue-950/30 px-2 py-1.5 rounded text-xs leading-relaxed">{text}</p>
+                <p key={idx} className="leading-relaxed">{text}</p>
               ))}
             </div>
           )}
