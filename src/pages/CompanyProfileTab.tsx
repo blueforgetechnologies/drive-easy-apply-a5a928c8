@@ -7,6 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Building2, Upload, X, Image } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function CompanyProfileTab() {
   const [loading, setLoading] = useState(true);
@@ -90,31 +94,73 @@ export default function CompanyProfileTab() {
     }
   };
 
+  const convertPdfToImage = async (file: File): Promise<Blob> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    
+    const scale = 2; // Higher scale for better quality
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not get canvas context');
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+    }).promise;
+    
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to convert PDF to image'));
+      }, 'image/png', 1.0);
+    });
+  };
+
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+    if (!isImage && !isPdf) {
+      toast.error('Please upload an image or PDF file');
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+    // Validate file size (max 10MB for PDFs, 5MB for images)
+    const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(isPdf ? 'PDF must be less than 10MB' : 'Image must be less than 5MB');
       return;
     }
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `company-logo-${Date.now()}.${fileExt}`;
+      let fileToUpload: Blob = file;
+      let fileName: string;
+
+      // Convert PDF to image if needed
+      if (isPdf) {
+        toast.info('Converting PDF to image...');
+        fileToUpload = await convertPdfToImage(file);
+        fileName = `company-logo-${Date.now()}.png`;
+      } else {
+        const fileExt = file.name.split('.').pop();
+        fileName = `company-logo-${Date.now()}.${fileExt}`;
+      }
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('company-logos')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, fileToUpload, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -202,7 +248,7 @@ export default function CompanyProfileTab() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     onChange={handleLogoUpload}
                     className="hidden"
                   />
@@ -215,7 +261,7 @@ export default function CompanyProfileTab() {
                     <Upload className="h-4 w-4 mr-2" />
                     {uploading ? 'Uploading...' : 'Upload Logo'}
                   </Button>
-                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB</p>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, or PDF up to 10MB</p>
                 </div>
               </div>
             </div>
