@@ -106,6 +106,11 @@ const LoadEmailDetail = ({
     if (currentDispatcher?.email) {
       const stored = getStoredTemplates(currentDispatcher.email);
       if (stored) {
+        // Migrate old template format - remove parentheses from nearby template
+        if (stored.nearby && stored.nearby.includes('( ') && stored.nearby.includes(' )')) {
+          stored.nearby = DEFAULT_TEMPLATES.nearby;
+          saveTemplates(currentDispatcher.email, stored);
+        }
         setTemplateTexts(prev => ({
           ...prev,
           ...stored
