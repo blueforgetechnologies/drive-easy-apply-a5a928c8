@@ -1098,9 +1098,9 @@ const LoadEmailDetail = ({
   return (
     <>
     <div className="flex-1 overflow-auto relative">
-      {/* Original Email Sidebar - Slides in from left */}
+      {/* Original Email Sidebar - Left half when both open, or full left half */}
       {showOriginalEmail && (
-        <div className="absolute left-0 top-0 bottom-0 w-1/2 bg-background z-50 shadow-2xl border-r animate-in slide-in-from-left duration-300 flex flex-col">
+        <div className={`absolute left-0 top-0 bottom-0 ${showBidCardOnMap ? 'w-1/2' : 'w-1/2'} bg-background z-50 shadow-2xl border-r animate-in slide-in-from-left duration-300 flex flex-col`}>
           <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between z-10 flex-shrink-0">
             <h2 className="text-lg font-semibold">Original Email</h2>
             <Button
@@ -1424,10 +1424,10 @@ const LoadEmailDetail = ({
               />
             </Card>
             
-            {/* Original Email Card - Appears on right side over map when Set Bid is clicked */}
-            {showBidCardOnMap && !showOriginalEmail && (
-              <div className="absolute right-4 -top-24 w-[500px] max-h-[calc(100%+6rem)] z-40 animate-in slide-in-from-right duration-300">
-                <Card className="shadow-xl border bg-background flex flex-col max-h-full rounded-xl overflow-hidden">
+            {/* Bid Email Card - Right half, shows alongside Original Email */}
+            {showBidCardOnMap && (
+              <div className={`absolute ${showOriginalEmail ? 'right-0 left-1/2' : 'right-0 w-1/2'} top-0 bottom-0 z-50 animate-in slide-in-from-right duration-300 flex flex-col`}>
+                <Card className="shadow-xl border bg-background flex flex-col h-full rounded-none overflow-hidden">
                   <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 flex items-center justify-between z-10 flex-shrink-0">
                     <h3 className="text-sm font-semibold tracking-wide">Bid Email Preview</h3>
                     <Button
