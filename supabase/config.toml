@@ -52,10 +52,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.reparse-load-emails]
-verify_jwt = false
+verify_jwt = true
 
 [functions.backfill-customers]
-verify_jwt = false
+verify_jwt = true
 
 [functions.test-ai]
 verify_jwt = true
