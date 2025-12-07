@@ -151,6 +151,9 @@ export default function LoadHunterTab() {
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [matchSearchQuery, setMatchSearchQuery] = useState('');
+  const [archivedSearchResults, setArchivedSearchResults] = useState<any[]>([]);
+  const [isSearchingArchive, setIsSearchingArchive] = useState(false);
+  const [showArchiveResults, setShowArchiveResults] = useState(false);
   const itemsPerPage = 17;
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const currentDispatcherIdRef = useRef<string | null>(null);
@@ -168,6 +171,15 @@ export default function LoadHunterTab() {
   useEffect(() => {
     setCurrentPage(1);
   }, [activeFilter]);
+
+  // Close archive search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowArchiveResults(false);
+    if (showArchiveResults) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showArchiveResults]);
 
   // Helper to get current time (recalculates each render for accurate filtering)
   const getCurrentTime = () => new Date();
@@ -645,6 +657,61 @@ export default function LoadHunterTab() {
   const bidCount = bidMatches.length;
   const undecidedCount = undecidedMatches.length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
+
+  // Search archived matches
+  const searchArchivedMatches = async (query: string) => {
+    if (!query || query.length < 3) {
+      setArchivedSearchResults([]);
+      setShowArchiveResults(false);
+      return;
+    }
+    
+    setIsSearchingArchive(true);
+    try {
+      const { data, error } = await supabase
+        .from('load_hunt_matches_archive')
+        .select(`
+          *,
+          load_emails:load_email_id (
+            id, load_id, subject, from_email, received_at, parsed_data, expires_at
+          ),
+          vehicles:vehicle_id (
+            id, vehicle_number, carrier
+          ),
+          hunt_plans:hunt_plan_id (
+            id, plan_name
+          )
+        `)
+        .ilike('original_match_id', `%${query}%`)
+        .order('archived_at', { ascending: false })
+        .limit(20);
+      
+      if (error) {
+        console.error('Archive search error:', error);
+        toast.error('Failed to search archives');
+      } else {
+        setArchivedSearchResults(data || []);
+        setShowArchiveResults(true);
+      }
+    } catch (err) {
+      console.error('Archive search error:', err);
+    } finally {
+      setIsSearchingArchive(false);
+    }
+  };
+
+  // Debounced archive search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (matchSearchQuery) {
+        searchArchivedMatches(matchSearchQuery);
+      } else {
+        setArchivedSearchResults([]);
+        setShowArchiveResults(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [matchSearchQuery]);
 
   // Function to play alert sound
   const playAlertSound = (force = false) => {
@@ -2487,13 +2554,72 @@ export default function LoadHunterTab() {
           </div>
 
           {/* Match Search */}
-          <div className="pr-3 border-r flex-shrink-0">
+          <div className="pr-3 border-r flex-shrink-0 relative">
             <Input
               placeholder="Search match ID..."
               value={matchSearchQuery}
               onChange={(e) => setMatchSearchQuery(e.target.value)}
-              className="h-7 w-32 text-xs"
+              onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
+              className="h-7 w-40 text-xs"
             />
+            {isSearchingArchive && (
+              <div className="absolute right-5 top-1.5">
+                <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {showArchiveResults && archivedSearchResults.length > 0 && (
+              <div className="absolute top-8 left-0 w-80 bg-white border rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
+                <div className="px-2 py-1 bg-gray-100 text-[10px] font-semibold text-gray-600 border-b">
+                  Archived Matches ({archivedSearchResults.length})
+                </div>
+                {archivedSearchResults.map((result) => (
+                  <div 
+                    key={result.id}
+                    className="px-2 py-1.5 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 text-[11px]"
+                    onClick={() => {
+                      // Open detail view for archived match
+                      const emailData = result.load_emails;
+                      if (emailData) {
+                        setSelectedEmailForDetail({
+                          ...emailData,
+                          match_id: result.original_match_id,
+                          vehicle_id: result.vehicle_id,
+                          hunt_plan_id: result.hunt_plan_id,
+                          distance_miles: result.distance_miles,
+                          match_status: result.match_status,
+                          archived: true,
+                          archived_at: result.archived_at
+                        });
+                        setSelectedEmailDistance(result.distance_miles);
+                        setSelectedMatchForDetail({
+                          match_id: result.original_match_id,
+                          vehicle_id: result.vehicle_id,
+                          archived: true
+                        });
+                      }
+                      setShowArchiveResults(false);
+                      setMatchSearchQuery('');
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-mono text-blue-600">{result.original_match_id?.slice(0, 8)}...</span>
+                      <Badge variant="outline" className="text-[9px] h-4">{result.match_status}</Badge>
+                    </div>
+                    <div className="text-gray-500 truncate">
+                      {result.load_emails?.parsed_data?.origin_city}, {result.load_emails?.parsed_data?.origin_state} → {result.load_emails?.parsed_data?.destination_city}, {result.load_emails?.parsed_data?.destination_state}
+                    </div>
+                    <div className="text-gray-400 text-[10px]">
+                      Archived: {new Date(result.archived_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showArchiveResults && matchSearchQuery.length >= 3 && archivedSearchResults.length === 0 && !isSearchingArchive && (
+              <div className="absolute top-8 left-0 w-60 bg-white border rounded-md shadow-lg z-50 p-2 text-[11px] text-gray-500">
+                No archived matches found
+              </div>
+            )}
           </div>
 
           {/* Filter Buttons */}
