@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1451,17 +1452,54 @@ const LoadEmailDetail = ({
                     </div>
                   </div>
 
-                  {/* Other viewers indicator */}
+                  {/* Other viewers indicator - stacked avatars with dropdown */}
                   {otherViewers.length > 0 && (
-                    <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-2 py-1 rounded-md">
-                      <Eye className="h-3.5 w-3.5" />
-                      <span className="text-[11px] font-medium">
-                        {otherViewers.length === 1 
-                          ? `${otherViewers[0].name} is viewing`
-                          : `${otherViewers.length} others viewing`
-                        }
-                      </span>
-                    </div>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <div className="flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-1 rounded-md cursor-pointer hover:bg-amber-200 transition-colors">
+                          <Eye className="h-3.5 w-3.5 shrink-0" />
+                          <div className="flex items-center -space-x-2">
+                            {otherViewers.slice(0, 2).map((viewer, idx) => (
+                              <div 
+                                key={viewer.email} 
+                                className="h-5 w-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[9px] font-bold border-2 border-amber-100"
+                                style={{ zIndex: 2 - idx }}
+                                title={viewer.name}
+                              >
+                                {viewer.name.charAt(0).toUpperCase()}
+                              </div>
+                            ))}
+                            {otherViewers.length > 2 && (
+                              <div 
+                                className="h-5 w-5 rounded-full bg-amber-800 text-white flex items-center justify-center text-[9px] font-bold border-2 border-amber-100"
+                                style={{ zIndex: 0 }}
+                              >
+                                +{otherViewers.length - 2}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-medium ml-1">
+                            {otherViewers.length === 1 ? 'viewing' : 'viewing'}
+                          </span>
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-48 p-2 bg-popover" align="start">
+                        <div className="text-xs font-semibold mb-2 text-foreground">Currently Viewing</div>
+                        <div className="space-y-1.5">
+                          {otherViewers.map((viewer) => (
+                            <div key={viewer.email} className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold">
+                                {viewer.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[11px] font-medium truncate text-foreground">{viewer.name}</div>
+                                <div className="text-[9px] text-muted-foreground truncate">{viewer.email}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   )}
 
                   <div className="flex items-center gap-6">
