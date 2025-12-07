@@ -1714,7 +1714,7 @@ const LoadEmailDetail = ({
 
           {/* MAP - Full Width Below */}
           <div className="relative">
-            <Card className="h-[280px] overflow-hidden rounded-md">
+            <Card className="h-[calc(100vh-380px)] min-h-[200px] overflow-hidden rounded-md">
               <LoadRouteMap stops={[{
                 location_city: originCity,
                 location_state: originState,
