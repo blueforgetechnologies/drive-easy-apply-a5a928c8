@@ -601,29 +601,33 @@ const LoadEmailDetail = ({
       setShowEmailConfirmDialog(open);
       if (!open) setBidConfirmed(false);
     }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Confirm Before Sending Bid!</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-0">
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-3">
+          <DialogTitle className="text-base font-semibold">Confirm Before Sending Bid!</DialogTitle>
+        </div>
         
-        <div className="flex gap-2 mb-4">
+        {/* Action Buttons - Compact */}
+        <div className="flex gap-1.5 px-4 pt-3">
           <Button 
-            className={`flex-1 flex flex-col items-center py-3 ${bidConfirmed ? 'bg-green-600 hover:bg-green-700' : 'bg-pink-500 hover:bg-pink-600'}`}
+            size="sm"
+            className={`flex-1 flex flex-col items-center py-2 h-auto ${bidConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pink-500 hover:bg-pink-600'}`}
             onClick={() => setBidConfirmed(true)}
           >
-            <span>Confirm Bid</span>
-            <span className="text-xl font-bold">$ {bidAmount || '0'}</span>
+            <span className="text-[10px] font-medium opacity-90">Confirm Bid</span>
+            <span className="text-sm font-bold">$ {bidAmount || '0'}</span>
           </Button>
           <Button 
+            size="sm"
             variant="outline" 
-            className="flex-1"
+            className="flex-1 h-auto py-2"
             disabled={!bidConfirmed || isSending}
             onClick={handleSendBid}
           >
             {isSending ? 'Sending...' : 'Send Bid'}
           </Button>
           <Button 
-            className="flex-1 bg-red-500 hover:bg-red-600"
+            size="sm"
+            className="flex-1 bg-red-500 hover:bg-red-600 h-auto py-2"
             onClick={() => setShowEmailConfirmDialog(false)}
             disabled={isSending}
           >
@@ -631,108 +635,120 @@ const LoadEmailDetail = ({
           </Button>
         </div>
         
-        <div className="border rounded-lg p-4 space-y-3">
-          <div className="flex items-start gap-4">
-            <span className="font-semibold w-20">Mail To:</span>
-            <Input 
-              value={toEmail || ''} 
-              onChange={(e) => setToEmail(e.target.value)}
-              placeholder="Enter email address"
-              className="flex-1"
-            />
-          </div>
-          
-          <div className="flex items-start gap-4">
-            <span className="font-semibold w-20">CC:</span>
-            <Input 
-              value={ccEmail} 
-              onChange={(e) => setCcEmail(e.target.value)}
-              placeholder="Add CC email (optional)"
-              className="flex-1"
-            />
-          </div>
-          
-          <div className="flex items-start gap-4">
-            <span className="font-semibold w-20">Subject:</span>
-            <span>{emailSubject}</span>
-          </div>
-          
-          <div className="flex items-start gap-4">
-            <span className="font-semibold w-20">Message:</span>
-            <div className="flex-1 space-y-1">
-              <span className="bg-yellow-300 px-1 font-bold">Rate: $ {bidAmount || '0'}</span><br />
-              <span className="bg-yellow-300 px-1 font-bold">MC#: {mcNumber}</span><br />
-              <span className="bg-yellow-300 px-1 font-bold">USDOT#: {dotNumber}</span>
+        <div className="px-4 pb-4 pt-2 space-y-3">
+          {/* Email Fields - Inline */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Mail To</label>
+              <Input 
+                value={toEmail || ''} 
+                onChange={(e) => setToEmail(e.target.value)}
+                placeholder="Enter email"
+                className="h-8 text-xs mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">CC</label>
+              <Input 
+                value={ccEmail} 
+                onChange={(e) => setCcEmail(e.target.value)}
+                placeholder="Optional"
+                className="h-8 text-xs mt-0.5"
+              />
             </div>
           </div>
           
-          <div className="border-t pt-4 space-y-2 text-sm">
+          {/* Subject */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded px-3 py-2">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Subject</label>
+            <p className="text-xs font-medium mt-0.5">{emailSubject}</p>
+          </div>
+          
+          {/* Message Highlights */}
+          <div className="flex flex-wrap gap-1.5">
+            <span className="bg-yellow-300 text-yellow-900 px-2 py-0.5 rounded text-xs font-bold">Rate: $ {bidAmount || '0'}</span>
+            <span className="bg-yellow-300 text-yellow-900 px-2 py-0.5 rounded text-xs font-bold">MC#: {mcNumber}</span>
+            <span className="bg-yellow-300 text-yellow-900 px-2 py-0.5 rounded text-xs font-bold">USDOT#: {dotNumber}</span>
+          </div>
+          
+          {/* Message Body - Clean, no borders */}
+          <div className="space-y-0.5 text-sm">
             <Textarea 
               value={editableGreeting}
               onChange={(e) => setEditableGreeting(e.target.value)}
-              className="min-h-[32px] text-sm border-dashed resize-none"
+              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0 text-blue-600"
               placeholder="Greeting..."
               rows={1}
             />
-            <Textarea 
-              value={editableBlankLine}
-              onChange={(e) => setEditableBlankLine(e.target.value)}
-              className="min-h-[32px] text-sm border-dashed resize-none"
-              placeholder="(Optional text)"
-              rows={1}
-            />
+            {/* Only show blank line field if it has content */}
+            {editableBlankLine.trim() ? (
+              <Textarea 
+                value={editableBlankLine}
+                onChange={(e) => setEditableBlankLine(e.target.value)}
+                className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
+                rows={1}
+              />
+            ) : (
+              <div 
+                className="min-h-[24px] text-sm text-muted-foreground/50 cursor-text hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded px-1 -mx-1 flex items-center"
+                onClick={() => {
+                  // Focus logic would go here, but for simplicity just show placeholder behavior
+                  setEditableBlankLine(' ');
+                }}
+              >
+                <span className="text-xs italic opacity-60">+ Add optional text...</span>
+              </div>
+            )}
             <Textarea 
               value={editableVehicleDesc}
               onChange={(e) => setEditableVehicleDesc(e.target.value)}
-              className="min-h-[32px] text-sm border-dashed resize-none"
-              placeholder="Vehicle description..."
+              className="min-h-[32px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={2}
             />
             <Textarea 
               value={editableHelpLine}
               onChange={(e) => setEditableHelpLine(e.target.value)}
-              className="min-h-[32px] text-sm text-blue-600 border-dashed resize-none"
-              placeholder="Help line..."
+              className="min-h-[24px] text-sm text-blue-600 border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={1}
             />
             <Textarea 
               value={editableOrderLine}
               onChange={(e) => setEditableOrderLine(e.target.value)}
-              className="min-h-[32px] text-sm text-blue-600 border-dashed resize-none"
-              placeholder="Order details..."
+              className="min-h-[24px] text-sm text-blue-600 border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={1}
             />
-            
-            <div className="space-y-1 mt-4">
-              <p><strong>Truck Carries:</strong> {equipmentDetails}</p>
-              <p><strong>Truck Size:</strong> {truckDimensions}</p>
-              <p><strong>Door Type and Size:</strong> {doorDimensions}</p>
-              <p><strong>Truck Features:</strong> {vehicleFeatures}</p>
-            </div>
-            
-            {/* Selected Templates */}
-            {getSelectedTemplateTexts().length > 0 && (
-              <div className="space-y-2 mt-4">
-                {getSelectedTemplateTexts().map((text, idx) => (
-                  <p key={idx} className="bg-blue-50 p-2 rounded text-sm">{text}</p>
-                ))}
-              </div>
-            )}
-            
-            <div className="mt-6 space-y-1">
-              <p className="font-bold">{dispatcherName}</p>
-              <p>Dispatch</p>
-              <p>{companyName}</p>
-              <p className="font-bold">MC#: {mcNumber} USDOT#: {dotNumber}</p>
-              <p>{companyAddress}</p>
-              <p>Cell: <strong>{companyPhone}</strong></p>
-              <p>Email: {dispatcherEmailAddr}</p>
-            </div>
-            
-            <div className="mt-4 pt-4 border-t">
-              <p className="text-muted-foreground">Reference #: {email.load_id || email.id?.slice(0, 8) || 'N/A'}-{match?.id ? match.id.slice(0, 8) : 'N/A'}-{vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}</p>
-            </div>
           </div>
+          
+          {/* Truck Specs - Compact Grid */}
+          <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-800/30 rounded p-2.5 text-[11px] space-y-0.5">
+            <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Truck Carries:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{equipmentDetails}</span></div>
+            <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Truck Size:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{truckDimensions}</span></div>
+            <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Door Type:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{doorDimensions}</span></div>
+            <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
+          </div>
+          
+          {/* Selected Templates */}
+          {getSelectedTemplateTexts().length > 0 && (
+            <div className="space-y-1">
+              {getSelectedTemplateTexts().map((text, idx) => (
+                <p key={idx} className="bg-blue-50 dark:bg-blue-950/30 px-2 py-1.5 rounded text-xs leading-relaxed">{text}</p>
+              ))}
+            </div>
+          )}
+          
+          {/* Signature - Compact */}
+          <div className="text-xs space-y-0.5 pt-2 border-t border-dashed">
+            <p className="font-semibold">{dispatcherName}</p>
+            <p className="text-muted-foreground">Dispatch • {companyName}</p>
+            <p className="font-medium">MC#: {mcNumber} • USDOT#: {dotNumber}</p>
+            <p className="text-muted-foreground">{companyAddress}</p>
+            <p>Cell: <span className="font-medium">{companyPhone}</span> • {dispatcherEmailAddr}</p>
+          </div>
+          
+          {/* Reference - Subtle */}
+          <p className="text-[10px] text-muted-foreground/60">
+            Ref: {email.load_id || email.id?.slice(0, 8) || 'N/A'}-{match?.id ? match.id.slice(0, 8) : 'N/A'}-{vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}
+          </p>
         </div>
       </DialogContent>
     </Dialog>
