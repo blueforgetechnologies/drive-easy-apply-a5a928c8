@@ -69,6 +69,10 @@ const LoadEmailDetail = ({
   const [matchHistory, setMatchHistory] = useState<MatchHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
+  // Average bid from similar lanes
+  const [averageLaneBid, setAverageLaneBid] = useState<number | null>(null);
+  const [loadingAverageBid, setLoadingAverageBid] = useState(false);
+  
   // Editable email body lines
   const [editableGreeting, setEditableGreeting] = useState<string>("");
   const [editableBlankLine, setEditableBlankLine] = useState<string>("");
@@ -453,6 +457,104 @@ const LoadEmailDetail = ({
   }, [vehicle, data.broker_name, data.broker_email, data.order_number, originCity, originState, destCity, destState]);
   
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
+
+  // Haversine distance calculation (returns distance in miles)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Calculate average bid from similar lanes (within 50 miles of pickup AND delivery)
+  useEffect(() => {
+    const fetchAverageLaneBid = async () => {
+      // Get current load's pickup and delivery coordinates
+      const currentPickupCoords = data.pickup_coordinates;
+      const currentDeliveryCoords = data.delivery_coordinates;
+      
+      if (!currentPickupCoords?.lat || !currentPickupCoords?.lng || 
+          !currentDeliveryCoords?.lat || !currentDeliveryCoords?.lng) {
+        console.log('Missing coordinates for average bid calculation');
+        return;
+      }
+
+      setLoadingAverageBid(true);
+      try {
+        // Fetch all past bids with their load data
+        const { data: bidHistory, error } = await supabase
+          .from('match_action_history')
+          .select(`
+            action_details,
+            load_emails!inner (
+              parsed_data
+            )
+          `)
+          .eq('action_type', 'bid')
+          .not('action_details->bid_amount', 'is', null);
+
+        if (error) {
+          console.error('Error fetching bid history:', error);
+          return;
+        }
+
+        if (!bidHistory || bidHistory.length === 0) {
+          return;
+        }
+
+        // Filter bids within 50 miles of both pickup AND delivery
+        const matchingBids: number[] = [];
+        const RADIUS_MILES = 50;
+
+        for (const bid of bidHistory) {
+          const actionDetails = bid.action_details as Record<string, any> | null;
+          const bidAmount = actionDetails?.bid_amount;
+          if (!bidAmount || typeof bidAmount !== 'number') continue;
+
+          const loadEmail = bid.load_emails as any;
+          const parsedData = loadEmail?.parsed_data;
+          if (!parsedData) continue;
+
+          const pickupCoords = parsedData.pickup_coordinates;
+          const deliveryCoords = parsedData.delivery_coordinates;
+
+          if (!pickupCoords?.lat || !pickupCoords?.lng || 
+              !deliveryCoords?.lat || !deliveryCoords?.lng) continue;
+
+          // Calculate distances
+          const pickupDistance = calculateDistance(
+            currentPickupCoords.lat, currentPickupCoords.lng,
+            pickupCoords.lat, pickupCoords.lng
+          );
+          const deliveryDistance = calculateDistance(
+            currentDeliveryCoords.lat, currentDeliveryCoords.lng,
+            deliveryCoords.lat, deliveryCoords.lng
+          );
+
+          // Both must be within 50 miles
+          if (pickupDistance <= RADIUS_MILES && deliveryDistance <= RADIUS_MILES) {
+            matchingBids.push(bidAmount);
+          }
+        }
+
+        if (matchingBids.length > 0) {
+          const average = matchingBids.reduce((sum, bid) => sum + bid, 0) / matchingBids.length;
+          setAverageLaneBid(Math.round(average));
+          console.log(`Found ${matchingBids.length} similar lane bids, average: $${Math.round(average)}`);
+        }
+      } catch (err) {
+        console.error('Error calculating average lane bid:', err);
+      } finally {
+        setLoadingAverageBid(false);
+      }
+    };
+
+    fetchAverageLaneBid();
+  }, [email.id, data.pickup_coordinates, data.delivery_coordinates]);
 
   // Handle Skip button click - skips only this specific match, not the entire load
   const handleSkip = async () => {
@@ -1729,7 +1831,9 @@ const LoadEmailDetail = ({
                   <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
                     <div>
                       <div className="text-[11px] text-muted-foreground mb-1">Average</div>
-                      <div className="text-sm font-semibold">—</div>
+                      <div className="text-sm font-semibold">
+                        {loadingAverageBid ? '...' : averageLaneBid ? `$${averageLaneBid.toLocaleString()}` : '—'}
+                      </div>
                     </div>
                     <div className="bg-blue-50 -mx-1 px-2 py-1 rounded">
                       <div className="text-[11px] text-muted-foreground mb-1">Bid</div>
