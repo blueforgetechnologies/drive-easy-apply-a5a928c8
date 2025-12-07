@@ -254,20 +254,21 @@ const MapTab = () => {
     }
   };
 
+  // Separate ref to track if initial bounds have been set
+  const initialBoundsSet = useRef(false);
+
   useEffect(() => {
     if (!map.current || vehicles.length === 0) return;
 
-    const updateMarkers = async () => {
-      // Clear existing markers
-      markersRef.current.forEach(({ marker }) => marker.remove());
-      markersRef.current.clear();
-
-      // Add markers for each vehicle with GPS data
+    const updateMarkers = () => {
+      // Track which vehicles we've already added markers for
+      const existingVehicleIds = new Set(markersRef.current.keys());
+      const currentVehicleIds = new Set<string>();
       const bounds = new mapboxgl.LngLatBounds();
       
       for (const vehicle of vehicles) {
         // Parse location from last_location field or use direct lat/lng if available
-        let lat, lng;
+        let lat: number | undefined, lng: number | undefined;
         
         if (vehicle.last_location) {
           // Try to parse coordinates from location string
@@ -278,10 +279,19 @@ const MapTab = () => {
           }
         }
 
-        // If we have valid coordinates, add marker
+        // If we have valid coordinates, add or update marker
         if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-          // Fetch weather for this location
-          const weather = await fetchWeather(lat, lng);
+          currentVehicleIds.add(vehicle.id);
+          bounds.extend([lng, lat]);
+          
+          // Check if marker already exists
+          const existingMarkerData = markersRef.current.get(vehicle.id);
+          if (existingMarkerData) {
+            // Update existing marker position
+            existingMarkerData.marker.setLngLat([lng, lat]);
+            continue; // Skip creating new marker
+          }
+          
           const speed = vehicle.speed || 0;
           const stoppedStatus = vehicle.stopped_status;
           // Show oil change indicator only when due (0 or negative miles remaining)
@@ -302,7 +312,6 @@ const MapTab = () => {
           // Determine engine/ignition status
           const isMoving = speed > 0;
           const isIdling = speed === 0 && stoppedStatus === 'idling';
-          const isParked = speed === 0 && stoppedStatus !== 'idling';
           
           if (isMoving) {
             // DRIVING - Green with animated arrow
@@ -390,7 +399,6 @@ const MapTab = () => {
             cursor: pointer;
             width: 36px;
             height: 46px;
-            transition: transform 0.2s ease;
           `;
           el.innerHTML = markerHTML;
           
@@ -402,91 +410,26 @@ const MapTab = () => {
             el.style.transform = 'scale(1) translateY(0)';
           });
 
-          const weatherHtml = weather ? `
-            <!-- Weather Info -->
-            <div style="padding: 12px 16px; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2563eb;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <img src="https:${weather.icon}" alt="${weather.condition}" style="width: 40px; height: 40px;" />
-                <div>
-                  <div style="font-size: 24px; font-weight: 700;">${Math.round(weather.temperature)}°F</div>
-                  <div style="font-size: 12px; opacity: 0.9;">${weather.condition}</div>
-                </div>
-              </div>
-              <div style="text-align: right; font-size: 11px; opacity: 0.9;">
-                <div>Feels ${Math.round(weather.feelslike_f)}°F</div>
-                <div>${weather.humidity}% humidity</div>
-                <div>${Math.round(weather.wind_mph)} mph wind</div>
-              </div>
-            </div>
-          ` : '';
-
+          // Create popup with weather fetched on demand when opened
           const popup = new mapboxgl.Popup({ 
-            offset: 25,
+            offset: [0, -46],
             maxWidth: '280px',
             className: 'vehicle-popup',
             anchor: 'bottom'
-          }).setHTML(`
-            <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 240px; border-radius: 12px; overflow: hidden;">
-              <!-- Header -->
-              <div style="padding: 10px 12px; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
-                    <circle cx="6.5" cy="16.5" r="2.5"/>
-                    <circle cx="16.5" cy="16.5" r="2.5"/>
-                  </svg>
-                  <span style="font-size: 15px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 16px; height: 16px;" />` : ''}
-                  ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 16px; height: 16px;" />` : ''}
-                  <div style="background: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                    ${vehicle.speed || 0} MPH
-                  </div>
-                </div>
-              </div>
-              
-              ${weather ? `
-              <!-- Weather Info Compact -->
-              <div style="padding: 8px 12px; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <img src="https:${weather.icon}" alt="${weather.condition}" style="width: 28px; height: 28px;" />
-                  <div>
-                    <div style="font-size: 16px; font-weight: 700;">${Math.round(weather.temperature)}°F</div>
-                    <div style="font-size: 10px; opacity: 0.9;">${weather.condition}</div>
-                  </div>
-                </div>
-                <div style="text-align: right; font-size: 10px; opacity: 0.9;">
-                  <div>${weather.humidity}% humidity</div>
-                  <div>${Math.round(weather.wind_mph)} mph wind</div>
-                </div>
-              </div>
-              ` : ''}
-              
-              <!-- Location Info -->
-              <div style="padding: 8px 12px; background: white; border-bottom: 1px solid #e5e7eb;">
-                <p style="margin: 0; color: #6b7280; font-size: 11px; line-height: 1.4;">
-                  ${vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
-                </p>
-              </div>
-              
-              ${vehicle.odometer ? `
-              <div style="padding: 6px 12px; background: white; display: flex; align-items: center; gap: 6px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 6v6l4 2"/>
-                </svg>
-                <span style="color: #374151; font-size: 11px;">
-                  <strong>${vehicle.odometer.toLocaleString()}</strong> miles
-                </span>
-              </div>
-              ` : ''}
-            </div>
-          `);
+          });
+
+          // Set popup content when opened (fetches weather on demand)
+          popup.on('open', async () => {
+            const weather = await fetchWeather(lat!, lng!);
+            popup.setHTML(createPopupHTML(vehicle, weather, oilChangeDue, hasFaultCodes));
+          });
+
+          // Set initial content without weather
+          popup.setHTML(createPopupHTML(vehicle, null, oilChangeDue, hasFaultCodes));
 
           const marker = new mapboxgl.Marker({
             element: el,
-            anchor: 'bottom', // Anchor at bottom tip of pin
+            anchor: 'bottom',
             offset: [0, 0]
           })
             .setLngLat([lng, lat])
@@ -494,21 +437,92 @@ const MapTab = () => {
             .addTo(map.current!);
 
           markersRef.current.set(vehicle.id, { marker, popup });
-          bounds.extend([lng, lat]);
         }
       }
 
-      // Fit map to show all markers
-      if (markersRef.current.size > 0) {
-        map.current.fitBounds(bounds, {
+      // Remove markers for vehicles no longer in the list
+      existingVehicleIds.forEach(id => {
+        if (!currentVehicleIds.has(id)) {
+          const markerData = markersRef.current.get(id);
+          if (markerData) {
+            markerData.marker.remove();
+            markersRef.current.delete(id);
+          }
+        }
+      });
+
+      // Fit map to show all markers only on initial load
+      if (!initialBoundsSet.current && markersRef.current.size > 0 && bounds.getNorthEast()) {
+        map.current!.fitBounds(bounds, {
           padding: 50,
           maxZoom: 12,
         });
+        initialBoundsSet.current = true;
       }
     };
 
+    // Helper function to create popup HTML
+    const createPopupHTML = (vehicle: any, weather: any, oilChangeDue: boolean, hasFaultCodes: boolean) => `
+      <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 240px; border-radius: 12px; overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 10px 12px; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+              <circle cx="6.5" cy="16.5" r="2.5"/>
+              <circle cx="16.5" cy="16.5" r="2.5"/>
+            </svg>
+            <span style="font-size: 15px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 16px; height: 16px;" />` : ''}
+            ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 16px; height: 16px;" />` : ''}
+            <div style="background: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+              ${vehicle.speed || 0} MPH
+            </div>
+          </div>
+        </div>
+        
+        ${weather ? `
+        <!-- Weather Info Compact -->
+        <div style="padding: 8px 12px; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <img src="https:${weather.icon}" alt="${weather.condition}" style="width: 28px; height: 28px;" />
+            <div>
+              <div style="font-size: 16px; font-weight: 700;">${Math.round(weather.temperature)}°F</div>
+              <div style="font-size: 10px; opacity: 0.9;">${weather.condition}</div>
+            </div>
+          </div>
+          <div style="text-align: right; font-size: 10px; opacity: 0.9;">
+            <div>${weather.humidity}% humidity</div>
+            <div>${Math.round(weather.wind_mph)} mph wind</div>
+          </div>
+        </div>
+        ` : ''}
+        
+        <!-- Location Info -->
+        <div style="padding: 8px 12px; background: white; border-bottom: 1px solid #e5e7eb;">
+          <p style="margin: 0; color: #6b7280; font-size: 11px; line-height: 1.4;">
+            ${vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
+          </p>
+        </div>
+        
+        ${vehicle.odometer ? `
+        <div style="padding: 6px 12px; background: white; display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span style="color: #374151; font-size: 11px;">
+            <strong>${vehicle.odometer.toLocaleString()}</strong> miles
+          </span>
+        </div>
+        ` : ''}
+      </div>
+    `;
+
     updateMarkers();
-  }, [vehicles, weatherCache]);
+  }, [vehicles]);
 
 
   // Count vehicles by status
