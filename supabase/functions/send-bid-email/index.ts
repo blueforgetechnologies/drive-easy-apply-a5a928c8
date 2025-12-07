@@ -90,9 +90,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Build the HTML email body
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">Rate: $ ${data.bid_amount}</p><br/>
-        <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">MC#: ${data.mc_number}</p><br/>
-        <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number}</p>
+        <p style="margin: 0 0 20px 0;">
+          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold; margin-right: 8px;">Rate: $ ${data.bid_amount}</span>
+          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold; margin-right: 8px;">MC#: ${data.mc_number}</span>
+          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number}</span>
+        </p>
         
         <p style="margin-top: 20px;">${greetingLine}</p>
         
