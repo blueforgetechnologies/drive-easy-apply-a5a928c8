@@ -611,7 +611,7 @@ const MapTab = () => {
             )}
             {hasFaultCodes && (
               <div className="flex items-center gap-1.5 text-xs text-destructive">
-                <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
+                <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4 brightness-75" />
                 <span>{vehicle.fault_codes.length} fault code{vehicle.fault_codes.length > 1 ? 's' : ''}</span>
               </div>
             )}
