@@ -402,13 +402,18 @@ const MapTab = () => {
           `;
           el.innerHTML = markerHTML;
           
-          // Add hover effect
-          el.addEventListener('mouseenter', () => {
-            el.style.transform = 'scale(1.2) translateY(-3px)';
-          });
-          el.addEventListener('mouseleave', () => {
-            el.style.transform = 'scale(1) translateY(0)';
-          });
+          // Add hover effect to the SVG inside (not the container - that breaks Mapbox positioning)
+          const svg = el.querySelector('svg');
+          if (svg) {
+            svg.style.transition = 'transform 0.2s ease';
+            svg.style.transformOrigin = 'bottom center';
+            el.addEventListener('mouseenter', () => {
+              svg.style.transform = 'scale(1.15)';
+            });
+            el.addEventListener('mouseleave', () => {
+              svg.style.transform = 'scale(1)';
+            });
+          }
 
           // Create popup with weather fetched on demand when opened
           const popup = new mapboxgl.Popup({ 
