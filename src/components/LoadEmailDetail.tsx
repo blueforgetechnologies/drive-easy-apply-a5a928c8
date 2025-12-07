@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check, History } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check, History, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,10 @@ const LoadEmailDetail = ({
   // Average bid from similar lanes
   const [averageLaneBid, setAverageLaneBid] = useState<number | null>(null);
   const [loadingAverageBid, setLoadingAverageBid] = useState(false);
+
+  // Presence tracking - who else is viewing this match
+  const [otherViewers, setOtherViewers] = useState<{name: string, email: string}[]>([]);
+  const channelRef = useRef<any>(null);
 
   // Editable email body lines
   const [editableGreeting, setEditableGreeting] = useState<string>("");
@@ -275,6 +279,53 @@ const LoadEmailDetail = ({
       recordMatchAction('viewed');
     }
   }, [match?.id, currentDispatcher?.id]);
+
+  // Presence tracking - track who is viewing this match in real-time
+  useEffect(() => {
+    if (!match?.id || !currentDispatcher?.email) return;
+
+    const channelName = `match_presence_${match.id}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = channel.presenceState();
+        const viewers: {name: string, email: string}[] = [];
+        
+        Object.values(presenceState).forEach((presences: any) => {
+          presences.forEach((presence: any) => {
+            // Don't include current user
+            if (presence.email !== currentDispatcher.email) {
+              viewers.push({
+                name: presence.name || presence.email,
+                email: presence.email
+              });
+            }
+          });
+        });
+        
+        setOtherViewers(viewers);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            email: currentDispatcher.email,
+            name: currentDispatcher.first_name 
+              ? `${currentDispatcher.first_name} ${currentDispatcher.last_name || ''}`.trim()
+              : currentDispatcher.email,
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [match?.id, currentDispatcher?.email]);
 
   // Use fetched data or prop data
   const emailBody = fullEmailData?.body_html || fullEmailData?.body_text || email.body_html || email.body_text || "";
@@ -1342,6 +1393,19 @@ const LoadEmailDetail = ({
                       </div>
                     </div>
                   </div>
+
+                  {/* Other viewers indicator */}
+                  {otherViewers.length > 0 && (
+                    <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-2 py-1 rounded-md">
+                      <Eye className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-medium">
+                        {otherViewers.length === 1 
+                          ? `${otherViewers[0].name} is viewing`
+                          : `${otherViewers.length} others viewing`
+                        }
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-6">
                     <div>
