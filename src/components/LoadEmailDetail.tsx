@@ -1345,23 +1345,23 @@ const LoadEmailDetail = ({
                     <div className={`px-2 py-1 font-bold text-sm flex items-center rounded ${hasCarrierSafetyIssue ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                       {carrierName || "No Carrier"}
                     </div>
-                    <div className="text-gray-400">
-                      <div>    Pickup Time</div>
-                      <div>    Delivery Time</div>
+                    <div className="text-blue-800 font-bold">
+                      <div>Pickup Time</div>
+                      <div>Delivery Time</div>
                     </div>
-                    <div className="text-gray-400">
-                      <div>   Origin</div>
-                      <div>   Destination</div>
+                    <div className="text-blue-800 font-bold">
+                      <div>Origin</div>
+                      <div>Destination</div>
                     </div>
-                    <div className="text-gray-400">
-                      <div>    Empty Drive</div>
-                      <div>    Loaded Drive</div>
+                    <div className="text-blue-800 font-bold">
+                      <div>Empty Drive</div>
+                      <div>Loaded Drive</div>
                     </div>
-                    <div className="text-gray-400">
+                    <div className="text-blue-800 font-bold">
                       <div>Load Type</div>
                       <div>Weight</div>
                     </div>
-                    <div className="text-gray-400">
+                    <div className="text-blue-800 font-bold">
                       <div>Pieces</div>
                       <div>Dimensions</div>
                     </div>
