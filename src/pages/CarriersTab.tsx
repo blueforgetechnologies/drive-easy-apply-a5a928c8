@@ -632,13 +632,6 @@ export default function CarriersTab() {
                         className="py-1 px-2 cursor-pointer hidden xl:table-cell"
                         onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
                       >
-                        <div>—</div>
-                        <div className="text-xs text-muted-foreground">—</div>
-                      </TableCell>
-                      <TableCell 
-                        className="py-1 px-2 cursor-pointer"
-                        onClick={() => navigate(`/dashboard/carrier/${carrier.id}`)}
-                      >
                         <div className="text-sm">
                           {carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ? (
                             <span className="text-destructive font-medium">{carrier.safer_status}</span>
