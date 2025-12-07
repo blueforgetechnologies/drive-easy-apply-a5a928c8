@@ -23,8 +23,6 @@ export default function MobileNav({ alertCount, integrationAlertCount }: MobileN
     { value: "load-hunter", icon: Target, label: "Hunter" },
     { value: "business", icon: Briefcase, label: "Business", badge: alertCount },
     { value: "loads", icon: Package, label: "Loads" },
-    { value: "accounting", icon: Calculator, label: "Account" },
-    { value: "maintenance", icon: Wrench, label: "Service" },
     { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
   ];
 
@@ -43,8 +41,8 @@ export default function MobileNav({ alertCount, integrationAlertCount }: MobileN
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden safe-area-inset-bottom">
-      <div className="flex justify-around items-center h-16 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border/50 md:hidden safe-area-inset-bottom">
+      <div className="flex justify-around items-center h-16 px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.value;
@@ -54,21 +52,37 @@ export default function MobileNav({ alertCount, integrationAlertCount }: MobileN
               key={item.value}
               onClick={() => handleNavigation(item.value)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 flex-1 h-full relative transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 flex-1 h-full relative transition-all duration-200 rounded-xl mx-0.5",
                 isActive 
                   ? "text-primary" 
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground active:scale-95 active:bg-muted/50"
               )}
             >
               <div className="relative">
-                <Icon className="h-5 w-5" />
+                <div className={cn(
+                  "p-1.5 rounded-xl transition-all duration-200",
+                  isActive && "bg-primary/10"
+                )}>
+                  <Icon className={cn(
+                    "h-5 w-5 transition-all duration-200",
+                    isActive && "scale-110"
+                  )} />
+                </div>
                 {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
-                    {item.value === 'load-hunter' ? item.badge : item.badge > 9 ? '9+' : item.badge}
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white bg-destructive rounded-full px-1 shadow-sm animate-in zoom-in duration-200">
+                    {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className={cn(
+                "text-[10px] font-medium transition-all duration-200",
+                isActive && "font-semibold"
+              )}>
+                {item.label}
+              </span>
+              {isActive && (
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+              )}
             </button>
           );
         })}
