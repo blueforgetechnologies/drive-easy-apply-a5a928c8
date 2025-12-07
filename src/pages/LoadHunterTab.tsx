@@ -2709,60 +2709,33 @@ export default function LoadHunterTab() {
               variant="default"
               size="sm"
               className="gap-1.5 h-7 text-xs px-2.5"
-              onClick={handleRefreshLoads}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Refreshing..." : "Refresh Loads"}
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 h-7 text-xs px-2.5 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
               onClick={async () => {
                 setRefreshing(true);
                 try {
-                  // Force re-search of loads from last 30 minutes against hunt plans
+                  // Refresh both loads and hunts
+                  await handleRefreshLoads();
+                  
+                  // Also re-check loads against active hunts
                   const enabledHunts = huntPlans.filter(h => h.enabled);
-                  if (enabledHunts.length === 0) {
-                    toast.error("No active hunt plans to match");
-                    setRefreshing(false);
-                    return;
+                  if (enabledHunts.length > 0) {
+                    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+                    const recentLoads = loadEmails.filter(email => {
+                      const receivedAt = new Date(email.received_at);
+                      return receivedAt >= thirtyMinutesAgo && email.status === 'new';
+                    });
+                    toast.success(`Refreshed ${recentLoads.length} loads against ${enabledHunts.length} active hunt(s)`);
                   }
-                  
-                  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-                  const recentLoads = loadEmails.filter(email => {
-                    const receivedAt = new Date(email.received_at);
-                    return receivedAt >= thirtyMinutesAgo && email.status === 'new';
-                  });
-                  
-                  toast.success(`Re-checking ${recentLoads.length} loads from last 30 min against ${enabledHunts.length} active hunt(s)`);
-                  
-                  // Trigger re-evaluation by forcing state update
-                  await loadLoadEmails();
                 } catch (error) {
-                  console.error("Error refreshing hunts:", error);
-                  toast.error("Failed to refresh hunts");
+                  console.error("Error refreshing:", error);
+                  toast.error("Failed to refresh");
                 } finally {
                   setRefreshing(false);
                 }
               }}
               disabled={refreshing}
             >
-              <Target className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh Hunts
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 h-7 text-xs px-2.5"
-              onClick={handleReparseEmails}
-              disabled={refreshing}
-            >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Reparsing..." : "Reparse All"}
+              {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </div>
