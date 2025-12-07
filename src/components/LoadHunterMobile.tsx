@@ -45,6 +45,7 @@ interface LoadHunterMobileProps {
   loadEmails: any[];
   unreviewedViewData: any[];
   skippedMatches: any[];
+  bidMatches: any[];
   missedHistory: any[];
   loadMatches: any[];
   loading: boolean;
@@ -70,6 +71,7 @@ export default function LoadHunterMobile({
   loadEmails,
   unreviewedViewData,
   skippedMatches,
+  bidMatches,
   missedHistory,
   loadMatches,
   loading,
@@ -267,6 +269,8 @@ export default function LoadHunterMobile({
               filteredVehicles.map(vehicle => {
                 const hasEnabledHunt = huntPlans.some(p => p.vehicleId === vehicle.id && p.enabled);
                 const unreviewedCount = unreviewedViewData.filter(m => m.vehicle_id === vehicle.id).length;
+                const skippedCount = skippedMatches.filter(m => m.vehicle_id === vehicle.id).length;
+                const bidCount = bidMatches.filter(m => m.vehicle_id === vehicle.id).length;
                 const hunt = huntPlans.find(p => p.vehicleId === vehicle.id);
                 const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
                 const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
@@ -304,10 +308,40 @@ export default function LoadHunterMobile({
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {unreviewedCount > 0 && (
-                            <Badge variant="destructive">{unreviewedCount}</Badge>
-                          )}
+                        <div className="flex items-center gap-1">
+                          {/* Clickable Badge Filters */}
+                          <div className="flex gap-1 mr-2">
+                            {/* GREEN = Unreviewed */}
+                            <div 
+                              className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-green-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onFilterChange('unreviewed');
+                              }}
+                            >
+                              {unreviewedCount}
+                            </div>
+                            {/* RED = Skipped */}
+                            <div 
+                              className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-red-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onFilterChange('skipped');
+                              }}
+                            >
+                              {skippedCount}
+                            </div>
+                            {/* BLUE = My Bids */}
+                            <div 
+                              className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-blue-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onFilterChange('mybids');
+                              }}
+                            >
+                              {bidCount}
+                            </div>
+                          </div>
                           {hunt && (
                             <Button
                               size="sm"
