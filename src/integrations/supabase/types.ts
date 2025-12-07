@@ -243,6 +243,7 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_title: string | null
           id: string
+          logo_url: string | null
           mc_number: string | null
           name: string
           personal_business: string | null
@@ -270,6 +271,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_title?: string | null
           id?: string
+          logo_url?: string | null
           mc_number?: string | null
           name: string
           personal_business?: string | null
@@ -297,6 +299,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_title?: string | null
           id?: string
+          logo_url?: string | null
           mc_number?: string | null
           name?: string
           personal_business?: string | null
