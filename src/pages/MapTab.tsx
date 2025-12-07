@@ -898,11 +898,12 @@ const MapTab = () => {
       {isMobile && (
         <div 
           className={`
-            fixed bottom-0 left-0 right-0 z-20
+            fixed left-0 right-0 z-20
             bg-background/95 backdrop-blur-xl border-t rounded-t-3xl shadow-2xl
             transition-all duration-300 ease-out
             ${mobileSheetExpanded ? 'h-[70vh]' : 'h-auto'}
           `}
+          style={{ bottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           {/* Handle bar */}
           <button
@@ -937,7 +938,7 @@ const MapTab = () => {
           
           {/* Expanded content */}
           {mobileSheetExpanded && (
-            <div className="flex-1 overflow-y-auto px-4 pb-safe space-y-2" style={{ maxHeight: 'calc(70vh - 80px)' }}>
+            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2" style={{ maxHeight: 'calc(70vh - 80px)' }}>
               {vehicles.map(renderVehicleCard)}
               {vehicles.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -953,12 +954,18 @@ const MapTab = () => {
           
           {/* Collapsed: Quick vehicle preview */}
           {!mobileSheetExpanded && vehicles.length > 0 && (
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-6">
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
                 {vehicles.slice(0, 5).map((vehicle) => {
                   const speed = vehicle.speed || 0;
+                  const stoppedStatus = vehicle.stopped_status;
                   const hasAlert = (vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0) || 
                     (vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0);
+                  
+                  // Determine status color
+                  let statusColor = 'bg-blue-500'; // Parked
+                  if (speed > 0) statusColor = 'bg-emerald-500'; // Driving
+                  else if (stoppedStatus === 'idling') statusColor = 'bg-amber-500'; // Idling
                   
                   return (
                     <button
@@ -974,7 +981,7 @@ const MapTab = () => {
                       `}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${speed > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        <div className={`w-2 h-2 rounded-full ${statusColor}`} />
                         <span className="font-medium text-sm">{vehicle.vehicle_number || 'N/A'}</span>
                         <span className="text-xs text-muted-foreground">{speed} mph</span>
                       </div>
