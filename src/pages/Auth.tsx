@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Truck, ArrowLeft, Loader2, Mail, Lock, User } from "lucide-react";
 
-type AuthView = "login" | "signup" | "forgot-password" | "reset-password";
+type AuthView = "login" | "signup" | "forgot-password" | "reset-password" | "force-password-change";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -62,6 +62,19 @@ export default function Auth() {
             user_agent: navigator.userAgent,
             location: null,
           });
+
+          // Check if this is a dispatcher who needs to change password
+          const { data: dispatcher } = await supabase
+            .from("dispatchers")
+            .select("must_change_password")
+            .eq("user_id", data.user.id)
+            .single();
+
+          if (dispatcher?.must_change_password) {
+            setView("force-password-change");
+            setLoading(false);
+            return;
+          }
         }
 
         toast.success("Logged in successfully!");
@@ -144,6 +157,21 @@ export default function Auth() {
 
       if (error) throw error;
 
+      // If this was a force password change, clear the flag
+      if (view === "force-password-change") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from("dispatchers")
+            .update({ must_change_password: false })
+            .eq("user_id", user.id);
+        }
+        
+        toast.success("Password updated successfully!");
+        navigate("/dashboard/business", { replace: true });
+        return;
+      }
+
       toast.success("Password updated successfully!");
       
       // Clear the hash from URL
@@ -165,6 +193,7 @@ export default function Auth() {
       case "signup": return "Create account";
       case "forgot-password": return "Reset password";
       case "reset-password": return "Set new password";
+      case "force-password-change": return "Change your password";
     }
   };
 
@@ -174,6 +203,7 @@ export default function Auth() {
       case "signup": return "Fill in your details to create an account";
       case "forgot-password": return "Enter your email to receive a reset link";
       case "reset-password": return "Choose a strong password for your account";
+      case "force-password-change": return "You must change your temporary password before continuing";
     }
   };
 
@@ -361,8 +391,15 @@ export default function Auth() {
               )}
 
               {/* Reset Password Form */}
-              {view === "reset-password" && (
+              {(view === "reset-password" || view === "force-password-change") && (
                 <form onSubmit={handleResetPassword} className="space-y-4">
+                  {view === "force-password-change" && (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        For security, you must create a new password before accessing the dashboard.
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-medium">New Password</Label>
                     <div className="relative">
