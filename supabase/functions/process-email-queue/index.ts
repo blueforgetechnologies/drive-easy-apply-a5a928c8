@@ -107,6 +107,36 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
+  // Parse pieces - HTML format: <strong>Pieces: </strong>1
+  const piecesHtmlMatch = bodyText?.match(/<strong>Pieces?:\s*<\/strong>\s*(\d+)/i);
+  if (piecesHtmlMatch) {
+    data.pieces = parseInt(piecesHtmlMatch[1]);
+  } else {
+    // Fallback: plain text format
+    const piecesMatch = bodyText?.match(/Pieces?[:\s]+(\d+)/i);
+    if (piecesMatch) {
+      data.pieces = parseInt(piecesMatch[1]);
+    }
+  }
+
+  // Parse weight - HTML format: <strong>Weight: </strong>500 lbs
+  const weightHtmlMatch = bodyText?.match(/<strong>Weight:\s*<\/strong>\s*([\d,]+)\s*(?:lbs?)?/i);
+  if (weightHtmlMatch) {
+    data.weight = weightHtmlMatch[1].replace(',', '');
+  } else {
+    // Fallback: plain text or subject line
+    const weightMatch = bodyText?.match(/(?:^|[\s,])(\d{1,6})\s*(?:lbs?|pounds?)(?:[\s,.]|$)/i);
+    if (weightMatch) {
+      data.weight = weightMatch[1];
+    }
+  }
+
+  // Parse dimensions
+  const dimensionsMatch = bodyText?.match(/(?:Dimensions?|Size)[:\s]+([^\n<]+)/i);
+  if (dimensionsMatch) {
+    data.dimensions = dimensionsMatch[1].trim();
+  }
+
   // Parse expiration datetime from "Expires" section (handles HTML tags like <strong>Expires: </strong>)
   const expirationMatch = bodyText?.match(/Expires?[:\s]*(?:<[^>]*>)*\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (expirationMatch) {
