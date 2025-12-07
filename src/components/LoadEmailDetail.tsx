@@ -1332,11 +1332,13 @@ const LoadEmailDetail = ({
                     <div className="text-[11px] space-y-0.5">
                       <div>
                         <span className="text-gray-500">D1</span> <span className="font-medium">{driver1Name || "No Driver Assigned"}</span>{" "}
-                        <span className="text-gray-400">Note:</span>
+                        <span className="text-gray-400">Note:</span>{" "}
+                        <span className={driver1?.vehicle_note ? "text-destructive font-bold" : "text-gray-400"}>{driver1?.vehicle_note || ""}</span>
                       </div>
                       <div>
                         <span className="text-gray-500">D2</span> <span className="font-medium">{driver2Name || "No Driver Assigned"}</span>{" "}
-                        <span className="text-gray-400">Note:</span>
+                        <span className="text-gray-400">Note:</span>{" "}
+                        <span className={driver2?.vehicle_note ? "text-destructive font-bold" : "text-gray-400"}>{driver2?.vehicle_note || ""}</span>
                       </div>
                     </div>
                   </div>
