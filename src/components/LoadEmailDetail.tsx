@@ -715,16 +715,11 @@ const LoadEmailDetail = ({
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Truck Size:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{truckDimensions}</span></div>
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Door Type:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{doorDimensions}</span></div>
             <div className="flex"><span className="font-semibold text-slate-500 dark:text-slate-400 w-28">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
+            {/* Selected Templates - inline in body between equipment and order line */}
+            {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => (
+              <div key={idx} className="pt-1.5 text-xs text-slate-700 dark:text-slate-300">{text}</div>
+            ))}
           </div>
-          
-          {/* Selected Templates - Show in body between equipment and signature */}
-          {getSelectedTemplateTexts().length > 0 && (
-            <div className="space-y-0.5 text-sm">
-              {getSelectedTemplateTexts().map((text, idx) => (
-                <p key={idx} className="leading-relaxed">{text}</p>
-              ))}
-            </div>
-          )}
           
           {/* Signature - Compact */}
           <div className="text-xs space-y-0.5 pt-2 border-t border-dashed">
