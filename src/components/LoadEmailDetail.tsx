@@ -1381,21 +1381,39 @@ const LoadEmailDetail = ({
                     onClick={onShowAlternativeMatches}
                     title={onShowAlternativeMatches ? "Click to view/change vehicle selection" : undefined}
                   >
-                    <div className="flex h-10 w-14 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
-                      <Truck className="h-4 w-4 text-blue-600" />
-                      <div className="text-[10px] font-semibold text-blue-600">{vehicle?.vehicle_number || "N/A"}</div>
-                      <div className="text-[10px] font-semibold text-red-500">Empty</div>
-                    </div>
-                    <div className="text-[11px] space-y-0.5">
-                      <div>
-                        <span className="text-gray-500">D1</span> <span className="font-medium">{driver1Name || "No Driver Assigned"}</span>{" "}
-                        <span className="text-gray-400">Note:</span>{" "}
-                        <span className={driver1?.vehicle_note ? "text-destructive font-bold" : "text-gray-400"}>{driver1?.vehicle_note || ""}</span>
+                    <div className="flex items-start gap-3 bg-gradient-to-br from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-900/50 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 shadow-sm">
+                      {/* Truck Icon & Number */}
+                      <div className="flex flex-col items-center justify-center min-w-[52px]">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-500 shadow-md">
+                          <Truck className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="text-xs font-bold text-blue-700 dark:text-blue-400 mt-1">{vehicle?.vehicle_number || "N/A"}</div>
+                        <div className="text-[10px] font-medium text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 rounded">Empty</div>
                       </div>
-                      <div>
-                        <span className="text-gray-500">D2</span> <span className="font-medium">{driver2Name || "No Driver Assigned"}</span>{" "}
-                        <span className="text-gray-400">Note:</span>{" "}
-                        <span className={driver2?.vehicle_note ? "text-destructive font-bold" : "text-gray-400"}>{driver2?.vehicle_note || ""}</span>
+                      
+                      {/* Driver Info */}
+                      <div className="flex flex-col gap-1.5 text-xs min-w-0">
+                        {/* Driver 1 */}
+                        <div className="flex items-start gap-2 bg-white/60 dark:bg-slate-800/60 rounded px-2 py-1.5 border border-slate-200 dark:border-slate-700">
+                          <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-500 text-white text-[10px] font-bold shrink-0">D1</span>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{driver1Name || "No Driver Assigned"}</div>
+                            {driver1?.vehicle_note && (
+                              <div className="text-destructive font-bold text-[11px] mt-0.5 truncate">⚠ {driver1.vehicle_note}</div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Driver 2 */}
+                        <div className="flex items-start gap-2 bg-white/60 dark:bg-slate-800/60 rounded px-2 py-1.5 border border-slate-200 dark:border-slate-700">
+                          <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-slate-400 text-white text-[10px] font-bold shrink-0">D2</span>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{driver2Name || "No Driver Assigned"}</div>
+                            {driver2?.vehicle_note && (
+                              <div className="text-destructive font-bold text-[11px] mt-0.5 truncate">⚠ {driver2.vehicle_note}</div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
