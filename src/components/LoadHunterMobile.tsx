@@ -210,7 +210,7 @@ export default function LoadHunterMobile({
       {/* Bottom Tab Bar - Filter Navigation */}
       <div className="border-b bg-card px-1 py-1">
         <div className="flex items-center gap-1 overflow-x-auto">
-          {/* My Trucks Tab */}
+          {/* Trucks Tab */}
           <Button
             size="sm"
             variant={activeTab === 'trucks' ? 'default' : 'ghost'}
@@ -218,7 +218,7 @@ export default function LoadHunterMobile({
             onClick={() => setActiveTab('trucks')}
           >
             <Truck className="h-4 w-4 mr-1" />
-            My Trucks
+            Trucks
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
               {filteredVehicles.length}
             </Badge>
