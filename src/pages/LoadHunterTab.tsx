@@ -3013,7 +3013,7 @@ export default function LoadHunterTab() {
               return (
                 <Card 
                   key={vehicle.id} 
-                  className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm ${
+                  className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm relative ${
                     hasEnabledHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
                   } ${selectedVehicle?.id === vehicle.id ? 'bg-muted' : ''}`}
                   onClick={() => setSelectedVehicle(vehicle)}
@@ -3041,8 +3041,8 @@ export default function LoadHunterTab() {
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
-                    {/* Merged badge pill - top right */}
-                    <div className="flex items-center rounded-full overflow-hidden border border-border/50 flex-shrink-0">
+                    {/* Merged badge pill - absolute top right edge */}
+                    <div className="absolute -top-1 -right-1 flex items-center rounded-full overflow-hidden border border-border/50 shadow-sm">
                       {/* GREEN = Unreviewed */}
                       <div 
                         className="h-4 px-1.5 bg-green-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-600 transition-colors"
