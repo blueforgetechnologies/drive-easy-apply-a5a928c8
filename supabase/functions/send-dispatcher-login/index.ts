@@ -198,7 +198,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "TMS Portal <onboarding@resend.dev>",
+      from: "TMS Portal <noreply@nexustechsolution.com>",
       to: [dispatcherEmail],
       subject: "Your TMS Portal Login Credentials",
       html: emailHtml,
