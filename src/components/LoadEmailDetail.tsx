@@ -1435,7 +1435,7 @@ const LoadEmailDetail = ({
                     <div className="font-semibold text-blue-600 shrink-0">Vehicle</div>
                     <div className="text-muted-foreground">
                       <span>         Note:</span>{' '}
-                      <span>{vehicle?.notes || ''}</span>
+                      <span className={vehicle?.notes ? "text-destructive font-bold" : ""}>{vehicle?.notes || ''}</span>
                     </div>
                   </div>
                   <Button className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold shrink-0" onClick={() => setShowOriginalEmail(true)}>
