@@ -196,6 +196,7 @@ const LoadEmailDetail = ({
   }, [email.id, email.body_text, email.body_html]);
 
   const [bidAsCarrier, setBidAsCarrier] = useState<any>(null);
+  const [vehicleCarrier, setVehicleCarrier] = useState<any>(null);
 
   // Fetch company profile, current dispatcher, and bid_as carrier for email signature
   useEffect(() => {
@@ -315,7 +316,31 @@ const LoadEmailDetail = ({
     };
     fetchBidAsCarrier();
   }, [vehicle?.bid_as]);
-  
+
+  // Fetch the vehicle's carrier for safety status display
+  useEffect(() => {
+    const fetchVehicleCarrier = async () => {
+      if (vehicle?.carrier) {
+        try {
+          const { data: carrier, error } = await supabase
+            .from('carriers')
+            .select('id, name, safer_status, safety_rating')
+            .eq('id', vehicle.carrier)
+            .maybeSingle();
+          
+          if (!error && carrier) {
+            setVehicleCarrier(carrier);
+          }
+        } catch (e) {
+          console.error('Error fetching vehicle carrier:', e);
+        }
+      } else {
+        setVehicleCarrier(null);
+      }
+    };
+    fetchVehicleCarrier();
+  }, [vehicle?.carrier]);
+   
   // Use asset's Vehicle Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
   const truckLengthFeet = vehicle?.vehicle_size; // Use feet from vehicle_size field
   const truckSubtype = vehicle?.asset_subtype;
@@ -332,7 +357,12 @@ const LoadEmailDetail = ({
   const driver2Name = driver2?.personal_info?.firstName && driver2?.personal_info?.lastName
     ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` 
     : null;
-  const carrierName = vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null;
+  const carrierName = vehicleCarrier?.name || (vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null);
+  
+  // Check if carrier has safety issues (NOT AUTHORIZED or CONDITIONAL rating)
+  const hasCarrierSafetyIssue = 
+    vehicleCarrier?.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ||
+    vehicleCarrier?.safety_rating?.toUpperCase() === 'CONDITIONAL';
 
   // Build equipment details from vehicle data
   const buildEquipmentDetails = () => {
@@ -1604,7 +1634,7 @@ const LoadEmailDetail = ({
                 {/* CARRIER ROWS */}
                 <div className="border-b">
                   <div className="grid grid-cols-[2.2fr,1.4fr,1.2fr,1.5fr,1fr,1fr] px-2 py-1.5 text-[11px]">
-                    <div className="bg-red-100 -mx-2 px-2 py-1 font-semibold flex items-center">
+                    <div className={`-mx-2 px-2 py-1 font-semibold flex items-center ${hasCarrierSafetyIssue ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                       {carrierName || "No Carrier"}
                     </div>
                     <div className="text-gray-400">
