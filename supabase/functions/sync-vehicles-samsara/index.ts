@@ -47,9 +47,9 @@ serve(async (req) => {
 
     console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs in database`);
 
-    // Fetch vehicle stats from Samsara with required types parameter including odometer
+    // Fetch vehicle stats from Samsara with required types including engineFaults for fault codes
     const samsaraResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents,engineFaults',
       {
         headers: {
           'Authorization': `Bearer ${trimmedKey}`,
@@ -91,6 +91,7 @@ serve(async (req) => {
       updated: 0,
       notFound: [] as string[],
       errors: [] as any[],
+      faultCodesFound: 0,
     };
 
     for (const dbVehicle of dbVehicles || []) {
@@ -144,10 +145,40 @@ serve(async (req) => {
         }
       }
 
-      // Note: Fault codes are not available through stats/feed endpoint
-      // They require Samsara webhooks (EngineFaultOn events) or a separate API endpoint
-      // For now, clear any existing fault codes
-      updateData.fault_codes = [];
+      // Extract engine fault codes from engineFaults array
+      const faultCodes: string[] = [];
+      if (samsaraVehicle.engineFaults && Array.isArray(samsaraVehicle.engineFaults)) {
+        for (const fault of samsaraVehicle.engineFaults) {
+          // Handle J1939 fault codes (heavy duty vehicles)
+          if (fault.j1939) {
+            const spnId = fault.j1939.spn?.id || '';
+            const fmiId = fault.j1939.fmi?.id || '';
+            const description = fault.j1939.spn?.description || fault.j1939.vendorDtcDescription || '';
+            const faultStr = `SPN ${spnId} FMI ${fmiId}${description ? ': ' + description : ''}`;
+            faultCodes.push(faultStr);
+          }
+          // Handle OEM specific fault codes
+          else if (fault.oem) {
+            const codeId = fault.oem.codeIdentifier || '';
+            const description = fault.oem.codeDescription || '';
+            const faultStr = `${codeId}${description ? ': ' + description : ''}`;
+            faultCodes.push(faultStr);
+          }
+          // Handle passenger vehicle (OBD-II) fault codes
+          else if (fault.passenger?.dtc) {
+            const shortCode = fault.passenger.dtc.shortCode || '';
+            const description = fault.passenger.dtc.description || '';
+            const faultStr = `${shortCode}${description ? ': ' + description : ''}`;
+            faultCodes.push(faultStr);
+          }
+        }
+      }
+      
+      updateData.fault_codes = faultCodes;
+      if (faultCodes.length > 0) {
+        results.faultCodesFound++;
+        console.log(`Vehicle ${dbVehicle.vehicle_number}: found ${faultCodes.length} fault codes:`, faultCodes);
+      }
 
       // Store Samsara provider info
       updateData.provider = 'Samsara';
@@ -176,7 +207,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Successfully synced ${results.updated} of ${results.total} vehicles`,
+        message: `Successfully synced ${results.updated} of ${results.total} vehicles (${results.faultCodesFound} with fault codes)`,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
