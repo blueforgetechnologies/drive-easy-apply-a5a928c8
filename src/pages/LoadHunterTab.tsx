@@ -669,12 +669,20 @@ export default function LoadHunterTab() {
     setIsSearchingArchive(true);
     try {
       // Archive table doesn't have FK relationships, so query it directly
+      // Use textSearch on match_status or filter by casting UUID to text via RPC
+      // For now, search by fetching recent archives and filtering client-side
       const { data: archiveData, error } = await supabase
         .from('load_hunt_matches_archive')
         .select('*')
-        .or(`original_match_id.ilike.%${query}%,load_email_id.ilike.%${query}%`)
         .order('archived_at', { ascending: false })
-        .limit(20);
+        .limit(100);
+      
+      // Filter client-side since we can't do ilike on UUID columns
+      const filteredData = (archiveData || []).filter(a => 
+        a.original_match_id?.toString().toLowerCase().includes(query.toLowerCase()) ||
+        a.load_email_id?.toString().toLowerCase().includes(query.toLowerCase()) ||
+        a.match_status?.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 20);
       
       if (error) {
         console.error('Archive search error:', error);
@@ -683,9 +691,9 @@ export default function LoadHunterTab() {
       }
 
       // Enrich with related data if we have results
-      if (archiveData && archiveData.length > 0) {
-        const loadEmailIds = [...new Set(archiveData.map(a => a.load_email_id).filter(Boolean))];
-        const vehicleIds = [...new Set(archiveData.map(a => a.vehicle_id).filter(Boolean))];
+      if (filteredData && filteredData.length > 0) {
+        const loadEmailIds = [...new Set(filteredData.map(a => a.load_email_id).filter(Boolean))];
+        const vehicleIds = [...new Set(filteredData.map(a => a.vehicle_id).filter(Boolean))];
         
         const [emailsRes, vehiclesRes] = await Promise.all([
           loadEmailIds.length > 0 
@@ -699,7 +707,7 @@ export default function LoadHunterTab() {
         const emailsMap = new Map((emailsRes.data || []).map(e => [e.id, e]));
         const vehiclesMap = new Map((vehiclesRes.data || []).map(v => [v.id, v]));
 
-        const enrichedData = archiveData.map(a => ({
+        const enrichedData = filteredData.map(a => ({
           ...a,
           load_emails: emailsMap.get(a.load_email_id) || null,
           vehicles: vehiclesMap.get(a.vehicle_id) || null
