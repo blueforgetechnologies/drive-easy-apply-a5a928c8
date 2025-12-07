@@ -3022,17 +3022,6 @@ export default function LoadHunterTab() {
                     <div className="flex-1 min-w-0 space-y-0.5">
                       <div className="font-medium text-xs leading-tight text-foreground flex items-center gap-1">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
-                        {/* Maintenance & Fault Indicators */}
-                        {isOilChangeDue && (
-                          <span title="Oil change due">
-                            <img src={oilChangeIcon} alt="Oil change due" className="h-3.5 w-3.5 flex-shrink-0" />
-                          </span>
-                        )}
-                        {hasFaultCodes && (
-                          <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`} className="flex items-center">
-                            <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4 flex-shrink-0" />
-                          </span>
-                        )}
                       </div>
                       <div className="text-[11px] text-muted-foreground leading-tight">
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
@@ -3086,6 +3075,21 @@ export default function LoadHunterTab() {
                         {bidCount}
                       </div>
                     </div>
+                    {/* Maintenance & Fault Indicators - bottom right corner */}
+                    {(isOilChangeDue || hasFaultCodes) && (
+                      <div className="absolute bottom-0 right-0 flex items-center gap-0.5 rounded-tl-md rounded-br-sm overflow-hidden border-l border-t border-border/50 bg-background px-1 py-0.5">
+                        {isOilChangeDue && (
+                          <span title="Oil change due">
+                            <img src={oilChangeIcon} alt="Oil change due" className="h-3.5 w-3.5 flex-shrink-0" />
+                          </span>
+                        )}
+                        {hasFaultCodes && (
+                          <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`} className="flex items-center">
+                            <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5 flex-shrink-0" />
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
