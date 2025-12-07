@@ -668,33 +668,51 @@ export default function LoadHunterTab() {
     
     setIsSearchingArchive(true);
     try {
-      const { data, error } = await supabase
+      // Archive table doesn't have FK relationships, so query it directly
+      const { data: archiveData, error } = await supabase
         .from('load_hunt_matches_archive')
-        .select(`
-          *,
-          load_emails:load_email_id (
-            id, load_id, subject, from_email, received_at, parsed_data, expires_at
-          ),
-          vehicles:vehicle_id (
-            id, vehicle_number, carrier
-          ),
-          hunt_plans:hunt_plan_id (
-            id, plan_name
-          )
-        `)
-        .ilike('original_match_id', `%${query}%`)
+        .select('*')
+        .or(`original_match_id.ilike.%${query}%,load_email_id.ilike.%${query}%`)
         .order('archived_at', { ascending: false })
         .limit(20);
       
       if (error) {
         console.error('Archive search error:', error);
         toast.error('Failed to search archives');
-      } else {
-        setArchivedSearchResults(data || []);
-        setShowArchiveResults(true);
+        return;
       }
+
+      // Enrich with related data if we have results
+      if (archiveData && archiveData.length > 0) {
+        const loadEmailIds = [...new Set(archiveData.map(a => a.load_email_id).filter(Boolean))];
+        const vehicleIds = [...new Set(archiveData.map(a => a.vehicle_id).filter(Boolean))];
+        
+        const [emailsRes, vehiclesRes] = await Promise.all([
+          loadEmailIds.length > 0 
+            ? supabase.from('load_emails').select('id, load_id, subject, from_email, received_at, parsed_data, expires_at').in('id', loadEmailIds)
+            : { data: [] },
+          vehicleIds.length > 0
+            ? supabase.from('vehicles').select('id, vehicle_number, carrier').in('id', vehicleIds)
+            : { data: [] }
+        ]);
+
+        const emailsMap = new Map((emailsRes.data || []).map(e => [e.id, e]));
+        const vehiclesMap = new Map((vehiclesRes.data || []).map(v => [v.id, v]));
+
+        const enrichedData = archiveData.map(a => ({
+          ...a,
+          load_emails: emailsMap.get(a.load_email_id) || null,
+          vehicles: vehiclesMap.get(a.vehicle_id) || null
+        }));
+
+        setArchivedSearchResults(enrichedData);
+      } else {
+        setArchivedSearchResults([]);
+      }
+      setShowArchiveResults(true);
     } catch (err) {
       console.error('Archive search error:', err);
+      toast.error('Failed to search archives');
     } finally {
       setIsSearchingArchive(false);
     }
