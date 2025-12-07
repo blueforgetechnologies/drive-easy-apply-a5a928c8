@@ -1869,55 +1869,48 @@ const LoadEmailDetail = ({
             Match History
           </DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[400px]">
+        <ScrollArea className="max-h-[300px]">
           {loadingHistory ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
             </div>
           ) : matchHistory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No history recorded for this match yet.
+            <div className="text-center py-6 text-muted-foreground text-sm">
+              No history recorded yet.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y">
               {matchHistory.map((entry) => {
                 const actionColors: Record<string, string> = {
-                  viewed: 'bg-blue-100 text-blue-800',
-                  skipped: 'bg-orange-100 text-orange-800',
-                  bid: 'bg-green-100 text-green-800',
-                  waitlist: 'bg-purple-100 text-purple-800',
-                  undecided: 'bg-gray-100 text-gray-800',
+                  viewed: 'bg-blue-100 text-blue-700',
+                  skipped: 'bg-orange-100 text-orange-700',
+                  bid: 'bg-green-100 text-green-700',
+                  waitlist: 'bg-purple-100 text-purple-700',
+                  undecided: 'bg-gray-100 text-gray-700',
                 };
                 const actionLabels: Record<string, string> = {
                   viewed: 'Viewed',
                   skipped: 'Skipped',
-                  bid: 'Placed Bid',
-                  waitlist: 'Added to Waitlist',
+                  bid: 'Bid',
+                  waitlist: 'Waitlist',
                   undecided: 'Undecided',
                 };
                 return (
-                  <div key={entry.id} className="border rounded-lg p-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Badge className={actionColors[entry.action_type] || 'bg-gray-100 text-gray-800'}>
-                        {actionLabels[entry.action_type] || entry.action_type}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(entry.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium">{entry.dispatcher_name || 'Unknown User'}</span>
-                      {entry.dispatcher_email && (
-                        <span className="text-muted-foreground text-xs ml-1">
-                          ({entry.dispatcher_email})
-                        </span>
+                  <div key={entry.id} className="flex items-center gap-2 py-2 px-1">
+                    <Badge className={`text-[10px] px-1.5 py-0 h-5 ${actionColors[entry.action_type] || 'bg-gray-100 text-gray-700'}`}>
+                      {actionLabels[entry.action_type] || entry.action_type}
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-medium truncate">{entry.dispatcher_name || 'Unknown'}</span>
+                      {entry.action_details?.bid_amount && (
+                        <span className="text-[10px] text-green-600 ml-1">${entry.action_details.bid_amount}</span>
                       )}
                     </div>
-                    {entry.action_details && entry.action_type === 'bid' && (
-                      <div className="text-xs text-muted-foreground">
-                        Bid Amount: ${entry.action_details.bid_amount}
-                      </div>
-                    )}
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      {new Date(entry.created_at).toLocaleString('en-US', { 
+                        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
+                      })}
+                    </span>
                   </div>
                 );
               })}
