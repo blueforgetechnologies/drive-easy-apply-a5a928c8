@@ -1824,56 +1824,54 @@ const LoadEmailDetail = ({
             </div>
 
             {/* Stats & Actions Card */}
-            <div className="w-[360px]">
-              <Card className="p-3 h-full flex flex-col justify-between shadow-md">
+            <div className="w-[280px]">
+              <Card className="p-2 h-full flex flex-col justify-between shadow-md">
                 <div>
                   {/* Average/Bid/Booked Row */}
-                  <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
+                  <div className="grid grid-cols-2 gap-1 text-center mb-2 pb-2 border-b">
                     <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Average Bid</div>
-                      <div className="text-sm font-semibold">
+                      <div className="text-[10px] text-muted-foreground">Average Bid</div>
+                      <div className="text-xs font-semibold">
                         {loadingAverageBid ? '...' : averageLaneBid ? `$${averageLaneBid.toLocaleString()}` : '—'}
                       </div>
                     </div>
-                    <div className="bg-blue-50 -mx-1 px-2 py-1 rounded">
-                      <div className="text-[11px] text-muted-foreground mb-1">Average Booked</div>
-                      <div className="text-lg font-bold text-blue-600">${data.rate ? data.rate.toLocaleString() : '1,282'}</div>
+                    <div className="bg-blue-50 px-1 py-0.5 rounded">
+                      <div className="text-[10px] text-muted-foreground">Average Booked</div>
+                      <div className="text-sm font-bold text-blue-600">${data.rate ? data.rate.toLocaleString() : '1,282'}</div>
                     </div>
                   </div>
 
-                  {/* [$/mi] Label */}
-                  <div className="text-xs text-muted-foreground text-right mb-2">[$/mi]</div>
-
                   {/* Miles and Costs */}
-                  <div className="space-y-2 mb-3 text-sm">
+                  <div className="space-y-1 mb-2 text-xs">
+                    <div className="flex justify-end text-[10px] text-muted-foreground">[$/mi]</div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Loaded Miles</span>
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-3 items-center">
                         <span className="font-semibold">{data.loaded_miles || 375}</span>
-                        <span className="text-blue-600 font-semibold w-14 text-right">$3.42</span>
+                        <span className="text-blue-600 font-semibold w-10 text-right">$3.42</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Total Miles</span>
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-3 items-center">
                         <span className="font-semibold">{Math.round((data.loaded_miles || 375) + (emptyDriveDistance || 0))}</span>
-                        <span className="text-blue-600 font-semibold w-14 text-right">$1.64</span>
+                        <span className="text-blue-600 font-semibold w-10 text-right">$1.64</span>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center pb-2 border-b">
+                    <div className="flex justify-between items-center pb-1 border-b">
                       <span className="font-medium">Fuel, Tolls and Driver</span>
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-3 items-center">
                         <span className="font-semibold">$0.00</span>
-                        <span className="text-blue-600 font-semibold w-14 text-right">$0.00</span>
+                        <span className="text-blue-600 font-semibold w-10 text-right">$0.00</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Bid Input and Button */}
-                  <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                  <div className="flex items-center gap-1 mb-2 pb-2 border-b">
                     <div className="flex items-center flex-1 border rounded-full overflow-hidden bg-background">
-                      <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full m-0.5">
-                        <span className="text-lg font-bold text-white">$</span>
+                      <div className="flex items-center justify-center w-7 h-7 bg-blue-500 rounded-full m-0.5">
+                        <span className="text-sm font-bold text-white">$</span>
                       </div>
                       <input
                         type="text"
@@ -1883,7 +1881,7 @@ const LoadEmailDetail = ({
                           setBidAmount(val);
                         }}
                         placeholder={data.rate?.toString() || "3000"}
-                        className="flex-1 bg-transparent border-none outline-none text-base font-medium text-foreground px-3 placeholder:text-muted-foreground"
+                        className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-foreground px-2 placeholder:text-muted-foreground"
                       />
                       <Button 
                         onClick={() => {
@@ -1891,7 +1889,7 @@ const LoadEmailDetail = ({
                           setBidAmount(finalBid);
                           setShowBidCardOnMap(true);
                         }}
-                        className="bg-green-500 hover:bg-green-600 h-8 px-4 text-sm font-semibold rounded-full m-1"
+                        className="bg-green-500 hover:bg-green-600 h-6 px-3 text-xs font-semibold rounded-full m-0.5"
                       >
                         Set Bid
                       </Button>
@@ -1900,22 +1898,22 @@ const LoadEmailDetail = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-1.5">
+                <div className="flex gap-1">
                   <Button 
                     variant="destructive" 
                     size="sm" 
-                    className="h-8 text-xs flex-1 whitespace-nowrap font-medium"
+                    className="h-6 text-[10px] flex-1 whitespace-nowrap font-medium px-1"
                     onClick={handleSkip}
                   >
                     Skip
                   </Button>
-                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleUndecided}>
+                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleUndecided}>
                     Undecided
                   </Button>
-                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleMarkUnreviewed}>
+                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleMarkUnreviewed}>
                     Mark Unreviewed
                   </Button>
-                  <Button size="sm" className="h-8 text-xs flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium" onClick={handleWait}>
+                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleWait}>
                     Wait
                   </Button>
                 </div>
