@@ -7,6 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Truck, ArrowLeft, Loader2, Mail, Lock, User } from "lucide-react";
+import { 
+  loginSchema, 
+  signupSchema, 
+  passwordResetSchema, 
+  emailSchema,
+  validateOrThrow
+} from "@/lib/auth-validation";
 
 type AuthView = "login" | "signup" | "forgot-password" | "reset-password" | "force-password-change";
 
@@ -47,9 +54,12 @@ export default function Auth() {
 
     try {
       if (view === "login") {
+        // Validate login form with Zod
+        const validData = validateOrThrow(loginSchema, { email, password });
+
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: validData.email,
+          password: validData.password,
         });
 
         if (error) throw error;
@@ -80,9 +90,12 @@ export default function Auth() {
         toast.success("Logged in successfully!");
         navigate("/dashboard/business", { replace: true });
       } else if (view === "signup") {
+        // Validate signup form with Zod
+        const validData = validateOrThrow(signupSchema, { fullName, email, password });
+
         // Check if email is invited before allowing signup
         const { data: isInvited, error: checkError } = await supabase
-          .rpc('is_email_invited', { check_email: email });
+          .rpc('is_email_invited', { check_email: validData.email });
         
         if (checkError) {
           throw new Error("Unable to verify invitation status");
@@ -93,12 +106,12 @@ export default function Auth() {
         }
 
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: validData.email,
+          password: validData.password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
             data: {
-              full_name: fullName,
+              full_name: validData.fullName,
             },
           },
         });
@@ -119,11 +132,13 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (!email.trim()) {
-        throw new Error("Please enter your email address");
+      // Validate email with Zod
+      const validation = emailSchema.safeParse(email);
+      if (!validation.success) {
+        throw new Error(validation.error.errors[0].message);
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(validation.data, {
         redirectTo: `${window.location.origin}/auth`,
       });
 
@@ -143,16 +158,11 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters");
-      }
-
-      if (password !== confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
+      // Validate password reset form with Zod
+      const validData = validateOrThrow(passwordResetSchema, { password, confirmPassword });
 
       const { error } = await supabase.auth.updateUser({
-        password: password,
+        password: validData.password,
       });
 
       if (error) throw error;
