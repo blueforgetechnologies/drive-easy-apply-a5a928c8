@@ -1070,6 +1070,100 @@ const LoadEmailDetail = ({
                     <p><strong>Features:</strong> {vehicleFeatures}</p>
                   </div>
                 </Card>
+                
+                {/* Selectable Templates for Mobile */}
+                <Card className="p-3">
+                  <p className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-3">
+                    <Check className="w-3 h-3" /> Select templates to include (tap to toggle, hold to edit)
+                  </p>
+                  
+                  {/* Nearby Template */}
+                  <div 
+                    className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 mb-2 ${
+                      selectedTemplates.nearby 
+                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                    }`}
+                    onClick={() => handleTemplateToggle('nearby')}
+                    onDoubleClick={() => setEditingTemplate('nearby')}
+                  >
+                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+                      selectedTemplates.nearby ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
+                    }`}>
+                      {selectedTemplates.nearby && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    {editingTemplate === 'nearby' ? (
+                      <textarea
+                        className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
+                        value={templateTexts.nearby}
+                        onChange={(e) => handleTemplateTextChange('nearby', e.target.value)}
+                        onBlur={() => setEditingTemplate(null)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('nearby')}</p>
+                    )}
+                  </div>
+                  
+                  {/* Driver Template */}
+                  <div 
+                    className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 mb-2 ${
+                      selectedTemplates.driver 
+                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                    }`}
+                    onClick={() => handleTemplateToggle('driver')}
+                    onDoubleClick={() => setEditingTemplate('driver')}
+                  >
+                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+                      selectedTemplates.driver ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
+                    }`}>
+                      {selectedTemplates.driver && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    {editingTemplate === 'driver' ? (
+                      <textarea
+                        className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
+                        value={templateTexts.driver}
+                        onChange={(e) => handleTemplateTextChange('driver', e.target.value)}
+                        onBlur={() => setEditingTemplate(null)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('driver')}</p>
+                    )}
+                  </div>
+                  
+                  {/* Fuel Template */}
+                  <div 
+                    className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${
+                      selectedTemplates.fuel 
+                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                    }`}
+                    onClick={() => handleTemplateToggle('fuel')}
+                    onDoubleClick={() => setEditingTemplate('fuel')}
+                  >
+                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+                      selectedTemplates.fuel ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
+                    }`}>
+                      {selectedTemplates.fuel && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    {editingTemplate === 'fuel' ? (
+                      <textarea
+                        className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
+                        value={templateTexts.fuel}
+                        onChange={(e) => handleTemplateTextChange('fuel', e.target.value)}
+                        onBlur={() => setEditingTemplate(null)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('fuel')}</p>
+                    )}
+                  </div>
+                </Card>
                 <div className="grid grid-cols-3 gap-2">
                   <Button 
                     size="sm" 
