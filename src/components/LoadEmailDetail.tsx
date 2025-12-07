@@ -1791,16 +1791,11 @@ const LoadEmailDetail = ({
                 </div>
 
                 {/* ORIGINAL POST */}
-                <div className="grid grid-cols-[1fr,4fr,1.3fr] px-3 py-1 text-[11px] items-center">
-                  <div className="font-semibold text-blue-600">Original Post</div>
-                  <div className="text-red-600 text-[10px]">
-                    {data.notes ? `Note: ${data.notes}` : 'Note:'}
-                  </div>
-                  <div className="text-right space-x-3">
-                    <span className="font-semibold">Posted Rate:</span>{' '}
-                    <span className="text-red-600 font-semibold">
-                      {data.rate ? `$${data.rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'NONE'}
-                    </span>
+                <div className="flex items-center px-3 py-1.5 text-[11px] gap-4 border-t">
+                  <div className="font-semibold text-blue-600 shrink-0">Original Post</div>
+                  <div className="text-red-400">
+                    <span className="text-muted-foreground">Note:</span>{' '}
+                    <span>{data.notes || ''}</span>
                   </div>
                 </div>
 
