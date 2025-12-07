@@ -1830,18 +1830,14 @@ const LoadEmailDetail = ({
                   {/* Average/Bid/Booked Row */}
                   <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b">
                     <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Average</div>
+                      <div className="text-[11px] text-muted-foreground mb-1">Average Bid</div>
                       <div className="text-sm font-semibold">
                         {loadingAverageBid ? '...' : averageLaneBid ? `$${averageLaneBid.toLocaleString()}` : '—'}
                       </div>
                     </div>
                     <div className="bg-blue-50 -mx-1 px-2 py-1 rounded">
-                      <div className="text-[11px] text-muted-foreground mb-1">Bid</div>
+                      <div className="text-[11px] text-muted-foreground mb-1">Average Booked</div>
                       <div className="text-lg font-bold text-blue-600">${data.rate ? data.rate.toLocaleString() : '1,282'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Booked</div>
-                      <div className="text-sm font-semibold">N/A</div>
                     </div>
                   </div>
 
