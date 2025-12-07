@@ -1405,7 +1405,7 @@ const LoadEmailDetail = ({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="text-destructive font-bold max-w-[300px] truncate inline-block align-middle cursor-help">
+                                  <span className="text-destructive font-bold max-w-[400px] truncate inline-block align-middle cursor-help">
                                     ⚠ {driver1.vehicle_note}
                                   </span>
                                 </TooltipTrigger>
@@ -1423,7 +1423,7 @@ const LoadEmailDetail = ({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="text-destructive font-bold max-w-[300px] truncate inline-block align-middle cursor-help">
+                                  <span className="text-destructive font-bold max-w-[400px] truncate inline-block align-middle cursor-help">
                                     ⚠ {driver2.vehicle_note}
                                   </span>
                                 </TooltipTrigger>
