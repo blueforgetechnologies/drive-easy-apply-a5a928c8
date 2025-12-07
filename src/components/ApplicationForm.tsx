@@ -136,6 +136,7 @@ export interface ApplicationData {
     address: string;
     relationship: string;
   }>;
+  inviteId?: string;
 }
 
 const steps = [
@@ -156,9 +157,15 @@ const steps = [
   { id: 15, name: "Review & Submit", component: ReviewSubmit },
 ];
 
-export const ApplicationForm = () => {
+interface ApplicationFormProps {
+  inviteId: string;
+}
+
+export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [applicationData, setApplicationData] = useState<Partial<ApplicationData>>({});
+  const [applicationData, setApplicationData] = useState<Partial<ApplicationData>>({
+    inviteId, // Store invite ID in application data
+  });
 
   const progress = (currentStep / steps.length) * 100;
   const CurrentStepComponent = steps[currentStep - 1].component;

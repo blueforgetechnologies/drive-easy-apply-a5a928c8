@@ -22,10 +22,27 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
     try {
       console.log("Submitting application for:", data?.personalInfo?.email);
       
-      // First, save to database
+      // Validate invite ID is present
+      if (!data?.inviteId) {
+        throw new Error("Invalid invitation. Please use a valid invite link.");
+      }
+
+      // First, mark the invite as used
+      const { error: inviteError } = await supabase
+        .from('driver_invites')
+        .update({ application_started_at: new Date().toISOString() })
+        .eq('id', data.inviteId);
+
+      if (inviteError) {
+        console.error("Error marking invite as used:", inviteError);
+        // Continue anyway - the RLS policy will catch invalid invites
+      }
+
+      // Save to database with invite_id
       const { error: dbError } = await supabase
         .from('applications')
         .insert({
+          invite_id: data.inviteId,
           personal_info: data.personalInfo,
           payroll_policy: data.payrollPolicy || {},
           license_info: data.licenseInfo,

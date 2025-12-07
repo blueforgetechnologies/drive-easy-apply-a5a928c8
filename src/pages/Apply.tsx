@@ -1,23 +1,94 @@
 import { ApplicationForm } from "@/components/ApplicationForm";
 import heroImage from "@/assets/driver-hero.jpg";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Apply = () => {
   const [searchParams] = useSearchParams();
   const inviteId = searchParams.get("invite");
+  const [isValidating, setIsValidating] = useState(true);
+  const [isValidInvite, setIsValidInvite] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (inviteId) {
-      // Track that the invite link was opened
-      supabase.functions.invoke("track-invite-open", {
-        body: { inviteId },
-      }).catch(console.error);
-    }
+    const validateInvite = async () => {
+      if (!inviteId) {
+        setIsValidating(false);
+        setInviteError("No invitation token provided. You need a valid invite link to apply.");
+        return;
+      }
+
+      try {
+        // Track that the invite link was opened
+        await supabase.functions.invoke("track-invite-open", {
+          body: { inviteId },
+        });
+
+        // Validate the invite exists and hasn't been used
+        const { data: invite, error } = await supabase
+          .from("driver_invites")
+          .select("id, application_started_at")
+          .eq("id", inviteId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error validating invite:", error);
+          setInviteError("Failed to validate invitation. Please try again.");
+        } else if (!invite) {
+          setInviteError("Invalid invitation link. Please contact us to request a new invite.");
+        } else if (invite.application_started_at) {
+          setInviteError("This invitation has already been used. Please contact us if you need to submit another application.");
+        } else {
+          setIsValidInvite(true);
+        }
+      } catch (err) {
+        console.error("Error:", err);
+        setInviteError("An error occurred. Please try again later.");
+      } finally {
+        setIsValidating(false);
+      }
+    };
+
+    validateInvite();
   }, [inviteId]);
+
+  // Show loading state while validating
+  if (isValidating) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Validating your invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if invite is invalid
+  if (inviteError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <CardTitle>Invalid Invitation</CardTitle>
+            <CardDescription>{inviteError}</CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Link to="/">
+              <Button>Back to Home</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,7 +134,7 @@ const Apply = () => {
 
       {/* Application Form */}
       <main>
-        <ApplicationForm />
+        <ApplicationForm inviteId={inviteId!} />
       </main>
 
       {/* Footer */}
