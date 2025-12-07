@@ -33,6 +33,7 @@ interface LoadEmailDetailProps {
   onSkip?: (matchId: string) => Promise<void> | void;
   onWait?: (matchId: string) => Promise<void> | void;
   onMarkUnreviewed?: (matchId: string) => Promise<void> | void;
+  onShowAlternativeMatches?: () => void;
 }
 const LoadEmailDetail = ({
   email,
@@ -46,7 +47,8 @@ const LoadEmailDetail = ({
   onUndecided,
   onSkip,
   onWait,
-  onMarkUnreviewed
+  onMarkUnreviewed,
+  onShowAlternativeMatches
 }: LoadEmailDetailProps) => {
   const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
@@ -1374,7 +1376,11 @@ const LoadEmailDetail = ({
               <Card className="border rounded-md overflow-hidden h-full pb-0">
                 {/* HEADER */}
                 <div className="flex items-center border-b p-2 bg-slate-50">
-                  <div className="flex items-center gap-2 flex-1">
+                  <div 
+                    className={`flex items-center gap-2 flex-1 ${onShowAlternativeMatches ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg p-1 -m-1 transition-colors' : ''}`}
+                    onClick={onShowAlternativeMatches}
+                    title={onShowAlternativeMatches ? "Click to view/change vehicle selection" : undefined}
+                  >
                     <div className="flex h-10 w-14 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
                       <Truck className="h-4 w-4 text-blue-600" />
                       <div className="text-[10px] font-semibold text-blue-600">{vehicle?.vehicle_number || "N/A"}</div>
