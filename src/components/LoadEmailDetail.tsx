@@ -287,8 +287,10 @@ const LoadEmailDetail = ({
   // Uses load_email_id so all matches for the same load share presence
   useEffect(() => {
     const loadEmailId = email?.id;
+    console.log('👁️ Presence effect triggered:', { loadEmailId, dispatcherEmail: currentDispatcher?.email, emailProp: email });
+    
     if (!loadEmailId || !currentDispatcher?.email) {
-      console.log('👁️ Presence: Missing loadEmailId or dispatcher email', { loadEmailId, dispatcherEmail: currentDispatcher?.email });
+      console.log('👁️ Presence: Skipping - missing loadEmailId or dispatcher email');
       return;
     }
 
