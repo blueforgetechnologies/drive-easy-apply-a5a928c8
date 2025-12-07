@@ -106,11 +106,11 @@ const handler = async (req: Request): Promise<Response> => {
         
         <p>${orderLine}</p>
         
-        <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
-          <p><strong>Truck Carries:</strong> ${data.equipment_details}</p>
-          <p><strong>Truck Size:</strong> ${data.truck_dimensions}</p>
-          <p><strong>Door Type and Size:</strong> ${data.door_dimensions}</p>
-          <p><strong>Truck Features:</strong> ${data.truck_features}</p>
+        <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px; line-height: 1.4;">
+          <p style="margin: 0 0 2px 0;"><strong>Truck Carries:</strong> ${data.equipment_details}</p>
+          <p style="margin: 0 0 2px 0;"><strong>Truck Size:</strong> ${data.truck_dimensions}</p>
+          <p style="margin: 0 0 2px 0;"><strong>Door Type and Size:</strong> ${data.door_dimensions}</p>
+          <p style="margin: 0;"><strong>Truck Features:</strong> ${data.truck_features}</p>
         </div>
         
         ${selectedTemplatesHtml}
