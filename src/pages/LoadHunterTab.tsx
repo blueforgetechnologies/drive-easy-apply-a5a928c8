@@ -628,10 +628,23 @@ export default function LoadHunterTab() {
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
           }
-          // Filter by match ID search query
+          // Filter by search query - check multiple fields
           if (matchSearchQuery) {
+            const query = matchSearchQuery.toLowerCase();
             const matchId = match.match_id?.toLowerCase() || '';
-            if (!matchId.includes(matchSearchQuery.toLowerCase())) return false;
+            const vehicleId = match.vehicle_id?.toLowerCase() || '';
+            const emailId = match.load_email_id?.toLowerCase() || '';
+            const orderNumber = match.parsed_data?.order_number?.toLowerCase() || '';
+            const vehicleNumber = match.vehicle_number?.toLowerCase() || '';
+            
+            // Check if query matches any searchable field
+            if (!matchId.includes(query) && 
+                !vehicleId.includes(query) && 
+                !emailId.includes(query) &&
+                !orderNumber.includes(query) &&
+                !vehicleNumber.includes(query)) {
+              return false;
+            }
           }
           return true;
         })
