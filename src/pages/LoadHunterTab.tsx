@@ -150,6 +150,7 @@ export default function LoadHunterTab() {
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [matchSearchQuery, setMatchSearchQuery] = useState('');
   const itemsPerPage = 17;
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const currentDispatcherIdRef = useRef<string | null>(null);
@@ -614,6 +615,11 @@ export default function LoadHunterTab() {
           // Only filter if we're in dispatch mode AND we have vehicle IDs loaded
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
+          }
+          // Filter by match ID search query
+          if (matchSearchQuery) {
+            const matchId = match.match_id?.toLowerCase() || '';
+            if (!matchId.includes(matchSearchQuery.toLowerCase())) return false;
           }
           return true;
         })
@@ -2478,6 +2484,16 @@ export default function LoadHunterTab() {
             >
               Add Vehicle
             </Button>
+          </div>
+
+          {/* Match Search */}
+          <div className="pr-3 border-r flex-shrink-0">
+            <Input
+              placeholder="Search match ID..."
+              value={matchSearchQuery}
+              onChange={(e) => setMatchSearchQuery(e.target.value)}
+              className="h-7 w-32 text-xs"
+            />
           </div>
 
           {/* Filter Buttons */}
