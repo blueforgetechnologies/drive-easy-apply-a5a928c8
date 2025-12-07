@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.send-bid-email]
 verify_jwt = true
+
+[functions.send-dispatcher-login]
+verify_jwt = true

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, FileText, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, User, ChevronLeft, ChevronRight, Mail, Loader2 } from "lucide-react";
 
 interface Dispatcher {
   id: string;
@@ -43,12 +43,35 @@ export default function DispatchersTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 50;
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sendingLoginTo, setSendingLoginTo] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
     phone: "",
   });
+
+  const handleSendLoginLink = async (dispatcher: Dispatcher) => {
+    setSendingLoginTo(dispatcher.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-dispatcher-login', {
+        body: {
+          dispatcherId: dispatcher.id,
+          dispatcherEmail: dispatcher.email,
+          dispatcherName: `${dispatcher.first_name} ${dispatcher.last_name}`,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success(`Login credentials sent to ${dispatcher.email}`);
+    } catch (error: any) {
+      console.error('Error sending login link:', error);
+      toast.error(`Failed to send login: ${error.message}`);
+    } finally {
+      setSendingLoginTo(null);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -387,11 +410,26 @@ export default function DispatchersTab() {
                             : "-"}
                         </TableCell>
                         <TableCell className="py-1 px-2">
-                          <div className="flex gap-1 justify-end">
+                          <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
                             <Button 
                               size="icon" 
                               variant="ghost" 
                               className="h-6 w-6"
+                              title="Send Login Link"
+                              disabled={sendingLoginTo === dispatcher.id}
+                              onClick={() => handleSendLoginLink(dispatcher)}
+                            >
+                              {sendingLoginTo === dispatcher.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Mail className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6"
+                              title="View Details"
                               onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
                             >
                               <FileText className="h-3.5 w-3.5" />
@@ -400,6 +438,7 @@ export default function DispatchersTab() {
                               size="icon" 
                               variant="ghost" 
                               className="h-6 w-6"
+                              title="Edit Dispatcher"
                               onClick={() => navigate(`/dashboard/dispatchers/${dispatcher.id}`)}
                             >
                               <User className="h-3.5 w-3.5" />
