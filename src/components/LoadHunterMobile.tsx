@@ -51,12 +51,13 @@ interface LoadHunterMobileProps {
   loading: boolean;
   refreshing: boolean;
   activeFilter: string;
+  filterVehicleId: string | null;
   activeMode: 'admin' | 'dispatch';
   myVehicleIds: string[];
   isSoundMuted: boolean;
   carriersMap: Record<string, string>;
   onRefresh: () => void;
-  onFilterChange: (filter: string) => void;
+  onFilterChange: (filter: string, vehicleId?: string | null) => void;
   onModeChange: (mode: 'admin' | 'dispatch') => void;
   onToggleSound: () => void;
   onSelectLoad: (email: any, match?: any) => void;
@@ -77,6 +78,7 @@ export default function LoadHunterMobile({
   loading,
   refreshing,
   activeFilter,
+  filterVehicleId,
   activeMode,
   myVehicleIds,
   isSoundMuted,
@@ -126,6 +128,12 @@ export default function LoadHunterMobile({
           match: m
         })).filter(d => d.id);
         break;
+      case 'mybids':
+        data = bidMatches.map(m => ({
+          ...loadEmails.find(e => e.id === m.load_email_id),
+          match: m
+        })).filter(d => d.id);
+        break;
       case 'missed':
         data = missedHistory;
         break;
@@ -138,8 +146,18 @@ export default function LoadHunterMobile({
         break;
     }
 
-    // Filter by selected vehicle if one is selected
-    if (selectedVehicleId) {
+    // Filter by vehicle ID if filterVehicleId is set (from badge click)
+    if (filterVehicleId) {
+      if (activeFilter === 'unreviewed') {
+        data = data.filter(item => item.vehicle_id === filterVehicleId);
+      } else if (activeFilter === 'skipped' || activeFilter === 'mybids') {
+        data = data.filter(item => item.match?.vehicle_id === filterVehicleId);
+      } else if (activeFilter === 'missed') {
+        data = data.filter(item => item.vehicle_id === filterVehicleId);
+      }
+    }
+    // Also filter by selected vehicle if one is selected (from UI selection)
+    else if (selectedVehicleId) {
       if (activeFilter === 'unreviewed') {
         data = data.filter(item => item.vehicle_id === selectedVehicleId);
       } else if (activeFilter === 'missed') {
@@ -316,7 +334,8 @@ export default function LoadHunterMobile({
                               className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-green-600"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onFilterChange('unreviewed');
+                                setActiveTab('loads');
+                                onFilterChange('unreviewed', vehicle.id);
                               }}
                             >
                               {unreviewedCount}
@@ -326,7 +345,8 @@ export default function LoadHunterMobile({
                               className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-red-600"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onFilterChange('skipped');
+                                setActiveTab('loads');
+                                onFilterChange('skipped', vehicle.id);
                               }}
                             >
                               {skippedCount}
@@ -336,7 +356,8 @@ export default function LoadHunterMobile({
                               className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-blue-600"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onFilterChange('mybids');
+                                setActiveTab('loads');
+                                onFilterChange('mybids', vehicle.id);
                               }}
                             >
                               {bidCount}

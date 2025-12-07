@@ -148,6 +148,7 @@ export default function LoadHunterTab() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
+  const [filterVehicleId, setFilterVehicleId] = useState<string | null>(null); // Vehicle-specific filter
   const [showIdColumns, setShowIdColumns] = useState(false);
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
@@ -625,6 +626,8 @@ export default function LoadHunterTab() {
   const filteredMatches = activeFilter === 'unreviewed'
     ? unreviewedViewData
         .filter(match => {
+          // Filter by specific vehicle if filterVehicleId is set (badge click)
+          if (filterVehicleId && match.vehicle_id !== filterVehicleId) return false;
           // Filter by dispatcher's vehicles when in MY TRUCKS mode
           // Only filter if we're in dispatch mode AND we have vehicle IDs loaded
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
@@ -652,6 +655,17 @@ export default function LoadHunterTab() {
         })
         .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
     : [];
+
+  // Apply vehicle filter to other match types as well
+  const filteredSkippedMatches = filterVehicleId 
+    ? skippedMatches.filter(m => m.vehicle_id === filterVehicleId)
+    : skippedMatches;
+  const filteredBidMatches = filterVehicleId 
+    ? bidMatches.filter(m => m.vehicle_id === filterVehicleId)
+    : bidMatches;
+  const filteredMissedHistory = filterVehicleId 
+    ? missedHistory.filter(m => m.vehicle_id === filterVehicleId)
+    : missedHistory;
   
   // Debug logging for filtered results
   if (activeFilter === 'unreviewed') {
@@ -2472,13 +2486,15 @@ export default function LoadHunterTab() {
           loading={loading}
           refreshing={refreshing}
           activeFilter={activeFilter}
+          filterVehicleId={filterVehicleId}
           activeMode={activeMode}
           myVehicleIds={myVehicleIds}
           isSoundMuted={isSoundMuted}
           carriersMap={carriersMap}
           onRefresh={handleRefreshLoads}
-          onFilterChange={(filter) => {
+          onFilterChange={(filter, vehicleId) => {
             setActiveFilter(filter);
+            setFilterVehicleId(vehicleId ?? null);
             setSelectedVehicle(null);
             setSelectedEmailForDetail(null);
           }}
@@ -2711,6 +2727,7 @@ export default function LoadHunterTab() {
                 }`}
                 onClick={() => {
                   setActiveFilter('all');
+                  setFilterVehicleId(null);
                   setSelectedVehicle(null);
                   setSelectedEmailForDetail(null);
                 }}
@@ -2731,6 +2748,7 @@ export default function LoadHunterTab() {
                 }`}
                 onClick={() => {
                   setActiveFilter('unreviewed');
+                  setFilterVehicleId(null);
                   setSelectedVehicle(null);
                   setSelectedEmailForDetail(null);
                 }}
@@ -2762,6 +2780,7 @@ export default function LoadHunterTab() {
               }`}
               onClick={() => {
                 setActiveFilter('missed');
+                setFilterVehicleId(null);
                 setSelectedVehicle(null);
                 setSelectedEmailForDetail(null);
               }}
@@ -2781,6 +2800,7 @@ export default function LoadHunterTab() {
                 }`}
                 onClick={() => {
                   setActiveFilter('waitlist');
+                  setFilterVehicleId(null);
                   setSelectedVehicle(null);
                   setSelectedEmailForDetail(null);
                 }}
@@ -2801,6 +2821,7 @@ export default function LoadHunterTab() {
                 }`}
                 onClick={() => {
                   setActiveFilter('undecided');
+                  setFilterVehicleId(null);
                   setSelectedVehicle(null);
                   setSelectedEmailForDetail(null);
                 }}
@@ -2821,6 +2842,7 @@ export default function LoadHunterTab() {
                 }`}
                 onClick={() => {
                   setActiveFilter('skipped');
+                  setFilterVehicleId(null);
                   setSelectedVehicle(null);
                   setSelectedEmailForDetail(null);
                 }}
@@ -2840,6 +2862,7 @@ export default function LoadHunterTab() {
               }`}
               onClick={() => {
                 setActiveFilter('mybids');
+                setFilterVehicleId(null);
                 setSelectedVehicle(null);
                 setSelectedEmailForDetail(null);
               }}
@@ -3025,10 +3048,11 @@ export default function LoadHunterTab() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('unreviewed');
+                          setFilterVehicleId(vehicle.id);
                           setSelectedVehicle(null);
                           setSelectedEmailForDetail(null);
                         }}
-                        title="View Unreviewed Loads"
+                        title={`View Unreviewed Loads for ${vehicle.vehicle_number || 'this truck'}`}
                       >
                         {unreviewedCount}
                       </div>
@@ -3038,10 +3062,11 @@ export default function LoadHunterTab() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
+                          setFilterVehicleId(vehicle.id);
                           setSelectedVehicle(null);
                           setSelectedEmailForDetail(null);
                         }}
-                        title="View Skipped Loads"
+                        title={`View Skipped Loads for ${vehicle.vehicle_number || 'this truck'}`}
                       >
                         {skippedCount}
                       </div>
@@ -3051,10 +3076,11 @@ export default function LoadHunterTab() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');
+                          setFilterVehicleId(vehicle.id);
                           setSelectedVehicle(null);
                           setSelectedEmailForDetail(null);
                         }}
-                        title="View My Bids"
+                        title={`View Bids for ${vehicle.vehicle_number || 'this truck'}`}
                       >
                         {bidCount}
                       </div>
@@ -4000,6 +4026,23 @@ export default function LoadHunterTab() {
           /* Loads Table */
           <div className="flex-1 overflow-y-auto flex flex-col">
           <Card className="flex-1 flex flex-col">
+            {/* Vehicle Filter Indicator */}
+            {filterVehicleId && (
+              <div className="px-3 py-1.5 bg-blue-50 border-b flex items-center justify-between">
+                <span className="text-xs text-blue-700">
+                  Filtering by: <span className="font-semibold">{vehicles.find(v => v.id === filterVehicleId)?.vehicle_number || 'Unknown Truck'}</span>
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-5 px-2 text-xs text-blue-600 hover:text-blue-800"
+                  onClick={() => setFilterVehicleId(null)}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            )}
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="border-t">
                 {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
@@ -4066,11 +4109,11 @@ export default function LoadHunterTab() {
                       </TableHeader>
                       <TableBody>
                         {(activeFilter === 'unreviewed' ? filteredMatches 
-                          : activeFilter === 'skipped' ? [...skippedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
-                          : activeFilter === 'mybids' ? [...bidMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
+                          : activeFilter === 'skipped' ? [...filteredSkippedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
+                          : activeFilter === 'mybids' ? [...filteredBidMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'undecided' ? undecidedMatches
                           : activeFilter === 'waitlist' ? [...waitlistMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
-                          : activeFilter === 'missed' ? missedHistory : filteredEmails)
+                          : activeFilter === 'missed' ? filteredMissedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed, item is from view with email data included
