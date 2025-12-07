@@ -3,12 +3,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Validate cron secret for internal endpoint security
+function validateCronSecret(req: Request): boolean {
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  // If no secret configured, allow requests (backwards compatibility)
+  if (!cronSecret) return true;
+  
+  const providedSecret = req.headers.get('x-cron-secret');
+  return providedSecret === cronSecret;
+}
 
 // Parsing functions
 function extractBrokerEmail(subject: string, bodyText: string): string | null {
@@ -304,6 +314,15 @@ function parseSubjectLine(subject: string): Record<string, any> {
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Validate cron secret for security
+  if (!validateCronSecret(req)) {
+    console.error('Unauthorized: Invalid or missing cron secret');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   const startTime = Date.now();
