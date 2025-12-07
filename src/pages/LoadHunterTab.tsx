@@ -3041,10 +3041,11 @@ export default function LoadHunterTab() {
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
-                    <div className="flex gap-0.5 flex-shrink-0">
+                    {/* Merged badge pill - top right */}
+                    <div className="flex items-center rounded-full overflow-hidden border border-border/50 flex-shrink-0">
                       {/* GREEN = Unreviewed */}
                       <div 
-                        className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-600 transition-colors"
+                        className="h-4 px-1.5 bg-green-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-600 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('unreviewed');
@@ -3058,7 +3059,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* RED = Skipped */}
                       <div 
-                        className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-red-600 transition-colors"
+                        className="h-4 px-1.5 bg-red-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-red-600 transition-colors border-l border-white/30"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
@@ -3072,7 +3073,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* BLUE = My Bids */}
                       <div 
-                        className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-blue-600 transition-colors"
+                        className="h-4 px-1.5 bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-blue-600 transition-colors border-l border-white/30"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');
