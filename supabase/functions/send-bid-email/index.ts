@@ -22,6 +22,7 @@ interface BidEmailRequest {
   dest_state: string;
   vehicle_size: string;
   vehicle_type: string;
+  vehicle_description: string;
   equipment_details: string;
   truck_dimensions: string;
   door_dimensions: string;
@@ -81,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         <p style="margin-top: 20px;">${greeting}</p>
         
-        <p>I have a ${data.vehicle_size}${data.vehicle_type}.</p>
+        <p>${data.vehicle_description}</p>
         
         <p>Please let me know if I can help on this load:</p>
         
@@ -120,7 +121,7 @@ USDOT#: ${data.dot_number}
 
 ${greeting}
 
-I have a ${data.vehicle_size}${data.vehicle_type}.
+${data.vehicle_description}
 
 Please let me know if I can help on this load:
 
