@@ -3083,7 +3083,7 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground min-h-[40px] whitespace-pre-wrap">
+                    <div className={`text-sm min-h-[40px] whitespace-pre-wrap ${selectedVehicle.notes ? "text-destructive font-bold" : "text-muted-foreground"}`}>
                       {selectedVehicle.notes || "No notes available"}
                     </div>
                   )}
