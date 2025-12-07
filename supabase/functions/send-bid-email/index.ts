@@ -34,6 +34,11 @@ interface BidEmailRequest {
   reference_id: string;
   contact_first_name?: string;
   selected_templates?: string[];
+  // Editable body lines
+  greeting_line?: string;
+  vehicle_line?: string;
+  help_line?: string;
+  order_line?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -61,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
       ? '\n' + data.selected_templates.join('\n\n') + '\n'
       : '';
 
-    // Get time-based greeting
+    // Get time-based greeting (fallback if not provided)
     const hour = new Date().getHours();
     let timeGreeting = 'Good morning';
     if (hour >= 12 && hour < 17) {
@@ -69,9 +74,15 @@ const handler = async (req: Request): Promise<Response> => {
     } else if (hour >= 17) {
       timeGreeting = 'Good evening';
     }
-    const greeting = data.contact_first_name 
+    const defaultGreeting = data.contact_first_name 
       ? `${timeGreeting} ${data.contact_first_name},` 
       : `${timeGreeting},`;
+
+    // Use editable lines if provided, otherwise fall back to defaults
+    const greetingLine = data.greeting_line || defaultGreeting;
+    const vehicleLine = data.vehicle_line || data.vehicle_description;
+    const helpLine = data.help_line || 'Please let me know if I can help on this load:';
+    const orderLine = data.order_line || `Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]`;
 
     // Build the HTML email body
     const htmlBody = `
@@ -80,13 +91,13 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">MC#: ${data.mc_number}</p><br/>
         <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number}</p>
         
-        <p style="margin-top: 20px;">${greeting}</p>
+        <p style="margin-top: 20px;">${greetingLine}</p>
         
-        <p>${data.vehicle_description}</p>
+        <p>${vehicleLine}</p>
         
-        <p>Please let me know if I can help on this load:</p>
+        <p>${helpLine}</p>
         
-        <p>Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]</p>
+        <p>${orderLine}</p>
         
         <div style="margin-top: 20px;">
           <p><strong>Truck Carries:</strong> ${data.equipment_details}</p>
@@ -119,13 +130,13 @@ Rate: $ ${data.bid_amount}
 MC#: ${data.mc_number}
 USDOT#: ${data.dot_number}
 
-${greeting}
+${greetingLine}
 
-${data.vehicle_description}
+${vehicleLine}
 
-Please let me know if I can help on this load:
+${helpLine}
 
-Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]
+${orderLine}
 
 Truck Carries: ${data.equipment_details}
 Truck Size: ${data.truck_dimensions}
