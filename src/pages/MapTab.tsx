@@ -289,46 +289,111 @@ const MapTab = () => {
           const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
           
           // Determine marker style based on vehicle status
-          let markerHTML = '';
+          const unitNumber = vehicle.vehicle_number || '?';
+          const shortUnit = unitNumber.length > 4 ? unitNumber.slice(-4) : unitNumber;
+          
+          // Status-based colors
+          let bgColor = '#10b981'; // Green for moving
+          let statusIcon = '';
+          let statusLabel = 'Moving';
+          let pulseAnimation = '';
+          
+          if (hasFaultCodes || oilChangeDue) {
+            // Alert state - orange/amber
+            bgColor = '#f59e0b';
+            statusLabel = hasFaultCodes ? 'Alert' : 'Service Due';
+          }
           
           if (speed > 0) {
-            // Moving Vehicle - Green circle with arrow
-            markerHTML = `
-              <svg width="40" height="40" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
-                <path d="M20 12 L20 28 M20 12 L15 17 M20 12 L25 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
-              </svg>
+            // Moving - animated pulse effect
+            statusIcon = `
+              <path d="M26 20 L26 30 M26 20 L22 24 M26 20 L30 24" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-45 26 25)"/>
+            `;
+            pulseAnimation = `
+              <animate attributeName="r" values="22;26;22" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
             `;
           } else if (stoppedStatus === 'stopped' || speed === 0) {
-            // Stopped - Red square
-            markerHTML = `
-              <svg width="40" height="40" viewBox="0 0 40 40">
-                <rect x="6" y="6" width="28" height="28" fill="#ef4444" stroke="white" stroke-width="3" rx="2"/>
-                <rect x="14" y="14" width="12" height="12" fill="white" rx="1"/>
-                ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
-              </svg>
+            // Stopped - blue color with P icon
+            bgColor = '#3b82f6';
+            statusLabel = 'Parked';
+            statusIcon = `
+              <text x="26" y="30" font-size="12" font-weight="bold" fill="white" text-anchor="middle">P</text>
             `;
           } else {
-            // Idling - Green circle with pause icon
-            markerHTML = `
-              <svg width="40" height="40" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="18" fill="#10b981" stroke="white" stroke-width="3"/>
-                <rect x="14" y="12" width="3" height="16" fill="white" rx="1"/>
-                <rect x="23" y="12" width="3" height="16" fill="white" rx="1"/>
-                ${hasFaultCodes ? `<image href="${checkEngineIcon}" x="25" y="8" width="14" height="14"/>` : ''}
-              </svg>
+            // Idling - yellow with pause
+            bgColor = '#eab308';
+            statusLabel = 'Idle';
+            statusIcon = `
+              <rect x="23" y="22" width="2" height="8" fill="white" rx="0.5"/>
+              <rect x="27" y="22" width="2" height="8" fill="white" rx="0.5"/>
             `;
           }
+          
+          // Override color for alerts
+          if (hasFaultCodes) bgColor = '#ef4444'; // Red for fault codes
+          
+          const markerHTML = `
+            <svg width="56" height="64" viewBox="0 0 56 64" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+              <!-- Pulse ring for moving vehicles -->
+              ${speed > 0 ? `
+                <circle cx="28" cy="28" r="22" fill="none" stroke="${bgColor}" stroke-width="2" opacity="0.6">
+                  ${pulseAnimation}
+                </circle>
+              ` : ''}
+              
+              <!-- Main marker body -->
+              <path d="M28 58 L18 40 Q8 28 8 20 A20 20 0 1 1 48 20 Q48 28 38 40 Z" fill="${bgColor}" stroke="white" stroke-width="2"/>
+              
+              <!-- Inner circle with truck icon -->
+              <circle cx="28" cy="22" r="14" fill="white" opacity="0.95"/>
+              
+              <!-- Truck icon -->
+              <g transform="translate(18, 12)">
+                <path d="M2 13 L2 7 A1 1 0 0 1 3 6 L11 6 L14 10 L17 10 A1 1 0 0 1 18 11 L18 13" 
+                      fill="none" stroke="${bgColor}" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="5" cy="14" r="2" fill="${bgColor}"/>
+                <circle cx="15" cy="14" r="2" fill="${bgColor}"/>
+              </g>
+              
+              <!-- Status indicator dot -->
+              ${statusIcon}
+              
+              <!-- Alert badge for fault codes -->
+              ${hasFaultCodes ? `
+                <circle cx="42" cy="12" r="8" fill="#ef4444" stroke="white" stroke-width="2"/>
+                <text x="42" y="16" font-size="10" font-weight="bold" fill="white" text-anchor="middle">!</text>
+              ` : ''}
+              
+              <!-- Oil change badge -->
+              ${oilChangeDue && !hasFaultCodes ? `
+                <circle cx="42" cy="12" r="8" fill="#f59e0b" stroke="white" stroke-width="2"/>
+                <text x="42" y="16" font-size="8" font-weight="bold" fill="white" text-anchor="middle">🔧</text>
+              ` : ''}
+              
+              <!-- Unit number label -->
+              <rect x="10" y="42" width="36" height="16" rx="8" fill="rgba(0,0,0,0.8)"/>
+              <text x="28" y="54" font-size="10" font-weight="bold" fill="white" text-anchor="middle" font-family="system-ui, sans-serif">${shortUnit}</text>
+            </svg>
+          `;
           
           const el = document.createElement('div');
           el.className = 'vehicle-marker';
           el.style.cssText = `
             cursor: pointer;
-            width: 40px;
-            height: 40px;
+            width: 56px;
+            height: 64px;
+            transition: transform 0.2s ease;
           `;
           el.innerHTML = markerHTML;
+          
+          // Add hover effect
+          el.addEventListener('mouseenter', () => {
+            el.style.transform = 'scale(1.15)';
+          });
+          el.addEventListener('mouseleave', () => {
+            el.style.transform = 'scale(1)';
+          });
 
           const weatherHtml = weather ? `
             <!-- Weather Info -->
