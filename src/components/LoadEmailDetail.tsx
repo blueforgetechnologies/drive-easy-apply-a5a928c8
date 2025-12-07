@@ -3,6 +3,7 @@ import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft }
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +54,7 @@ const LoadEmailDetail = ({
   
   // Editable email body lines
   const [editableGreeting, setEditableGreeting] = useState<string>("");
+  const [editableBlankLine, setEditableBlankLine] = useState<string>("");
   const [editableVehicleDesc, setEditableVehicleDesc] = useState<string>("");
   const [editableHelpLine, setEditableHelpLine] = useState<string>("Please let me know if I can help on this load:");
   const [editableOrderLine, setEditableOrderLine] = useState<string>("");
@@ -563,6 +565,7 @@ const LoadEmailDetail = ({
           })(),
           // Editable body lines
           greeting_line: editableGreeting,
+          blank_line: editableBlankLine,
           vehicle_line: editableVehicleDesc,
           help_line: editableHelpLine,
           order_line: editableOrderLine,
@@ -662,30 +665,41 @@ const LoadEmailDetail = ({
             </div>
           </div>
           
-          <div className="border-t pt-4 space-y-3 text-sm">
-            <Input 
+          <div className="border-t pt-4 space-y-2 text-sm">
+            <Textarea 
               value={editableGreeting}
               onChange={(e) => setEditableGreeting(e.target.value)}
-              className="h-8 text-sm border-dashed"
+              className="min-h-[32px] text-sm border-dashed resize-none"
               placeholder="Greeting..."
+              rows={1}
             />
-            <Input 
+            <Textarea 
+              value={editableBlankLine}
+              onChange={(e) => setEditableBlankLine(e.target.value)}
+              className="min-h-[32px] text-sm border-dashed resize-none"
+              placeholder="(Optional text)"
+              rows={1}
+            />
+            <Textarea 
               value={editableVehicleDesc}
               onChange={(e) => setEditableVehicleDesc(e.target.value)}
-              className="h-8 text-sm border-dashed"
+              className="min-h-[32px] text-sm border-dashed resize-none"
               placeholder="Vehicle description..."
+              rows={2}
             />
-            <Input 
+            <Textarea 
               value={editableHelpLine}
               onChange={(e) => setEditableHelpLine(e.target.value)}
-              className="h-8 text-sm text-blue-600 border-dashed"
+              className="min-h-[32px] text-sm text-blue-600 border-dashed resize-none"
               placeholder="Help line..."
+              rows={1}
             />
-            <Input 
+            <Textarea 
               value={editableOrderLine}
               onChange={(e) => setEditableOrderLine(e.target.value)}
-              className="h-8 text-sm text-blue-600 border-dashed"
+              className="min-h-[32px] text-sm text-blue-600 border-dashed resize-none"
               placeholder="Order details..."
+              rows={1}
             />
             
             <div className="space-y-1 mt-4">
@@ -1016,25 +1030,36 @@ const LoadEmailDetail = ({
                   </div>
                 </Card>
                 <Card className="p-3 text-sm space-y-2">
-                  <Input 
+                  <Textarea 
                     value={editableGreeting}
                     onChange={(e) => setEditableGreeting(e.target.value)}
-                    className="h-7 text-sm border-dashed"
+                    className="min-h-[28px] text-sm border-dashed resize-none"
+                    rows={1}
                   />
-                  <Input 
+                  <Textarea 
+                    value={editableBlankLine}
+                    onChange={(e) => setEditableBlankLine(e.target.value)}
+                    className="min-h-[28px] text-sm border-dashed resize-none"
+                    placeholder="(Optional text)"
+                    rows={1}
+                  />
+                  <Textarea 
                     value={editableVehicleDesc}
                     onChange={(e) => setEditableVehicleDesc(e.target.value)}
-                    className="h-7 text-sm border-dashed"
+                    className="min-h-[28px] text-sm border-dashed resize-none"
+                    rows={2}
                   />
-                  <Input 
+                  <Textarea 
                     value={editableHelpLine}
                     onChange={(e) => setEditableHelpLine(e.target.value)}
-                    className="h-7 text-sm text-blue-600 border-dashed"
+                    className="min-h-[28px] text-sm text-blue-600 border-dashed resize-none"
+                    rows={1}
                   />
-                  <Input 
+                  <Textarea 
                     value={editableOrderLine}
                     onChange={(e) => setEditableOrderLine(e.target.value)}
-                    className="h-7 text-sm text-blue-600 border-dashed"
+                    className="min-h-[28px] text-sm text-blue-600 border-dashed resize-none"
+                    rows={1}
                   />
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
                     <p><strong>We have:</strong> {equipmentDetails}</p>
@@ -1442,25 +1467,36 @@ const LoadEmailDetail = ({
                       </div>
                       
                       <div className="border rounded p-3 text-xs space-y-2">
-                        <Input 
+                        <Textarea 
                           value={editableGreeting}
                           onChange={(e) => setEditableGreeting(e.target.value)}
-                          className="h-6 text-xs border-dashed"
+                          className="min-h-[24px] text-xs border-dashed resize-none"
+                          rows={1}
                         />
-                        <Input 
+                        <Textarea 
+                          value={editableBlankLine}
+                          onChange={(e) => setEditableBlankLine(e.target.value)}
+                          className="min-h-[24px] text-xs border-dashed resize-none"
+                          placeholder="(Optional text)"
+                          rows={1}
+                        />
+                        <Textarea 
                           value={editableVehicleDesc}
                           onChange={(e) => setEditableVehicleDesc(e.target.value)}
-                          className="h-6 text-xs border-dashed"
+                          className="min-h-[24px] text-xs border-dashed resize-none"
+                          rows={2}
                         />
-                        <Input 
+                        <Textarea 
                           value={editableHelpLine}
                           onChange={(e) => setEditableHelpLine(e.target.value)}
-                          className="h-6 text-xs text-blue-600 border-dashed"
+                          className="min-h-[24px] text-xs text-blue-600 border-dashed resize-none"
+                          rows={1}
                         />
-                        <Input 
+                        <Textarea 
                           value={editableOrderLine}
                           onChange={(e) => setEditableOrderLine(e.target.value)}
-                          className="h-6 text-xs text-blue-600 border-dashed"
+                          className="min-h-[24px] text-xs text-blue-600 border-dashed resize-none"
+                          rows={1}
                         />
                         
                         <div className="bg-slate-50 p-2 rounded mt-3 space-y-1">

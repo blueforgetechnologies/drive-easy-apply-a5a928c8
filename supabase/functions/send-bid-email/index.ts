@@ -36,6 +36,7 @@ interface BidEmailRequest {
   selected_templates?: string[];
   // Editable body lines
   greeting_line?: string;
+  blank_line?: string;
   vehicle_line?: string;
   help_line?: string;
   order_line?: string;
@@ -80,6 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Use editable lines if provided, otherwise fall back to defaults
     const greetingLine = data.greeting_line || defaultGreeting;
+    const blankLine = data.blank_line || '';
     const vehicleLine = data.vehicle_line || data.vehicle_description;
     const helpLine = data.help_line || 'Please let me know if I can help on this load:';
     const orderLine = data.order_line || `Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]`;
@@ -92,6 +94,8 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number}</p>
         
         <p style="margin-top: 20px;">${greetingLine}</p>
+        
+        ${blankLine ? `<p>${blankLine}</p>` : ''}
         
         <p>${vehicleLine}</p>
         
@@ -131,7 +135,7 @@ MC#: ${data.mc_number}
 USDOT#: ${data.dot_number}
 
 ${greetingLine}
-
+${blankLine ? `\n${blankLine}` : ''}
 ${vehicleLine}
 
 ${helpLine}
