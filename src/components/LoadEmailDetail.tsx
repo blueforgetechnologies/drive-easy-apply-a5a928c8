@@ -302,14 +302,18 @@ const LoadEmailDetail = ({
     channel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState();
-        console.log('👁️ Presence sync:', presenceState);
-        const viewers: {name: string, email: string}[] = [];
+        console.log('👁️ Presence sync - raw state:', JSON.stringify(presenceState));
         
-        Object.values(presenceState).forEach((presences: any) => {
+        // Use a Map to deduplicate by email (one entry per unique email)
+        const viewerMap = new Map<string, {name: string, email: string}>();
+        
+        Object.entries(presenceState).forEach(([key, presences]: [string, any]) => {
+          console.log('👁️ Processing presence key:', key, 'presences:', presences);
           presences.forEach((presence: any) => {
-            // Don't include current user
-            if (presence.email !== currentDispatcher.email) {
-              viewers.push({
+            console.log('👁️ Individual presence:', presence, 'current:', currentDispatcher.email);
+            // Don't include current user, dedupe by email
+            if (presence.email && presence.email.toLowerCase() !== currentDispatcher.email.toLowerCase()) {
+              viewerMap.set(presence.email.toLowerCase(), {
                 name: presence.name || presence.email,
                 email: presence.email
               });
@@ -317,7 +321,8 @@ const LoadEmailDetail = ({
           });
         });
         
-        console.log('👁️ Other viewers:', viewers);
+        const viewers = Array.from(viewerMap.values());
+        console.log('👁️ Final other viewers:', viewers);
         setOtherViewers(viewers);
       })
       .subscribe(async (status) => {
