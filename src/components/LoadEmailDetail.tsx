@@ -12,7 +12,6 @@ import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
-
 interface MatchHistoryEntry {
   id: string;
   dispatcher_name: string | null;
@@ -21,7 +20,6 @@ interface MatchHistoryEntry {
   action_details: any;
   created_at: string;
 }
-
 interface LoadEmailDetailProps {
   email: any;
   emptyDriveDistance?: number;
@@ -36,7 +34,6 @@ interface LoadEmailDetailProps {
   onWait?: (matchId: string) => Promise<void> | void;
   onMarkUnreviewed?: (matchId: string) => Promise<void> | void;
 }
-
 const LoadEmailDetail = ({
   email,
   emptyDriveDistance,
@@ -63,23 +60,22 @@ const LoadEmailDetail = ({
   const [bidConfirmed, setBidConfirmed] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
   const [currentDispatcher, setCurrentDispatcher] = useState<any>(null);
-  
+
   // Match history state
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistory, setMatchHistory] = useState<MatchHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  
+
   // Average bid from similar lanes
   const [averageLaneBid, setAverageLaneBid] = useState<number | null>(null);
   const [loadingAverageBid, setLoadingAverageBid] = useState(false);
-  
+
   // Editable email body lines
   const [editableGreeting, setEditableGreeting] = useState<string>("");
   const [editableBlankLine, setEditableBlankLine] = useState<string>("");
   const [editableVehicleDesc, setEditableVehicleDesc] = useState<string>("");
   const [editableHelpLine, setEditableHelpLine] = useState<string>("Please let me know if I can help on this load:");
   const [editableOrderLine, setEditableOrderLine] = useState<string>("");
-  
   const data = email.parsed_data || {};
 
   // Email templates - editable and selectable
@@ -88,18 +84,15 @@ const LoadEmailDetail = ({
     driver: 'Driver is U.S. citizen with birth certificate in hand. Clean criminal record.',
     fuel: 'Due to increased fuel costs, this bid includes a $ {fuel_surcharge} fuel surcharge.'
   };
-
   const getStoredTemplates = (dispatcherEmail: string) => {
     const key = `bid_templates_${dispatcherEmail}`;
     const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : null;
   };
-
   const saveTemplates = (dispatcherEmail: string, templates: Record<string, string>) => {
     const key = `bid_templates_${dispatcherEmail}`;
     localStorage.setItem(key, JSON.stringify(templates));
   };
-
   const [selectedTemplates, setSelectedTemplates] = useState<Record<string, boolean>>({
     nearby: false,
     driver: false,
@@ -113,18 +106,25 @@ const LoadEmailDetail = ({
     if (currentDispatcher?.email) {
       const stored = getStoredTemplates(currentDispatcher.email);
       if (stored) {
-        setTemplateTexts(prev => ({ ...prev, ...stored }));
+        setTemplateTexts(prev => ({
+          ...prev,
+          ...stored
+        }));
       }
     }
   }, [currentDispatcher?.email]);
-
   const handleTemplateToggle = (templateKey: string) => {
-    setSelectedTemplates(prev => ({ ...prev, [templateKey]: !prev[templateKey] }));
+    setSelectedTemplates(prev => ({
+      ...prev,
+      [templateKey]: !prev[templateKey]
+    }));
   };
-
   const handleTemplateTextChange = (templateKey: string, text: string) => {
     setTemplateTexts(prev => {
-      const updated = { ...prev, [templateKey]: text };
+      const updated = {
+        ...prev,
+        [templateKey]: text
+      };
       // Save to localStorage if dispatcher is known
       if (currentDispatcher?.email) {
         saveTemplates(currentDispatcher.email, updated);
@@ -142,7 +142,7 @@ const LoadEmailDetail = ({
     } else if (hour >= 17) {
       timeGreeting = 'Good evening';
     }
-    
+
     // Try broker_name first, then extract from broker_email (e.g., "kristy.pidhoretska@..." -> "Kristy")
     let firstName = '';
     if (data.broker_name) {
@@ -155,7 +155,6 @@ const LoadEmailDetail = ({
         firstName = namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
       }
     }
-    
     return firstName ? `${timeGreeting} ${firstName},` : `${timeGreeting},`;
   };
 
@@ -164,16 +163,12 @@ const LoadEmailDetail = ({
     const text = templateTexts[templateKey];
     const distance = emptyDriveDistance ? `${Math.round(emptyDriveDistance)}mi` : '252mi';
     const fuelSurcharge = data.fuel_surcharge || '375.00';
-    return text
-      .replace('{distance}', distance)
-      .replace('{fuel_surcharge}', fuelSurcharge);
+    return text.replace('{distance}', distance).replace('{fuel_surcharge}', fuelSurcharge);
   };
 
   // Get selected templates for email body
   const getSelectedTemplateTexts = () => {
-    return Object.entries(selectedTemplates)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([key]) => getRenderedTemplate(key));
+    return Object.entries(selectedTemplates).filter(([_, isSelected]) => isSelected).map(([key]) => getRenderedTemplate(key));
   };
 
   // Fetch full email data (including body_text) if not present in email prop
@@ -182,12 +177,10 @@ const LoadEmailDetail = ({
       // If body_text is missing, fetch it from database
       if (!email.body_text && !email.body_html && email.id) {
         try {
-          const { data: fullEmail, error } = await supabase
-            .from('load_emails')
-            .select('body_text, body_html')
-            .eq('id', email.id)
-            .single();
-          
+          const {
+            data: fullEmail,
+            error
+          } = await supabase.from('load_emails').select('body_text, body_html').eq('id', email.id).single();
           if (!error && fullEmail) {
             setFullEmailData(fullEmail);
           }
@@ -198,7 +191,6 @@ const LoadEmailDetail = ({
     };
     fetchFullEmail();
   }, [email.id, email.body_text, email.body_html]);
-
   const [bidAsCarrier, setBidAsCarrier] = useState<any>(null);
   const [vehicleCarrier, setVehicleCarrier] = useState<any>(null);
 
@@ -207,20 +199,21 @@ const LoadEmailDetail = ({
     const fetchProfileData = async () => {
       try {
         // Fetch company profile (fallback)
-        const { data: profile } = await supabase
-          .from('company_profile')
-          .select('*')
-          .single();
+        const {
+          data: profile
+        } = await supabase.from('company_profile').select('*').single();
         if (profile) setCompanyProfile(profile);
 
         // Fetch current user's dispatcher info
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: {
+            user
+          }
+        } = await supabase.auth.getUser();
         if (user?.email) {
-          const { data: dispatcher } = await supabase
-            .from('dispatchers')
-            .select('*')
-            .ilike('email', user.email)
-            .single();
+          const {
+            data: dispatcher
+          } = await supabase.from('dispatchers').select('*').ilike('email', user.email).single();
           if (dispatcher) setCurrentDispatcher(dispatcher);
         }
       } catch (e) {
@@ -235,12 +228,12 @@ const LoadEmailDetail = ({
     if (!match?.id) return;
     setLoadingHistory(true);
     try {
-      const { data: history, error } = await supabase
-        .from('match_action_history')
-        .select('*')
-        .eq('match_id', match.id)
-        .order('created_at', { ascending: false });
-      
+      const {
+        data: history,
+        error
+      } = await supabase.from('match_action_history').select('*').eq('match_id', match.id).order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       setMatchHistory(history || []);
     } catch (e) {
@@ -255,17 +248,16 @@ const LoadEmailDetail = ({
   const recordMatchAction = async (actionType: string, actionDetails?: any) => {
     if (!match?.id) return;
     try {
-      const { error } = await supabase
-        .from('match_action_history')
-        .insert({
-          match_id: match.id,
-          dispatcher_id: currentDispatcher?.id || null,
-          dispatcher_name: currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : null,
-          dispatcher_email: currentDispatcher?.email || null,
-          action_type: actionType,
-          action_details: actionDetails || null
-        });
-      
+      const {
+        error
+      } = await supabase.from('match_action_history').insert({
+        match_id: match.id,
+        dispatcher_id: currentDispatcher?.id || null,
+        dispatcher_name: currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : null,
+        dispatcher_email: currentDispatcher?.email || null,
+        action_type: actionType,
+        action_details: actionDetails || null
+      });
       if (error) throw error;
     } catch (e) {
       console.error('Error recording match action:', e);
@@ -281,7 +273,6 @@ const LoadEmailDetail = ({
 
   // Use fetched data or prop data
   const emailBody = fullEmailData?.body_html || fullEmailData?.body_text || email.body_html || email.body_text || "";
-  
   const originCity = data.origin_city || "ATLANTA";
   const originState = data.origin_state || "GA";
   const destCity = data.destination_city || "MEMPHIS";
@@ -289,7 +280,7 @@ const LoadEmailDetail = ({
 
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
-  
+
   // Fetch the carrier from the vehicle's bid_as field
   useEffect(() => {
     const fetchBidAsCarrier = async () => {
@@ -297,14 +288,14 @@ const LoadEmailDetail = ({
         console.log('Fetching bid_as carrier for vehicle:', vehicle.id, 'bid_as:', vehicle.bid_as);
         try {
           // bid_as is stored as text but contains a UUID, cast it for the query
-          const { data: carrier, error } = await supabase
-            .from('carriers')
-            .select('*')
-            .eq('id', vehicle.bid_as)
-            .maybeSingle();
-          
-          console.log('Carrier fetch result:', { carrier, error });
-          
+          const {
+            data: carrier,
+            error
+          } = await supabase.from('carriers').select('*').eq('id', vehicle.bid_as).maybeSingle();
+          console.log('Carrier fetch result:', {
+            carrier,
+            error
+          });
           if (!error && carrier) {
             setBidAsCarrier(carrier);
           } else if (error) {
@@ -326,12 +317,10 @@ const LoadEmailDetail = ({
     const fetchVehicleCarrier = async () => {
       if (vehicle?.carrier) {
         try {
-          const { data: carrier, error } = await supabase
-            .from('carriers')
-            .select('id, name, safer_status, safety_rating')
-            .eq('id', vehicle.carrier)
-            .maybeSingle();
-          
+          const {
+            data: carrier,
+            error
+          } = await supabase.from('carriers').select('id, name, safer_status, safety_rating').eq('id', vehicle.carrier).maybeSingle();
           if (!error && carrier) {
             setVehicleCarrier(carrier);
           }
@@ -344,29 +333,20 @@ const LoadEmailDetail = ({
     };
     fetchVehicleCarrier();
   }, [vehicle?.carrier]);
-   
+
   // Use asset's Vehicle Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
   const truckLengthFeet = vehicle?.vehicle_size; // Use feet from vehicle_size field
   const truckSubtype = vehicle?.asset_subtype;
-
   const displaySize = vehicle && truckLengthFeet ? `${truckLengthFeet}' ` : "";
-  const displayType = vehicle ? (truckSubtype || "Large Straight") : "(NOT FOUND)";
-  
+  const displayType = vehicle ? truckSubtype || "Large Straight" : "(NOT FOUND)";
   const driver1 = vehicle?.driver_1_id ? drivers?.find((d: any) => d.id === vehicle.driver_1_id) : null;
   const driver2 = vehicle?.driver_2_id ? drivers?.find((d: any) => d.id === vehicle.driver_2_id) : null;
-  
-  const driver1Name = driver1?.personal_info?.firstName && driver1?.personal_info?.lastName 
-    ? `${driver1.personal_info.firstName} ${driver1.personal_info.lastName}` 
-    : null;
-  const driver2Name = driver2?.personal_info?.firstName && driver2?.personal_info?.lastName
-    ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` 
-    : null;
-  const carrierName = vehicleCarrier?.name || (vehicle?.carrier ? (carriersMap[vehicle.carrier] || vehicle.carrier) : null);
-  
+  const driver1Name = driver1?.personal_info?.firstName && driver1?.personal_info?.lastName ? `${driver1.personal_info.firstName} ${driver1.personal_info.lastName}` : null;
+  const driver2Name = driver2?.personal_info?.firstName && driver2?.personal_info?.lastName ? `${driver2.personal_info.firstName} ${driver2.personal_info.lastName}` : null;
+  const carrierName = vehicleCarrier?.name || (vehicle?.carrier ? carriersMap[vehicle.carrier] || vehicle.carrier : null);
+
   // Check if carrier has safety issues (NOT AUTHORIZED or CONDITIONAL rating)
-  const hasCarrierSafetyIssue = 
-    vehicleCarrier?.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ||
-    vehicleCarrier?.safety_rating?.toUpperCase() === 'CONDITIONAL';
+  const hasCarrierSafetyIssue = vehicleCarrier?.safer_status?.toUpperCase().includes('NOT AUTHORIZED') || vehicleCarrier?.safety_rating?.toUpperCase() === 'CONDITIONAL';
 
   // Build equipment details from vehicle data
   const buildEquipmentDetails = () => {
@@ -410,7 +390,6 @@ const LoadEmailDetail = ({
     if (vehicle.pallet_jack) features.push('[Pallet Jack]');
     return features.length > 0 ? features.join(' ') : '[Features not available]';
   };
-
   const equipmentDetails = buildEquipmentDetails();
   const truckDimensions = buildTruckDimensions();
   const doorDimensions = buildDoorDimensions();
@@ -420,34 +399,30 @@ const LoadEmailDetail = ({
   // Example: "This unit is a 24' Large Straight, Air Ride with Lift Gate, Pallet Jack, straps & Blankets (See dims below)"
   const buildVehicleDescription = () => {
     if (!vehicle) return `I have a ${displaySize}${displayType}.`;
-    
     const parts: string[] = [];
-    
+
     // Add Air Ride first if available
     if (vehicle.air_ride) parts.push('Air Ride');
-    
+
     // Add Lift Gate
     if (vehicle.lift_gate) parts.push('Lift Gate');
-    
+
     // Add Pallet Jack
     if (vehicle.pallet_jack) parts.push('Pallet Jack');
-    
+
     // Add straps if available
     if (vehicle.straps_count && vehicle.straps_count > 0) parts.push('straps');
-    
+
     // Add blankets if available
     if (vehicle.blankets && vehicle.blankets > 0) parts.push('Blankets');
-    
     if (parts.length > 0) {
       const equipmentList = parts.join(', ').replace(/, ([^,]*)$/, ' & $1'); // Replace last comma with &
       return `This unit is a ${displaySize}${displayType}, ${equipmentList} (See dims below)`;
     }
-    
     return `This unit is a ${displaySize}${displayType}.`;
   };
-
   const vehicleDescription = buildVehicleDescription();
-  
+
   // Initialize editable body fields with computed values
   useEffect(() => {
     setEditableGreeting(getGreeting());
@@ -455,7 +430,6 @@ const LoadEmailDetail = ({
     const orderLine = `Order Number: ${data.order_number || 'N/A'} [${originCity}, ${originState} to ${destCity}, ${destState}]`;
     setEditableOrderLine(orderLine);
   }, [vehicle, data.broker_name, data.broker_email, data.order_number, originCity, originState, destCity, destState]);
-  
   const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
   // Haversine distance calculation (returns distance in miles)
@@ -463,9 +437,7 @@ const LoadEmailDetail = ({
     const R = 3959; // Earth's radius in miles
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -476,32 +448,26 @@ const LoadEmailDetail = ({
       // Get current load's pickup and delivery coordinates
       const currentPickupCoords = data.pickup_coordinates;
       const currentDeliveryCoords = data.delivery_coordinates;
-      
-      if (!currentPickupCoords?.lat || !currentPickupCoords?.lng || 
-          !currentDeliveryCoords?.lat || !currentDeliveryCoords?.lng) {
+      if (!currentPickupCoords?.lat || !currentPickupCoords?.lng || !currentDeliveryCoords?.lat || !currentDeliveryCoords?.lng) {
         console.log('Missing coordinates for average bid calculation');
         return;
       }
-
       setLoadingAverageBid(true);
       try {
         // Fetch all past bids with their load data
-        const { data: bidHistory, error } = await supabase
-          .from('match_action_history')
-          .select(`
+        const {
+          data: bidHistory,
+          error
+        } = await supabase.from('match_action_history').select(`
             action_details,
             load_emails!inner (
               parsed_data
             )
-          `)
-          .eq('action_type', 'bid')
-          .not('action_details->bid_amount', 'is', null);
-
+          `).eq('action_type', 'bid').not('action_details->bid_amount', 'is', null);
         if (error) {
           console.error('Error fetching bid history:', error);
           return;
         }
-
         if (!bidHistory || bidHistory.length === 0) {
           return;
         }
@@ -509,38 +475,26 @@ const LoadEmailDetail = ({
         // Filter bids within 50 miles of both pickup AND delivery
         const matchingBids: number[] = [];
         const RADIUS_MILES = 50;
-
         for (const bid of bidHistory) {
           const actionDetails = bid.action_details as Record<string, any> | null;
           const bidAmount = actionDetails?.bid_amount;
           if (!bidAmount || typeof bidAmount !== 'number') continue;
-
           const loadEmail = bid.load_emails as any;
           const parsedData = loadEmail?.parsed_data;
           if (!parsedData) continue;
-
           const pickupCoords = parsedData.pickup_coordinates;
           const deliveryCoords = parsedData.delivery_coordinates;
-
-          if (!pickupCoords?.lat || !pickupCoords?.lng || 
-              !deliveryCoords?.lat || !deliveryCoords?.lng) continue;
+          if (!pickupCoords?.lat || !pickupCoords?.lng || !deliveryCoords?.lat || !deliveryCoords?.lng) continue;
 
           // Calculate distances
-          const pickupDistance = calculateDistance(
-            currentPickupCoords.lat, currentPickupCoords.lng,
-            pickupCoords.lat, pickupCoords.lng
-          );
-          const deliveryDistance = calculateDistance(
-            currentDeliveryCoords.lat, currentDeliveryCoords.lng,
-            deliveryCoords.lat, deliveryCoords.lng
-          );
+          const pickupDistance = calculateDistance(currentPickupCoords.lat, currentPickupCoords.lng, pickupCoords.lat, pickupCoords.lng);
+          const deliveryDistance = calculateDistance(currentDeliveryCoords.lat, currentDeliveryCoords.lng, deliveryCoords.lat, deliveryCoords.lng);
 
           // Both must be within 50 miles
           if (pickupDistance <= RADIUS_MILES && deliveryDistance <= RADIUS_MILES) {
             matchingBids.push(bidAmount);
           }
         }
-
         if (matchingBids.length > 0) {
           const average = matchingBids.reduce((sum, bid) => sum + bid, 0) / matchingBids.length;
           setAverageLaneBid(Math.round(average));
@@ -552,7 +506,6 @@ const LoadEmailDetail = ({
         setLoadingAverageBid(false);
       }
     };
-
     fetchAverageLaneBid();
   }, [email.id, data.pickup_coordinates, data.delivery_coordinates]);
 
@@ -568,18 +521,19 @@ const LoadEmailDetail = ({
       await recordMatchAction('skipped');
 
       // Update database FIRST, then notify parent to refresh
-      const { error } = await supabase
-        .from("load_hunt_matches")
-        .update({ is_active: false, match_status: 'skipped' })
-        .eq("id", match.id);
-
+      const {
+        error
+      } = await supabase.from("load_hunt_matches").update({
+        is_active: false,
+        match_status: 'skipped'
+      }).eq("id", match.id);
       if (error) throw error;
-      
+
       // Now notify parent - data is already updated
       if (onSkip) {
         await onSkip(match.id);
       }
-      
+
       // Close the detail view and return to unreviewed list
       onClose();
     } catch (error) {
@@ -610,18 +564,18 @@ const LoadEmailDetail = ({
       await recordMatchAction('waitlist');
 
       // Update database FIRST, then notify parent to refresh
-      const { error: matchError } = await supabase
-        .from("load_hunt_matches")
-        .update({ is_active: false, match_status: 'waitlist' })
-        .eq("id", match.id);
-
+      const {
+        error: matchError
+      } = await supabase.from("load_hunt_matches").update({
+        is_active: false,
+        match_status: 'waitlist'
+      }).eq("id", match.id);
       if (matchError) throw matchError;
-      
+
       // Now notify parent - data is already updated
       if (onWait) {
         await onWait(match.id);
       }
-      
       onClose();
     } catch (error) {
       console.error("Error setting wait status:", error);
@@ -641,27 +595,25 @@ const LoadEmailDetail = ({
       const matchedAt = new Date(match.matched_at);
       const now = new Date();
       const minutesSinceMatch = (now.getTime() - matchedAt.getTime()) / (1000 * 60);
-
       if (minutesSinceMatch >= 40) {
         toast.error("Cannot restore to unreviewed - 40 minute window has passed");
         return;
       }
 
       // Update database - set back to active status
-      const { error } = await supabase
-        .from("load_hunt_matches")
-        .update({ is_active: true, match_status: 'active' })
-        .eq("id", match.id);
-
+      const {
+        error
+      } = await supabase.from("load_hunt_matches").update({
+        is_active: true,
+        match_status: 'active'
+      }).eq("id", match.id);
       if (error) throw error;
-      
       toast.success("Match restored to unreviewed");
-      
+
       // Notify parent to refresh data
       if (onMarkUnreviewed) {
         await onMarkUnreviewed(match.id);
       }
-      
       onClose();
     } catch (error) {
       console.error("Error marking as unreviewed:", error);
@@ -674,12 +626,10 @@ const LoadEmailDetail = ({
     const resolveToEmail = async () => {
       try {
         if (match?.load_email_id) {
-          const { data: loadEmail, error } = await supabase
-            .from("load_emails")
-            .select("parsed_data")
-            .eq("id", match.load_email_id)
-            .maybeSingle();
-
+          const {
+            data: loadEmail,
+            error
+          } = await supabase.from("load_emails").select("parsed_data").eq("id", match.load_email_id).maybeSingle();
           if (!error && loadEmail?.parsed_data) {
             const parsedData = loadEmail.parsed_data as Record<string, any>;
             if (parsedData.broker_email) {
@@ -695,27 +645,19 @@ const LoadEmailDetail = ({
         setToEmail(data.broker_email || email.from_email || null);
       }
     };
-
     resolveToEmail();
   }, [match, email.from_email, data.broker_email]);
 
   // Dispatcher signature info for email - use bid_as carrier if available, fallback to company_profile
-  const dispatcherName = currentDispatcher 
-    ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` 
-    : 'Dispatcher Name';
+  const dispatcherName = currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : 'Dispatcher Name';
   const dispatcherEmailAddr = currentDispatcher?.email || 'dispatch@company.com';
   // Use bid_as carrier info first, then fallback to company_profile
   const companyName = bidAsCarrier?.name || companyProfile?.company_name || 'COMPANY NAME';
   const mcNumber = bidAsCarrier?.mc_number || companyProfile?.mc_number || 'MC#';
   const dotNumber = bidAsCarrier?.dot_number || companyProfile?.dot_number || 'USDOT#';
-  const companyAddress = bidAsCarrier?.address 
-    ? bidAsCarrier.address 
-    : (companyProfile 
-      ? `${companyProfile.address || ''} ${companyProfile.city || ''}, ${companyProfile.state || ''} ${companyProfile.zip || ''}`.trim()
-      : 'Company Address');
+  const companyAddress = bidAsCarrier?.address ? bidAsCarrier.address : companyProfile ? `${companyProfile.address || ''} ${companyProfile.city || ''}, ${companyProfile.state || ''} ${companyProfile.zip || ''}`.trim() : 'Company Address';
   const companyPhone = bidAsCarrier?.phone || companyProfile?.phone || '(000) 000-0000';
   const emailSubject = `Order# ${data.order_number || 'N/A'} [${originState} to ${destState}] ${displaySize}${displayType} - $${bidAmount || '0'} -MC ${mcNumber}`;
-
   const [isSending, setIsSending] = useState(false);
 
   // Handle sending bid email
@@ -728,10 +670,12 @@ const LoadEmailDetail = ({
       toast.error('Please enter a bid amount');
       return;
     }
-
     setIsSending(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('send-bid-email', {
+      const {
+        data: result,
+        error
+      } = await supabase.functions.invoke('send-bid-email', {
         body: {
           to: toEmail,
           cc: ccEmail || undefined,
@@ -775,23 +719,24 @@ const LoadEmailDetail = ({
           blank_line: editableBlankLine,
           vehicle_line: editableVehicleDesc,
           help_line: editableHelpLine,
-          order_line: editableOrderLine,
-        },
+          order_line: editableOrderLine
+        }
       });
-
       if (error) {
         console.error('Error sending bid email:', error);
         toast.error(`Failed to send bid email: ${error.message}`);
         return;
       }
-
       toast.success('Bid email sent successfully!');
       setShowEmailConfirmDialog(false);
       setBidConfirmed(false);
-      
+
       // Record the bid action
-      await recordMatchAction('bid', { bid_amount: bidAmount, to_email: toEmail });
-      
+      await recordMatchAction('bid', {
+        bid_amount: bidAmount,
+        to_email: toEmail
+      });
+
       // Notify parent that bid was placed - move to MY BIDS and skip siblings
       if (onBidPlaced && match?.id && email?.id) {
         onBidPlaced(match.id, email.id);
@@ -805,11 +750,10 @@ const LoadEmailDetail = ({
   };
 
   // Reusable Email Confirmation Dialog
-  const EmailConfirmDialog = (
-    <Dialog open={showEmailConfirmDialog} onOpenChange={(open) => {
-      setShowEmailConfirmDialog(open);
-      if (!open) setBidConfirmed(false);
-    }}>
+  const EmailConfirmDialog = <Dialog open={showEmailConfirmDialog} onOpenChange={open => {
+    setShowEmailConfirmDialog(open);
+    if (!open) setBidConfirmed(false);
+  }}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-0">
         <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-3">
           <DialogTitle className="text-base font-semibold">Confirm Before Sending Bid!</DialogTitle>
@@ -817,29 +761,14 @@ const LoadEmailDetail = ({
         
         {/* Action Buttons - Compact */}
         <div className="flex gap-1.5 px-4 pt-3">
-          <Button 
-            size="sm"
-            className={`flex-1 flex flex-col items-center py-2 h-auto ${bidConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pink-500 hover:bg-pink-600'}`}
-            onClick={() => setBidConfirmed(true)}
-          >
+          <Button size="sm" className={`flex-1 flex flex-col items-center py-2 h-auto ${bidConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pink-500 hover:bg-pink-600'}`} onClick={() => setBidConfirmed(true)}>
             <span className="text-[10px] font-medium opacity-90">Confirm Bid</span>
             <span className="text-sm font-bold">$ {bidAmount || '0'}</span>
           </Button>
-          <Button 
-            size="sm"
-            variant="outline" 
-            className="flex-1 h-auto py-2"
-            disabled={!bidConfirmed || isSending}
-            onClick={handleSendBid}
-          >
+          <Button size="sm" variant="outline" className="flex-1 h-auto py-2" disabled={!bidConfirmed || isSending} onClick={handleSendBid}>
             {isSending ? 'Sending...' : 'Send Bid'}
           </Button>
-          <Button 
-            size="sm"
-            className="flex-1 bg-red-500 hover:bg-red-600 h-auto py-2"
-            onClick={() => setShowEmailConfirmDialog(false)}
-            disabled={isSending}
-          >
+          <Button size="sm" className="flex-1 bg-red-500 hover:bg-red-600 h-auto py-2" onClick={() => setShowEmailConfirmDialog(false)} disabled={isSending}>
             Cancel
           </Button>
         </div>
@@ -849,21 +778,11 @@ const LoadEmailDetail = ({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Mail To</label>
-              <Input 
-                value={toEmail || ''} 
-                onChange={(e) => setToEmail(e.target.value)}
-                placeholder="Enter email"
-                className="h-8 text-xs mt-0.5"
-              />
+              <Input value={toEmail || ''} onChange={e => setToEmail(e.target.value)} placeholder="Enter email" className="h-8 text-xs mt-0.5" />
             </div>
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">CC</label>
-              <Input 
-                value={ccEmail} 
-                onChange={(e) => setCcEmail(e.target.value)}
-                placeholder="Optional"
-                className="h-8 text-xs mt-0.5"
-              />
+              <Input value={ccEmail} onChange={e => setCcEmail(e.target.value)} placeholder="Optional" className="h-8 text-xs mt-0.5" />
             </div>
           </div>
           
@@ -882,44 +801,14 @@ const LoadEmailDetail = ({
           
           {/* Message Body - Clean, uniform styling */}
           <div className="space-y-1 text-sm text-foreground">
-            <Textarea 
-              value={editableGreeting}
-              onChange={(e) => setEditableGreeting(e.target.value)}
-              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
-              placeholder="Greeting..."
-              rows={1}
-            />
+            <Textarea value={editableGreeting} onChange={e => setEditableGreeting(e.target.value)} className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0" placeholder="Greeting..." rows={1} />
             {/* Only show blank line field if it has content */}
-            {editableBlankLine.trim() && (
-              <Textarea 
-                value={editableBlankLine}
-                onChange={(e) => setEditableBlankLine(e.target.value)}
-                className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
-                rows={1}
-              />
-            )}
-            <Textarea 
-              value={editableVehicleDesc}
-              onChange={(e) => setEditableVehicleDesc(e.target.value)}
-              className="min-h-[32px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
-              rows={2}
-            />
-            <Textarea 
-              value={editableHelpLine}
-              onChange={(e) => setEditableHelpLine(e.target.value)}
-              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
-              rows={1}
-            />
-            <Textarea 
-              value={editableOrderLine}
-              onChange={(e) => setEditableOrderLine(e.target.value)}
-              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
-              rows={1}
-            />
+            {editableBlankLine.trim() && <Textarea value={editableBlankLine} onChange={e => setEditableBlankLine(e.target.value)} className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0" rows={1} />}
+            <Textarea value={editableVehicleDesc} onChange={e => setEditableVehicleDesc(e.target.value)} className="min-h-[32px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0" rows={2} />
+            <Textarea value={editableHelpLine} onChange={e => setEditableHelpLine(e.target.value)} className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0" rows={1} />
+            <Textarea value={editableOrderLine} onChange={e => setEditableOrderLine(e.target.value)} className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0" rows={1} />
             {/* Selected Templates - highlighted to stand out */}
-            {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => (
-              <p key={idx} className="text-sm leading-relaxed bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 px-2 py-1 rounded -mx-2">{text}</p>
-            ))}
+            {getSelectedTemplateTexts().length > 0 && getSelectedTemplateTexts().map((text, idx) => <p key={idx} className="text-sm leading-relaxed bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 px-2 py-1 rounded -mx-2">{text}</p>)}
           </div>
           
           {/* Truck Specs - Compact Grid */}
@@ -945,13 +834,11 @@ const LoadEmailDetail = ({
           </p>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 
   // MOBILE LAYOUT
   if (isMobile) {
-    return (
-      <div className="flex flex-col h-full bg-background">
+    return <div className="flex flex-col h-full bg-background">
         {/* Mobile Header */}
         <div className="sticky top-0 z-50 bg-card border-b px-3 py-2">
           <div className="flex items-center justify-between">
@@ -969,38 +856,35 @@ const LoadEmailDetail = ({
         {/* Mobile Tab Navigation */}
         <div className="border-b bg-card px-2 py-1">
           <div className="flex gap-1">
-            {[
-              { id: 'details', label: 'Details', icon: Truck },
-              { id: 'map', label: 'Map', icon: MapPin },
-              { id: 'bid', label: 'Bid', icon: DollarSign },
-            ].map(tab => (
-              <Button
-                key={tab.id}
-                size="sm"
-                variant={mobileSection === tab.id ? 'default' : 'ghost'}
-                className="flex-1 h-9 text-xs"
-                onClick={() => setMobileSection(tab.id as any)}
-              >
+            {[{
+            id: 'details',
+            label: 'Details',
+            icon: Truck
+          }, {
+            id: 'map',
+            label: 'Map',
+            icon: MapPin
+          }, {
+            id: 'bid',
+            label: 'Bid',
+            icon: DollarSign
+          }].map(tab => <Button key={tab.id} size="sm" variant={mobileSection === tab.id ? 'default' : 'ghost'} className="flex-1 h-9 text-xs" onClick={() => setMobileSection(tab.id as any)}>
                 <tab.icon className="h-4 w-4 mr-1" />
                 {tab.label}
-              </Button>
-            ))}
+              </Button>)}
           </div>
         </div>
 
         {/* Mobile Content */}
         <div className="flex-1 overflow-auto p-3">
-          {mobileSection === 'details' && (
-            <div className="space-y-3">
+          {mobileSection === 'details' && <div className="space-y-3">
               {/* Route Summary */}
               <Card className="p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Route</span>
-                  {data.vehicle_type && (
-                    <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                  {data.vehicle_type && <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                       {data.vehicle_type}
-                    </span>
-                  )}
+                    </span>}
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <div className="flex items-center gap-1">
@@ -1020,8 +904,7 @@ const LoadEmailDetail = ({
               </Card>
 
               {/* Truck Info */}
-              {vehicle && (
-                <Card className="p-3">
+              {vehicle && <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-2">Matched Truck</div>
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-blue-100 border border-blue-300">
@@ -1033,16 +916,13 @@ const LoadEmailDetail = ({
                       <div className="text-xs text-muted-foreground">{carrierName || "No Carrier"}</div>
                     </div>
                   </div>
-                </Card>
-              )}
+                </Card>}
 
               {/* Broker Info */}
               <Card className="p-3">
                 <div className="text-xs text-muted-foreground mb-2">Broker</div>
                 <div className="text-sm font-medium">{brokerName}</div>
-                {toEmail && (
-                  <div className="text-xs text-muted-foreground mt-1">{toEmail}</div>
-                )}
+                {toEmail && <div className="text-xs text-muted-foreground mt-1">{toEmail}</div>}
               </Card>
 
               {/* Posted Rate */}
@@ -1056,66 +936,44 @@ const LoadEmailDetail = ({
               </Card>
 
               {/* View Original Email */}
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => setShowOriginalEmail(true)}
-              >
+              <Button variant="outline" className="w-full" onClick={() => setShowOriginalEmail(true)}>
                 <Mail className="h-4 w-4 mr-2" />
                 View Original Email
               </Button>
-            </div>
-          )}
+            </div>}
 
-          {mobileSection === 'map' && (
-            <Card className="h-[400px] overflow-hidden rounded-md">
-              <LoadRouteMap 
-                stops={[
-                  {
-                    location_city: originCity,
-                    location_state: originState,
-                    location_address: `${originCity}, ${originState}`,
-                    stop_type: "pickup"
-                  },
-                  {
-                    location_city: destCity,
-                    location_state: destState,
-                    location_address: `${destCity}, ${destState}`,
-                    stop_type: "delivery"
-                  }
-                ]} 
-              />
-            </Card>
-          )}
+          {mobileSection === 'map' && <Card className="h-[400px] overflow-hidden rounded-md">
+              <LoadRouteMap stops={[{
+            location_city: originCity,
+            location_state: originState,
+            location_address: `${originCity}, ${originState}`,
+            stop_type: "pickup"
+          }, {
+            location_city: destCity,
+            location_state: destState,
+            location_address: `${destCity}, ${destState}`,
+            stop_type: "delivery"
+          }]} />
+            </Card>}
 
-          {mobileSection === 'bid' && (
-            <div className="space-y-3">
+          {mobileSection === 'bid' && <div className="space-y-3">
               {/* Bid Input */}
               <Card className="p-4">
                 <div className="text-xs text-muted-foreground mb-3">Your Bid</div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex items-center gap-1 bg-blue-500 text-white rounded-full h-12 px-4 flex-1">
                     <span className="text-xl font-bold">$</span>
-                    <input
-                      type="text"
-                      value={bidAmount}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setBidAmount(val);
-                      }}
-                      placeholder={data.rate?.toString() || "3000"}
-                      className="bg-transparent border-none outline-none text-xl font-bold text-white w-full placeholder:text-blue-200"
-                    />
+                    <input type="text" value={bidAmount} onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setBidAmount(val);
+                }} placeholder={data.rate?.toString() || "3000"} className="bg-transparent border-none outline-none text-xl font-bold text-white w-full placeholder:text-blue-200" />
                   </div>
                 </div>
-                <Button 
-                  onClick={() => {
-                    const finalBid = bidAmount || data.rate?.toString() || "3000";
-                    setBidAmount(finalBid);
-                    setShowBidCardOnMap(true);
-                  }}
-                  className="w-full bg-green-600 hover:bg-green-700 h-11 font-semibold"
-                >
+                <Button onClick={() => {
+              const finalBid = bidAmount || data.rate?.toString() || "3000";
+              setBidAmount(finalBid);
+              setShowBidCardOnMap(true);
+            }} className="w-full bg-green-600 hover:bg-green-700 h-11 font-semibold">
                   Set Bid
                 </Button>
               </Card>
@@ -1168,13 +1026,11 @@ const LoadEmailDetail = ({
                   Mark Unreviewed
                 </Button>
               </div>
-            </div>
-          )}
+            </div>}
         </div>
 
         {/* Original Email Sheet for Mobile */}
-        {showOriginalEmail && (
-          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom">
+        {showOriginalEmail && <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom">
             <div className="sticky top-0 bg-background border-b p-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Original Email</h2>
               <Button variant="ghost" size="icon" onClick={() => setShowOriginalEmail(false)}>
@@ -1190,24 +1046,14 @@ const LoadEmailDetail = ({
                   <span className="font-semibold">Subject:</span> {email.subject || 'No subject'}
                 </div>
                 <div className="border-t pt-3">
-                  {emailBody ? (
-                    <iframe
-                      srcDoc={emailBody.toLowerCase().includes("<html") ? emailBody : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${emailBody}</body></html>`}
-                      className="w-full h-[500px] border rounded-md bg-background"
-                      title="Email Content"
-                    />
-                  ) : (
-                    <p className="text-muted-foreground">No email content available</p>
-                  )}
+                  {emailBody ? <iframe srcDoc={emailBody.toLowerCase().includes("<html") ? emailBody : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${emailBody}</body></html>`} className="w-full h-[500px] border rounded-md bg-background" title="Email Content" /> : <p className="text-muted-foreground">No email content available</p>}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          </div>}
 
         {/* Bid Card Sheet for Mobile */}
-        {showBidCardOnMap && (
-          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom flex flex-col">
+        {showBidCardOnMap && <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom flex flex-col">
             <div className="bg-background border-b p-3 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-semibold">Bid Email Preview</h3>
               <Button variant="ghost" size="icon" onClick={() => setShowBidCardOnMap(false)}>
@@ -1218,21 +1064,11 @@ const LoadEmailDetail = ({
               <div className="space-y-3">
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">To:</div>
-                  <Input 
-                    value={toEmail || ''} 
-                    onChange={(e) => setToEmail(e.target.value)}
-                    placeholder="Enter email address"
-                    className="h-8 text-sm"
-                  />
+                  <Input value={toEmail || ''} onChange={e => setToEmail(e.target.value)} placeholder="Enter email address" className="h-8 text-sm" />
                 </Card>
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">CC:</div>
-                  <Input 
-                    value={ccEmail} 
-                    onChange={(e) => setCcEmail(e.target.value)}
-                    placeholder="Add CC email (optional)"
-                    className="h-8 text-sm"
-                  />
+                  <Input value={ccEmail} onChange={e => setCcEmail(e.target.value)} placeholder="Add CC email (optional)" className="h-8 text-sm" />
                 </Card>
                 <Card className="p-3">
                   <div className="text-xs text-muted-foreground mb-1">Subject:</div>
@@ -1241,37 +1077,11 @@ const LoadEmailDetail = ({
                   </div>
                 </Card>
                 <Card className="p-3 text-sm space-y-2">
-                  <Textarea 
-                    value={editableGreeting}
-                    onChange={(e) => setEditableGreeting(e.target.value)}
-                    className="min-h-[28px] text-sm border-dashed resize-none"
-                    rows={1}
-                  />
-                  <Textarea 
-                    value={editableBlankLine}
-                    onChange={(e) => setEditableBlankLine(e.target.value)}
-                    className="min-h-[28px] text-sm border-dashed resize-none"
-                    placeholder="(Optional text)"
-                    rows={1}
-                  />
-                  <Textarea 
-                    value={editableVehicleDesc}
-                    onChange={(e) => setEditableVehicleDesc(e.target.value)}
-                    className="min-h-[28px] text-sm border-dashed resize-none"
-                    rows={2}
-                  />
-                  <Textarea 
-                    value={editableHelpLine}
-                    onChange={(e) => setEditableHelpLine(e.target.value)}
-                    className="min-h-[28px] text-sm text-blue-600 border-dashed resize-none"
-                    rows={1}
-                  />
-                  <Textarea 
-                    value={editableOrderLine}
-                    onChange={(e) => setEditableOrderLine(e.target.value)}
-                    className="min-h-[28px] text-sm text-blue-600 border-dashed resize-none"
-                    rows={1}
-                  />
+                  <Textarea value={editableGreeting} onChange={e => setEditableGreeting(e.target.value)} className="min-h-[28px] text-sm border-dashed resize-none" rows={1} />
+                  <Textarea value={editableBlankLine} onChange={e => setEditableBlankLine(e.target.value)} className="min-h-[28px] text-sm border-dashed resize-none" placeholder="(Optional text)" rows={1} />
+                  <Textarea value={editableVehicleDesc} onChange={e => setEditableVehicleDesc(e.target.value)} className="min-h-[28px] text-sm border-dashed resize-none" rows={2} />
+                  <Textarea value={editableHelpLine} onChange={e => setEditableHelpLine(e.target.value)} className="min-h-[28px] text-sm text-blue-600 border-dashed resize-none" rows={1} />
+                  <Textarea value={editableOrderLine} onChange={e => setEditableOrderLine(e.target.value)} className="min-h-[28px] text-sm text-blue-600 border-dashed resize-none" rows={1} />
                   <div className="bg-slate-50 p-2 rounded mt-2 text-xs">
                     <p><strong>We have:</strong> {equipmentDetails}</p>
                     <p><strong>Truck Dimension:</strong> {truckDimensions}</p>
@@ -1287,90 +1097,27 @@ const LoadEmailDetail = ({
                   </p>
                   
                   {/* Nearby Template */}
-                  <div 
-                    className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 mb-2 ${
-                      selectedTemplates.nearby 
-                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
-                    }`}
-                    onClick={() => handleTemplateToggle('nearby')}
-                    onDoubleClick={() => setEditingTemplate('nearby')}
-                  >
-                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                      selectedTemplates.nearby ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
-                    }`}>
+                  <div className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 mb-2 ${selectedTemplates.nearby ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`} onClick={() => handleTemplateToggle('nearby')} onDoubleClick={() => setEditingTemplate('nearby')}>
+                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${selectedTemplates.nearby ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'}`}>
                       {selectedTemplates.nearby && <Check className="w-3 h-3 text-white" />}
                     </div>
-                    {editingTemplate === 'nearby' ? (
-                      <textarea
-                        className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
-                        value={templateTexts.nearby}
-                        onChange={(e) => handleTemplateTextChange('nearby', e.target.value)}
-                        onBlur={() => setEditingTemplate(null)}
-                        onClick={(e) => e.stopPropagation()}
-                        autoFocus
-                      />
-                    ) : (
-                      <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('nearby')}</p>
-                    )}
+                    {editingTemplate === 'nearby' ? <textarea className="w-full text-sm bg-white border rounded p-1 min-h-[50px]" value={templateTexts.nearby} onChange={e => handleTemplateTextChange('nearby', e.target.value)} onBlur={() => setEditingTemplate(null)} onClick={e => e.stopPropagation()} autoFocus /> : <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('nearby')}</p>}
                   </div>
                   
                   {/* Driver Template */}
-                  <div 
-                    className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 mb-2 ${
-                      selectedTemplates.driver 
-                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
-                    }`}
-                    onClick={() => handleTemplateToggle('driver')}
-                    onDoubleClick={() => setEditingTemplate('driver')}
-                  >
-                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                      selectedTemplates.driver ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
-                    }`}>
+                  <div className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 mb-2 ${selectedTemplates.driver ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`} onClick={() => handleTemplateToggle('driver')} onDoubleClick={() => setEditingTemplate('driver')}>
+                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${selectedTemplates.driver ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'}`}>
                       {selectedTemplates.driver && <Check className="w-3 h-3 text-white" />}
                     </div>
-                    {editingTemplate === 'driver' ? (
-                      <textarea
-                        className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
-                        value={templateTexts.driver}
-                        onChange={(e) => handleTemplateTextChange('driver', e.target.value)}
-                        onBlur={() => setEditingTemplate(null)}
-                        onClick={(e) => e.stopPropagation()}
-                        autoFocus
-                      />
-                    ) : (
-                      <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('driver')}</p>
-                    )}
+                    {editingTemplate === 'driver' ? <textarea className="w-full text-sm bg-white border rounded p-1 min-h-[50px]" value={templateTexts.driver} onChange={e => handleTemplateTextChange('driver', e.target.value)} onBlur={() => setEditingTemplate(null)} onClick={e => e.stopPropagation()} autoFocus /> : <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('driver')}</p>}
                   </div>
                   
                   {/* Fuel Template */}
-                  <div 
-                    className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${
-                      selectedTemplates.fuel 
-                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
-                    }`}
-                    onClick={() => handleTemplateToggle('fuel')}
-                    onDoubleClick={() => setEditingTemplate('fuel')}
-                  >
-                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                      selectedTemplates.fuel ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
-                    }`}>
+                  <div className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${selectedTemplates.fuel ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`} onClick={() => handleTemplateToggle('fuel')} onDoubleClick={() => setEditingTemplate('fuel')}>
+                    <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${selectedTemplates.fuel ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'}`}>
                       {selectedTemplates.fuel && <Check className="w-3 h-3 text-white" />}
                     </div>
-                    {editingTemplate === 'fuel' ? (
-                      <textarea
-                        className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
-                        value={templateTexts.fuel}
-                        onChange={(e) => handleTemplateTextChange('fuel', e.target.value)}
-                        onBlur={() => setEditingTemplate(null)}
-                        onClick={(e) => e.stopPropagation()}
-                        autoFocus
-                      />
-                    ) : (
-                      <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('fuel')}</p>
-                    )}
+                    {editingTemplate === 'fuel' ? <textarea className="w-full text-sm bg-white border rounded p-1 min-h-[50px]" value={templateTexts.fuel} onChange={e => handleTemplateTextChange('fuel', e.target.value)} onBlur={() => setEditingTemplate(null)} onClick={e => e.stopPropagation()} autoFocus /> : <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('fuel')}</p>}
                   </div>
                 </Card>
               </div>
@@ -1378,11 +1125,7 @@ const LoadEmailDetail = ({
             {/* Sticky Footer with Action Buttons */}
             <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 safe-area-bottom">
               <div className="grid grid-cols-3 gap-2">
-                <Button 
-                  size="sm" 
-                  className="bg-blue-500 hover:bg-blue-600 h-11"
-                  onClick={() => setShowEmailConfirmDialog(true)}
-                >
+                <Button size="sm" className="bg-blue-500 hover:bg-blue-600 h-11" onClick={() => setShowEmailConfirmDialog(true)}>
                   Email Bid
                 </Button>
                 <Button size="sm" className="bg-orange-500 hover:bg-orange-600 h-11">
@@ -1393,27 +1136,19 @@ const LoadEmailDetail = ({
                 </Button>
               </div>
             </div>
-          </div>
-        )}
+          </div>}
         {EmailConfirmDialog}
-      </div>
-    );
+      </div>;
   }
 
   // DESKTOP LAYOUT (original)
-  return (
-    <>
+  return <>
     <div className="flex-1 overflow-auto relative">
       {/* Original Email Sidebar - Left half when both open, or full left half */}
-      {showOriginalEmail && (
-        <div className={`absolute left-0 top-0 bottom-0 ${showBidCardOnMap ? 'w-1/2' : 'w-1/2'} bg-background z-50 shadow-2xl border-r animate-in slide-in-from-left duration-300 flex flex-col`}>
+      {showOriginalEmail && <div className={`absolute left-0 top-0 bottom-0 ${showBidCardOnMap ? 'w-1/2' : 'w-1/2'} bg-background z-50 shadow-2xl border-r animate-in slide-in-from-left duration-300 flex flex-col`}>
           <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between z-10 flex-shrink-0">
             <h2 className="text-lg font-semibold">Original Email</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowOriginalEmail(false)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowOriginalEmail(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1434,39 +1169,25 @@ const LoadEmailDetail = ({
               <div className="border-t pt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold">Email Content:</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (!emailBody) return;
-
-                      const blob = new Blob([emailBody], { type: "text/html;charset=utf-8" });
-                      const url = URL.createObjectURL(blob);
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    }}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => {
+                  if (!emailBody) return;
+                  const blob = new Blob([emailBody], {
+                    type: "text/html;charset=utf-8"
+                  });
+                  const url = URL.createObjectURL(blob);
+                  window.open(url, "_blank", "noopener,noreferrer");
+                }}>
                     Open in new tab
                   </Button>
                 </div>
                 {(() => {
-                  if (!emailBody) {
-                    return (
-                      <div className="text-sm text-muted-foreground">No email content available</div>
-                    );
-                  }
-
-                  const hasHtmlTag = emailBody.toLowerCase().includes("<html");
-                  const docHtml = hasHtmlTag
-                    ? emailBody
-                    : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${emailBody}</body></html>`;
-
-                  return (
-                    <div className="space-y-2">
-                      <iframe
-                        srcDoc={docHtml}
-                        className="w-full h-[600px] border rounded-md bg-background"
-                        title="Email Content"
-                      />
+                if (!emailBody) {
+                  return <div className="text-sm text-muted-foreground">No email content available</div>;
+                }
+                const hasHtmlTag = emailBody.toLowerCase().includes("<html");
+                const docHtml = hasHtmlTag ? emailBody : `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${emailBody}</body></html>`;
+                return <div className="space-y-2">
+                      <iframe srcDoc={docHtml} className="w-full h-[600px] border rounded-md bg-background" title="Email Content" />
                       <details className="text-[10px] bg-muted rounded border max-h-[200px] overflow-auto">
                         <summary className="cursor-pointer px-2 py-1 font-semibold">
                           View raw source
@@ -1475,26 +1196,18 @@ const LoadEmailDetail = ({
                           {emailBody.slice(0, 4000)}
                         </pre>
                       </details>
-                    </div>
-                  );
-                })()}
+                    </div>;
+              })()}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Bid Email Sidebar - Right half, shows alongside Original Email */}
-      {showBidCardOnMap && (
-        <div className={`absolute right-0 top-0 bottom-0 w-1/2 bg-background z-50 shadow-2xl border-l animate-in slide-in-from-right duration-300 flex flex-col`}>
+      {showBidCardOnMap && <div className={`absolute right-0 top-0 bottom-0 w-1/2 bg-background z-50 shadow-2xl border-l animate-in slide-in-from-right duration-300 flex flex-col`}>
           <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 flex items-center justify-between z-10 flex-shrink-0">
             <h3 className="text-lg font-semibold">Bid Email Preview</h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white/80 hover:text-white hover:bg-white/20"
-              onClick={() => setShowBidCardOnMap(false)}
-            >
+            <Button variant="ghost" size="icon" className="text-white/80 hover:text-white hover:bg-white/20" onClick={() => setShowBidCardOnMap(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1504,21 +1217,11 @@ const LoadEmailDetail = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">To</label>
-                  <Input 
-                    value={toEmail || ''} 
-                    onChange={(e) => setToEmail(e.target.value)}
-                    placeholder="Enter email"
-                    className="h-9 text-sm mt-1"
-                  />
+                  <Input value={toEmail || ''} onChange={e => setToEmail(e.target.value)} placeholder="Enter email" className="h-9 text-sm mt-1" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">CC</label>
-                  <Input 
-                    value={ccEmail} 
-                    onChange={(e) => setCcEmail(e.target.value)}
-                    placeholder="Optional"
-                    className="h-9 text-sm mt-1"
-                  />
+                  <Input value={ccEmail} onChange={e => setCcEmail(e.target.value)} placeholder="Optional" className="h-9 text-sm mt-1" />
                 </div>
               </div>
               
@@ -1532,37 +1235,11 @@ const LoadEmailDetail = ({
               
               {/* Message Body - Editable Fields */}
               <div className="border rounded-lg p-3 space-y-2 bg-white dark:bg-slate-900">
-                <Textarea 
-                  value={editableGreeting}
-                  onChange={(e) => setEditableGreeting(e.target.value)}
-                  className="min-h-[32px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400"
-                  rows={1}
-                />
-                <Textarea 
-                  value={editableBlankLine}
-                  onChange={(e) => setEditableBlankLine(e.target.value)}
-                  className="min-h-[32px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400 text-muted-foreground"
-                  placeholder="(Add optional text here...)"
-                  rows={1}
-                />
-                <Textarea 
-                  value={editableVehicleDesc}
-                  onChange={(e) => setEditableVehicleDesc(e.target.value)}
-                  className="min-h-[48px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400"
-                  rows={2}
-                />
-                <Textarea 
-                  value={editableHelpLine}
-                  onChange={(e) => setEditableHelpLine(e.target.value)}
-                  className="min-h-[32px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400"
-                  rows={1}
-                />
-                <Textarea 
-                  value={editableOrderLine}
-                  onChange={(e) => setEditableOrderLine(e.target.value)}
-                  className="min-h-[32px] text-sm border-0 bg-transparent resize-none p-1 focus-visible:ring-0"
-                  rows={1}
-                />
+                <Textarea value={editableGreeting} onChange={e => setEditableGreeting(e.target.value)} className="min-h-[32px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400" rows={1} />
+                <Textarea value={editableBlankLine} onChange={e => setEditableBlankLine(e.target.value)} className="min-h-[32px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400 text-muted-foreground" placeholder="(Add optional text here...)" rows={1} />
+                <Textarea value={editableVehicleDesc} onChange={e => setEditableVehicleDesc(e.target.value)} className="min-h-[48px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400" rows={2} />
+                <Textarea value={editableHelpLine} onChange={e => setEditableHelpLine(e.target.value)} className="min-h-[32px] text-sm border-0 border-b border-dashed bg-transparent resize-none p-1 focus-visible:ring-0 focus-visible:border-blue-400" rows={1} />
+                <Textarea value={editableOrderLine} onChange={e => setEditableOrderLine(e.target.value)} className="min-h-[32px] text-sm border-0 bg-transparent resize-none p-1 focus-visible:ring-0" rows={1} />
               </div>
               
               {/* Truck Specs */}
@@ -1580,90 +1257,27 @@ const LoadEmailDetail = ({
                 </p>
                 
                 {/* Nearby Template */}
-                <div 
-                  className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${
-                    selectedTemplates.nearby 
-                      ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'
-                  }`}
-                  onClick={() => handleTemplateToggle('nearby')}
-                  onDoubleClick={() => setEditingTemplate('nearby')}
-                >
-                  <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                    selectedTemplates.nearby ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
-                  }`}>
+                <div className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${selectedTemplates.nearby ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'}`} onClick={() => handleTemplateToggle('nearby')} onDoubleClick={() => setEditingTemplate('nearby')}>
+                  <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${selectedTemplates.nearby ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'}`}>
                     {selectedTemplates.nearby && <Check className="w-3 h-3 text-white" />}
                   </div>
-                  {editingTemplate === 'nearby' ? (
-                    <textarea
-                      className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
-                      value={templateTexts.nearby}
-                      onChange={(e) => handleTemplateTextChange('nearby', e.target.value)}
-                      onBlur={() => setEditingTemplate(null)}
-                      onClick={(e) => e.stopPropagation()}
-                      autoFocus
-                    />
-                  ) : (
-                    <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('nearby')}</p>
-                  )}
+                  {editingTemplate === 'nearby' ? <textarea className="w-full text-sm bg-white border rounded p-1 min-h-[50px]" value={templateTexts.nearby} onChange={e => handleTemplateTextChange('nearby', e.target.value)} onBlur={() => setEditingTemplate(null)} onClick={e => e.stopPropagation()} autoFocus /> : <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('nearby')}</p>}
                 </div>
                 
                 {/* Driver Template */}
-                <div 
-                  className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${
-                    selectedTemplates.driver 
-                      ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'
-                  }`}
-                  onClick={() => handleTemplateToggle('driver')}
-                  onDoubleClick={() => setEditingTemplate('driver')}
-                >
-                  <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                    selectedTemplates.driver ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
-                  }`}>
+                <div className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${selectedTemplates.driver ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'}`} onClick={() => handleTemplateToggle('driver')} onDoubleClick={() => setEditingTemplate('driver')}>
+                  <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${selectedTemplates.driver ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'}`}>
                     {selectedTemplates.driver && <Check className="w-3 h-3 text-white" />}
                   </div>
-                  {editingTemplate === 'driver' ? (
-                    <textarea
-                      className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
-                      value={templateTexts.driver}
-                      onChange={(e) => handleTemplateTextChange('driver', e.target.value)}
-                      onBlur={() => setEditingTemplate(null)}
-                      onClick={(e) => e.stopPropagation()}
-                      autoFocus
-                    />
-                  ) : (
-                    <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('driver')}</p>
-                  )}
+                  {editingTemplate === 'driver' ? <textarea className="w-full text-sm bg-white border rounded p-1 min-h-[50px]" value={templateTexts.driver} onChange={e => handleTemplateTextChange('driver', e.target.value)} onBlur={() => setEditingTemplate(null)} onClick={e => e.stopPropagation()} autoFocus /> : <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('driver')}</p>}
                 </div>
                 
                 {/* Fuel Template */}
-                <div 
-                  className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${
-                    selectedTemplates.fuel 
-                      ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'
-                  }`}
-                  onClick={() => handleTemplateToggle('fuel')}
-                  onDoubleClick={() => setEditingTemplate('fuel')}
-                >
-                  <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                    selectedTemplates.fuel ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'
-                  }`}>
+                <div className={`px-3 py-2.5 rounded-lg cursor-pointer border transition-all flex items-start gap-2 ${selectedTemplates.fuel ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 shadow-sm ring-1 ring-blue-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'}`} onClick={() => handleTemplateToggle('fuel')} onDoubleClick={() => setEditingTemplate('fuel')}>
+                  <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${selectedTemplates.fuel ? 'bg-blue-500' : 'border-2 border-slate-300 bg-white'}`}>
                     {selectedTemplates.fuel && <Check className="w-3 h-3 text-white" />}
                   </div>
-                  {editingTemplate === 'fuel' ? (
-                    <textarea
-                      className="w-full text-sm bg-white border rounded p-1 min-h-[50px]"
-                      value={templateTexts.fuel}
-                      onChange={(e) => handleTemplateTextChange('fuel', e.target.value)}
-                      onBlur={() => setEditingTemplate(null)}
-                      onClick={(e) => e.stopPropagation()}
-                      autoFocus
-                    />
-                  ) : (
-                    <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('fuel')}</p>
-                  )}
+                  {editingTemplate === 'fuel' ? <textarea className="w-full text-sm bg-white border rounded p-1 min-h-[50px]" value={templateTexts.fuel} onChange={e => handleTemplateTextChange('fuel', e.target.value)} onBlur={() => setEditingTemplate(null)} onClick={e => e.stopPropagation()} autoFocus /> : <p className="text-sm flex-1 leading-relaxed">{getRenderedTemplate('fuel')}</p>}
                 </div>
               </div>
             </div>
@@ -1671,11 +1285,7 @@ const LoadEmailDetail = ({
           
           {/* Action Buttons - Sticky Footer */}
           <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
-            <Button 
-              size="sm" 
-              className="flex-1 bg-blue-600 hover:bg-blue-700 h-10 font-semibold shadow-sm"
-              onClick={() => setShowEmailConfirmDialog(true)}
-            >
+            <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 h-10 font-semibold shadow-sm" onClick={() => setShowEmailConfirmDialog(true)}>
               <Mail className="w-4 h-4 mr-2" />
               Email Bid
             </Button>
@@ -1686,8 +1296,7 @@ const LoadEmailDetail = ({
               Book Load
             </Button>
           </div>
-        </div>
-      )}
+        </div>}
       
       <div className="flex gap-2 p-2">
         {/* LEFT SIDE - Load Details + Stats + Map */}
@@ -1719,13 +1328,10 @@ const LoadEmailDetail = ({
                   <div className="flex items-center gap-6">
                     <div>
                       <div className="text-[13px] font-bold mb-0.5">Match ID: {match?.id?.substring(0, 8) || "N/A"}</div>
-                      <button 
-                        className="text-[10px] text-blue-500 hover:underline flex items-center gap-1"
-                        onClick={() => {
-                          fetchMatchHistory();
-                          setShowMatchHistory(true);
-                        }}
-                      >
+                      <button className="text-[10px] text-blue-500 hover:underline flex items-center gap-1" onClick={() => {
+                        fetchMatchHistory();
+                        setShowMatchHistory(true);
+                      }}>
                         <History className="h-3 w-3" />
                         View Match History
                       </button>
@@ -1776,7 +1382,7 @@ const LoadEmailDetail = ({
                       <div><span className="text-blue-500 font-bold">D</span> {destCity}, {destState}</div>
                     </div>
                     <div className="text-green-600">
-                      <div>{emptyDriveDistance !== undefined && emptyDriveDistance !== null ? `${Math.round(emptyDriveDistance)}mi` : (data.empty_miles !== null && data.empty_miles !== undefined ? `${Math.round(data.empty_miles)}mi` : '—')}</div>
+                      <div>{emptyDriveDistance !== undefined && emptyDriveDistance !== null ? `${Math.round(emptyDriveDistance)}mi` : data.empty_miles !== null && data.empty_miles !== undefined ? `${Math.round(data.empty_miles)}mi` : '—'}</div>
                       <div>{data.loaded_miles ? `${Math.round(data.loaded_miles)}mi` : '—'}</div>
                     </div>
                     <div>
@@ -1806,14 +1412,11 @@ const LoadEmailDetail = ({
                   <div className="flex-1 border rounded-lg px-3 py-1.5 text-[11px] flex items-center gap-4">
                     <div className="font-semibold text-blue-600 shrink-0">Vehicle</div>
                     <div className="text-muted-foreground">
-                      <span>Note:</span>{' '}
+                      <span>         Note:</span>{' '}
                       <span>{vehicle?.notes || ''}</span>
                     </div>
                   </div>
-                  <Button 
-                    className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold shrink-0"
-                    onClick={() => setShowOriginalEmail(true)}
-                  >
+                  <Button className="bg-orange-500 hover:bg-orange-600 h-6 px-2 text-[10px] font-semibold shrink-0" onClick={() => setShowOriginalEmail(true)}>
                     Original Email
                   </Button>
                 </div>
@@ -1876,24 +1479,15 @@ const LoadEmailDetail = ({
                       <div className="flex items-center justify-center w-7 h-7 bg-blue-500 rounded-full m-0.5">
                         <span className="text-sm font-bold text-white">$</span>
                       </div>
-                      <input
-                        type="text"
-                        value={bidAmount}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setBidAmount(val);
-                        }}
-                        placeholder={data.rate?.toString() || "3000"}
-                        className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-foreground px-2 placeholder:text-muted-foreground"
-                      />
-                      <Button 
-                        onClick={() => {
-                          const finalBid = bidAmount || data.rate?.toString() || "3000";
-                          setBidAmount(finalBid);
-                          setShowBidCardOnMap(true);
-                        }}
-                        className="bg-green-500 hover:bg-green-600 h-6 px-3 text-xs font-semibold rounded-full m-0.5"
-                      >
+                      <input type="text" value={bidAmount} onChange={e => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setBidAmount(val);
+                      }} placeholder={data.rate?.toString() || "3000"} className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-foreground px-2 placeholder:text-muted-foreground" />
+                      <Button onClick={() => {
+                        const finalBid = bidAmount || data.rate?.toString() || "3000";
+                        setBidAmount(finalBid);
+                        setShowBidCardOnMap(true);
+                      }} className="bg-green-500 hover:bg-green-600 h-6 px-3 text-xs font-semibold rounded-full m-0.5">
                         Set Bid
                       </Button>
                     </div>
@@ -1902,12 +1496,7 @@ const LoadEmailDetail = ({
 
                 {/* Action Buttons */}
                 <div className="flex gap-1">
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    className="h-6 text-[10px] flex-1 whitespace-nowrap font-medium px-1"
-                    onClick={handleSkip}
-                  >
+                  <Button variant="destructive" size="sm" className="h-6 text-[10px] flex-1 whitespace-nowrap font-medium px-1" onClick={handleSkip}>
                     Skip
                   </Button>
                   <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleUndecided}>
@@ -1927,22 +1516,17 @@ const LoadEmailDetail = ({
           {/* MAP - Full Width Below */}
           <div className="relative">
             <Card className="h-[400px] overflow-hidden rounded-md">
-              <LoadRouteMap 
-                stops={[
-                  {
-                    location_city: originCity,
-                    location_state: originState,
-                    location_address: `${originCity}, ${originState}`,
-                    stop_type: "pickup"
-                  },
-                  {
-                    location_city: destCity,
-                    location_state: destState,
-                    location_address: `${destCity}, ${destState}`,
-                    stop_type: "delivery"
-                  }
-                ]} 
-              />
+              <LoadRouteMap stops={[{
+                location_city: originCity,
+                location_state: originState,
+                location_address: `${originCity}, ${originState}`,
+                stop_type: "pickup"
+              }, {
+                location_city: destCity,
+                location_state: destState,
+                location_address: `${destCity}, ${destState}`,
+                stop_type: "delivery"
+              }]} />
             </Card>
           </div>
         </div>
@@ -1955,37 +1539,73 @@ const LoadEmailDetail = ({
               <span>$/mi</span>
             </div>
             <div className="space-y-0.5 text-[10px] max-h-[700px] overflow-auto">
-              {[
-                { rate: "$1,782.00", perMile: "$2.28" },
-                { rate: "$1,732.00", perMile: "$2.21" },
-                { rate: "$1,682.00", perMile: "$2.15" },
-                { rate: "$1,632.00", perMile: "$2.08" },
-                { rate: "$1,582.00", perMile: "$2.02" },
-                { rate: "$1,532.00", perMile: "$1.96" },
-                { rate: "$1,482.00", perMile: "$1.89" },
-                { rate: "$1,432.00", perMile: "$1.83" },
-                { rate: "$1,382.00", perMile: "$1.77" },
-                { rate: "$1,332.00", perMile: "$1.70" },
-                { rate: "$1,282.00", perMile: "$1.64" },
-                { rate: "$1,232.00", perMile: "$1.57" },
-                { rate: "$1,182.00", perMile: "$1.51" },
-                { rate: "$1,132.00", perMile: "$1.45" },
-                { rate: "$1,082.00", perMile: "$1.38" },
-                { rate: "$1,032.00", perMile: "$1.32" },
-                { rate: "$982.00", perMile: "$1.25" },
-                { rate: "$932.00", perMile: "$1.19" },
-                { rate: "$882.00", perMile: "$1.13" },
-                { rate: "$832.00", perMile: "$1.06" },
-                { rate: "$782.00", perMile: "$1.00" }
-              ].map((row, idx) => (
-                <div 
-                  key={idx} 
-                  className={`flex justify-between px-1.5 py-0.5 rounded ${row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"}`}
-                >
+              {[{
+                rate: "$1,782.00",
+                perMile: "$2.28"
+              }, {
+                rate: "$1,732.00",
+                perMile: "$2.21"
+              }, {
+                rate: "$1,682.00",
+                perMile: "$2.15"
+              }, {
+                rate: "$1,632.00",
+                perMile: "$2.08"
+              }, {
+                rate: "$1,582.00",
+                perMile: "$2.02"
+              }, {
+                rate: "$1,532.00",
+                perMile: "$1.96"
+              }, {
+                rate: "$1,482.00",
+                perMile: "$1.89"
+              }, {
+                rate: "$1,432.00",
+                perMile: "$1.83"
+              }, {
+                rate: "$1,382.00",
+                perMile: "$1.77"
+              }, {
+                rate: "$1,332.00",
+                perMile: "$1.70"
+              }, {
+                rate: "$1,282.00",
+                perMile: "$1.64"
+              }, {
+                rate: "$1,232.00",
+                perMile: "$1.57"
+              }, {
+                rate: "$1,182.00",
+                perMile: "$1.51"
+              }, {
+                rate: "$1,132.00",
+                perMile: "$1.45"
+              }, {
+                rate: "$1,082.00",
+                perMile: "$1.38"
+              }, {
+                rate: "$1,032.00",
+                perMile: "$1.32"
+              }, {
+                rate: "$982.00",
+                perMile: "$1.25"
+              }, {
+                rate: "$932.00",
+                perMile: "$1.19"
+              }, {
+                rate: "$882.00",
+                perMile: "$1.13"
+              }, {
+                rate: "$832.00",
+                perMile: "$1.06"
+              }, {
+                rate: "$782.00",
+                perMile: "$1.00"
+              }].map((row, idx) => <div key={idx} className={`flex justify-between px-1.5 py-0.5 rounded ${row.rate === "$1,282.00" ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"}`}>
                   <span>{row.rate}</span>
                   <span className="text-gray-600">{row.perMile}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
           </Card>
         </div>
@@ -2003,57 +1623,48 @@ const LoadEmailDetail = ({
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[300px]">
-          {loadingHistory ? (
-            <div className="flex items-center justify-center py-4">
+          {loadingHistory ? <div className="flex items-center justify-center py-4">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-            </div>
-          ) : matchHistory.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground text-sm">
+            </div> : matchHistory.length === 0 ? <div className="text-center py-6 text-muted-foreground text-sm">
               No history recorded yet.
-            </div>
-          ) : (
-            <div className="divide-y">
-              {matchHistory.map((entry) => {
-                const actionColors: Record<string, string> = {
-                  viewed: 'bg-blue-100 text-blue-700',
-                  skipped: 'bg-orange-100 text-orange-700',
-                  bid: 'bg-green-100 text-green-700',
-                  waitlist: 'bg-purple-100 text-purple-700',
-                  undecided: 'bg-gray-100 text-gray-700',
-                };
-                const actionLabels: Record<string, string> = {
-                  viewed: 'Viewed',
-                  skipped: 'Skipped',
-                  bid: 'Bid',
-                  waitlist: 'Waitlist',
-                  undecided: 'Undecided',
-                };
-                return (
-                  <div key={entry.id} className="flex items-center gap-3 py-2.5 px-1">
+            </div> : <div className="divide-y">
+              {matchHistory.map(entry => {
+              const actionColors: Record<string, string> = {
+                viewed: 'bg-blue-100 text-blue-700',
+                skipped: 'bg-orange-100 text-orange-700',
+                bid: 'bg-green-100 text-green-700',
+                waitlist: 'bg-purple-100 text-purple-700',
+                undecided: 'bg-gray-100 text-gray-700'
+              };
+              const actionLabels: Record<string, string> = {
+                viewed: 'Viewed',
+                skipped: 'Skipped',
+                bid: 'Bid',
+                waitlist: 'Waitlist',
+                undecided: 'Undecided'
+              };
+              return <div key={entry.id} className="flex items-center gap-3 py-2.5 px-1">
                     <Badge className={`text-xs px-2 py-0.5 ${actionColors[entry.action_type] || 'bg-gray-100 text-gray-700'}`}>
                       {actionLabels[entry.action_type] || entry.action_type}
                     </Badge>
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium truncate">{entry.dispatcher_name || 'Unknown'}</span>
-                      {entry.action_details?.bid_amount && (
-                        <span className="text-xs text-green-600 ml-1.5">${entry.action_details.bid_amount}</span>
-                      )}
+                      {entry.action_details?.bid_amount && <span className="text-xs text-green-600 ml-1.5">${entry.action_details.bid_amount}</span>}
                     </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(entry.created_at).toLocaleString('en-US', { 
-                        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
-                      })}
+                      {new Date(entry.created_at).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
                     </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  </div>;
+            })}
+            </div>}
         </ScrollArea>
       </DialogContent>
     </Dialog>
-    </>
-  );
+    </>;
 };
-
 export default LoadEmailDetail;
