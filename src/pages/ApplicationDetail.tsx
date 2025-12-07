@@ -561,9 +561,9 @@ export default function ApplicationDetail() {
               </div>
             </div>
 
-            {/* Vehicle Note */}
+            {/* Driver Notes */}
             <div className="space-y-2">
-              <Label className="text-primary">Vehicle Note</Label>
+              <Label className="text-primary">Driver Notes</Label>
               <Textarea 
                 value={formData.vehicle_note || ''} 
                 onChange={(e) => updateField('vehicle_note', e.target.value)}
