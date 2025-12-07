@@ -2549,6 +2549,7 @@ export default function LoadHunterTab() {
                         return {
                           id: match.id,
                           vehicle_id: match.vehicle_id,
+                          load_email_id: match.load_email_id,
                           vehicle_number: vehicle?.vehicle_number || 'Unknown',
                           distance_miles: match.distance_miles,
                           current_location: vehicle?.last_location || vehicle?.formatted_address,
@@ -3842,6 +3843,7 @@ export default function LoadHunterTab() {
                     return {
                       id: match.id,
                       vehicle_id: match.vehicle_id,
+                      load_email_id: match.load_email_id,
                       vehicle_number: vehicle?.vehicle_number || 'Unknown',
                       distance_miles: match.distance_miles,
                       current_location: vehicle?.last_location || vehicle?.formatted_address,
@@ -4230,6 +4232,7 @@ export default function LoadHunterTab() {
                                       return {
                                         id: match.id,
                                         vehicle_id: match.vehicle_id,
+                                        load_email_id: match.load_email_id,
                                         vehicle_number: vehicle?.vehicle_number || 'Unknown',
                                         distance_miles: match.distance_miles,
                                         current_location: vehicle?.last_location || vehicle?.formatted_address,
