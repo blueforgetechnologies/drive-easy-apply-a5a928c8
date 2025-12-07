@@ -1543,13 +1543,13 @@ const LoadEmailDetail = ({
         </div>
 
         {/* FAR RIGHT COLUMN - Quote Rates */}
-        <div className="w-[140px]">
-          <Card className="p-2">
-            <div className="flex justify-between text-[10px] text-gray-500 pb-1.5 border-b mb-1.5">
+        <div className="w-[160px]">
+          <Card className="p-3 shadow-sm border-0 bg-gradient-to-b from-slate-50 to-white">
+            <div className="flex justify-between text-xs font-medium text-slate-500 pb-2 mb-2 border-b border-slate-200">
               <span>Quote Rate</span>
               <span>$/mi</span>
             </div>
-            <div className="space-y-0.5 text-[10px] max-h-[700px] overflow-auto">
+            <div className="space-y-px max-h-[700px] overflow-auto scrollbar-thin">
               {(() => {
                 const loadedMiles = data.loaded_miles || 375;
                 const rates = [];
@@ -1563,12 +1563,18 @@ const LoadEmailDetail = ({
                     <div
                       key={rate}
                       onClick={() => setBidAmount(rate.toString())}
-                      className={`flex justify-between px-1.5 py-0.5 rounded cursor-pointer ${
-                        isSelected ? "bg-blue-100 font-semibold" : "hover:bg-slate-50"
+                      className={`flex justify-between items-center px-2 py-1 rounded-md cursor-pointer transition-all duration-150 ${
+                        isSelected 
+                          ? "bg-blue-500 text-white shadow-sm" 
+                          : "hover:bg-slate-100 text-slate-700"
                       }`}
                     >
-                      <span>${rate.toLocaleString()}.00</span>
-                      <span className="text-gray-600">${perMile}</span>
+                      <span className={`text-[12px] font-semibold ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                        ${rate.toLocaleString()}
+                      </span>
+                      <span className={`text-[11px] font-medium ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                        ${perMile}
+                      </span>
                     </div>
                   );
                 });
