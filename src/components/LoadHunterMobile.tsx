@@ -88,7 +88,6 @@ export default function LoadHunterMobile({
 }: LoadHunterMobileProps) {
   const [vehicleSheetOpen, setVehicleSheetOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'trucks' | 'loads'>('loads');
 
   // Filter counts
   const getFilterCount = (filter: string) => {
@@ -168,18 +167,24 @@ export default function LoadHunterMobile({
             <Button
               size="sm"
               variant={activeMode === 'dispatch' ? 'default' : 'ghost'}
-              className="h-8 px-3 text-xs rounded-none"
+              className="h-8 px-3 text-xs rounded-none gap-1.5"
               onClick={() => onModeChange('dispatch')}
             >
               My Trucks
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                {vehicles.filter(v => myVehicleIds.includes(v.id)).length}
+              </Badge>
             </Button>
             <Button
               size="sm"
               variant={activeMode === 'admin' ? 'default' : 'ghost'}
-              className="h-8 px-3 text-xs rounded-none"
+              className="h-8 px-3 text-xs rounded-none gap-1.5"
               onClick={() => onModeChange('admin')}
             >
               Admin
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                {vehicles.length}
+              </Badge>
             </Button>
           </div>
 
@@ -210,31 +215,14 @@ export default function LoadHunterMobile({
       {/* Bottom Tab Bar - Filter Navigation */}
       <div className="border-b bg-card px-1 py-1">
         <div className="flex items-center gap-1 overflow-x-auto">
-          {/* Trucks Tab */}
-          <Button
-            size="sm"
-            variant={activeTab === 'trucks' ? 'default' : 'ghost'}
-            className="h-9 px-3 text-xs flex-shrink-0"
-            onClick={() => setActiveTab('trucks')}
-          >
-            <Truck className="h-4 w-4 mr-1" />
-            Trucks
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-              {filteredVehicles.length}
-            </Badge>
-          </Button>
-          
           {/* Filter Tabs */}
           {filterTabs.map(tab => (
             <Button
               key={tab.id}
               size="sm"
-              variant={activeTab === 'loads' && activeFilter === tab.id ? 'default' : 'ghost'}
+              variant={activeFilter === tab.id ? 'default' : 'ghost'}
               className="h-9 px-3 text-xs flex-shrink-0"
-              onClick={() => {
-                setActiveTab('loads');
-                onFilterChange(tab.id);
-              }}
+              onClick={() => onFilterChange(tab.id)}
             >
               <tab.icon className="h-4 w-4 mr-1" />
               {tab.label}
@@ -254,92 +242,6 @@ export default function LoadHunterMobile({
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : activeTab === 'trucks' ? (
-          /* Trucks List View */
-          <div className="space-y-2 pb-20">
-            {filteredVehicles.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Truck className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">No trucks found</p>
-              </div>
-            ) : (
-              filteredVehicles.map(vehicle => {
-                const hasEnabledHunt = huntPlans.some(p => p.vehicleId === vehicle.id && p.enabled);
-                const unreviewedCount = unreviewedViewData.filter(m => m.vehicle_id === vehicle.id).length;
-                const hunt = huntPlans.find(p => p.vehicleId === vehicle.id);
-                const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
-                const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
-                
-                return (
-                  <Card 
-                    key={vehicle.id}
-                    className={`overflow-hidden ${hasEnabledHunt ? 'border-blue-500' : ''}`}
-                  >
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          {hasEnabledHunt && <div className="w-1.5 h-10 bg-blue-500 rounded-full" />}
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <p className="font-semibold">{vehicle.vehicle_number || 'N/A'}</p>
-                              {isOilChangeDue && (
-                                <span title="Oil change due">
-                                  <Droplet className="h-3.5 w-3.5 text-amber-500" />
-                                </span>
-                              )}
-                              {hasFaultCodes && (
-                                <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`}>
-                                  <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {getDriverName(vehicle.driver_1_id) || 'No Driver'}
-                            </p>
-                            {vehicle.carrier && (
-                              <p className="text-xs text-muted-foreground">
-                                {carriersMap[vehicle.carrier] || vehicle.carrier}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {unreviewedCount > 0 && (
-                            <Badge variant="destructive">{unreviewedCount}</Badge>
-                          )}
-                          {hunt && (
-                            <Button
-                              size="sm"
-                              variant={hunt.enabled ? 'default' : 'outline'}
-                              className={`h-8 text-xs ${hunt.enabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleHunt(hunt.id, hunt.enabled);
-                              }}
-                            >
-                              {hunt.enabled ? '● Hunting' : 'Start Hunt'}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {hunt && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {hunt.zipCode || 'No location'}
-                          </span>
-                          <span>{hunt.pickupRadius} mi radius</span>
-                          {hunt.vehicleSizes?.length > 0 && (
-                            <span>{hunt.vehicleSizes.slice(0, 2).join(', ')}{hunt.vehicleSizes.length > 2 ? '...' : ''}</span>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
           </div>
         ) : displayData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
