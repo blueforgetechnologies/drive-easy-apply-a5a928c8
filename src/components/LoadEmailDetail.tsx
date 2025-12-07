@@ -671,12 +671,12 @@ const LoadEmailDetail = ({
             <span className="bg-yellow-300 text-yellow-900 px-2 py-0.5 rounded text-xs font-bold">USDOT#: {dotNumber}</span>
           </div>
           
-          {/* Message Body - Clean, no borders */}
-          <div className="space-y-0.5 text-sm">
+          {/* Message Body - Clean, uniform styling */}
+          <div className="space-y-1 text-sm text-foreground">
             <Textarea 
               value={editableGreeting}
               onChange={(e) => setEditableGreeting(e.target.value)}
-              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0 text-blue-600"
+              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               placeholder="Greeting..."
               rows={1}
             />
@@ -698,13 +698,13 @@ const LoadEmailDetail = ({
             <Textarea 
               value={editableHelpLine}
               onChange={(e) => setEditableHelpLine(e.target.value)}
-              className="min-h-[24px] text-sm text-blue-600 border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
+              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={1}
             />
             <Textarea 
               value={editableOrderLine}
               onChange={(e) => setEditableOrderLine(e.target.value)}
-              className="min-h-[24px] text-sm text-blue-600 border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
+              className="min-h-[24px] text-sm border-0 bg-transparent resize-none p-0 focus-visible:ring-0"
               rows={1}
             />
             {/* Selected Templates - appear after Order Number, before Truck Specs */}
