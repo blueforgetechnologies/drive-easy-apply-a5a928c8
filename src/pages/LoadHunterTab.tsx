@@ -3041,8 +3041,8 @@ export default function LoadHunterTab() {
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
-                    {/* Merged badge pill - absolute top right edge */}
-                    <div className="absolute -top-1 -right-1 flex items-center rounded-full overflow-hidden border border-border/50 shadow-sm">
+                    {/* Merged badge pill - flush top right edge */}
+                    <div className="absolute top-0 right-0 flex items-center rounded-bl-md overflow-hidden border-l border-b border-border/50">
                       {/* GREEN = Unreviewed */}
                       <div 
                         className="h-4 px-1.5 bg-green-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-600 transition-colors"
