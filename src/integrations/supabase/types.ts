@@ -1385,6 +1385,57 @@ export type Database = {
           },
         ]
       }
+      load_hunt_matches_archive: {
+        Row: {
+          archive_reason: string
+          archived_at: string
+          distance_miles: number | null
+          hunt_plan_id: string
+          id: string
+          is_active: boolean
+          load_email_id: string
+          match_score: number | null
+          match_status: string
+          matched_at: string
+          original_created_at: string
+          original_match_id: string
+          original_updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          archive_reason?: string
+          archived_at?: string
+          distance_miles?: number | null
+          hunt_plan_id: string
+          id?: string
+          is_active: boolean
+          load_email_id: string
+          match_score?: number | null
+          match_status: string
+          matched_at: string
+          original_created_at: string
+          original_match_id: string
+          original_updated_at: string
+          vehicle_id: string
+        }
+        Update: {
+          archive_reason?: string
+          archived_at?: string
+          distance_miles?: number | null
+          hunt_plan_id?: string
+          id?: string
+          is_active?: boolean
+          load_email_id?: string
+          match_score?: number | null
+          match_status?: string
+          matched_at?: string
+          original_created_at?: string
+          original_match_id?: string
+          original_updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       load_stops: {
         Row: {
           actual_arrival: string | null
