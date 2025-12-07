@@ -71,6 +71,7 @@ export type Database = {
           hired_date: string | null
           home_phone: string | null
           id: string
+          invite_id: string | null
           license_info: Json
           medical_card_expiry: string | null
           national_registry: string | null
@@ -114,6 +115,7 @@ export type Database = {
           hired_date?: string | null
           home_phone?: string | null
           id?: string
+          invite_id?: string | null
           license_info: Json
           medical_card_expiry?: string | null
           national_registry?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           hired_date?: string | null
           home_phone?: string | null
           id?: string
+          invite_id?: string | null
           license_info?: Json
           medical_card_expiry?: string | null
           national_registry?: string | null
@@ -177,7 +180,15 @@ export type Database = {
           why_hire_you?: Json
           work_permit_expiry?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applications_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "driver_invites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {
