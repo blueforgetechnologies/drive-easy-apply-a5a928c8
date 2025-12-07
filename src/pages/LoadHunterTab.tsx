@@ -43,6 +43,8 @@ interface Vehicle {
   next_service_date: string | null;
   notes: string | null;
   fault_codes: any;
+  speed: number | null;
+  stopped_status: string | null;
 }
 
 interface Driver {
@@ -3023,8 +3025,14 @@ export default function LoadHunterTab() {
                       <div className="font-medium text-xs leading-tight text-foreground flex items-center gap-1">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
-                      <div className="text-[11px] text-muted-foreground leading-tight">
-                        {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
+                      <div className="text-[11px] text-muted-foreground leading-tight flex items-center gap-1.5">
+                        <span>{vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}</span>
+                        <span className="text-[9px] px-1 py-0.5 rounded" style={{
+                          backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
+                          color: 'white'
+                        }}>
+                          {vehicle.stopped_status || 'Unknown'}{vehicle.speed !== null ? ` ${vehicle.speed} mph` : ''}
+                        </span>
                       </div>
                       <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
