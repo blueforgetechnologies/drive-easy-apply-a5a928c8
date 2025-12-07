@@ -290,7 +290,7 @@ export default function LoadHunterMobile({
                               )}
                               {hasFaultCodes && (
                                 <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`}>
-                                  <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5" />
+                                  <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5 brightness-75" />
                                 </span>
                               )}
                             </div>
