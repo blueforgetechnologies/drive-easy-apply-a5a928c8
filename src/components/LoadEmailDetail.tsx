@@ -350,12 +350,12 @@ const LoadEmailDetail = ({
 
   // Build equipment details from vehicle data
   const buildEquipmentDetails = () => {
-    if (!vehicle) return '[10 straps] [2 load bars] [2 horizontal E-Tracks] [10 blankets]';
+    if (!vehicle) return '[10 straps] [10 blankets] [2 load bars] [2 horizontal E-Tracks]';
     const parts: string[] = [];
     if (vehicle.straps_count) parts.push(`[${vehicle.straps_count} straps]`);
+    if (vehicle.blankets) parts.push(`[${vehicle.blankets} blankets]`);
     if (vehicle.load_bars_etrack) parts.push(`[${vehicle.load_bars_etrack} load bars]`);
     if (vehicle.horizontal_etracks) parts.push(`[${vehicle.horizontal_etracks} horizontal E-Tracks]`);
-    if (vehicle.blankets) parts.push(`[${vehicle.blankets} blankets]`);
     return parts.length > 0 ? parts.join(' ') : '[Equipment details not available]';
   };
 
@@ -1244,10 +1244,10 @@ const LoadEmailDetail = ({
               
               {/* Truck Specs */}
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-800/30 rounded-lg p-3 text-sm space-y-1">
-                <div className="flex"><span className="font-semibold text-slate-600 dark:text-slate-400 w-32">We have:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{equipmentDetails}</span></div>
-                <div className="flex"><span className="font-semibold text-slate-600 dark:text-slate-400 w-32">Truck Dimension:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{truckDimensions}</span></div>
-                <div className="flex"><span className="font-semibold text-slate-600 dark:text-slate-400 w-32">Door:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{doorDimensions}</span></div>
-                <div className="flex"><span className="font-semibold text-slate-600 dark:text-slate-400 w-32">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
+                <div className="flex"><span className="font-bold text-slate-700 dark:text-slate-300 w-32">We have:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{equipmentDetails}</span></div>
+                <div className="flex"><span className="font-bold text-slate-700 dark:text-slate-300 w-32">Truck Dimension:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{truckDimensions}</span></div>
+                <div className="flex"><span className="font-bold text-slate-700 dark:text-slate-300 w-32">Door:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{doorDimensions}</span></div>
+                <div className="flex"><span className="font-bold text-slate-700 dark:text-slate-300 w-32">Features:</span><span className="text-slate-700 dark:text-slate-300 flex-1">{vehicleFeatures}</span></div>
               </div>
               
               {/* Selectable Templates */}
