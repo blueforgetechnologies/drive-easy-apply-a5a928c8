@@ -122,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 4px 0;">${data.company_address}</p>
               <p style="margin: 4px 0;">Cell: <strong>${data.company_phone}</strong> • ${data.from_email}</p>
             </td>
-            ${data.company_logo_url ? `<td style="vertical-align: bottom; text-align: left; padding-left: 8px;"><img src="${data.company_logo_url}" alt="${data.company_name}" style="max-height: 70px; max-width: 180px;" /></td>` : ''}
+            ${data.company_logo_url ? `<td style="vertical-align: bottom; text-align: left; padding-left: 0;"><img src="${data.company_logo_url}" alt="${data.company_name}" style="max-height: 70px; max-width: 180px;" /></td>` : ''}
           </tr>
         </table>
         
