@@ -1055,7 +1055,7 @@ const LoadEmailDetail = ({
         {/* Bid Card Sheet for Mobile */}
         {showBidCardOnMap && <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-bottom flex flex-col">
             <div className="bg-background border-b p-3 flex items-center justify-between flex-shrink-0">
-              <h3 className="text-lg font-semibold">Bid Email Preview</h3>
+              <h3 className="text-lg font-semibold">Email Builder</h3>
               <Button variant="ghost" size="icon" onClick={() => setShowBidCardOnMap(false)}>
                 <X className="h-5 w-5" />
               </Button>
@@ -1206,7 +1206,7 @@ const LoadEmailDetail = ({
       {/* Bid Email Sidebar - Right half, shows alongside Original Email */}
       {showBidCardOnMap && <div className={`absolute right-0 top-0 bottom-0 w-1/2 bg-background z-50 shadow-2xl border-l animate-in slide-in-from-right duration-300 flex flex-col`}>
           <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 flex items-center justify-between z-10 flex-shrink-0">
-            <h3 className="text-lg font-semibold">Bid Email Preview</h3>
+            <h3 className="text-lg font-semibold">Email Builder</h3>
             <Button variant="ghost" size="icon" className="text-white/80 hover:text-white hover:bg-white/20" onClick={() => setShowBidCardOnMap(false)}>
               <X className="h-4 w-4" />
             </Button>
