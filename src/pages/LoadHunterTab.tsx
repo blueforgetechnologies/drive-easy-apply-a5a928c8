@@ -3005,8 +3005,8 @@ export default function LoadHunterTab() {
                           </span>
                         )}
                         {hasFaultCodes && (
-                          <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`}>
-                            <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`} className="flex items-center">
+                            <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4 flex-shrink-0" />
                           </span>
                         )}
                       </div>
