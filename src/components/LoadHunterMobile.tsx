@@ -342,9 +342,9 @@ export default function LoadHunterMobile({
                             >
                               {unreviewedCount}
                             </div>
-                            {/* RED = Skipped */}
+                            {/* GRAY = Skipped */}
                             <div 
-                              className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-red-600"
+                              className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 text-[10px] font-medium cursor-pointer active:bg-gray-400"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('loads');
