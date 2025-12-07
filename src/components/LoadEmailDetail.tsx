@@ -1870,9 +1870,11 @@ const LoadEmailDetail = ({
                   </div>
 
                   {/* Bid Input and Button */}
-                  <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b">
-                    <div className="flex items-center gap-1 bg-blue-500 text-white rounded-full h-10 px-4 min-w-[100px]">
-                      <span className="text-lg font-bold">$</span>
+                  <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                    <div className="flex items-center flex-1 border rounded-full overflow-hidden bg-background">
+                      <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full m-0.5">
+                        <span className="text-lg font-bold text-white">$</span>
+                      </div>
                       <input
                         type="text"
                         value={bidAmount}
@@ -1881,19 +1883,19 @@ const LoadEmailDetail = ({
                           setBidAmount(val);
                         }}
                         placeholder={data.rate?.toString() || "3000"}
-                        className="bg-transparent border-none outline-none text-xl font-bold text-white w-20 placeholder:text-blue-200"
+                        className="flex-1 bg-transparent border-none outline-none text-base font-medium text-foreground px-3 placeholder:text-muted-foreground"
                       />
+                      <Button 
+                        onClick={() => {
+                          const finalBid = bidAmount || data.rate?.toString() || "3000";
+                          setBidAmount(finalBid);
+                          setShowBidCardOnMap(true);
+                        }}
+                        className="bg-green-500 hover:bg-green-600 h-8 px-4 text-sm font-semibold rounded-full m-1"
+                      >
+                        Set Bid
+                      </Button>
                     </div>
-                    <Button 
-                      onClick={() => {
-                        const finalBid = bidAmount || data.rate?.toString() || "3000";
-                        setBidAmount(finalBid);
-                        setShowBidCardOnMap(true);
-                      }}
-                      className="bg-green-600 hover:bg-green-700 h-9 px-6 text-sm font-semibold shadow-sm"
-                    >
-                      Set Bid
-                    </Button>
                   </div>
                 </div>
 
