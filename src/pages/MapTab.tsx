@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
-import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle } from 'lucide-react';
+import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle, Info } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ const MapTab = () => {
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
   const [mobileSheetExpanded, setMobileSheetExpanded] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [showLegend, setShowLegend] = useState(false);
   useEffect(() => {
     loadVehicles();
     
@@ -292,88 +293,96 @@ const MapTab = () => {
           const unitNumber = vehicle.vehicle_number || '?';
           const shortUnit = unitNumber.length > 4 ? unitNumber.slice(-4) : unitNumber;
           
-          // Status-based colors
-          let bgColor = '#10b981'; // Green for moving
+          // Status determination with clear categories
+          let bgColor = '#10b981'; // Green for driving
+          let borderColor = '#059669';
           let statusIcon = '';
-          let statusLabel = 'Moving';
-          let pulseAnimation = '';
+          let pulseRing = '';
           
-          if (hasFaultCodes || oilChangeDue) {
-            // Alert state - orange/amber
+          // Determine engine/ignition status
+          const isMoving = speed > 0;
+          const isIdling = speed === 0 && stoppedStatus === 'idling';
+          const isParked = speed === 0 && stoppedStatus !== 'idling';
+          
+          if (isMoving) {
+            // DRIVING - Green with animated arrow
+            bgColor = '#10b981';
+            borderColor = '#059669';
+            pulseRing = `
+              <circle cx="28" cy="24" r="20" fill="none" stroke="#10b981" stroke-width="3" opacity="0.4">
+                <animate attributeName="r" values="20;28;20" dur="1.5s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+            `;
+            // Arrow pointing up (motion)
+            statusIcon = `
+              <g transform="translate(20, 14)">
+                <polygon points="8,0 16,14 10,14 10,20 6,20 6,14 0,14" fill="${bgColor}"/>
+              </g>
+            `;
+          } else if (isIdling) {
+            // IDLING - Yellow/Amber with engine waves
             bgColor = '#f59e0b';
-            statusLabel = hasFaultCodes ? 'Alert' : 'Service Due';
-          }
-          
-          if (speed > 0) {
-            // Moving - animated pulse effect
+            borderColor = '#d97706';
+            // Engine/wave icon
             statusIcon = `
-              <path d="M26 20 L26 30 M26 20 L22 24 M26 20 L30 24" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-45 26 25)"/>
-            `;
-            pulseAnimation = `
-              <animate attributeName="r" values="22;26;22" dur="2s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
-            `;
-          } else if (stoppedStatus === 'stopped' || speed === 0) {
-            // Stopped - blue color with P icon
-            bgColor = '#3b82f6';
-            statusLabel = 'Parked';
-            statusIcon = `
-              <text x="26" y="30" font-size="12" font-weight="bold" fill="white" text-anchor="middle">P</text>
+              <g transform="translate(18, 16)">
+                <path d="M4,4 Q7,0 10,4 Q13,8 16,4" stroke="${bgColor}" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M4,12 Q7,8 10,12 Q13,16 16,12" stroke="${bgColor}" stroke-width="3" fill="none" stroke-linecap="round"/>
+              </g>
             `;
           } else {
-            // Idling - yellow with pause
-            bgColor = '#eab308';
-            statusLabel = 'Idle';
+            // PARKED (Engine Off) - Blue with P icon
+            bgColor = '#3b82f6';
+            borderColor = '#2563eb';
+            // Bold P icon
             statusIcon = `
-              <rect x="23" y="22" width="2" height="8" fill="white" rx="0.5"/>
-              <rect x="27" y="22" width="2" height="8" fill="white" rx="0.5"/>
+              <text x="28" y="31" font-size="20" font-weight="900" fill="${bgColor}" text-anchor="middle" font-family="system-ui, sans-serif">P</text>
             `;
           }
           
-          // Override color for alerts
-          if (hasFaultCodes) bgColor = '#ef4444'; // Red for fault codes
+          // Override for alerts - Red for fault codes
+          if (hasFaultCodes) {
+            bgColor = '#ef4444';
+            borderColor = '#dc2626';
+          } else if (oilChangeDue) {
+            // Orange for service due (only if no fault codes)
+            bgColor = '#f97316';
+            borderColor = '#ea580c';
+          }
           
           const markerHTML = `
-            <svg width="56" height="64" viewBox="0 0 56 64" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
-              <!-- Pulse ring for moving vehicles -->
-              ${speed > 0 ? `
-                <circle cx="28" cy="28" r="22" fill="none" stroke="${bgColor}" stroke-width="2" opacity="0.6">
-                  ${pulseAnimation}
-                </circle>
-              ` : ''}
+            <svg width="56" height="68" viewBox="0 0 56 68" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));">
+              <!-- Animated pulse ring for moving vehicles -->
+              ${pulseRing}
               
-              <!-- Main marker body -->
-              <path d="M28 58 L18 40 Q8 28 8 20 A20 20 0 1 1 48 20 Q48 28 38 40 Z" fill="${bgColor}" stroke="white" stroke-width="2"/>
+              <!-- Main pin shape -->
+              <path d="M28 62 L16 42 C6 30 6 16 16 8 C26 0 38 0 48 8 C58 16 58 30 48 42 Z" 
+                    fill="${bgColor}" stroke="${borderColor}" stroke-width="2"/>
               
-              <!-- Inner circle with truck icon -->
-              <circle cx="28" cy="22" r="14" fill="white" opacity="0.95"/>
+              <!-- Inner white circle -->
+              <circle cx="28" cy="24" r="16" fill="white"/>
               
-              <!-- Truck icon -->
-              <g transform="translate(18, 12)">
-                <path d="M2 13 L2 7 A1 1 0 0 1 3 6 L11 6 L14 10 L17 10 A1 1 0 0 1 18 11 L18 13" 
-                      fill="none" stroke="${bgColor}" stroke-width="1.5" stroke-linecap="round"/>
-                <circle cx="5" cy="14" r="2" fill="${bgColor}"/>
-                <circle cx="15" cy="14" r="2" fill="${bgColor}"/>
-              </g>
-              
-              <!-- Status indicator dot -->
+              <!-- Status icon -->
               ${statusIcon}
               
               <!-- Alert badge for fault codes -->
               ${hasFaultCodes ? `
-                <circle cx="42" cy="12" r="8" fill="#ef4444" stroke="white" stroke-width="2"/>
-                <text x="42" y="16" font-size="10" font-weight="bold" fill="white" text-anchor="middle">!</text>
+                <circle cx="44" cy="10" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
+                <text x="44" y="15" font-size="14" font-weight="900" fill="white" text-anchor="middle" font-family="system-ui">!</text>
               ` : ''}
               
-              <!-- Oil change badge -->
+              <!-- Service due badge -->
               ${oilChangeDue && !hasFaultCodes ? `
-                <circle cx="42" cy="12" r="8" fill="#f59e0b" stroke="white" stroke-width="2"/>
-                <text x="42" y="16" font-size="8" font-weight="bold" fill="white" text-anchor="middle">🔧</text>
+                <circle cx="44" cy="10" r="10" fill="#f97316" stroke="white" stroke-width="2"/>
+                <g transform="translate(38, 4)">
+                  <path d="M6,2 L6,8 M4,6 L8,6 M6,10 L6,12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </g>
               ` : ''}
               
-              <!-- Unit number label -->
-              <rect x="10" y="42" width="36" height="16" rx="8" fill="rgba(0,0,0,0.8)"/>
-              <text x="28" y="54" font-size="10" font-weight="bold" fill="white" text-anchor="middle" font-family="system-ui, sans-serif">${shortUnit}</text>
+              <!-- Unit number pill -->
+              <rect x="8" y="48" width="40" height="16" rx="8" fill="rgba(0,0,0,0.85)"/>
+              <text x="28" y="60" font-size="11" font-weight="700" fill="white" text-anchor="middle" font-family="system-ui, sans-serif">${shortUnit}</text>
             </svg>
           `;
           
@@ -382,17 +391,17 @@ const MapTab = () => {
           el.style.cssText = `
             cursor: pointer;
             width: 56px;
-            height: 64px;
+            height: 68px;
             transition: transform 0.2s ease;
           `;
           el.innerHTML = markerHTML;
           
           // Add hover effect
           el.addEventListener('mouseenter', () => {
-            el.style.transform = 'scale(1.15)';
+            el.style.transform = 'scale(1.15) translateY(-4px)';
           });
           el.addEventListener('mouseleave', () => {
-            el.style.transform = 'scale(1)';
+            el.style.transform = 'scale(1) translateY(0)';
           });
 
           const weatherHtml = weather ? `
@@ -525,9 +534,10 @@ const MapTab = () => {
   }, [vehicles, weatherCache]);
 
 
-  // Count vehicles with issues
+  // Count vehicles by status
   const movingCount = vehicles.filter(v => (v.speed || 0) > 0).length;
-  const stoppedCount = vehicles.filter(v => (v.speed || 0) === 0).length;
+  const idlingCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'idling').length;
+  const parkedCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'idling').length;
   const alertCount = vehicles.filter(v => 
     (v.oil_change_remaining !== null && v.oil_change_remaining <= 0) || 
     (v.fault_codes && Array.isArray(v.fault_codes) && v.fault_codes.length > 0)
@@ -544,17 +554,17 @@ const MapTab = () => {
     let statusText = '';
     
     if (speed > 0) {
-      statusIcon = <Navigation className="h-3 w-3" />;
+      statusIcon = <Navigation className="h-3 w-3 text-white" />;
       statusBg = 'bg-emerald-500';
-      statusText = 'Moving';
-    } else if (stoppedStatus === 'stopped' || speed === 0) {
-      statusIcon = <div className="w-2 h-2 rounded-sm bg-white" />;
-      statusBg = 'bg-red-500';
-      statusText = 'Stopped';
-    } else {
+      statusText = 'Driving';
+    } else if (stoppedStatus === 'idling') {
       statusIcon = <div className="flex gap-0.5"><div className="w-0.5 h-2 bg-white rounded" /><div className="w-0.5 h-2 bg-white rounded" /></div>;
       statusBg = 'bg-amber-500';
       statusText = 'Idling';
+    } else {
+      statusIcon = <span className="text-white font-bold text-[10px]">P</span>;
+      statusBg = 'bg-blue-500';
+      statusText = 'Parked';
     }
     
     const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
@@ -662,11 +672,15 @@ const MapTab = () => {
           <div className="flex gap-2 mt-3">
             <div className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 text-center">
               <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{movingCount}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Moving</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Driving</div>
             </div>
-            <div className="flex-1 px-3 py-2 rounded-lg bg-red-500/10 text-center">
-              <div className="text-lg font-bold text-red-600 dark:text-red-400">{stoppedCount}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Stopped</div>
+            <div className="flex-1 px-3 py-2 rounded-lg bg-amber-500/10 text-center">
+              <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{idlingCount}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Idling</div>
+            </div>
+            <div className="flex-1 px-3 py-2 rounded-lg bg-blue-500/10 text-center">
+              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{parkedCount}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Parked</div>
             </div>
             {alertCount > 0 && (
               <div className="flex-1 px-3 py-2 rounded-lg bg-destructive/10 text-center">
@@ -727,8 +741,13 @@ const MapTab = () => {
               </div>
               <div className="w-px h-4 bg-border" />
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                <span className="text-xs font-medium">{stoppedCount}</span>
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-xs font-medium">{idlingCount}</span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-xs font-medium">{parkedCount}</span>
               </div>
               {alertCount > 0 && (
                 <>
@@ -772,6 +791,93 @@ const MapTab = () => {
               {!isMobile && <span className="ml-2">Weather</span>}
             </Button>
           </div>
+        </div>
+        
+        {/* Legend Button & Panel */}
+        <div className={`absolute z-10 ${isMobile ? 'bottom-32 left-4' : 'bottom-4 left-4'}`}>
+          <Button
+            onClick={() => setShowLegend(!showLegend)}
+            size="sm"
+            variant="secondary"
+            className="shadow-lg backdrop-blur-sm bg-background/90 hover:bg-background"
+          >
+            <Info className="h-4 w-4" />
+            {!isMobile && <span className="ml-2">Legend</span>}
+          </Button>
+          
+          {showLegend && (
+            <div className="absolute bottom-12 left-0 bg-background/95 backdrop-blur-xl border rounded-xl shadow-xl p-4 min-w-[200px] animate-in slide-in-from-bottom-2">
+              <h4 className="font-semibold text-sm mb-3 text-foreground">Vehicle Status</h4>
+              <div className="space-y-2.5">
+                {/* Driving */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="white">
+                      <polygon points="10,2 18,16 12,16 12,18 8,18 8,16 2,16"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Driving</div>
+                    <div className="text-xs text-muted-foreground">Engine on, moving</div>
+                  </div>
+                </div>
+                
+                {/* Idling */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shadow-sm">
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                      <path d="M2,3 Q5,0 8,3 Q11,6 14,3"/>
+                      <path d="M2,9 Q5,6 8,9 Q11,12 14,9"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Idling</div>
+                    <div className="text-xs text-muted-foreground">Engine on, stationary</div>
+                  </div>
+                </div>
+                
+                {/* Parked */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
+                    <span className="text-white font-bold text-sm">P</span>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Parked</div>
+                    <div className="text-xs text-muted-foreground">Engine off</div>
+                  </div>
+                </div>
+                
+                <div className="border-t pt-2.5 mt-2.5">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Alerts</div>
+                  
+                  {/* Fault */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shadow-sm relative">
+                      <span className="text-white font-bold text-sm">!</span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Fault Code</div>
+                      <div className="text-xs text-muted-foreground">Check engine light</div>
+                    </div>
+                  </div>
+                  
+                  {/* Service */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shadow-sm">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                        <path d="M6,2 L6,6 M4,5 L8,5"/>
+                        <circle cx="6" cy="9" r="1" fill="white"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Service Due</div>
+                      <div className="text-xs text-muted-foreground">Oil change needed</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Mobile: Sync button */}
