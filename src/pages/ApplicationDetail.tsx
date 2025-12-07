@@ -563,7 +563,38 @@ export default function ApplicationDetail() {
 
             {/* Driver Notes */}
             <div className="space-y-2">
-              <Label className="text-primary">Driver Notes</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-primary">Driver Notes</Label>
+                <div className="flex gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => updateField('vehicle_note', '')}
+                  >
+                    Clear
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from("applications")
+                          .update({ vehicle_note: formData.vehicle_note })
+                          .eq("id", id);
+                        if (error) throw error;
+                        toast.success("Driver notes saved");
+                      } catch (error: any) {
+                        toast.error("Failed to save notes: " + error.message);
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
               <Textarea 
                 value={formData.vehicle_note || ''} 
                 onChange={(e) => updateField('vehicle_note', e.target.value)}
