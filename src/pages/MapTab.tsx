@@ -484,7 +484,11 @@ const MapTab = () => {
             </div>
           `);
 
-          const marker = new mapboxgl.Marker(el)
+          const marker = new mapboxgl.Marker({
+            element: el,
+            anchor: 'bottom', // Anchor at bottom tip of pin
+            offset: [0, 0]
+          })
             .setLngLat([lng, lat])
             .setPopup(popup)
             .addTo(map.current!);
