@@ -12,6 +12,7 @@ import {
   SkipForward, AlertTriangle, Volume2, VolumeX, List
 } from "lucide-react";
 import oilChangeIcon from '@/assets/oil-change-icon.png';
+import checkEngineIcon from '@/assets/check-engine-icon.png';
 
 interface Vehicle {
   id: string;
@@ -289,7 +290,7 @@ export default function LoadHunterMobile({
                               )}
                               {hasFaultCodes && (
                                 <span title={`${vehicle.fault_codes?.length || 0} fault code(s)`}>
-                                  <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                                  <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5" />
                                 </span>
                               )}
                             </div>
