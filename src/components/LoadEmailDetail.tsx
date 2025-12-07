@@ -1549,7 +1549,7 @@ const LoadEmailDetail = ({
               <span>Quote Rate</span>
               <span>$/mi</span>
             </div>
-            <div className="space-y-px max-h-[700px] overflow-auto scrollbar-thin">
+            <div className="space-y-0 max-h-[420px] overflow-auto scrollbar-thin">
               {(() => {
                 const loadedMiles = data.loaded_miles || 375;
                 const rates = [];
@@ -1563,10 +1563,10 @@ const LoadEmailDetail = ({
                     <div
                       key={rate}
                       onClick={() => setBidAmount(rate.toString())}
-                      className={`flex justify-between items-center px-2 py-1 rounded-md cursor-pointer transition-all duration-150 ${
+                      className={`flex justify-between items-center px-2 py-0.5 rounded cursor-pointer transition-all duration-150 ${
                         isSelected 
                           ? "bg-blue-500 text-white shadow-sm" 
-                          : "hover:bg-slate-100 text-slate-700"
+                          : "hover:bg-blue-100 hover:scale-[1.02] text-slate-700"
                       }`}
                     >
                       <span className={`text-[12px] font-semibold ${isSelected ? 'text-white' : 'text-slate-800'}`}>
