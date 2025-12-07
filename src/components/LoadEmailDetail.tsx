@@ -1549,7 +1549,7 @@ const LoadEmailDetail = ({
               <span>Quote Rate</span>
               <span>$/mi</span>
             </div>
-            <div className="space-y-0 max-h-[550px] overflow-auto scrollbar-thin">
+            <div className="space-y-0 max-h-[620px] overflow-auto scrollbar-thin">
               {(() => {
                 const loadedMiles = data.loaded_miles || 375;
                 const rates = [];
