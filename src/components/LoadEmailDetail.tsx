@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft } from "lucide-react";
+import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
@@ -1508,18 +1509,23 @@ const LoadEmailDetail = ({
                         
                         {/* Selectable & Editable Templates */}
                         <div className="space-y-2 mt-2">
-                          <p className="text-xs text-muted-foreground">Click to select templates to include in email. Double-click to edit.</p>
+                          <p className="text-xs text-muted-foreground font-medium">☑ Click to select templates to include in email. Double-click to edit.</p>
                           
                           {/* Nearby Template */}
                           <div 
-                            className={`p-2 rounded cursor-pointer border-2 transition-colors ${
+                            className={`p-2 rounded cursor-pointer border-2 transition-all flex items-start gap-2 ${
                               selectedTemplates.nearby 
-                                ? 'bg-blue-100 border-blue-500' 
-                                : 'bg-slate-50 border-transparent hover:border-slate-300'
+                                ? 'bg-blue-50 border-blue-500 shadow-sm' 
+                                : 'bg-slate-50 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
                             }`}
                             onClick={() => handleTemplateToggle('nearby')}
                             onDoubleClick={() => setEditingTemplate('nearby')}
                           >
+                            <div className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                              selectedTemplates.nearby ? 'bg-blue-500 border-blue-500' : 'border-slate-300 bg-white'
+                            }`}>
+                              {selectedTemplates.nearby && <Check className="w-3 h-3 text-white" />}
+                            </div>
                             {editingTemplate === 'nearby' ? (
                               <textarea
                                 className="w-full text-sm bg-white border rounded p-1 min-h-[60px]"
@@ -1530,20 +1536,25 @@ const LoadEmailDetail = ({
                                 autoFocus
                               />
                             ) : (
-                              <p className="text-sm">{getRenderedTemplate('nearby')}</p>
+                              <p className="text-sm flex-1">{getRenderedTemplate('nearby')}</p>
                             )}
                           </div>
                           
                           {/* Driver Template */}
                           <div 
-                            className={`p-2 rounded cursor-pointer border-2 transition-colors ${
+                            className={`p-2 rounded cursor-pointer border-2 transition-all flex items-start gap-2 ${
                               selectedTemplates.driver 
-                                ? 'bg-blue-100 border-blue-500' 
-                                : 'bg-slate-50 border-transparent hover:border-slate-300'
+                                ? 'bg-blue-50 border-blue-500 shadow-sm' 
+                                : 'bg-slate-50 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
                             }`}
                             onClick={() => handleTemplateToggle('driver')}
                             onDoubleClick={() => setEditingTemplate('driver')}
                           >
+                            <div className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                              selectedTemplates.driver ? 'bg-blue-500 border-blue-500' : 'border-slate-300 bg-white'
+                            }`}>
+                              {selectedTemplates.driver && <Check className="w-3 h-3 text-white" />}
+                            </div>
                             {editingTemplate === 'driver' ? (
                               <textarea
                                 className="w-full text-sm bg-white border rounded p-1 min-h-[60px]"
@@ -1554,20 +1565,25 @@ const LoadEmailDetail = ({
                                 autoFocus
                               />
                             ) : (
-                              <p className="text-sm">{getRenderedTemplate('driver')}</p>
+                              <p className="text-sm flex-1">{getRenderedTemplate('driver')}</p>
                             )}
                           </div>
                           
                           {/* Fuel Template */}
                           <div 
-                            className={`p-2 rounded cursor-pointer border-2 transition-colors ${
+                            className={`p-2 rounded cursor-pointer border-2 transition-all flex items-start gap-2 ${
                               selectedTemplates.fuel 
-                                ? 'bg-blue-100 border-blue-500' 
-                                : 'bg-slate-50 border-transparent hover:border-slate-300'
+                                ? 'bg-blue-50 border-blue-500 shadow-sm' 
+                                : 'bg-slate-50 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
                             }`}
                             onClick={() => handleTemplateToggle('fuel')}
                             onDoubleClick={() => setEditingTemplate('fuel')}
                           >
+                            <div className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                              selectedTemplates.fuel ? 'bg-blue-500 border-blue-500' : 'border-slate-300 bg-white'
+                            }`}>
+                              {selectedTemplates.fuel && <Check className="w-3 h-3 text-white" />}
+                            </div>
                             {editingTemplate === 'fuel' ? (
                               <textarea
                                 className="w-full text-sm bg-white border rounded p-1 min-h-[60px]"
@@ -1578,7 +1594,7 @@ const LoadEmailDetail = ({
                                 autoFocus
                               />
                             ) : (
-                              <p className="text-sm">{getRenderedTemplate('fuel')}</p>
+                              <p className="text-sm flex-1">{getRenderedTemplate('fuel')}</p>
                             )}
                           </div>
                         </div>
