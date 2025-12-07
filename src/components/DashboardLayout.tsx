@@ -287,20 +287,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1700px] px-3 sm:px-4 py-3 sm:py-4 pb-20 md:pb-4">
+      <main className="mx-auto max-w-[1700px] px-3 sm:px-4 py-3 sm:py-4">
         {children}
       </main>
 
       {/* Mapbox Usage Alert - checks on login */}
       <MapboxUsageAlert />
-
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
-        <MobileNav 
-          alertCount={alertCount} 
-          integrationAlertCount={integrationAlertCount}
-        />
-      )}
     </div>
   );
 }
