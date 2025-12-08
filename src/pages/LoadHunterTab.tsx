@@ -4186,22 +4186,22 @@ export default function LoadHunterTab() {
                           </TableHead>
                           {showIdColumns && (
                             <>
-                              <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
-                              <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
-                              <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
+                              <TableHead className="w-[80px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
+                              <TableHead className="w-[110px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
+                              <TableHead className="w-[100px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
                             </>
                           )}
-                          <TableHead className="w-[160px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
-                          <TableHead className="w-[110px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
-                          <TableHead className="w-[100px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
-                          <TableHead className="w-[120px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
-                          <TableHead className="w-[150px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
-                          <TableHead className="w-[130px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Empty Drive<br/>Loaded Drive</TableHead>
-                          <TableHead className="w-[130px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
-                          <TableHead className="w-[120px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Pieces<br/>Dimensions</TableHead>
-                          <TableHead className="w-[70px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Avail ft</TableHead>
-                          <TableHead className="w-[80px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Source</TableHead>
-                          <TableHead className="w-[90px] py-0 text-[12px] leading-[1.1] text-blue-600 font-semibold">Actions</TableHead>
+                          <TableHead className="w-[160px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
+                          <TableHead className="w-[110px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
+                          <TableHead className="w-[100px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
+                          <TableHead className="w-[120px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
+                          <TableHead className="w-[150px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
+                          <TableHead className="w-[130px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Empty Drive<br/>Loaded Drive</TableHead>
+                          <TableHead className="w-[130px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
+                          <TableHead className="w-[120px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Pieces<br/>Dimensions</TableHead>
+                          <TableHead className="w-[70px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Avail ft</TableHead>
+                          <TableHead className="w-[80px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Source</TableHead>
+                          <TableHead className="w-[90px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -4444,19 +4444,19 @@ export default function LoadHunterTab() {
                                 <>
                                   {/* Order Number from Sylectus */}
                                   <TableCell className="py-1">
-                                    <div className="text-[11px] font-semibold leading-tight whitespace-nowrap">
+                                    <div className="text-[13px] font-semibold leading-tight whitespace-nowrap">
                                       {data.order_number ? `#${data.order_number}` : '—'}
                                     </div>
                                   </TableCell>
                                   {/* Our internal Load ID */}
                                   <TableCell className="py-1">
-                                    <div className="text-[11px] font-mono leading-tight whitespace-nowrap">
+                                    <div className="text-[13px] font-mono leading-tight whitespace-nowrap">
                                       {email.load_id || '—'}
                                     </div>
                                   </TableCell>
                                   {/* Load Hunt Match ID (dev only) */}
                                   <TableCell className="py-1">
-                                    <div className="text-[10px] font-mono text-muted-foreground leading-tight whitespace-nowrap">
+                                    <div className="text-[12px] font-mono text-muted-foreground leading-tight whitespace-nowrap">
                                       {activeFilter === 'unreviewed' && match ? (match as any).id.substring(0, 8) : '—'}
                                     </div>
                                   </TableCell>
@@ -4475,10 +4475,10 @@ export default function LoadHunterTab() {
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                       return (
                                         <div>
-                                          <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
+                                          <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                             {vehicle.vehicle_number || "N/A"} - {driverName}
                                           </div>
-                                          <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                          <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
                                             {carrierName}
                                           </div>
                                         </div>
@@ -4498,10 +4498,10 @@ export default function LoadHunterTab() {
                                         const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                         return (
                                           <div>
-                                            <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
+                                            <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                               {vehicle.vehicle_number || "N/A"} - {driverName}
                                             </div>
-                                            <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                            <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
                                               {carrierName}
                                             </div>
                                           </div>
@@ -4513,8 +4513,8 @@ export default function LoadHunterTab() {
                                   // Show Available if no match, with broker info
                                   return (
                                     <div>
-                                      <div className="text-[11px] font-medium leading-tight whitespace-nowrap">Available</div>
-                                      <div className="text-[10px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                      <div className="text-[13px] font-medium leading-tight whitespace-nowrap">Available</div>
+                                      <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
                                         Broker: {brokerName}
                                       </div>
                                     </div>
@@ -4523,10 +4523,10 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1 whitespace-nowrap">
-                                  <Badge variant="outline" className="h-4 px-1 text-[10px] flex-shrink-0">
+                                  <Badge variant="outline" className="h-4 px-1 text-[11px] flex-shrink-0">
                                     {email.status === 'new' ? '🟡' : '🟢'}
                                   </Badge>
-                                  <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
+                                  <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                     {(() => {
                                       const customerName = data.customer || email.from_name || 'Unknown';
                                       return customerName.length > 22 ? customerName.slice(0, 22) + '...' : customerName;
@@ -4536,33 +4536,33 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[11px] leading-tight whitespace-nowrap font-medium">{exactReceived}</span>
+                                  <span className="text-[13px] leading-tight whitespace-nowrap font-medium">{exactReceived}</span>
                                   {isNewlyProcessed && (
-                                    <Badge variant="default" className="h-4 px-1 text-[9px] bg-green-500 hover:bg-green-500">NEW</Badge>
+                                    <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500">NEW</Badge>
                                   )}
                                 </div>
-                                <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
+                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">
                                   Expires: {email.expires_at ? new Date(email.expires_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '—'} ({expiresIn})
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">
+                                <div className="text-[13px] leading-tight whitespace-nowrap">
                                   {pickupDisplay}
                                 </div>
-                                <div className="text-[11px] leading-tight whitespace-nowrap">
+                                <div className="text-[13px] leading-tight whitespace-nowrap">
                                   {deliveryDisplay}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] font-medium leading-tight whitespace-nowrap">
+                                <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                   {data.origin_city || '—'}, {data.origin_state || '—'}
                                 </div>
-                                <div className="text-[11px] leading-tight whitespace-nowrap">
+                                <div className="text-[13px] leading-tight whitespace-nowrap">
                                   {data.destination_city || '—'}, {data.destination_state || '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">
+                                <div className="text-[13px] leading-tight whitespace-nowrap">
                                   {(() => {
                                     // First check match distance (for unreviewed view data)
                                     if (match && (match as any).distance_miles != null) {
@@ -4579,23 +4579,23 @@ export default function LoadHunterTab() {
                                     return '—';
                                   })()}
                                 </div>
-                                <div className="text-[11px] leading-tight whitespace-nowrap">
+                                <div className="text-[13px] leading-tight whitespace-nowrap">
                                   {data.loaded_miles ? `${data.loaded_miles} mi` : '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.vehicle_type || '—'}</div>
-                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.weight ? `${data.weight} lbs` : '—'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.vehicle_type || '—'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.weight ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">{data?.pieces ?? '—'}</div>
-                                <div className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions ?? 'Not Specified'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces ?? '—'}</div>
+                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions ?? 'Not Specified'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[11px] leading-tight whitespace-nowrap">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                                <Badge variant="secondary" className="text-[12px] h-4 px-1.5">
                                   {email.from_email.includes('@') ? email.from_email.split('@')[1].split('.')[0] : 'Email'}
                                 </Badge>
                               </TableCell>
