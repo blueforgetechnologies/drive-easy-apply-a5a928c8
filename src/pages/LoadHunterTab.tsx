@@ -4191,7 +4191,9 @@ export default function LoadHunterTab() {
                               <TableHead className="w-[100px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
                             </>
                           )}
-                          <TableHead className="w-[160px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
+                          {(activeFilter !== 'all' || showIdColumns) && (
+                            <TableHead className="w-[160px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
+                          )}
                           <TableHead className="w-[110px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[100px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
                           <TableHead className="w-[120px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
@@ -4462,6 +4464,7 @@ export default function LoadHunterTab() {
                                   </TableCell>
                                 </>
                               )}
+                              {(activeFilter !== 'all' || showIdColumns) && (
                               <TableCell className="py-1">
                                 {(() => {
                                   // Get broker info from parsed data
@@ -4521,6 +4524,7 @@ export default function LoadHunterTab() {
                                   );
                                 })()}
                               </TableCell>
+                              )}
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1 whitespace-nowrap">
                                   <Badge variant="outline" className="h-4 px-1 text-[11px] flex-shrink-0">
