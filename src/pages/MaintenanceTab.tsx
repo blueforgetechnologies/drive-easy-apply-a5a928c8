@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw } from "lucide-react";
+import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import checkEngineIcon from '@/assets/check-engine-icon.png';
+import { getDTCInfo, getDTCLookupUrl, getSeverityColor, parseDTCCode } from "@/lib/dtc-lookup";
 
 interface VehicleBasic {
   id: string;
@@ -602,21 +604,87 @@ export default function MaintenanceTab() {
                           
                           {selectedFaults.length > 0 ? (
                             <div className="space-y-2">
-                              {selectedFaults.map((code, index) => (
-                                <div 
-                                  key={index}
-                                  className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg"
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                      <p className="font-mono text-sm font-medium text-red-700 dark:text-red-400">
-                                        {code}
-                                      </p>
+                              {selectedFaults.map((code, index) => {
+                                const dtcInfo = getDTCInfo(code);
+                                const parsed = parseDTCCode(code);
+                                const colors = dtcInfo ? getSeverityColor(dtcInfo.severity) : getSeverityColor('warning');
+                                const lookupUrl = parsed.spn ? getDTCLookupUrl(parsed.spn, parsed.fmi ?? undefined) : null;
+                                
+                                return (
+                                  <Collapsible key={index}>
+                                    <div className={`p-3 ${colors.bg} border ${colors.border} rounded-lg`}>
+                                      <CollapsibleTrigger className="w-full">
+                                        <div className="flex items-start gap-2">
+                                          <AlertTriangle className={`h-4 w-4 ${colors.text} mt-0.5 flex-shrink-0`} />
+                                          <div className="flex-1 text-left">
+                                            <div className="flex items-center justify-between">
+                                              <p className={`font-mono text-sm font-medium ${colors.text}`}>
+                                                {code}
+                                              </p>
+                                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                            </div>
+                                            {dtcInfo && (
+                                              <p className="text-xs text-muted-foreground mt-1">
+                                                {dtcInfo.component} - Click for details
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </CollapsibleTrigger>
+                                      
+                                      <CollapsibleContent className="mt-3 pt-3 border-t border-current/10">
+                                        <div className="space-y-2 text-sm">
+                                          {dtcInfo && (
+                                            <>
+                                              <div>
+                                                <span className="font-medium">Component:</span>{" "}
+                                                <span className="text-muted-foreground">{dtcInfo.component}</span>
+                                              </div>
+                                              <div>
+                                                <span className="font-medium">Description:</span>{" "}
+                                                <span className="text-muted-foreground">{dtcInfo.description}</span>
+                                              </div>
+                                              {dtcInfo.possibleCauses && dtcInfo.possibleCauses.length > 0 && (
+                                                <div>
+                                                  <span className="font-medium">Failure Mode:</span>{" "}
+                                                  <span className="text-muted-foreground">{dtcInfo.possibleCauses[0]}</span>
+                                                </div>
+                                              )}
+                                              <div>
+                                                <span className="font-medium">Severity:</span>{" "}
+                                                <Badge 
+                                                  variant={dtcInfo.severity === 'critical' ? 'destructive' : dtcInfo.severity === 'warning' ? 'secondary' : 'outline'}
+                                                  className="ml-1 text-xs"
+                                                >
+                                                  {dtcInfo.severity.toUpperCase()}
+                                                </Badge>
+                                              </div>
+                                              {dtcInfo.recommendedAction && (
+                                                <div className="p-2 bg-background/50 rounded text-xs">
+                                                  <span className="font-medium">Recommended Action:</span>{" "}
+                                                  {dtcInfo.recommendedAction}
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                          
+                                          {lookupUrl && (
+                                            <a
+                                              href={lookupUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                                            >
+                                              <ExternalLink className="h-3 w-3" />
+                                              Look up full diagnostic details
+                                            </a>
+                                          )}
+                                        </div>
+                                      </CollapsibleContent>
                                     </div>
-                                  </div>
-                                </div>
-                              ))}
+                                  </Collapsible>
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="p-8 text-center bg-muted/30 rounded-lg">
