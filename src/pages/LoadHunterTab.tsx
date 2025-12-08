@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
+import { DispatcherMetricsView } from "@/components/DispatcherMetricsView";
 import { UserActivityTracker } from "@/components/UserActivityTracker";
 import LoadHunterMobile from "@/components/LoadHunterMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -3959,6 +3960,9 @@ export default function LoadHunterTab() {
             onBack={() => setActiveFilter('unreviewed')}
             onRefresh={refreshVehicleData}
           />
+        ) : activeFilter === 'dispatcher-metrix' ? (
+          /* Dispatcher Metrics View */
+          <DispatcherMetricsView dispatchers={[]} />
         ) : activeFilter === 'issues' ? (
           /* Issues View - Special table showing issue details */
           <div className="flex-1 overflow-y-auto flex flex-col">
