@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
-import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle, Info } from 'lucide-react';
+import { useVehicleHistory, LocationPoint } from '@/hooks/useVehicleHistory';
+import { VehicleHistoryControls } from '@/components/VehicleHistoryControls';
+import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle, Info, History } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+
 const MapTab = () => {
   useMapLoadTracker('MapTab');
   const isMobile = useIsMobile();
@@ -22,9 +25,14 @@ const MapTab = () => {
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
   const [showWeatherLayer, setShowWeatherLayer] = useState(false);
   const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; popup: mapboxgl.Popup }>>(new Map());
+  const historyMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [mobileSheetExpanded, setMobileSheetExpanded] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [showLegend, setShowLegend] = useState(false);
+  const [historyMode, setHistoryMode] = useState(false);
+  
+  // Vehicle history hook
+  const vehicleHistory = useVehicleHistory();
   useEffect(() => {
     loadVehicles();
     
@@ -140,12 +148,144 @@ const MapTab = () => {
 
     return () => {
       markersRef.current.forEach(({ marker }) => marker.remove());
+      historyMarkersRef.current.forEach(marker => marker.remove());
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
   }, []);
+
+  // Draw history trail on map
+  const drawHistoryTrail = useCallback((points: LocationPoint[]) => {
+    if (!map.current) return;
+
+    // Clear existing history markers and line
+    historyMarkersRef.current.forEach(marker => marker.remove());
+    historyMarkersRef.current = [];
+
+    if (map.current.getLayer('history-line')) {
+      map.current.removeLayer('history-line');
+    }
+    if (map.current.getSource('history-line')) {
+      map.current.removeSource('history-line');
+    }
+
+    if (points.length === 0) return;
+
+    // Create line coordinates
+    const coordinates = points.map(p => [p.longitude, p.latitude]);
+
+    // Add the line source and layer
+    map.current.addSource('history-line', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates,
+        },
+      },
+    });
+
+    map.current.addLayer({
+      id: 'history-line',
+      type: 'line',
+      source: 'history-line',
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
+      paint: {
+        'line-color': '#3b82f6',
+        'line-width': 4,
+        'line-opacity': 0.8,
+      },
+    });
+
+    // Add markers for start/end points
+    if (points.length > 0) {
+      // Start marker (green)
+      const startPoint = points[0];
+      const startEl = document.createElement('div');
+      startEl.innerHTML = `
+        <div class="flex items-center justify-center w-6 h-6 bg-emerald-500 rounded-full border-2 border-white shadow-lg">
+          <span class="text-white text-xs font-bold">S</span>
+        </div>
+      `;
+      const startMarker = new mapboxgl.Marker({ element: startEl, anchor: 'center' })
+        .setLngLat([startPoint.longitude, startPoint.latitude])
+        .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`
+          <div class="p-2 text-xs">
+            <div class="font-semibold">Start</div>
+            <div class="text-muted-foreground">${new Date(startPoint.recorded_at).toLocaleTimeString()}</div>
+            ${startPoint.speed ? `<div>${startPoint.speed} mph</div>` : ''}
+          </div>
+        `))
+        .addTo(map.current!);
+      historyMarkersRef.current.push(startMarker);
+
+      // End marker (red) - if different from start
+      if (points.length > 1) {
+        const endPoint = points[points.length - 1];
+        const endEl = document.createElement('div');
+        endEl.innerHTML = `
+          <div class="flex items-center justify-center w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg">
+            <span class="text-white text-xs font-bold">E</span>
+          </div>
+        `;
+        const endMarker = new mapboxgl.Marker({ element: endEl, anchor: 'center' })
+          .setLngLat([endPoint.longitude, endPoint.latitude])
+          .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`
+            <div class="p-2 text-xs">
+              <div class="font-semibold">End</div>
+              <div class="text-muted-foreground">${new Date(endPoint.recorded_at).toLocaleTimeString()}</div>
+              ${endPoint.speed ? `<div>${endPoint.speed} mph</div>` : ''}
+            </div>
+          `))
+          .addTo(map.current!);
+        historyMarkersRef.current.push(endMarker);
+      }
+
+      // Fit bounds to show all points
+      const bounds = new mapboxgl.LngLatBounds();
+      points.forEach(p => bounds.extend([p.longitude, p.latitude]));
+      map.current.fitBounds(bounds, { padding: 60, maxZoom: 14 });
+    }
+  }, []);
+
+  // Effect to draw history when points change
+  useEffect(() => {
+    if (historyMode && vehicleHistory.points.length > 0) {
+      drawHistoryTrail(vehicleHistory.points);
+    }
+  }, [historyMode, vehicleHistory.points, drawHistoryTrail]);
+
+  // Clear history trail when exiting history mode
+  const exitHistoryMode = useCallback(() => {
+    setHistoryMode(false);
+    vehicleHistory.clearHistory();
+    
+    // Clear history visualization
+    historyMarkersRef.current.forEach(marker => marker.remove());
+    historyMarkersRef.current = [];
+    
+    if (map.current) {
+      if (map.current.getLayer('history-line')) {
+        map.current.removeLayer('history-line');
+      }
+      if (map.current.getSource('history-line')) {
+        map.current.removeSource('history-line');
+      }
+    }
+  }, [vehicleHistory]);
+
+  // Enter history mode for a vehicle
+  const enterHistoryMode = useCallback((vehicleId: string) => {
+    setHistoryMode(true);
+    vehicleHistory.setSelectedVehicle(vehicleId);
+  }, [vehicleHistory]);
 
   useEffect(() => {
     if (!map.current) return;
@@ -570,9 +710,8 @@ const MapTab = () => {
     return (
       <div
         key={vehicle.id}
-        onClick={() => handleVehicleClick(vehicle.id)}
         className={`
-          group relative p-3 rounded-xl cursor-pointer transition-all duration-200 
+          group relative p-3 rounded-xl transition-all duration-200 
           ${isSelected 
             ? 'bg-primary/10 border-primary/30 shadow-md ring-1 ring-primary/20' 
             : 'bg-card/50 hover:bg-card/80 border-border/50 hover:border-border hover:shadow-sm'
@@ -581,7 +720,10 @@ const MapTab = () => {
           ${hasAlert ? 'border-l-2 border-l-destructive' : ''}
         `}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div 
+          className="flex items-start justify-between gap-3 cursor-pointer"
+          onClick={() => handleVehicleClick(vehicle.id)}
+        >
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Status indicator */}
             <div className={`
@@ -623,9 +765,9 @@ const MapTab = () => {
           </div>
         </div>
         
-        {/* Alert icons row */}
-        {hasAlert && (
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+        {/* Action row with history button */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-2">
             {oilChangeDue && (
               <div className="flex items-center gap-1.5 text-xs text-destructive">
                 <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
@@ -635,14 +777,31 @@ const MapTab = () => {
             {hasFaultCodes && (
               <div className="flex items-center gap-1.5 text-xs text-destructive">
                 <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
-                <span>{vehicle.fault_codes.length} fault code{vehicle.fault_codes.length > 1 ? 's' : ''}</span>
+                <span>{vehicle.fault_codes.length} fault{vehicle.fault_codes.length > 1 ? 's' : ''}</span>
               </div>
             )}
           </div>
-        )}
+          
+          {/* History button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              enterHistoryMode(vehicle.id);
+            }}
+          >
+            <History className="h-3.5 w-3.5" />
+            History
+          </Button>
+        </div>
       </div>
     );
   };
+
+  // Get selected vehicle name for history controls
+  const selectedVehicleForHistory = vehicles.find(v => v.id === vehicleHistory.selectedVehicleId);
 
   return (
     <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-120px)] relative flex flex-col md:flex-row md:gap-4">
@@ -725,6 +884,19 @@ const MapTab = () => {
       {/* Map container - full width on mobile */}
       <div className="relative flex-1 h-full">
         <div ref={mapContainer} className="absolute inset-0 md:rounded-2xl" />
+        
+        {/* History mode controls */}
+        <VehicleHistoryControls
+          isActive={historyMode}
+          selectedDate={vehicleHistory.selectedDate}
+          selectedVehicleName={selectedVehicleForHistory?.vehicle_number || null}
+          pointsCount={vehicleHistory.points.length}
+          loading={vehicleHistory.loading}
+          onPreviousDay={vehicleHistory.goToPreviousDay}
+          onNextDay={vehicleHistory.goToNextDay}
+          onDateSelect={vehicleHistory.setSelectedDate}
+          onClose={exitHistoryMode}
+        />
         
         {/* Map controls - repositioned for mobile */}
         <div className={`absolute z-10 flex gap-2 ${isMobile ? 'top-4 left-4' : 'top-4 right-4 flex-col'}`}>

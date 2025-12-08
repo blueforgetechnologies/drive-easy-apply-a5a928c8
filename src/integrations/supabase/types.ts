@@ -2499,6 +2499,50 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_location_history: {
+        Row: {
+          created_at: string
+          heading: number | null
+          id: string
+          latitude: number
+          longitude: number
+          odometer: number | null
+          recorded_at: string
+          speed: number | null
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          heading?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          odometer?: number | null
+          recorded_at?: string
+          speed?: number | null
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          heading?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          odometer?: number | null
+          recorded_at?: string
+          speed?: number | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_location_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           air_ride: boolean | null
