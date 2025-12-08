@@ -1719,7 +1719,8 @@ export default function LoadHunterTab() {
   // Track dispatcher action in match_action_history
   const trackDispatcherAction = async (matchId: string, actionType: string, actionDetails?: any) => {
     try {
-      await supabase.from('match_action_history').insert({
+      console.log('📊 Tracking action:', actionType, 'for match:', matchId, 'dispatcher:', currentDispatcherInfo?.email);
+      const { error } = await supabase.from('match_action_history').insert({
         match_id: matchId,
         dispatcher_id: currentDispatcherInfo?.id || null,
         dispatcher_name: currentDispatcherInfo ? `${currentDispatcherInfo.first_name} ${currentDispatcherInfo.last_name}` : null,
@@ -1727,6 +1728,11 @@ export default function LoadHunterTab() {
         action_type: actionType,
         action_details: actionDetails || null
       });
+      if (error) {
+        console.error('❌ Error inserting action history:', error);
+      } else {
+        console.log('✅ Action tracked successfully:', actionType);
+      }
     } catch (e) {
       console.error('Error tracking dispatcher action:', e);
     }
