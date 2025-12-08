@@ -83,3 +83,9 @@ verify_jwt = true
 
 [functions.send-dispatcher-login]
 verify_jwt = true
+
+[functions.capture-vehicle-locations]
+verify_jwt = false
+
+[functions.send-user-login]
+verify_jwt = true
