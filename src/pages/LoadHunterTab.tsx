@@ -2692,18 +2692,18 @@ export default function LoadHunterTab() {
             <Button 
               size="sm" 
               variant={activeMode === 'admin' ? 'default' : 'ghost'}
-              className="h-6 px-2 text-[11px] rounded-none border-0"
+              className="h-7 px-2.5 text-[12px] rounded-none border-0"
               onClick={() => setActiveMode('admin')}
             >
               Admin
             </Button>
             
-            <div className="w-px h-4 bg-border"></div>
+            <div className="w-px h-5 bg-border"></div>
             
             <Button 
               size="sm" 
               variant={activeMode === 'dispatch' ? 'default' : 'ghost'}
-              className="h-6 px-2 text-[11px] rounded-none border-0"
+              className="h-7 px-2.5 text-[12px] rounded-none border-0"
               onClick={() => setActiveMode('dispatch')}
             >
               MY TRUCKS
@@ -2714,7 +2714,7 @@ export default function LoadHunterTab() {
             <Button 
               size="sm" 
               variant="default"
-              className="h-6 px-2 text-[11px] bg-green-600 hover:bg-green-700"
+              className="h-7 px-2.5 text-[12px] bg-green-600 hover:bg-green-700"
             >
               Add Vehicle
             </Button>
@@ -2727,7 +2727,7 @@ export default function LoadHunterTab() {
               value={matchSearchQuery}
               onChange={(e) => setMatchSearchQuery(e.target.value)}
               onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-              className="h-6 w-32 text-[11px]"
+              className="h-7 w-36 text-[12px]"
             />
             {isSearchingArchive && (
               <div className="absolute right-5 top-1.5">
@@ -2795,7 +2795,7 @@ export default function LoadHunterTab() {
               <Button 
                 size="sm" 
                 variant="ghost"
-                className={`h-6 px-2 text-[11px] gap-1 rounded-none border-0 ${
+                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
                   activeFilter === 'all' 
                     ? 'bg-gray-800 text-white hover:bg-gray-900' 
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2808,15 +2808,15 @@ export default function LoadHunterTab() {
                 }}
               >
                 All
-                <Badge variant="secondary" className={`h-3.5 px-1 text-[9px] ${activeFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{loadEmails.length}</Badge>
+                <Badge variant="secondary" className={`h-4 px-1 text-[10px] ${activeFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{loadEmails.length}</Badge>
               </Button>
               
-              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button
                 size="sm" 
                 variant="ghost"
-                className={`h-6 px-1.5 text-[11px] gap-1 rounded-none border-0 ${
+                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
                   activeFilter === 'unreviewed' 
                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2829,26 +2829,26 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <Badge variant="destructive" className="h-3.5 px-1 text-[9px] bg-red-500 text-white">{unreviewedCount}</Badge>
+                <Badge variant="destructive" className="h-4 px-1 text-[10px] bg-red-500 text-white">{unreviewedCount}</Badge>
               </Button>
               
-              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button 
                 size="sm" 
                 variant="ghost"
-                className="h-6 px-1.5 text-[11px] rounded-none border-0 bg-white text-gray-700 hover:bg-gray-50"
+                className="h-7 px-2 text-[12px] rounded-none border-0 bg-white text-gray-700 hover:bg-gray-50"
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
-                {isSoundMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
               </Button>
             </div>
             
             <Button
               size="sm" 
               variant="outline"
-              className={`h-6 px-1.5 text-[11px] gap-1 ${
+              className={`h-7 px-2 text-[12px] gap-1 ${
                 activeFilter === 'missed' 
                   ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' 
                   : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
@@ -2861,14 +2861,14 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <Badge variant="destructive" className="h-3.5 px-1 text-[9px] bg-red-400 text-white">{missedCount}</Badge>
+              <Badge variant="destructive" className="h-4 px-1 text-[10px] bg-red-400 text-white">{missedCount}</Badge>
             </Button>
             
             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
               <Button 
                 size="sm" 
                 variant="ghost"
-                className={`h-6 px-1.5 text-[11px] gap-1 rounded-none border-0 ${
+                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
                   activeFilter === 'waitlist' 
                     ? 'bg-orange-500 hover:bg-orange-600 text-white' 
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2881,15 +2881,15 @@ export default function LoadHunterTab() {
                 }}
               >
                 Wait
-                <Badge variant="secondary" className="h-3.5 px-1 text-[9px] bg-orange-400 text-white">{waitlistCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-orange-400 text-white">{waitlistCount}</Badge>
               </Button>
               
-              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button 
                 size="sm" 
                 variant="ghost"
-                className={`h-6 px-1.5 text-[11px] gap-1 rounded-none border-0 ${
+                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
                   activeFilter === 'undecided' 
                     ? 'bg-orange-500 hover:bg-orange-600 text-white' 
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2902,15 +2902,15 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undec
-                <Badge variant="secondary" className="h-3.5 px-1 text-[9px] bg-orange-400 text-white">{undecidedCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-orange-400 text-white">{undecidedCount}</Badge>
               </Button>
               
-              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button 
                 size="sm" 
                 variant="ghost"
-                className={`h-6 px-1.5 text-[11px] gap-1 rounded-none border-0 ${
+                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
                   activeFilter === 'skipped' 
                     ? 'bg-gray-600 hover:bg-gray-700 text-white' 
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -2923,14 +2923,14 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skip
-                <Badge variant="secondary" className="h-3.5 px-1 text-[9px] bg-gray-300 text-gray-700">{skippedCount}</Badge>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-gray-300 text-gray-700">{skippedCount}</Badge>
               </Button>
             </div>
             
             <Button 
               size="sm" 
               variant="outline"
-              className={`h-6 px-1.5 text-[11px] gap-1 ${
+              className={`h-7 px-2 text-[12px] gap-1 ${
                 activeFilter === 'mybids' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
                   : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
@@ -2943,13 +2943,13 @@ export default function LoadHunterTab() {
               }}
             >
               Bids
-              <Badge variant="secondary" className="h-3.5 px-1 text-[9px] bg-blue-400 text-white">{bidCount}</Badge>
+              <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-blue-400 text-white">{bidCount}</Badge>
             </Button>
             
             <Button
               size="sm" 
               variant="outline"
-              className={`h-6 px-1.5 text-[11px] gap-1 ${
+              className={`h-7 px-2 text-[12px] gap-1 ${
                 activeFilter === 'booked' 
                   ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
                   : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
@@ -2961,14 +2961,14 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <Badge variant="secondary" className="h-3.5 px-1 text-[9px] bg-blue-400 text-white">2</Badge>
+              <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-blue-400 text-white">2</Badge>
             </Button>
             
             {issuesCount > 0 && (
               <Button
                 size="sm" 
                 variant="outline"
-                className={`h-6 px-1.5 text-[11px] gap-1 ${
+                className={`h-7 px-2 text-[12px] gap-1 ${
                   activeFilter === 'issues' 
                     ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600' 
                     : 'bg-white hover:bg-gray-50 text-amber-700 border-amber-300'
@@ -2980,7 +2980,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 ⚠️
-                <Badge variant="destructive" className="h-3.5 px-1 text-[9px] bg-amber-500 text-white">{issuesCount}</Badge>
+                <Badge variant="destructive" className="h-4 px-1 text-[10px] bg-amber-500 text-white">{issuesCount}</Badge>
               </Button>
             )}
           </div>
@@ -2990,7 +2990,7 @@ export default function LoadHunterTab() {
             <Button 
               size="sm" 
               variant="outline"
-              className={`h-6 px-1.5 text-[11px] ${
+              className={`h-7 px-2 text-[12px] ${
                 activeFilter === 'vehicle-assignment' 
                   ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-600' 
                   : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
@@ -3007,7 +3007,7 @@ export default function LoadHunterTab() {
             <Button
               size="sm" 
               variant="outline"
-              className={`h-6 px-1.5 text-[11px] ${
+              className={`h-7 px-2 text-[12px] ${
                 activeFilter === 'dispatcher-metrix' 
                   ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600' 
                   : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
