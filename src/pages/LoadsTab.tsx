@@ -384,21 +384,29 @@ export default function LoadsTab() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Loading loads...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Booked Loads</h2>
+    <div className="space-y-4 px-3 md:px-0">
+      {/* Header - Mobile optimized */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold">Booked Loads</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2 w-full sm:w-auto h-11 sm:h-10 rounded-xl">
               <Plus className="h-4 w-4" />
               Create Load
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto rounded-2xl">
             <DialogHeader>
               <DialogTitle>Create New Load</DialogTitle>
             </DialogHeader>
@@ -1130,9 +1138,10 @@ export default function LoadsTab() {
                 </TableBody>
               </Table>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+          </>
+        )}
+      </CardContent>
+    </Card>
+  </div>
+);
 }
