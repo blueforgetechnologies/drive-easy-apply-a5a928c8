@@ -278,7 +278,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="text-xs sm:text-sm text-header-foreground/90 hidden sm:inline truncate max-w-[120px]">
                 {userName}
               </span>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3 border-header-foreground/30 text-header-foreground hover:bg-header-foreground/20 hover:text-header-foreground">
+              <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3 border-header-foreground/30 text-header-foreground bg-transparent hover:bg-header-foreground/20 hover:text-header-foreground">
                 <span className="hidden sm:inline">Logout</span>
                 <span className="sm:hidden">Exit</span>
               </Button>
