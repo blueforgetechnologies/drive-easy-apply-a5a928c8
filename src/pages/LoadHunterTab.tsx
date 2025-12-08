@@ -2556,24 +2556,28 @@ export default function LoadHunterTab() {
         {selectedEmailForDetail && (
           <Dialog open={!!selectedEmailForDetail} onOpenChange={async () => {
             // If match was viewed from unreviewed and no action taken, move to undecided
-            if (selectedMatchForDetail && !matchActionTaken && selectedMatchForDetail.match_status === 'active') {
+            // Use ref for synchronous check since state might not be updated yet
+            if (selectedMatchForDetail && !matchActionTakenRef.current && selectedMatchForDetail.match_status === 'active') {
               await handleMoveToUndecided(selectedMatchForDetail.id);
             }
             setSelectedEmailForDetail(null);
             setSelectedMatchForDetail(null);
             setMatchActionTaken(false);
+            matchActionTakenRef.current = false; // Reset ref for next match
           }}>
             <DialogContent className="max-w-full h-[90vh] p-0 overflow-hidden">
               <LoadEmailDetail
                 email={selectedEmailForDetail}
                 onClose={async () => {
                   // If match was viewed from unreviewed and no action taken, move to undecided
-                  if (selectedMatchForDetail && !matchActionTaken && selectedMatchForDetail.match_status === 'active') {
+                  // Use ref for synchronous check since state might not be updated yet
+                  if (selectedMatchForDetail && !matchActionTakenRef.current && selectedMatchForDetail.match_status === 'active') {
                     await handleMoveToUndecided(selectedMatchForDetail.id);
                   }
                   setSelectedEmailForDetail(null);
                   setSelectedMatchForDetail(null);
                   setMatchActionTaken(false);
+                  matchActionTakenRef.current = false; // Reset ref for next match
                 }}
                 emptyDriveDistance={selectedEmailDistance}
                 match={selectedMatchForDetail}
