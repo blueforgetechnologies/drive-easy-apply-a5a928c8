@@ -1963,8 +1963,39 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleMoveToWaitlist = async (emailId: string) => {
+  const handleWaitlistMatch = async (matchId: string) => {
     try {
+      setMatchActionTaken(true); // Mark that action was taken
+      matchActionTakenRef.current = true;
+      
+      // Track the waitlist action
+      await trackDispatcherAction(matchId, 'waitlist');
+      
+      const { error } = await supabase
+        .from('load_hunt_matches')
+        .update({ match_status: 'waitlist', is_active: false })
+        .eq('id', matchId);
+
+      if (error) throw error;
+
+      await loadHuntMatches();
+      await loadUnreviewedMatches();
+      toast.success('Match moved to waitlist');
+    } catch (error) {
+      console.error('Error moving match to waitlist:', error);
+      toast.error('Failed to move match to waitlist');
+    }
+  };
+
+  const handleMoveToWaitlist = async (emailId: string, matchId?: string) => {
+    try {
+      // If we have a matchId, use the new match-based function
+      if (matchId) {
+        await handleWaitlistMatch(matchId);
+        return;
+      }
+      
+      // Fallback: Update email status only (for non-match cases)
       const { error } = await supabase
         .from('load_emails')
         .update({ 
@@ -4593,7 +4624,11 @@ export default function LoadHunterTab() {
                                     aria-label="Move to waitlist"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleMoveToWaitlist(email.id);
+                                      if (activeFilter === 'unreviewed' && match) {
+                                        handleWaitlistMatch((match as any).id);
+                                      } else {
+                                        handleMoveToWaitlist(email.id, match?.id);
+                                      }
                                     }}
                                   >
                                     <MoreVertical className="h-3.5 w-3.5" />
