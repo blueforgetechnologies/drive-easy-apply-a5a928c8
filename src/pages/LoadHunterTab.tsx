@@ -1917,8 +1917,13 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleSkipEmail = async (emailId: string) => {
+  const handleSkipEmail = async (emailId: string, matchId?: string) => {
     try {
+      // Track the skip action if we have a match ID
+      if (matchId) {
+        await trackDispatcherAction(matchId, 'skipped');
+      }
+      
       const { error } = await supabase
         .from('load_emails')
         .update({ 
@@ -4571,7 +4576,7 @@ export default function LoadHunterTab() {
                                       if (activeFilter === 'unreviewed' && match) {
                                         handleSkipMatch((match as any).id);
                                       } else {
-                                        handleSkipEmail(email.id);
+                                        handleSkipEmail(email.id, match?.id);
                                       }
                                     }}
                                   >
