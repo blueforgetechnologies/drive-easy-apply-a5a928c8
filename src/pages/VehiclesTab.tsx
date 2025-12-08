@@ -601,8 +601,90 @@ export default function VehiclesTab() {
         </Card>
       ) : (
         <>
-          {/* Table View */}
-          <Card>
+          {/* Mobile Card View */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {paginatedVehicles.map((vehicle) => {
+              const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined && vehicle.oil_change_remaining <= 0;
+              return (
+                <div
+                  key={vehicle.id}
+                  className={`p-4 rounded-xl border bg-card active:scale-[0.98] transition-transform cursor-pointer ${isOilChangeDue ? "border-destructive/50 bg-destructive/5" : ""}`}
+                  onClick={() => viewVehicle(vehicle.id)}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-base">{vehicle.vehicle_number || "N/A"}</span>
+                        <Badge 
+                          className={`text-[10px] px-1.5 py-0 ${
+                            vehicle.status === "active"
+                              ? "bg-green-100 text-green-800 border-green-200"
+                              : vehicle.status === "pending"
+                              ? "bg-orange-100 text-orange-800 border-orange-200"
+                              : "bg-gray-100 text-gray-800 border-gray-200"
+                          }`}
+                        >
+                          {vehicle.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {vehicle.carrier ? carriersMap[vehicle.carrier] || "No Carrier" : "No Carrier"}
+                      </p>
+                    </div>
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => viewVehicle(vehicle.id)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-muted-foreground">Type</span>
+                      <span className="text-xs font-medium">
+                        {vehicle.vehicle_size && vehicle.asset_subtype
+                          ? `${vehicle.vehicle_size}' ${vehicle.asset_subtype}`
+                          : vehicle.asset_type || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-muted-foreground">Lift-Gate</span>
+                      <span className="text-xs font-medium">{vehicle.lift_gate ? "Yes" : "No"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-muted-foreground">Driver 1</span>
+                      <span className="text-xs font-medium text-primary">
+                        {vehicle.driver_1_id ? driversMap[vehicle.driver_1_id] || "Assigned" : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-muted-foreground">Dispatcher</span>
+                      <span className="text-xs font-medium text-primary">
+                        {vehicle.primary_dispatcher_id ? dispatchersMap[vehicle.primary_dispatcher_id] || "Assigned" : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-muted-foreground">Oil Change</span>
+                      <span className={`text-xs font-medium ${isOilChangeDue ? "text-destructive font-bold" : ""}`}>
+                        {vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining !== undefined
+                          ? `${vehicle.oil_change_remaining} mi`
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-muted-foreground">Insurance</span>
+                      <span className="text-xs font-medium">
+                        {vehicle.insurance_expiry ? format(new Date(vehicle.insurance_expiry), "MM/dd/yy") : "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View */}
+          <Card className="hidden md:block">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table className="text-sm">
@@ -780,8 +862,8 @@ export default function VehiclesTab() {
           </CardContent>
         </Card>
 
-        {/* Pagination - shared between mobile and desktop */}
-        <div className="flex items-center justify-between px-2 sm:px-4 py-3 border rounded-lg bg-card">
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-3 sm:px-4 py-3 border rounded-xl bg-card">
           <div className="text-xs sm:text-sm text-muted-foreground">
             {filteredVehicles.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredVehicles.length)} of {filteredVehicles.length}
           </div>
@@ -791,11 +873,11 @@ export default function VehiclesTab() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="h-8 px-2"
+              className="h-9 w-9 p-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-xs sm:text-sm">
+            <span className="text-xs sm:text-sm min-w-[40px] text-center">
               {currentPage}/{Math.max(1, totalPages)}
             </span>
             <Button
@@ -803,7 +885,7 @@ export default function VehiclesTab() {
               size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
-              className="h-8 px-2"
+              className="h-9 w-9 p-0"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>

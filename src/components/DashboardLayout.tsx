@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, GitBranch, History } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
@@ -151,8 +151,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const navItems = [
+    { value: "map", icon: Map, label: "Map" },
+    { value: "load-hunter", icon: Target, label: "Load Hunter" },
+    { value: "business", icon: Briefcase, label: "Business", badge: alertCount },
+    { value: "loads", icon: Package, label: "Loads" },
+    { value: "accounting", icon: Calculator, label: "Accounting" },
+    { value: "maintenance", icon: Wrench, label: "Maintenance" },
+    { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
+    { value: "development", icon: FileCode, label: "Dev" },
+    { value: "changelog", icon: History, label: "Changelog" },
+  ];
+
   return (
-    <div className="min-h-screen w-full bg-background pb-safe">
+    <div className="min-h-screen w-full bg-background">
       <header className="sticky top-0 z-40 border-b bg-header border-header/20">
         <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
           <div className="flex justify-between items-center gap-2">
@@ -164,52 +176,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="hidden md:block overflow-x-auto">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList className="h-9 bg-header-foreground/10 border-header-foreground/20">
-                    <TabsTrigger value="map" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Map className="h-3.5 w-3.5" />
-                      <span>Map</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="load-hunter" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Target className="h-3.5 w-3.5" />
-                      <span>Load Hunter</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="business" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      <span>Business</span>
-                      {alertCount > 0 && (
-                        <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
-                          {alertCount > 9 ? '9+' : alertCount}
-                        </span>
-                      )}
-                    </TabsTrigger>
-                    <TabsTrigger value="loads" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Package className="h-3.5 w-3.5" />
-                      <span>Loads</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="accounting" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Calculator className="h-3.5 w-3.5" />
-                      <span>Accounting</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="maintenance" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Wrench className="h-3.5 w-3.5" />
-                      <span>Maint</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="settings" className="gap-1.5 h-8 text-xs relative text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <Settings className="h-3.5 w-3.5" />
-                      <span>Settings</span>
-                      {integrationAlertCount > 0 && (
-                        <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
-                          {integrationAlertCount > 9 ? '9+' : integrationAlertCount}
-                        </span>
-                      )}
-                    </TabsTrigger>
-                    <TabsTrigger value="development" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <FileCode className="h-3.5 w-3.5" />
-                      <span>Dev</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="changelog" className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground">
-                      <History className="h-3.5 w-3.5" />
-                      <span>Log</span>
-                    </TabsTrigger>
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <TabsTrigger 
+                          key={item.value}
+                          value={item.value} 
+                          className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground"
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{item.label}</span>
+                          {item.badge && item.badge > 0 && (
+                            <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
+                              {item.badge > 9 ? '9+' : item.badge}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      );
+                    })}
                   </TabsList>
                 </Tabs>
               </div>
@@ -221,25 +205,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-0">
+                <SheetContent side="left" className="w-72 p-0">
                   <div className="flex flex-col h-full">
                     <div className="border-b p-4">
-                      <h2 className="font-semibold">Navigation</h2>
+                      <h2 className="font-bold text-lg">TMS</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{userName}</p>
                     </div>
-                    <div className="flex-1 overflow-auto py-2">
-                      <nav className="flex flex-col gap-1 px-2">
-                        {[
-                          { value: "map", icon: Map, label: "Map" },
-                          { value: "load-hunter", icon: Target, label: "Load Hunter" },
-                          { value: "business", icon: Briefcase, label: "Business Manager", badge: alertCount },
-                          { value: "loads", icon: Package, label: "Loads" },
-                          { value: "accounting", icon: Calculator, label: "Accounting" },
-                          { value: "maintenance", icon: Wrench, label: "Maintenance" },
-                          { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
-                          { value: "development", icon: FileCode, label: "DEV" },
-                          { value: "changelog", icon: History, label: "Changelog" },
-                          { value: "flow", icon: GitBranch, label: "FLOW" },
-                        ].map((item) => {
+                    <div className="flex-1 overflow-auto py-3">
+                      <nav className="flex flex-col gap-1 px-3">
+                        {navItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = activeTab === item.value;
                           return (
@@ -250,16 +224,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 setMobileMenuOpen(false);
                               }}
                               className={cn(
-                                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative",
+                                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]",
                                 isActive
                                   ? "bg-primary text-primary-foreground"
-                                  : "hover:bg-accent hover:text-accent-foreground"
+                                  : "hover:bg-muted active:bg-muted"
                               )}
                             >
                               <Icon className="h-5 w-5" />
-                              <span>{item.label}</span>
+                              <span className="flex-1 text-left">{item.label}</span>
                               {item.badge && item.badge > 0 && (
-                                <span className="ml-auto inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                                <span className={cn(
+                                  "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full",
+                                  isActive 
+                                    ? "bg-primary-foreground/20 text-primary-foreground"
+                                    : "bg-destructive text-destructive-foreground"
+                                )}>
                                   {item.badge > 9 ? '9+' : item.badge}
                                 </span>
                               )}
@@ -267,6 +246,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           );
                         })}
                       </nav>
+                    </div>
+                    <div className="border-t p-4">
+                      <Button 
+                        onClick={handleLogout} 
+                        variant="outline" 
+                        className="w-full h-11 gap-2 rounded-xl"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </Button>
                     </div>
                   </div>
                 </SheetContent>
@@ -278,18 +267,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="text-xs sm:text-sm text-header-foreground/90 hidden sm:inline truncate max-w-[120px]">
                 {userName}
               </span>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3 border-header-foreground/30 text-header-foreground bg-transparent hover:bg-header-foreground/20 hover:text-header-foreground">
-                <span className="hidden sm:inline">Logout</span>
-                <span className="sm:hidden">Exit</span>
+              <Button 
+                onClick={handleLogout} 
+                variant="outline" 
+                size="sm" 
+                className="h-8 text-xs sm:text-sm px-2 sm:px-3 border-header-foreground/30 text-header-foreground bg-transparent hover:bg-header-foreground/20 hover:text-header-foreground hidden md:flex"
+              >
+                Logout
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1700px] px-3 sm:px-4 py-3 sm:py-4">
+      <main className="mx-auto max-w-[1700px] px-0 sm:px-4 py-0 sm:py-4 pb-20 md:pb-4">
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNav alertCount={alertCount} integrationAlertCount={integrationAlertCount} />
 
       {/* Mapbox Usage Alert - checks on login */}
       <MapboxUsageAlert />
