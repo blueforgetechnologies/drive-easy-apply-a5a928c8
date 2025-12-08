@@ -94,11 +94,13 @@ export function DispatcherMetricsView({ dispatchers }: DispatcherMetricsViewProp
           metric.bids_sent++;
         } else if (action.action_type === 'skipped' || action.action_type === 'skip') {
           metric.skips++;
-        } else if (action.action_type === 'waitlist') {
+        } else if (action.action_type === 'waitlist' || action.action_type === 'wait') {
           metric.waitlist++;
-        } else if (action.action_type === 'undecided' || action.action_type === 'viewed' || action.action_type === 'view') {
+        } else if (action.action_type === 'undecided') {
+          // Only count explicit undecided actions, NOT 'viewed' which is just opening the detail
           metric.undecided++;
         }
+        // Note: 'viewed' actions are tracked but not counted in any metric column
       });
 
       const metricsArray = Array.from(dispatcherMap.values())

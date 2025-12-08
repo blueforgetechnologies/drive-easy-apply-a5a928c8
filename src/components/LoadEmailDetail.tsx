@@ -259,8 +259,12 @@ const LoadEmailDetail = ({
 
   // Record action to match history
   const recordMatchAction = async (actionType: string, actionDetails?: any) => {
-    if (!match?.id) return;
+    if (!match?.id) {
+      console.log('📊 recordMatchAction: No match ID, skipping');
+      return;
+    }
     try {
+      console.log('📊 Recording action:', actionType, 'for match:', match.id, 'dispatcher:', currentDispatcher?.email);
       const {
         error
       } = await supabase.from('match_action_history').insert({
@@ -271,7 +275,11 @@ const LoadEmailDetail = ({
         action_type: actionType,
         action_details: actionDetails || null
       });
-      if (error) throw error;
+      if (error) {
+        console.error('📊 Error inserting action:', error);
+        throw error;
+      }
+      console.log('📊 Action recorded successfully:', actionType);
     } catch (e) {
       console.error('Error recording match action:', e);
     }
