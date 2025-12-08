@@ -78,6 +78,25 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
+  // Extract origin zip code from HTML - format: ", TX 75261" or "City, TX 75261"
+  const originZipMatch = bodyText?.match(/Pick-Up[\s\S]*?(?:,\s*)?([A-Z]{2})\s+(\d{5})(?:\s|<|$)/i);
+  if (originZipMatch) {
+    data.origin_zip = originZipMatch[2];
+    // If origin_state not set, use this
+    if (!data.origin_state) {
+      data.origin_state = originZipMatch[1].toUpperCase();
+    }
+  }
+
+  // Extract destination zip code similarly
+  const destZipMatch = bodyText?.match(/Delivery[\s\S]*?(?:,\s*)?([A-Z]{2})\s+(\d{5})(?:\s|<|$)/i);
+  if (destZipMatch) {
+    data.destination_zip = destZipMatch[2];
+    if (!data.destination_state) {
+      data.destination_state = destZipMatch[1].toUpperCase();
+    }
+  }
+
   // Parse pickup datetime from "Pick-Up" section - format: MM/DD/YY HH:MM TZ
   const pickupSection = bodyText?.match(/Pick-Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (pickupSection) {
@@ -255,6 +274,55 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
     }
   } catch (e) {
     console.error('Geocoding error:', e);
+  }
+  return null;
+}
+
+// Lookup city from zip code using Mapbox geocoding
+async function lookupCityFromZip(zipCode: string, state?: string): Promise<{city: string, state: string} | null> {
+  const mapboxToken = Deno.env.get('VITE_MAPBOX_TOKEN');
+  if (!mapboxToken || !zipCode) return null;
+
+  try {
+    const query = encodeURIComponent(`${zipCode}, USA`);
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&types=postcode&limit=1`
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.features?.[0]) {
+        const feature = data.features[0];
+        // Extract city from context
+        let city = '';
+        let foundState = state || '';
+        
+        for (const ctx of (feature.context || [])) {
+          if (ctx.id?.startsWith('place.')) {
+            city = ctx.text;
+          }
+          if (ctx.id?.startsWith('region.') && ctx.short_code) {
+            // short_code is like "US-TX"
+            foundState = ctx.short_code.replace('US-', '');
+          }
+        }
+        
+        // Fallback: use place_name if context didn't have city
+        if (!city && feature.place_name) {
+          const parts = feature.place_name.split(',');
+          if (parts.length >= 2) {
+            city = parts[0].replace(zipCode, '').trim();
+          }
+        }
+        
+        if (city && foundState) {
+          console.log(`📮 Zip ${zipCode} -> ${city}, ${foundState}`);
+          return { city, state: foundState };
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Zip lookup error:', e);
   }
   return null;
 }
@@ -481,6 +549,27 @@ serve(async (req) => {
         const subjectData = parseSubjectLine(subject);
         const bodyData = parseSylectusEmail(subject, bodyText);
         const parsedData = { ...bodyData, ...subjectData };
+
+        // If origin_city is missing but we have origin_zip, look up the city
+        if (!parsedData.origin_city && parsedData.origin_zip) {
+          console.log(`📮 Missing origin city, looking up zip ${parsedData.origin_zip}`);
+          const cityData = await lookupCityFromZip(parsedData.origin_zip, parsedData.origin_state);
+          if (cityData) {
+            parsedData.origin_city = cityData.city;
+            parsedData.origin_state = cityData.state;
+            console.log(`📮 Resolved origin from zip: ${cityData.city}, ${cityData.state}`);
+          }
+        }
+
+        // Similarly for destination
+        if (!parsedData.destination_city && parsedData.destination_zip) {
+          console.log(`📮 Missing destination city, looking up zip ${parsedData.destination_zip}`);
+          const cityData = await lookupCityFromZip(parsedData.destination_zip, parsedData.destination_state);
+          if (cityData) {
+            parsedData.destination_city = cityData.city;
+            parsedData.destination_state = cityData.state;
+          }
+        }
 
         // Geocode if we have origin location
         let geocodeFailed = false;
