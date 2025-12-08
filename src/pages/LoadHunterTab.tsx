@@ -3064,7 +3064,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* BLUE = My Bids */}
                       <div 
-                        className="h-4 px-1.5 bg-blue-500 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-blue-600 transition-colors border-l border-white/30"
+                        className="h-4 px-1.5 bg-blue-400 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-blue-500 transition-colors border-l border-white/30"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');

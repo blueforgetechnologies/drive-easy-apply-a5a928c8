@@ -355,7 +355,7 @@ export default function LoadHunterMobile({
                             </div>
                             {/* BLUE = My Bids */}
                             <div 
-                              className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-blue-600"
+                              className="h-5 w-5 rounded-full bg-blue-400 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-blue-500"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('loads');
