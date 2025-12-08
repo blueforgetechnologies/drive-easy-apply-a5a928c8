@@ -333,7 +333,7 @@ export default function LoadHunterMobile({
                           <div className="flex gap-1 mr-2">
                             {/* GREEN = Unreviewed */}
                             <div 
-                              className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-green-600"
+                              className="h-5 w-5 rounded-full bg-green-400 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-green-500"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('loads');
