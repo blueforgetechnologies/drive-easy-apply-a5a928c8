@@ -92,11 +92,11 @@ export function DispatcherMetricsView({ dispatchers }: DispatcherMetricsViewProp
         
         if (action.action_type === 'bid') {
           metric.bids_sent++;
-        } else if (action.action_type === 'skip') {
+        } else if (action.action_type === 'skipped' || action.action_type === 'skip') {
           metric.skips++;
         } else if (action.action_type === 'waitlist') {
           metric.waitlist++;
-        } else if (action.action_type === 'undecided' || action.action_type === 'view') {
+        } else if (action.action_type === 'undecided' || action.action_type === 'viewed' || action.action_type === 'view') {
           metric.undecided++;
         }
       });
