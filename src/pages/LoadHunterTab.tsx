@@ -162,6 +162,7 @@ export default function LoadHunterTab() {
   const [showArchiveResults, setShowArchiveResults] = useState(false);
   const itemsPerPage = 17;
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
+  const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string } | null>(null);
   const currentDispatcherIdRef = useRef<string | null>(null);
   const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
@@ -979,6 +980,7 @@ export default function LoadHunterTab() {
         
         if (dispatcher) {
           setCurrentDispatcherId(dispatcher.id);
+          setCurrentDispatcherInfo(dispatcher);
           currentDispatcherIdRef.current = dispatcher.id;
           console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
           
@@ -1714,10 +1716,30 @@ export default function LoadHunterTab() {
     }
   };
 
+  // Track dispatcher action in match_action_history
+  const trackDispatcherAction = async (matchId: string, actionType: string, actionDetails?: any) => {
+    try {
+      await supabase.from('match_action_history').insert({
+        match_id: matchId,
+        dispatcher_id: currentDispatcherInfo?.id || null,
+        dispatcher_name: currentDispatcherInfo ? `${currentDispatcherInfo.first_name} ${currentDispatcherInfo.last_name}` : null,
+        dispatcher_email: currentDispatcherInfo?.email || null,
+        action_type: actionType,
+        action_details: actionDetails || null
+      });
+    } catch (e) {
+      console.error('Error tracking dispatcher action:', e);
+    }
+  };
+
   // Handle moving a viewed match to undecided status (when user closes without action)
   const handleMoveToUndecided = async (matchId: string) => {
     try {
       console.log('🤔 Moving match to undecided:', matchId);
+      
+      // Track the undecided action
+      await trackDispatcherAction(matchId, 'undecided');
+      
       const { error } = await supabase
         .from('load_hunt_matches')
         .update({ match_status: 'undecided', is_active: false })
@@ -1800,6 +1822,10 @@ export default function LoadHunterTab() {
   const handleSkipMatch = async (matchId: string) => {
     try {
       setMatchActionTaken(true); // Mark that action was taken
+      
+      // Track the skip action
+      await trackDispatcherAction(matchId, 'skipped');
+      
       const { error } = await supabase
         .from('load_hunt_matches')
         .update({ match_status: 'skipped', is_active: false })
