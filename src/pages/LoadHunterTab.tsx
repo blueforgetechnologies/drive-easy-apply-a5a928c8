@@ -2555,9 +2555,9 @@ export default function LoadHunterTab() {
         {/* Load Email Detail Dialog for Mobile */}
         {selectedEmailForDetail && (
           <Dialog open={!!selectedEmailForDetail} onOpenChange={async () => {
-            // If match was viewed from unreviewed and no action taken, move to undecided
-            // Use ref for synchronous check since state might not be updated yet
-            if (selectedMatchForDetail && !matchActionTakenRef.current && selectedMatchForDetail.match_status === 'active') {
+            // Only move to undecided if NO action was taken
+            // The ref must be checked first - if action was taken, skip undecided logic entirely
+            if (!matchActionTakenRef.current && selectedMatchForDetail && selectedMatchForDetail.match_status === 'active') {
               await handleMoveToUndecided(selectedMatchForDetail.id);
             }
             setSelectedEmailForDetail(null);
@@ -2569,9 +2569,9 @@ export default function LoadHunterTab() {
               <LoadEmailDetail
                 email={selectedEmailForDetail}
                 onClose={async () => {
-                  // If match was viewed from unreviewed and no action taken, move to undecided
-                  // Use ref for synchronous check since state might not be updated yet
-                  if (selectedMatchForDetail && !matchActionTakenRef.current && selectedMatchForDetail.match_status === 'active') {
+                  // Only move to undecided if NO action was taken
+                  // The ref must be checked first - if action was taken, skip undecided logic entirely
+                  if (!matchActionTakenRef.current && selectedMatchForDetail && selectedMatchForDetail.match_status === 'active') {
                     await handleMoveToUndecided(selectedMatchForDetail.id);
                   }
                   setSelectedEmailForDetail(null);
@@ -3922,9 +3922,9 @@ export default function LoadHunterTab() {
             drivers={drivers}
             carriersMap={carriersMap}
             onClose={async () => {
-              // If match was viewed from unreviewed and no action taken, move to undecided
-              // Use ref for synchronous check since state might not be updated yet
-              if (selectedMatchForDetail && !matchActionTakenRef.current && selectedMatchForDetail.match_status === 'active') {
+              // Only move to undecided if NO action was taken
+              // The ref must be checked first - if action was taken, skip undecided logic entirely
+              if (!matchActionTakenRef.current && selectedMatchForDetail && selectedMatchForDetail.match_status === 'active') {
                 await handleMoveToUndecided(selectedMatchForDetail.id);
               }
               setSelectedEmailForDetail(null);
