@@ -3077,14 +3077,17 @@ export default function LoadHunterTab() {
                         {bidCount}
                       </div>
                     </div>
-                    {/* Status Badge - centered on right edge */}
+                    {/* Status Text - centered on right edge */}
                     {vehicle.stopped_status && (
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
-                        <span className="text-[8px] px-1 py-0.5 rounded-l whitespace-nowrap" style={{
-                          backgroundColor: vehicle.stopped_status === 'Stopped' ? '#dc2626' : vehicle.stopped_status === 'Idling' ? '#f59e0b' : '#22c55e',
-                          color: 'white'
-                        }}>
-                          {vehicle.stopped_status}{vehicle.speed !== null ? ` ${vehicle.speed}` : ''}
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                        <span className={`text-[9px] font-medium whitespace-nowrap ${
+                          vehicle.stopped_status === 'Stopped' ? 'text-gray-400' : 
+                          vehicle.stopped_status === 'Idling' ? 'text-orange-500' : 
+                          'text-green-700'
+                        }`}>
+                          {vehicle.stopped_status === 'Stopped' ? 'Stopped' : 
+                           vehicle.stopped_status === 'Idling' ? 'Idling' : 
+                           `Moving${vehicle.speed !== null ? ` ${vehicle.speed}` : ''}`}
                         </span>
                       </div>
                     )}
