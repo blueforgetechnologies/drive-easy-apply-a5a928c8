@@ -1138,8 +1138,7 @@ export default function LoadsTab() {
                 </TableBody>
               </Table>
             </div>
-          </>
-        )}
+          )}
       </CardContent>
     </Card>
   </div>
