@@ -115,9 +115,9 @@ export default function FreightCalculatorTab() {
         }
       }
       
-      // Pattern 4: "2-48x52x23" (quantity-dimensions with leading dash)
+      // Pattern 4: "2-48x52x23" or "12 - 48x48x48" (quantity-dimensions with dash, optional spaces)
       if (dims.length === 0) {
-        const dashPrefixMatch = entry.match(/^(\d+)-([\d.]+)\s*[xX×]\s*([\d.]+)\s*[xX×]\s*([\d.]+)/i);
+        const dashPrefixMatch = entry.match(/^(\d+)\s*-\s*([\d.]+)\s*[xX×]\s*([\d.]+)\s*[xX×]\s*([\d.]+)/i);
         if (dashPrefixMatch) {
           quantity = parseInt(dashPrefixMatch[1]);
           dims = [parseFloat(dashPrefixMatch[2]), parseFloat(dashPrefixMatch[3]), parseFloat(dashPrefixMatch[4])];
