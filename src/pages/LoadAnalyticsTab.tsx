@@ -6,20 +6,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, MapPin, Calendar, Clock, Loader2, Filter, Map as MapIcon, BarChart3 } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, Clock, Loader2, Filter, Map as MapIcon, BarChart3, Mail } from "lucide-react";
 import { format, getDay, getHours, parseISO } from "date-fns";
 
-interface LoadData {
+interface LoadEmailData {
   id: string;
-  pickup_state: string | null;
-  pickup_city: string | null;
-  delivery_state: string | null;
-  delivery_city: string | null;
-  equipment_type: string | null;
-  pickup_date: string | null;
-  created_at: string | null;
-  status: string | null;
-  rate: number | null;
+  received_at: string;
+  created_at: string;
+  parsed_data: {
+    origin_state?: string;
+    origin_city?: string;
+    destination_state?: string;
+    destination_city?: string;
+    vehicle_type?: string;
+    posted_amount?: number;
+    load_type?: string;
+  } | null;
 }
 
 interface StateData {
@@ -45,26 +47,6 @@ interface TimeData {
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-const STATE_COORDS: Record<string, [number, number]> = {
-  'AL': [-86.9023, 32.3182], 'AK': [-153.4937, 64.2008], 'AZ': [-111.0937, 34.0489],
-  'AR': [-92.3731, 34.7465], 'CA': [-119.4179, 36.7783], 'CO': [-105.7821, 39.5501],
-  'CT': [-72.7554, 41.6032], 'DE': [-75.5277, 38.9108], 'FL': [-81.5158, 27.6648],
-  'GA': [-83.6431, 32.1574], 'HI': [-155.5828, 19.8968], 'ID': [-114.7420, 44.0682],
-  'IL': [-89.3985, 40.6331], 'IN': [-86.1349, 40.2672], 'IA': [-93.0977, 41.8780],
-  'KS': [-98.4842, 39.0119], 'KY': [-84.2700, 37.8393], 'LA': [-91.9623, 30.9843],
-  'ME': [-69.4455, 45.2538], 'MD': [-76.6413, 39.0458], 'MA': [-71.3824, 42.4072],
-  'MI': [-85.6024, 44.3148], 'MN': [-94.6859, 46.7296], 'MS': [-89.3985, 32.3547],
-  'MO': [-91.8318, 37.9643], 'MT': [-110.3626, 46.8797], 'NE': [-99.9018, 41.4925],
-  'NV': [-116.4194, 38.8026], 'NH': [-71.5724, 43.1939], 'NJ': [-74.4057, 40.0583],
-  'NM': [-105.8701, 34.5199], 'NY': [-75.4999, 43.2994], 'NC': [-79.0193, 35.7596],
-  'ND': [-101.0020, 47.5515], 'OH': [-82.9071, 40.4173], 'OK': [-97.0929, 35.0078],
-  'OR': [-120.5542, 43.8041], 'PA': [-77.1945, 41.2033], 'RI': [-71.4774, 41.5801],
-  'SC': [-81.1637, 33.8361], 'SD': [-99.9018, 43.9695], 'TN': [-86.5804, 35.5175],
-  'TX': [-99.9018, 31.9686], 'UT': [-111.0937, 39.3200], 'VT': [-72.5778, 44.5588],
-  'VA': [-78.6569, 37.4316], 'WA': [-120.7401, 47.7511], 'WV': [-80.4549, 38.5976],
-  'WI': [-89.6165, 43.7844], 'WY': [-107.2903, 43.0759], 'DC': [-77.0369, 38.9072]
-};
-
 const CHART_COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2))',
@@ -73,11 +55,23 @@ const CHART_COLORS = [
   'hsl(var(--chart-5))',
 ];
 
+// US Holidays that affect freight volume
+const US_HOLIDAYS = [
+  { name: "New Year's Day", month: 1, day: 1 },
+  { name: "MLK Day", month: 1, day: 15 }, // 3rd Monday
+  { name: "Presidents Day", month: 2, day: 15 }, // 3rd Monday
+  { name: "Memorial Day", month: 5, day: 25 }, // Last Monday
+  { name: "Independence Day", month: 7, day: 4 },
+  { name: "Labor Day", month: 9, day: 1 }, // 1st Monday
+  { name: "Thanksgiving", month: 11, day: 22 }, // 4th Thursday
+  { name: "Christmas", month: 12, day: 25 },
+];
+
 export default function LoadAnalyticsTab() {
-  const [loads, setLoads] = useState<LoadData[]>([]);
+  const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
-  const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
+  const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'30' | '90' | '365' | 'all'>('90');
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
 
@@ -89,20 +83,27 @@ export default function LoadAnalyticsTab() {
     setIsLoading(true);
     try {
       let query = supabase
-        .from("loads")
-        .select("id, pickup_state, pickup_city, delivery_state, delivery_city, equipment_type, pickup_date, created_at, status, rate")
-        .in("status", ["completed", "delivered", "in_transit", "booked", "dispatched"]);
+        .from("load_emails")
+        .select("id, received_at, created_at, parsed_data")
+        .order("received_at", { ascending: false });
 
       if (dateRange !== 'all') {
         const daysAgo = new Date();
         daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
-        query = query.gte("pickup_date", daysAgo.toISOString().split('T')[0]);
+        query = query.gte("received_at", daysAgo.toISOString());
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-      setLoads(data || []);
+      
+      // Type assertion for parsed_data
+      const typedData = (data || []).map(item => ({
+        ...item,
+        parsed_data: item.parsed_data as LoadEmailData['parsed_data']
+      }));
+      
+      setLoadEmails(typedData);
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {
@@ -110,38 +111,39 @@ export default function LoadAnalyticsTab() {
     }
   };
 
-  // Filter loads by equipment type
-  const filteredLoads = useMemo(() => {
-    if (selectedEquipment === 'all') return loads;
-    return loads.filter(load => load.equipment_type === selectedEquipment);
-  }, [loads, selectedEquipment]);
-
-  // Get unique equipment types
-  const equipmentTypes = useMemo(() => {
-    const types = new Set(loads.map(l => l.equipment_type).filter(Boolean));
+  // Get unique vehicle types
+  const vehicleTypes = useMemo(() => {
+    const types = new Set<string>();
+    loadEmails.forEach(email => {
+      const type = email.parsed_data?.vehicle_type;
+      if (type) types.add(type);
+    });
     return Array.from(types).sort();
-  }, [loads]);
+  }, [loadEmails]);
+
+  // Filter by vehicle type
+  const filteredEmails = useMemo(() => {
+    if (selectedVehicleType === 'all') return loadEmails;
+    return loadEmails.filter(email => email.parsed_data?.vehicle_type === selectedVehicleType);
+  }, [loadEmails, selectedVehicleType]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
     const stateMap = new Map<string, { pickups: number; deliveries: number }>();
 
-    filteredLoads.forEach(load => {
-      if (load.pickup_state) {
-        const state = load.pickup_state.toUpperCase().trim();
-        if (state.length === 2) {
-          const current = stateMap.get(state) || { pickups: 0, deliveries: 0 };
-          current.pickups++;
-          stateMap.set(state, current);
-        }
+    filteredEmails.forEach(email => {
+      const originState = email.parsed_data?.origin_state?.toUpperCase().trim();
+      const destState = email.parsed_data?.destination_state?.toUpperCase().trim();
+
+      if (originState && originState.length === 2) {
+        const current = stateMap.get(originState) || { pickups: 0, deliveries: 0 };
+        current.pickups++;
+        stateMap.set(originState, current);
       }
-      if (load.delivery_state) {
-        const state = load.delivery_state.toUpperCase().trim();
-        if (state.length === 2) {
-          const current = stateMap.get(state) || { pickups: 0, deliveries: 0 };
-          current.deliveries++;
-          stateMap.set(state, current);
-        }
+      if (destState && destState.length === 2) {
+        const current = stateMap.get(destState) || { pickups: 0, deliveries: 0 };
+        current.deliveries++;
+        stateMap.set(destState, current);
       }
     });
 
@@ -153,22 +155,27 @@ export default function LoadAnalyticsTab() {
         total: data.pickups + data.deliveries
       }))
       .sort((a, b) => b.total - a.total);
-  }, [filteredLoads]);
+  }, [filteredEmails]);
 
   // Aggregate by city
   const cityData = useMemo((): CityData[] => {
     const cityMap = new Map<string, { state: string; pickups: number; deliveries: number }>();
 
-    filteredLoads.forEach(load => {
-      if (load.pickup_city && load.pickup_state) {
-        const key = `${load.pickup_city}, ${load.pickup_state}`.toUpperCase();
-        const current = cityMap.get(key) || { state: load.pickup_state, pickups: 0, deliveries: 0 };
+    filteredEmails.forEach(email => {
+      const originCity = email.parsed_data?.origin_city;
+      const originState = email.parsed_data?.origin_state;
+      const destCity = email.parsed_data?.destination_city;
+      const destState = email.parsed_data?.destination_state;
+
+      if (originCity && originState) {
+        const key = `${originCity}, ${originState}`.toUpperCase();
+        const current = cityMap.get(key) || { state: originState, pickups: 0, deliveries: 0 };
         current.pickups++;
         cityMap.set(key, current);
       }
-      if (load.delivery_city && load.delivery_state) {
-        const key = `${load.delivery_city}, ${load.delivery_state}`.toUpperCase();
-        const current = cityMap.get(key) || { state: load.delivery_state, pickups: 0, deliveries: 0 };
+      if (destCity && destState) {
+        const key = `${destCity}, ${destState}`.toUpperCase();
+        const current = cityMap.get(key) || { state: destState, pickups: 0, deliveries: 0 };
         current.deliveries++;
         cityMap.set(key, current);
       }
@@ -183,107 +190,117 @@ export default function LoadAnalyticsTab() {
         total: data.pickups + data.deliveries
       }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 50); // Top 50 cities
-  }, [filteredLoads]);
+      .slice(0, 50);
+  }, [filteredEmails]);
 
   // Day of week analysis
   const dayOfWeekData = useMemo((): TimeData[] => {
     const dayCounts = new Map<number, number>();
     DAYS_OF_WEEK.forEach((_, i) => dayCounts.set(i, 0));
 
-    filteredLoads.forEach(load => {
-      const dateStr = load.pickup_date || load.created_at;
-      if (dateStr) {
-        try {
-          const date = parseISO(dateStr);
-          const day = getDay(date);
-          dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
-        } catch {}
-      }
+    filteredEmails.forEach(email => {
+      try {
+        const date = parseISO(email.received_at);
+        const day = getDay(date);
+        dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
+      } catch {}
     });
 
     return DAYS_OF_WEEK.map((label, i) => ({
       label,
       count: dayCounts.get(i) || 0
     }));
-  }, [filteredLoads]);
+  }, [filteredEmails]);
 
   // Hour of day analysis
   const hourOfDayData = useMemo((): TimeData[] => {
     const hourCounts = new Map<number, number>();
     HOURS.forEach(h => hourCounts.set(h, 0));
 
-    filteredLoads.forEach(load => {
-      const dateStr = load.created_at;
-      if (dateStr) {
-        try {
-          const date = parseISO(dateStr);
-          const hour = getHours(date);
-          hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
-        } catch {}
-      }
+    filteredEmails.forEach(email => {
+      try {
+        const date = parseISO(email.received_at);
+        const hour = getHours(date);
+        hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
+      } catch {}
     });
 
     return HOURS.map(hour => ({
       label: `${hour}:00`,
       count: hourCounts.get(hour) || 0
     }));
-  }, [filteredLoads]);
+  }, [filteredEmails]);
 
-  // Equipment type distribution
-  const equipmentDistribution = useMemo(() => {
+  // Vehicle type distribution
+  const vehicleTypeDistribution = useMemo(() => {
     const counts = new Map<string, number>();
     
-    filteredLoads.forEach(load => {
-      const type = load.equipment_type || 'Unknown';
+    filteredEmails.forEach(email => {
+      const type = email.parsed_data?.vehicle_type || 'Unknown';
       counts.set(type, (counts.get(type) || 0) + 1);
     });
 
     return Array.from(counts.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
-  }, [filteredLoads]);
+      .slice(0, 15);
+  }, [filteredEmails]);
 
   // Monthly trend
   const monthlyTrend = useMemo(() => {
     const monthCounts = new Map<string, number>();
     
-    filteredLoads.forEach(load => {
-      const dateStr = load.pickup_date || load.created_at;
-      if (dateStr) {
-        try {
-          const date = parseISO(dateStr);
-          const monthKey = format(date, 'MMM yyyy');
-          monthCounts.set(monthKey, (monthCounts.get(monthKey) || 0) + 1);
-        } catch {}
-      }
+    filteredEmails.forEach(email => {
+      try {
+        const date = parseISO(email.received_at);
+        const monthKey = format(date, 'MMM yyyy');
+        monthCounts.set(monthKey, (monthCounts.get(monthKey) || 0) + 1);
+      } catch {}
     });
 
     return Array.from(monthCounts.entries())
       .map(([month, count]) => ({ month, count }))
-      .slice(-12); // Last 12 months
-  }, [filteredLoads]);
+      .reverse()
+      .slice(-12);
+  }, [filteredEmails]);
+
+  // Daily trend (last 30 days)
+  const dailyTrend = useMemo(() => {
+    const dayCounts = new Map<string, number>();
+    
+    filteredEmails.forEach(email => {
+      try {
+        const date = parseISO(email.received_at);
+        const dayKey = format(date, 'MMM dd');
+        dayCounts.set(dayKey, (dayCounts.get(dayKey) || 0) + 1);
+      } catch {}
+    });
+
+    return Array.from(dayCounts.entries())
+      .map(([day, count]) => ({ day, count }))
+      .reverse()
+      .slice(-30);
+  }, [filteredEmails]);
 
   // Stats summary
   const stats = useMemo(() => {
-    const totalLoads = filteredLoads.length;
-    const totalRevenue = filteredLoads.reduce((sum, l) => sum + (l.rate || 0), 0);
-    const avgRate = totalLoads > 0 ? totalRevenue / totalLoads : 0;
+    const totalEmails = filteredEmails.length;
+    const totalPostedAmount = filteredEmails.reduce((sum, e) => sum + (e.parsed_data?.posted_amount || 0), 0);
+    const avgPostedAmount = totalEmails > 0 ? totalPostedAmount / totalEmails : 0;
     const uniqueStates = new Set([
-      ...filteredLoads.map(l => l.pickup_state).filter(Boolean),
-      ...filteredLoads.map(l => l.delivery_state).filter(Boolean)
+      ...filteredEmails.map(e => e.parsed_data?.origin_state).filter(Boolean),
+      ...filteredEmails.map(e => e.parsed_data?.destination_state).filter(Boolean)
     ]).size;
 
-    return { totalLoads, totalRevenue, avgRate, uniqueStates };
-  }, [filteredLoads]);
+    return { totalEmails, totalPostedAmount, avgPostedAmount, uniqueStates };
+  }, [filteredEmails]);
 
-  // Get display data based on view mode
-  const getDisplayValue = (data: StateData | CityData) => {
-    if (flowDirection === 'pickup') return data.pickups;
-    if (flowDirection === 'delivery') return data.deliveries;
-    return data.total;
-  };
+  // Busiest days identification
+  const busiestInfo = useMemo(() => {
+    const busiestDay = dayOfWeekData.reduce((max, d) => d.count > max.count ? d : max, dayOfWeekData[0]);
+    const busiestHour = hourOfDayData.reduce((max, h) => h.count > max.count ? h : max, hourOfDayData[0]);
+    return { busiestDay: busiestDay.label, busiestHour: busiestHour.label };
+  }, [dayOfWeekData, hourOfDayData]);
 
   if (isLoading) {
     return (
@@ -298,9 +315,9 @@ export default function LoadAnalyticsTab() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <TrendingUp className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Load Analytics</h1>
-          <Badge variant="secondary">{stats.totalLoads} loads</Badge>
+          <Mail className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold">Load Email Analytics</h1>
+          <Badge variant="secondary">{stats.totalEmails.toLocaleString()} emails</Badge>
         </div>
 
         {/* Filters */}
@@ -317,14 +334,14 @@ export default function LoadAnalyticsTab() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
-            <SelectTrigger className="w-[150px] h-8">
-              <SelectValue placeholder="Equipment" />
+          <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
+            <SelectTrigger className="w-[180px] h-8">
+              <SelectValue placeholder="Vehicle Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Equipment</SelectItem>
-              {equipmentTypes.map(type => (
-                <SelectItem key={type} value={type!}>{type}</SelectItem>
+              <SelectItem value="all">All Vehicle Types</SelectItem>
+              {vehicleTypes.map(type => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -335,37 +352,43 @@ export default function LoadAnalyticsTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="both">All Stops</SelectItem>
-              <SelectItem value="pickup">Pickups</SelectItem>
-              <SelectItem value="delivery">Deliveries</SelectItem>
+              <SelectItem value="pickup">Origins</SelectItem>
+              <SelectItem value="delivery">Destinations</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Total Loads</div>
-            <div className="text-2xl font-bold">{stats.totalLoads.toLocaleString()}</div>
+            <div className="text-sm text-muted-foreground">Total Load Emails</div>
+            <div className="text-2xl font-bold">{stats.totalEmails.toLocaleString()}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Total Revenue</div>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Avg Rate</div>
-            <div className="text-2xl font-bold">${Math.round(stats.avgRate).toLocaleString()}</div>
+            <div className="text-sm text-muted-foreground">Avg Posted Amount</div>
+            <div className="text-2xl font-bold">${Math.round(stats.avgPostedAmount).toLocaleString()}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-sm text-muted-foreground">States Covered</div>
             <div className="text-2xl font-bold">{stats.uniqueStates}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Busiest Day</div>
+            <div className="text-2xl font-bold">{busiestInfo.busiestDay}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Peak Hour</div>
+            <div className="text-2xl font-bold">{busiestInfo.busiestHour}</div>
           </CardContent>
         </Card>
       </div>
@@ -381,9 +404,9 @@ export default function LoadAnalyticsTab() {
             <Calendar className="h-4 w-4" />
             Time Analysis
           </TabsTrigger>
-          <TabsTrigger value="equipment" className="gap-2">
+          <TabsTrigger value="vehicle" className="gap-2">
             <BarChart3 className="h-4 w-4" />
-            Equipment
+            Vehicle Types
           </TabsTrigger>
         </TabsList>
 
@@ -414,7 +437,7 @@ export default function LoadAnalyticsTab() {
                   Top {viewMode === 'state' ? 'States' : 'Cities'}
                 </CardTitle>
                 <CardDescription>
-                  Load volume by {flowDirection === 'both' ? 'pickups + deliveries' : flowDirection}
+                  Load volume by {flowDirection === 'both' ? 'origins + destinations' : flowDirection === 'pickup' ? 'origins' : 'destinations'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -442,8 +465,8 @@ export default function LoadAnalyticsTab() {
                     />
                     {flowDirection === 'both' ? (
                       <>
-                        <Bar dataKey="pickups" stackId="a" fill="hsl(var(--chart-1))" name="Pickups" />
-                        <Bar dataKey="deliveries" stackId="a" fill="hsl(var(--chart-2))" name="Deliveries" />
+                        <Bar dataKey="pickups" stackId="a" fill="hsl(var(--chart-1))" name="Origins" />
+                        <Bar dataKey="deliveries" stackId="a" fill="hsl(var(--chart-2))" name="Destinations" />
                       </>
                     ) : (
                       <Bar dataKey={flowDirection === 'pickup' ? 'pickups' : 'deliveries'} fill="hsl(var(--primary))" />
@@ -465,20 +488,18 @@ export default function LoadAnalyticsTab() {
                     <thead className="sticky top-0 bg-background">
                       <tr className="border-b">
                         <th className="text-left p-2 font-medium">{viewMode === 'state' ? 'State' : 'City'}</th>
-                        <th className="text-right p-2 font-medium">Pickups</th>
-                        <th className="text-right p-2 font-medium">Deliveries</th>
+                        <th className="text-right p-2 font-medium">Origins</th>
+                        <th className="text-right p-2 font-medium">Dest</th>
                         <th className="text-right p-2 font-medium">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(viewMode === 'state' ? stateData : cityData).map((row, i) => (
-                        <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
-                          <td className="p-2 font-medium">
-                            {viewMode === 'state' ? row.state : `${(row as CityData).city}, ${(row as CityData).state}`}
-                          </td>
-                          <td className="text-right p-2 text-green-600">{row.pickups}</td>
-                          <td className="text-right p-2 text-blue-600">{row.deliveries}</td>
-                          <td className="text-right p-2 font-medium">{row.total}</td>
+                      {(viewMode === 'state' ? stateData : cityData).map((item, i) => (
+                        <tr key={i} className="border-b hover:bg-muted/50">
+                          <td className="p-2">{viewMode === 'state' ? item.state : `${(item as CityData).city}, ${(item as CityData).state}`}</td>
+                          <td className="text-right p-2">{item.pickups}</td>
+                          <td className="text-right p-2">{item.deliveries}</td>
+                          <td className="text-right p-2 font-medium">{item.total}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -487,6 +508,28 @@ export default function LoadAnalyticsTab() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Heat Density Info */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Load Density Hotspots</CardTitle>
+              <CardDescription>Areas with highest concentration of loads</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {stateData.slice(0, 5).map((state, i) => (
+                  <div key={state.state} className="p-4 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border">
+                    <div className="text-2xl font-bold">{state.state}</div>
+                    <div className="text-sm text-muted-foreground">{state.total.toLocaleString()} loads</div>
+                    <div className="mt-2 flex gap-2 text-xs">
+                      <Badge variant="outline" className="bg-chart-1/10">{state.pickups} origins</Badge>
+                      <Badge variant="outline" className="bg-chart-2/10">{state.deliveries} dest</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Time Analysis Tab */}
@@ -495,11 +538,8 @@ export default function LoadAnalyticsTab() {
             {/* Day of Week */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Busiest Days
-                </CardTitle>
-                <CardDescription>Load volume by day of week</CardDescription>
+                <CardTitle className="text-lg">Loads by Day of Week</CardTitle>
+                <CardDescription>When loads are posted</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -523,11 +563,8 @@ export default function LoadAnalyticsTab() {
             {/* Hour of Day */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Busiest Hours
-                </CardTitle>
-                <CardDescription>Load creation by hour (24h)</CardDescription>
+                <CardTitle className="text-lg">Loads by Hour</CardTitle>
+                <CardDescription>Peak hours for load postings</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -549,16 +586,16 @@ export default function LoadAnalyticsTab() {
             </Card>
 
             {/* Monthly Trend */}
-            <Card className="lg:col-span-2">
+            <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Monthly Trend</CardTitle>
-                <CardDescription>Load volume over time</CardDescription>
+                <CardTitle className="text-lg">Monthly Volume Trend</CardTitle>
+                <CardDescription>Load email volume over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={monthlyTrend}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={monthlyTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={10} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                     <Tooltip
                       contentStyle={{
@@ -567,36 +604,114 @@ export default function LoadAnalyticsTab() {
                         borderRadius: '8px'
                       }}
                     />
-                    <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                    <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Daily Trend */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Daily Volume (Last 30 Days)</CardTitle>
+                <CardDescription>Recent load posting activity</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={dailyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={3} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
+
+          {/* Holiday Reference */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">US Holiday Reference</CardTitle>
+              <CardDescription>Major holidays that affect freight volume</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {US_HOLIDAYS.map(holiday => (
+                  <Badge key={holiday.name} variant="outline" className="py-1">
+                    {holiday.name} ({holiday.month}/{holiday.day})
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        {/* Equipment Tab */}
-        <TabsContent value="equipment" className="space-y-4">
+        {/* Vehicle Types Tab */}
+        <TabsContent value="vehicle" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Equipment Pie Chart */}
+            {/* Vehicle Type Distribution */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Equipment Distribution</CardTitle>
-                <CardDescription>Loads by equipment type</CardDescription>
+                <CardTitle className="text-lg">Load Volume by Vehicle Type</CardTitle>
+                <CardDescription>Distribution of loads across vehicle types</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart
+                    data={vehicleTypeDistribution}
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={11}
+                      width={90}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Pie Chart */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Vehicle Type Share</CardTitle>
+                <CardDescription>Percentage breakdown</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
                   <PieChart>
                     <Pie
-                      data={equipmentDistribution}
+                      data={vehicleTypeDistribution.slice(0, 8)}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
                       outerRadius={120}
                       dataKey="value"
+                      nameKey="name"
                       label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      labelLine={false}
                     >
-                      {equipmentDistribution.map((_, index) => (
+                      {vehicleTypeDistribution.slice(0, 8).map((_, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
@@ -611,35 +726,38 @@ export default function LoadAnalyticsTab() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
-            {/* Equipment Table */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Equipment Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {equipmentDistribution.map((item, i) => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
-                        />
-                        <span className="text-sm font-medium">{item.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground">
-                          {((item.value / stats.totalLoads) * 100).toFixed(1)}%
-                        </span>
-                        <Badge variant="secondary">{item.value}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </div>
+
+          {/* Vehicle Type Table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">All Vehicle Types</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-[400px] overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="border-b">
+                      <th className="text-left p-2 font-medium">Vehicle Type</th>
+                      <th className="text-right p-2 font-medium">Count</th>
+                      <th className="text-right p-2 font-medium">% Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vehicleTypeDistribution.map((item, i) => (
+                      <tr key={i} className="border-b hover:bg-muted/50">
+                        <td className="p-2">{item.name}</td>
+                        <td className="text-right p-2">{item.value.toLocaleString()}</td>
+                        <td className="text-right p-2">
+                          {((item.value / stats.totalEmails) * 100).toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
