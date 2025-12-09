@@ -31,6 +31,7 @@ import DevelopmentTab from "./pages/DevelopmentTab";
 import FlowDiagramTab from "./pages/FlowDiagramTab";
 import ChangelogTab from "./pages/ChangelogTab";
 import DuplicateCustomersTab from "./pages/DuplicateCustomersTab";
+import RoleBuilderTab from "./pages/RoleBuilderTab";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
+          <Route path="/dashboard/roles" element={<DashboardLayout><RoleBuilderTab /></DashboardLayout>} />
           <Route path="/dashboard/development" element={<DashboardLayout><DevelopmentTab /></DashboardLayout>} />
           <Route path="/dashboard/changelog" element={<DashboardLayout><ChangelogTab /></DashboardLayout>} />
           <Route path="/dashboard/flow" element={<DashboardLayout><FlowDiagramTab /></DashboardLayout>} />

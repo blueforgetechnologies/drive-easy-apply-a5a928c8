@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'development', 'changelog'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'roles', 'development', 'changelog'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -144,7 +144,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
       navigate(`/dashboard/${value}?subtab=users`);
-    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development' || value === 'changelog') {
+    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'roles') {
       navigate(`/dashboard/${value}`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
@@ -159,6 +159,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
+    { value: "roles", icon: ShieldCheck, label: "Roles" },
     { value: "development", icon: FileCode, label: "Dev" },
     { value: "changelog", icon: History, label: "Changelog" },
   ];
