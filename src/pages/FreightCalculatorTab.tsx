@@ -282,89 +282,76 @@ export default function FreightCalculatorTab() {
 
     // Helper function to pack pallets with rotation optimization
     const packWithRotation = (units: PalletUnit[], allowStacking: boolean): number => {
-      // Create copies with optimal initial orientation (smaller dimension as width when possible)
-      const remaining = units.map(p => {
-        // Prefer orientation where width fits better in truck
-        if (p.origWidth <= truckWidth && p.origLength <= truckWidth) {
-          // Both orientations fit, prefer shorter length (less floor space)
-          return p.origLength <= p.origWidth 
-            ? { ...p, length: p.origLength, width: p.origWidth }
-            : { ...p, length: p.origWidth, width: p.origLength };
-        } else if (p.origWidth <= truckWidth) {
-          return { ...p, length: p.origLength, width: p.origWidth };
-        } else {
-          return { ...p, length: p.origWidth, width: p.origLength };
-        }
-      });
+      // For each pallet, determine both possible orientations and pick optimal during packing
+      interface PackablePallet extends PalletUnit {
+        altLength: number;
+        altWidth: number;
+      }
+      
+      const remaining: PackablePallet[] = units.map(p => ({
+        ...p,
+        // Current orientation uses smaller dimension as width to maximize side-by-side potential
+        length: Math.max(p.origLength, p.origWidth),
+        width: Math.min(p.origLength, p.origWidth),
+        // Alt orientation swaps them
+        altLength: Math.min(p.origLength, p.origWidth),
+        altWidth: Math.max(p.origLength, p.origWidth)
+      }));
+
+      // Sort by width descending - larger widths first to maximize row fill
+      remaining.sort((a, b) => b.width - a.width);
 
       let lengthNeeded = 0;
       
       while (remaining.length > 0) {
         const first = remaining.shift()!;
-        let rowWidth = first.width;
-        let rowLength = first.length;
-        const rowPallets: PalletUnit[] = [first];
         
-        // Try to add more pallets side-by-side, considering rotation
-        for (let i = remaining.length - 1; i >= 0; i--) {
-          const candidate = remaining[i];
-          
-          // Try original orientation
-          if (rowWidth + candidate.width <= truckWidth) {
-            rowWidth += candidate.width;
-            rowLength = Math.max(rowLength, candidate.length);
-            rowPallets.push(candidate);
-            remaining.splice(i, 1);
-          } 
-          // Try rotated orientation (swap length and width)
-          else if (rowWidth + candidate.length <= truckWidth && candidate.length <= truckWidth) {
-            rowWidth += candidate.length;
-            rowLength = Math.max(rowLength, candidate.width);
-            // Update the candidate's orientation
-            const temp = candidate.length;
-            candidate.length = candidate.width;
-            candidate.width = temp;
-            rowPallets.push(candidate);
-            remaining.splice(i, 1);
-          }
-        }
+        // Try both orientations for the first pallet - pick the one that allows better row packing
+        let bestRowLength = Infinity;
+        let bestRowConfig: { usedIndices: number[], length: number } | null = null;
         
-        if (allowStacking) {
-          // Calculate vertical stacking for this row
-          const minStackHeight = Math.min(...rowPallets.map(p => p.height));
-          const stacksHigh = Math.floor(truckHeight / minStackHeight);
+        for (const firstOrientation of [
+          { length: first.length, width: first.width },
+          { length: first.altLength, width: first.altWidth }
+        ]) {
+          if (firstOrientation.width > truckWidth) continue;
           
-          if (stacksHigh > 1) {
-            // Try to find matching pallets to stack
-            for (let stack = 1; stack < stacksHigh; stack++) {
-              let canStack = true;
-              const toRemove: number[] = [];
-              
-              for (const rp of rowPallets) {
-                // Match by original dimensions (rotation doesn't matter for stacking same-size pallets)
-                const matchIdx = remaining.findIndex(p => 
-                  ((p.origLength === rp.origLength && p.origWidth === rp.origWidth) ||
-                   (p.origLength === rp.origWidth && p.origWidth === rp.origLength)) &&
-                  p.height === rp.height
-                );
-                if (matchIdx >= 0) {
-                  toRemove.push(matchIdx);
-                } else {
-                  canStack = false;
-                  break;
-                }
-              }
-              
-              if (canStack && toRemove.length === rowPallets.length) {
-                toRemove.sort((a, b) => b - a).forEach(idx => remaining.splice(idx, 1));
-              } else {
-                break;
-              }
+          let rowWidth = firstOrientation.width;
+          let rowLength = firstOrientation.length;
+          const usedIndices: number[] = [];
+          
+          // Try to add more pallets side-by-side
+          for (let i = 0; i < remaining.length; i++) {
+            const candidate = remaining[i];
+            
+            // Try normal orientation
+            if (rowWidth + candidate.width <= truckWidth) {
+              rowWidth += candidate.width;
+              rowLength = Math.max(rowLength, candidate.length);
+              usedIndices.push(i);
+            }
+            // Try rotated orientation
+            else if (rowWidth + candidate.altWidth <= truckWidth) {
+              rowWidth += candidate.altWidth;
+              rowLength = Math.max(rowLength, candidate.altLength);
+              usedIndices.push(i);
             }
           }
+          
+          if (rowLength < bestRowLength) {
+            bestRowLength = rowLength;
+            bestRowConfig = { usedIndices, length: rowLength };
+          }
         }
         
-        lengthNeeded += rowLength;
+        if (bestRowConfig) {
+          lengthNeeded += bestRowConfig.length;
+          // Remove used pallets in reverse order to maintain indices
+          bestRowConfig.usedIndices.sort((a, b) => b - a).forEach(idx => remaining.splice(idx, 1));
+        } else {
+          // Fallback: just use the pallet alone with its shorter length
+          lengthNeeded += Math.min(first.length, first.altLength);
+        }
       }
       
       return lengthNeeded;
