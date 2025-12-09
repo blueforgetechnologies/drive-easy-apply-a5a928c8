@@ -105,7 +105,11 @@ export default function RoleBuilderTab() {
       accounting: "Accounting",
       settings: "Settings",
       load_hunter: "Load Hunter",
-      map: "Map"
+      map: "Map",
+      maintenance: "Maintenance",
+      development: "Development",
+      changelog: "Changelog",
+      roles: "Roles"
     };
     return labels[category] || category;
   };
