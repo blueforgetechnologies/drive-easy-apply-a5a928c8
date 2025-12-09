@@ -62,6 +62,24 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
   
+  // First try to extract broker_name from HTML format: <strong>Broker Name: </strong>Matthew Rose
+  const brokerNameHtmlMatch = bodyText?.match(/<strong>Broker\s*Name:\s*<\/strong>\s*([^<\n]+)/i);
+  if (brokerNameHtmlMatch) {
+    data.broker_name = brokerNameHtmlMatch[1].trim();
+  }
+  
+  // Extract broker_company from HTML format: <strong>Broker Company: </strong>BLX LOGISTICS
+  const brokerCompanyHtmlMatch = bodyText?.match(/<strong>Broker\s*Company:\s*<\/strong>\s*([^<\n]+)/i);
+  if (brokerCompanyHtmlMatch) {
+    data.broker_company = brokerCompanyHtmlMatch[1].trim();
+  }
+  
+  // Extract broker_phone from HTML format: <strong>Broker Phone: </strong>941.334.9849
+  const brokerPhoneHtmlMatch = bodyText?.match(/<strong>Broker\s*Phone:\s*<\/strong>\s*([^<\n]+)/i);
+  if (brokerPhoneHtmlMatch) {
+    data.broker_phone = brokerPhoneHtmlMatch[1].trim();
+  }
+
   const patterns: Record<string, RegExp> = {
     broker_name: /(?:Contact|Rep|Agent)[\s:]+([A-Za-z\s]+?)(?:\n|$)/i,
     broker_company: /(?:Company|Broker)[\s:]+([^\n]+)/i,
@@ -74,6 +92,9 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
   };
 
   for (const [key, pattern] of Object.entries(patterns)) {
+    // Skip if already extracted from HTML format
+    if (data[key]) continue;
+    
     const match = bodyText?.match(pattern);
     if (match) {
       if (key === 'origin_city' && match[2]) {
