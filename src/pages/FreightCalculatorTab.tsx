@@ -1,0 +1,440 @@
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Calculator, Upload, CheckCircle2, XCircle, Truck, Package, AlertTriangle, Loader2 } from "lucide-react";
+
+interface Pallet {
+  quantity: number;
+  length: number;
+  width: number;
+  height: number;
+}
+
+interface Vehicle {
+  id: string;
+  vehicle_number: string;
+  asset_type: string | null;
+  vehicle_size: number | null;
+  dimensions_length: number | null;
+  dimensions_width: number | null;
+  dimensions_height: number | null;
+}
+
+interface FitResult {
+  fits: boolean;
+  totalPallets: number;
+  totalFloorSpace: number;
+  truckFloorSpace: number;
+  maxHeight: number;
+  truckHeight: number;
+  utilization: number;
+  warnings: string[];
+}
+
+export default function FreightCalculatorTab() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+  const [dimensionsText, setDimensionsText] = useState("");
+  const [parsedPallets, setParsedPallets] = useState<Pallet[]>([]);
+  const [fitResult, setFitResult] = useState<FitResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isParsingImage, setIsParsingImage] = useState(false);
+
+  useEffect(() => {
+    loadVehicles();
+  }, []);
+
+  const loadVehicles = async () => {
+    const { data, error } = await supabase
+      .from("vehicles")
+      .select("id, vehicle_number, asset_type, vehicle_size, dimensions_length, dimensions_width, dimensions_height")
+      .eq("status", "active")
+      .order("vehicle_number");
+
+    if (data && !error) {
+      setVehicles(data);
+    }
+  };
+
+  // Parse dimensions text like "3@48 x 48 x 52" or "3@48x48x52"
+  const parseDimensions = useCallback((text: string): Pallet[] => {
+    const pallets: Pallet[] = [];
+    const lines = text.split('\n').filter(line => line.trim());
+
+    for (const line of lines) {
+      // Match patterns like "3@48 x 48 x 52" or "3@48x48x52" or "48x48x52"
+      const withQuantityMatch = line.match(/(\d+)\s*@\s*(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)/);
+      const withoutQuantityMatch = line.match(/^(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)/);
+
+      if (withQuantityMatch) {
+        pallets.push({
+          quantity: parseInt(withQuantityMatch[1]),
+          length: parseInt(withQuantityMatch[2]),
+          width: parseInt(withQuantityMatch[3]),
+          height: parseInt(withQuantityMatch[4])
+        });
+      } else if (withoutQuantityMatch) {
+        pallets.push({
+          quantity: 1,
+          length: parseInt(withoutQuantityMatch[1]),
+          width: parseInt(withoutQuantityMatch[2]),
+          height: parseInt(withoutQuantityMatch[3])
+        });
+      }
+    }
+
+    return pallets;
+  }, []);
+
+  useEffect(() => {
+    if (dimensionsText) {
+      const parsed = parseDimensions(dimensionsText);
+      setParsedPallets(parsed);
+    } else {
+      setParsedPallets([]);
+    }
+    setFitResult(null);
+  }, [dimensionsText, parseDimensions]);
+
+  const handleImageDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      await parseImageWithAI(file);
+    }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await parseImageWithAI(file);
+    }
+  };
+
+  const parseImageWithAI = async (file: File) => {
+    setIsParsingImage(true);
+    try {
+      // Convert image to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Call edge function to parse with AI
+      const { data, error } = await supabase.functions.invoke('parse-freight-dimensions', {
+        body: { imageBase64: base64 }
+      });
+
+      if (error) throw error;
+
+      if (data?.dimensions) {
+        setDimensionsText(data.dimensions);
+        toast.success("Dimensions extracted from image");
+      } else {
+        toast.error("Could not extract dimensions from image");
+      }
+    } catch (error) {
+      console.error("Error parsing image:", error);
+      toast.error("Failed to parse image");
+    } finally {
+      setIsParsingImage(false);
+    }
+  };
+
+  const calculateFit = () => {
+    if (!selectedVehicleId || parsedPallets.length === 0) {
+      toast.error("Please select a truck and enter freight dimensions");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+    if (!vehicle) {
+      toast.error("Vehicle not found");
+      setIsLoading(false);
+      return;
+    }
+
+    // Get truck dimensions (convert feet to inches if needed)
+    let truckLength = vehicle.dimensions_length || 0;
+    let truckWidth = vehicle.dimensions_width || 96; // Default trailer width 96"
+    let truckHeight = vehicle.dimensions_height || 96; // Default trailer height 96"
+
+    // If vehicle_size is set (in feet) and no dimensions_length, use it
+    if (!truckLength && vehicle.vehicle_size) {
+      truckLength = vehicle.vehicle_size * 12; // Convert feet to inches
+    }
+
+    if (truckLength === 0) {
+      toast.error("Vehicle has no dimensions set. Please update vehicle dimensions first.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Calculate total floor space needed (assuming pallets laid out efficiently)
+    // Standard pallet arrangement: 2 pallets side-by-side (48" + 48" = 96" = trailer width)
+    let totalPallets = 0;
+    let maxHeight = 0;
+    let totalLengthNeeded = 0;
+    const warnings: string[] = [];
+
+    for (const pallet of parsedPallets) {
+      totalPallets += pallet.quantity;
+      maxHeight = Math.max(maxHeight, pallet.height);
+
+      // Calculate how many pallets fit side by side
+      const palletsAcross = Math.floor(truckWidth / pallet.width);
+      if (palletsAcross === 0) {
+        warnings.push(`Pallet ${pallet.width}" width exceeds truck width ${truckWidth}"`);
+        continue;
+      }
+
+      // Calculate rows needed for this pallet group
+      const rowsNeeded = Math.ceil(pallet.quantity / palletsAcross);
+      totalLengthNeeded += rowsNeeded * pallet.length;
+    }
+
+    const truckFloorSpace = truckLength * truckWidth;
+    const totalFloorSpace = totalLengthNeeded * truckWidth;
+    const utilization = Math.round((totalLengthNeeded / truckLength) * 100);
+
+    // Check if it fits
+    const heightFits = maxHeight <= truckHeight;
+    const lengthFits = totalLengthNeeded <= truckLength;
+    const fits = heightFits && lengthFits && warnings.length === 0;
+
+    if (!heightFits) {
+      warnings.push(`Max pallet height ${maxHeight}" exceeds truck height ${truckHeight}"`);
+    }
+    if (!lengthFits) {
+      warnings.push(`Total length needed ${totalLengthNeeded}" exceeds truck length ${truckLength}" by ${totalLengthNeeded - truckLength}"`);
+    }
+
+    setFitResult({
+      fits,
+      totalPallets,
+      totalFloorSpace,
+      truckFloorSpace,
+      maxHeight,
+      truckHeight,
+      utilization: Math.min(utilization, 100),
+      warnings
+    });
+
+    setIsLoading(false);
+  };
+
+  const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
+      <div className="flex items-center gap-3">
+        <Calculator className="h-6 w-6 text-primary" />
+        <h1 className="text-2xl font-bold">Freight Fit Calculator</h1>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Input Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Freight Dimensions
+            </CardTitle>
+            <CardDescription>
+              Paste dimensions or drop a screenshot
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Drop Zone */}
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleImageDrop}
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+                id="image-upload"
+              />
+              <label htmlFor="image-upload" className="cursor-pointer">
+                {isParsingImage ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Parsing image with AI...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Drop screenshot here or click to upload
+                    </span>
+                  </div>
+                )}
+              </label>
+            </div>
+
+            {/* Text Input */}
+            <Textarea
+              value={dimensionsText}
+              onChange={(e) => setDimensionsText(e.target.value)}
+              placeholder={`Enter dimensions (one per line):
+3@48 x 48 x 52
+1@48 x 48 x 59
+8@47 x 24 x 59`}
+              className="min-h-[150px] font-mono text-sm"
+            />
+
+            {/* Parsed Preview */}
+            {parsedPallets.length > 0 && (
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <div className="text-sm font-medium">Parsed Pallets:</div>
+                {parsedPallets.map((pallet, idx) => (
+                  <div key={idx} className="text-sm flex items-center gap-2">
+                    <Badge variant="secondary" className="font-mono">
+                      {pallet.quantity}x
+                    </Badge>
+                    <span className="font-mono">
+                      {pallet.length}" × {pallet.width}" × {pallet.height}"
+                    </span>
+                  </div>
+                ))}
+                <div className="text-sm font-medium pt-2 border-t border-border mt-2">
+                  Total: {parsedPallets.reduce((sum, p) => sum + p.quantity, 0)} pallets
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Truck Selection & Result */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              Select Truck
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a truck..." />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicles.map((vehicle) => (
+                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                    <span className="font-medium">{vehicle.vehicle_number}</span>
+                    <span className="text-muted-foreground ml-2">
+                      {vehicle.asset_type}
+                      {vehicle.vehicle_size && ` - ${vehicle.vehicle_size}'`}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedVehicle && (
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <div className="font-medium">{selectedVehicle.vehicle_number}</div>
+                <div className="text-muted-foreground">
+                  {selectedVehicle.asset_type}
+                </div>
+                <div className="font-mono text-xs pt-2 space-y-1">
+                  {selectedVehicle.vehicle_size && (
+                    <div>Length: {selectedVehicle.vehicle_size}' ({selectedVehicle.vehicle_size * 12}")</div>
+                  )}
+                  {selectedVehicle.dimensions_length && (
+                    <div>Length: {selectedVehicle.dimensions_length}"</div>
+                  )}
+                  {selectedVehicle.dimensions_width && (
+                    <div>Width: {selectedVehicle.dimensions_width}"</div>
+                  )}
+                  {selectedVehicle.dimensions_height && (
+                    <div>Height: {selectedVehicle.dimensions_height}"</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={calculateFit}
+              disabled={!selectedVehicleId || parsedPallets.length === 0 || isLoading}
+              className="w-full"
+              size="lg"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Calculator className="h-4 w-4 mr-2" />
+              )}
+              Calculate Fit
+            </Button>
+
+            {/* Result Display */}
+            {fitResult && (
+              <div className={`rounded-lg p-4 border-2 ${
+                fitResult.fits 
+                  ? "bg-green-500/10 border-green-500/30" 
+                  : "bg-red-500/10 border-red-500/30"
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  {fitResult.fits ? (
+                    <>
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
+                      <span className="text-lg font-bold text-green-500">FITS!</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-6 w-6 text-red-500" />
+                      <span className="text-lg font-bold text-red-500">DOES NOT FIT</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Pallets:</span>
+                    <span className="font-medium">{fitResult.totalPallets}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Max Pallet Height:</span>
+                    <span className="font-medium">{fitResult.maxHeight}"</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Truck Height:</span>
+                    <span className="font-medium">{fitResult.truckHeight}"</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Space Utilization:</span>
+                    <span className="font-medium">{fitResult.utilization}%</span>
+                  </div>
+                </div>
+
+                {fitResult.warnings.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border space-y-1">
+                    {fitResult.warnings.map((warning, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500">
+                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

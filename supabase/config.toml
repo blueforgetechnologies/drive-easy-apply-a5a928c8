@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.send-user-login]
 verify_jwt = true
+
+[functions.parse-freight-dimensions]
+verify_jwt = true
