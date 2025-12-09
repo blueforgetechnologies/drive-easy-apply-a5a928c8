@@ -24,6 +24,8 @@ interface Vehicle {
   dimensions_length: number | null;
   dimensions_width: number | null;
   dimensions_height: number | null;
+  door_dims_width: number | null;
+  door_dims_height: number | null;
 }
 
 interface FitResult {
@@ -55,7 +57,7 @@ export default function FreightCalculatorTab() {
   const loadVehicles = async () => {
     const { data, error } = await supabase
       .from("vehicles")
-      .select("id, vehicle_number, asset_type, vehicle_size, dimensions_length, dimensions_width, dimensions_height")
+      .select("id, vehicle_number, asset_type, vehicle_size, dimensions_length, dimensions_width, dimensions_height, door_dims_width, door_dims_height")
       .eq("status", "active")
       .order("vehicle_number");
 
@@ -221,6 +223,10 @@ export default function FreightCalculatorTab() {
     let truckLength = vehicle.dimensions_length || 0;
     let truckWidth = vehicle.dimensions_width || 96; // Default trailer width 96"
     let truckHeight = vehicle.dimensions_height || 96; // Default trailer height 96"
+    
+    // Door dimensions - freight must fit through the door
+    const doorWidth = vehicle.door_dims_width || truckWidth;
+    const doorHeight = vehicle.door_dims_height || truckHeight;
 
     // If vehicle_size is set (in feet) and no dimensions_length, use it
     if (!truckLength && vehicle.vehicle_size) {
@@ -270,9 +276,21 @@ export default function FreightCalculatorTab() {
     totalWeight = allUnits.reduce((sum, p) => sum + p.weight, 0);
     maxHeight = Math.max(...allUnits.map(p => p.height), 0);
 
-    // Check for oversized pallets (check both orientations)
+    // Check for oversized pallets - must fit through door AND inside truck
     const validUnits = allUnits.filter(p => {
       const minDim = Math.min(p.origLength, p.origWidth);
+      const maxDim = Math.max(p.origLength, p.origWidth);
+      
+      // Check if pallet can fit through door (can rotate L/W)
+      const fitsThruDoor = (minDim <= doorWidth && p.height <= doorHeight) || 
+                           (maxDim <= doorWidth && p.height <= doorHeight);
+      
+      if (!fitsThruDoor) {
+        warnings.push(`Pallet ${p.origLength}"x${p.origWidth}"x${p.height}" cannot fit through door (${doorWidth}"x${doorHeight}")`);
+        return false;
+      }
+      
+      // Check if pallet fits inside truck width
       if (minDim > truckWidth) {
         warnings.push(`Pallet ${p.origLength}"x${p.origWidth}" cannot fit - both dimensions exceed truck width ${truckWidth}"`);
         return false;
@@ -280,9 +298,8 @@ export default function FreightCalculatorTab() {
       return true;
     });
 
-    // Helper function to pack pallets with rotation optimization
+    // Helper function to pack pallets with rotation and stacking optimization
     const packWithRotation = (units: PalletUnit[], allowStacking: boolean): number => {
-      // For each pallet, determine both possible orientations and pick optimal during packing
       interface PackablePallet extends PalletUnit {
         altLength: number;
         altWidth: number;
@@ -290,25 +307,26 @@ export default function FreightCalculatorTab() {
       
       const remaining: PackablePallet[] = units.map(p => ({
         ...p,
-        // Current orientation uses smaller dimension as width to maximize side-by-side potential
         length: Math.max(p.origLength, p.origWidth),
         width: Math.min(p.origLength, p.origWidth),
-        // Alt orientation swaps them
         altLength: Math.min(p.origLength, p.origWidth),
         altWidth: Math.max(p.origLength, p.origWidth)
       }));
 
-      // Sort by width descending - larger widths first to maximize row fill
-      remaining.sort((a, b) => b.width - a.width);
+      // Sort by height descending when stacking, then by width
+      if (allowStacking) {
+        remaining.sort((a, b) => b.height - a.height || b.width - a.width);
+      } else {
+        remaining.sort((a, b) => b.width - a.width);
+      }
 
       let lengthNeeded = 0;
       
       while (remaining.length > 0) {
         const first = remaining.shift()!;
         
-        // Try both orientations for the first pallet - pick the one that allows better row packing
         let bestRowLength = Infinity;
-        let bestRowConfig: { usedIndices: number[], length: number } | null = null;
+        let bestRowConfig: { usedIndices: number[], stackedIndices: number[], length: number } | null = null;
         
         for (const firstOrientation of [
           { length: first.length, width: first.width },
@@ -319,37 +337,62 @@ export default function FreightCalculatorTab() {
           let rowWidth = firstOrientation.width;
           let rowLength = firstOrientation.length;
           const usedIndices: number[] = [];
+          const rowPallets: { index: number, height: number, width: number, length: number }[] = [
+            { index: -1, height: first.height, width: firstOrientation.width, length: firstOrientation.length }
+          ];
           
           // Try to add more pallets side-by-side
           for (let i = 0; i < remaining.length; i++) {
             const candidate = remaining[i];
             
-            // Try normal orientation
             if (rowWidth + candidate.width <= truckWidth) {
               rowWidth += candidate.width;
               rowLength = Math.max(rowLength, candidate.length);
               usedIndices.push(i);
-            }
-            // Try rotated orientation
-            else if (rowWidth + candidate.altWidth <= truckWidth) {
+              rowPallets.push({ index: i, height: candidate.height, width: candidate.width, length: candidate.length });
+            } else if (rowWidth + candidate.altWidth <= truckWidth) {
               rowWidth += candidate.altWidth;
               rowLength = Math.max(rowLength, candidate.altLength);
               usedIndices.push(i);
+              rowPallets.push({ index: i, height: candidate.height, width: candidate.altWidth, length: candidate.altLength });
+            }
+          }
+          
+          // If stacking allowed, try to stack pallets on top of this row
+          const stackedIndices: number[] = [];
+          if (allowStacking && rowPallets.length > 0) {
+            // Calculate available stacking height for each position
+            const usedHeights = rowPallets.map(p => p.height);
+            const minHeight = Math.min(...usedHeights);
+            const stackableHeight = truckHeight - minHeight;
+            
+            // Find pallets that can stack on this row
+            for (let i = remaining.length - 1; i >= 0; i--) {
+              if (usedIndices.includes(i) || stackedIndices.includes(i)) continue;
+              
+              const candidate = remaining[i];
+              // Can stack if height fits and footprint fits within row
+              if (candidate.height <= stackableHeight) {
+                const candWidth = Math.min(candidate.width, candidate.altWidth);
+                if (candWidth <= rowWidth) {
+                  stackedIndices.push(i);
+                }
+              }
             }
           }
           
           if (rowLength < bestRowLength) {
             bestRowLength = rowLength;
-            bestRowConfig = { usedIndices, length: rowLength };
+            bestRowConfig = { usedIndices, stackedIndices, length: rowLength };
           }
         }
         
         if (bestRowConfig) {
           lengthNeeded += bestRowConfig.length;
-          // Remove used pallets in reverse order to maintain indices
-          bestRowConfig.usedIndices.sort((a, b) => b - a).forEach(idx => remaining.splice(idx, 1));
+          // Remove stacked and used pallets in reverse order
+          const allRemoved = [...bestRowConfig.usedIndices, ...bestRowConfig.stackedIndices];
+          allRemoved.sort((a, b) => b - a).forEach(idx => remaining.splice(idx, 1));
         } else {
-          // Fallback: just use the pallet alone with its shorter length
           lengthNeeded += Math.min(first.length, first.altLength);
         }
       }
