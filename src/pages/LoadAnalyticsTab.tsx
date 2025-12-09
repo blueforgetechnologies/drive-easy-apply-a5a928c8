@@ -271,7 +271,15 @@ export default function LoadAnalyticsTab() {
 
   // Initialize map when tab is active and token is available
   useEffect(() => {
-    if (activeTab !== 'heatmap' || !mapboxToken || !mapContainer.current || map.current) return;
+    if (activeTab !== 'heatmap' || !mapboxToken || !mapContainer.current) return;
+
+    // Clean up existing map if any
+    if (map.current) {
+      map.current.remove();
+      map.current = null;
+    }
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
 
     mapboxgl.accessToken = mapboxToken;
     
@@ -284,9 +292,18 @@ export default function LoadAnalyticsTab() {
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+    // Wait for map to load before adding markers
+    map.current.on('load', () => {
+      // Markers will be added by the other useEffect
+    });
+
     return () => {
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
   }, [activeTab, mapboxToken]);
 
@@ -294,55 +311,66 @@ export default function LoadAnalyticsTab() {
   useEffect(() => {
     if (!map.current || activeTab !== 'heatmap') return;
 
-    // Clear existing markers
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+    const addMarkers = () => {
+      // Clear existing markers
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
 
-    // Find max count for scaling
-    const maxCount = Math.max(...mapPointsData.map(p => p.origins + p.destinations), 1);
+      if (mapPointsData.length === 0) return;
 
-    // Add new markers
-    mapPointsData.forEach(point => {
-      const total = point.origins + point.destinations;
-      const radius = Math.max(15, Math.min(60, (total / maxCount) * 60));
-      
-      // Create marker element
-      const el = document.createElement('div');
-      el.className = 'load-density-marker';
-      el.style.width = `${radius}px`;
-      el.style.height = `${radius}px`;
-      el.style.borderRadius = '50%';
-      el.style.backgroundColor = flowDirection === 'pickup' 
-        ? 'rgba(34, 197, 94, 0.6)' 
-        : flowDirection === 'delivery' 
-          ? 'rgba(59, 130, 246, 0.6)' 
-          : 'rgba(168, 85, 247, 0.6)';
-      el.style.border = '2px solid rgba(255, 255, 255, 0.8)';
-      el.style.display = 'flex';
-      el.style.alignItems = 'center';
-      el.style.justifyContent = 'center';
-      el.style.color = 'white';
-      el.style.fontSize = radius > 30 ? '12px' : '10px';
-      el.style.fontWeight = 'bold';
-      el.style.cursor = 'pointer';
-      el.textContent = total > 99 ? '99+' : String(total);
+      // Find max count for scaling
+      const maxCount = Math.max(...mapPointsData.map(p => p.origins + p.destinations), 1);
 
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div style="padding: 8px;">
-          <strong>${point.label}</strong><br/>
-          <span style="color: #22c55e;">Origins: ${point.origins}</span><br/>
-          <span style="color: #3b82f6;">Destinations: ${point.destinations}</span><br/>
-          <strong>Total: ${total}</strong>
-        </div>
-      `);
+      // Add new markers
+      mapPointsData.forEach(point => {
+        const total = point.origins + point.destinations;
+        const radius = Math.max(15, Math.min(60, (total / maxCount) * 60));
+        
+        // Create marker element
+        const el = document.createElement('div');
+        el.className = 'load-density-marker';
+        el.style.width = `${radius}px`;
+        el.style.height = `${radius}px`;
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = flowDirection === 'pickup' 
+          ? 'rgba(34, 197, 94, 0.6)' 
+          : flowDirection === 'delivery' 
+            ? 'rgba(59, 130, 246, 0.6)' 
+            : 'rgba(168, 85, 247, 0.6)';
+        el.style.border = '2px solid rgba(255, 255, 255, 0.8)';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.color = 'white';
+        el.style.fontSize = radius > 30 ? '12px' : '10px';
+        el.style.fontWeight = 'bold';
+        el.style.cursor = 'pointer';
+        el.textContent = total > 99 ? '99+' : String(total);
 
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat(point.coords)
-        .setPopup(popup)
-        .addTo(map.current!);
+        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+          <div style="padding: 8px;">
+            <strong>${point.label}</strong><br/>
+            <span style="color: #22c55e;">Origins: ${point.origins}</span><br/>
+            <span style="color: #3b82f6;">Destinations: ${point.destinations}</span><br/>
+            <strong>Total: ${total}</strong>
+          </div>
+        `);
 
-      markersRef.current.push(marker);
-    });
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat(point.coords)
+          .setPopup(popup)
+          .addTo(map.current!);
+
+        markersRef.current.push(marker);
+      });
+    };
+
+    // Wait for map to be loaded
+    if (map.current.loaded()) {
+      addMarkers();
+    } else {
+      map.current.on('load', addMarkers);
+    }
   }, [mapPointsData, activeTab, flowDirection]);
 
   // Aggregate by state
