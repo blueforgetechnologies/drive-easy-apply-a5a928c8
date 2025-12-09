@@ -271,33 +271,38 @@ export default function LoadAnalyticsTab() {
 
   // Initialize map when tab is active and token is available
   useEffect(() => {
-    if (activeTab !== 'heatmap' || !mapboxToken || !mapContainer.current) return;
-
-    // Clean up existing map if any
-    if (map.current) {
-      map.current.remove();
-      map.current = null;
-    }
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
-
-    mapboxgl.accessToken = mapboxToken;
+    if (activeTab !== 'heatmap' || !mapboxToken) return;
     
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-98.5795, 39.8283], // US center
-      zoom: 3.5,
-    });
+    // Small delay to ensure container is rendered with dimensions
+    const initTimer = setTimeout(() => {
+      if (!mapContainer.current) return;
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      // Clean up existing map if any
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
 
-    // Wait for map to load before adding markers
-    map.current.on('load', () => {
-      // Markers will be added by the other useEffect
-    });
+      mapboxgl.accessToken = mapboxToken;
+      
+      try {
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/dark-v11',
+          center: [-98.5795, 39.8283], // US center
+          zoom: 3.5,
+        });
+
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      } catch (error) {
+        console.error('Error initializing map:', error);
+      }
+    }, 100);
 
     return () => {
+      clearTimeout(initTimer);
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
       if (map.current) {
@@ -774,7 +779,11 @@ export default function LoadAnalyticsTab() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div ref={mapContainer} className="h-[500px] rounded-lg" />
+                <div 
+                  ref={mapContainer} 
+                  className="rounded-lg" 
+                  style={{ height: '500px', width: '100%', minHeight: '500px' }} 
+                />
               )}
             </CardContent>
           </Card>
