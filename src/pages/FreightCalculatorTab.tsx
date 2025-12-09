@@ -233,56 +233,123 @@ export default function FreightCalculatorTab() {
       return;
     }
 
-    // Calculate total floor space needed (assuming pallets laid out efficiently)
-    // Standard pallet arrangement: 2 pallets side-by-side (48" + 48" = 96" = trailer width)
+    // Calculate total floor space needed with optimized row packing
     let totalPallets = 0;
     let totalWeight = 0;
     let maxHeight = 0;
     let totalLengthNeeded = 0;
     const warnings: string[] = [];
 
-    // If stackable, merge identical pallets and optimize stacking
-    let palletsToProcess = [...parsedPallets];
+    // Expand all pallets into individual units for optimal packing
+    interface PalletUnit { length: number; width: number; height: number; weight: number; }
+    const allUnits: PalletUnit[] = [];
     
+    for (const pallet of parsedPallets) {
+      for (let i = 0; i < pallet.quantity; i++) {
+        allUnits.push({
+          length: pallet.length,
+          width: pallet.width,
+          height: pallet.height,
+          weight: pallet.weight || 0
+        });
+      }
+    }
+
+    totalPallets = allUnits.length;
+    totalWeight = allUnits.reduce((sum, p) => sum + p.weight, 0);
+    maxHeight = Math.max(...allUnits.map(p => p.height), 0);
+
+    // Check for oversized pallets
+    const validUnits = allUnits.filter(p => {
+      if (p.width > truckWidth) {
+        warnings.push(`Pallet ${p.width}" width exceeds truck width ${truckWidth}"`);
+        return false;
+      }
+      return true;
+    });
+
     if (isStackable) {
-      // Merge identical dimensions together
-      const merged = new Map<string, Pallet>();
-      for (const pallet of parsedPallets) {
-        const key = `${pallet.length}-${pallet.width}-${pallet.height}`;
-        const existing = merged.get(key);
-        if (existing) {
-          existing.quantity += pallet.quantity;
-          existing.weight = (existing.weight || 0) + (pallet.weight || 0);
-        } else {
-          merged.set(key, { ...pallet });
+      // Optimized packing: group pallets that can share rows and stack vertically
+      const remaining = [...validUnits];
+      
+      while (remaining.length > 0) {
+        // Start a new row with the first remaining pallet
+        const first = remaining.shift()!;
+        let rowWidth = first.width;
+        let rowLength = first.length;
+        const rowPallets: PalletUnit[] = [first];
+        
+        // Try to add more pallets side-by-side in this row
+        for (let i = remaining.length - 1; i >= 0; i--) {
+          const candidate = remaining[i];
+          if (rowWidth + candidate.width <= truckWidth) {
+            rowWidth += candidate.width;
+            rowLength = Math.max(rowLength, candidate.length);
+            rowPallets.push(candidate);
+            remaining.splice(i, 1);
+          }
         }
+        
+        // Calculate vertical stacking for this row
+        const minStackHeight = Math.min(...rowPallets.map(p => p.height));
+        const stacksHigh = Math.floor(truckHeight / minStackHeight);
+        
+        // How many copies of this row configuration can stack?
+        // Find pallets that can stack on top (same dimensions in the remaining)
+        let stackCount = 1;
+        if (stacksHigh > 1) {
+          // Check if we have matching pallets to stack
+          for (let stack = 1; stack < stacksHigh; stack++) {
+            let canStack = true;
+            const toRemove: number[] = [];
+            
+            for (const rp of rowPallets) {
+              const matchIdx = remaining.findIndex(p => 
+                p.length === rp.length && p.width === rp.width && p.height === rp.height
+              );
+              if (matchIdx >= 0) {
+                toRemove.push(matchIdx);
+              } else {
+                canStack = false;
+                break;
+              }
+            }
+            
+            if (canStack && toRemove.length === rowPallets.length) {
+              stackCount++;
+              // Remove matched pallets (reverse order to preserve indices)
+              toRemove.sort((a, b) => b - a).forEach(idx => remaining.splice(idx, 1));
+            } else {
+              break;
+            }
+          }
+        }
+        
+        totalLengthNeeded += rowLength;
       }
-      palletsToProcess = Array.from(merged.values());
+    } else {
+      // Non-stackable: still optimize row packing by combining compatible widths
+      const remaining = [...validUnits];
+      
+      while (remaining.length > 0) {
+        const first = remaining.shift()!;
+        let rowWidth = first.width;
+        let rowLength = first.length;
+        
+        // Try to add more pallets side-by-side
+        for (let i = remaining.length - 1; i >= 0; i--) {
+          const candidate = remaining[i];
+          if (rowWidth + candidate.width <= truckWidth) {
+            rowWidth += candidate.width;
+            rowLength = Math.max(rowLength, candidate.length);
+            remaining.splice(i, 1);
+          }
+        }
+        
+        totalLengthNeeded += rowLength;
+      }
     }
 
-    for (const pallet of palletsToProcess) {
-      totalPallets += pallet.quantity;
-      totalWeight += (pallet.weight || 0) * (isStackable ? 1 : pallet.quantity); // Weight already summed if merged
-      maxHeight = Math.max(maxHeight, pallet.height);
-
-      // Calculate how many pallets fit side by side
-      const palletsAcross = Math.floor(truckWidth / pallet.width);
-      if (palletsAcross === 0) {
-        warnings.push(`Pallet ${pallet.width}" width exceeds truck width ${truckWidth}"`);
-        continue;
-      }
-
-      // Calculate how many pallets can stack vertically (if stackable)
-      const palletsHigh = isStackable ? Math.floor(truckHeight / pallet.height) : 1;
-
-      // Calculate rows needed for this pallet group
-      const palletsPerRow = palletsAcross * palletsHigh;
-      const rowsNeeded = Math.ceil(pallet.quantity / palletsPerRow);
-      totalLengthNeeded += rowsNeeded * pallet.length;
-    }
-
-    // Recalculate total weight correctly
-    totalWeight = parsedPallets.reduce((sum, p) => sum + (p.weight || 0) * p.quantity, 0);
 
     const truckFloorSpace = truckLength * truckWidth;
     const totalFloorSpace = totalLengthNeeded * truckWidth;
