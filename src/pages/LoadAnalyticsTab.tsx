@@ -323,10 +323,13 @@ export default function LoadAnalyticsTab() {
       const total = point.origins + point.destinations;
       const radius = Math.max(20, Math.min(60, (total / maxCount) * 60));
       
-      // Create marker element
+      // Create marker element - scale radius and font based on count
       const el = document.createElement('div');
-      el.style.width = `${radius}px`;
-      el.style.height = `${radius}px`;
+      const displayRadius = Math.max(24, Math.min(80, radius));
+      const fontSize = total > 999 ? 9 : total > 99 ? 10 : 12;
+      
+      el.style.width = `${displayRadius}px`;
+      el.style.height = `${displayRadius}px`;
       el.style.borderRadius = '50%';
       el.style.backgroundColor = flowDirection === 'pickup' 
         ? 'rgba(34, 197, 94, 0.7)' 
@@ -339,11 +342,11 @@ export default function LoadAnalyticsTab() {
       el.style.alignItems = 'center';
       el.style.justifyContent = 'center';
       el.style.color = 'white';
-      el.style.fontSize = radius > 30 ? '12px' : '10px';
+      el.style.fontSize = `${fontSize}px`;
       el.style.fontWeight = 'bold';
       el.style.cursor = 'pointer';
       el.style.textShadow = '0 1px 2px rgba(0,0,0,0.5)';
-      el.textContent = total > 99 ? '99+' : String(total);
+      el.textContent = String(total);
 
       const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
         <div style="padding: 8px;">
