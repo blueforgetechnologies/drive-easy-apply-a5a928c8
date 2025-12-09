@@ -114,6 +114,7 @@ export default function LoadAnalyticsTab() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [clusterRadius, setClusterRadius] = useState(0); // 0 = no clustering, in miles
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -260,11 +261,26 @@ export default function LoadAnalyticsTab() {
     return loadEmails.filter(email => email.parsed_data?.vehicle_type === selectedVehicleType);
   }, [loadEmails, selectedVehicleType]);
 
-  // Generate map points data
-  const mapPointsData = useMemo(() => {
-    const points: { coords: [number, number]; count: number; type: 'origin' | 'destination'; label: string }[] = [];
-    const aggregated = new Map<string, { coords: [number, number]; origins: number; destinations: number; label: string }>();
+  // Haversine distance calculation (returns miles)
+  const haversineDistance = useCallback((coord1: [number, number], coord2: [number, number]): number => {
+    const R = 3959; // Earth's radius in miles
+    const lat1 = coord1[1] * Math.PI / 180;
+    const lat2 = coord2[1] * Math.PI / 180;
+    const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+    const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
 
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1) * Math.cos(lat2) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
+
+  // Generate map points data with optional clustering
+  const mapPointsData = useMemo(() => {
+    const rawPoints: { coords: [number, number]; origins: number; destinations: number; label: string }[] = [];
+
+    // First pass: collect all points
     filteredEmails.forEach(email => {
       const pd = email.parsed_data;
       if (!pd) return;
@@ -273,15 +289,8 @@ export default function LoadAnalyticsTab() {
       if (flowDirection !== 'delivery') {
         const originCoords = getCoordinates(pd.origin_city, pd.origin_state, pd.origin_zip);
         if (originCoords) {
-          const key = originCoords.join(',');
-          const existing = aggregated.get(key) || { 
-            coords: originCoords, 
-            origins: 0, 
-            destinations: 0, 
-            label: pd.origin_city ? `${pd.origin_city}, ${pd.origin_state}` : pd.origin_state || 'Unknown'
-          };
-          existing.origins++;
-          aggregated.set(key, existing);
+          const label = pd.origin_city ? `${pd.origin_city}, ${pd.origin_state}` : pd.origin_state || 'Unknown';
+          rawPoints.push({ coords: originCoords, origins: 1, destinations: 0, label });
         }
       }
 
@@ -289,21 +298,71 @@ export default function LoadAnalyticsTab() {
       if (flowDirection !== 'pickup') {
         const destCoords = getCoordinates(pd.destination_city, pd.destination_state, pd.destination_zip);
         if (destCoords) {
-          const key = destCoords.join(',');
-          const existing = aggregated.get(key) || { 
-            coords: destCoords, 
-            origins: 0, 
-            destinations: 0, 
-            label: pd.destination_city ? `${pd.destination_city}, ${pd.destination_state}` : pd.destination_state || 'Unknown'
-          };
-          existing.destinations++;
-          aggregated.set(key, existing);
+          const label = pd.destination_city ? `${pd.destination_city}, ${pd.destination_state}` : pd.destination_state || 'Unknown';
+          rawPoints.push({ coords: destCoords, origins: 0, destinations: 1, label });
         }
       }
     });
 
-    return Array.from(aggregated.values());
-  }, [filteredEmails, flowDirection, getCoordinates]);
+    // If no clustering, aggregate by exact coordinates
+    if (clusterRadius === 0) {
+      const aggregated = new Map<string, { coords: [number, number]; origins: number; destinations: number; label: string }>();
+      rawPoints.forEach(point => {
+        const key = point.coords.join(',');
+        const existing = aggregated.get(key);
+        if (existing) {
+          existing.origins += point.origins;
+          existing.destinations += point.destinations;
+        } else {
+          aggregated.set(key, { ...point });
+        }
+      });
+      return Array.from(aggregated.values());
+    }
+
+    // Cluster points within radius
+    const clusters: { coords: [number, number]; origins: number; destinations: number; labels: Set<string> }[] = [];
+
+    rawPoints.forEach(point => {
+      let addedToCluster = false;
+      
+      for (const cluster of clusters) {
+        const distance = haversineDistance(point.coords, cluster.coords);
+        if (distance <= clusterRadius) {
+          // Add to existing cluster, recalculate center as weighted average
+          const totalBefore = cluster.origins + cluster.destinations;
+          const totalNew = point.origins + point.destinations;
+          const totalWeight = totalBefore + totalNew;
+          
+          cluster.coords = [
+            (cluster.coords[0] * totalBefore + point.coords[0] * totalNew) / totalWeight,
+            (cluster.coords[1] * totalBefore + point.coords[1] * totalNew) / totalWeight
+          ];
+          cluster.origins += point.origins;
+          cluster.destinations += point.destinations;
+          cluster.labels.add(point.label);
+          addedToCluster = true;
+          break;
+        }
+      }
+
+      if (!addedToCluster) {
+        clusters.push({
+          coords: point.coords,
+          origins: point.origins,
+          destinations: point.destinations,
+          labels: new Set([point.label])
+        });
+      }
+    });
+
+    return clusters.map(c => ({
+      coords: c.coords,
+      origins: c.origins,
+      destinations: c.destinations,
+      label: c.labels.size <= 3 ? Array.from(c.labels).join(', ') : `${c.labels.size} locations`
+    }));
+  }, [filteredEmails, flowDirection, getCoordinates, clusterRadius, haversineDistance]);
 
   // Add markers to map
   const addMarkersToMap = useCallback(() => {
@@ -826,20 +885,34 @@ export default function LoadAnalyticsTab() {
                     </span>
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground border-r pr-4">
+                    <MapIcon className="h-4 w-4" />
+                    <span>Cluster: {clusterRadius === 0 ? 'Off' : `${clusterRadius}mi`}</span>
+                    <div className="w-20">
+                      <Slider
+                        value={[clusterRadius]}
+                        onValueChange={([val]) => setClusterRadius(val)}
+                        min={0}
+                        max={200}
+                        step={10}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Timer className="h-4 w-4" />
                     <span>Refresh: {refreshInterval}s</span>
-                  </div>
-                  <div className="w-24">
-                    <Slider
-                      value={[refreshInterval]}
-                      onValueChange={([val]) => setRefreshInterval(val)}
-                      min={10}
-                      max={120}
-                      step={10}
-                      className="w-full"
-                    />
+                    <div className="w-20">
+                      <Slider
+                        value={[refreshInterval]}
+                        onValueChange={([val]) => setRefreshInterval(val)}
+                        min={10}
+                        max={120}
+                        step={10}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                   <Button
                     variant="outline"
@@ -849,10 +922,9 @@ export default function LoadAnalyticsTab() {
                     className="gap-1"
                   >
                     <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    Refresh
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    Updated: {format(lastRefresh, 'h:mm:ss a')}
+                    {format(lastRefresh, 'h:mm:ss a')}
                   </span>
                 </div>
               </div>
