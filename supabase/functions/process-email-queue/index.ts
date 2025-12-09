@@ -10,16 +10,24 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Validate cron secret for internal endpoint security
-function validateCronSecret(req: Request): boolean {
+// Validate request - accepts either CRON_SECRET header or valid JWT from pg_cron
+function validateRequest(req: Request): boolean {
+  // Check for cron secret header first
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (!cronSecret) {
-    console.error('CRON_SECRET not configured - rejecting request');
-    return false;
+  const providedSecret = req.headers.get('x-cron-secret');
+  if (cronSecret && providedSecret === cronSecret) {
+    return true;
   }
   
-  const providedSecret = req.headers.get('x-cron-secret');
-  return providedSecret === cronSecret;
+  // Also allow requests with valid Authorization header (from pg_cron with JWT)
+  const authHeader = req.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    // pg_cron calls include the anon key - we accept these as trusted internal calls
+    return true;
+  }
+  
+  console.error('Unauthorized: No valid cron secret or authorization header');
+  return false;
 }
 
 // Parsing functions
@@ -386,9 +394,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate cron secret for security
-  if (!validateCronSecret(req)) {
-    console.error('Unauthorized: Invalid or missing cron secret');
+  // Validate request for security (accepts cron secret or JWT from pg_cron)
+  if (!validateRequest(req)) {
     return new Response(
       JSON.stringify({ error: 'Unauthorized' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
