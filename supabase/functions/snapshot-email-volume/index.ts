@@ -9,8 +9,10 @@ const corsHeaders = {
 // Validate cron secret for internal endpoint security
 function validateCronSecret(req: Request): boolean {
   const cronSecret = Deno.env.get('CRON_SECRET');
-  // If no secret configured, allow requests (backwards compatibility)
-  if (!cronSecret) return true;
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured - rejecting request');
+    return false;
+  }
   
   const providedSecret = req.headers.get('x-cron-secret');
   return providedSecret === cronSecret;
