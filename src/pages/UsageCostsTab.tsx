@@ -483,13 +483,13 @@ const UsageCostsTab = () => {
     refetchIntervalInBackground: true,
   });
 
-  // Fetch Lovable AI tracking (current month) - comprehensive stats
+  // Fetch Lovable AI tracking (current month) - comprehensive stats with feature breakdown
   const { data: aiStats, refetch: refetchAi } = useQuery({
     queryKey: ["usage-ai", currentMonth],
     queryFn: async () => {
       const { data, error, count } = await supabase
         .from('ai_usage_tracking')
-        .select('model, prompt_tokens, completion_tokens, total_tokens, created_at', { count: 'exact' })
+        .select('model, feature, prompt_tokens, completion_tokens, total_tokens, created_at', { count: 'exact' })
         .eq('month_year', currentMonth)
         .order('created_at', { ascending: true });
       
@@ -510,6 +510,30 @@ const UsageCostsTab = () => {
         modelBreakdown[model].tokens += row.total_tokens || 0;
         modelBreakdown[model].promptTokens += row.prompt_tokens || 0;
         modelBreakdown[model].completionTokens += row.completion_tokens || 0;
+      });
+
+      // Feature breakdown - shows where AI is being used
+      const featureBreakdown: Record<string, { count: number; tokens: number; label: string }> = {};
+      const featureLabels: Record<string, string> = {
+        'freight_calculator_text': 'Freight Calculator (Text)',
+        'freight_calculator_image': 'Freight Calculator (Image)',
+        'load_email_parsing': 'Load Email Parsing',
+        'ai_update_customers': 'Customer AI Update',
+        'test_ai': 'AI Test',
+        'unknown': 'Unknown',
+      };
+      
+      data?.forEach(row => {
+        const feature = row.feature || 'unknown';
+        if (!featureBreakdown[feature]) {
+          featureBreakdown[feature] = { 
+            count: 0, 
+            tokens: 0, 
+            label: featureLabels[feature] || feature.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          };
+        }
+        featureBreakdown[feature].count++;
+        featureBreakdown[feature].tokens += row.total_tokens || 0;
       });
       
       // Calculate days of data for projections
@@ -551,6 +575,7 @@ const UsageCostsTab = () => {
         totalCompletionTokens,
         totalTokens,
         modelBreakdown,
+        featureBreakdown,
         daysOfData: daysOfData.toFixed(1),
         requestsPerDay: Math.round(requestsPerDay),
         tokensPerDay: Math.round(tokensPerDay),
@@ -1079,6 +1104,23 @@ const UsageCostsTab = () => {
                   <p className="text-xs text-muted-foreground">Output Tokens (Completion)</p>
                   <p className="font-semibold text-sm">{(aiStats?.totalCompletionTokens || 0).toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">~{aiStats?.avgCompletionTokens || 0} avg/request</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Feature breakdown - shows WHERE AI is being used */}
+            {!isCompactView && aiStats?.featureBreakdown && Object.keys(aiStats.featureBreakdown).length > 0 && (
+              <div className="mt-3 pt-2 border-t">
+                <p className="text-xs font-medium mb-2">Usage by Feature</p>
+                <div className="space-y-1">
+                  {Object.entries(aiStats.featureBreakdown)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .map(([feature, stats]) => (
+                    <div key={feature} className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground truncate max-w-[180px]">{stats.label}</span>
+                      <span className="font-medium">{stats.count} requests • {stats.tokens.toLocaleString()} tokens</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

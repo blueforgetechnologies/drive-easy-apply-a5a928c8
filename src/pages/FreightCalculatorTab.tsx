@@ -147,15 +147,71 @@ export default function FreightCalculatorTab() {
     return pallets;
   }, []);
 
-  useEffect(() => {
-    if (dimensionsText) {
-      const parsed = parseDimensions(dimensionsText);
-      setParsedPallets(parsed);
-    } else {
+  const [isAiFallback, setIsAiFallback] = useState(false);
+
+  // Parse dimensions with AI fallback when regex fails
+  const parseWithAiFallback = useCallback(async (text: string) => {
+    if (!text.trim()) {
       setParsedPallets([]);
+      setIsAiFallback(false);
+      return;
     }
+
+    // First try regex parsing
+    const regexParsed = parseDimensions(text);
+    
+    if (regexParsed.length > 0) {
+      // Regex worked - use it
+      setParsedPallets(regexParsed);
+      setIsAiFallback(false);
+      return;
+    }
+
+    // Regex failed - try AI fallback
+    console.log('[Freight Calc] Regex failed, trying AI fallback for:', text);
+    setIsParsingImage(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-freight-dimensions', {
+        body: { textInput: text }
+      });
+
+      if (error) throw error;
+
+      if (data?.dimensions) {
+        // Parse the AI response with regex
+        const aiParsed = parseDimensions(data.dimensions);
+        if (aiParsed.length > 0) {
+          setParsedPallets(aiParsed);
+          setIsAiFallback(true);
+          toast.success("Parsed with AI assistance");
+        } else {
+          setParsedPallets([]);
+          setIsAiFallback(false);
+          toast.error("Could not parse dimensions");
+        }
+      } else {
+        setParsedPallets([]);
+        setIsAiFallback(false);
+      }
+    } catch (error) {
+      console.error("AI fallback failed:", error);
+      setParsedPallets([]);
+      setIsAiFallback(false);
+    } finally {
+      setIsParsingImage(false);
+    }
+  }, [parseDimensions]);
+
+  // Debounced effect for parsing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      parseWithAiFallback(dimensionsText);
+    }, 500); // Debounce 500ms to avoid rapid AI calls
+    
     setFitResult(null);
-  }, [dimensionsText, parseDimensions]);
+    return () => clearTimeout(timer);
+  }, [dimensionsText, parseWithAiFallback]);
 
   const handleImageDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -501,7 +557,17 @@ export default function FreightCalculatorTab() {
             {/* Parsed Preview */}
             {parsedPallets.length > 0 && (
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                <div className="text-sm font-medium">Parsed Pallets:</div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  Parsed Pallets:
+                  {isAiFallback && (
+                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 border-purple-500/30">
+                      AI Parsed
+                    </Badge>
+                  )}
+                  {isParsingImage && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                </div>
                 {parsedPallets.map((pallet, idx) => (
                   <div key={idx} className="text-sm flex items-center gap-2">
                     <Badge variant="secondary" className="font-mono">

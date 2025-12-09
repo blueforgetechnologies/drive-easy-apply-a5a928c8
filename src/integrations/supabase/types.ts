@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           completion_tokens: number | null
           created_at: string
+          feature: string | null
           id: string
           model: string | null
           month_year: string | null
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           completion_tokens?: number | null
           created_at?: string
+          feature?: string | null
           id?: string
           model?: string | null
           month_year?: string | null
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           completion_tokens?: number | null
           created_at?: string
+          feature?: string | null
           id?: string
           model?: string | null
           month_year?: string | null
