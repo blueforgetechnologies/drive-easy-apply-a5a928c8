@@ -277,16 +277,21 @@ export default function FreightCalculatorTab() {
     maxHeight = Math.max(...allUnits.map(p => p.height), 0);
 
     // Check for oversized pallets - must fit through door AND inside truck
+    // Require 2" clearance for door (1" each side) for safe loading
+    const doorClearance = 2;
+    const effectiveDoorWidth = doorWidth - doorClearance;
+    const effectiveDoorHeight = doorHeight - doorClearance;
+    
     const validUnits = allUnits.filter(p => {
       const minDim = Math.min(p.origLength, p.origWidth);
       const maxDim = Math.max(p.origLength, p.origWidth);
       
-      // Check if pallet can fit through door (can rotate L/W)
-      const fitsThruDoor = (minDim <= doorWidth && p.height <= doorHeight) || 
-                           (maxDim <= doorWidth && p.height <= doorHeight);
+      // Check if pallet can fit through door with clearance (can rotate L/W)
+      const fitsThruDoorNormal = minDim <= effectiveDoorWidth && p.height <= effectiveDoorHeight;
+      const fitsThruDoorRotated = maxDim <= effectiveDoorWidth && p.height <= effectiveDoorHeight;
       
-      if (!fitsThruDoor) {
-        warnings.push(`Pallet ${p.origLength}"x${p.origWidth}"x${p.height}" cannot fit through door (${doorWidth}"x${doorHeight}")`);
+      if (!fitsThruDoorNormal && !fitsThruDoorRotated) {
+        warnings.push(`Pallet ${p.origLength}"x${p.origWidth}"x${p.height}" cannot fit through door (${doorWidth}"x${doorHeight}" with 2" clearance required)`);
         return false;
       }
       
