@@ -2435,6 +2435,54 @@ export type Database = {
           },
         ]
       }
+      screen_share_sessions: {
+        Row: {
+          admin_offer: string | null
+          admin_user_id: string | null
+          client_answer: string | null
+          client_user_id: string | null
+          connected_at: string | null
+          created_at: string
+          ended_at: string | null
+          expires_at: string
+          ice_candidates: Json | null
+          id: string
+          initiated_by: string
+          session_code: string
+          status: string
+        }
+        Insert: {
+          admin_offer?: string | null
+          admin_user_id?: string | null
+          client_answer?: string | null
+          client_user_id?: string | null
+          connected_at?: string | null
+          created_at?: string
+          ended_at?: string | null
+          expires_at?: string
+          ice_candidates?: Json | null
+          id?: string
+          initiated_by: string
+          session_code: string
+          status?: string
+        }
+        Update: {
+          admin_offer?: string | null
+          admin_user_id?: string | null
+          client_answer?: string | null
+          client_user_id?: string | null
+          connected_at?: string | null
+          created_at?: string
+          ended_at?: string | null
+          expires_at?: string
+          ice_candidates?: Json | null
+          id?: string
+          initiated_by?: string
+          session_code?: string
+          status?: string
+        }
+        Relationships: []
+      }
       settlement_loads: {
         Row: {
           driver_pay: number | null
