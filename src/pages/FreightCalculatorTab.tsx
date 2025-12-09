@@ -596,6 +596,11 @@ export default function FreightCalculatorTab() {
                   {selectedVehicle.dimensions_height && (
                     <div>Height: {selectedVehicle.dimensions_height}"</div>
                   )}
+                  {(selectedVehicle.door_dims_width || selectedVehicle.door_dims_height) && (
+                    <div className="pt-1 border-t border-border mt-1 text-amber-600">
+                      Door Opening: {selectedVehicle.door_dims_width || '?'}" × {selectedVehicle.door_dims_height || '?'}"
+                    </div>
+                  )}
                 </div>
               </div>
             )}
