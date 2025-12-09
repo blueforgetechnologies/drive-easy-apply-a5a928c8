@@ -13,6 +13,7 @@ interface Pallet {
   length: number;
   width: number;
   height: number;
+  weight?: number;
 }
 
 interface Vehicle {
@@ -28,6 +29,7 @@ interface Vehicle {
 interface FitResult {
   fits: boolean;
   totalPallets: number;
+  totalWeight: number;
   totalFloorSpace: number;
   truckFloorSpace: number;
   maxHeight: number;
@@ -44,6 +46,7 @@ export default function FreightCalculatorTab() {
   const [fitResult, setFitResult] = useState<FitResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isParsingImage, setIsParsingImage] = useState(false);
+  const [isStackable, setIsStackable] = useState(false);
 
   useEffect(() => {
     loadVehicles();
@@ -82,12 +85,14 @@ export default function FreightCalculatorTab() {
 
       let quantity = 1;
       let dims: number[] = [];
+      let weight: number | undefined;
 
       // Pattern 1: "40 x 73 x 63 @ 364lbs" (dimensions @ weight - each is 1 pallet)
-      const dimsWithWeightMatch = entry.match(/^(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)\s*@\s*[\d,.]+\s*(lbs?|#)?/i);
+      const dimsWithWeightMatch = entry.match(/^(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)\s*@\s*([\d,.]+)\s*(lbs?|#)?/i);
       if (dimsWithWeightMatch) {
         quantity = 1;
         dims = [parseInt(dimsWithWeightMatch[1]), parseInt(dimsWithWeightMatch[2]), parseInt(dimsWithWeightMatch[3])];
+        weight = parseFloat(dimsWithWeightMatch[4].replace(/,/g, ''));
       }
 
       // Pattern 2: "3@48x48x52" or "3@48 x 48 x 52" (@ notation for quantity - must have @ before dims)
@@ -131,7 +136,8 @@ export default function FreightCalculatorTab() {
           quantity,
           length: dims[0],
           width: dims[1],
-          height: dims[2]
+          height: dims[2],
+          weight
         });
       }
     }
@@ -230,12 +236,14 @@ export default function FreightCalculatorTab() {
     // Calculate total floor space needed (assuming pallets laid out efficiently)
     // Standard pallet arrangement: 2 pallets side-by-side (48" + 48" = 96" = trailer width)
     let totalPallets = 0;
+    let totalWeight = 0;
     let maxHeight = 0;
     let totalLengthNeeded = 0;
     const warnings: string[] = [];
 
     for (const pallet of parsedPallets) {
       totalPallets += pallet.quantity;
+      totalWeight += (pallet.weight || 0) * pallet.quantity;
       maxHeight = Math.max(maxHeight, pallet.height);
 
       // Calculate how many pallets fit side by side
@@ -269,6 +277,7 @@ export default function FreightCalculatorTab() {
     setFitResult({
       fits,
       totalPallets,
+      totalWeight,
       totalFloorSpace,
       truckFloorSpace,
       maxHeight,
@@ -354,11 +363,19 @@ export default function FreightCalculatorTab() {
                     </Badge>
                     <span className="font-mono">
                       {pallet.length}" × {pallet.width}" × {pallet.height}"
+                      {pallet.weight && <span className="text-muted-foreground ml-1">@ {pallet.weight} lbs</span>}
                     </span>
                   </div>
                 ))}
-                <div className="text-sm font-medium pt-2 border-t border-border mt-2">
-                  Total: {parsedPallets.reduce((sum, p) => sum + p.quantity, 0)} pallets
+                <div className="text-sm pt-2 border-t border-border mt-2 space-y-1">
+                  <div className="font-medium">
+                    Total: {parsedPallets.reduce((sum, p) => sum + p.quantity, 0)} pallets
+                  </div>
+                  {parsedPallets.some(p => p.weight) && (
+                    <div className="text-muted-foreground">
+                      Weight: {parsedPallets.reduce((sum, p) => sum + (p.weight || 0) * p.quantity, 0).toLocaleString()} lbs
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -374,6 +391,29 @@ export default function FreightCalculatorTab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Stackable Toggle */}
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <span className="text-sm font-medium">Stackable Freight?</span>
+              <div className="flex gap-1">
+                <Button
+                  variant={isStackable ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsStackable(true)}
+                  className="h-7 px-3"
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={!isStackable ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsStackable(false)}
+                  className="h-7 px-3"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
             <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a truck..." />
@@ -465,6 +505,16 @@ export default function FreightCalculatorTab() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Space Utilization:</span>
                     <span className="font-medium">{fitResult.utilization}%</span>
+                  </div>
+                  {fitResult.totalWeight > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Weight:</span>
+                      <span className="font-medium">{fitResult.totalWeight.toLocaleString()} lbs</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Stackable:</span>
+                    <span className="font-medium">{isStackable ? "Yes" : "No"}</span>
                   </div>
                 </div>
 
