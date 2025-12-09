@@ -62,10 +62,11 @@ export default function FreightCalculatorTab() {
   };
 
   // Parse dimensions text - supports multiple formats:
-  // - 3@48 x 48 x 52 or 3@48x48x52 (@ notation)
+  // - 3@48 x 48 x 52 or 3@48x48x52 (@ notation for quantity)
   // - 48x48x48 or 48-48-48 (no quantity = 1)
   // - 2-48x52x23 (quantity prefix with dash)
   // - (2)48x48x45 (quantity in parentheses)
+  // - 40 x 73 x 63 @ 364lbs (dimensions @ weight - quantity = 1)
   // - Comma or newline separated entries
   const parseDimensions = useCallback((text: string): Pallet[] => {
     const pallets: Pallet[] = [];
@@ -74,17 +75,31 @@ export default function FreightCalculatorTab() {
     const entries = text.split(/[\n,]/).map(e => e.trim()).filter(e => e);
 
     for (const entry of entries) {
+      // Skip header lines like "10 skids / 2,928#"
+      if (/skids?|pallets?|total|#$/i.test(entry) && !/[xX×-]\s*\d+\s*[xX×-]/.test(entry)) {
+        continue;
+      }
+
       let quantity = 1;
       let dims: number[] = [];
 
-      // Pattern 1: "3@48x48x52" or "3@48 x 48 x 52" (@ notation)
-      const atMatch = entry.match(/^(\d+)\s*@\s*(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
-      if (atMatch) {
-        quantity = parseInt(atMatch[1]);
-        dims = [parseInt(atMatch[2]), parseInt(atMatch[3]), parseInt(atMatch[4])];
+      // Pattern 1: "40 x 73 x 63 @ 364lbs" (dimensions @ weight - each is 1 pallet)
+      const dimsWithWeightMatch = entry.match(/^(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)\s*@\s*[\d,.]+\s*(lbs?|#)?/i);
+      if (dimsWithWeightMatch) {
+        quantity = 1;
+        dims = [parseInt(dimsWithWeightMatch[1]), parseInt(dimsWithWeightMatch[2]), parseInt(dimsWithWeightMatch[3])];
+      }
+
+      // Pattern 2: "3@48x48x52" or "3@48 x 48 x 52" (@ notation for quantity - must have @ before dims)
+      if (dims.length === 0) {
+        const atMatch = entry.match(/^(\d+)\s*@\s*(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
+        if (atMatch) {
+          quantity = parseInt(atMatch[1]);
+          dims = [parseInt(atMatch[2]), parseInt(atMatch[3]), parseInt(atMatch[4])];
+        }
       }
       
-      // Pattern 2: "(2)48x48x45" (parentheses quantity)
+      // Pattern 3: "(2)48x48x45" (parentheses quantity)
       if (dims.length === 0) {
         const parenMatch = entry.match(/^\((\d+)\)\s*(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
         if (parenMatch) {
@@ -93,7 +108,7 @@ export default function FreightCalculatorTab() {
         }
       }
       
-      // Pattern 3: "2-48x52x23" (quantity-dimensions with leading dash)
+      // Pattern 4: "2-48x52x23" (quantity-dimensions with leading dash)
       if (dims.length === 0) {
         const dashPrefixMatch = entry.match(/^(\d+)-(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)/i);
         if (dashPrefixMatch) {
@@ -102,7 +117,7 @@ export default function FreightCalculatorTab() {
         }
       }
       
-      // Pattern 4: "48x48x48" or "48-48-48" (no quantity, any separator)
+      // Pattern 5: "48x48x48" or "48-48-48" (no quantity, any separator)
       if (dims.length === 0) {
         const simpleMatch = entry.match(/^(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
         if (simpleMatch) {
