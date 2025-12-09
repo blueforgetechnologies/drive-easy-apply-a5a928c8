@@ -336,6 +336,8 @@ export default function LoadAnalyticsTab() {
     if (!map.current || activeTab !== 'heatmap') return;
 
     const addMarkers = () => {
+      if (!map.current) return;
+      
       // Clear existing markers
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
@@ -348,24 +350,29 @@ export default function LoadAnalyticsTab() {
 
       // Find max count for scaling
       const maxCount = Math.max(...mapPointsData.map(p => p.origins + p.destinations), 1);
+      console.log('Max count:', maxCount);
 
       // Add new markers
-      mapPointsData.forEach(point => {
+      mapPointsData.forEach((point, idx) => {
         const total = point.origins + point.destinations;
-        const radius = Math.max(15, Math.min(60, (total / maxCount) * 60));
+        const radius = Math.max(20, Math.min(60, (total / maxCount) * 60));
+        
+        if (idx === 0) {
+          console.log('First point:', point.label, point.coords, 'total:', total);
+        }
         
         // Create marker element
         const el = document.createElement('div');
-        el.className = 'load-density-marker';
         el.style.width = `${radius}px`;
         el.style.height = `${radius}px`;
         el.style.borderRadius = '50%';
         el.style.backgroundColor = flowDirection === 'pickup' 
-          ? 'rgba(34, 197, 94, 0.6)' 
+          ? 'rgba(34, 197, 94, 0.7)' 
           : flowDirection === 'delivery' 
-            ? 'rgba(59, 130, 246, 0.6)' 
-            : 'rgba(168, 85, 247, 0.6)';
-        el.style.border = '2px solid rgba(255, 255, 255, 0.8)';
+            ? 'rgba(59, 130, 246, 0.7)' 
+            : 'rgba(168, 85, 247, 0.7)';
+        el.style.border = '3px solid white';
+        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
         el.style.display = 'flex';
         el.style.alignItems = 'center';
         el.style.justifyContent = 'center';
@@ -373,6 +380,7 @@ export default function LoadAnalyticsTab() {
         el.style.fontSize = radius > 30 ? '12px' : '10px';
         el.style.fontWeight = 'bold';
         el.style.cursor = 'pointer';
+        el.style.textShadow = '0 1px 2px rgba(0,0,0,0.5)';
         el.textContent = total > 99 ? '99+' : String(total);
 
         const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
@@ -384,21 +392,31 @@ export default function LoadAnalyticsTab() {
           </div>
         `);
 
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat(point.coords)
-          .setPopup(popup)
-          .addTo(map.current!);
+        try {
+          const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat(point.coords)
+            .setPopup(popup)
+            .addTo(map.current!);
 
-        markersRef.current.push(marker);
+          markersRef.current.push(marker);
+        } catch (err) {
+          console.error('Error adding marker:', err, point);
+        }
       });
+      
+      console.log('Added', markersRef.current.length, 'markers');
     };
 
-    // Wait for map to be loaded
-    if (map.current.loaded()) {
-      addMarkers();
-    } else {
-      map.current.on('load', addMarkers);
-    }
+    // Delay to ensure map is ready
+    const timer = setTimeout(() => {
+      if (map.current?.loaded()) {
+        addMarkers();
+      } else if (map.current) {
+        map.current.on('load', addMarkers);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
   }, [mapPointsData, activeTab, flowDirection]);
 
   // Aggregate by state
