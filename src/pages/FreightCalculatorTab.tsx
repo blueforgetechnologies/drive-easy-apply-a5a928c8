@@ -61,29 +61,62 @@ export default function FreightCalculatorTab() {
     }
   };
 
-  // Parse dimensions text like "3@48 x 48 x 52" or "3@48x48x52"
+  // Parse dimensions text - supports multiple formats:
+  // - 3@48 x 48 x 52 or 3@48x48x52 (@ notation)
+  // - 48x48x48 or 48-48-48 (no quantity = 1)
+  // - 2-48x52x23 (quantity prefix with dash)
+  // - (2)48x48x45 (quantity in parentheses)
+  // - Comma or newline separated entries
   const parseDimensions = useCallback((text: string): Pallet[] => {
     const pallets: Pallet[] = [];
-    const lines = text.split('\n').filter(line => line.trim());
+    
+    // Split by newlines and commas, then process each entry
+    const entries = text.split(/[\n,]/).map(e => e.trim()).filter(e => e);
 
-    for (const line of lines) {
-      // Match patterns like "3@48 x 48 x 52" or "3@48x48x52" or "48x48x52"
-      const withQuantityMatch = line.match(/(\d+)\s*@\s*(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)/);
-      const withoutQuantityMatch = line.match(/^(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)/);
+    for (const entry of entries) {
+      let quantity = 1;
+      let dims: number[] = [];
 
-      if (withQuantityMatch) {
+      // Pattern 1: "3@48x48x52" or "3@48 x 48 x 52" (@ notation)
+      const atMatch = entry.match(/^(\d+)\s*@\s*(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
+      if (atMatch) {
+        quantity = parseInt(atMatch[1]);
+        dims = [parseInt(atMatch[2]), parseInt(atMatch[3]), parseInt(atMatch[4])];
+      }
+      
+      // Pattern 2: "(2)48x48x45" (parentheses quantity)
+      if (dims.length === 0) {
+        const parenMatch = entry.match(/^\((\d+)\)\s*(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
+        if (parenMatch) {
+          quantity = parseInt(parenMatch[1]);
+          dims = [parseInt(parenMatch[2]), parseInt(parenMatch[3]), parseInt(parenMatch[4])];
+        }
+      }
+      
+      // Pattern 3: "2-48x52x23" (quantity-dimensions with leading dash)
+      if (dims.length === 0) {
+        const dashPrefixMatch = entry.match(/^(\d+)-(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)/i);
+        if (dashPrefixMatch) {
+          quantity = parseInt(dashPrefixMatch[1]);
+          dims = [parseInt(dashPrefixMatch[2]), parseInt(dashPrefixMatch[3]), parseInt(dashPrefixMatch[4])];
+        }
+      }
+      
+      // Pattern 4: "48x48x48" or "48-48-48" (no quantity, any separator)
+      if (dims.length === 0) {
+        const simpleMatch = entry.match(/^(\d+)\s*[xX×-]\s*(\d+)\s*[xX×-]\s*(\d+)/i);
+        if (simpleMatch) {
+          quantity = 1;
+          dims = [parseInt(simpleMatch[1]), parseInt(simpleMatch[2]), parseInt(simpleMatch[3])];
+        }
+      }
+
+      if (dims.length === 3) {
         pallets.push({
-          quantity: parseInt(withQuantityMatch[1]),
-          length: parseInt(withQuantityMatch[2]),
-          width: parseInt(withQuantityMatch[3]),
-          height: parseInt(withQuantityMatch[4])
-        });
-      } else if (withoutQuantityMatch) {
-        pallets.push({
-          quantity: 1,
-          length: parseInt(withoutQuantityMatch[1]),
-          width: parseInt(withoutQuantityMatch[2]),
-          height: parseInt(withoutQuantityMatch[3])
+          quantity,
+          length: dims[0],
+          width: dims[1],
+          height: dims[2]
         });
       }
     }
