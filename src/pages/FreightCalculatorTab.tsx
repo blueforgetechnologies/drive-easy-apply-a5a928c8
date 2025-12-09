@@ -253,8 +253,12 @@ export default function FreightCalculatorTab() {
         continue;
       }
 
+      // Calculate how many pallets can stack vertically (if stackable)
+      const palletsHigh = isStackable ? Math.floor(truckHeight / pallet.height) : 1;
+
       // Calculate rows needed for this pallet group
-      const rowsNeeded = Math.ceil(pallet.quantity / palletsAcross);
+      const palletsPerRow = palletsAcross * palletsHigh;
+      const rowsNeeded = Math.ceil(pallet.quantity / palletsPerRow);
       totalLengthNeeded += rowsNeeded * pallet.length;
     }
 
