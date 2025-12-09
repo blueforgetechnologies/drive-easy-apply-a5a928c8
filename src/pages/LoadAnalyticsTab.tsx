@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, MapPin, Calendar, Clock, Loader2, Filter, Map as MapIcon, BarChart3, Mail } from "lucide-react";
+import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe } from "lucide-react";
 import { format, getDay, getHours, parseISO } from "date-fns";
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface LoadEmailData {
   id: string;
@@ -16,12 +18,22 @@ interface LoadEmailData {
   parsed_data: {
     origin_state?: string;
     origin_city?: string;
+    origin_zip?: string;
     destination_state?: string;
     destination_city?: string;
+    destination_zip?: string;
     vehicle_type?: string;
     posted_amount?: number;
     load_type?: string;
   } | null;
+}
+
+interface GeocodeData {
+  location_key: string;
+  latitude: number;
+  longitude: number;
+  city: string | null;
+  state: string | null;
 }
 
 interface StateData {
@@ -55,29 +67,83 @@ const CHART_COLORS = [
   'hsl(var(--chart-5))',
 ];
 
-// US Holidays that affect freight volume
+// State center coordinates for fallback
+const STATE_COORDS: Record<string, [number, number]> = {
+  'AL': [-86.9023, 32.3182], 'AK': [-153.4937, 64.2008], 'AZ': [-111.0937, 34.0489],
+  'AR': [-92.3731, 34.7465], 'CA': [-119.4179, 36.7783], 'CO': [-105.7821, 39.5501],
+  'CT': [-72.7554, 41.6032], 'DE': [-75.5277, 38.9108], 'FL': [-81.5158, 27.6648],
+  'GA': [-83.6431, 32.1574], 'HI': [-155.5828, 19.8968], 'ID': [-114.7420, 44.0682],
+  'IL': [-89.3985, 40.6331], 'IN': [-86.1349, 40.2672], 'IA': [-93.0977, 41.8780],
+  'KS': [-98.4842, 39.0119], 'KY': [-84.2700, 37.8393], 'LA': [-91.9623, 30.9843],
+  'ME': [-69.4455, 45.2538], 'MD': [-76.6413, 39.0458], 'MA': [-71.3824, 42.4072],
+  'MI': [-85.6024, 44.3148], 'MN': [-94.6859, 46.7296], 'MS': [-89.3985, 32.3547],
+  'MO': [-91.8318, 37.9643], 'MT': [-110.3626, 46.8797], 'NE': [-99.9018, 41.4925],
+  'NV': [-116.4194, 38.8026], 'NH': [-71.5724, 43.1939], 'NJ': [-74.4057, 40.0583],
+  'NM': [-105.8701, 34.5199], 'NY': [-75.4999, 43.2994], 'NC': [-79.0193, 35.7596],
+  'ND': [-101.0020, 47.5515], 'OH': [-82.9071, 40.4173], 'OK': [-97.0929, 35.0078],
+  'OR': [-120.5542, 43.8041], 'PA': [-77.1945, 41.2033], 'RI': [-71.4774, 41.5801],
+  'SC': [-81.1637, 33.8361], 'SD': [-99.9018, 43.9695], 'TN': [-86.5804, 35.5175],
+  'TX': [-99.9018, 31.9686], 'UT': [-111.0937, 39.3200], 'VT': [-72.5778, 44.5588],
+  'VA': [-78.6569, 37.4316], 'WA': [-120.7401, 47.7511], 'WV': [-80.4549, 38.5976],
+  'WI': [-89.6165, 43.7844], 'WY': [-107.2903, 43.0759], 'DC': [-77.0369, 38.9072]
+};
+
 const US_HOLIDAYS = [
   { name: "New Year's Day", month: 1, day: 1 },
-  { name: "MLK Day", month: 1, day: 15 }, // 3rd Monday
-  { name: "Presidents Day", month: 2, day: 15 }, // 3rd Monday
-  { name: "Memorial Day", month: 5, day: 25 }, // Last Monday
+  { name: "MLK Day", month: 1, day: 15 },
+  { name: "Presidents Day", month: 2, day: 15 },
+  { name: "Memorial Day", month: 5, day: 25 },
   { name: "Independence Day", month: 7, day: 4 },
-  { name: "Labor Day", month: 9, day: 1 }, // 1st Monday
-  { name: "Thanksgiving", month: 11, day: 22 }, // 4th Thursday
+  { name: "Labor Day", month: 9, day: 1 },
+  { name: "Thanksgiving", month: 11, day: 22 },
   { name: "Christmas", month: 12, day: 25 },
 ];
 
 export default function LoadAnalyticsTab() {
   const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
+  const [geocodeCache, setGeocodeCache] = useState<GeocodeData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'30' | '90' | '365' | 'all'>('90');
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
+  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('geographic');
+  
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     loadAnalyticsData();
+    loadMapboxToken();
+    loadGeocodeCache();
   }, [dateRange]);
+
+  const loadMapboxToken = async () => {
+    try {
+      const { data } = await supabase.functions.invoke('get-mapbox-token');
+      if (data?.token) {
+        setMapboxToken(data.token);
+      }
+    } catch (error) {
+      console.error("Error loading mapbox token:", error);
+    }
+  };
+
+  const loadGeocodeCache = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("geocode_cache")
+        .select("location_key, latitude, longitude, city, state");
+      
+      if (!error && data) {
+        setGeocodeCache(data);
+      }
+    } catch (error) {
+      console.error("Error loading geocode cache:", error);
+    }
+  };
 
   const loadAnalyticsData = async () => {
     setIsLoading(true);
@@ -97,7 +163,6 @@ export default function LoadAnalyticsTab() {
 
       if (error) throw error;
       
-      // Type assertion for parsed_data
       const typedData = (data || []).map(item => ({
         ...item,
         parsed_data: item.parsed_data as LoadEmailData['parsed_data']
@@ -110,6 +175,38 @@ export default function LoadAnalyticsTab() {
       setIsLoading(false);
     }
   };
+
+  // Build geocode lookup map
+  const geocodeLookup = useMemo(() => {
+    const lookup = new Map<string, { lat: number; lng: number }>();
+    geocodeCache.forEach(g => {
+      lookup.set(g.location_key.toLowerCase(), { lat: g.latitude, lng: g.longitude });
+    });
+    return lookup;
+  }, [geocodeCache]);
+
+  // Get coordinates for a location
+  const getCoordinates = useCallback((city?: string, state?: string, zip?: string): [number, number] | null => {
+    // Try zip first
+    if (zip) {
+      const cached = geocodeLookup.get(zip.toLowerCase());
+      if (cached) return [cached.lng, cached.lat];
+    }
+    // Try city, state
+    if (city && state) {
+      const key = `${city}, ${state}`.toLowerCase();
+      const cached = geocodeLookup.get(key);
+      if (cached) return [cached.lng, cached.lat];
+    }
+    // Fall back to state center
+    if (state) {
+      const stateUpper = state.toUpperCase().trim();
+      if (STATE_COORDS[stateUpper]) {
+        return STATE_COORDS[stateUpper];
+      }
+    }
+    return null;
+  }, [geocodeLookup]);
 
   // Get unique vehicle types
   const vehicleTypes = useMemo(() => {
@@ -126,6 +223,127 @@ export default function LoadAnalyticsTab() {
     if (selectedVehicleType === 'all') return loadEmails;
     return loadEmails.filter(email => email.parsed_data?.vehicle_type === selectedVehicleType);
   }, [loadEmails, selectedVehicleType]);
+
+  // Generate map points data
+  const mapPointsData = useMemo(() => {
+    const points: { coords: [number, number]; count: number; type: 'origin' | 'destination'; label: string }[] = [];
+    const aggregated = new Map<string, { coords: [number, number]; origins: number; destinations: number; label: string }>();
+
+    filteredEmails.forEach(email => {
+      const pd = email.parsed_data;
+      if (!pd) return;
+
+      // Origin
+      if (flowDirection !== 'delivery') {
+        const originCoords = getCoordinates(pd.origin_city, pd.origin_state, pd.origin_zip);
+        if (originCoords) {
+          const key = originCoords.join(',');
+          const existing = aggregated.get(key) || { 
+            coords: originCoords, 
+            origins: 0, 
+            destinations: 0, 
+            label: pd.origin_city ? `${pd.origin_city}, ${pd.origin_state}` : pd.origin_state || 'Unknown'
+          };
+          existing.origins++;
+          aggregated.set(key, existing);
+        }
+      }
+
+      // Destination
+      if (flowDirection !== 'pickup') {
+        const destCoords = getCoordinates(pd.destination_city, pd.destination_state, pd.destination_zip);
+        if (destCoords) {
+          const key = destCoords.join(',');
+          const existing = aggregated.get(key) || { 
+            coords: destCoords, 
+            origins: 0, 
+            destinations: 0, 
+            label: pd.destination_city ? `${pd.destination_city}, ${pd.destination_state}` : pd.destination_state || 'Unknown'
+          };
+          existing.destinations++;
+          aggregated.set(key, existing);
+        }
+      }
+    });
+
+    return Array.from(aggregated.values());
+  }, [filteredEmails, flowDirection, getCoordinates]);
+
+  // Initialize map when tab is active and token is available
+  useEffect(() => {
+    if (activeTab !== 'heatmap' || !mapboxToken || !mapContainer.current || map.current) return;
+
+    mapboxgl.accessToken = mapboxToken;
+    
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-98.5795, 39.8283], // US center
+      zoom: 3.5,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    return () => {
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+    };
+  }, [activeTab, mapboxToken]);
+
+  // Update markers when data changes
+  useEffect(() => {
+    if (!map.current || activeTab !== 'heatmap') return;
+
+    // Clear existing markers
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
+
+    // Find max count for scaling
+    const maxCount = Math.max(...mapPointsData.map(p => p.origins + p.destinations), 1);
+
+    // Add new markers
+    mapPointsData.forEach(point => {
+      const total = point.origins + point.destinations;
+      const radius = Math.max(15, Math.min(60, (total / maxCount) * 60));
+      
+      // Create marker element
+      const el = document.createElement('div');
+      el.className = 'load-density-marker';
+      el.style.width = `${radius}px`;
+      el.style.height = `${radius}px`;
+      el.style.borderRadius = '50%';
+      el.style.backgroundColor = flowDirection === 'pickup' 
+        ? 'rgba(34, 197, 94, 0.6)' 
+        : flowDirection === 'delivery' 
+          ? 'rgba(59, 130, 246, 0.6)' 
+          : 'rgba(168, 85, 247, 0.6)';
+      el.style.border = '2px solid rgba(255, 255, 255, 0.8)';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.color = 'white';
+      el.style.fontSize = radius > 30 ? '12px' : '10px';
+      el.style.fontWeight = 'bold';
+      el.style.cursor = 'pointer';
+      el.textContent = total > 99 ? '99+' : String(total);
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 8px;">
+          <strong>${point.label}</strong><br/>
+          <span style="color: #22c55e;">Origins: ${point.origins}</span><br/>
+          <span style="color: #3b82f6;">Destinations: ${point.destinations}</span><br/>
+          <strong>Total: ${total}</strong>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat(point.coords)
+        .setPopup(popup)
+        .addTo(map.current!);
+
+      markersRef.current.push(marker);
+    });
+  }, [mapPointsData, activeTab, flowDirection]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
@@ -264,7 +482,7 @@ export default function LoadAnalyticsTab() {
       .slice(-12);
   }, [filteredEmails]);
 
-  // Daily trend (last 30 days)
+  // Daily trend
   const dailyTrend = useMemo(() => {
     const dayCounts = new Map<string, number>();
     
@@ -394,11 +612,15 @@ export default function LoadAnalyticsTab() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="geographic" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="geographic" className="gap-2">
             <MapIcon className="h-4 w-4" />
             Geographic
+          </TabsTrigger>
+          <TabsTrigger value="heatmap" className="gap-2">
+            <Globe className="h-4 w-4" />
+            Heat Map
           </TabsTrigger>
           <TabsTrigger value="time" className="gap-2">
             <Calendar className="h-4 w-4" />
@@ -413,56 +635,27 @@ export default function LoadAnalyticsTab() {
         {/* Geographic Tab */}
         <TabsContent value="geographic" className="space-y-4">
           <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === 'state' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('state')}
-            >
+            <Button variant={viewMode === 'state' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('state')}>
               By State
             </Button>
-            <Button
-              variant={viewMode === 'city' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('city')}
-            >
+            <Button variant={viewMode === 'city' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('city')}>
               By City
             </Button>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Top Locations Chart */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">
-                  Top {viewMode === 'state' ? 'States' : 'Cities'}
-                </CardTitle>
-                <CardDescription>
-                  Load volume by {flowDirection === 'both' ? 'origins + destinations' : flowDirection === 'pickup' ? 'origins' : 'destinations'}
-                </CardDescription>
+                <CardTitle className="text-lg">Top {viewMode === 'state' ? 'States' : 'Cities'}</CardTitle>
+                <CardDescription>Load volume by {flowDirection === 'both' ? 'origins + destinations' : flowDirection === 'pickup' ? 'origins' : 'destinations'}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={400}>
-                  <BarChart
-                    data={viewMode === 'state' ? stateData.slice(0, 15) : cityData.slice(0, 15)}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
-                  >
+                  <BarChart data={viewMode === 'state' ? stateData.slice(0, 15) : cityData.slice(0, 15)} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis 
-                      dataKey={viewMode === 'state' ? 'state' : 'city'} 
-                      type="category" 
-                      stroke="hsl(var(--muted-foreground))" 
-                      fontSize={12}
-                      width={50}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <YAxis dataKey={viewMode === 'state' ? 'state' : 'city'} type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={50} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                     {flowDirection === 'both' ? (
                       <>
                         <Bar dataKey="pickups" stackId="a" fill="hsl(var(--chart-1))" name="Origins" />
@@ -477,7 +670,6 @@ export default function LoadAnalyticsTab() {
               </CardContent>
             </Card>
 
-            {/* State/City Table */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">All Locations</CardTitle>
@@ -509,7 +701,6 @@ export default function LoadAnalyticsTab() {
             </Card>
           </div>
 
-          {/* Heat Density Info */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Load Density Hotspots</CardTitle>
@@ -517,7 +708,7 @@ export default function LoadAnalyticsTab() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {stateData.slice(0, 5).map((state, i) => (
+                {stateData.slice(0, 5).map((state) => (
                   <div key={state.state} className="p-4 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border">
                     <div className="text-2xl font-bold">{state.state}</div>
                     <div className="text-sm text-muted-foreground">{state.total.toLocaleString()} loads</div>
@@ -532,10 +723,61 @@ export default function LoadAnalyticsTab() {
           </Card>
         </TabsContent>
 
+        {/* Heat Map Tab */}
+        <TabsContent value="heatmap" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Load Density Heat Map
+              </CardTitle>
+              <CardDescription>
+                Visual representation of load volume across the US. Circle size indicates load concentration.
+                <span className="ml-2 text-xs">
+                  <span className="inline-block w-3 h-3 rounded-full bg-green-500/60 mr-1"></span>Origins
+                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500/60 mx-1 ml-3"></span>Destinations
+                  <span className="inline-block w-3 h-3 rounded-full bg-purple-500/60 mx-1 ml-3"></span>Both
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!mapboxToken ? (
+                <div className="flex items-center justify-center h-[500px] bg-muted/20 rounded-lg">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div ref={mapContainer} className="h-[500px] rounded-lg" />
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground">Locations on Map</div>
+                <div className="text-2xl font-bold">{mapPointsData.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground">Top Origin State</div>
+                <div className="text-2xl font-bold">{stateData[0]?.state || 'N/A'}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground">Top Destination State</div>
+                <div className="text-2xl font-bold">
+                  {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         {/* Time Analysis Tab */}
         <TabsContent value="time" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Day of Week */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Loads by Day of Week</CardTitle>
@@ -547,20 +789,13 @@ export default function LoadAnalyticsTab() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                     <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Hour of Day */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Loads by Hour</CardTitle>
@@ -572,20 +807,13 @@ export default function LoadAnalyticsTab() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={2} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                     <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Monthly Trend */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Monthly Volume Trend</CardTitle>
@@ -597,20 +825,13 @@ export default function LoadAnalyticsTab() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={10} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                     <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Daily Trend */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Daily Volume (Last 30 Days)</CardTitle>
@@ -622,13 +843,7 @@ export default function LoadAnalyticsTab() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={3} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                     <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -636,7 +851,6 @@ export default function LoadAnalyticsTab() {
             </Card>
           </div>
 
-          {/* Holiday Reference */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">US Holiday Reference</CardTitle>
@@ -657,7 +871,6 @@ export default function LoadAnalyticsTab() {
         {/* Vehicle Types Tab */}
         <TabsContent value="vehicle" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Vehicle Type Distribution */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Load Volume by Vehicle Type</CardTitle>
@@ -665,34 +878,17 @@ export default function LoadAnalyticsTab() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={400}>
-                  <BarChart
-                    data={vehicleTypeDistribution}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-                  >
+                  <BarChart data={vehicleTypeDistribution} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      stroke="hsl(var(--muted-foreground))" 
-                      fontSize={11}
-                      width={90}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={90} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                     <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Pie Chart */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Vehicle Type Share</CardTitle>
@@ -715,20 +911,13 @@ export default function LoadAnalyticsTab() {
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
 
-          {/* Vehicle Type Table */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">All Vehicle Types</CardTitle>
