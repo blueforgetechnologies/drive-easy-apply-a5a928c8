@@ -185,24 +185,38 @@ export default function LoadAnalyticsTab() {
     return lookup;
   }, [geocodeCache]);
 
-  // Get coordinates for a location
+  // Get coordinates for a location - ALWAYS returns coords via state fallback
   const getCoordinates = useCallback((city?: string, state?: string, zip?: string): [number, number] | null => {
-    // Try zip first
+    // Try zip first from cache
     if (zip) {
       const cached = geocodeLookup.get(zip.toLowerCase());
       if (cached) return [cached.lng, cached.lat];
     }
-    // Try city, state
+    // Try city, state from cache
     if (city && state) {
       const key = `${city}, ${state}`.toLowerCase();
       const cached = geocodeLookup.get(key);
       if (cached) return [cached.lng, cached.lat];
     }
-    // Fall back to state center
+    // Fall back to state center - this should always work if we have a state
     if (state) {
       const stateUpper = state.toUpperCase().trim();
-      if (STATE_COORDS[stateUpper]) {
-        return STATE_COORDS[stateUpper];
+      // Handle full state names by getting abbreviation
+      const stateAbbreviations: Record<string, string> = {
+        'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
+        'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA',
+        'HAWAII': 'HI', 'IDAHO': 'ID', 'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA',
+        'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
+        'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS', 'MISSOURI': 'MO',
+        'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
+        'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH',
+        'OKLAHOMA': 'OK', 'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
+        'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT',
+        'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY'
+      };
+      const abbr = stateAbbreviations[stateUpper] || stateUpper;
+      if (STATE_COORDS[abbr]) {
+        return STATE_COORDS[abbr];
       }
     }
     return null;
@@ -290,12 +304,17 @@ export default function LoadAnalyticsTab() {
       try {
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/dark-v11',
+          style: 'mapbox://styles/mapbox/light-v11',
           center: [-98.5795, 39.8283], // US center
           zoom: 3.5,
         });
 
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        
+        // Add markers once map loads
+        map.current.on('load', () => {
+          console.log('Map loaded, mapPointsData length:', mapPointsData.length);
+        });
       } catch (error) {
         console.error('Error initializing map:', error);
       }
@@ -321,7 +340,11 @@ export default function LoadAnalyticsTab() {
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
 
-      if (mapPointsData.length === 0) return;
+      console.log('Adding markers, mapPointsData:', mapPointsData.length, 'points');
+      if (mapPointsData.length === 0) {
+        console.log('No map points data to display');
+        return;
+      }
 
       // Find max count for scaling
       const maxCount = Math.max(...mapPointsData.map(p => p.origins + p.destinations), 1);
