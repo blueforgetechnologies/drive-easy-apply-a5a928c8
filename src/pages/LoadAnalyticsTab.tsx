@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe } from "lucide-react";
+import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer } from "lucide-react";
 import { format, getDay, getHours, parseISO } from "date-fns";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -109,16 +110,37 @@ export default function LoadAnalyticsTab() {
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('geographic');
+  const [refreshInterval, setRefreshInterval] = useState(60);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
+  // Initial load
   useEffect(() => {
     loadAnalyticsData();
     loadMapboxToken();
     loadGeocodeCache();
   }, [dateRange]);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshData();
+    }, refreshInterval * 1000);
+
+    return () => clearInterval(interval);
+  }, [refreshInterval, dateRange]);
+
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    await loadAnalyticsData();
+    setLastRefresh(new Date());
+    setIsRefreshing(false);
+  };
 
   const loadMapboxToken = async () => {
     try {
@@ -349,6 +371,8 @@ export default function LoadAnalyticsTab() {
   useEffect(() => {
     if (activeTab !== 'heatmap' || !mapboxToken) return;
     
+    setMapReady(false);
+    
     // Small delay to ensure container is rendered with dimensions
     const initTimer = setTimeout(() => {
       if (!mapContainer.current) return;
@@ -375,7 +399,7 @@ export default function LoadAnalyticsTab() {
         
         // Add markers once map loads
         map.current.on('load', () => {
-          addMarkersToMap();
+          setMapReady(true);
         });
       } catch (error) {
         console.error('Error initializing map:', error);
@@ -391,16 +415,13 @@ export default function LoadAnalyticsTab() {
         map.current = null;
       }
     };
-  }, [activeTab, mapboxToken, addMarkersToMap]);
+  }, [activeTab, mapboxToken]);
 
-  // Update markers when data or filter changes
+  // Update markers when map is ready or data changes
   useEffect(() => {
-    if (!map.current || activeTab !== 'heatmap') return;
-    
-    if (map.current.loaded()) {
-      addMarkersToMap();
-    }
-  }, [mapPointsData, flowDirection, addMarkersToMap]);
+    if (!mapReady || !map.current || activeTab !== 'heatmap') return;
+    addMarkersToMap();
+  }, [mapReady, mapPointsData, flowDirection, addMarkersToMap, activeTab]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
@@ -784,18 +805,54 @@ export default function LoadAnalyticsTab() {
         <TabsContent value="heatmap" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Load Density Heat Map
-              </CardTitle>
-              <CardDescription>
-                Visual representation of load volume across the US. Circle size indicates load concentration.
-                <span className="ml-2 text-xs">
-                  <span className="inline-block w-3 h-3 rounded-full bg-green-500/60 mr-1"></span>Origins
-                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500/60 mx-1 ml-3"></span>Destinations
-                  <span className="inline-block w-3 h-3 rounded-full bg-purple-500/60 mx-1 ml-3"></span>Both
-                </span>
-              </CardDescription>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Globe className="h-5 w-5" />
+                    Load Density Heat Map
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {filteredEmails.length.toLocaleString()} loads
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Visual representation of load volume across the US. Circle size indicates load concentration.
+                    <span className="ml-2 text-xs">
+                      <span className="inline-block w-3 h-3 rounded-full bg-green-500/60 mr-1"></span>Origins
+                      <span className="inline-block w-3 h-3 rounded-full bg-blue-500/60 mx-1 ml-3"></span>Destinations
+                      <span className="inline-block w-3 h-3 rounded-full bg-purple-500/60 mx-1 ml-3"></span>Both
+                    </span>
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Timer className="h-4 w-4" />
+                    <span>Refresh: {refreshInterval}s</span>
+                  </div>
+                  <div className="w-24">
+                    <Slider
+                      value={[refreshInterval]}
+                      onValueChange={([val]) => setRefreshInterval(val)}
+                      min={10}
+                      max={120}
+                      step={10}
+                      className="w-full"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={refreshData}
+                    disabled={isRefreshing}
+                    className="gap-1"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Updated: {format(lastRefresh, 'h:mm:ss a')}
+                  </span>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {!mapboxToken ? (
