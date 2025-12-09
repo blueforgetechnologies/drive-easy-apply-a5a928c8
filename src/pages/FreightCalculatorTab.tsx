@@ -241,9 +241,28 @@ export default function FreightCalculatorTab() {
     let totalLengthNeeded = 0;
     const warnings: string[] = [];
 
-    for (const pallet of parsedPallets) {
+    // If stackable, merge identical pallets and optimize stacking
+    let palletsToProcess = [...parsedPallets];
+    
+    if (isStackable) {
+      // Merge identical dimensions together
+      const merged = new Map<string, Pallet>();
+      for (const pallet of parsedPallets) {
+        const key = `${pallet.length}-${pallet.width}-${pallet.height}`;
+        const existing = merged.get(key);
+        if (existing) {
+          existing.quantity += pallet.quantity;
+          existing.weight = (existing.weight || 0) + (pallet.weight || 0);
+        } else {
+          merged.set(key, { ...pallet });
+        }
+      }
+      palletsToProcess = Array.from(merged.values());
+    }
+
+    for (const pallet of palletsToProcess) {
       totalPallets += pallet.quantity;
-      totalWeight += (pallet.weight || 0) * pallet.quantity;
+      totalWeight += (pallet.weight || 0) * (isStackable ? 1 : pallet.quantity); // Weight already summed if merged
       maxHeight = Math.max(maxHeight, pallet.height);
 
       // Calculate how many pallets fit side by side
@@ -261,6 +280,9 @@ export default function FreightCalculatorTab() {
       const rowsNeeded = Math.ceil(pallet.quantity / palletsPerRow);
       totalLengthNeeded += rowsNeeded * pallet.length;
     }
+
+    // Recalculate total weight correctly
+    totalWeight = parsedPallets.reduce((sum, p) => sum + (p.weight || 0) * p.quantity, 0);
 
     const truckFloorSpace = truckLength * truckWidth;
     const totalFloorSpace = totalLengthNeeded * truckWidth;
