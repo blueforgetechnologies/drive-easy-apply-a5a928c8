@@ -648,24 +648,42 @@ export default function LoadAnalyticsTab() {
   useEffect(() => {
     if (activeTab !== 'heatmap' || !mapReady || !sourceAddedRef.current) return;
     
+    // Update data and force resize
     updateMapSource(geoJsonData);
+    if (map.current) {
+      map.current.resize();
+    }
   }, [geoJsonData, activeTab, mapReady, updateMapSource]);
 
-  // Force update when loading finishes
+  // Force resize and update when loading finishes
   useEffect(() => {
-    if (activeTab !== 'heatmap' || isLoading || !mapReady || !sourceAddedRef.current) return;
+    if (activeTab !== 'heatmap' || isLoading) return;
+    if (!map.current || !mapReady || !sourceAddedRef.current) return;
     
-    // Delay to ensure data is processed and map is stable
+    // Data finished loading - force resize and update
     const timer = setTimeout(() => {
-      updateMapSource(geoJsonData);
-      // Also trigger resize in case container changed
       if (map.current) {
         map.current.resize();
+        updateMapSource(geoJsonData);
       }
-    }, 100);
+    }, 150);
     
     return () => clearTimeout(timer);
   }, [isLoading, activeTab, mapReady, geoJsonData, updateMapSource]);
+
+  // Force resize when switching to heatmap tab
+  useEffect(() => {
+    if (activeTab !== 'heatmap' || !map.current) return;
+    
+    const timer = setTimeout(() => {
+      if (map.current) {
+        map.current.resize();
+        map.current.triggerRepaint();
+      }
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [activeTab]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
