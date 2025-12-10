@@ -108,14 +108,6 @@ const analyticsCache = new Map<string, { data: LoadEmailData[]; count: number; f
 const DATE_RANGE_KEYS = ['24h', '3d', '7d', '30d', '90d'] as const;
 type DateRangeKey = typeof DATE_RANGE_KEYS[number];
 
-// Generate a simplified cache key - round to nearest hour for better cache hits
-const getCacheKey = (start: Date, end: Date): string => {
-  const startHour = new Date(start);
-  startHour.setMinutes(0, 0, 0);
-  const endHour = new Date(end);
-  endHour.setMinutes(0, 0, 0);
-  return `${startHour.toISOString()}_${endHour.toISOString()}`;
-};
 
 // Get date range for prefetching (matches AnalyticsDateFilter presets)
 const getDateRangeFromKey = (key: DateRangeKey): { start: Date; end: Date } => {
@@ -172,7 +164,7 @@ export default function LoadAnalyticsTab() {
   // Re-fetch when maxRecordsLimit changes (clear cache for current range)
   useEffect(() => {
     // Skip initial mount - let the startDate/endDate effect handle it
-    const key = getCacheKey(startDate, endDate);
+    const key = getCacheKey(startDate, endDate, maxRecordsLimit);
     analyticsCache.delete(key); // Clear cache to force re-fetch with new limit
     
     // Directly fetch with new limit instead of calling loadAnalyticsData
@@ -311,21 +303,21 @@ export default function LoadAnalyticsTab() {
     return { data: typedData, count: actualCount };
   };
 
-  // Generate normalized cache key from dates (round to minute to avoid ms mismatches)
-  const getCacheKey = (start: Date, end: Date): string => {
+  // Generate normalized cache key from dates and limit (round to minute to avoid ms mismatches)
+  const getCacheKey = (start: Date, end: Date, limit: number): string => {
     // Normalize to minute precision to match prefetched data with user clicks
     const normalizeDate = (d: Date) => {
       const normalized = new Date(d);
       normalized.setSeconds(0, 0);
       return normalized.toISOString();
     };
-    return `${normalizeDate(start)}_${normalizeDate(end)}`;
+    return `${normalizeDate(start)}_${normalizeDate(end)}_${limit}`;
   };
 
   // Find best matching cached data (allows for slight time differences)
-  const getCachedData = useCallback((start: Date, end: Date) => {
-    // First try exact match
-    const exactKey = getCacheKey(start, end);
+  const getCachedData = useCallback((start: Date, end: Date, limit: number) => {
+    // First try exact match with same limit
+    const exactKey = getCacheKey(start, end, limit);
     const exactCached = analyticsCache.get(exactKey);
     if (exactCached) {
       const cacheAge = Date.now() - exactCached.fetchedAt.getTime();
@@ -334,12 +326,20 @@ export default function LoadAnalyticsTab() {
       }
     }
     
-    // Try to find a close match (within 2 minutes) for preset ranges
+    // Try to find a close match (within 2 minutes) with same or higher limit
     for (const [key, cached] of analyticsCache.entries()) {
       const cacheAge = Date.now() - cached.fetchedAt.getTime();
       if (cacheAge >= 5 * 60 * 1000) continue;
       
-      const [cachedStart, cachedEnd] = key.split('_');
+      const parts = key.split('_');
+      if (parts.length < 3) continue; // Old format without limit
+      
+      const cachedLimit = parseInt(parts[parts.length - 1]);
+      // Only use cache if it was fetched with same or higher limit
+      if (cachedLimit < limit) continue;
+      
+      const cachedStart = parts.slice(0, -1).join('_').split('_')[0];
+      const cachedEnd = parts.slice(0, -1).join('_').split('_')[1];
       const cachedStartDate = new Date(cachedStart);
       const cachedEndDate = new Date(cachedEnd);
       
@@ -348,7 +348,7 @@ export default function LoadAnalyticsTab() {
       
       // Match if both start and end are within 2 minutes
       if (startDiff < 2 * 60 * 1000 && endDiff < 2 * 60 * 1000) {
-        console.log('Using approximate cache match');
+        console.log('Using approximate cache match with limit', cachedLimit);
         return cached;
       }
     }
@@ -359,7 +359,7 @@ export default function LoadAnalyticsTab() {
   // Main load function - uses cache or fetches
   const loadAnalyticsData = async () => {
     // Check cache first
-    const cached = getCachedData(startDate, endDate);
+    const cached = getCachedData(startDate, endDate, maxRecordsLimit);
     if (cached) {
       console.log('Using cached data for range');
       setLoadEmails(cached.data);
@@ -377,7 +377,7 @@ export default function LoadAnalyticsTab() {
       }, maxRecordsLimit);
       
       // Cache the result
-      const key = getCacheKey(startDate, endDate);
+      const key = getCacheKey(startDate, endDate, maxRecordsLimit);
       analyticsCache.set(key, { data, count, fetchedAt: new Date() });
       
       setLoadEmails(data);
@@ -400,7 +400,7 @@ export default function LoadAnalyticsTab() {
     
     for (const rangeKey of rangesToPrefetch) {
       const { start, end } = getDateRangeFromKey(rangeKey);
-      const cacheKey = getCacheKey(start, end);
+      const cacheKey = getCacheKey(start, end, maxRecordsLimit);
       
       // Skip if already cached
       if (analyticsCache.has(cacheKey)) {
