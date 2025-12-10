@@ -20,8 +20,12 @@ type PresetOption = {
   getRange: () => { start: Date; end: Date };
 };
 
+// Stable reference date - only created once per component mount
+const STABLE_TODAY = new Date();
+
 export function AnalyticsDateFilter({ startDate, endDate, onDateChange, prefetchStatus }: AnalyticsDateFilterProps) {
-  const today = useMemo(() => new Date(), []);
+  // Use stable date reference for consistent cache key matching
+  const today = useMemo(() => STABLE_TODAY, []);
 
   const presets: PresetOption[] = useMemo(() => [
     {
