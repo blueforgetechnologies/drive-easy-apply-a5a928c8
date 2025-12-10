@@ -122,6 +122,7 @@ export default function LoadAnalyticsTab() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const sourceAddedRef = useRef(false);
+  const geoJsonDataRef = useRef<typeof geoJsonData | null>(null);
 
   // Initial load
   useEffect(() => {
@@ -418,14 +419,28 @@ export default function LoadAnalyticsTab() {
     };
   }, [mapPointsData]);
 
-  // Update map source data
+  // Keep ref in sync for use in map load handler
+  useEffect(() => {
+    geoJsonDataRef.current = geoJsonData;
+  }, [geoJsonData]);
+
   const updateMapSource = useCallback((data: typeof geoJsonData) => {
     if (!map.current) return;
     
-    // Check if source exists
-    const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
-    if (source) {
-      source.setData(data as GeoJSON.FeatureCollection);
+    const tryUpdate = () => {
+      if (!map.current) return false;
+      const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
+      if (source) {
+        source.setData(data as GeoJSON.FeatureCollection);
+        return true;
+      }
+      return false;
+    };
+
+    // Try immediately
+    if (!tryUpdate()) {
+      // Retry after a short delay if source doesn't exist yet
+      setTimeout(() => tryUpdate(), 200);
     }
   }, []);
 
@@ -462,11 +477,11 @@ export default function LoadAnalyticsTab() {
         map.current.on('load', () => {
           if (!map.current) return;
           
-          // Add clustered GeoJSON source with empty initial data
-          // Data will be populated via updateMapSource effect
+          // Add clustered GeoJSON source with current data from ref
+          const initialData = geoJsonDataRef.current || { type: 'FeatureCollection', features: [] };
           map.current.addSource('load-points', {
             type: 'geojson',
-            data: { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection,
+            data: initialData as GeoJSON.FeatureCollection,
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 50,
@@ -622,12 +637,16 @@ export default function LoadAnalyticsTab() {
         map.current = null;
       }
     };
-  }, [activeTab, mapboxToken]);
+  }, [activeTab, mapboxToken, flowDirection]);
 
   // Update source data when data changes (without recreating map)
   useEffect(() => {
     if (!mapReady || activeTab !== 'heatmap') return;
-    updateMapSource(geoJsonData);
+    // Small delay to ensure map is fully ready after init
+    const timer = setTimeout(() => {
+      updateMapSource(geoJsonData);
+    }, 50);
+    return () => clearTimeout(timer);
   }, [mapReady, geoJsonData, activeTab, updateMapSource]);
 
   // Aggregate by state
