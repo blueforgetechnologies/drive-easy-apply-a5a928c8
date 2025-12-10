@@ -427,6 +427,8 @@ export default function LoadAnalyticsTab() {
       const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
       if (source) {
         source.setData(data as GeoJSON.FeatureCollection);
+        // Force map to re-render
+        map.current.triggerRepaint();
       }
     } catch (e) {
       console.log('Map source update error:', e);
@@ -639,10 +641,14 @@ export default function LoadAnalyticsTab() {
   useEffect(() => {
     if (activeTab !== 'heatmap' || isLoading || !mapReady || !sourceAddedRef.current) return;
     
-    // Small delay after loading completes to ensure data is processed
+    // Delay to ensure data is processed and map is stable
     const timer = setTimeout(() => {
       updateMapSource(geoJsonData);
-    }, 50);
+      // Also trigger resize in case container changed
+      if (map.current) {
+        map.current.resize();
+      }
+    }, 100);
     
     return () => clearTimeout(timer);
   }, [isLoading, activeTab, mapReady, geoJsonData, updateMapSource]);
