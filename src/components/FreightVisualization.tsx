@@ -68,13 +68,10 @@ export function FreightVisualization({
   const { placedPallets, overflowPallets, usedLength } = useMemo(() => {
     const placed: PlacedPallet[] = [];
     const overflow: PlacedPallet[] = [];
-    let currentX = 0;
-    let currentZ = 0;
-    let rowMaxLength = 0;
     let maxUsedLength = 0;
 
     // Expand pallets into individual units with labels
-    const units: { length: number; width: number; height: number; colorIdx: number; palletIdx: number; unitNum: number }[] = [];
+    const units: { length: number; width: number; height: number; colorIdx: number; unitNum: number }[] = [];
     let unitCounter = 0;
     pallets.forEach((pallet, palletIdx) => {
       for (let i = 0; i < pallet.quantity; i++) {
@@ -84,106 +81,86 @@ export function FreightVisualization({
           width: pallet.width,
           height: pallet.height,
           colorIdx: palletIdx % PALLET_COLORS.length,
-          palletIdx,
           unitNum: unitCounter,
         });
       }
     });
 
-    // Don't sort - keep original order for better visual understanding
-    const orderedUnits = [...units];
+    // Sort by height descending when stacking (put taller items on bottom first)
+    const sortedUnits = isStackable 
+      ? [...units].sort((a, b) => b.height - a.height)
+      : [...units];
 
-    // Height tracking for stacking - now stores the base pallet reference
-    const stackMap: Map<string, { height: number; basePallet: PlacedPallet }> = new Map();
+    // Track placed base pallets with their current stack height
+    interface PlacedBase {
+      pallet: PlacedPallet;
+      currentHeight: number;
+      x: number;
+      z: number;
+      length: number;
+      width: number;
+    }
+    const basePallets: PlacedBase[] = [];
 
-    orderedUnits.forEach((unit) => {
+    // Simple row-based packing
+    let currentX = 0;
+    let currentZ = 0;
+    let rowMaxLength = 0;
+
+    for (const unit of sortedUnits) {
       let { length, width, height, colorIdx, unitNum } = unit;
-      
-      // Try to fit in current row
       let placed_this = false;
 
-      // Check if we need to start a new row
-      if (currentZ + width > truckWidth) {
-        currentX += rowMaxLength;
-        currentZ = 0;
-        rowMaxLength = 0;
+      // If stackable, first try to stack on existing pallets
+      if (isStackable) {
+        for (const base of basePallets) {
+          // Check if this pallet can stack on the base
+          // Footprint must fit and height must not exceed truck height
+          const fitsOnBase = (
+            (length <= base.length && width <= base.width) ||
+            (width <= base.length && length <= base.width) // rotated
+          );
+          
+          if (fitsOnBase && base.currentHeight + height <= truckHeight) {
+            // Stack it!
+            const stackedPallet: PlacedPallet = {
+              x: base.x,
+              z: base.z,
+              length: length <= base.length ? length : width,
+              width: length <= base.length ? width : length,
+              height,
+              stackLevel: base.pallet.stackedOn ? base.pallet.stackedOn.length + 1 : 1,
+              color: PALLET_COLORS[colorIdx],
+              label: `${unitNum}`,
+            };
+            
+            if (!base.pallet.stackedOn) {
+              base.pallet.stackedOn = [];
+            }
+            base.pallet.stackedOn.push(stackedPallet);
+            base.currentHeight += height;
+            placed_this = true;
+            break;
+          }
+        }
       }
 
-      // Try rotation if width doesn't fit
-      let rotated = false;
-      if (currentZ + width > truckWidth && currentZ + length <= truckWidth) {
-        [length, width] = [width, length];
-        rotated = true;
-      }
-
-      // Check stacking - find if there's a base pallet at this position
-      const gridKey = `${Math.floor(currentX / 24)}-${Math.floor(currentZ / 24)}`;
-      const stackInfo = stackMap.get(gridKey);
-      const baseHeight = isStackable && stackInfo ? stackInfo.height : 0;
-      const basePallet = isStackable && stackInfo ? stackInfo.basePallet : null;
-
-      // Check if fits in truck
-      if (currentX + length <= truckLength && 
-          currentZ + width <= truckWidth && 
-          baseHeight + height <= truckHeight) {
-        
-        // If stacking on existing pallet, add to its stackedOn array
-        if (basePallet && isStackable) {
-          const stackedPallet: PlacedPallet = {
-            x: currentX,
-            z: currentZ,
-            length,
-            width,
-            height,
-            stackLevel: basePallet.stackedOn ? basePallet.stackedOn.length + 1 : 1,
-            color: PALLET_COLORS[colorIdx],
-            label: `${unitNum}`,
-          };
-          
-          if (!basePallet.stackedOn) {
-            basePallet.stackedOn = [];
+      if (!placed_this) {
+        // Try to place as new base pallet
+        // Check if we need to start a new row
+        if (currentZ + width > truckWidth) {
+          // Try rotation
+          if (currentZ + length <= truckWidth) {
+            [length, width] = [width, length];
+          } else {
+            // Start new row
+            currentX += rowMaxLength;
+            currentZ = 0;
+            rowMaxLength = 0;
           }
-          basePallet.stackedOn.push(stackedPallet);
-          
-          // Update stack height
-          stackMap.set(gridKey, { height: baseHeight + height, basePallet });
-          placed_this = true;
-        } else {
-          // Place as new base pallet
-          const newPallet: PlacedPallet = {
-            x: currentX,
-            z: currentZ,
-            length,
-            width,
-            height,
-            stackLevel: 0,
-            color: PALLET_COLORS[colorIdx],
-            label: `${unitNum}`,
-            stackedOn: [],
-          };
-          placed.push(newPallet);
-
-          if (isStackable) {
-            stackMap.set(gridKey, { height: height, basePallet: newPallet });
-          }
-
-          currentZ += width;
-          rowMaxLength = Math.max(rowMaxLength, length);
-          maxUsedLength = Math.max(maxUsedLength, currentX + length);
-          placed_this = true;
-        }
-      } else {
-        // Try starting a new row
-        currentX += rowMaxLength;
-        currentZ = 0;
-        rowMaxLength = 0;
-
-        // Reset rotation for new row attempt
-        if (rotated) {
-          [length, width] = [width, length];
         }
 
-        // Try both orientations for new row
+        // Try both orientations
         const orientations = [
           { l: length, w: width },
           { l: width, w: length }
@@ -193,6 +170,7 @@ export function FreightVisualization({
           if (currentX + orient.l <= truckLength && 
               currentZ + orient.w <= truckWidth &&
               height <= truckHeight) {
+            
             const newPallet: PlacedPallet = {
               x: currentX,
               z: currentZ,
@@ -205,11 +183,63 @@ export function FreightVisualization({
               stackedOn: [],
             };
             placed.push(newPallet);
+            
+            basePallets.push({
+              pallet: newPallet,
+              currentHeight: height,
+              x: currentX,
+              z: currentZ,
+              length: orient.l,
+              width: orient.w,
+            });
+
             currentZ += orient.w;
             rowMaxLength = Math.max(rowMaxLength, orient.l);
             maxUsedLength = Math.max(maxUsedLength, currentX + orient.l);
             placed_this = true;
             break;
+          }
+        }
+
+        // If still not placed, try starting a new row
+        if (!placed_this && currentZ > 0) {
+          currentX += rowMaxLength;
+          currentZ = 0;
+          rowMaxLength = 0;
+
+          for (const orient of orientations) {
+            if (currentX + orient.l <= truckLength && 
+                currentZ + orient.w <= truckWidth &&
+                height <= truckHeight) {
+              
+              const newPallet: PlacedPallet = {
+                x: currentX,
+                z: currentZ,
+                length: orient.l,
+                width: orient.w,
+                height,
+                stackLevel: 0,
+                color: PALLET_COLORS[colorIdx],
+                label: `${unitNum}`,
+                stackedOn: [],
+              };
+              placed.push(newPallet);
+              
+              basePallets.push({
+                pallet: newPallet,
+                currentHeight: height,
+                x: currentX,
+                z: currentZ,
+                length: orient.l,
+                width: orient.w,
+              });
+
+              currentZ += orient.w;
+              rowMaxLength = Math.max(rowMaxLength, orient.l);
+              maxUsedLength = Math.max(maxUsedLength, currentX + orient.l);
+              placed_this = true;
+              break;
+            }
           }
         }
       }
@@ -227,7 +257,7 @@ export function FreightVisualization({
           label: `${unitNum}`,
         });
       }
-    });
+    }
 
     return { placedPallets: placed, overflowPallets: overflow, usedLength: maxUsedLength };
   }, [pallets, truckLength, truckWidth, truckHeight, isStackable]);
