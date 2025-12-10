@@ -50,9 +50,8 @@ serve(async (req) => {
     // Fetch all vehicles with their current location data
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select('id, vehicle_number, current_latitude, current_longitude, current_speed, current_odometer, vin, provider_id')
-      .not('current_latitude', 'is', null)
-      .not('current_longitude', 'is', null);
+      .select('id, vehicle_number, last_location, speed, odometer, vin, provider_id')
+      .not('last_location', 'is', null);
 
     if (vehiclesError) {
       console.error('Error fetching vehicles:', vehiclesError);
@@ -100,10 +99,17 @@ serve(async (req) => {
     const now = new Date().toISOString();
 
     for (const vehicle of vehicles || []) {
-      let latitude = vehicle.current_latitude;
-      let longitude = vehicle.current_longitude;
-      let speed = vehicle.current_speed;
-      let odometer = vehicle.current_odometer;
+      // Parse lat/lng from last_location string (format: "lat, lng")
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+      let speed = vehicle.speed;
+      let odometer = vehicle.odometer;
+
+      if (vehicle.last_location) {
+        const [latStr, lngStr] = vehicle.last_location.split(',').map((s: string) => s.trim());
+        latitude = parseFloat(latStr);
+        longitude = parseFloat(lngStr);
+      }
 
       // Check if we have fresh Samsara data for this vehicle
       const samsaraVehicle = samsaraData[vehicle.vin] || samsaraData[vehicle.provider_id];
@@ -119,14 +125,14 @@ serve(async (req) => {
         }
       }
 
-      if (latitude && longitude) {
+      if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
         locationsToInsert.push({
           vehicle_id: vehicle.id,
           latitude,
           longitude,
           speed,
           odometer,
-          heading: null, // Can be added later if available
+          heading: null,
           recorded_at: now,
         });
       }
