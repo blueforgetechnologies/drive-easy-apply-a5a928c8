@@ -151,6 +151,7 @@ export default function LoadAnalyticsTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusterRadius, setClusterRadius] = useState(0); // 0 = no clustering, in miles
+  const [maxRecordsLimit, setMaxRecordsLimit] = useState(30000); // Default 30K, can go up to 150K
   const [prefetchStatus, setPrefetchStatus] = useState<Record<DateRangeKey, 'idle' | 'loading' | 'done'>>({
     '24h': 'idle', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle'
   });
@@ -167,6 +168,13 @@ export default function LoadAnalyticsTab() {
     loadMapboxToken();
     loadGeocodeCache();
   }, [startDate, endDate]);
+
+  // Re-fetch when maxRecordsLimit changes (clear cache for current range)
+  useEffect(() => {
+    const key = getCacheKey(startDate, endDate);
+    analyticsCache.delete(key); // Clear cache to force re-fetch with new limit
+    loadAnalyticsData();
+  }, [maxRecordsLimit]);
 
   // Auto-refresh interval
   useEffect(() => {
@@ -213,10 +221,10 @@ export default function LoadAnalyticsTab() {
   const fetchDataForRange = async (
     dateStart: Date, 
     dateEnd: Date, 
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    recordLimit: number = 150000
   ): Promise<{ data: LoadEmailData[]; count: number }> => {
     const pageSize = 3000;
-    const maxRecords = 150000; // Support up to 150K records
     const dateFilter = dateStart.toISOString();
     const endFilter = dateEnd.toISOString();
 
@@ -230,7 +238,7 @@ export default function LoadAnalyticsTab() {
     if (countError) throw countError;
     
     const actualCount = count || 0;
-    const recordsToFetch = Math.min(actualCount, maxRecords);
+    const recordsToFetch = Math.min(actualCount, recordLimit);
     const numPages = Math.ceil(recordsToFetch / pageSize);
     
     console.log(`fetchDataForRange: total count=${actualCount}, fetching=${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
@@ -317,7 +325,7 @@ export default function LoadAnalyticsTab() {
     try {
       const { data, count } = await fetchDataForRange(startDate, endDate, (progress) => {
         setLoadingProgress(progress);
-      });
+      }, maxRecordsLimit);
       
       // Cache the result
       const key = getCacheKey(startDate, endDate);
@@ -1235,6 +1243,18 @@ export default function LoadAnalyticsTab() {
                       min={0}
                       max={200}
                       step={10}
+                      className="w-14"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <BarChart3 className="h-3 w-3" />
+                    <span>{(maxRecordsLimit / 1000).toFixed(0)}K</span>
+                    <Slider
+                      value={[maxRecordsLimit]}
+                      onValueChange={([val]) => setMaxRecordsLimit(val)}
+                      min={10000}
+                      max={150000}
+                      step={10000}
                       className="w-14"
                     />
                   </div>
