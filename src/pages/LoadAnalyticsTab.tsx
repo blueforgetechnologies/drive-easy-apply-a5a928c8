@@ -916,30 +916,6 @@ export default function LoadAnalyticsTab() {
         </Select>
       </div>
 
-      {/* Summary Stats - More compact */}
-      <div className="grid grid-cols-5 gap-2">
-        <Card className="p-2">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Emails</div>
-          <div className="text-lg font-bold">{stats.totalEmails.toLocaleString()}</div>
-        </Card>
-        <Card className="p-2">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Amount</div>
-          <div className="text-lg font-bold">${Math.round(stats.avgPostedAmount).toLocaleString()}</div>
-        </Card>
-        <Card className="p-2">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">States</div>
-          <div className="text-lg font-bold">{stats.uniqueStates}</div>
-        </Card>
-        <Card className="p-2">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Busiest Day</div>
-          <div className="text-lg font-bold">{busiestInfo.busiestDay}</div>
-        </Card>
-        <Card className="p-2">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Peak Hour</div>
-          <div className="text-lg font-bold">{busiestInfo.busiestHour}</div>
-        </Card>
-      </div>
-
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2">
         <TabsList className="h-8">
