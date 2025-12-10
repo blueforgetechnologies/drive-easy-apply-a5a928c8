@@ -101,11 +101,44 @@ const US_HOLIDAYS = [
   { name: "Christmas", month: 12, day: 25 },
 ];
 
+// Cache for prefetched data by date range key
+const analyticsCache = new Map<string, { data: LoadEmailData[]; count: number; fetchedAt: Date }>();
+
+// Date range keys for prefetching
+const DATE_RANGE_KEYS = ['24h', '3d', '7d', '30d', '90d'] as const;
+type DateRangeKey = typeof DATE_RANGE_KEYS[number];
+
+// Generate a simplified cache key - round to nearest hour for better cache hits
+const getCacheKey = (start: Date, end: Date): string => {
+  const startHour = new Date(start);
+  startHour.setMinutes(0, 0, 0);
+  const endHour = new Date(end);
+  endHour.setMinutes(0, 0, 0);
+  return `${startHour.toISOString()}_${endHour.toISOString()}`;
+};
+
+// Get date range for prefetching (matches AnalyticsDateFilter presets)
+const getDateRangeFromKey = (key: DateRangeKey): { start: Date; end: Date } => {
+  const end = new Date();
+  const today = new Date();
+  let start: Date;
+  switch (key) {
+    case '24h': start = subHours(today, 24); break;
+    case '3d': start = startOfDay(subDays(today, 2)); end.setHours(23, 59, 59, 999); break;
+    case '7d': start = startOfDay(subDays(today, 6)); end.setHours(23, 59, 59, 999); break;
+    case '30d': start = startOfDay(subDays(today, 29)); end.setHours(23, 59, 59, 999); break;
+    case '90d': start = startOfDay(subDays(today, 89)); end.setHours(23, 59, 59, 999); break;
+    default: start = subHours(today, 24);
+  }
+  return { start, end };
+};
+
 export default function LoadAnalyticsTab() {
   const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
   const [totalEmailCount, setTotalEmailCount] = useState<number>(0);
   const [geocodeCache, setGeocodeCache] = useState<GeocodeData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date>(() => subHours(new Date(), 24));
@@ -118,11 +151,15 @@ export default function LoadAnalyticsTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusterRadius, setClusterRadius] = useState(0); // 0 = no clustering, in miles
+  const [prefetchStatus, setPrefetchStatus] = useState<Record<DateRangeKey, 'idle' | 'loading' | 'done'>>({
+    '24h': 'idle', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle'
+  });
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const sourceAddedRef = useRef(false);
   const geoJsonDataRef = useRef<typeof geoJsonData | null>(null);
+  const prefetchingRef = useRef(false);
 
   // Initial load
   useEffect(() => {
@@ -172,76 +209,176 @@ export default function LoadAnalyticsTab() {
     }
   };
 
-  const loadAnalyticsData = async () => {
-    setIsLoading(true);
-    try {
-      const pageSize = 2000;
-      const maxRecords = 30000; // Reduced to prevent timeouts
-      const dateFilter = startDate.toISOString();
-      const endFilter = endDate.toISOString();
+  // Core data fetching function with progress tracking
+  const fetchDataForRange = async (
+    dateStart: Date, 
+    dateEnd: Date, 
+    onProgress?: (progress: number) => void
+  ): Promise<{ data: LoadEmailData[]; count: number }> => {
+    const pageSize = 3000;
+    const maxRecords = 150000; // Support up to 150K records
+    const dateFilter = dateStart.toISOString();
+    const endFilter = dateEnd.toISOString();
 
-      // Get total count for the date range
-      const { count, error: countError } = await supabase
-        .from("load_emails")
-        .select("id", { count: 'exact', head: true })
-        .gte("received_at", dateFilter)
-        .lte("received_at", endFilter);
+    // Get total count for the date range
+    const { count, error: countError } = await supabase
+      .from("load_emails")
+      .select("id", { count: 'exact', head: true })
+      .gte("received_at", dateFilter)
+      .lte("received_at", endFilter);
 
-      if (!countError && count !== null) {
-        setTotalEmailCount(count);
-      }
+    if (countError) throw countError;
+    
+    const actualCount = count || 0;
+    const recordsToFetch = Math.min(actualCount, maxRecords);
+    const numPages = Math.ceil(recordsToFetch / pageSize);
+    
+    console.log(`fetchDataForRange: total count=${actualCount}, fetching=${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
+    
+    if (numPages === 0) {
+      return { data: [], count: actualCount };
+    }
 
-      const actualCount = count || 0;
-      const recordsToFetch = Math.min(actualCount, maxRecords);
-      const numPages = Math.ceil(recordsToFetch / pageSize);
-      
-      console.log(`loadAnalyticsData: total count=${actualCount}, fetching=${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
-      
-      if (numPages === 0) {
-        setLoadEmails([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch in smaller batches to avoid timeouts (max 5 parallel queries at a time)
-      const allData: any[] = [];
-      const batchSize = 5;
-      
-      for (let i = 0; i < numPages; i += batchSize) {
-        const batchQueries = Array.from(
-          { length: Math.min(batchSize, numPages - i) }, 
-          (_, j) => {
-            const page = i + j;
-            return supabase
-              .from("load_emails")
-              .select("id, received_at, created_at, parsed_data")
-              .order("received_at", { ascending: false })
-              .range(page * pageSize, (page + 1) * pageSize - 1)
-              .gte("received_at", dateFilter)
-              .lte("received_at", endFilter);
-          }
-        );
-
-        const results = await Promise.all(batchQueries);
-        
-        for (const result of results) {
-          if (result.error) throw result.error;
-          if (result.data) allData.push(...result.data);
+    // Fetch in smaller batches to avoid timeouts (max 3 parallel queries at a time for large datasets)
+    const allData: any[] = [];
+    const batchSize = 3;
+    let fetchedPages = 0;
+    
+    for (let i = 0; i < numPages; i += batchSize) {
+      const batchQueries = Array.from(
+        { length: Math.min(batchSize, numPages - i) }, 
+        (_, j) => {
+          const page = i + j;
+          return supabase
+            .from("load_emails")
+            .select("id, received_at, created_at, parsed_data")
+            .order("received_at", { ascending: false })
+            .range(page * pageSize, (page + 1) * pageSize - 1)
+            .gte("received_at", dateFilter)
+            .lte("received_at", endFilter);
         }
-      }
+      );
 
-      const typedData = allData.map(item => ({
-        ...item,
-        parsed_data: item.parsed_data as LoadEmailData['parsed_data']
-      }));
-      console.log('loadAnalyticsData: fetched', typedData.length, 'emails');
-      setLoadEmails(typedData);
+      const results = await Promise.all(batchQueries);
+      
+      for (const result of results) {
+        if (result.error) throw result.error;
+        if (result.data) allData.push(...result.data);
+      }
+      
+      fetchedPages += batchQueries.length;
+      if (onProgress) {
+        onProgress(Math.round((fetchedPages / numPages) * 100));
+      }
+    }
+
+    const typedData = allData.map(item => ({
+      ...item,
+      parsed_data: item.parsed_data as LoadEmailData['parsed_data']
+    }));
+    
+    return { data: typedData, count: actualCount };
+  };
+
+  // Generate cache key from dates
+  const getCacheKey = (start: Date, end: Date): string => {
+    return `${start.toISOString()}_${end.toISOString()}`;
+  };
+
+  // Check if we have cached data for current range
+  const getCachedData = useCallback((start: Date, end: Date) => {
+    const key = getCacheKey(start, end);
+    const cached = analyticsCache.get(key);
+    if (cached) {
+      // Cache is valid for 5 minutes
+      const cacheAge = Date.now() - cached.fetchedAt.getTime();
+      if (cacheAge < 5 * 60 * 1000) {
+        return cached;
+      }
+    }
+    return null;
+  }, []);
+
+  // Main load function - uses cache or fetches
+  const loadAnalyticsData = async () => {
+    // Check cache first
+    const cached = getCachedData(startDate, endDate);
+    if (cached) {
+      console.log('Using cached data for range');
+      setLoadEmails(cached.data);
+      setTotalEmailCount(cached.count);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingProgress(0);
+    
+    try {
+      const { data, count } = await fetchDataForRange(startDate, endDate, (progress) => {
+        setLoadingProgress(progress);
+      });
+      
+      // Cache the result
+      const key = getCacheKey(startDate, endDate);
+      analyticsCache.set(key, { data, count, fetchedAt: new Date() });
+      
+      setLoadEmails(data);
+      setTotalEmailCount(count);
+      console.log('loadAnalyticsData: fetched', data.length, 'emails');
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {
       setIsLoading(false);
+      setLoadingProgress(0);
     }
   };
+
+  // Background prefetch for larger date ranges
+  const prefetchDateRanges = useCallback(async () => {
+    if (prefetchingRef.current) return;
+    prefetchingRef.current = true;
+    
+    const rangesToPrefetch: DateRangeKey[] = ['3d', '7d', '30d', '90d'];
+    
+    for (const rangeKey of rangesToPrefetch) {
+      const { start, end } = getDateRangeFromKey(rangeKey);
+      const cacheKey = getCacheKey(start, end);
+      
+      // Skip if already cached
+      if (analyticsCache.has(cacheKey)) {
+        setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'done' }));
+        continue;
+      }
+      
+      try {
+        setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'loading' }));
+        console.log(`Prefetching ${rangeKey}...`);
+        
+        const { data, count } = await fetchDataForRange(start, end);
+        analyticsCache.set(cacheKey, { data, count, fetchedAt: new Date() });
+        
+        setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'done' }));
+        console.log(`Prefetched ${rangeKey}: ${data.length} records`);
+      } catch (error) {
+        console.error(`Error prefetching ${rangeKey}:`, error);
+        setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'idle' }));
+      }
+    }
+    
+    prefetchingRef.current = false;
+  }, []);
+
+  // Start prefetching after initial load
+  useEffect(() => {
+    if (!isLoading && loadEmails.length > 0) {
+      // Start prefetching after 2 seconds
+      const timer = setTimeout(() => {
+        prefetchDateRanges();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, loadEmails.length, prefetchDateRanges]);
 
   // Build geocode lookup map
   const geocodeLookup = useMemo(() => {
@@ -892,8 +1029,19 @@ export default function LoadAnalyticsTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        {loadingProgress > 0 && (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+            <span className="text-sm text-muted-foreground">Loading {loadingProgress}%</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -940,6 +1088,14 @@ export default function LoadAnalyticsTab() {
             <SelectItem value="delivery">Destinations</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Prefetch status indicator */}
+        {Object.values(prefetchStatus).some(s => s === 'loading') && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Prefetching data...</span>
+          </div>
+        )}
       </div>
 
       {/* Main Content Tabs */}
