@@ -18,25 +18,24 @@ interface FreightVisualizationProps {
 
 interface PlacedPallet {
   x: number;
-  y: number;
   z: number;
   length: number;
   width: number;
   height: number;
+  stackLevel: number;
   color: string;
-  darkColor: string;
-  lightColor: string;
+  label: string;
 }
 
 const PALLET_COLORS = [
-  { main: "#3B82F6", dark: "#2563EB", light: "#60A5FA" }, // Blue
-  { main: "#10B981", dark: "#059669", light: "#34D399" }, // Green
-  { main: "#8B5CF6", dark: "#7C3AED", light: "#A78BFA" }, // Purple
-  { main: "#F59E0B", dark: "#D97706", light: "#FBBF24" }, // Amber
-  { main: "#EF4444", dark: "#DC2626", light: "#F87171" }, // Red
-  { main: "#06B6D4", dark: "#0891B2", light: "#22D3EE" }, // Cyan
-  { main: "#EC4899", dark: "#DB2777", light: "#F472B6" }, // Pink
-  { main: "#84CC16", dark: "#65A30D", light: "#A3E635" }, // Lime
+  "#3B82F6", // Blue
+  "#10B981", // Green
+  "#8B5CF6", // Purple
+  "#F59E0B", // Amber
+  "#EF4444", // Red
+  "#06B6D4", // Cyan
+  "#EC4899", // Pink
+  "#84CC16", // Lime
 ];
 
 export function FreightVisualization({
@@ -47,27 +46,40 @@ export function FreightVisualization({
   fits,
   isStackable = false,
 }: FreightVisualizationProps) {
-  // Calculate scale to fit visualization - larger base size
-  const baseSize = 280;
-  const maxDim = Math.max(truckLength, truckWidth, truckHeight);
-  const scale = baseSize / maxDim;
+  // Scale to fit container - horizontal layout (length is horizontal, width is vertical)
+  const containerWidth = 400;
+  const containerHeight = 200;
+  const padding = 40;
+  
+  const scaleX = (containerWidth - padding * 2) / truckLength;
+  const scaleY = (containerHeight - padding * 2) / truckWidth;
+  const scale = Math.min(scaleX, scaleY);
 
-  // Place pallets in truck space using simple row-based packing
+  const scaledTruck = {
+    length: truckLength * scale,
+    width: truckWidth * scale,
+  };
+
+  // Place pallets in truck space
   const placedPallets = useMemo(() => {
     const placed: PlacedPallet[] = [];
     let currentX = 0;
     let currentZ = 0;
     let rowMaxLength = 0;
 
-    // Expand pallets into individual units
-    const units: { length: number; width: number; height: number; colorIdx: number }[] = [];
+    // Expand pallets into individual units with labels
+    const units: { length: number; width: number; height: number; colorIdx: number; palletIdx: number; unitNum: number }[] = [];
+    let unitCounter = 0;
     pallets.forEach((pallet, palletIdx) => {
       for (let i = 0; i < pallet.quantity; i++) {
+        unitCounter++;
         units.push({
           length: pallet.length,
           width: pallet.width,
           height: pallet.height,
           colorIdx: palletIdx % PALLET_COLORS.length,
+          palletIdx,
+          unitNum: unitCounter,
         });
       }
     });
@@ -75,11 +87,11 @@ export function FreightVisualization({
     // Sort by width descending for better packing
     units.sort((a, b) => b.width - a.width);
 
-    // Stack tracking for stackable mode
-    const heightMap: Map<string, number> = new Map();
+    // Height tracking for stacking
+    const heightMap: Map<string, { height: number; level: number }> = new Map();
 
-    units.forEach((unit) => {
-      let { length, width, height, colorIdx } = unit;
+    units.forEach((unit, idx) => {
+      let { length, width, height, colorIdx, unitNum } = unit;
       
       // Check if we need to start a new row
       if (currentZ + width > truckWidth) {
@@ -95,27 +107,27 @@ export function FreightVisualization({
 
       // Check stacking
       const gridKey = `${Math.floor(currentX / 24)}-${Math.floor(currentZ / 24)}`;
-      const baseHeight = isStackable ? (heightMap.get(gridKey) || 0) : 0;
+      const stackInfo = heightMap.get(gridKey) || { height: 0, level: 0 };
+      const baseHeight = isStackable ? stackInfo.height : 0;
+      const stackLevel = isStackable ? stackInfo.level : 0;
 
       // Check if fits in truck
       if (currentX + length <= truckLength && 
           currentZ + width <= truckWidth && 
           baseHeight + height <= truckHeight) {
-        const colors = PALLET_COLORS[colorIdx];
         placed.push({
           x: currentX,
-          y: baseHeight,
           z: currentZ,
           length,
           width,
           height,
-          color: colors.main,
-          darkColor: colors.dark,
-          lightColor: colors.light,
+          stackLevel,
+          color: PALLET_COLORS[colorIdx],
+          label: `${unitNum}`,
         });
 
         if (isStackable) {
-          heightMap.set(gridKey, baseHeight + height);
+          heightMap.set(gridKey, { height: baseHeight + height, level: stackLevel + 1 });
         }
 
         currentZ += width;
@@ -126,17 +138,15 @@ export function FreightVisualization({
         rowMaxLength = length;
 
         if (currentX + length <= truckLength) {
-          const colors = PALLET_COLORS[colorIdx];
           placed.push({
             x: currentX,
-            y: 0,
-            z: currentZ,
+            z: 0,
             length,
             width,
             height,
-            color: colors.main,
-            darkColor: colors.dark,
-            lightColor: colors.light,
+            stackLevel: 0,
+            color: PALLET_COLORS[colorIdx],
+            label: `${unitNum}`,
           });
           currentZ += width;
         }
@@ -146,228 +156,14 @@ export function FreightVisualization({
     return placed;
   }, [pallets, truckLength, truckWidth, truckHeight, isStackable]);
 
-  const scaledTruck = {
-    length: truckLength * scale,
-    width: truckWidth * scale,
-    height: truckHeight * scale,
-  };
+  const offsetX = (containerWidth - scaledTruck.length) / 2;
+  const offsetY = (containerHeight - scaledTruck.width) / 2;
 
   return (
-    <div className="relative w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl overflow-hidden" style={{ minHeight: "320px" }}>
-      {/* Grid pattern background */}
-      <div 
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: "20px 20px",
-        }}
-      />
-
-      {/* 3D Scene Container */}
-      <div className="flex items-center justify-center py-8" style={{ minHeight: "280px" }}>
-        <div
-          style={{
-            perspective: "1000px",
-            perspectiveOrigin: "50% 40%",
-          }}
-        >
-          <div
-            style={{
-              transform: "rotateX(-20deg) rotateY(-30deg) rotateZ(0deg)",
-              transformStyle: "preserve-3d",
-              position: "relative",
-            }}
-          >
-            {/* Floor with gradient */}
-            <div
-              style={{
-                position: "absolute",
-                width: `${scaledTruck.length}px`,
-                height: `${scaledTruck.width}px`,
-                background: "linear-gradient(135deg, #374151 0%, #1F2937 100%)",
-                border: "2px solid #4B5563",
-                boxShadow: "inset 0 0 30px rgba(0,0,0,0.3)",
-                transform: "translateZ(0px)",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              {/* Floor grid lines */}
-              <div 
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)
-                  `,
-                  backgroundSize: `${48 * scale}px ${48 * scale}px`,
-                }}
-              />
-            </div>
-
-            {/* Left Wall */}
-            <div
-              style={{
-                position: "absolute",
-                width: `${scaledTruck.length}px`,
-                height: `${scaledTruck.height}px`,
-                background: "linear-gradient(180deg, rgba(55,65,81,0.6) 0%, rgba(31,41,55,0.8) 100%)",
-                borderLeft: "2px solid #4B5563",
-                borderTop: "2px solid #4B5563",
-                borderRight: "2px solid #4B5563",
-                transform: `rotateX(90deg) translateZ(${scaledTruck.width}px)`,
-                transformOrigin: "bottom",
-                transformStyle: "preserve-3d",
-              }}
-            />
-
-            {/* Right Wall */}
-            <div
-              style={{
-                position: "absolute",
-                width: `${scaledTruck.length}px`,
-                height: `${scaledTruck.height}px`,
-                background: "linear-gradient(180deg, rgba(75,85,99,0.4) 0%, rgba(55,65,81,0.6) 100%)",
-                borderLeft: "2px solid #6B7280",
-                borderTop: "2px solid #6B7280",
-                borderRight: "2px solid #6B7280",
-                transform: `rotateX(90deg) translateZ(0px)`,
-                transformOrigin: "bottom",
-                transformStyle: "preserve-3d",
-              }}
-            />
-
-            {/* Back Wall */}
-            <div
-              style={{
-                position: "absolute",
-                width: `${scaledTruck.width}px`,
-                height: `${scaledTruck.height}px`,
-                background: "linear-gradient(180deg, rgba(55,65,81,0.5) 0%, rgba(31,41,55,0.7) 100%)",
-                borderTop: "2px solid #4B5563",
-                borderLeft: "2px solid #4B5563",
-                borderRight: "2px solid #4B5563",
-                transform: `rotateX(90deg) rotateY(90deg) translateZ(0px)`,
-                transformOrigin: "bottom left",
-                transformStyle: "preserve-3d",
-              }}
-            />
-
-            {/* Ceiling frame (dashed) */}
-            <div
-              style={{
-                position: "absolute",
-                width: `${scaledTruck.length}px`,
-                height: `${scaledTruck.width}px`,
-                border: "2px dashed rgba(107,114,128,0.5)",
-                transform: `translateZ(${scaledTruck.height}px)`,
-                transformStyle: "preserve-3d",
-              }}
-            />
-
-            {/* Height indicator line */}
-            <div
-              style={{
-                position: "absolute",
-                width: "2px",
-                height: `${scaledTruck.height}px`,
-                background: "linear-gradient(180deg, #9CA3AF 0%, #6B7280 100%)",
-                left: `${scaledTruck.length + 8}px`,
-                top: "0",
-                transform: `rotateX(90deg)`,
-                transformOrigin: "bottom",
-              }}
-            />
-
-            {/* Pallets */}
-            {placedPallets.map((pallet, idx) => {
-              const pW = pallet.length * scale;
-              const pD = pallet.width * scale;
-              const pH = pallet.height * scale;
-              const pX = pallet.x * scale;
-              const pZ = pallet.z * scale;
-              const pY = pallet.y * scale;
-
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    position: "absolute",
-                    width: `${pW}px`,
-                    height: `${pD}px`,
-                    transform: `translate(${pX}px, ${pZ}px) translateZ(${pY}px)`,
-                    transformStyle: "preserve-3d",
-                  }}
-                >
-                  {/* Bottom face */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: pallet.darkColor,
-                      border: "1px solid rgba(0,0,0,0.3)",
-                    }}
-                  />
-
-                  {/* Top face */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      width: `${pW}px`,
-                      height: `${pD}px`,
-                      background: `linear-gradient(135deg, ${pallet.lightColor} 0%, ${pallet.color} 100%)`,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      transform: `translateZ(${pH}px)`,
-                      boxShadow: "inset 0 0 10px rgba(255,255,255,0.2)",
-                    }}
-                  />
-
-                  {/* Front face */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      width: `${pW}px`,
-                      height: `${pH}px`,
-                      background: `linear-gradient(180deg, ${pallet.color} 0%, ${pallet.darkColor} 100%)`,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      transform: `rotateX(90deg) translateZ(${pD}px)`,
-                      transformOrigin: "bottom",
-                    }}
-                  />
-
-                  {/* Right side face */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      width: `${pD}px`,
-                      height: `${pH}px`,
-                      background: `linear-gradient(180deg, ${pallet.darkColor} 0%, ${pallet.darkColor} 100%)`,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      transform: `rotateX(90deg) rotateY(90deg) translateZ(${pW}px)`,
-                      transformOrigin: "bottom left",
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Dimension Labels */}
-      <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
-        <div className="text-xs font-medium text-white/70 mb-1">Truck Dimensions</div>
-        <div className="text-sm font-mono">
-          {truckLength}" L × {truckWidth}" W × {truckHeight}" H
-        </div>
-      </div>
-
-      {/* Pallet count */}
-      <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
-        <div className="text-xs font-medium text-white/70 mb-1">Pallets Placed</div>
-        <div className="text-lg font-bold">{placedPallets.length}</div>
+    <div className="relative w-full bg-slate-900 rounded-xl overflow-hidden" style={{ minHeight: "280px" }}>
+      {/* Title */}
+      <div className="absolute top-3 left-3 text-white/70 text-xs font-medium">
+        Top-Down View (looking through roof)
       </div>
 
       {/* Fit indicator */}
@@ -393,26 +189,253 @@ export function FreightVisualization({
         )}
       </div>
 
-      {/* Legend */}
-      {pallets.length > 0 && (
-        <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2">
-          <div className="text-xs font-medium text-white/70 mb-1.5">Pallet Types</div>
-          <div className="flex flex-wrap gap-1.5">
-            {pallets.map((pallet, idx) => (
-              <div 
-                key={idx} 
-                className="flex items-center gap-1.5 text-xs text-white"
-              >
-                <div 
-                  className="w-3 h-3 rounded-sm shadow-sm" 
-                  style={{ background: PALLET_COLORS[idx % PALLET_COLORS.length].main }}
+      {/* SVG Container */}
+      <svg 
+        viewBox={`0 0 ${containerWidth} ${containerHeight}`}
+        className="w-full"
+        style={{ minHeight: "220px" }}
+      >
+        {/* Truck floor */}
+        <g transform={`translate(${offsetX}, ${offsetY})`}>
+          {/* Floor background */}
+          <rect
+            x={0}
+            y={0}
+            width={scaledTruck.length}
+            height={scaledTruck.width}
+            fill="#1E293B"
+            stroke="#475569"
+            strokeWidth={2}
+            rx={4}
+          />
+
+          {/* Floor grid */}
+          {Array.from({ length: Math.floor(truckLength / 48) + 1 }).map((_, i) => (
+            <line
+              key={`vgrid-${i}`}
+              x1={i * 48 * scale}
+              y1={0}
+              x2={i * 48 * scale}
+              y2={scaledTruck.width}
+              stroke="#334155"
+              strokeWidth={1}
+              strokeDasharray="4,4"
+            />
+          ))}
+          {Array.from({ length: Math.floor(truckWidth / 48) + 1 }).map((_, i) => (
+            <line
+              key={`hgrid-${i}`}
+              x1={0}
+              y1={i * 48 * scale}
+              x2={scaledTruck.length}
+              y2={i * 48 * scale}
+              stroke="#334155"
+              strokeWidth={1}
+              strokeDasharray="4,4"
+            />
+          ))}
+
+          {/* Door opening indicator (at the end, looking from back) */}
+          <rect
+            x={scaledTruck.length - 4}
+            y={0}
+            width={4}
+            height={scaledTruck.width}
+            fill="#059669"
+            opacity={0.6}
+          />
+          <text
+            x={scaledTruck.length + 8}
+            y={scaledTruck.width / 2}
+            fill="#10B981"
+            fontSize={10}
+            textAnchor="start"
+            dominantBaseline="middle"
+            transform={`rotate(90, ${scaledTruck.length + 8}, ${scaledTruck.width / 2})`}
+          >
+            DOOR
+          </text>
+
+          {/* Pallets */}
+          {placedPallets.map((pallet, idx) => {
+            const pW = pallet.length * scale;
+            const pH = pallet.width * scale;
+            const pX = pallet.x * scale;
+            const pY = pallet.z * scale;
+
+            return (
+              <g key={idx}>
+                {/* Pallet rectangle */}
+                <rect
+                  x={pX + 1}
+                  y={pY + 1}
+                  width={pW - 2}
+                  height={pH - 2}
+                  fill={pallet.color}
+                  stroke="rgba(0,0,0,0.3)"
+                  strokeWidth={1}
+                  rx={2}
+                  opacity={0.9 - pallet.stackLevel * 0.1}
                 />
-                <span className="font-mono">{pallet.quantity}×</span>
-              </div>
-            ))}
+
+                {/* Diagonal lines to show it's a box/pallet */}
+                <line
+                  x1={pX + 3}
+                  y1={pY + 3}
+                  x2={pX + pW - 3}
+                  y2={pY + pH - 3}
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth={1}
+                />
+                <line
+                  x1={pX + pW - 3}
+                  y1={pY + 3}
+                  x2={pX + 3}
+                  y2={pY + pH - 3}
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth={1}
+                />
+
+                {/* Pallet dimensions label */}
+                {pW > 30 && pH > 20 && (
+                  <text
+                    x={pX + pW / 2}
+                    y={pY + pH / 2}
+                    fill="white"
+                    fontSize={pW > 50 ? 9 : 7}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontWeight="bold"
+                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+                  >
+                    {pallet.length}"×{pallet.width}"
+                  </text>
+                )}
+
+                {/* Stack indicator */}
+                {pallet.stackLevel > 0 && (
+                  <circle
+                    cx={pX + pW - 8}
+                    cy={pY + 8}
+                    r={6}
+                    fill="#F59E0B"
+                    stroke="white"
+                    strokeWidth={1}
+                  />
+                )}
+                {pallet.stackLevel > 0 && (
+                  <text
+                    x={pX + pW - 8}
+                    y={pY + 8}
+                    fill="white"
+                    fontSize={8}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontWeight="bold"
+                  >
+                    {pallet.stackLevel + 1}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Dimension arrows */}
+          {/* Length arrow (horizontal) */}
+          <line
+            x1={0}
+            y1={scaledTruck.width + 15}
+            x2={scaledTruck.length}
+            y2={scaledTruck.width + 15}
+            stroke="#94A3B8"
+            strokeWidth={1}
+            markerEnd="url(#arrowhead)"
+            markerStart="url(#arrowhead-start)"
+          />
+          <text
+            x={scaledTruck.length / 2}
+            y={scaledTruck.width + 28}
+            fill="#94A3B8"
+            fontSize={11}
+            textAnchor="middle"
+            fontWeight="500"
+          >
+            {truckLength}" length
+          </text>
+
+          {/* Width arrow (vertical) */}
+          <line
+            x1={-15}
+            y1={0}
+            x2={-15}
+            y2={scaledTruck.width}
+            stroke="#94A3B8"
+            strokeWidth={1}
+          />
+          <text
+            x={-25}
+            y={scaledTruck.width / 2}
+            fill="#94A3B8"
+            fontSize={11}
+            textAnchor="middle"
+            fontWeight="500"
+            transform={`rotate(-90, -25, ${scaledTruck.width / 2})`}
+          >
+            {truckWidth}" width
+          </text>
+        </g>
+
+        {/* Arrow markers */}
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth="6"
+            markerHeight="6"
+            refX="5"
+            refY="3"
+            orient="auto"
+          >
+            <path d="M0,0 L6,3 L0,6 Z" fill="#94A3B8" />
+          </marker>
+          <marker
+            id="arrowhead-start"
+            markerWidth="6"
+            markerHeight="6"
+            refX="1"
+            refY="3"
+            orient="auto"
+          >
+            <path d="M6,0 L0,3 L6,6 Z" fill="#94A3B8" />
+          </marker>
+        </defs>
+      </svg>
+
+      {/* Bottom info bar */}
+      <div className="flex justify-between items-center px-4 py-2 bg-black/30 border-t border-white/10">
+        <div className="flex items-center gap-4">
+          <div className="text-white text-sm">
+            <span className="text-white/60">Pallets:</span>{" "}
+            <span className="font-bold">{placedPallets.length}</span>
           </div>
+          {isStackable && (
+            <div className="text-amber-400 text-xs flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-amber-500 flex items-center justify-center text-[8px] text-white font-bold">2</div>
+              = stacked
+            </div>
+          )}
         </div>
-      )}
+        <div className="flex gap-2">
+          {pallets.map((pallet, idx) => (
+            <div key={idx} className="flex items-center gap-1 text-xs text-white/80">
+              <div 
+                className="w-3 h-3 rounded-sm" 
+                style={{ background: PALLET_COLORS[idx % PALLET_COLORS.length] }}
+              />
+              <span>{pallet.quantity}× {pallet.length}"×{pallet.width}"×{pallet.height}"</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
