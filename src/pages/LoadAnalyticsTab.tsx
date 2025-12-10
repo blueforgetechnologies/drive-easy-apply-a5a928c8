@@ -1109,8 +1109,8 @@ export default function LoadAnalyticsTab() {
           </SelectContent>
         </Select>
 
-        {/* Prefetch status indicator */}
-        {Object.values(prefetchStatus).some(s => s === 'loading') && (
+        {/* Prefetch status indicator - only show while prefetching */}
+        {(['3d', '7d', '30d', '90d'] as DateRangeKey[]).some(key => prefetchStatus[key] === 'loading') && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md border">
             <Loader2 className="h-3 w-3 animate-spin text-primary" />
             <span>Prefetching:</span>
