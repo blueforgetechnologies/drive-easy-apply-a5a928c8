@@ -143,7 +143,6 @@ export default function LoadAnalyticsTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusterRadius, setClusterRadius] = useState(0); // 0 = no clustering, in miles
-  const [maxRecordsLimit, setMaxRecordsLimit] = useState(150000); // Default 150K
   const [prefetchStatus, setPrefetchStatus] = useState<Record<DateRangeKey, 'idle' | 'loading' | 'done'>>({
     '24h': 'idle', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle'
   });
@@ -160,36 +159,6 @@ export default function LoadAnalyticsTab() {
     loadMapboxToken();
     loadGeocodeCache();
   }, [startDate, endDate]);
-
-  // Re-fetch when maxRecordsLimit changes (clear cache for current range)
-  useEffect(() => {
-    // Skip initial mount - let the startDate/endDate effect handle it
-    const key = getCacheKey(startDate, endDate, maxRecordsLimit);
-    analyticsCache.delete(key); // Clear cache to force re-fetch with new limit
-    
-    // Directly fetch with new limit instead of calling loadAnalyticsData
-    const refetchWithNewLimit = async () => {
-      setIsLoading(true);
-      setLoadingProgress(0);
-      try {
-        const { data, count } = await fetchDataForRange(startDate, endDate, (progress) => {
-          setLoadingProgress(progress);
-        }, maxRecordsLimit);
-        
-        analyticsCache.set(key, { data, count, fetchedAt: new Date() });
-        setLoadEmails(data);
-        setTotalEmailCount(count);
-        console.log('Re-fetched with new limit:', maxRecordsLimit, 'got', data.length, 'emails');
-      } catch (error) {
-        console.error("Error re-fetching with new limit:", error);
-      } finally {
-        setIsLoading(false);
-        setLoadingProgress(0);
-      }
-    };
-    
-    refetchWithNewLimit();
-  }, [maxRecordsLimit]);
 
   // Auto-refresh interval
   useEffect(() => {
@@ -232,12 +201,11 @@ export default function LoadAnalyticsTab() {
     }
   };
 
-  // Core data fetching function with progress tracking
+  // Core data fetching function with progress tracking - fetches ALL data for range
   const fetchDataForRange = async (
     dateStart: Date, 
     dateEnd: Date, 
-    onProgress?: (progress: number) => void,
-    recordLimit: number = 150000
+    onProgress?: (progress: number) => void
   ): Promise<{ data: LoadEmailData[]; count: number }> => {
     const pageSize = 3000;
     const dateFilter = dateStart.toISOString();
@@ -253,10 +221,10 @@ export default function LoadAnalyticsTab() {
     if (countError) throw countError;
     
     const actualCount = count || 0;
-    const recordsToFetch = Math.min(actualCount, recordLimit);
+    const recordsToFetch = actualCount; // Fetch ALL records for the date range
     const numPages = Math.ceil(recordsToFetch / pageSize);
     
-    console.log(`fetchDataForRange: total count=${actualCount}, fetching=${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
+    console.log(`fetchDataForRange: fetching all ${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
     
     if (numPages === 0) {
       return { data: [], count: actualCount };
@@ -303,21 +271,21 @@ export default function LoadAnalyticsTab() {
     return { data: typedData, count: actualCount };
   };
 
-  // Generate normalized cache key from dates and limit (round to minute to avoid ms mismatches)
-  const getCacheKey = (start: Date, end: Date, limit: number): string => {
+  // Generate normalized cache key from dates (round to minute to avoid ms mismatches)
+  const getCacheKey = (start: Date, end: Date): string => {
     // Normalize to minute precision to match prefetched data with user clicks
     const normalizeDate = (d: Date) => {
       const normalized = new Date(d);
       normalized.setSeconds(0, 0);
       return normalized.toISOString();
     };
-    return `${normalizeDate(start)}_${normalizeDate(end)}_${limit}`;
+    return `${normalizeDate(start)}_${normalizeDate(end)}`;
   };
 
   // Find best matching cached data (allows for slight time differences)
-  const getCachedData = useCallback((start: Date, end: Date, limit: number) => {
-    // First try exact match with same limit
-    const exactKey = getCacheKey(start, end, limit);
+  const getCachedData = useCallback((start: Date, end: Date) => {
+    // First try exact match
+    const exactKey = getCacheKey(start, end);
     const exactCached = analyticsCache.get(exactKey);
     if (exactCached) {
       const cacheAge = Date.now() - exactCached.fetchedAt.getTime();
@@ -326,29 +294,21 @@ export default function LoadAnalyticsTab() {
       }
     }
     
-    // Try to find a close match (within 2 minutes) with same or higher limit
+    // Try to find a close match (within 2 minutes)
     for (const [key, cached] of analyticsCache.entries()) {
       const cacheAge = Date.now() - cached.fetchedAt.getTime();
       if (cacheAge >= 5 * 60 * 1000) continue;
       
       const parts = key.split('_');
-      if (parts.length < 3) continue; // Old format without limit
-      
-      const cachedLimit = parseInt(parts[parts.length - 1]);
-      // Only use cache if it was fetched with same or higher limit
-      if (cachedLimit < limit) continue;
-      
-      const cachedStart = parts.slice(0, -1).join('_').split('_')[0];
-      const cachedEnd = parts.slice(0, -1).join('_').split('_')[1];
-      const cachedStartDate = new Date(cachedStart);
-      const cachedEndDate = new Date(cachedEnd);
+      const cachedStartDate = new Date(parts[0]);
+      const cachedEndDate = new Date(parts[1]);
       
       const startDiff = Math.abs(cachedStartDate.getTime() - start.getTime());
       const endDiff = Math.abs(cachedEndDate.getTime() - end.getTime());
       
       // Match if both start and end are within 2 minutes
       if (startDiff < 2 * 60 * 1000 && endDiff < 2 * 60 * 1000) {
-        console.log('Using approximate cache match with limit', cachedLimit);
+        console.log('Using approximate cache match');
         return cached;
       }
     }
@@ -359,7 +319,7 @@ export default function LoadAnalyticsTab() {
   // Main load function - uses cache or fetches
   const loadAnalyticsData = async () => {
     // Check cache first
-    const cached = getCachedData(startDate, endDate, maxRecordsLimit);
+    const cached = getCachedData(startDate, endDate);
     if (cached) {
       console.log('Using cached data for range');
       setLoadEmails(cached.data);
@@ -374,10 +334,10 @@ export default function LoadAnalyticsTab() {
     try {
       const { data, count } = await fetchDataForRange(startDate, endDate, (progress) => {
         setLoadingProgress(progress);
-      }, maxRecordsLimit);
+      });
       
       // Cache the result
-      const key = getCacheKey(startDate, endDate, maxRecordsLimit);
+      const key = getCacheKey(startDate, endDate);
       analyticsCache.set(key, { data, count, fetchedAt: new Date() });
       
       setLoadEmails(data);
@@ -400,7 +360,7 @@ export default function LoadAnalyticsTab() {
     
     for (const rangeKey of rangesToPrefetch) {
       const { start, end } = getDateRangeFromKey(rangeKey);
-      const cacheKey = getCacheKey(start, end, maxRecordsLimit);
+      const cacheKey = getCacheKey(start, end);
       
       // Skip if already cached
       if (analyticsCache.has(cacheKey)) {
@@ -1292,21 +1252,9 @@ export default function LoadAnalyticsTab() {
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4" />
                   <span className="text-sm font-medium">Load Density Heat Map</span>
-                  <Select value={maxRecordsLimit.toString()} onValueChange={(v) => setMaxRecordsLimit(parseInt(v))}>
-                    <SelectTrigger className="h-5 w-auto min-w-[70px] text-[10px] px-2 border-dashed">
-                      <SelectValue>{(maxRecordsLimit / 1000).toFixed(0)}K max</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border z-50">
-                      {Array.from({ length: 50 }, (_, i) => (i + 1) * 5000).map(val => (
-                        <SelectItem key={val} value={val.toString()} className="text-xs">
-                          {val.toLocaleString()} loads
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-[10px] text-muted-foreground">
-                    ({loadEmails.length.toLocaleString()}{totalEmailCount > loadEmails.length ? ` of ${totalEmailCount.toLocaleString()}` : ''} loaded)
-                  </span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {loadEmails.length.toLocaleString()} loads
+                  </Badge>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
                     <Select value={refreshInterval.toString()} onValueChange={(v) => setRefreshInterval(parseInt(v))}>
