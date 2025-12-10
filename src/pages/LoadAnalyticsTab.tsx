@@ -418,11 +418,6 @@ export default function LoadAnalyticsTab() {
     };
   }, [mapPointsData]);
 
-  // Keep ref in sync for use in map load handler
-  useEffect(() => {
-    geoJsonDataRef.current = geoJsonData;
-  }, [geoJsonData]);
-
   const updateMapSource = useCallback((data: typeof geoJsonData) => {
     if (!map.current) {
       console.log('updateMapSource: no map');
@@ -452,9 +447,18 @@ export default function LoadAnalyticsTab() {
     }
   }, []);
 
-  // Initialize map when tab is active and token is available
+  // Keep ref in sync for use in map load handler and trigger update
   useEffect(() => {
-    if (activeTab !== 'heatmap' || !mapboxToken) return;
+    geoJsonDataRef.current = geoJsonData;
+    // Also trigger update if map is already ready
+    if (mapReady && sourceAddedRef.current) {
+      updateMapSource(geoJsonData);
+    }
+  }, [geoJsonData, mapReady, updateMapSource]);
+
+  // Initialize map when tab is active, token is available, and data has loaded
+  useEffect(() => {
+    if (activeTab !== 'heatmap' || !mapboxToken || isLoading) return;
     
     setMapReady(false);
     sourceAddedRef.current = false;
@@ -648,7 +652,7 @@ export default function LoadAnalyticsTab() {
         map.current = null;
       }
     };
-  }, [activeTab, mapboxToken, flowDirection]);
+  }, [activeTab, mapboxToken, flowDirection, isLoading]);
 
   // Update source data when data changes and map is ready
   useEffect(() => {
