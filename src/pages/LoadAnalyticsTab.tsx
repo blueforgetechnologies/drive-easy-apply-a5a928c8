@@ -171,9 +171,32 @@ export default function LoadAnalyticsTab() {
 
   // Re-fetch when maxRecordsLimit changes (clear cache for current range)
   useEffect(() => {
+    // Skip initial mount - let the startDate/endDate effect handle it
     const key = getCacheKey(startDate, endDate);
     analyticsCache.delete(key); // Clear cache to force re-fetch with new limit
-    loadAnalyticsData();
+    
+    // Directly fetch with new limit instead of calling loadAnalyticsData
+    const refetchWithNewLimit = async () => {
+      setIsLoading(true);
+      setLoadingProgress(0);
+      try {
+        const { data, count } = await fetchDataForRange(startDate, endDate, (progress) => {
+          setLoadingProgress(progress);
+        }, maxRecordsLimit);
+        
+        analyticsCache.set(key, { data, count, fetchedAt: new Date() });
+        setLoadEmails(data);
+        setTotalEmailCount(count);
+        console.log('Re-fetched with new limit:', maxRecordsLimit, 'got', data.length, 'emails');
+      } catch (error) {
+        console.error("Error re-fetching with new limit:", error);
+      } finally {
+        setIsLoading(false);
+        setLoadingProgress(0);
+      }
+    };
+    
+    refetchWithNewLimit();
   }, [maxRecordsLimit]);
 
   // Auto-refresh interval
