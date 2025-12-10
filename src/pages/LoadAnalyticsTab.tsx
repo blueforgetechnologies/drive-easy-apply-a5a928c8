@@ -471,7 +471,7 @@ export default function LoadAnalyticsTab() {
       try {
       map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/dark-v11',
+          style: 'mapbox://styles/mapbox/navigation-night-v1',
           center: [-98.5795, 39.8283], // US center
           zoom: 3.5,
         });
