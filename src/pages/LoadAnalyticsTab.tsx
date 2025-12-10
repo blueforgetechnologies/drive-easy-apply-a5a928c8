@@ -1109,35 +1109,37 @@ export default function LoadAnalyticsTab() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               {!mapboxToken ? (
-                <div className="flex items-center justify-center h-[400px] bg-muted/20 rounded-lg">
+                <div className="flex items-center justify-center h-[450px] bg-muted/20 rounded-lg">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div 
-                  ref={mapContainer} 
-                  className="rounded-lg" 
-                  style={{ height: '400px', width: '100%', minHeight: '400px' }} 
-                />
+                <div className="relative">
+                  <div 
+                    ref={mapContainer} 
+                    className="rounded-lg" 
+                    style={{ height: '450px', width: '100%', minHeight: '450px' }} 
+                  />
+                  {/* Floating stats overlay */}
+                  <div className="absolute bottom-4 left-4 flex gap-2">
+                    <div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
+                      <div className="text-[10px] text-muted-foreground uppercase">Locations</div>
+                      <div className="text-lg font-bold">{mapPointsData.length}</div>
+                    </div>
+                    <div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
+                      <div className="text-[10px] text-muted-foreground uppercase">Top Origin</div>
+                      <div className="text-lg font-bold">{stateData[0]?.state || 'N/A'}</div>
+                    </div>
+                    <div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
+                      <div className="text-[10px] text-muted-foreground uppercase">Top Dest</div>
+                      <div className="text-lg font-bold">
+                        {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
-
-          <div className="grid grid-cols-3 gap-2">
-            <Card className="p-2">
-              <div className="text-[10px] text-muted-foreground uppercase">Locations</div>
-              <div className="text-lg font-bold">{mapPointsData.length}</div>
-            </Card>
-            <Card className="p-2">
-              <div className="text-[10px] text-muted-foreground uppercase">Top Origin</div>
-              <div className="text-lg font-bold">{stateData[0]?.state || 'N/A'}</div>
-            </Card>
-            <Card className="p-2">
-              <div className="text-[10px] text-muted-foreground uppercase">Top Destination</div>
-              <div className="text-lg font-bold">
-                {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
-              </div>
-            </Card>
-          </div>
         </TabsContent>
 
         {/* Time Analysis Tab */}
