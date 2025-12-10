@@ -212,28 +212,33 @@ export function FreightVisualization({
         Top-Down View (looking through roof)
       </div>
 
-      {/* Fit indicator */}
-      <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 ${
-        fits 
-          ? "bg-green-500/90 text-white shadow-lg shadow-green-500/30" 
-          : "bg-red-500/90 text-white shadow-lg shadow-red-500/30"
-      }`}>
-        {fits ? (
-          <>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
-            FITS
-          </>
-        ) : (
-          <>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            NO FIT
-          </>
-        )}
-      </div>
+      {/* Fit indicator - account for overflow pallets */}
+      {(() => {
+        const actuallyFits = fits && overflowPallets.length === 0;
+        return (
+          <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 ${
+            actuallyFits 
+              ? "bg-green-500/90 text-white shadow-lg shadow-green-500/30" 
+              : "bg-red-500/90 text-white shadow-lg shadow-red-500/30"
+          }`}>
+            {actuallyFits ? (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+                FITS
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                NO FIT
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* SVG Container */}
       <svg 
