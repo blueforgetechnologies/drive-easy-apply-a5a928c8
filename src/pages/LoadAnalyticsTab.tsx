@@ -1283,6 +1283,44 @@ export default function LoadAnalyticsTab() {
                     {format(lastRefresh, 'h:mm a')}
                   </span>
                 </div>
+                {/* Flow Direction Filter with Legend */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 border rounded px-2 py-1">
+                    <button
+                      onClick={() => setFlowDirection('pickup')}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                        flowDirection === 'pickup' 
+                          ? 'bg-green-500/20 text-green-600' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      Origins
+                    </button>
+                    <button
+                      onClick={() => setFlowDirection('delivery')}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                        flowDirection === 'delivery' 
+                          ? 'bg-blue-500/20 text-blue-600' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      Destinations
+                    </button>
+                    <button
+                      onClick={() => setFlowDirection('both')}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                        flowDirection === 'both' 
+                          ? 'bg-purple-500/20 text-purple-600' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <div className="w-2 h-2 rounded-full bg-purple-500" />
+                      Both
+                    </button>
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
