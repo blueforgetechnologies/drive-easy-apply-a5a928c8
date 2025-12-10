@@ -175,17 +175,12 @@ export default function LoadAnalyticsTab() {
   const loadAnalyticsData = async () => {
     setIsLoading(true);
     try {
-      const allData: any[] = [];
       const pageSize = 1000;
-      const maxRecords = 10000; // Limit to 10k most recent for performance
-      let page = 0;
-      let hasMore = true;
-
-      // Use the start/end dates for filtering
+      const maxRecords = 10000;
       const dateFilter = startDate.toISOString();
       const endFilter = endDate.toISOString();
 
-      // First get total count for the date range
+      // Get total count for the date range
       const { count, error: countError } = await supabase
         .from("load_emails")
         .select("id", { count: 'exact', head: true })
@@ -196,35 +191,36 @@ export default function LoadAnalyticsTab() {
         setTotalEmailCount(count);
       }
 
-      // Paginate through results up to maxRecords
-      while (hasMore && allData.length < maxRecords) {
-        let query = supabase
+      // Calculate how many pages we need (parallel fetch for speed)
+      const recordsToFetch = Math.min(count || maxRecords, maxRecords);
+      const numPages = Math.ceil(recordsToFetch / pageSize);
+      
+      // Create parallel queries for all pages
+      const queries = Array.from({ length: numPages }, (_, page) => 
+        supabase
           .from("load_emails")
           .select("id, received_at, created_at, parsed_data")
           .order("received_at", { ascending: false })
-          .range(page * pageSize, Math.min((page + 1) * pageSize - 1, maxRecords - 1))
+          .range(page * pageSize, (page + 1) * pageSize - 1)
           .gte("received_at", dateFilter)
-          .lte("received_at", endFilter);
+          .lte("received_at", endFilter)
+      );
 
-        const { data, error } = await query;
-
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          allData.push(...data);
-          // Update state progressively so user sees data loading
-          const typedData = allData.map(item => ({
-            ...item,
-            parsed_data: item.parsed_data as LoadEmailData['parsed_data']
-          }));
-          setLoadEmails(typedData);
-          
-          hasMore = data.length === pageSize && allData.length < maxRecords;
-          page++;
-        } else {
-          hasMore = false;
-        }
+      // Execute all queries in parallel
+      const results = await Promise.all(queries);
+      
+      // Combine results
+      const allData: any[] = [];
+      for (const result of results) {
+        if (result.error) throw result.error;
+        if (result.data) allData.push(...result.data);
       }
+
+      const typedData = allData.map(item => ({
+        ...item,
+        parsed_data: item.parsed_data as LoadEmailData['parsed_data']
+      }));
+      setLoadEmails(typedData);
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {
@@ -642,12 +638,20 @@ export default function LoadAnalyticsTab() {
   // Update source data when data changes (without recreating map)
   useEffect(() => {
     if (!mapReady || activeTab !== 'heatmap') return;
-    // Small delay to ensure map is fully ready after init
-    const timer = setTimeout(() => {
-      updateMapSource(geoJsonData);
-    }, 50);
-    return () => clearTimeout(timer);
+    // Update immediately when data changes
+    updateMapSource(geoJsonData);
   }, [mapReady, geoJsonData, activeTab, updateMapSource]);
+
+  // Force update map when switching to heatmap tab and data exists
+  useEffect(() => {
+    if (activeTab === 'heatmap' && !isLoading && geoJsonData.features.length > 0) {
+      // Give map time to initialize, then force update
+      const timer = setTimeout(() => {
+        updateMapSource(geoJsonData);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, isLoading]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
