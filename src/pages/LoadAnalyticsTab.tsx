@@ -449,9 +449,9 @@ export default function LoadAnalyticsTab() {
     }
   }, []);
 
-  // Initialize map when tab is active, token is available, and data has loaded
+  // Initialize map when tab is active and token is available
   useEffect(() => {
-    if (activeTab !== 'heatmap' || !mapboxToken || isLoading) return;
+    if (activeTab !== 'heatmap' || !mapboxToken) return;
     
     setMapReady(false);
     sourceAddedRef.current = false;
@@ -645,14 +645,19 @@ export default function LoadAnalyticsTab() {
         map.current = null;
       }
     };
-  }, [activeTab, mapboxToken, flowDirection, isLoading]);
+  }, [activeTab, mapboxToken, flowDirection]);
 
   // Update source data when data changes and map is ready
   useEffect(() => {
     if (activeTab !== 'heatmap' || !mapReady || !sourceAddedRef.current) return;
     
-    updateMapSource(geoJsonData);
-  }, [geoJsonData, activeTab, mapReady, updateMapSource]);
+    // Small delay to ensure geoJsonData is updated
+    const timer = setTimeout(() => {
+      updateMapSource(geoJsonData);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [geoJsonData, activeTab, mapReady, updateMapSource, filteredEmails.length]);
 
   // Force map to properly render when loading finishes or tab becomes active
   useEffect(() => {
