@@ -449,9 +449,9 @@ export default function LoadAnalyticsTab() {
     }
   }, []);
 
-  // Initialize map when tab is active and token is available
+  // Initialize map when tab is active, token is available, and data has loaded
   useEffect(() => {
-    if (activeTab !== 'heatmap' || !mapboxToken) return;
+    if (activeTab !== 'heatmap' || !mapboxToken || isLoading) return;
     
     setMapReady(false);
     sourceAddedRef.current = false;
@@ -642,7 +642,7 @@ export default function LoadAnalyticsTab() {
         map.current = null;
       }
     };
-  }, [activeTab, mapboxToken, flowDirection]);
+  }, [activeTab, mapboxToken, flowDirection, isLoading]);
 
   // Update source data when data changes and map is ready
   useEffect(() => {
