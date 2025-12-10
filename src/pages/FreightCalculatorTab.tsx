@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Calculator, Upload, CheckCircle2, XCircle, Truck, Package, AlertTriangle, Loader2 } from "lucide-react";
-
+import { FreightVisualization } from "@/components/FreightVisualization";
 interface Pallet {
   quantity: number;
   length: number;
@@ -705,6 +705,20 @@ export default function FreightCalculatorTab() {
                     </>
                   )}
                 </div>
+
+                {/* 3D Visualization */}
+                {selectedVehicle && (
+                  <div className="mb-4">
+                    <FreightVisualization
+                      pallets={parsedPallets}
+                      truckLength={selectedVehicle.dimensions_length || (selectedVehicle.vehicle_size ? selectedVehicle.vehicle_size * 12 : 288)}
+                      truckWidth={selectedVehicle.dimensions_width || 96}
+                      truckHeight={selectedVehicle.dimensions_height || 96}
+                      fits={fitResult.fits}
+                      isStackable={isStackable}
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
