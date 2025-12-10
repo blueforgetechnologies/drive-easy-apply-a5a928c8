@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer } from "lucide-react";
 import { format, getDay, getHours, parseISO, subDays, subHours, startOfDay, endOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { AnalyticsDateFilter } from "@/components/AnalyticsDateFilter";
@@ -933,15 +934,17 @@ export default function LoadAnalyticsTab() {
       .slice(0, 50);
   }, [filteredEmails]);
 
-  // Day of week analysis - use ALL loaded emails, not filtered subset
+  // Day of week analysis - use ALL loaded emails in Eastern Time
   const dayOfWeekData = useMemo((): TimeData[] => {
     const dayCounts = new Map<number, number>();
     DAYS_OF_WEEK.forEach((_, i) => dayCounts.set(i, 0));
+    const EASTERN_TZ = 'America/New_York';
 
     loadEmails.forEach(email => {
       try {
-        const date = parseISO(email.received_at);
-        const day = getDay(date);
+        const utcDate = parseISO(email.received_at);
+        const easternDate = toZonedTime(utcDate, EASTERN_TZ);
+        const day = getDay(easternDate);
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
       } catch {}
     });
@@ -952,15 +955,17 @@ export default function LoadAnalyticsTab() {
     }));
   }, [loadEmails]);
 
-  // Hour of day analysis - use ALL loaded emails, not filtered subset
+  // Hour of day analysis - use ALL loaded emails in Eastern Time
   const hourOfDayData = useMemo((): TimeData[] => {
     const hourCounts = new Map<number, number>();
     HOURS.forEach(h => hourCounts.set(h, 0));
+    const EASTERN_TZ = 'America/New_York';
 
     loadEmails.forEach(email => {
       try {
-        const date = parseISO(email.received_at);
-        const hour = getHours(date);
+        const utcDate = parseISO(email.received_at);
+        const easternDate = toZonedTime(utcDate, EASTERN_TZ);
+        const hour = getHours(easternDate);
         hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
       } catch {}
     });
