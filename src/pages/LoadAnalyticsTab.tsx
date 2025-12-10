@@ -104,19 +104,26 @@ const US_HOLIDAYS = [
   { name: "Christmas", month: 12, day: 25 },
 ];
 
-// Cache for prefetched data by date range key
-const analyticsCache = new Map<string, { data: LoadEmailData[]; count: number; fetchedAt: Date }>();
+// Cache for prefetched data by RANGE KEY (not by date) for reliable instant loading
+const analyticsCache = new Map<string, { data: LoadEmailData[]; count: number; fetchedAt: Date; start: Date; end: Date }>();
 
 // Date range keys for prefetching
 const DATE_RANGE_KEYS = ['24h', '3d', '7d', '30d', '90d', '6m', '1y'] as const;
 type DateRangeKey = typeof DATE_RANGE_KEYS[number];
 
+// Stable reference date for cache key consistency across prefetch and clicks
+let STABLE_REFERENCE_DATE: Date | null = null;
+const getStableReferenceDate = () => {
+  if (!STABLE_REFERENCE_DATE) {
+    STABLE_REFERENCE_DATE = new Date();
+  }
+  return STABLE_REFERENCE_DATE;
+};
 
 // Get date range for prefetching (matches AnalyticsDateFilter presets EXACTLY)
 const getDateRangeFromKey = (key: DateRangeKey): { start: Date; end: Date } => {
-  const today = new Date();
-  const endOfToday = new Date(today);
-  endOfToday.setHours(23, 59, 59, 999);
+  const today = getStableReferenceDate();
+  const endOfToday = endOfDay(today);
   
   switch (key) {
     case '24h': return { start: subHours(today, 24), end: today };
@@ -128,6 +135,20 @@ const getDateRangeFromKey = (key: DateRangeKey): { start: Date; end: Date } => {
     case '1y': return { start: startOfDay(subYears(today, 1)), end: endOfToday };
     default: return { start: subHours(today, 24), end: today };
   }
+};
+
+// Find which range key matches a given date range
+const findMatchingRangeKey = (start: Date, end: Date): DateRangeKey | null => {
+  for (const key of DATE_RANGE_KEYS) {
+    const range = getDateRangeFromKey(key);
+    // Compare with tolerance of 2 minutes
+    const startDiff = Math.abs(range.start.getTime() - start.getTime());
+    const endDiff = Math.abs(range.end.getTime() - end.getTime());
+    if (startDiff < 2 * 60 * 1000 && endDiff < 2 * 60 * 1000) {
+      return key;
+    }
+  }
+  return null;
 };
 
 export default function LoadAnalyticsTab() {
@@ -276,45 +297,35 @@ export default function LoadAnalyticsTab() {
     return { data: typedData, count: actualCount };
   };
 
-  // Generate normalized cache key from dates (round to minute to avoid ms mismatches)
-  const getCacheKey = (start: Date, end: Date): string => {
-    // Normalize to minute precision to match prefetched data with user clicks
+  // Get cached data by finding matching range key
+  const getCachedData = useCallback((start: Date, end: Date) => {
+    // Find if this matches a known range key
+    const rangeKey = findMatchingRangeKey(start, end);
+    
+    if (rangeKey) {
+      const cached = analyticsCache.get(rangeKey);
+      if (cached) {
+        const cacheAge = Date.now() - cached.fetchedAt.getTime();
+        // Valid for 5 minutes
+        if (cacheAge < 5 * 60 * 1000) {
+          console.log(`Using cached data for ${rangeKey}`);
+          return cached;
+        }
+      }
+    }
+    
+    // Try custom range lookup by date key
     const normalizeDate = (d: Date) => {
       const normalized = new Date(d);
       normalized.setSeconds(0, 0);
       return normalized.toISOString();
     };
-    return `${normalizeDate(start)}_${normalizeDate(end)}`;
-  };
-
-  // Find best matching cached data (allows for slight time differences)
-  const getCachedData = useCallback((start: Date, end: Date) => {
-    // First try exact match
-    const exactKey = getCacheKey(start, end);
-    const exactCached = analyticsCache.get(exactKey);
-    if (exactCached) {
-      const cacheAge = Date.now() - exactCached.fetchedAt.getTime();
+    const customKey = `custom_${normalizeDate(start)}_${normalizeDate(end)}`;
+    const customCached = analyticsCache.get(customKey);
+    if (customCached) {
+      const cacheAge = Date.now() - customCached.fetchedAt.getTime();
       if (cacheAge < 5 * 60 * 1000) {
-        return exactCached;
-      }
-    }
-    
-    // Try to find a close match (within 2 minutes)
-    for (const [key, cached] of analyticsCache.entries()) {
-      const cacheAge = Date.now() - cached.fetchedAt.getTime();
-      if (cacheAge >= 5 * 60 * 1000) continue;
-      
-      const parts = key.split('_');
-      const cachedStartDate = new Date(parts[0]);
-      const cachedEndDate = new Date(parts[1]);
-      
-      const startDiff = Math.abs(cachedStartDate.getTime() - start.getTime());
-      const endDiff = Math.abs(cachedEndDate.getTime() - end.getTime());
-      
-      // Match if both start and end are within 2 minutes
-      if (startDiff < 2 * 60 * 1000 && endDiff < 2 * 60 * 1000) {
-        console.log('Using approximate cache match');
-        return cached;
+        return customCached;
       }
     }
     
@@ -326,7 +337,6 @@ export default function LoadAnalyticsTab() {
     // Check cache first
     const cached = getCachedData(startDate, endDate);
     if (cached) {
-      console.log('Using cached data for range');
       setLoadEmails(cached.data);
       setTotalEmailCount(cached.count);
       setIsLoading(false);
@@ -341,9 +351,19 @@ export default function LoadAnalyticsTab() {
         setLoadingProgress(progress);
       });
       
-      // Cache the result
-      const key = getCacheKey(startDate, endDate);
-      analyticsCache.set(key, { data, count, fetchedAt: new Date() });
+      // Cache the result - use range key if matches, otherwise custom key
+      const rangeKey = findMatchingRangeKey(startDate, endDate);
+      if (rangeKey) {
+        analyticsCache.set(rangeKey, { data, count, fetchedAt: new Date(), start: startDate, end: endDate });
+      } else {
+        const normalizeDate = (d: Date) => {
+          const normalized = new Date(d);
+          normalized.setSeconds(0, 0);
+          return normalized.toISOString();
+        };
+        const customKey = `custom_${normalizeDate(startDate)}_${normalizeDate(endDate)}`;
+        analyticsCache.set(customKey, { data, count, fetchedAt: new Date(), start: startDate, end: endDate });
+      }
       
       setLoadEmails(data);
       setTotalEmailCount(count);
@@ -364,11 +384,8 @@ export default function LoadAnalyticsTab() {
     const rangesToPrefetch: DateRangeKey[] = ['3d', '7d', '30d', '90d', '6m', '1y'];
     
     for (const rangeKey of rangesToPrefetch) {
-      const { start, end } = getDateRangeFromKey(rangeKey);
-      const cacheKey = getCacheKey(start, end);
-      
       // Skip if already cached
-      if (analyticsCache.has(cacheKey)) {
+      if (analyticsCache.has(rangeKey)) {
         setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'done' }));
         continue;
       }
@@ -377,8 +394,9 @@ export default function LoadAnalyticsTab() {
         setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'loading' }));
         console.log(`Prefetching ${rangeKey}...`);
         
+        const { start, end } = getDateRangeFromKey(rangeKey);
         const { data, count } = await fetchDataForRange(start, end);
-        analyticsCache.set(cacheKey, { data, count, fetchedAt: new Date() });
+        analyticsCache.set(rangeKey, { data, count, fetchedAt: new Date(), start, end });
         
         setPrefetchStatus(prev => ({ ...prev, [rangeKey]: 'done' }));
         console.log(`Prefetched ${rangeKey}: ${data.length} records`);
