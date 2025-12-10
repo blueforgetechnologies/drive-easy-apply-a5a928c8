@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer } from "lucide-react";
-import { format, getDay, getHours, parseISO, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, getDay, getHours, parseISO, subDays, subHours, startOfDay, endOfDay } from "date-fns";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { AnalyticsDateFilter } from "@/components/AnalyticsDateFilter";
@@ -108,8 +108,8 @@ export default function LoadAnalyticsTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
-  const [startDate, setStartDate] = useState<Date>(() => subDays(startOfDay(new Date()), 6));
-  const [endDate, setEndDate] = useState<Date>(() => endOfDay(new Date()));
+  const [startDate, setStartDate] = useState<Date>(() => subHours(new Date(), 24));
+  const [endDate, setEndDate] = useState<Date>(() => new Date());
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('geographic');
@@ -1089,17 +1089,15 @@ export default function LoadAnalyticsTab() {
                 <div className="flex flex-col gap-1.5 w-28 shrink-0">
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
                     <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Total Emails</div>
-                    <div className="text-base font-bold">{loadEmails?.length?.toLocaleString() || 0}</div>
+                    <div className="text-base font-bold">{stats.totalEmails.toLocaleString()}</div>
                   </div>
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
                     <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Avg Amount</div>
-                    <div className="text-base font-bold">
-                      ${Math.round((loadEmails?.reduce((sum, e) => sum + (e.parsed_data?.posted_amount || 0), 0) || 0) / (loadEmails?.length || 1)).toLocaleString()}
-                    </div>
+                    <div className="text-base font-bold">${Math.round(stats.avgPostedAmount).toLocaleString()}</div>
                   </div>
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
                     <div className="text-[9px] text-muted-foreground uppercase tracking-wide">States</div>
-                    <div className="text-base font-bold">{stateData.length}</div>
+                    <div className="text-base font-bold">{stats.uniqueStates}</div>
                   </div>
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
                     <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Busiest Day</div>
@@ -1116,7 +1114,7 @@ export default function LoadAnalyticsTab() {
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
                     <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Top Dest</div>
                     <div className="text-base font-bold">
-                      {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
+                      {[...stateData].sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
                     </div>
                   </div>
                 </div>
