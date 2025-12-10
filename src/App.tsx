@@ -33,7 +33,8 @@ import ChangelogTab from "./pages/ChangelogTab";
 import DuplicateCustomersTab from "./pages/DuplicateCustomersTab";
 import RoleBuilderTab from "./pages/RoleBuilderTab";
 import ScreenshareTab from "./pages/ScreenshareTab";
-import ToolsTab from "./pages/ToolsTab";
+import FreightCalculatorTab from "./pages/FreightCalculatorTab";
+import LoadAnalyticsTab from "./pages/LoadAnalyticsTab";
 
 const queryClient = new QueryClient();
 
@@ -61,7 +62,8 @@ const App = () => (
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
           <Route path="/dashboard/roles" element={<DashboardLayout><RoleBuilderTab /></DashboardLayout>} />
           <Route path="/dashboard/screenshare" element={<DashboardLayout><ScreenshareTab /></DashboardLayout>} />
-          <Route path="/dashboard/tools" element={<DashboardLayout><ToolsTab /></DashboardLayout>} />
+          <Route path="/dashboard/freight-calc" element={<DashboardLayout><FreightCalculatorTab /></DashboardLayout>} />
+          <Route path="/dashboard/analytics" element={<DashboardLayout><LoadAnalyticsTab /></DashboardLayout>} />
           <Route path="/dashboard/development" element={<DashboardLayout><DevelopmentTab /></DashboardLayout>} />
           <Route path="/dashboard/changelog" element={<DashboardLayout><ChangelogTab /></DashboardLayout>} />
           <Route path="/dashboard/flow" element={<DashboardLayout><FlowDiagramTab /></DashboardLayout>} />
