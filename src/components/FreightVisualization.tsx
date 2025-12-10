@@ -318,35 +318,58 @@ export function FreightVisualization({
                   width={pW - 2}
                   height={pH - 2}
                   fill={pallet.color}
-                  stroke="rgba(0,0,0,0.3)"
-                  strokeWidth={1}
+                  stroke={pallet.stackLevel > 0 ? "#F59E0B" : "rgba(0,0,0,0.3)"}
+                  strokeWidth={pallet.stackLevel > 0 ? 2 : 1}
                   rx={2}
                   opacity={0.9 - pallet.stackLevel * 0.1}
                 />
 
-                {/* Diagonal lines to show it's a box/pallet */}
-                <line
-                  x1={pX + 3}
-                  y1={pY + 3}
-                  x2={pX + pW - 3}
-                  y2={pY + pH - 3}
-                  stroke="rgba(255,255,255,0.2)"
-                  strokeWidth={1}
-                />
-                <line
-                  x1={pX + pW - 3}
-                  y1={pY + 3}
-                  x2={pX + 3}
-                  y2={pY + pH - 3}
-                  stroke="rgba(255,255,255,0.2)"
-                  strokeWidth={1}
-                />
+                {/* Stacked pallet pattern - horizontal stripes */}
+                {pallet.stackLevel > 0 && (
+                  <>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <line
+                        key={`stripe-${i}`}
+                        x1={pX + 4}
+                        y1={pY + (pH / 4) * (i + 1)}
+                        x2={pX + pW - 4}
+                        y2={pY + (pH / 4) * (i + 1)}
+                        stroke="#F59E0B"
+                        strokeWidth={1}
+                        strokeDasharray="4,2"
+                        opacity={0.6}
+                      />
+                    ))}
+                  </>
+                )}
+
+                {/* Diagonal lines for non-stacked pallets */}
+                {pallet.stackLevel === 0 && (
+                  <>
+                    <line
+                      x1={pX + 3}
+                      y1={pY + 3}
+                      x2={pX + pW - 3}
+                      y2={pY + pH - 3}
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth={1}
+                    />
+                    <line
+                      x1={pX + pW - 3}
+                      y1={pY + 3}
+                      x2={pX + 3}
+                      y2={pY + pH - 3}
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth={1}
+                    />
+                  </>
+                )}
 
                 {/* Pallet dimensions label */}
                 {pW > 30 && pH > 20 && (
                   <text
                     x={pX + pW / 2}
-                    y={pY + pH / 2}
+                    y={pY + pH / 2 - (pallet.stackLevel > 0 ? 6 : 0)}
                     fill="white"
                     fontSize={pW > 50 ? 9 : 7}
                     textAnchor="middle"
@@ -358,29 +381,32 @@ export function FreightVisualization({
                   </text>
                 )}
 
-                {/* Stack indicator */}
+                {/* Stack level badge - prominent indicator */}
                 {pallet.stackLevel > 0 && (
-                  <circle
-                    cx={pX + pW - 8}
-                    cy={pY + 8}
-                    r={6}
-                    fill="#F59E0B"
-                    stroke="white"
-                    strokeWidth={1}
-                  />
-                )}
-                {pallet.stackLevel > 0 && (
-                  <text
-                    x={pX + pW - 8}
-                    y={pY + 8}
-                    fill="white"
-                    fontSize={8}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontWeight="bold"
-                  >
-                    {pallet.stackLevel + 1}
-                  </text>
+                  <>
+                    {/* Stack icon (layers) */}
+                    <rect
+                      x={pX + pW / 2 - 14}
+                      y={pY + pH / 2 + 2}
+                      width={28}
+                      height={14}
+                      fill="#F59E0B"
+                      rx={3}
+                      stroke="white"
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={pX + pW / 2}
+                      y={pY + pH / 2 + 9}
+                      fill="white"
+                      fontSize={9}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontWeight="bold"
+                    >
+                      ⬆ L{pallet.stackLevel + 1}
+                    </text>
+                  </>
                 )}
               </g>
             );
