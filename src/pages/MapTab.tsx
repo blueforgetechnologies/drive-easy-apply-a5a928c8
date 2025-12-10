@@ -892,9 +892,11 @@ const MapTab = () => {
           selectedVehicleName={selectedVehicleForHistory?.vehicle_number || null}
           pointsCount={vehicleHistory.points.length}
           loading={vehicleHistory.loading}
+          hasStarted={vehicleHistory.hasStarted}
           onPreviousDay={vehicleHistory.goToPreviousDay}
           onNextDay={vehicleHistory.goToNextDay}
           onDateSelect={vehicleHistory.setSelectedDate}
+          onStart={vehicleHistory.startHistory}
           onClose={exitHistoryMode}
         />
         

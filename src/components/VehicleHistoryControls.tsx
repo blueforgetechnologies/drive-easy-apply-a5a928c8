@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, X, History, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, History, Calendar, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, isToday } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -10,9 +10,11 @@ interface VehicleHistoryControlsProps {
   selectedVehicleName: string | null;
   pointsCount: number;
   loading: boolean;
+  hasStarted: boolean;
   onPreviousDay: () => void;
   onNextDay: () => void;
   onDateSelect: (date: Date) => void;
+  onStart: () => void;
   onClose: () => void;
 }
 
@@ -22,9 +24,11 @@ export function VehicleHistoryControls({
   selectedVehicleName,
   pointsCount,
   loading,
+  hasStarted,
   onPreviousDay,
   onNextDay,
   onDateSelect,
+  onStart,
   onClose,
 }: VehicleHistoryControlsProps) {
   if (!isActive) return null;
@@ -49,6 +53,7 @@ export function VehicleHistoryControls({
             size="icon"
             className="h-7 w-7"
             onClick={onPreviousDay}
+            disabled={hasStarted && loading}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -58,6 +63,7 @@ export function VehicleHistoryControls({
               <Button
                 variant="ghost"
                 className="h-7 px-3 text-sm font-medium"
+                disabled={hasStarted && loading}
               >
                 <Calendar className="h-3.5 w-3.5 mr-2" />
                 {format(selectedDate, 'MMM d, yyyy')}
@@ -79,15 +85,25 @@ export function VehicleHistoryControls({
             size="icon"
             className="h-7 w-7"
             onClick={onNextDay}
-            disabled={!canGoNext}
+            disabled={!canGoNext || (hasStarted && loading)}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Points count */}
+        {/* Start button or points count */}
         <div className="flex items-center gap-2 px-2 border-l border-border">
-          {loading ? (
+          {!hasStarted ? (
+            <Button
+              variant="default"
+              size="sm"
+              className="h-7 px-3 text-xs gap-1.5"
+              onClick={onStart}
+            >
+              <Play className="h-3.5 w-3.5" />
+              Start
+            </Button>
+          ) : loading ? (
             <span className="text-xs text-muted-foreground">Loading...</span>
           ) : (
             <span className="text-xs text-muted-foreground">

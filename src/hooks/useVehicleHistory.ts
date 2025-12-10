@@ -18,6 +18,7 @@ export interface VehicleHistoryState {
   points: LocationPoint[];
   selectedDate: Date;
   selectedVehicleId: string | null;
+  hasStarted: boolean;
 }
 
 export function useVehicleHistory() {
@@ -26,10 +27,11 @@ export function useVehicleHistory() {
     points: [],
     selectedDate: new Date(),
     selectedVehicleId: null,
+    hasStarted: false,
   });
 
   const fetchHistory = useCallback(async (vehicleId: string, date: Date) => {
-    setState(prev => ({ ...prev, loading: true, selectedVehicleId: vehicleId, selectedDate: date }));
+    setState(prev => ({ ...prev, loading: true, hasStarted: true }));
 
     try {
       const dayStart = startOfDay(date).toISOString();
@@ -69,25 +71,31 @@ export function useVehicleHistory() {
     }
   }, []);
 
+  // Just update the date without fetching
   const setSelectedDate = useCallback((date: Date) => {
-    setState(prev => ({ ...prev, selectedDate: date }));
-    if (state.selectedVehicleId) {
-      fetchHistory(state.selectedVehicleId, date);
-    }
-  }, [state.selectedVehicleId, fetchHistory]);
+    setState(prev => ({ ...prev, selectedDate: date, hasStarted: false, points: [] }));
+  }, []);
 
+  // Just set the vehicle ID without auto-fetching
   const setSelectedVehicle = useCallback((vehicleId: string | null) => {
     if (vehicleId) {
-      fetchHistory(vehicleId, state.selectedDate);
+      setState(prev => ({ ...prev, selectedVehicleId: vehicleId, hasStarted: false, points: [] }));
     } else {
-      setState(prev => ({ ...prev, selectedVehicleId: null, points: [] }));
+      setState(prev => ({ ...prev, selectedVehicleId: null, points: [], hasStarted: false }));
     }
-  }, [state.selectedDate, fetchHistory]);
+  }, []);
+
+  // Explicit start function to fetch history
+  const startHistory = useCallback(() => {
+    if (state.selectedVehicleId) {
+      fetchHistory(state.selectedVehicleId, state.selectedDate);
+    }
+  }, [state.selectedVehicleId, state.selectedDate, fetchHistory]);
 
   const goToPreviousDay = useCallback(() => {
     const newDate = subDays(state.selectedDate, 1);
-    setSelectedDate(newDate);
-  }, [state.selectedDate, setSelectedDate]);
+    setState(prev => ({ ...prev, selectedDate: newDate, hasStarted: false, points: [] }));
+  }, [state.selectedDate]);
 
   const goToNextDay = useCallback(() => {
     const today = new Date();
@@ -96,12 +104,12 @@ export function useVehicleHistory() {
     
     // Don't go past today
     if (nextDay <= today) {
-      setSelectedDate(nextDay);
+      setState(prev => ({ ...prev, selectedDate: nextDay, hasStarted: false, points: [] }));
     }
-  }, [state.selectedDate, setSelectedDate]);
+  }, [state.selectedDate]);
 
   const clearHistory = useCallback(() => {
-    setState(prev => ({ ...prev, points: [], selectedVehicleId: null }));
+    setState(prev => ({ ...prev, points: [], selectedVehicleId: null, hasStarted: false }));
   }, []);
 
   const getAvailableDates = useCallback(async (vehicleId: string): Promise<string[]> => {
@@ -131,6 +139,7 @@ export function useVehicleHistory() {
     fetchHistory,
     setSelectedDate,
     setSelectedVehicle,
+    startHistory,
     goToPreviousDay,
     goToNextDay,
     clearHistory,
