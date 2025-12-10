@@ -198,14 +198,13 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
                 variant={selectedMonth === idx ? "default" : "ghost"}
                 size="sm"
                 className={cn(
-                  "h-7 px-2 shrink-0 text-xs font-medium min-w-[50px]",
+                  "h-7 px-3 shrink-0 text-xs font-medium",
                   selectedMonth === idx && "bg-primary text-primary-foreground",
                   isFuture && "opacity-40 cursor-not-allowed"
                 )}
                 onClick={() => !isFuture && handleMonthChange(idx)}
                 disabled={isFuture}
               >
-                <span className="text-[10px] text-muted-foreground mr-1">{selectedYear}</span>
                 {month}
               </Button>
             );
