@@ -870,130 +870,117 @@ export default function LoadAnalyticsTab() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-3 md:p-4 space-y-3">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Mail className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Load Email Analytics</h1>
-          <Badge variant="secondary">{stats.totalEmails.toLocaleString()} emails</Badge>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <AnalyticsDateFilter
-            startDate={startDate}
-            endDate={endDate}
-            onDateChange={(start, end) => {
-              setStartDate(start);
-              setEndDate(end);
-            }}
-          />
-
-          <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
-            <SelectTrigger className="w-[180px] h-8">
-              <SelectValue placeholder="Vehicle Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Vehicle Types</SelectItem>
-              {vehicleTypes.map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={flowDirection} onValueChange={(v: any) => setFlowDirection(v)}>
-            <SelectTrigger className="w-[120px] h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="both">All Stops</SelectItem>
-              <SelectItem value="pickup">Origins</SelectItem>
-              <SelectItem value="delivery">Destinations</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex items-center gap-2">
+        <Mail className="h-5 w-5 text-primary" />
+        <h1 className="text-xl font-bold">Load Email Analytics</h1>
+        <Badge variant="secondary" className="text-xs">{stats.totalEmails.toLocaleString()} emails</Badge>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Total Load Emails</div>
-            <div className="text-2xl font-bold">{stats.totalEmails.toLocaleString()}</div>
-          </CardContent>
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <AnalyticsDateFilter
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={(start, end) => {
+            setStartDate(start);
+            setEndDate(end);
+          }}
+        />
+
+        <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
+          <SelectTrigger className="w-[140px] h-7 text-xs">
+            <SelectValue placeholder="Vehicle Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {vehicleTypes.map(type => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={flowDirection} onValueChange={(v: any) => setFlowDirection(v)}>
+          <SelectTrigger className="w-[100px] h-7 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="both">All Stops</SelectItem>
+            <SelectItem value="pickup">Origins</SelectItem>
+            <SelectItem value="delivery">Destinations</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Summary Stats - More compact */}
+      <div className="grid grid-cols-5 gap-2">
+        <Card className="p-2">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Emails</div>
+          <div className="text-lg font-bold">{stats.totalEmails.toLocaleString()}</div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Avg Posted Amount</div>
-            <div className="text-2xl font-bold">${Math.round(stats.avgPostedAmount).toLocaleString()}</div>
-          </CardContent>
+        <Card className="p-2">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Amount</div>
+          <div className="text-lg font-bold">${Math.round(stats.avgPostedAmount).toLocaleString()}</div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">States Covered</div>
-            <div className="text-2xl font-bold">{stats.uniqueStates}</div>
-          </CardContent>
+        <Card className="p-2">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">States</div>
+          <div className="text-lg font-bold">{stats.uniqueStates}</div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Busiest Day</div>
-            <div className="text-2xl font-bold">{busiestInfo.busiestDay}</div>
-          </CardContent>
+        <Card className="p-2">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Busiest Day</div>
+          <div className="text-lg font-bold">{busiestInfo.busiestDay}</div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Peak Hour</div>
-            <div className="text-2xl font-bold">{busiestInfo.busiestHour}</div>
-          </CardContent>
+        <Card className="p-2">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Peak Hour</div>
+          <div className="text-lg font-bold">{busiestInfo.busiestHour}</div>
         </Card>
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="geographic" className="gap-2">
-            <MapIcon className="h-4 w-4" />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2">
+        <TabsList className="h-8">
+          <TabsTrigger value="geographic" className="gap-1.5 text-xs h-7 px-2">
+            <MapIcon className="h-3.5 w-3.5" />
             Geographic
           </TabsTrigger>
-          <TabsTrigger value="heatmap" className="gap-2">
-            <Globe className="h-4 w-4" />
+          <TabsTrigger value="heatmap" className="gap-1.5 text-xs h-7 px-2">
+            <Globe className="h-3.5 w-3.5" />
             Heat Map
           </TabsTrigger>
-          <TabsTrigger value="time" className="gap-2">
-            <Calendar className="h-4 w-4" />
-            Time Analysis
+          <TabsTrigger value="time" className="gap-1.5 text-xs h-7 px-2">
+            <Calendar className="h-3.5 w-3.5" />
+            Time
           </TabsTrigger>
-          <TabsTrigger value="vehicle" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Vehicle Types
+          <TabsTrigger value="vehicle" className="gap-1.5 text-xs h-7 px-2">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Vehicles
           </TabsTrigger>
         </TabsList>
 
         {/* Geographic Tab */}
-        <TabsContent value="geographic" className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant={viewMode === 'state' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('state')}>
+        <TabsContent value="geographic" className="space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Button variant={viewMode === 'state' ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setViewMode('state')}>
               By State
             </Button>
-            <Button variant={viewMode === 'city' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('city')}>
+            <Button variant={viewMode === 'city' ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setViewMode('city')}>
               By City
             </Button>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Top {viewMode === 'state' ? 'States' : 'Cities'}</CardTitle>
-                <CardDescription>Load volume by {flowDirection === 'both' ? 'origins + destinations' : flowDirection === 'pickup' ? 'origins' : 'destinations'}</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">Top {viewMode === 'state' ? 'States' : 'Cities'}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={viewMode === 'state' ? stateData.slice(0, 15) : cityData.slice(0, 15)} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={viewMode === 'state' ? stateData.slice(0, 12) : cityData.slice(0, 12)} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis dataKey={viewMode === 'state' ? 'state' : 'city'} type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={50} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <YAxis dataKey={viewMode === 'state' ? 'state' : 'city'} type="category" stroke="hsl(var(--muted-foreground))" fontSize={10} width={35} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
                     {flowDirection === 'both' ? (
                       <>
                         <Bar dataKey="pickups" stackId="a" fill="hsl(var(--chart-1))" name="Origins" />
@@ -1002,34 +989,34 @@ export default function LoadAnalyticsTab() {
                     ) : (
                       <Bar dataKey={flowDirection === 'pickup' ? 'pickups' : 'deliveries'} fill="hsl(var(--primary))" />
                     )}
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">All Locations</CardTitle>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">All Locations</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="max-h-[400px] overflow-auto">
-                  <table className="w-full text-sm">
+              <CardContent className="p-3 pt-0">
+                <div className="max-h-[300px] overflow-auto">
+                  <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-background">
                       <tr className="border-b">
-                        <th className="text-left p-2 font-medium">{viewMode === 'state' ? 'State' : 'City'}</th>
-                        <th className="text-right p-2 font-medium">Origins</th>
-                        <th className="text-right p-2 font-medium">Dest</th>
-                        <th className="text-right p-2 font-medium">Total</th>
+                        <th className="text-left p-1.5 font-medium">{viewMode === 'state' ? 'State' : 'City'}</th>
+                        <th className="text-right p-1.5 font-medium">Orig</th>
+                        <th className="text-right p-1.5 font-medium">Dest</th>
+                        <th className="text-right p-1.5 font-medium">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(viewMode === 'state' ? stateData : cityData).map((item, i) => (
                         <tr key={i} className="border-b hover:bg-muted/50">
-                          <td className="p-2">{viewMode === 'state' ? item.state : `${(item as CityData).city}, ${(item as CityData).state}`}</td>
-                          <td className="text-right p-2">{item.pickups}</td>
-                          <td className="text-right p-2">{item.deliveries}</td>
-                          <td className="text-right p-2 font-medium">{item.total}</td>
+                          <td className="p-1.5">{viewMode === 'state' ? item.state : `${(item as CityData).city}, ${(item as CityData).state}`}</td>
+                          <td className="text-right p-1.5">{item.pickups}</td>
+                          <td className="text-right p-1.5">{item.deliveries}</td>
+                          <td className="text-right p-1.5 font-medium">{item.total}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1040,19 +1027,18 @@ export default function LoadAnalyticsTab() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Load Density Hotspots</CardTitle>
-              <CardDescription>Areas with highest concentration of loads</CardDescription>
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-sm">Load Density Hotspots</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <CardContent className="p-3 pt-0">
+              <div className="grid grid-cols-5 gap-2">
                 {stateData.slice(0, 5).map((state) => (
-                  <div key={state.state} className="p-4 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border">
-                    <div className="text-2xl font-bold">{state.state}</div>
-                    <div className="text-sm text-muted-foreground">{state.total.toLocaleString()} loads</div>
-                    <div className="mt-2 flex gap-2 text-xs">
-                      <Badge variant="outline" className="bg-chart-1/10">{state.pickups} origins</Badge>
-                      <Badge variant="outline" className="bg-chart-2/10">{state.deliveries} dest</Badge>
+                  <div key={state.state} className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border">
+                    <div className="text-xl font-bold">{state.state}</div>
+                    <div className="text-xs text-muted-foreground">{state.total.toLocaleString()} loads</div>
+                    <div className="mt-1 flex gap-1 text-[10px] flex-wrap">
+                      <Badge variant="outline" className="bg-chart-1/10 text-[10px] px-1 py-0">{state.pickups}</Badge>
+                      <Badge variant="outline" className="bg-chart-2/10 text-[10px] px-1 py-0">{state.deliveries}</Badge>
                     </div>
                   </div>
                 ))}
@@ -1062,143 +1048,126 @@ export default function LoadAnalyticsTab() {
         </TabsContent>
 
         {/* Heat Map Tab */}
-        <TabsContent value="heatmap" className="space-y-4">
+        <TabsContent value="heatmap" className="space-y-2">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="p-3 pb-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Globe className="h-5 w-5" />
-                    Load Density Heat Map
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      {filteredEmails.length.toLocaleString()} loads
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Visual representation of load volume across the US. Circle size indicates load concentration.
-                    <span className="ml-2 text-xs">
-                      <span className="inline-block w-3 h-3 rounded-full bg-green-500/60 mr-1"></span>Origins
-                      <span className="inline-block w-3 h-3 rounded-full bg-blue-500/60 mx-1 ml-3"></span>Destinations
-                      <span className="inline-block w-3 h-3 rounded-full bg-purple-500/60 mx-1 ml-3"></span>Both
-                    </span>
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span className="text-sm font-medium">Load Density Heat Map</span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {filteredEmails.length.toLocaleString()} loads
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground ml-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500/60 mr-0.5"></span>Origins
+                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500/60 mx-0.5 ml-2"></span>Dest
+                    <span className="inline-block w-2 h-2 rounded-full bg-purple-500/60 mx-0.5 ml-2"></span>Both
+                  </span>
                 </div>
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground border-r pr-4">
-                    <MapIcon className="h-4 w-4" />
-                    <span>Cluster: {clusterRadius === 0 ? 'Off' : `${clusterRadius}mi`}</span>
-                    <div className="w-20">
-                      <Slider
-                        value={[clusterRadius]}
-                        onValueChange={([val]) => setClusterRadius(val)}
-                        min={0}
-                        max={200}
-                        step={10}
-                        className="w-full"
-                      />
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <MapIcon className="h-3 w-3" />
+                    <span>{clusterRadius === 0 ? 'No cluster' : `${clusterRadius}mi`}</span>
+                    <Slider
+                      value={[clusterRadius]}
+                      onValueChange={([val]) => setClusterRadius(val)}
+                      min={0}
+                      max={200}
+                      step={10}
+                      className="w-14"
+                    />
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Timer className="h-4 w-4" />
-                    <span>Refresh: {refreshInterval}s</span>
-                    <div className="w-20">
-                      <Slider
-                        value={[refreshInterval]}
-                        onValueChange={([val]) => setRefreshInterval(val)}
-                        min={10}
-                        max={120}
-                        step={10}
-                        className="w-full"
-                      />
-                    </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <Timer className="h-3 w-3" />
+                    <span>{refreshInterval}s</span>
+                    <Slider
+                      value={[refreshInterval]}
+                      onValueChange={([val]) => setRefreshInterval(val)}
+                      min={10}
+                      max={120}
+                      step={10}
+                      className="w-14"
+                    />
                   </div>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon"
                     onClick={refreshData}
                     disabled={isRefreshing}
-                    className="gap-1"
+                    className="h-6 w-6"
                   >
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
                   </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {format(lastRefresh, 'h:mm:ss a')}
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(lastRefresh, 'h:mm a')}
                   </span>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0">
               {!mapboxToken ? (
-                <div className="flex items-center justify-center h-[500px] bg-muted/20 rounded-lg">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="flex items-center justify-center h-[400px] bg-muted/20 rounded-lg">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : (
                 <div 
                   ref={mapContainer} 
                   className="rounded-lg" 
-                  style={{ height: '500px', width: '100%', minHeight: '500px' }} 
+                  style={{ height: '400px', width: '100%', minHeight: '400px' }} 
                 />
               )}
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Locations on Map</div>
-                <div className="text-2xl font-bold">{mapPointsData.length}</div>
-              </CardContent>
+          <div className="grid grid-cols-3 gap-2">
+            <Card className="p-2">
+              <div className="text-[10px] text-muted-foreground uppercase">Locations</div>
+              <div className="text-lg font-bold">{mapPointsData.length}</div>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Top Origin State</div>
-                <div className="text-2xl font-bold">{stateData[0]?.state || 'N/A'}</div>
-              </CardContent>
+            <Card className="p-2">
+              <div className="text-[10px] text-muted-foreground uppercase">Top Origin</div>
+              <div className="text-lg font-bold">{stateData[0]?.state || 'N/A'}</div>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Top Destination State</div>
-                <div className="text-2xl font-bold">
-                  {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
-                </div>
-              </CardContent>
+            <Card className="p-2">
+              <div className="text-[10px] text-muted-foreground uppercase">Top Destination</div>
+              <div className="text-lg font-bold">
+                {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
+              </div>
             </Card>
           </div>
         </TabsContent>
 
         {/* Time Analysis Tab */}
-        <TabsContent value="time" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+        <TabsContent value="time" className="space-y-3">
+          <div className="grid gap-3 lg:grid-cols-2">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Loads by Day of Week</CardTitle>
-                <CardDescription>When loads are posted</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">By Day of Week</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={dayOfWeekData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Loads by Hour</CardTitle>
-                <CardDescription>Peak hours for load postings</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">By Hour</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={hourOfDayData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={2} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={9} interval={3} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
                     <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -1206,17 +1175,16 @@ export default function LoadAnalyticsTab() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Monthly Volume Trend</CardTitle>
-                <CardDescription>Load email volume over time</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">Monthly Trend</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={monthlyTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={9} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
                     <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -1224,17 +1192,16 @@ export default function LoadAnalyticsTab() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Daily Volume (Last 30 Days)</CardTitle>
-                <CardDescription>Recent load posting activity</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">Daily (Last 30 Days)</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={dailyTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={3} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={9} interval={4} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
                     <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1243,14 +1210,13 @@ export default function LoadAnalyticsTab() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">US Holiday Reference</CardTitle>
-              <CardDescription>Major holidays that affect freight volume</CardDescription>
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-sm">US Holidays</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
+            <CardContent className="p-3 pt-0">
+              <div className="flex flex-wrap gap-1.5">
                 {US_HOLIDAYS.map(holiday => (
-                  <Badge key={holiday.name} variant="outline" className="py-1">
+                  <Badge key={holiday.name} variant="outline" className="text-[10px] py-0.5 px-1.5">
                     {holiday.name} ({holiday.month}/{holiday.day})
                   </Badge>
                 ))}
@@ -1260,49 +1226,48 @@ export default function LoadAnalyticsTab() {
         </TabsContent>
 
         {/* Vehicle Types Tab */}
-        <TabsContent value="vehicle" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+        <TabsContent value="vehicle" className="space-y-3">
+          <div className="grid gap-3 lg:grid-cols-2">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Load Volume by Vehicle Type</CardTitle>
-                <CardDescription>Distribution of loads across vehicle types</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">By Vehicle Type</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={vehicleTypeDistribution} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={vehicleTypeDistribution} layout="vertical" margin={{ top: 5, right: 20, left: 70, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={90} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={9} width={65} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
+                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Vehicle Type Share</CardTitle>
-                <CardDescription>Percentage breakdown</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">Vehicle Type Share</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
                       data={vehicleTypeDistribution.slice(0, 8)}
                       cx="50%"
                       cy="50%"
-                      outerRadius={120}
+                      outerRadius={90}
                       dataKey="value"
                       nameKey="name"
                       label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                       labelLine={false}
+                      fontSize={9}
                     >
                       {vehicleTypeDistribution.slice(0, 8).map((_, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1310,25 +1275,25 @@ export default function LoadAnalyticsTab() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">All Vehicle Types</CardTitle>
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-sm">All Vehicle Types</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="max-h-[400px] overflow-auto">
-                <table className="w-full text-sm">
+            <CardContent className="p-3 pt-0">
+              <div className="max-h-[250px] overflow-auto">
+                <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-background">
                     <tr className="border-b">
-                      <th className="text-left p-2 font-medium">Vehicle Type</th>
-                      <th className="text-right p-2 font-medium">Count</th>
-                      <th className="text-right p-2 font-medium">% Share</th>
+                      <th className="text-left p-1.5 font-medium">Vehicle Type</th>
+                      <th className="text-right p-1.5 font-medium">Count</th>
+                      <th className="text-right p-1.5 font-medium">Share</th>
                     </tr>
                   </thead>
                   <tbody>
                     {vehicleTypeDistribution.map((item, i) => (
                       <tr key={i} className="border-b hover:bg-muted/50">
-                        <td className="p-2">{item.name}</td>
-                        <td className="text-right p-2">{item.value.toLocaleString()}</td>
-                        <td className="text-right p-2">
+                        <td className="p-1.5">{item.name}</td>
+                        <td className="text-right p-1.5">{item.value.toLocaleString()}</td>
+                        <td className="text-right p-1.5">
                           {((item.value / stats.totalEmails) * 100).toFixed(1)}%
                         </td>
                       </tr>
