@@ -494,30 +494,43 @@ export default function FreightCalculatorTab() {
   const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
       <div className="flex items-center gap-3">
         <Calculator className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Freight Fit Calculator</h1>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Visualization at top - full width, larger */}
+      {fitResult && selectedVehicle && (
+        <Card className="bg-slate-900">
+          <CardContent className="p-4">
+            <FreightVisualization
+              pallets={parsedPallets}
+              truckLength={selectedVehicle.dimensions_length || (selectedVehicle.vehicle_size ? selectedVehicle.vehicle_size * 12 : 288)}
+              truckWidth={selectedVehicle.dimensions_width || 96}
+              truckHeight={selectedVehicle.dimensions_height || 96}
+              fits={fitResult.fits}
+              isStackable={isStackable}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-3">
         {/* Input Section */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-4 w-4" />
               Freight Dimensions
             </CardTitle>
-            <CardDescription>
-              Paste dimensions or drop a screenshot
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {/* Drop Zone */}
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleImageDrop}
-              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-3 text-center hover:border-primary/50 transition-colors cursor-pointer"
             >
               <input
                 type="file"
@@ -528,16 +541,14 @@ export default function FreightCalculatorTab() {
               />
               <label htmlFor="image-upload" className="cursor-pointer">
                 {isParsingImage ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Parsing image with AI...</span>
+                  <div className="flex flex-col items-center gap-1">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Parsing...</span>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      Drop screenshot here or click to upload
-                    </span>
+                  <div className="flex flex-col items-center gap-1">
+                    <Upload className="h-6 w-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Drop screenshot</span>
                   </div>
                 )}
               </label>
@@ -547,71 +558,76 @@ export default function FreightCalculatorTab() {
             <Textarea
               value={dimensionsText}
               onChange={(e) => setDimensionsText(e.target.value)}
-              placeholder={`Enter dimensions (one per line):
-3@48 x 48 x 52
-1@48 x 48 x 59
-8@47 x 24 x 59`}
-              className="min-h-[150px] font-mono text-sm"
+              placeholder={`3@48 x 48 x 52
+1@48 x 48 x 59`}
+              className="min-h-[100px] font-mono text-xs"
             />
+          </CardContent>
+        </Card>
 
-            {/* Parsed Preview */}
-            {parsedPallets.length > 0 && (
-              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                <div className="text-sm font-medium flex items-center gap-2">
-                  Parsed Pallets:
-                  {isAiFallback && (
-                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 border-purple-500/30">
-                      AI Parsed
-                    </Badge>
-                  )}
-                  {isParsingImage && (
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                  )}
-                </div>
+        {/* Parsed Pallets */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              Parsed Pallets
+              {isAiFallback && (
+                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 border-purple-500/30">
+                  AI
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {parsedPallets.length > 0 ? (
+              <div className="space-y-1 max-h-[200px] overflow-y-auto">
                 {parsedPallets.map((pallet, idx) => (
-                  <div key={idx} className="text-sm flex items-center gap-2">
-                    <Badge variant="secondary" className="font-mono">
+                  <div key={idx} className="text-xs flex items-center gap-1">
+                    <Badge variant="secondary" className="font-mono text-xs px-1.5 py-0">
                       {pallet.quantity}x
                     </Badge>
                     <span className="font-mono">
-                      {pallet.length}" × {pallet.width}" × {pallet.height}"
-                      {pallet.weight && <span className="text-muted-foreground ml-1">@ {pallet.weight} lbs</span>}
+                      {pallet.length}"×{pallet.width}"×{pallet.height}"
+                      {pallet.weight && <span className="text-muted-foreground ml-1">@ {pallet.weight}lbs</span>}
                     </span>
                   </div>
                 ))}
-                <div className="text-sm pt-2 border-t border-border mt-2 space-y-1">
+                <div className="text-xs pt-2 border-t border-border mt-2 space-y-0.5">
                   <div className="font-medium">
                     Total: {parsedPallets.reduce((sum, p) => sum + p.quantity, 0)} pallets
                   </div>
                   {parsedPallets.some(p => p.weight) && (
                     <div className="text-muted-foreground">
-                      Weight: {parsedPallets.reduce((sum, p) => sum + (p.weight || 0) * p.quantity, 0).toLocaleString()} lbs
+                      {parsedPallets.reduce((sum, p) => sum + (p.weight || 0) * p.quantity, 0).toLocaleString()} lbs
                     </div>
                   )}
                 </div>
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground text-center py-4">
+                Enter dimensions to see parsed pallets
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Truck Selection & Result */}
+        {/* Truck Selection */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              Select Truck
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Truck className="h-4 w-4" />
+              Truck
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {/* Stackable Toggle */}
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <span className="text-sm font-medium">Stackable Freight?</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">Stackable?</span>
               <div className="flex gap-1">
                 <Button
                   variant={isStackable ? "default" : "outline"}
                   size="sm"
                   onClick={() => setIsStackable(true)}
-                  className="h-7 px-3"
+                  className="h-6 px-2 text-xs"
                 >
                   Yes
                 </Button>
@@ -619,7 +635,7 @@ export default function FreightCalculatorTab() {
                   variant={!isStackable ? "default" : "outline"}
                   size="sm"
                   onClick={() => setIsStackable(false)}
-                  className="h-7 px-3"
+                  className="h-6 px-2 text-xs"
                 >
                   No
                 </Button>
@@ -627,8 +643,8 @@ export default function FreightCalculatorTab() {
             </div>
 
             <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a truck..." />
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select truck..." />
               </SelectTrigger>
               <SelectContent>
                 {vehicles.map((vehicle) => (
@@ -636,7 +652,7 @@ export default function FreightCalculatorTab() {
                     <span className="font-medium">{vehicle.vehicle_number}</span>
                     <span className="text-muted-foreground ml-2">
                       {vehicle.asset_type}
-                      {vehicle.vehicle_size && ` - ${vehicle.vehicle_size}'`}
+                      {vehicle.vehicle_size && ` ${vehicle.vehicle_size}'`}
                     </span>
                   </SelectItem>
                 ))}
@@ -644,30 +660,21 @@ export default function FreightCalculatorTab() {
             </Select>
 
             {selectedVehicle && (
-              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
-                <div className="font-medium">{selectedVehicle.vehicle_number}</div>
-                <div className="text-muted-foreground">
-                  {selectedVehicle.asset_type}
-                </div>
-                <div className="font-mono text-xs pt-2 space-y-1">
-                  {selectedVehicle.vehicle_size && (
-                    <div>Length: {selectedVehicle.vehicle_size}' ({selectedVehicle.vehicle_size * 12}")</div>
-                  )}
-                  {selectedVehicle.dimensions_length && (
-                    <div>Length: {selectedVehicle.dimensions_length}"</div>
-                  )}
-                  {selectedVehicle.dimensions_width && (
-                    <div>Width: {selectedVehicle.dimensions_width}"</div>
-                  )}
-                  {selectedVehicle.dimensions_height && (
-                    <div>Height: {selectedVehicle.dimensions_height}"</div>
-                  )}
-                  {(selectedVehicle.door_dims_width || selectedVehicle.door_dims_height) && (
-                    <div className="pt-1 border-t border-border mt-1 text-amber-600">
-                      Door Opening: {selectedVehicle.door_dims_width || '?'}" × {selectedVehicle.door_dims_height || '?'}"
-                    </div>
-                  )}
-                </div>
+              <div className="text-xs font-mono space-y-0.5">
+                {selectedVehicle.vehicle_size && (
+                  <div>L: {selectedVehicle.vehicle_size * 12}"</div>
+                )}
+                {selectedVehicle.dimensions_width && (
+                  <div>W: {selectedVehicle.dimensions_width}"</div>
+                )}
+                {selectedVehicle.dimensions_height && (
+                  <div>H: {selectedVehicle.dimensions_height}"</div>
+                )}
+                {(selectedVehicle.door_dims_width || selectedVehicle.door_dims_height) && (
+                  <div className="text-amber-600">
+                    Door: {selectedVehicle.door_dims_width || '?'}"×{selectedVehicle.door_dims_height || '?'}"
+                  </div>
+                )}
               </div>
             )}
 
@@ -675,7 +682,7 @@ export default function FreightCalculatorTab() {
               onClick={calculateFit}
               disabled={!selectedVehicleId || parsedPallets.length === 0 || isLoading}
               className="w-full"
-              size="lg"
+              size="sm"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -685,62 +692,25 @@ export default function FreightCalculatorTab() {
               Calculate Fit
             </Button>
 
-            {/* Result Display */}
+            {/* Result Stats */}
             {fitResult && (
-              <div className="rounded-lg p-4 border-2 border-border bg-muted/30">
-                {/* 3D Visualization - this is authoritative for fit/no-fit */}
-                {selectedVehicle && (
-                  <div className="mb-4">
-                    <FreightVisualization
-                      pallets={parsedPallets}
-                      truckLength={selectedVehicle.dimensions_length || (selectedVehicle.vehicle_size ? selectedVehicle.vehicle_size * 12 : 288)}
-                      truckWidth={selectedVehicle.dimensions_width || 96}
-                      truckHeight={selectedVehicle.dimensions_height || 96}
-                      fits={fitResult.fits}
-                      isStackable={isStackable}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Pallets:</span>
-                    <span className="font-medium">{fitResult.totalPallets}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Max Pallet Height:</span>
-                    <span className="font-medium">{fitResult.maxHeight}"</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Truck Height:</span>
-                    <span className="font-medium">{fitResult.truckHeight}"</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Space Utilization:</span>
-                    <span className="font-medium">{fitResult.utilization}%</span>
-                  </div>
-                  {fitResult.totalWeight > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Weight:</span>
-                      <span className="font-medium">{fitResult.totalWeight.toLocaleString()} lbs</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Stackable:</span>
-                    <span className="font-medium">{isStackable ? "Yes" : "No"}</span>
-                  </div>
+              <div className="text-xs space-y-1 pt-2 border-t border-border">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Utilization:</span>
+                  <span className="font-medium">{fitResult.utilization}%</span>
                 </div>
-
-                {fitResult.warnings.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border space-y-1">
-                    {fitResult.warnings.map((warning, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500">
-                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                        <span>{warning}</span>
-                      </div>
-                    ))}
+                {fitResult.totalWeight > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Weight:</span>
+                    <span className="font-medium">{fitResult.totalWeight.toLocaleString()} lbs</span>
                   </div>
                 )}
+                {fitResult.warnings.length > 0 && fitResult.warnings.map((warning, idx) => (
+                  <div key={idx} className="flex items-start gap-1 text-yellow-600">
+                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                    <span className="text-xs">{warning}</span>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
