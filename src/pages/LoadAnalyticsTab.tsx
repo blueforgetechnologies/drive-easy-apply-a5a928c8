@@ -220,6 +220,7 @@ export default function LoadAnalyticsTab() {
         ...item,
         parsed_data: item.parsed_data as LoadEmailData['parsed_data']
       }));
+      console.log('loadAnalyticsData: fetched', typedData.length, 'emails for range', dateFilter, 'to', endFilter);
       setLoadEmails(typedData);
     } catch (error) {
       console.error("Error loading analytics:", error);
@@ -286,8 +287,9 @@ export default function LoadAnalyticsTab() {
 
   // Filter by vehicle type
   const filteredEmails = useMemo(() => {
-    if (selectedVehicleType === 'all') return loadEmails;
-    return loadEmails.filter(email => email.parsed_data?.vehicle_type === selectedVehicleType);
+    const result = selectedVehicleType === 'all' ? loadEmails : loadEmails.filter(email => email.parsed_data?.vehicle_type === selectedVehicleType);
+    console.log('filteredEmails recalculated:', result.length, 'from', loadEmails.length, 'total');
+    return result;
   }, [loadEmails, selectedVehicleType]);
 
   // Haversine distance calculation (returns miles)
@@ -385,6 +387,7 @@ export default function LoadAnalyticsTab() {
       }
     });
 
+    console.log('mapPointsData recalculated:', clusters.length, 'points from', filteredEmails.length, 'emails');
     return clusters.map(c => ({
       coords: c.coords,
       origins: c.origins,
