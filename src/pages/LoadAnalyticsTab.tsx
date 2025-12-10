@@ -421,27 +421,16 @@ export default function LoadAnalyticsTab() {
   }, [geoJsonData]);
 
   const updateMapSource = useCallback((data: typeof geoJsonData) => {
-    const tryUpdate = (attempts = 0): boolean => {
-      if (!map.current) return false;
-      
-      try {
-        const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
-        if (source) {
-          source.setData(data as GeoJSON.FeatureCollection);
-          return true;
-        }
-      } catch (e) {
-        console.log('Map source update error:', e);
+    if (!map.current || !sourceAddedRef.current) return;
+    
+    try {
+      const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
+      if (source) {
+        source.setData(data as GeoJSON.FeatureCollection);
       }
-      
-      // Retry up to 5 times with increasing delay
-      if (attempts < 5) {
-        setTimeout(() => tryUpdate(attempts + 1), 100 * (attempts + 1));
-      }
-      return false;
-    };
-
-    tryUpdate();
+    } catch (e) {
+      console.log('Map source update error:', e);
+    }
   }, []);
 
   // Initialize map when tab is active and token is available
@@ -639,31 +628,24 @@ export default function LoadAnalyticsTab() {
     };
   }, [activeTab, mapboxToken, flowDirection]);
 
-  // Update source data when data changes (without recreating map)
+  // Update source data when data changes and map is ready
   useEffect(() => {
-    if (activeTab !== 'heatmap') return;
-    if (!map.current) return;
+    if (activeTab !== 'heatmap' || !mapReady || !sourceAddedRef.current) return;
     
-    // Update map with new data after short delay
-    const timer = setTimeout(() => {
-      updateMapSource(geoJsonData);
-    }, 150);
-    
-    return () => clearTimeout(timer);
-  }, [geoJsonData, activeTab, updateMapSource]);
+    updateMapSource(geoJsonData);
+  }, [geoJsonData, activeTab, mapReady, updateMapSource]);
 
   // Force update when loading finishes
   useEffect(() => {
-    if (activeTab !== 'heatmap' || isLoading) return;
-    if (!map.current) return;
+    if (activeTab !== 'heatmap' || isLoading || !mapReady || !sourceAddedRef.current) return;
     
-    // Data finished loading - force update
+    // Small delay after loading completes to ensure data is processed
     const timer = setTimeout(() => {
       updateMapSource(geoJsonData);
-    }, 300);
+    }, 50);
     
     return () => clearTimeout(timer);
-  }, [isLoading, activeTab, geoJsonData, updateMapSource]);
+  }, [isLoading, activeTab, mapReady, geoJsonData, updateMapSource]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
