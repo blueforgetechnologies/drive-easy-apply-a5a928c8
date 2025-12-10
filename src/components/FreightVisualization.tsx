@@ -25,6 +25,7 @@ interface PlacedPallet {
   stackLevel: number;
   color: string;
   label: string;
+  stackedOn?: PlacedPallet[]; // Pallets stacked on top of this one
 }
 
 const PALLET_COLORS = [
@@ -92,8 +93,8 @@ export function FreightVisualization({
     // Don't sort - keep original order for better visual understanding
     const orderedUnits = [...units];
 
-    // Height tracking for stacking
-    const heightMap: Map<string, { height: number; level: number }> = new Map();
+    // Height tracking for stacking - now stores the base pallet reference
+    const stackMap: Map<string, { height: number; basePallet: PlacedPallet }> = new Map();
 
     orderedUnits.forEach((unit) => {
       let { length, width, height, colorIdx, unitNum } = unit;
@@ -115,35 +116,62 @@ export function FreightVisualization({
         rotated = true;
       }
 
-      // Check stacking
+      // Check stacking - find if there's a base pallet at this position
       const gridKey = `${Math.floor(currentX / 24)}-${Math.floor(currentZ / 24)}`;
-      const stackInfo = heightMap.get(gridKey) || { height: 0, level: 0 };
-      const baseHeight = isStackable ? stackInfo.height : 0;
-      const stackLevel = isStackable ? stackInfo.level : 0;
+      const stackInfo = stackMap.get(gridKey);
+      const baseHeight = isStackable && stackInfo ? stackInfo.height : 0;
+      const basePallet = isStackable && stackInfo ? stackInfo.basePallet : null;
 
       // Check if fits in truck
       if (currentX + length <= truckLength && 
           currentZ + width <= truckWidth && 
           baseHeight + height <= truckHeight) {
-        placed.push({
-          x: currentX,
-          z: currentZ,
-          length,
-          width,
-          height,
-          stackLevel,
-          color: PALLET_COLORS[colorIdx],
-          label: `${unitNum}`,
-        });
+        
+        // If stacking on existing pallet, add to its stackedOn array
+        if (basePallet && isStackable) {
+          const stackedPallet: PlacedPallet = {
+            x: currentX,
+            z: currentZ,
+            length,
+            width,
+            height,
+            stackLevel: basePallet.stackedOn ? basePallet.stackedOn.length + 1 : 1,
+            color: PALLET_COLORS[colorIdx],
+            label: `${unitNum}`,
+          };
+          
+          if (!basePallet.stackedOn) {
+            basePallet.stackedOn = [];
+          }
+          basePallet.stackedOn.push(stackedPallet);
+          
+          // Update stack height
+          stackMap.set(gridKey, { height: baseHeight + height, basePallet });
+          placed_this = true;
+        } else {
+          // Place as new base pallet
+          const newPallet: PlacedPallet = {
+            x: currentX,
+            z: currentZ,
+            length,
+            width,
+            height,
+            stackLevel: 0,
+            color: PALLET_COLORS[colorIdx],
+            label: `${unitNum}`,
+            stackedOn: [],
+          };
+          placed.push(newPallet);
 
-        if (isStackable) {
-          heightMap.set(gridKey, { height: baseHeight + height, level: stackLevel + 1 });
+          if (isStackable) {
+            stackMap.set(gridKey, { height: height, basePallet: newPallet });
+          }
+
+          currentZ += width;
+          rowMaxLength = Math.max(rowMaxLength, length);
+          maxUsedLength = Math.max(maxUsedLength, currentX + length);
+          placed_this = true;
         }
-
-        currentZ += width;
-        rowMaxLength = Math.max(rowMaxLength, length);
-        maxUsedLength = Math.max(maxUsedLength, currentX + length);
-        placed_this = true;
       } else {
         // Try starting a new row
         currentX += rowMaxLength;
@@ -165,7 +193,7 @@ export function FreightVisualization({
           if (currentX + orient.l <= truckLength && 
               currentZ + orient.w <= truckWidth &&
               height <= truckHeight) {
-            placed.push({
+            const newPallet: PlacedPallet = {
               x: currentX,
               z: currentZ,
               length: orient.l,
@@ -174,7 +202,9 @@ export function FreightVisualization({
               stackLevel: 0,
               color: PALLET_COLORS[colorIdx],
               label: `${unitNum}`,
-            });
+              stackedOn: [],
+            };
+            placed.push(newPallet);
             currentZ += orient.w;
             rowMaxLength = Math.max(rowMaxLength, orient.l);
             maxUsedLength = Math.max(maxUsedLength, currentX + orient.l);
@@ -307,74 +337,52 @@ export function FreightVisualization({
             DOOR
           </text>
 
-          {/* Pallets */}
+          {/* Pallets - only base pallets, with stacked items shown as smaller squares */}
           {placedPallets.map((pallet, idx) => {
             const pW = pallet.length * scale;
             const pH = pallet.width * scale;
             const pX = pallet.x * scale;
             const pY = pallet.z * scale;
+            const hasStacked = pallet.stackedOn && pallet.stackedOn.length > 0;
 
             return (
               <g key={idx}>
-                {/* Pallet rectangle */}
+                {/* Base pallet rectangle */}
                 <rect
                   x={pX + 1}
                   y={pY + 1}
                   width={pW - 2}
                   height={pH - 2}
                   fill={pallet.color}
-                  stroke={pallet.stackLevel > 0 ? "#F59E0B" : "rgba(0,0,0,0.3)"}
-                  strokeWidth={pallet.stackLevel > 0 ? 2 : 1}
+                  stroke={hasStacked ? "#F59E0B" : "rgba(0,0,0,0.3)"}
+                  strokeWidth={hasStacked ? 2 : 1}
                   rx={2}
-                  opacity={0.9 - pallet.stackLevel * 0.1}
+                  opacity={0.9}
                 />
 
-                {/* Stacked pallet pattern - horizontal stripes */}
-                {pallet.stackLevel > 0 && (
-                  <>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <line
-                        key={`stripe-${i}`}
-                        x1={pX + 4}
-                        y1={pY + (pH / 4) * (i + 1)}
-                        x2={pX + pW - 4}
-                        y2={pY + (pH / 4) * (i + 1)}
-                        stroke="#F59E0B"
-                        strokeWidth={1}
-                        strokeDasharray="4,2"
-                        opacity={0.6}
-                      />
-                    ))}
-                  </>
-                )}
-
-                {/* Diagonal lines for non-stacked pallets */}
-                {pallet.stackLevel === 0 && (
-                  <>
-                    <line
-                      x1={pX + 3}
-                      y1={pY + 3}
-                      x2={pX + pW - 3}
-                      y2={pY + pH - 3}
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth={1}
-                    />
-                    <line
-                      x1={pX + pW - 3}
-                      y1={pY + 3}
-                      x2={pX + 3}
-                      y2={pY + pH - 3}
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth={1}
-                    />
-                  </>
-                )}
+                {/* Diagonal lines for base pallet */}
+                <line
+                  x1={pX + 3}
+                  y1={pY + 3}
+                  x2={pX + pW - 3}
+                  y2={pY + pH - 3}
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth={1}
+                />
+                <line
+                  x1={pX + pW - 3}
+                  y1={pY + 3}
+                  x2={pX + 3}
+                  y2={pY + pH - 3}
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth={1}
+                />
 
                 {/* Pallet dimensions label */}
                 {pW > 30 && pH > 20 && (
                   <text
                     x={pX + pW / 2}
-                    y={pY + pH / 2 - (pallet.stackLevel > 0 ? 6 : 0)}
+                    y={pY + pH / 2 - (hasStacked ? 10 : 0)}
                     fill="white"
                     fontSize={pW > 50 ? 9 : 7}
                     textAnchor="middle"
@@ -386,32 +394,70 @@ export function FreightVisualization({
                   </text>
                 )}
 
-                {/* Stack level badge - prominent indicator */}
-                {pallet.stackLevel > 0 && (
-                  <>
-                    {/* Stack icon (layers) */}
-                    <rect
-                      x={pX + pW / 2 - 14}
-                      y={pY + pH / 2 + 2}
-                      width={28}
-                      height={14}
+                {/* Stacked pallets shown as smaller colored squares in center */}
+                {hasStacked && pallet.stackedOn?.map((stacked, sIdx) => {
+                  // Calculate position for stacked squares - arrange in a row
+                  const stackCount = pallet.stackedOn!.length;
+                  const squareSize = Math.min(16, (pW - 8) / stackCount - 2);
+                  const totalWidth = stackCount * (squareSize + 2) - 2;
+                  const startX = pX + (pW - totalWidth) / 2;
+                  const squareY = pY + pH / 2 + 4;
+
+                  return (
+                    <g key={`stack-${sIdx}`}>
+                      {/* Stacked pallet square */}
+                      <rect
+                        x={startX + sIdx * (squareSize + 2)}
+                        y={squareY}
+                        width={squareSize}
+                        height={squareSize}
+                        fill={stacked.color}
+                        stroke="white"
+                        strokeWidth={1.5}
+                        rx={2}
+                      />
+                      {/* Stack level number */}
+                      {squareSize >= 12 && (
+                        <text
+                          x={startX + sIdx * (squareSize + 2) + squareSize / 2}
+                          y={squareY + squareSize / 2}
+                          fill="white"
+                          fontSize={8}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fontWeight="bold"
+                          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
+                        >
+                          {stacked.stackLevel}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+
+                {/* Stack count badge if has stacked items */}
+                {hasStacked && (
+                  <g>
+                    <circle
+                      cx={pX + pW - 8}
+                      cy={pY + 8}
+                      r={8}
                       fill="#F59E0B"
-                      rx={3}
                       stroke="white"
                       strokeWidth={1}
                     />
                     <text
-                      x={pX + pW / 2}
-                      y={pY + pH / 2 + 9}
+                      x={pX + pW - 8}
+                      y={pY + 8}
                       fill="white"
                       fontSize={9}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fontWeight="bold"
                     >
-                      ⬆ L{pallet.stackLevel + 1}
+                      +{pallet.stackedOn!.length}
                     </text>
-                  </>
+                  </g>
                 )}
               </g>
             );
@@ -488,46 +534,57 @@ export function FreightVisualization({
       </svg>
 
       {/* Bottom info bar */}
-      <div className="flex justify-between items-center px-4 py-2 bg-black/30 border-t border-white/10">
-        <div className="flex items-center gap-4">
-          <div className="text-white text-sm">
-            <span className="text-white/60">Placed:</span>{" "}
-            <span className="font-bold">{placedPallets.length}</span>
-            <span className="text-white/60"> / {totalPalletCount}</span>
+      {(() => {
+        // Calculate total placed including stacked
+        const stackedCount = placedPallets.reduce((sum, p) => sum + (p.stackedOn?.length || 0), 0);
+        const totalPlaced = placedPallets.length + stackedCount;
+        
+        return (
+          <div className="flex justify-between items-center px-4 py-2 bg-black/30 border-t border-white/10">
+            <div className="flex items-center gap-4">
+              <div className="text-white text-sm">
+                <span className="text-white/60">Placed:</span>{" "}
+                <span className="font-bold">{totalPlaced}</span>
+                <span className="text-white/60"> / {totalPalletCount}</span>
+                {stackedCount > 0 && (
+                  <span className="text-amber-400 ml-1">({stackedCount} stacked)</span>
+                )}
+              </div>
+              <div className="text-cyan-400 text-sm font-medium">
+                <span className="text-white/60">Cargo depth:</span>{" "}
+                <span className="font-bold">{usedLength}"</span>
+                <span className="text-white/60"> / {truckLength}"</span>
+                <span className="text-cyan-300 ml-1">({Math.round((usedLength / truckLength) * 100)}%)</span>
+              </div>
+              {overflowPallets.length > 0 && (
+                <div className="text-red-400 text-xs flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {overflowPallets.length} won't fit
+                </div>
+              )}
+              {isStackable && stackedCount > 0 && (
+                <div className="text-amber-400 text-xs flex items-center gap-1">
+                  <div className="w-4 h-4 rounded bg-amber-500 flex items-center justify-center text-[9px] text-white font-bold">+{stackedCount}</div>
+                  = stacked on base
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap justify-end">
+              {pallets.map((pallet, idx) => (
+                <div key={idx} className="flex items-center gap-1 text-xs text-white/80">
+                  <div 
+                    className="w-3 h-3 rounded-sm" 
+                    style={{ background: PALLET_COLORS[idx % PALLET_COLORS.length] }}
+                  />
+                  <span>{pallet.quantity}× {pallet.length}"×{pallet.width}"×{pallet.height}"</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="text-cyan-400 text-sm font-medium">
-            <span className="text-white/60">Cargo depth:</span>{" "}
-            <span className="font-bold">{usedLength}"</span>
-            <span className="text-white/60"> / {truckLength}"</span>
-            <span className="text-cyan-300 ml-1">({Math.round((usedLength / truckLength) * 100)}%)</span>
-          </div>
-          {overflowPallets.length > 0 && (
-            <div className="text-red-400 text-xs flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              {overflowPallets.length} won't fit
-            </div>
-          )}
-          {isStackable && (
-            <div className="text-amber-400 text-xs flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-amber-500 flex items-center justify-center text-[8px] text-white font-bold">2</div>
-              = stacked
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2 flex-wrap justify-end">
-          {pallets.map((pallet, idx) => (
-            <div key={idx} className="flex items-center gap-1 text-xs text-white/80">
-              <div 
-                className="w-3 h-3 rounded-sm" 
-                style={{ background: PALLET_COLORS[idx % PALLET_COLORS.length] }}
-              />
-              <span>{pallet.quantity}× {pallet.length}"×{pallet.width}"×{pallet.height}"</span>
-            </div>
-          ))}
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Overflow pallets indicator */}
       {overflowPallets.length > 0 && (
