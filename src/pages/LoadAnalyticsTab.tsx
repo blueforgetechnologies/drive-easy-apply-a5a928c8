@@ -474,23 +474,12 @@ export default function LoadAnalyticsTab() {
           style: 'mapbox://styles/mapbox/standard',
           center: [-98.5795, 39.8283], // US center
           zoom: 3.5,
-          pitch: 30,
-          bearing: -10,
+          pitch: 0,
+          bearing: 0,
+          projection: 'mercator',
         });
 
-        map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
-        
-        // Add atmosphere and lighting effects for modern look
-        map.current.on('style.load', () => {
-          if (!map.current) return;
-          map.current.setFog({
-            color: 'rgb(186, 210, 235)',
-            'high-color': 'rgb(36, 92, 223)',
-            'horizon-blend': 0.02,
-            'space-color': 'rgb(11, 11, 25)',
-            'star-intensity': 0.6
-          });
-        });
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
         
         // Add clustering source and layers once map loads
         map.current.on('load', () => {
