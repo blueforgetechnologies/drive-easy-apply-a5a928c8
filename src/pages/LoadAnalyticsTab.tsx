@@ -1125,9 +1125,25 @@ export default function LoadAnalyticsTab() {
 
         {/* Prefetch status indicator */}
         {Object.values(prefetchStatus).some(s => s === 'loading') && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Prefetching data...</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md border">
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <span>Prefetching:</span>
+            <div className="flex items-center gap-1">
+              {(['3d', '7d', '30d', '90d'] as DateRangeKey[]).map(key => (
+                <span 
+                  key={key} 
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    prefetchStatus[key] === 'done' 
+                      ? 'bg-green-500/20 text-green-600' 
+                      : prefetchStatus[key] === 'loading' 
+                        ? 'bg-primary/20 text-primary animate-pulse' 
+                        : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {key}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
