@@ -1253,7 +1253,7 @@ export default function LoadAnalyticsTab() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-background border z-50">
-                        {Array.from({ length: 30 }, (_, i) => (i + 1) * 5000).map(val => (
+                        {Array.from({ length: 50 }, (_, i) => (i + 1) * 5000).map(val => (
                           <SelectItem key={val} value={val.toString()} className="text-xs">
                             {(val / 1000).toFixed(0)}K
                           </SelectItem>
