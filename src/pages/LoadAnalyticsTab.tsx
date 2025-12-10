@@ -1305,7 +1305,7 @@ export default function LoadAnalyticsTab() {
                     </SelectContent>
                   </Select>
                   <span className="text-[10px] text-muted-foreground">
-                    ({loadEmails.length.toLocaleString()} loaded)
+                    ({loadEmails.length.toLocaleString()}{totalEmailCount > loadEmails.length ? ` of ${totalEmailCount.toLocaleString()}` : ''} loaded)
                   </span>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
