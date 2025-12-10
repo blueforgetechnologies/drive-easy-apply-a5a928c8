@@ -146,7 +146,7 @@ export default function LoadAnalyticsTab() {
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('geographic');
-  const [refreshInterval, setRefreshInterval] = useState(60);
+  const [refreshInterval, setRefreshInterval] = useState(900); // Default 15 min (in seconds)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -1263,15 +1263,18 @@ export default function LoadAnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
-                    <span>{refreshInterval}s</span>
-                    <Slider
-                      value={[refreshInterval]}
-                      onValueChange={([val]) => setRefreshInterval(val)}
-                      min={10}
-                      max={120}
-                      step={10}
-                      className="w-14"
-                    />
+                    <Select value={refreshInterval.toString()} onValueChange={(v) => setRefreshInterval(parseInt(v))}>
+                      <SelectTrigger className="h-5 w-[60px] text-[10px] px-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50">
+                        {Array.from({ length: 30 }, (_, i) => (i + 1) * 60).map(val => (
+                          <SelectItem key={val} value={val.toString()} className="text-xs">
+                            {val / 60} min
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button
                     variant="ghost"
