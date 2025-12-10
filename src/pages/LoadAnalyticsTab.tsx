@@ -151,7 +151,7 @@ export default function LoadAnalyticsTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusterRadius, setClusterRadius] = useState(0); // 0 = no clustering, in miles
-  const [maxRecordsLimit, setMaxRecordsLimit] = useState(30000); // Default 30K, can go up to 150K
+  const [maxRecordsLimit, setMaxRecordsLimit] = useState(150000); // Default 150K
   const [prefetchStatus, setPrefetchStatus] = useState<Record<DateRangeKey, 'idle' | 'loading' | 'done'>>({
     '24h': 'idle', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle'
   });
@@ -1248,15 +1248,18 @@ export default function LoadAnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <BarChart3 className="h-3 w-3" />
-                    <span>{(maxRecordsLimit / 1000).toFixed(0)}K</span>
-                    <Slider
-                      value={[maxRecordsLimit]}
-                      onValueChange={([val]) => setMaxRecordsLimit(val)}
-                      min={10000}
-                      max={150000}
-                      step={10000}
-                      className="w-14"
-                    />
+                    <Select value={maxRecordsLimit.toString()} onValueChange={(v) => setMaxRecordsLimit(parseInt(v))}>
+                      <SelectTrigger className="h-5 w-[70px] text-[10px] px-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50">
+                        {Array.from({ length: 30 }, (_, i) => (i + 1) * 5000).map(val => (
+                          <SelectItem key={val} value={val.toString()} className="text-xs">
+                            {(val / 1000).toFixed(0)}K
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
