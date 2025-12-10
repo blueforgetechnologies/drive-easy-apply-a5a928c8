@@ -687,26 +687,8 @@ export default function FreightCalculatorTab() {
 
             {/* Result Display */}
             {fitResult && (
-              <div className={`rounded-lg p-4 border-2 ${
-                fitResult.fits 
-                  ? "bg-green-500/10 border-green-500/30" 
-                  : "bg-red-500/10 border-red-500/30"
-              }`}>
-                <div className="flex items-center gap-2 mb-3">
-                  {fitResult.fits ? (
-                    <>
-                      <CheckCircle2 className="h-6 w-6 text-green-500" />
-                      <span className="text-lg font-bold text-green-500">FITS!</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-6 w-6 text-red-500" />
-                      <span className="text-lg font-bold text-red-500">DOES NOT FIT</span>
-                    </>
-                  )}
-                </div>
-
-                {/* 3D Visualization */}
+              <div className="rounded-lg p-4 border-2 border-border bg-muted/30">
+                {/* 3D Visualization - this is authoritative for fit/no-fit */}
                 {selectedVehicle && (
                   <div className="mb-4">
                     <FreightVisualization
