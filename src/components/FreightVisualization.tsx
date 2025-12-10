@@ -24,17 +24,19 @@ interface PlacedPallet {
   width: number;
   height: number;
   color: string;
+  darkColor: string;
+  lightColor: string;
 }
 
 const PALLET_COLORS = [
-  "hsl(200, 70%, 50%)",
-  "hsl(150, 70%, 45%)",
-  "hsl(280, 60%, 55%)",
-  "hsl(30, 80%, 50%)",
-  "hsl(340, 70%, 55%)",
-  "hsl(180, 60%, 45%)",
-  "hsl(60, 70%, 45%)",
-  "hsl(220, 60%, 55%)",
+  { main: "#3B82F6", dark: "#2563EB", light: "#60A5FA" }, // Blue
+  { main: "#10B981", dark: "#059669", light: "#34D399" }, // Green
+  { main: "#8B5CF6", dark: "#7C3AED", light: "#A78BFA" }, // Purple
+  { main: "#F59E0B", dark: "#D97706", light: "#FBBF24" }, // Amber
+  { main: "#EF4444", dark: "#DC2626", light: "#F87171" }, // Red
+  { main: "#06B6D4", dark: "#0891B2", light: "#22D3EE" }, // Cyan
+  { main: "#EC4899", dark: "#DB2777", light: "#F472B6" }, // Pink
+  { main: "#84CC16", dark: "#65A30D", light: "#A3E635" }, // Lime
 ];
 
 export function FreightVisualization({
@@ -45,9 +47,10 @@ export function FreightVisualization({
   fits,
   isStackable = false,
 }: FreightVisualizationProps) {
-  // Calculate scale to fit visualization
+  // Calculate scale to fit visualization - larger base size
+  const baseSize = 280;
   const maxDim = Math.max(truckLength, truckWidth, truckHeight);
-  const scale = 180 / maxDim;
+  const scale = baseSize / maxDim;
 
   // Place pallets in truck space using simple row-based packing
   const placedPallets = useMemo(() => {
@@ -55,7 +58,6 @@ export function FreightVisualization({
     let currentX = 0;
     let currentZ = 0;
     let rowMaxLength = 0;
-    let colorIndex = 0;
 
     // Expand pallets into individual units
     const units: { length: number; width: number; height: number; colorIdx: number }[] = [];
@@ -77,7 +79,6 @@ export function FreightVisualization({
     const heightMap: Map<string, number> = new Map();
 
     units.forEach((unit) => {
-      // Allow rotation - pick orientation that fits better
       let { length, width, height, colorIdx } = unit;
       
       // Check if we need to start a new row
@@ -100,6 +101,7 @@ export function FreightVisualization({
       if (currentX + length <= truckLength && 
           currentZ + width <= truckWidth && 
           baseHeight + height <= truckHeight) {
+        const colors = PALLET_COLORS[colorIdx];
         placed.push({
           x: currentX,
           y: baseHeight,
@@ -107,7 +109,9 @@ export function FreightVisualization({
           length,
           width,
           height,
-          color: PALLET_COLORS[colorIdx],
+          color: colors.main,
+          darkColor: colors.dark,
+          lightColor: colors.light,
         });
 
         if (isStackable) {
@@ -117,12 +121,12 @@ export function FreightVisualization({
         currentZ += width;
         rowMaxLength = Math.max(rowMaxLength, length);
       } else if (currentX + length <= truckLength) {
-        // Start new row
         currentX += rowMaxLength;
         currentZ = 0;
         rowMaxLength = length;
 
         if (currentX + length <= truckLength) {
+          const colors = PALLET_COLORS[colorIdx];
           placed.push({
             x: currentX,
             y: 0,
@@ -130,7 +134,9 @@ export function FreightVisualization({
             length,
             width,
             height,
-            color: PALLET_COLORS[colorIdx],
+            color: colors.main,
+            darkColor: colors.dark,
+            lightColor: colors.light,
           });
           currentZ += width;
         }
@@ -140,161 +146,273 @@ export function FreightVisualization({
     return placed;
   }, [pallets, truckLength, truckWidth, truckHeight, isStackable]);
 
+  const scaledTruck = {
+    length: truckLength * scale,
+    width: truckWidth * scale,
+    height: truckHeight * scale,
+  };
+
   return (
-    <div className="relative w-full aspect-square flex items-center justify-center overflow-hidden bg-gradient-to-b from-muted/30 to-muted/60 rounded-lg">
-      {/* 3D Scene */}
-      <div
-        className="relative"
+    <div className="relative w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl overflow-hidden" style={{ minHeight: "320px" }}>
+      {/* Grid pattern background */}
+      <div 
+        className="absolute inset-0 opacity-10"
         style={{
-          perspective: "800px",
-          transformStyle: "preserve-3d",
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: "20px 20px",
         }}
-      >
+      />
+
+      {/* 3D Scene Container */}
+      <div className="flex items-center justify-center py-8" style={{ minHeight: "280px" }}>
         <div
           style={{
-            transform: "rotateX(-25deg) rotateY(-35deg)",
-            transformStyle: "preserve-3d",
+            perspective: "1000px",
+            perspectiveOrigin: "50% 40%",
           }}
         >
-          {/* Truck Container - Wireframe Style */}
-          {/* Floor */}
           <div
-            className="absolute border-2 border-muted-foreground/40 bg-muted/20"
             style={{
-              width: `${truckLength * scale}px`,
-              height: `${truckWidth * scale}px`,
-              transform: `translateZ(0px)`,
+              transform: "rotateX(-20deg) rotateY(-30deg) rotateZ(0deg)",
               transformStyle: "preserve-3d",
+              position: "relative",
             }}
-          />
-          
-          {/* Left Wall */}
-          <div
-            className="absolute border-2 border-muted-foreground/30 bg-muted/10"
-            style={{
-              width: `${truckLength * scale}px`,
-              height: `${truckHeight * scale}px`,
-              transform: `rotateX(90deg) translateZ(${truckWidth * scale}px)`,
-              transformOrigin: "bottom",
-              transformStyle: "preserve-3d",
-            }}
-          />
-          
-          {/* Right Wall */}
-          <div
-            className="absolute border-2 border-muted-foreground/30 bg-muted/10"
-            style={{
-              width: `${truckLength * scale}px`,
-              height: `${truckHeight * scale}px`,
-              transform: `rotateX(90deg) translateZ(0px)`,
-              transformOrigin: "bottom",
-              transformStyle: "preserve-3d",
-            }}
-          />
-          
-          {/* Back Wall */}
-          <div
-            className="absolute border-2 border-muted-foreground/30 bg-muted/10"
-            style={{
-              width: `${truckWidth * scale}px`,
-              height: `${truckHeight * scale}px`,
-              transform: `rotateX(90deg) rotateY(90deg) translateZ(0px)`,
-              transformOrigin: "bottom left",
-              transformStyle: "preserve-3d",
-            }}
-          />
-
-          {/* Ceiling (dashed outline) */}
-          <div
-            className="absolute border-2 border-dashed border-muted-foreground/20"
-            style={{
-              width: `${truckLength * scale}px`,
-              height: `${truckWidth * scale}px`,
-              transform: `translateZ(${truckHeight * scale}px)`,
-              transformStyle: "preserve-3d",
-            }}
-          />
-
-          {/* Pallets */}
-          {placedPallets.map((pallet, idx) => (
+          >
+            {/* Floor with gradient */}
             <div
-              key={idx}
-              className="absolute transition-all duration-300"
               style={{
-                width: `${pallet.length * scale}px`,
-                height: `${pallet.width * scale}px`,
-                transform: `translate(${pallet.x * scale}px, ${pallet.z * scale}px) translateZ(${pallet.y * scale}px)`,
+                position: "absolute",
+                width: `${scaledTruck.length}px`,
+                height: `${scaledTruck.width}px`,
+                background: "linear-gradient(135deg, #374151 0%, #1F2937 100%)",
+                border: "2px solid #4B5563",
+                boxShadow: "inset 0 0 30px rgba(0,0,0,0.3)",
+                transform: "translateZ(0px)",
                 transformStyle: "preserve-3d",
               }}
             >
-              {/* Pallet Box - Bottom */}
-              <div
-                className="absolute inset-0 border border-black/20"
+              {/* Floor grid lines */}
+              <div 
+                className="absolute inset-0"
                 style={{
-                  background: pallet.color,
-                  opacity: 0.9,
-                }}
-              />
-              
-              {/* Pallet Box - Top */}
-              <div
-                className="absolute border border-black/20"
-                style={{
-                  width: `${pallet.length * scale}px`,
-                  height: `${pallet.width * scale}px`,
-                  background: pallet.color,
-                  opacity: 0.95,
-                  transform: `translateZ(${pallet.height * scale}px)`,
-                  filter: "brightness(1.1)",
-                }}
-              />
-              
-              {/* Pallet Box - Front */}
-              <div
-                className="absolute border border-black/20"
-                style={{
-                  width: `${pallet.length * scale}px`,
-                  height: `${pallet.height * scale}px`,
-                  background: pallet.color,
-                  opacity: 0.85,
-                  transform: `rotateX(90deg) translateZ(${pallet.width * scale}px)`,
-                  transformOrigin: "bottom",
-                  filter: "brightness(0.9)",
-                }}
-              />
-              
-              {/* Pallet Box - Side */}
-              <div
-                className="absolute border border-black/20"
-                style={{
-                  width: `${pallet.width * scale}px`,
-                  height: `${pallet.height * scale}px`,
-                  background: pallet.color,
-                  opacity: 0.8,
-                  transform: `rotateX(90deg) rotateY(90deg) translateZ(${pallet.length * scale}px)`,
-                  transformOrigin: "bottom left",
-                  filter: "brightness(0.8)",
+                  backgroundImage: `
+                    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)
+                  `,
+                  backgroundSize: `${48 * scale}px ${48 * scale}px`,
                 }}
               />
             </div>
-          ))}
+
+            {/* Left Wall */}
+            <div
+              style={{
+                position: "absolute",
+                width: `${scaledTruck.length}px`,
+                height: `${scaledTruck.height}px`,
+                background: "linear-gradient(180deg, rgba(55,65,81,0.6) 0%, rgba(31,41,55,0.8) 100%)",
+                borderLeft: "2px solid #4B5563",
+                borderTop: "2px solid #4B5563",
+                borderRight: "2px solid #4B5563",
+                transform: `rotateX(90deg) translateZ(${scaledTruck.width}px)`,
+                transformOrigin: "bottom",
+                transformStyle: "preserve-3d",
+              }}
+            />
+
+            {/* Right Wall */}
+            <div
+              style={{
+                position: "absolute",
+                width: `${scaledTruck.length}px`,
+                height: `${scaledTruck.height}px`,
+                background: "linear-gradient(180deg, rgba(75,85,99,0.4) 0%, rgba(55,65,81,0.6) 100%)",
+                borderLeft: "2px solid #6B7280",
+                borderTop: "2px solid #6B7280",
+                borderRight: "2px solid #6B7280",
+                transform: `rotateX(90deg) translateZ(0px)`,
+                transformOrigin: "bottom",
+                transformStyle: "preserve-3d",
+              }}
+            />
+
+            {/* Back Wall */}
+            <div
+              style={{
+                position: "absolute",
+                width: `${scaledTruck.width}px`,
+                height: `${scaledTruck.height}px`,
+                background: "linear-gradient(180deg, rgba(55,65,81,0.5) 0%, rgba(31,41,55,0.7) 100%)",
+                borderTop: "2px solid #4B5563",
+                borderLeft: "2px solid #4B5563",
+                borderRight: "2px solid #4B5563",
+                transform: `rotateX(90deg) rotateY(90deg) translateZ(0px)`,
+                transformOrigin: "bottom left",
+                transformStyle: "preserve-3d",
+              }}
+            />
+
+            {/* Ceiling frame (dashed) */}
+            <div
+              style={{
+                position: "absolute",
+                width: `${scaledTruck.length}px`,
+                height: `${scaledTruck.width}px`,
+                border: "2px dashed rgba(107,114,128,0.5)",
+                transform: `translateZ(${scaledTruck.height}px)`,
+                transformStyle: "preserve-3d",
+              }}
+            />
+
+            {/* Height indicator line */}
+            <div
+              style={{
+                position: "absolute",
+                width: "2px",
+                height: `${scaledTruck.height}px`,
+                background: "linear-gradient(180deg, #9CA3AF 0%, #6B7280 100%)",
+                left: `${scaledTruck.length + 8}px`,
+                top: "0",
+                transform: `rotateX(90deg)`,
+                transformOrigin: "bottom",
+              }}
+            />
+
+            {/* Pallets */}
+            {placedPallets.map((pallet, idx) => {
+              const pW = pallet.length * scale;
+              const pD = pallet.width * scale;
+              const pH = pallet.height * scale;
+              const pX = pallet.x * scale;
+              const pZ = pallet.z * scale;
+              const pY = pallet.y * scale;
+
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    position: "absolute",
+                    width: `${pW}px`,
+                    height: `${pD}px`,
+                    transform: `translate(${pX}px, ${pZ}px) translateZ(${pY}px)`,
+                    transformStyle: "preserve-3d",
+                  }}
+                >
+                  {/* Bottom face */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: pallet.darkColor,
+                      border: "1px solid rgba(0,0,0,0.3)",
+                    }}
+                  />
+
+                  {/* Top face */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: `${pW}px`,
+                      height: `${pD}px`,
+                      background: `linear-gradient(135deg, ${pallet.lightColor} 0%, ${pallet.color} 100%)`,
+                      border: "1px solid rgba(0,0,0,0.2)",
+                      transform: `translateZ(${pH}px)`,
+                      boxShadow: "inset 0 0 10px rgba(255,255,255,0.2)",
+                    }}
+                  />
+
+                  {/* Front face */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: `${pW}px`,
+                      height: `${pH}px`,
+                      background: `linear-gradient(180deg, ${pallet.color} 0%, ${pallet.darkColor} 100%)`,
+                      border: "1px solid rgba(0,0,0,0.2)",
+                      transform: `rotateX(90deg) translateZ(${pD}px)`,
+                      transformOrigin: "bottom",
+                    }}
+                  />
+
+                  {/* Right side face */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: `${pD}px`,
+                      height: `${pH}px`,
+                      background: `linear-gradient(180deg, ${pallet.darkColor} 0%, ${pallet.darkColor} 100%)`,
+                      border: "1px solid rgba(0,0,0,0.2)",
+                      transform: `rotateX(90deg) rotateY(90deg) translateZ(${pW}px)`,
+                      transformOrigin: "bottom left",
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Labels */}
-      <div className="absolute bottom-2 left-2 text-xs text-muted-foreground space-y-0.5">
-        <div>L: {truckLength}" × W: {truckWidth}" × H: {truckHeight}"</div>
-        <div>{placedPallets.length} pallets placed</div>
+      {/* Dimension Labels */}
+      <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
+        <div className="text-xs font-medium text-white/70 mb-1">Truck Dimensions</div>
+        <div className="text-sm font-mono">
+          {truckLength}" L × {truckWidth}" W × {truckHeight}" H
+        </div>
+      </div>
+
+      {/* Pallet count */}
+      <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
+        <div className="text-xs font-medium text-white/70 mb-1">Pallets Placed</div>
+        <div className="text-lg font-bold">{placedPallets.length}</div>
       </div>
 
       {/* Fit indicator */}
-      <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium ${
+      <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 ${
         fits 
-          ? "bg-green-500/20 text-green-600 dark:text-green-400" 
-          : "bg-red-500/20 text-red-600 dark:text-red-400"
+          ? "bg-green-500/90 text-white shadow-lg shadow-green-500/30" 
+          : "bg-red-500/90 text-white shadow-lg shadow-red-500/30"
       }`}>
-        {fits ? "✓ Fits" : "✗ No Fit"}
+        {fits ? (
+          <>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+            FITS
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            NO FIT
+          </>
+        )}
       </div>
+
+      {/* Legend */}
+      {pallets.length > 0 && (
+        <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2">
+          <div className="text-xs font-medium text-white/70 mb-1.5">Pallet Types</div>
+          <div className="flex flex-wrap gap-1.5">
+            {pallets.map((pallet, idx) => (
+              <div 
+                key={idx} 
+                className="flex items-center gap-1.5 text-xs text-white"
+              >
+                <div 
+                  className="w-3 h-3 rounded-sm shadow-sm" 
+                  style={{ background: PALLET_COLORS[idx % PALLET_COLORS.length].main }}
+                />
+                <span className="font-mono">{pallet.quantity}×</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
