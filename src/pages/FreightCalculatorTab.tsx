@@ -228,6 +228,23 @@ export default function FreightCalculatorTab() {
     }
   };
 
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          await parseImageWithAI(file);
+        }
+        return;
+      }
+    }
+    // If no image, let default paste behavior handle text
+  };
+
   const parseImageWithAI = async (file: File) => {
     setIsParsingImage(true);
     try {
@@ -558,8 +575,10 @@ export default function FreightCalculatorTab() {
             <Textarea
               value={dimensionsText}
               onChange={(e) => setDimensionsText(e.target.value)}
+              onPaste={handlePaste}
               placeholder={`3@48 x 48 x 52
-1@48 x 48 x 59`}
+1@48 x 48 x 59
+(or paste a screenshot)`}
               className="min-h-[100px] font-mono text-xs"
             />
           </CardContent>
