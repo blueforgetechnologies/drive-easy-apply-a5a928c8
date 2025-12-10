@@ -60,9 +60,13 @@ export function FreightVisualization({
     width: truckWidth * scale,
   };
 
+  // Total pallet count
+  const totalPalletCount = pallets.reduce((sum, p) => sum + p.quantity, 0);
+
   // Place pallets in truck space
-  const placedPallets = useMemo(() => {
+  const { placedPallets, overflowPallets } = useMemo(() => {
     const placed: PlacedPallet[] = [];
+    const overflow: PlacedPallet[] = [];
     let currentX = 0;
     let currentZ = 0;
     let rowMaxLength = 0;
@@ -84,15 +88,18 @@ export function FreightVisualization({
       }
     });
 
-    // Sort by width descending for better packing
-    units.sort((a, b) => b.width - a.width);
+    // Don't sort - keep original order for better visual understanding
+    const orderedUnits = [...units];
 
     // Height tracking for stacking
     const heightMap: Map<string, { height: number; level: number }> = new Map();
 
-    units.forEach((unit, idx) => {
+    orderedUnits.forEach((unit) => {
       let { length, width, height, colorIdx, unitNum } = unit;
       
+      // Try to fit in current row
+      let placed_this = false;
+
       // Check if we need to start a new row
       if (currentZ + width > truckWidth) {
         currentX += rowMaxLength;
@@ -100,9 +107,11 @@ export function FreightVisualization({
         rowMaxLength = 0;
       }
 
-      // Try rotation if it doesn't fit
+      // Try rotation if width doesn't fit
+      let rotated = false;
       if (currentZ + width > truckWidth && currentZ + length <= truckWidth) {
         [length, width] = [width, length];
+        rotated = true;
       }
 
       // Check stacking
@@ -132,28 +141,62 @@ export function FreightVisualization({
 
         currentZ += width;
         rowMaxLength = Math.max(rowMaxLength, length);
-      } else if (currentX + length <= truckLength) {
+        placed_this = true;
+      } else {
+        // Try starting a new row
         currentX += rowMaxLength;
         currentZ = 0;
-        rowMaxLength = length;
+        rowMaxLength = 0;
 
-        if (currentX + length <= truckLength) {
-          placed.push({
-            x: currentX,
-            z: 0,
-            length,
-            width,
-            height,
-            stackLevel: 0,
-            color: PALLET_COLORS[colorIdx],
-            label: `${unitNum}`,
-          });
-          currentZ += width;
+        // Reset rotation for new row attempt
+        if (rotated) {
+          [length, width] = [width, length];
         }
+
+        // Try both orientations for new row
+        const orientations = [
+          { l: length, w: width },
+          { l: width, w: length }
+        ];
+
+        for (const orient of orientations) {
+          if (currentX + orient.l <= truckLength && 
+              currentZ + orient.w <= truckWidth &&
+              height <= truckHeight) {
+            placed.push({
+              x: currentX,
+              z: currentZ,
+              length: orient.l,
+              width: orient.w,
+              height,
+              stackLevel: 0,
+              color: PALLET_COLORS[colorIdx],
+              label: `${unitNum}`,
+            });
+            currentZ += orient.w;
+            rowMaxLength = Math.max(rowMaxLength, orient.l);
+            placed_this = true;
+            break;
+          }
+        }
+      }
+
+      // If couldn't place, add to overflow
+      if (!placed_this) {
+        overflow.push({
+          x: 0,
+          z: 0,
+          length,
+          width,
+          height,
+          stackLevel: 0,
+          color: PALLET_COLORS[colorIdx],
+          label: `${unitNum}`,
+        });
       }
     });
 
-    return placed;
+    return { placedPallets: placed, overflowPallets: overflow };
   }, [pallets, truckLength, truckWidth, truckHeight, isStackable]);
 
   const offsetX = (containerWidth - scaledTruck.length) / 2;
@@ -414,9 +457,18 @@ export function FreightVisualization({
       <div className="flex justify-between items-center px-4 py-2 bg-black/30 border-t border-white/10">
         <div className="flex items-center gap-4">
           <div className="text-white text-sm">
-            <span className="text-white/60">Pallets:</span>{" "}
+            <span className="text-white/60">Placed:</span>{" "}
             <span className="font-bold">{placedPallets.length}</span>
+            <span className="text-white/60"> / {totalPalletCount}</span>
           </div>
+          {overflowPallets.length > 0 && (
+            <div className="text-red-400 text-xs flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              {overflowPallets.length} won't fit
+            </div>
+          )}
           {isStackable && (
             <div className="text-amber-400 text-xs flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-amber-500 flex items-center justify-center text-[8px] text-white font-bold">2</div>
@@ -424,7 +476,7 @@ export function FreightVisualization({
             </div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           {pallets.map((pallet, idx) => (
             <div key={idx} className="flex items-center gap-1 text-xs text-white/80">
               <div 
@@ -436,6 +488,29 @@ export function FreightVisualization({
           ))}
         </div>
       </div>
+
+      {/* Overflow pallets indicator */}
+      {overflowPallets.length > 0 && (
+        <div className="px-4 py-2 bg-red-500/20 border-t border-red-500/30">
+          <div className="text-red-400 text-xs font-medium mb-1">
+            These pallets don't fit in the truck:
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {overflowPallets.map((pallet, idx) => (
+              <div 
+                key={idx}
+                className="px-2 py-1 rounded text-xs font-mono"
+                style={{ 
+                  background: pallet.color,
+                  opacity: 0.7
+                }}
+              >
+                #{pallet.label}: {pallet.length}"×{pallet.width}"×{pallet.height}"
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
