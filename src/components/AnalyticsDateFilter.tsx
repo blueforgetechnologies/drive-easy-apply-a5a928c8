@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format, startOfDay, endOfDay, subDays, subMonths, subYears, previousMonday, previousSunday, previousSaturday, previousFriday, previousThursday, previousWednesday, previousTuesday, isMonday, isSunday, isSaturday, isFriday, isThursday, isWednesday, isTuesday } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, subMonths, subYears, previousMonday, previousSunday, previousSaturday, previousFriday, previousThursday, previousWednesday, previousTuesday, isMonday, isSunday, isSaturday, isFriday, isThursday, isWednesday, isTuesday, isSameDay } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -19,12 +19,7 @@ type PresetOption = {
 };
 
 export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: AnalyticsDateFilterProps) {
-  const [selectedPreset, setSelectedPreset] = useState<string>("today");
-  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined
-  });
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
 
   const getLastDayOfWeek = (dayCheck: (date: Date) => boolean, getPrevious: (date: Date) => Date) => {
     if (dayCheck(today)) return today;
@@ -36,7 +31,7 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
     return `${shortName} ${format(date, "M/d")}`;
   };
 
-  const presets: PresetOption[] = [
+  const presets: PresetOption[] = useMemo(() => [
     {
       label: "Today",
       value: "today",
@@ -128,10 +123,32 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
       value: "1year",
       getRange: () => ({ start: startOfDay(subYears(today, 1)), end: endOfDay(today) })
     }
-  ];
+  ], [today]);
+
+  // Determine the active preset based on current startDate/endDate
+  const activePreset = useMemo(() => {
+    for (const preset of presets) {
+      const range = preset.getRange();
+      if (isSameDay(range.start, startDate) && isSameDay(range.end, endDate)) {
+        return preset.value;
+      }
+    }
+    return "custom";
+  }, [startDate, endDate, presets]);
+
+  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: activePreset === "custom" ? startDate : undefined,
+    to: activePreset === "custom" ? endDate : undefined
+  });
+
+  // Sync custom range when props change
+  useEffect(() => {
+    if (activePreset === "custom") {
+      setCustomRange({ from: startDate, to: endDate });
+    }
+  }, [startDate, endDate, activePreset]);
 
   const handlePresetClick = (preset: PresetOption) => {
-    setSelectedPreset(preset.value);
     setCustomRange({ from: undefined, to: undefined });
     const { start, end } = preset.getRange();
     onDateChange(start, end);
@@ -141,7 +158,6 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
     if (!range) return;
     
     setCustomRange(range);
-    setSelectedPreset("custom");
     
     if (range.from && range.to) {
       onDateChange(startOfDay(range.from), endOfDay(range.to));
@@ -151,6 +167,12 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
   };
 
   const getCustomLabel = () => {
+    if (activePreset === "custom" && startDate && endDate) {
+      if (isSameDay(startDate, endDate)) {
+        return format(startDate, "M/d");
+      }
+      return `${format(startDate, "M/d")} - ${format(endDate, "M/d")}`;
+    }
     if (customRange.from && customRange.to) {
       return `${format(customRange.from, "M/d")} - ${format(customRange.to, "M/d")}`;
     }
@@ -165,11 +187,11 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
       {presets.map((preset) => (
         <Button
           key={preset.value}
-          variant={selectedPreset === preset.value ? "default" : "outline"}
+          variant={activePreset === preset.value ? "default" : "outline"}
           size="sm"
           className={cn(
             "h-7 px-2 text-xs font-medium",
-            selectedPreset === preset.value && "bg-primary text-primary-foreground"
+            activePreset === preset.value && "bg-primary text-primary-foreground"
           )}
           onClick={() => handlePresetClick(preset)}
         >
@@ -180,11 +202,11 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            variant={selectedPreset === "custom" ? "default" : "outline"}
+            variant={activePreset === "custom" ? "default" : "outline"}
             size="sm"
             className={cn(
               "h-7 px-2 text-xs font-medium gap-1",
-              selectedPreset === "custom" && "bg-primary text-primary-foreground"
+              activePreset === "custom" && "bg-primary text-primary-foreground"
             )}
           >
             <CalendarIcon className="h-3 w-3" />
