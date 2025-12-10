@@ -1253,7 +1253,7 @@ export default function LoadAnalyticsTab() {
                   <Globe className="h-4 w-4" />
                   <span className="text-sm font-medium">Load Density Heat Map</span>
                   <Badge variant="outline" className="text-[10px]">
-                    {loadEmails.length.toLocaleString()} loads
+                    {stats.totalEmails.toLocaleString()} loads
                   </Badge>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
