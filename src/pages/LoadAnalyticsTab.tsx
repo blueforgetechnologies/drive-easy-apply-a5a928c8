@@ -638,20 +638,25 @@ export default function LoadAnalyticsTab() {
   // Update source data when data changes (without recreating map)
   useEffect(() => {
     if (!mapReady || activeTab !== 'heatmap') return;
-    // Update immediately when data changes
-    updateMapSource(geoJsonData);
+    
+    // Update map with new data
+    const timer = setTimeout(() => {
+      updateMapSource(geoJsonData);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [mapReady, geoJsonData, activeTab, updateMapSource]);
 
-  // Force update map when switching to heatmap tab and data exists
+  // Also update when loading finishes with new data
   useEffect(() => {
-    if (activeTab === 'heatmap' && !isLoading && geoJsonData.features.length > 0) {
-      // Give map time to initialize, then force update
+    if (activeTab === 'heatmap' && !isLoading && mapReady && geoJsonData.features.length > 0) {
+      // Force update after loading completes
       const timer = setTimeout(() => {
         updateMapSource(geoJsonData);
-      }, 300);
+      }, 200);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, isLoading]);
+  }, [isLoading, mapReady, activeTab, geoJsonData, updateMapSource]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
