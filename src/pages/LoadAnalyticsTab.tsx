@@ -173,6 +173,7 @@ export default function LoadAnalyticsTab() {
     try {
       const allData: any[] = [];
       const pageSize = 1000;
+      const maxRecords = 10000; // Limit to 10k most recent for performance
       let page = 0;
       let hasMore = true;
 
@@ -184,13 +185,13 @@ export default function LoadAnalyticsTab() {
         dateFilter = daysAgo.toISOString();
       }
 
-      // Paginate through all results
-      while (hasMore) {
+      // Paginate through results up to maxRecords
+      while (hasMore && allData.length < maxRecords) {
         let query = supabase
           .from("load_emails")
           .select("id, received_at, created_at, parsed_data")
           .order("received_at", { ascending: false })
-          .range(page * pageSize, (page + 1) * pageSize - 1);
+          .range(page * pageSize, Math.min((page + 1) * pageSize - 1, maxRecords - 1));
 
         if (dateFilter) {
           query = query.gte("received_at", dateFilter);
@@ -209,7 +210,7 @@ export default function LoadAnalyticsTab() {
           }));
           setLoadEmails(typedData);
           
-          hasMore = data.length === pageSize;
+          hasMore = data.length === pageSize && allData.length < maxRecords;
           page++;
         } else {
           hasMore = false;
