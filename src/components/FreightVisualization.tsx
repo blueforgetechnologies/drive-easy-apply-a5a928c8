@@ -64,12 +64,13 @@ export function FreightVisualization({
   const totalPalletCount = pallets.reduce((sum, p) => sum + p.quantity, 0);
 
   // Place pallets in truck space
-  const { placedPallets, overflowPallets } = useMemo(() => {
+  const { placedPallets, overflowPallets, usedLength } = useMemo(() => {
     const placed: PlacedPallet[] = [];
     const overflow: PlacedPallet[] = [];
     let currentX = 0;
     let currentZ = 0;
     let rowMaxLength = 0;
+    let maxUsedLength = 0;
 
     // Expand pallets into individual units with labels
     const units: { length: number; width: number; height: number; colorIdx: number; palletIdx: number; unitNum: number }[] = [];
@@ -141,6 +142,7 @@ export function FreightVisualization({
 
         currentZ += width;
         rowMaxLength = Math.max(rowMaxLength, length);
+        maxUsedLength = Math.max(maxUsedLength, currentX + length);
         placed_this = true;
       } else {
         // Try starting a new row
@@ -175,6 +177,7 @@ export function FreightVisualization({
             });
             currentZ += orient.w;
             rowMaxLength = Math.max(rowMaxLength, orient.l);
+            maxUsedLength = Math.max(maxUsedLength, currentX + orient.l);
             placed_this = true;
             break;
           }
@@ -196,7 +199,7 @@ export function FreightVisualization({
       }
     });
 
-    return { placedPallets: placed, overflowPallets: overflow };
+    return { placedPallets: placed, overflowPallets: overflow, usedLength: maxUsedLength };
   }, [pallets, truckLength, truckWidth, truckHeight, isStackable]);
 
   const offsetX = (containerWidth - scaledTruck.length) / 2;
@@ -460,6 +463,12 @@ export function FreightVisualization({
             <span className="text-white/60">Placed:</span>{" "}
             <span className="font-bold">{placedPallets.length}</span>
             <span className="text-white/60"> / {totalPalletCount}</span>
+          </div>
+          <div className="text-cyan-400 text-sm font-medium">
+            <span className="text-white/60">Cargo depth:</span>{" "}
+            <span className="font-bold">{usedLength}"</span>
+            <span className="text-white/60"> / {truckLength}"</span>
+            <span className="text-cyan-300 ml-1">({Math.round((usedLength / truckLength) * 100)}%)</span>
           </div>
           {overflowPallets.length > 0 && (
             <div className="text-red-400 text-xs flex items-center gap-1">
