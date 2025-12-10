@@ -121,7 +121,7 @@ export default function LoadAnalyticsTab() {
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const sourceAddedRef = useRef(false);
 
   // Initial load
   useEffect(() => {
@@ -396,76 +396,44 @@ export default function LoadAnalyticsTab() {
     }));
   }, [filteredEmails, flowDirection, getCoordinates, clusterRadius, haversineDistance]);
 
-  // Add markers to map
-  const addMarkersToMap = useCallback(() => {
-    if (!map.current) return;
+  // Generate GeoJSON for clustering
+  const geoJsonData = useMemo(() => {
+    const features = mapPointsData.map((point, idx) => ({
+      type: 'Feature' as const,
+      properties: {
+        id: idx,
+        origins: point.origins,
+        destinations: point.destinations,
+        total: point.origins + point.destinations,
+        label: point.label,
+      },
+      geometry: {
+        type: 'Point' as const,
+        coordinates: point.coords,
+      },
+    }));
+    return {
+      type: 'FeatureCollection' as const,
+      features,
+    };
+  }, [mapPointsData]);
+
+  // Update map source data
+  const updateMapSource = useCallback(() => {
+    if (!map.current || !sourceAddedRef.current) return;
     
-    // Clear existing markers
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
-
-    if (mapPointsData.length === 0) return;
-
-    // Find max count for scaling
-    const maxCount = Math.max(...mapPointsData.map(p => p.origins + p.destinations), 1);
-
-    // Add new markers
-    mapPointsData.forEach((point) => {
-      const total = point.origins + point.destinations;
-      const radius = Math.max(20, Math.min(60, (total / maxCount) * 60));
-      
-      // Create marker element - scale radius and font based on count
-      const el = document.createElement('div');
-      const displayRadius = Math.max(24, Math.min(80, radius));
-      const fontSize = total > 999 ? 9 : total > 99 ? 10 : 12;
-      
-      el.style.width = `${displayRadius}px`;
-      el.style.height = `${displayRadius}px`;
-      el.style.borderRadius = '50%';
-      el.style.backgroundColor = flowDirection === 'pickup' 
-        ? 'rgba(34, 197, 94, 0.7)' 
-        : flowDirection === 'delivery' 
-          ? 'rgba(59, 130, 246, 0.7)' 
-          : 'rgba(168, 85, 247, 0.7)';
-      el.style.border = '3px solid white';
-      el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-      el.style.display = 'flex';
-      el.style.alignItems = 'center';
-      el.style.justifyContent = 'center';
-      el.style.color = 'white';
-      el.style.fontSize = `${fontSize}px`;
-      el.style.fontWeight = 'bold';
-      el.style.cursor = 'pointer';
-      el.style.textShadow = '0 1px 2px rgba(0,0,0,0.5)';
-      el.textContent = String(total);
-
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div style="padding: 8px;">
-          <strong>${point.label}</strong><br/>
-          <span style="color: #22c55e;">Origins: ${point.origins}</span><br/>
-          <span style="color: #3b82f6;">Destinations: ${point.destinations}</span><br/>
-          <strong>Total: ${total}</strong>
-        </div>
-      `);
-
-      try {
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat(point.coords)
-          .setPopup(popup)
-          .addTo(map.current!);
-
-        markersRef.current.push(marker);
-      } catch (err) {
-        console.error('Error adding marker:', err, point);
-      }
-    });
-  }, [mapPointsData, flowDirection]);
+    const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
+    if (source) {
+      source.setData(geoJsonData as GeoJSON.FeatureCollection);
+    }
+  }, [geoJsonData]);
 
   // Initialize map when tab is active and token is available
   useEffect(() => {
     if (activeTab !== 'heatmap' || !mapboxToken) return;
     
     setMapReady(false);
+    sourceAddedRef.current = false;
     
     // Small delay to ensure container is rendered with dimensions
     const initTimer = setTimeout(() => {
@@ -476,8 +444,6 @@ export default function LoadAnalyticsTab() {
         map.current.remove();
         map.current = null;
       }
-      markersRef.current.forEach(m => m.remove());
-      markersRef.current = [];
 
       mapboxgl.accessToken = mapboxToken;
       
@@ -491,8 +457,154 @@ export default function LoadAnalyticsTab() {
 
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
         
-        // Add markers once map loads
+        // Add clustering source and layers once map loads
         map.current.on('load', () => {
+          if (!map.current) return;
+          
+          // Add clustered GeoJSON source
+          map.current.addSource('load-points', {
+            type: 'geojson',
+            data: geoJsonData as GeoJSON.FeatureCollection,
+            cluster: true,
+            clusterMaxZoom: 14,
+            clusterRadius: 50,
+            clusterProperties: {
+              sum_total: ['+', ['get', 'total']],
+              sum_origins: ['+', ['get', 'origins']],
+              sum_destinations: ['+', ['get', 'destinations']],
+            },
+          });
+
+          // Cluster circles
+          const clusterColor = flowDirection === 'pickup' 
+            ? 'rgba(34, 197, 94, 0.8)' 
+            : flowDirection === 'delivery' 
+              ? 'rgba(59, 130, 246, 0.8)' 
+              : 'rgba(168, 85, 247, 0.8)';
+
+          map.current.addLayer({
+            id: 'clusters',
+            type: 'circle',
+            source: 'load-points',
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': clusterColor,
+              'circle-radius': [
+                'step',
+                ['get', 'sum_total'],
+                20,    // default radius
+                100, 30,
+                500, 40,
+                1000, 50,
+                5000, 60
+              ],
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#fff',
+            },
+          });
+
+          // Cluster count labels
+          map.current.addLayer({
+            id: 'cluster-count',
+            type: 'symbol',
+            source: 'load-points',
+            filter: ['has', 'point_count'],
+            layout: {
+              'text-field': ['get', 'sum_total'],
+              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+              'text-size': 12,
+            },
+            paint: {
+              'text-color': '#ffffff',
+            },
+          });
+
+          // Unclustered points
+          map.current.addLayer({
+            id: 'unclustered-point',
+            type: 'circle',
+            source: 'load-points',
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+              'circle-color': clusterColor,
+              'circle-radius': [
+                'interpolate', ['linear'], ['get', 'total'],
+                1, 15,
+                50, 25,
+                200, 35
+              ],
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#fff',
+            },
+          });
+
+          // Unclustered point labels
+          map.current.addLayer({
+            id: 'unclustered-count',
+            type: 'symbol',
+            source: 'load-points',
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'text-field': ['get', 'total'],
+              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+              'text-size': 11,
+            },
+            paint: {
+              'text-color': '#ffffff',
+            },
+          });
+
+          sourceAddedRef.current = true;
+
+          // Click to zoom into cluster
+          map.current.on('click', 'clusters', (e) => {
+            if (!map.current) return;
+            const features = map.current.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+            if (!features.length) return;
+            const clusterId = features[0].properties?.cluster_id;
+            const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
+            source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err || !map.current) return;
+              const geometry = features[0].geometry as GeoJSON.Point;
+              map.current.easeTo({
+                center: geometry.coordinates as [number, number],
+                zoom: zoom || 10,
+              });
+            });
+          });
+
+          // Popup for unclustered points
+          map.current.on('click', 'unclustered-point', (e) => {
+            if (!map.current || !e.features?.length) return;
+            const props = e.features[0].properties;
+            const geometry = e.features[0].geometry as GeoJSON.Point;
+            new mapboxgl.Popup()
+              .setLngLat(geometry.coordinates as [number, number])
+              .setHTML(`
+                <div style="padding: 8px;">
+                  <strong>${props?.label || 'Location'}</strong><br/>
+                  <span style="color: #22c55e;">Origins: ${props?.origins || 0}</span><br/>
+                  <span style="color: #3b82f6;">Destinations: ${props?.destinations || 0}</span><br/>
+                  <strong>Total: ${props?.total || 0}</strong>
+                </div>
+              `)
+              .addTo(map.current);
+          });
+
+          // Cursor changes
+          map.current.on('mouseenter', 'clusters', () => {
+            if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+          });
+          map.current.on('mouseleave', 'clusters', () => {
+            if (map.current) map.current.getCanvas().style.cursor = '';
+          });
+          map.current.on('mouseenter', 'unclustered-point', () => {
+            if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+          });
+          map.current.on('mouseleave', 'unclustered-point', () => {
+            if (map.current) map.current.getCanvas().style.cursor = '';
+          });
+
           setMapReady(true);
         });
       } catch (error) {
@@ -502,8 +614,7 @@ export default function LoadAnalyticsTab() {
 
     return () => {
       clearTimeout(initTimer);
-      markersRef.current.forEach(m => m.remove());
-      markersRef.current = [];
+      sourceAddedRef.current = false;
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -511,11 +622,11 @@ export default function LoadAnalyticsTab() {
     };
   }, [activeTab, mapboxToken]);
 
-  // Update markers when map is ready or data changes
+  // Update source data when data changes (without recreating map)
   useEffect(() => {
-    if (!mapReady || !map.current || activeTab !== 'heatmap') return;
-    addMarkersToMap();
-  }, [mapReady, mapPointsData, flowDirection, addMarkersToMap, activeTab]);
+    if (!mapReady || activeTab !== 'heatmap') return;
+    updateMapSource();
+  }, [mapReady, geoJsonData, activeTab, updateMapSource]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
