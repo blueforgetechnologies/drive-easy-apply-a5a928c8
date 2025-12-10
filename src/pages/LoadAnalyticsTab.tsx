@@ -6,8 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer } from "lucide-react";
+import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer, ChevronDown, Check } from "lucide-react";
 import { format, getDay, getHours, parseISO, subDays, subHours, startOfDay, endOfDay } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import mapboxgl from 'mapbox-gl';
@@ -133,7 +135,7 @@ export default function LoadAnalyticsTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
-  const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>(() => subHours(new Date(), 24));
   const [endDate, setEndDate] = useState<Date>(() => new Date());
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
@@ -454,12 +456,14 @@ export default function LoadAnalyticsTab() {
     return Array.from(types).sort();
   }, [loadEmails]);
 
-  // Filter by vehicle type
+  // Filter by vehicle types (multi-select)
   const filteredEmails = useMemo(() => {
-    const result = selectedVehicleType === 'all' ? loadEmails : loadEmails.filter(email => email.parsed_data?.vehicle_type === selectedVehicleType);
+    const result = selectedVehicleTypes.length === 0 
+      ? loadEmails 
+      : loadEmails.filter(email => email.parsed_data?.vehicle_type && selectedVehicleTypes.includes(email.parsed_data.vehicle_type));
     console.log('filteredEmails recalculated:', result.length, 'from', loadEmails.length, 'total');
     return result;
-  }, [loadEmails, selectedVehicleType]);
+  }, [loadEmails, selectedVehicleTypes]);
 
   // Haversine distance calculation (returns miles)
   const haversineDistance = useCallback((coord1: [number, number], coord2: [number, number]): number => {
@@ -1091,17 +1095,47 @@ export default function LoadAnalyticsTab() {
           }}
         />
 
-        <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
-          <SelectTrigger className="w-[140px] h-7 text-xs">
-            <SelectValue placeholder="Vehicle Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {vehicleTypes.map(type => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-7 text-xs gap-1 px-2">
+              {selectedVehicleTypes.length === 0 ? 'All Types' : 
+               selectedVehicleTypes.length === 1 ? selectedVehicleTypes[0] :
+               `${selectedVehicleTypes.length} types`}
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 max-h-64 overflow-y-auto" align="start">
+            <div className="flex flex-col gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-xs h-7"
+                onClick={() => setSelectedVehicleTypes([])}
+              >
+                <Check className={`h-3 w-3 mr-2 ${selectedVehicleTypes.length === 0 ? 'opacity-100' : 'opacity-0'}`} />
+                All Types
+              </Button>
+              {vehicleTypes.map(type => (
+                <Button
+                  key={type}
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-xs h-7"
+                  onClick={() => {
+                    setSelectedVehicleTypes(prev => 
+                      prev.includes(type) 
+                        ? prev.filter(t => t !== type) 
+                        : [...prev, type]
+                    );
+                  }}
+                >
+                  <Check className={`h-3 w-3 mr-2 ${selectedVehicleTypes.includes(type) ? 'opacity-100' : 'opacity-0'}`} />
+                  {type}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <Select value={flowDirection} onValueChange={(v: any) => setFlowDirection(v)}>
           <SelectTrigger className="w-[100px] h-7 text-xs">
