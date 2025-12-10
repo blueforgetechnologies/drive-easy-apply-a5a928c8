@@ -1340,7 +1340,7 @@ export default function LoadAnalyticsTab() {
                     <div 
                       ref={mapContainer} 
                       className="rounded-lg" 
-                      style={{ height: '400px', width: '100%', minHeight: '400px' }} 
+                      style={{ height: '520px', width: '100%', minHeight: '520px' }}
                     />
                   )}
                 </div>
