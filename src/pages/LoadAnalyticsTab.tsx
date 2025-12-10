@@ -103,6 +103,7 @@ const US_HOLIDAYS = [
 
 export default function LoadAnalyticsTab() {
   const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
+  const [totalEmailCount, setTotalEmailCount] = useState<number>(0);
   const [geocodeCache, setGeocodeCache] = useState<GeocodeData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
@@ -182,6 +183,17 @@ export default function LoadAnalyticsTab() {
       // Use the start/end dates for filtering
       const dateFilter = startDate.toISOString();
       const endFilter = endDate.toISOString();
+
+      // First get total count for the date range
+      const { count, error: countError } = await supabase
+        .from("load_emails")
+        .select("id", { count: 'exact', head: true })
+        .gte("received_at", dateFilter)
+        .lte("received_at", endFilter);
+
+      if (!countError && count !== null) {
+        setTotalEmailCount(count);
+      }
 
       // Paginate through results up to maxRecords
       while (hasMore && allData.length < maxRecords) {
@@ -662,16 +674,18 @@ export default function LoadAnalyticsTab() {
 
   // Stats summary
   const stats = useMemo(() => {
-    const totalEmails = filteredEmails.length;
+    // Use totalEmailCount from the database count query (accurate for date range)
+    // Fall back to filteredEmails.length for analytics calculations
+    const totalEmails = totalEmailCount || filteredEmails.length;
     const totalPostedAmount = filteredEmails.reduce((sum, e) => sum + (e.parsed_data?.posted_amount || 0), 0);
-    const avgPostedAmount = totalEmails > 0 ? totalPostedAmount / totalEmails : 0;
+    const avgPostedAmount = filteredEmails.length > 0 ? totalPostedAmount / filteredEmails.length : 0;
     const uniqueStates = new Set([
       ...filteredEmails.map(e => e.parsed_data?.origin_state).filter(Boolean),
       ...filteredEmails.map(e => e.parsed_data?.destination_state).filter(Boolean)
     ]).size;
 
     return { totalEmails, totalPostedAmount, avgPostedAmount, uniqueStates };
-  }, [filteredEmails]);
+  }, [filteredEmails, totalEmailCount]);
 
   // Busiest days identification
   const busiestInfo = useMemo(() => {
