@@ -377,15 +377,15 @@ export function FreightVisualization({
 
             return (
               <g key={idx}>
-                {/* Base pallet rectangle with white border for separation */}
+                {/* Base pallet rectangle */}
                 <rect
-                  x={pX + 2}
-                  y={pY + 2}
-                  width={pW - 4}
-                  height={pH - 4}
+                  x={pX + 1}
+                  y={pY + 1}
+                  width={pW - 2}
+                  height={pH - 2}
                   fill={pallet.color}
-                  stroke="white"
-                  strokeWidth={2}
+                  stroke="rgba(0,0,0,0.3)"
+                  strokeWidth={1}
                   rx={2}
                   opacity={0.9}
                 />
@@ -439,6 +439,8 @@ export function FreightVisualization({
                         width={pW - 6}
                         height={10}
                         fill={stacked.color}
+                        stroke="white"
+                        strokeWidth={1.5}
                         rx={2}
                         opacity={0.9}
                       />
