@@ -176,7 +176,7 @@ export default function LoadAnalyticsTab() {
     setIsLoading(true);
     try {
       const pageSize = 1000;
-      const maxRecords = 10000;
+      const maxRecords = 50000; // Increased limit for better accuracy
       const dateFilter = startDate.toISOString();
       const endFilter = endDate.toISOString();
 
@@ -191,10 +191,18 @@ export default function LoadAnalyticsTab() {
         setTotalEmailCount(count);
       }
 
-      // Calculate how many pages we need (parallel fetch for speed)
-      const recordsToFetch = Math.min(count || maxRecords, maxRecords);
+      const actualCount = count || 0;
+      const recordsToFetch = Math.min(actualCount, maxRecords);
       const numPages = Math.ceil(recordsToFetch / pageSize);
       
+      console.log(`loadAnalyticsData: total count=${actualCount}, fetching=${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
+      
+      if (numPages === 0) {
+        setLoadEmails([]);
+        setIsLoading(false);
+        return;
+      }
+
       // Create parallel queries for all pages
       const queries = Array.from({ length: numPages }, (_, page) => 
         supabase
@@ -220,7 +228,7 @@ export default function LoadAnalyticsTab() {
         ...item,
         parsed_data: item.parsed_data as LoadEmailData['parsed_data']
       }));
-      console.log('loadAnalyticsData: fetched', typedData.length, 'emails for range', dateFilter, 'to', endFilter);
+      console.log('loadAnalyticsData: fetched', typedData.length, 'emails');
       setLoadEmails(typedData);
     } catch (error) {
       console.error("Error loading analytics:", error);
