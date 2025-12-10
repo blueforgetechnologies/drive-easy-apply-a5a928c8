@@ -1,13 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, subDays, subWeeks, subMonths, startOfMonth, endOfMonth, getDay, addDays } from "date-fns";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { format, startOfDay, endOfDay, getDaysInMonth, setYear, setMonth, setDate, subYears } from "date-fns";
 import { cn } from "@/lib/utils";
-import { DateRange } from "react-day-picker";
 
 interface AnalyticsDateFilterProps {
   startDate: Date;
@@ -15,293 +10,273 @@ interface AnalyticsDateFilterProps {
   onDateChange: (start: Date, end: Date) => void;
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+// Generate years from 2020 to current year
+const generateYears = () => {
+  const currentYear = new Date().getFullYear();
+  const years: number[] = [];
+  for (let y = 2020; y <= currentYear; y++) {
+    years.push(y);
+  }
+  return years;
+};
+
+const YEARS = generateYears();
 
 export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: AnalyticsDateFilterProps) {
-  const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'quick' | 'days' | 'weeks' | 'months' | 'custom'>('quick');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startDate,
-    to: endDate
-  });
-
   const today = startOfDay(new Date());
   
-  // Get the most recent occurrence of a specific day
-  const getMostRecentDay = (dayIndex: number): Date => {
-    const todayIndex = getDay(today);
-    const daysAgo = todayIndex >= dayIndex ? todayIndex - dayIndex : 7 - (dayIndex - todayIndex);
-    return subDays(today, daysAgo);
+  // Selected date state
+  const [selectedYear, setSelectedYear] = useState(startDate.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(startDate.getMonth());
+  const [selectedDay, setSelectedDay] = useState(startDate.getDate());
+  
+  // Scroll refs
+  const yearScrollRef = useRef<HTMLDivElement>(null);
+  const monthScrollRef = useRef<HTMLDivElement>(null);
+  const dayScrollRef = useRef<HTMLDivElement>(null);
+
+  // Days in selected month
+  const daysInMonth = getDaysInMonth(new Date(selectedYear, selectedMonth, 1));
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // Check if selection is valid (not in future)
+  const isValidDate = (year: number, month: number, day: number) => {
+    const date = new Date(year, month, day);
+    return date <= today;
   };
 
-  const applyPreset = (start: Date, end: Date) => {
-    onDateChange(startOfDay(start), endOfDay(end));
-    setOpen(false);
+  // Apply date selection
+  const applyDate = (year: number, month: number, day: number) => {
+    if (!isValidDate(year, month, day)) return;
+    
+    const newDate = new Date(year, month, day);
+    onDateChange(startOfDay(newDate), endOfDay(newDate));
   };
 
-  const applyCustomRange = () => {
-    if (dateRange?.from) {
-      onDateChange(
-        startOfDay(dateRange.from),
-        endOfDay(dateRange.to || dateRange.from)
-      );
-      setOpen(false);
+  // Handle year change
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    // Adjust day if necessary
+    const maxDays = getDaysInMonth(new Date(year, selectedMonth, 1));
+    const newDay = Math.min(selectedDay, maxDays);
+    setSelectedDay(newDay);
+    if (isValidDate(year, selectedMonth, newDay)) {
+      applyDate(year, selectedMonth, newDay);
     }
   };
 
-  // Format the current selection for display
-  const getDisplayText = () => {
-    const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    if (diffDays === 1) {
-      if (startDate.toDateString() === today.toDateString()) {
-        return "Today";
-      }
-      return format(startDate, "MMM d, yyyy");
+  // Handle month change
+  const handleMonthChange = (month: number) => {
+    setSelectedMonth(month);
+    // Adjust day if necessary
+    const maxDays = getDaysInMonth(new Date(selectedYear, month, 1));
+    const newDay = Math.min(selectedDay, maxDays);
+    setSelectedDay(newDay);
+    if (isValidDate(selectedYear, month, newDay)) {
+      applyDate(selectedYear, month, newDay);
     }
-    
-    if (diffDays === 7) {
-      return "Last 7 days";
-    }
-    if (diffDays === 14) {
-      return "Last 2 weeks";
-    }
-    if (diffDays === 21) {
-      return "Last 3 weeks";
-    }
-    if (diffDays >= 28 && diffDays <= 31) {
-      return "Last month";
-    }
-    
-    return `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
   };
+
+  // Handle day change
+  const handleDayChange = (day: number) => {
+    setSelectedDay(day);
+    if (isValidDate(selectedYear, selectedMonth, day)) {
+      applyDate(selectedYear, selectedMonth, day);
+    }
+  };
+
+  // Scroll helpers
+  const scroll = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = direction === 'left' ? -150 : 150;
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Jump to today
+  const goToToday = () => {
+    const now = new Date();
+    setSelectedYear(now.getFullYear());
+    setSelectedMonth(now.getMonth());
+    setSelectedDay(now.getDate());
+    applyDate(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+
+  // Check if a date is selected
+  const isSelected = (year: number, month: number, day: number) => {
+    return startDate.getFullYear() === year && 
+           startDate.getMonth() === month && 
+           startDate.getDate() === day;
+  };
+
+  // Sync state when props change
+  useEffect(() => {
+    setSelectedYear(startDate.getFullYear());
+    setSelectedMonth(startDate.getMonth());
+    setSelectedDay(startDate.getDate());
+  }, [startDate]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-2">
-          <CalendarIcon className="h-4 w-4" />
-          <span>{getDisplayText()}</span>
-          <ChevronDown className="h-3 w-3 opacity-50" />
+    <div className="flex flex-col gap-1 bg-background border rounded-lg p-2">
+      {/* Year Row */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => scroll(yearScrollRef, 'left')}
+        >
+          <ChevronLeft className="h-4 w-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <TabsList className="w-full grid grid-cols-5 h-9">
-            <TabsTrigger value="quick" className="text-xs">Quick</TabsTrigger>
-            <TabsTrigger value="days" className="text-xs">Days</TabsTrigger>
-            <TabsTrigger value="weeks" className="text-xs">Weeks</TabsTrigger>
-            <TabsTrigger value="months" className="text-xs">Months</TabsTrigger>
-            <TabsTrigger value="custom" className="text-xs">Custom</TabsTrigger>
-          </TabsList>
+        
+        <div 
+          ref={yearScrollRef}
+          className="flex gap-1 overflow-x-auto scrollbar-hide flex-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {YEARS.map(year => (
+            <Button
+              key={year}
+              variant={selectedYear === year ? "default" : "ghost"}
+              size="sm"
+              className={cn(
+                "h-7 px-3 shrink-0 text-xs font-medium",
+                selectedYear === year && "bg-primary text-primary-foreground"
+              )}
+              onClick={() => handleYearChange(year)}
+            >
+              {year}
+            </Button>
+          ))}
+        </div>
 
-          {/* Quick Presets */}
-          <TabsContent value="quick" className="p-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(today, today)}
-              >
-                Today
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 1), subDays(today, 1))}
-              >
-                Yesterday
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 6), today)}
-              >
-                Last 7 days
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 13), today)}
-              >
-                Last 2 weeks
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 29), today)}
-              >
-                Last 30 days
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 89), today)}
-              >
-                Last 90 days
-              </Button>
-            </div>
-          </TabsContent>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => scroll(yearScrollRef, 'right')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
 
-          {/* Days of Week */}
-          <TabsContent value="days" className="p-3 space-y-2">
-            <p className="text-xs text-muted-foreground mb-2">Select a day (includes today)</p>
-            <div className="grid grid-cols-2 gap-2">
-              {DAY_NAMES.map((day, index) => {
-                const dayDate = getMostRecentDay(index);
-                const isToday = dayDate.toDateString() === today.toDateString();
-                return (
-                  <Button 
-                    key={day}
-                    variant="outline" 
-                    size="sm" 
-                    className="justify-start gap-2"
-                    onClick={() => applyPreset(dayDate, today)}
-                  >
-                    {day}
-                    {isToday && <Badge variant="secondary" className="text-[10px] px-1">Today</Badge>}
-                  </Button>
-                );
-              })}
-            </div>
-          </TabsContent>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 shrink-0 text-xs ml-1"
+          onClick={goToToday}
+        >
+          Today
+        </Button>
+      </div>
 
-          {/* Weeks */}
-          <TabsContent value="weeks" className="p-3 space-y-2">
-            <div className="grid grid-cols-1 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(startOfWeek(today), endOfWeek(today))}
-              >
-                This week
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(startOfWeek(subWeeks(today, 1)), endOfWeek(subWeeks(today, 1)))}
-              >
-                Last week
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 6), today)}
-              >
-                Last 7 days
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 13), today)}
-              >
-                Last 2 weeks
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 20), today)}
-              >
-                Last 3 weeks
-              </Button>
-            </div>
-          </TabsContent>
-
-          {/* Months */}
-          <TabsContent value="months" className="p-3 space-y-2">
-            <div className="grid grid-cols-1 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(startOfMonth(today), endOfMonth(today))}
-              >
-                This month ({format(today, "MMMM")})
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(startOfMonth(subMonths(today, 1)), endOfMonth(subMonths(today, 1)))}
-              >
-                Last month ({format(subMonths(today, 1), "MMMM")})
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 29), today)}
-              >
-                Last 30 days
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 59), today)}
-              >
-                Last 60 days
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(subDays(today, 89), today)}
-              >
-                Last 90 days
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="justify-start"
-                onClick={() => applyPreset(startOfMonth(subMonths(today, 2)), endOfMonth(subMonths(today, 2)))}
-              >
-                2 months ago ({format(subMonths(today, 2), "MMMM")})
-              </Button>
-            </div>
-          </TabsContent>
-
-          {/* Custom Date Range */}
-          <TabsContent value="custom" className="p-3 space-y-3">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={dateRange?.from}
-              selected={dateRange}
-              onSelect={setDateRange}
-              numberOfMonths={2}
-              className="pointer-events-auto"
-            />
-            <div className="flex justify-between items-center pt-2 border-t">
-              <div className="text-xs text-muted-foreground">
-                {dateRange?.from && dateRange?.to && (
-                  <>
-                    {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
-                  </>
+      {/* Month Row */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => scroll(monthScrollRef, 'left')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        <div 
+          ref={monthScrollRef}
+          className="flex gap-1 overflow-x-auto scrollbar-hide flex-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {MONTHS.map((month, idx) => {
+            const isFuture = selectedYear === today.getFullYear() && idx > today.getMonth();
+            return (
+              <Button
+                key={month}
+                variant={selectedMonth === idx ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-7 px-2 shrink-0 text-xs font-medium min-w-[50px]",
+                  selectedMonth === idx && "bg-primary text-primary-foreground",
+                  isFuture && "opacity-40 cursor-not-allowed"
                 )}
-              </div>
-              <Button 
-                size="sm" 
-                onClick={applyCustomRange}
-                disabled={!dateRange?.from}
+                onClick={() => !isFuture && handleMonthChange(idx)}
+                disabled={isFuture}
               >
-                Apply
+                <span className="text-[10px] text-muted-foreground mr-1">{selectedYear}</span>
+                {month}
               </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </PopoverContent>
-    </Popover>
+            );
+          })}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => scroll(monthScrollRef, 'right')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Day Row */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => scroll(dayScrollRef, 'left')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        <div 
+          ref={dayScrollRef}
+          className="flex gap-1 overflow-x-auto scrollbar-hide flex-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {days.map(day => {
+            const isFuture = !isValidDate(selectedYear, selectedMonth, day);
+            const isCurrentSelection = isSelected(selectedYear, selectedMonth, day);
+            return (
+              <Button
+                key={day}
+                variant={isCurrentSelection ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-7 w-8 px-0 shrink-0 text-xs font-medium",
+                  isCurrentSelection && "bg-primary text-primary-foreground",
+                  isFuture && "opacity-40 cursor-not-allowed"
+                )}
+                onClick={() => !isFuture && handleDayChange(day)}
+                disabled={isFuture}
+              >
+                {day}
+              </Button>
+            );
+          })}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => scroll(dayScrollRef, 'right')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Current Selection Display */}
+      <div className="flex items-center justify-center gap-2 pt-1 border-t mt-1">
+        <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">
+          Selected: <span className="font-medium text-foreground">{format(startDate, "EEEE, MMMM d, yyyy")}</span>
+        </span>
+      </div>
+    </div>
   );
 }
