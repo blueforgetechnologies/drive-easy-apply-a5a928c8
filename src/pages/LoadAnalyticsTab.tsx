@@ -175,8 +175,8 @@ export default function LoadAnalyticsTab() {
   const loadAnalyticsData = async () => {
     setIsLoading(true);
     try {
-      const pageSize = 1000;
-      const maxRecords = 50000; // Increased limit for better accuracy
+      const pageSize = 2000;
+      const maxRecords = 30000; // Reduced to prevent timeouts
       const dateFilter = startDate.toISOString();
       const endFilter = endDate.toISOString();
 
@@ -203,25 +203,31 @@ export default function LoadAnalyticsTab() {
         return;
       }
 
-      // Create parallel queries for all pages
-      const queries = Array.from({ length: numPages }, (_, page) => 
-        supabase
-          .from("load_emails")
-          .select("id, received_at, created_at, parsed_data")
-          .order("received_at", { ascending: false })
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-          .gte("received_at", dateFilter)
-          .lte("received_at", endFilter)
-      );
-
-      // Execute all queries in parallel
-      const results = await Promise.all(queries);
-      
-      // Combine results
+      // Fetch in smaller batches to avoid timeouts (max 5 parallel queries at a time)
       const allData: any[] = [];
-      for (const result of results) {
-        if (result.error) throw result.error;
-        if (result.data) allData.push(...result.data);
+      const batchSize = 5;
+      
+      for (let i = 0; i < numPages; i += batchSize) {
+        const batchQueries = Array.from(
+          { length: Math.min(batchSize, numPages - i) }, 
+          (_, j) => {
+            const page = i + j;
+            return supabase
+              .from("load_emails")
+              .select("id, received_at, created_at, parsed_data")
+              .order("received_at", { ascending: false })
+              .range(page * pageSize, (page + 1) * pageSize - 1)
+              .gte("received_at", dateFilter)
+              .lte("received_at", endFilter);
+          }
+        );
+
+        const results = await Promise.all(batchQueries);
+        
+        for (const result of results) {
+          if (result.error) throw result.error;
+          if (result.data) allData.push(...result.data);
+        }
       }
 
       const typedData = allData.map(item => ({
