@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Check } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays, subMonths, subYears, subHours, isSameDay } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -10,51 +10,60 @@ interface AnalyticsDateFilterProps {
   startDate: Date;
   endDate: Date;
   onDateChange: (start: Date, end: Date) => void;
+  prefetchStatus?: Record<string, 'idle' | 'loading' | 'done'>;
 }
 
 type PresetOption = {
   label: string;
   value: string;
+  prefetchKey?: string;
   getRange: () => { start: Date; end: Date };
 };
 
-export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: AnalyticsDateFilterProps) {
+export function AnalyticsDateFilter({ startDate, endDate, onDateChange, prefetchStatus }: AnalyticsDateFilterProps) {
   const today = useMemo(() => new Date(), []);
 
   const presets: PresetOption[] = useMemo(() => [
     {
-      label: "24 Hours",
+      label: "24h",
       value: "24hours",
+      prefetchKey: "24h",
       getRange: () => ({ start: subHours(today, 24), end: today })
     },
     {
-      label: "3 Days",
+      label: "3d",
       value: "3days",
+      prefetchKey: "3d",
       getRange: () => ({ start: startOfDay(subDays(today, 2)), end: endOfDay(today) })
     },
     {
-      label: "7 Days",
+      label: "7d",
       value: "7days",
+      prefetchKey: "7d",
       getRange: () => ({ start: startOfDay(subDays(today, 6)), end: endOfDay(today) })
     },
     {
-      label: "30 Days",
+      label: "30d",
       value: "30days",
+      prefetchKey: "30d",
       getRange: () => ({ start: startOfDay(subDays(today, 29)), end: endOfDay(today) })
     },
     {
-      label: "90 Days",
+      label: "90d",
       value: "90days",
+      prefetchKey: "90d",
       getRange: () => ({ start: startOfDay(subDays(today, 89)), end: endOfDay(today) })
     },
     {
-      label: "6 Months",
+      label: "6mo",
       value: "6months",
+      prefetchKey: "6m",
       getRange: () => ({ start: startOfDay(subMonths(today, 6)), end: endOfDay(today) })
     },
     {
-      label: "1 Year",
+      label: "1yr",
       value: "1year",
+      prefetchKey: "1y",
       getRange: () => ({ start: startOfDay(subYears(today, 1)), end: endOfDay(today) })
     }
   ], [today]);
@@ -90,6 +99,12 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
   }, [startDate, endDate, activePreset]);
 
   const handlePresetClick = (preset: PresetOption) => {
+    // Check if this preset is ready (done) or always available (24h)
+    if (prefetchStatus && preset.prefetchKey && preset.prefetchKey !== '24h') {
+      const status = prefetchStatus[preset.prefetchKey];
+      if (status !== 'done') return; // Don't allow click if not ready
+    }
+    
     setCustomRange({ from: undefined, to: undefined });
     const { start, end } = preset.getRange();
     onDateChange(start, end);
@@ -123,22 +138,47 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
     return "Custom";
   };
 
+  const getPresetStatus = (preset: PresetOption): 'ready' | 'loading' | 'waiting' => {
+    if (!prefetchStatus || !preset.prefetchKey) return 'ready';
+    if (preset.prefetchKey === '24h') return 'ready'; // Always ready
+    const status = prefetchStatus[preset.prefetchKey];
+    if (status === 'done') return 'ready';
+    if (status === 'loading') return 'loading';
+    return 'waiting';
+  };
+
   return (
     <div className="flex items-center gap-1 flex-wrap">
-      {presets.map((preset) => (
-        <Button
-          key={preset.value}
-          variant={activePreset === preset.value ? "default" : "outline"}
-          size="sm"
-          className={cn(
-            "h-7 px-2.5 text-xs font-medium",
-            activePreset === preset.value && "bg-primary text-primary-foreground"
-          )}
-          onClick={() => handlePresetClick(preset)}
-        >
-          {preset.label}
-        </Button>
-      ))}
+      {presets.map((preset) => {
+        const status = getPresetStatus(preset);
+        const isActive = activePreset === preset.value;
+        const isDisabled = status === 'waiting' || status === 'loading';
+        
+        return (
+          <Button
+            key={preset.value}
+            variant={isActive ? "default" : "outline"}
+            size="sm"
+            disabled={isDisabled && !isActive}
+            className={cn(
+              "h-7 px-2 text-xs font-medium min-w-[42px] relative",
+              isActive && "bg-primary text-primary-foreground",
+              isDisabled && !isActive && "opacity-50 cursor-not-allowed"
+            )}
+            onClick={() => handlePresetClick(preset)}
+          >
+            <span className="flex items-center gap-1">
+              {status === 'loading' && !isActive && (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              )}
+              {status === 'ready' && !isActive && preset.prefetchKey !== '24h' && (
+                <Check className="h-3 w-3 text-green-500" />
+              )}
+              {preset.label}
+            </span>
+          </Button>
+        );
+      })}
       
       <Popover>
         <PopoverTrigger asChild>
@@ -146,7 +186,7 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
             variant={activePreset === "custom" ? "default" : "outline"}
             size="sm"
             className={cn(
-              "h-7 px-2.5 text-xs font-medium gap-1",
+              "h-7 px-2 text-xs font-medium gap-1",
               activePreset === "custom" && "bg-primary text-primary-foreground"
             )}
           >

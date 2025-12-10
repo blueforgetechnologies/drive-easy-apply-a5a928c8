@@ -108,7 +108,7 @@ const US_HOLIDAYS = [
 const analyticsCache = new Map<string, { data: LoadEmailData[]; count: number; fetchedAt: Date }>();
 
 // Date range keys for prefetching
-const DATE_RANGE_KEYS = ['24h', '3d', '7d', '30d', '90d'] as const;
+const DATE_RANGE_KEYS = ['24h', '3d', '7d', '30d', '90d', '6m', '1y'] as const;
 type DateRangeKey = typeof DATE_RANGE_KEYS[number];
 
 
@@ -123,6 +123,8 @@ const getDateRangeFromKey = (key: DateRangeKey): { start: Date; end: Date } => {
     case '7d': start = startOfDay(subDays(today, 6)); end.setHours(23, 59, 59, 999); break;
     case '30d': start = startOfDay(subDays(today, 29)); end.setHours(23, 59, 59, 999); break;
     case '90d': start = startOfDay(subDays(today, 89)); end.setHours(23, 59, 59, 999); break;
+    case '6m': start = startOfDay(subDays(today, 180)); end.setHours(23, 59, 59, 999); break;
+    case '1y': start = startOfDay(subDays(today, 365)); end.setHours(23, 59, 59, 999); break;
     default: start = subHours(today, 24);
   }
   return { start, end };
@@ -147,7 +149,7 @@ export default function LoadAnalyticsTab() {
   const [mapReady, setMapReady] = useState(false);
   const [clusterRadius, setClusterRadius] = useState(0); // 0 = no clustering, in miles
   const [prefetchStatus, setPrefetchStatus] = useState<Record<DateRangeKey, 'idle' | 'loading' | 'done'>>({
-    '24h': 'idle', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle'
+    '24h': 'done', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle', '6m': 'idle', '1y': 'idle'
   });
   
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -354,12 +356,12 @@ export default function LoadAnalyticsTab() {
     }
   };
 
-  // Background prefetch for larger date ranges
+  // Background prefetch for larger date ranges - sequential to show progressive loading
   const prefetchDateRanges = useCallback(async () => {
     if (prefetchingRef.current) return;
     prefetchingRef.current = true;
     
-    const rangesToPrefetch: DateRangeKey[] = ['3d', '7d', '30d', '90d'];
+    const rangesToPrefetch: DateRangeKey[] = ['3d', '7d', '30d', '90d', '6m', '1y'];
     
     for (const rangeKey of rangesToPrefetch) {
       const { start, end } = getDateRangeFromKey(rangeKey);
@@ -1056,19 +1058,19 @@ export default function LoadAnalyticsTab() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-          <div className="w-full h-3 bg-muted rounded-full overflow-hidden border">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden border">
             <div 
-              className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300 ease-out"
+              className="h-full bg-primary transition-all duration-300 ease-out"
               style={{ width: `${loadingProgress}%` }}
             />
           </div>
-          <div className="flex items-center justify-between w-full text-sm">
+          <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">
-              {loadingProgress === 0 ? 'Connecting...' : 'Fetching data...'}
+              {loadingProgress === 0 ? 'Connecting...' : 'Loading 24h data'}
             </span>
-            <span className="font-medium text-primary">{loadingProgress}%</span>
+            <span className="font-mono font-medium text-primary">{loadingProgress}%</span>
           </div>
         </div>
       </div>
@@ -1093,6 +1095,7 @@ export default function LoadAnalyticsTab() {
             setStartDate(start);
             setEndDate(end);
           }}
+          prefetchStatus={prefetchStatus}
         />
 
         <Popover>
