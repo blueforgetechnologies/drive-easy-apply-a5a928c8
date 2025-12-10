@@ -311,22 +311,48 @@ export default function LoadAnalyticsTab() {
     return { data: typedData, count: actualCount };
   };
 
-  // Generate cache key from dates
+  // Generate normalized cache key from dates (round to minute to avoid ms mismatches)
   const getCacheKey = (start: Date, end: Date): string => {
-    return `${start.toISOString()}_${end.toISOString()}`;
+    // Normalize to minute precision to match prefetched data with user clicks
+    const normalizeDate = (d: Date) => {
+      const normalized = new Date(d);
+      normalized.setSeconds(0, 0);
+      return normalized.toISOString();
+    };
+    return `${normalizeDate(start)}_${normalizeDate(end)}`;
   };
 
-  // Check if we have cached data for current range
+  // Find best matching cached data (allows for slight time differences)
   const getCachedData = useCallback((start: Date, end: Date) => {
-    const key = getCacheKey(start, end);
-    const cached = analyticsCache.get(key);
-    if (cached) {
-      // Cache is valid for 5 minutes
-      const cacheAge = Date.now() - cached.fetchedAt.getTime();
+    // First try exact match
+    const exactKey = getCacheKey(start, end);
+    const exactCached = analyticsCache.get(exactKey);
+    if (exactCached) {
+      const cacheAge = Date.now() - exactCached.fetchedAt.getTime();
       if (cacheAge < 5 * 60 * 1000) {
+        return exactCached;
+      }
+    }
+    
+    // Try to find a close match (within 2 minutes) for preset ranges
+    for (const [key, cached] of analyticsCache.entries()) {
+      const cacheAge = Date.now() - cached.fetchedAt.getTime();
+      if (cacheAge >= 5 * 60 * 1000) continue;
+      
+      const [cachedStart, cachedEnd] = key.split('_');
+      const cachedStartDate = new Date(cachedStart);
+      const cachedEndDate = new Date(cachedEnd);
+      
+      const startDiff = Math.abs(cachedStartDate.getTime() - start.getTime());
+      const endDiff = Math.abs(cachedEndDate.getTime() - end.getTime());
+      
+      // Match if both start and end are within 2 minutes
+      if (startDiff < 2 * 60 * 1000 && endDiff < 2 * 60 * 1000) {
+        console.log('Using approximate cache match');
         return cached;
       }
     }
+    
     return null;
   }, []);
 
