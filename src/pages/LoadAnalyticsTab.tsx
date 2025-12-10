@@ -202,19 +202,19 @@ export default function LoadAnalyticsTab() {
         
         if (data && data.length > 0) {
           allData.push(...data);
+          // Update state progressively so user sees data loading
+          const typedData = allData.map(item => ({
+            ...item,
+            parsed_data: item.parsed_data as LoadEmailData['parsed_data']
+          }));
+          setLoadEmails(typedData);
+          
           hasMore = data.length === pageSize;
           page++;
         } else {
           hasMore = false;
         }
       }
-      
-      const typedData = allData.map(item => ({
-        ...item,
-        parsed_data: item.parsed_data as LoadEmailData['parsed_data']
-      }));
-      
-      setLoadEmails(typedData);
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {
