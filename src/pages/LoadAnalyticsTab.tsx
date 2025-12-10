@@ -1061,18 +1061,21 @@ export default function LoadAnalyticsTab() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        {loadingProgress > 0 && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${loadingProgress}%` }}
-              />
-            </div>
-            <span className="text-sm text-muted-foreground">Loading {loadingProgress}%</span>
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+          <div className="w-full h-3 bg-muted rounded-full overflow-hidden border">
+            <div 
+              className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300 ease-out"
+              style={{ width: `${loadingProgress}%` }}
+            />
           </div>
-        )}
+          <div className="flex items-center justify-between w-full text-sm">
+            <span className="text-muted-foreground">
+              {loadingProgress === 0 ? 'Connecting...' : 'Fetching data...'}
+            </span>
+            <span className="font-medium text-primary">{loadingProgress}%</span>
+          </div>
+        </div>
       </div>
     );
   }
