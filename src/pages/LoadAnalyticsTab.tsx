@@ -171,22 +171,45 @@ export default function LoadAnalyticsTab() {
   const loadAnalyticsData = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("load_emails")
-        .select("id, received_at, created_at, parsed_data")
-        .order("received_at", { ascending: false });
+      const allData: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
+      // Calculate date filter once
+      let dateFilter: string | null = null;
       if (dateRange !== 'all') {
         const daysAgo = new Date();
         daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
-        query = query.gte("received_at", daysAgo.toISOString());
+        dateFilter = daysAgo.toISOString();
       }
 
-      const { data, error } = await query;
+      // Paginate through all results
+      while (hasMore) {
+        let query = supabase
+          .from("load_emails")
+          .select("id, received_at, created_at, parsed_data")
+          .order("received_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (error) throw error;
+        if (dateFilter) {
+          query = query.gte("received_at", dateFilter);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData.push(...data);
+          hasMore = data.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
       
-      const typedData = (data || []).map(item => ({
+      const typedData = allData.map(item => ({
         ...item,
         parsed_data: item.parsed_data as LoadEmailData['parsed_data']
       }));
