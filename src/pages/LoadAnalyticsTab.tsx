@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer } from "lucide-react";
-import { format, getDay, getHours, parseISO } from "date-fns";
+import { format, getDay, getHours, parseISO, subDays, startOfDay, endOfDay } from "date-fns";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { AnalyticsDateFilter } from "@/components/AnalyticsDateFilter";
 
 interface LoadEmailData {
   id: string;
@@ -106,7 +107,8 @@ export default function LoadAnalyticsTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<'30' | '90' | '365' | 'all'>('90');
+  const [startDate, setStartDate] = useState<Date>(() => subDays(startOfDay(new Date()), 6));
+  const [endDate, setEndDate] = useState<Date>(() => endOfDay(new Date()));
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('geographic');
@@ -125,7 +127,7 @@ export default function LoadAnalyticsTab() {
     loadAnalyticsData();
     loadMapboxToken();
     loadGeocodeCache();
-  }, [dateRange]);
+  }, [startDate, endDate]);
 
   // Auto-refresh interval
   useEffect(() => {
@@ -134,7 +136,7 @@ export default function LoadAnalyticsTab() {
     }, refreshInterval * 1000);
 
     return () => clearInterval(interval);
-  }, [refreshInterval, dateRange]);
+  }, [refreshInterval, startDate, endDate]);
 
   const refreshData = async () => {
     setIsRefreshing(true);
@@ -177,13 +179,9 @@ export default function LoadAnalyticsTab() {
       let page = 0;
       let hasMore = true;
 
-      // Calculate date filter once
-      let dateFilter: string | null = null;
-      if (dateRange !== 'all') {
-        const daysAgo = new Date();
-        daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
-        dateFilter = daysAgo.toISOString();
-      }
+      // Use the start/end dates for filtering
+      const dateFilter = startDate.toISOString();
+      const endFilter = endDate.toISOString();
 
       // Paginate through results up to maxRecords
       while (hasMore && allData.length < maxRecords) {
@@ -191,11 +189,9 @@ export default function LoadAnalyticsTab() {
           .from("load_emails")
           .select("id, received_at, created_at, parsed_data")
           .order("received_at", { ascending: false })
-          .range(page * pageSize, Math.min((page + 1) * pageSize - 1, maxRecords - 1));
-
-        if (dateFilter) {
-          query = query.gte("received_at", dateFilter);
-        }
+          .range(page * pageSize, Math.min((page + 1) * pageSize - 1, maxRecords - 1))
+          .gte("received_at", dateFilter)
+          .lte("received_at", endFilter);
 
         const { data, error } = await query;
 
@@ -704,17 +700,14 @@ export default function LoadAnalyticsTab() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
-            <SelectTrigger className="w-[130px] h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
+          <AnalyticsDateFilter
+            startDate={startDate}
+            endDate={endDate}
+            onDateChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+          />
 
           <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
             <SelectTrigger className="w-[180px] h-8">
