@@ -419,14 +419,15 @@ export default function LoadAnalyticsTab() {
   }, [mapPointsData]);
 
   // Update map source data
-  const updateMapSource = useCallback(() => {
-    if (!map.current || !sourceAddedRef.current) return;
+  const updateMapSource = useCallback((data: typeof geoJsonData) => {
+    if (!map.current) return;
     
+    // Check if source exists
     const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
     if (source) {
-      source.setData(geoJsonData as GeoJSON.FeatureCollection);
+      source.setData(data as GeoJSON.FeatureCollection);
     }
-  }, [geoJsonData]);
+  }, []);
 
   // Initialize map when tab is active and token is available
   useEffect(() => {
@@ -461,10 +462,11 @@ export default function LoadAnalyticsTab() {
         map.current.on('load', () => {
           if (!map.current) return;
           
-          // Add clustered GeoJSON source
+          // Add clustered GeoJSON source with empty initial data
+          // Data will be populated via updateMapSource effect
           map.current.addSource('load-points', {
             type: 'geojson',
-            data: geoJsonData as GeoJSON.FeatureCollection,
+            data: { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection,
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 50,
@@ -625,7 +627,7 @@ export default function LoadAnalyticsTab() {
   // Update source data when data changes (without recreating map)
   useEffect(() => {
     if (!mapReady || activeTab !== 'heatmap') return;
-    updateMapSource();
+    updateMapSource(geoJsonData);
   }, [mapReady, geoJsonData, activeTab, updateMapSource]);
 
   // Aggregate by state
