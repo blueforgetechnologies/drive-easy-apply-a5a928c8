@@ -424,71 +424,39 @@ export function FreightVisualization({
                   </text>
                 )}
 
-                {/* Stacked pallets shown as smaller colored squares in center */}
+
+                {/* Show stacked pallet dimensions as small text labels */}
                 {hasStacked && pallet.stackedOn?.map((stacked, sIdx) => {
-                  // Calculate position for stacked squares - arrange in a row
                   const stackCount = pallet.stackedOn!.length;
-                  const squareSize = Math.min(16, (pW - 8) / stackCount - 2);
-                  const totalWidth = stackCount * (squareSize + 2) - 2;
-                  const startX = pX + (pW - totalWidth) / 2;
-                  const squareY = pY + pH / 2 + 4;
+                  const labelY = pY + pH / 2 + 6 + sIdx * 10;
+                  const dimText = `${stacked.length}"×${stacked.width}"`;
 
                   return (
-                    <g key={`stack-${sIdx}`}>
-                      {/* Stacked pallet square */}
+                    <g key={`stack-label-${sIdx}`}>
                       <rect
-                        x={startX + sIdx * (squareSize + 2)}
-                        y={squareY}
-                        width={squareSize}
-                        height={squareSize}
+                        x={pX + 3}
+                        y={labelY - 6}
+                        width={pW - 6}
+                        height={10}
                         fill={stacked.color}
-                        stroke="white"
-                        strokeWidth={1.5}
                         rx={2}
+                        opacity={0.9}
                       />
-                      {/* Stack level number */}
-                      {squareSize >= 12 && (
-                        <text
-                          x={startX + sIdx * (squareSize + 2) + squareSize / 2}
-                          y={squareY + squareSize / 2}
-                          fill="white"
-                          fontSize={8}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fontWeight="bold"
-                          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
-                        >
-                          {stacked.stackLevel}
-                        </text>
-                      )}
+                      <text
+                        x={pX + pW / 2}
+                        y={labelY}
+                        fill="white"
+                        fontSize={7}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontWeight="bold"
+                        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
+                      >
+                        {dimText}
+                      </text>
                     </g>
                   );
                 })}
-
-                {/* Stack count badge if has stacked items */}
-                {hasStacked && (
-                  <g>
-                    <circle
-                      cx={pX + pW - 8}
-                      cy={pY + 8}
-                      r={8}
-                      fill="#F59E0B"
-                      stroke="white"
-                      strokeWidth={1}
-                    />
-                    <text
-                      x={pX + pW - 8}
-                      y={pY + 8}
-                      fill="white"
-                      fontSize={9}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontWeight="bold"
-                    >
-                      +{pallet.stackedOn!.length}
-                    </text>
-                  </g>
-                )}
               </g>
             );
           })}
