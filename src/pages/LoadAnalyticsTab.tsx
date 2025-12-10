@@ -421,14 +421,28 @@ export default function LoadAnalyticsTab() {
   }, [geoJsonData]);
 
   const updateMapSource = useCallback((data: typeof geoJsonData) => {
-    if (!map.current || !sourceAddedRef.current) return;
+    if (!map.current) {
+      console.log('updateMapSource: no map');
+      return;
+    }
+    if (!sourceAddedRef.current) {
+      console.log('updateMapSource: source not added yet');
+      return;
+    }
+    if (!map.current.isStyleLoaded()) {
+      console.log('updateMapSource: style not loaded, scheduling retry');
+      map.current.once('idle', () => updateMapSource(data));
+      return;
+    }
     
     try {
       const source = map.current.getSource('load-points') as mapboxgl.GeoJSONSource;
       if (source) {
+        console.log('updateMapSource: updating with', data.features.length, 'features');
         source.setData(data as GeoJSON.FeatureCollection);
-        // Force map to re-render
         map.current.triggerRepaint();
+      } else {
+        console.log('updateMapSource: source not found');
       }
     } catch (e) {
       console.log('Map source update error:', e);
