@@ -379,13 +379,13 @@ export function FreightVisualization({
               <g key={idx}>
                 {/* Base pallet rectangle */}
                 <rect
-                  x={pX + 1}
-                  y={pY + 1}
-                  width={pW - 2}
-                  height={pH - 2}
+                  x={pX + 2}
+                  y={pY + 2}
+                  width={pW - 4}
+                  height={pH - 4}
                   fill={pallet.color}
-                  stroke={hasStacked ? "#F59E0B" : "rgba(0,0,0,0.3)"}
-                  strokeWidth={hasStacked ? 2 : 1}
+                  stroke="#1E293B"
+                  strokeWidth={3}
                   rx={2}
                   opacity={0.9}
                 />
