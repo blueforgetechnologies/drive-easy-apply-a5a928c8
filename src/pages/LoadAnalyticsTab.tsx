@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer, ChevronDown, Check } from "lucide-react";
-import { format, getDay, getHours, parseISO, subDays, subHours, startOfDay, endOfDay } from "date-fns";
+import { format, getDay, getHours, parseISO, subDays, subHours, subMonths, subYears, startOfDay, endOfDay } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -112,22 +112,22 @@ const DATE_RANGE_KEYS = ['24h', '3d', '7d', '30d', '90d', '6m', '1y'] as const;
 type DateRangeKey = typeof DATE_RANGE_KEYS[number];
 
 
-// Get date range for prefetching (matches AnalyticsDateFilter presets)
+// Get date range for prefetching (matches AnalyticsDateFilter presets EXACTLY)
 const getDateRangeFromKey = (key: DateRangeKey): { start: Date; end: Date } => {
-  const end = new Date();
   const today = new Date();
-  let start: Date;
+  const endOfToday = new Date(today);
+  endOfToday.setHours(23, 59, 59, 999);
+  
   switch (key) {
-    case '24h': start = subHours(today, 24); break;
-    case '3d': start = startOfDay(subDays(today, 2)); end.setHours(23, 59, 59, 999); break;
-    case '7d': start = startOfDay(subDays(today, 6)); end.setHours(23, 59, 59, 999); break;
-    case '30d': start = startOfDay(subDays(today, 29)); end.setHours(23, 59, 59, 999); break;
-    case '90d': start = startOfDay(subDays(today, 89)); end.setHours(23, 59, 59, 999); break;
-    case '6m': start = startOfDay(subDays(today, 180)); end.setHours(23, 59, 59, 999); break;
-    case '1y': start = startOfDay(subDays(today, 365)); end.setHours(23, 59, 59, 999); break;
-    default: start = subHours(today, 24);
+    case '24h': return { start: subHours(today, 24), end: today };
+    case '3d': return { start: startOfDay(subDays(today, 2)), end: endOfToday };
+    case '7d': return { start: startOfDay(subDays(today, 6)), end: endOfToday };
+    case '30d': return { start: startOfDay(subDays(today, 29)), end: endOfToday };
+    case '90d': return { start: startOfDay(subDays(today, 89)), end: endOfToday };
+    case '6m': return { start: startOfDay(subMonths(today, 6)), end: endOfToday };
+    case '1y': return { start: startOfDay(subYears(today, 1)), end: endOfToday };
+    default: return { start: subHours(today, 24), end: today };
   }
-  return { start, end };
 };
 
 export default function LoadAnalyticsTab() {
