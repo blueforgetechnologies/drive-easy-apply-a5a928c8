@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format, startOfDay, endOfDay, subDays, subMonths, subYears, previousMonday, previousSunday, previousSaturday, previousFriday, previousThursday, previousWednesday, previousTuesday, isMonday, isSunday, isSaturday, isFriday, isThursday, isWednesday, isTuesday, isSameDay } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, subMonths, subYears, subHours, isSameDay } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -21,77 +21,11 @@ type PresetOption = {
 export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: AnalyticsDateFilterProps) {
   const today = useMemo(() => new Date(), []);
 
-  const getLastDayOfWeek = (dayCheck: (date: Date) => boolean, getPrevious: (date: Date) => Date) => {
-    if (dayCheck(today)) return today;
-    return getPrevious(today);
-  };
-
-  const getDayWithDate = (dayCheck: (date: Date) => boolean, getPrevious: (date: Date) => Date, shortName: string) => {
-    const date = getLastDayOfWeek(dayCheck, getPrevious);
-    return `${shortName} ${format(date, "M/d")}`;
-  };
-
   const presets: PresetOption[] = useMemo(() => [
     {
-      label: "Today",
-      value: "today",
-      getRange: () => ({ start: startOfDay(today), end: endOfDay(today) })
-    },
-    {
-      label: getDayWithDate(isMonday, previousMonday, "Mon"),
-      value: "monday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isMonday, previousMonday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
-    },
-    {
-      label: getDayWithDate(isTuesday, previousTuesday, "Tue"),
-      value: "tuesday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isTuesday, previousTuesday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
-    },
-    {
-      label: getDayWithDate(isWednesday, previousWednesday, "Wed"),
-      value: "wednesday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isWednesday, previousWednesday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
-    },
-    {
-      label: getDayWithDate(isThursday, previousThursday, "Thu"),
-      value: "thursday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isThursday, previousThursday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
-    },
-    {
-      label: getDayWithDate(isFriday, previousFriday, "Fri"),
-      value: "friday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isFriday, previousFriday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
-    },
-    {
-      label: getDayWithDate(isSaturday, previousSaturday, "Sat"),
-      value: "saturday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isSaturday, previousSaturday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
-    },
-    {
-      label: getDayWithDate(isSunday, previousSunday, "Sun"),
-      value: "sunday",
-      getRange: () => {
-        const day = getLastDayOfWeek(isSunday, previousSunday);
-        return { start: startOfDay(day), end: endOfDay(day) };
-      }
+      label: "24 Hours",
+      value: "24hours",
+      getRange: () => ({ start: subHours(today, 24), end: today })
     },
     {
       label: "3 Days",
@@ -129,8 +63,15 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
   const activePreset = useMemo(() => {
     for (const preset of presets) {
       const range = preset.getRange();
-      if (isSameDay(range.start, startDate) && isSameDay(range.end, endDate)) {
-        return preset.value;
+      // For 24 hours, compare times; for others compare days
+      if (preset.value === "24hours") {
+        const diffMs = Math.abs(range.start.getTime() - startDate.getTime());
+        const endDiffMs = Math.abs(range.end.getTime() - endDate.getTime());
+        if (diffMs < 60000 && endDiffMs < 60000) return preset.value;
+      } else {
+        if (isSameDay(range.start, startDate) && isSameDay(range.end, endDate)) {
+          return preset.value;
+        }
       }
     }
     return "custom";
@@ -190,7 +131,7 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
           variant={activePreset === preset.value ? "default" : "outline"}
           size="sm"
           className={cn(
-            "h-7 px-2 text-xs font-medium",
+            "h-7 px-2.5 text-xs font-medium",
             activePreset === preset.value && "bg-primary text-primary-foreground"
           )}
           onClick={() => handlePresetClick(preset)}
@@ -205,7 +146,7 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange }: Analyt
             variant={activePreset === "custom" ? "default" : "outline"}
             size="sm"
             className={cn(
-              "h-7 px-2 text-xs font-medium gap-1",
+              "h-7 px-2.5 text-xs font-medium gap-1",
               activePreset === "custom" && "bg-primary text-primary-foreground"
             )}
           >
