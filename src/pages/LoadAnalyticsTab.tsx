@@ -648,42 +648,41 @@ export default function LoadAnalyticsTab() {
   useEffect(() => {
     if (activeTab !== 'heatmap' || !mapReady || !sourceAddedRef.current) return;
     
-    // Update data and force resize
     updateMapSource(geoJsonData);
-    if (map.current) {
-      map.current.resize();
-    }
   }, [geoJsonData, activeTab, mapReady, updateMapSource]);
 
-  // Force resize and update when loading finishes
+  // Force map to properly render when loading finishes or tab becomes active
   useEffect(() => {
-    if (activeTab !== 'heatmap' || isLoading) return;
-    if (!map.current || !mapReady || !sourceAddedRef.current) return;
+    if (activeTab !== 'heatmap') return;
+    if (!map.current) return;
     
-    // Data finished loading - force resize and update
-    const timer = setTimeout(() => {
-      if (map.current) {
+    const forceRender = () => {
+      if (!map.current) return;
+      
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        if (!map.current) return;
         map.current.resize();
-        updateMapSource(geoJsonData);
-      }
-    }, 150);
+        
+        // Wait for map to be idle, then update source
+        if (map.current.isStyleLoaded()) {
+          updateMapSource(geoJsonData);
+          map.current.triggerRepaint();
+        } else {
+          map.current.once('idle', () => {
+            updateMapSource(geoJsonData);
+            map.current?.triggerRepaint();
+          });
+        }
+      });
+    };
+
+    // Run immediately and also after a delay for good measure
+    forceRender();
+    const timer = setTimeout(forceRender, 200);
     
     return () => clearTimeout(timer);
   }, [isLoading, activeTab, mapReady, geoJsonData, updateMapSource]);
-
-  // Force resize when switching to heatmap tab
-  useEffect(() => {
-    if (activeTab !== 'heatmap' || !map.current) return;
-    
-    const timer = setTimeout(() => {
-      if (map.current) {
-        map.current.resize();
-        map.current.triggerRepaint();
-      }
-    }, 50);
-    
-    return () => clearTimeout(timer);
-  }, [activeTab]);
 
   // Aggregate by state
   const stateData = useMemo((): StateData[] => {
