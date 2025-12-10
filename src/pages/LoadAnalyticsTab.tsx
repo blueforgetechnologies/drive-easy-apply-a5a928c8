@@ -1260,10 +1260,10 @@ export default function LoadAnalyticsTab() {
                   <Badge variant="outline" className="text-[10px]">
                     {stats.totalEmails.toLocaleString()} loads
                   </Badge>
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <Timer className="h-3 w-3" />
+                  <div className="flex items-center gap-1 bg-muted/50 border rounded px-2 py-0.5">
+                    <span className="text-[10px] text-muted-foreground">Refresh:</span>
                     <Select value={refreshInterval.toString()} onValueChange={(v) => setRefreshInterval(parseInt(v))}>
-                      <SelectTrigger className="h-5 w-[60px] text-[10px] px-1.5">
+                      <SelectTrigger className="h-5 w-[55px] text-[11px] px-1.5 border-0 bg-transparent font-medium">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-background border z-50">
