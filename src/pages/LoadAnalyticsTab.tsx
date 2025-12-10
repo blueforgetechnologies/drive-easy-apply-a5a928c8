@@ -924,12 +924,12 @@ export default function LoadAnalyticsTab() {
       .slice(0, 50);
   }, [filteredEmails]);
 
-  // Day of week analysis
+  // Day of week analysis - use ALL loaded emails, not filtered subset
   const dayOfWeekData = useMemo((): TimeData[] => {
     const dayCounts = new Map<number, number>();
     DAYS_OF_WEEK.forEach((_, i) => dayCounts.set(i, 0));
 
-    filteredEmails.forEach(email => {
+    loadEmails.forEach(email => {
       try {
         const date = parseISO(email.received_at);
         const day = getDay(date);
@@ -941,14 +941,14 @@ export default function LoadAnalyticsTab() {
       label,
       count: dayCounts.get(i) || 0
     }));
-  }, [filteredEmails]);
+  }, [loadEmails]);
 
-  // Hour of day analysis
+  // Hour of day analysis - use ALL loaded emails, not filtered subset
   const hourOfDayData = useMemo((): TimeData[] => {
     const hourCounts = new Map<number, number>();
     HOURS.forEach(h => hourCounts.set(h, 0));
 
-    filteredEmails.forEach(email => {
+    loadEmails.forEach(email => {
       try {
         const date = parseISO(email.received_at);
         const hour = getHours(date);
@@ -960,7 +960,7 @@ export default function LoadAnalyticsTab() {
       label: `${hour}:00`,
       count: hourCounts.get(hour) || 0
     }));
-  }, [filteredEmails]);
+  }, [loadEmails]);
 
   // Vehicle type distribution
   const vehicleTypeDistribution = useMemo(() => {
@@ -1308,11 +1308,21 @@ export default function LoadAnalyticsTab() {
                     <div className="text-base font-bold">{stats.uniqueStates}</div>
                   </div>
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
-                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Busiest Day</div>
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">
+                      Busiest Day
+                      {loadEmails.length < totalEmailCount && (
+                        <span className="text-orange-500 ml-1" title={`Based on ${loadEmails.length.toLocaleString()} of ${totalEmailCount.toLocaleString()} emails`}>*</span>
+                      )}
+                    </div>
                     <div className="text-base font-bold">{busiestInfo.busiestDay || 'N/A'}</div>
                   </div>
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
-                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Peak Hour</div>
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">
+                      Peak Hour
+                      {loadEmails.length < totalEmailCount && (
+                        <span className="text-orange-500 ml-1" title={`Based on ${loadEmails.length.toLocaleString()} of ${totalEmailCount.toLocaleString()} emails`}>*</span>
+                      )}
+                    </div>
                     <div className="text-base font-bold">{busiestInfo.busiestHour || 'N/A'}</div>
                   </div>
                   <div className="bg-muted/30 border rounded px-2 py-1.5">
