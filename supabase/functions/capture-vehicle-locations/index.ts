@@ -50,7 +50,7 @@ serve(async (req) => {
     // Fetch all vehicles with their current location data
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select('id, unit_number, current_latitude, current_longitude, current_speed, current_odometer, vin, provider_id')
+      .select('id, vehicle_number, current_latitude, current_longitude, current_speed, current_odometer, vin, provider_id')
       .not('current_latitude', 'is', null)
       .not('current_longitude', 'is', null);
 
