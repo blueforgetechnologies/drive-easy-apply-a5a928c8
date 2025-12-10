@@ -172,12 +172,34 @@ export default function LoadAnalyticsTab() {
   const [prefetchStatus, setPrefetchStatus] = useState<Record<DateRangeKey, 'idle' | 'loading' | 'done'>>({
     '24h': 'done', '3d': 'idle', '7d': 'idle', '30d': 'idle', '90d': 'idle', '6m': 'idle', '1y': 'idle'
   });
+  const [currentRangeKey, setCurrentRangeKey] = useState<string | null>('24h');
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const sourceAddedRef = useRef(false);
   const geoJsonDataRef = useRef<typeof geoJsonData | null>(null);
   const prefetchingRef = useRef(false);
+
+  // Handle date filter change - use cached data instantly if available
+  const handleDateChange = useCallback((start: Date, end: Date, rangeKey?: string) => {
+    // If a range key is provided and we have cached data, use it immediately
+    if (rangeKey && analyticsCache.has(rangeKey)) {
+      const cached = analyticsCache.get(rangeKey)!;
+      console.log(`Instant load from cache: ${rangeKey}`);
+      setLoadEmails(cached.data);
+      setTotalEmailCount(cached.count);
+      setCurrentRangeKey(rangeKey);
+      setStartDate(start);
+      setEndDate(end);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Otherwise, trigger a fresh load
+    setCurrentRangeKey(rangeKey || null);
+    setStartDate(start);
+    setEndDate(end);
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -1109,10 +1131,7 @@ export default function LoadAnalyticsTab() {
         <AnalyticsDateFilter
           startDate={startDate}
           endDate={endDate}
-          onDateChange={(start, end) => {
-            setStartDate(start);
-            setEndDate(end);
-          }}
+          onDateChange={handleDateChange}
           prefetchStatus={prefetchStatus}
         />
 

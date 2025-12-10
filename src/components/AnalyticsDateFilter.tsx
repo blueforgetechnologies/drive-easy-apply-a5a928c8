@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 interface AnalyticsDateFilterProps {
   startDate: Date;
   endDate: Date;
-  onDateChange: (start: Date, end: Date) => void;
+  onDateChange: (start: Date, end: Date, rangeKey?: string) => void;
   prefetchStatus?: Record<string, 'idle' | 'loading' | 'done'>;
 }
 
@@ -111,7 +111,8 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange, prefetch
     
     setCustomRange({ from: undefined, to: undefined });
     const { start, end } = preset.getRange();
-    onDateChange(start, end);
+    // Pass the range key so parent can use cached data directly
+    onDateChange(start, end, preset.prefetchKey);
   };
 
   const handleCustomRangeSelect = (range: { from: Date | undefined; to: Date | undefined } | undefined) => {
