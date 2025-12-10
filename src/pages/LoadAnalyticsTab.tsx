@@ -1108,36 +1108,57 @@ export default function LoadAnalyticsTab() {
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
-              {!mapboxToken ? (
-                <div className="flex items-center justify-center h-[450px] bg-muted/20 rounded-lg">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="relative">
-                  <div 
-                    ref={mapContainer} 
-                    className="rounded-lg" 
-                    style={{ height: '450px', width: '100%', minHeight: '450px' }} 
-                  />
-                  {/* Floating stats overlay */}
-                  <div className="absolute bottom-4 left-4 flex gap-2">
-                    <div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
-                      <div className="text-[10px] text-muted-foreground uppercase">Locations</div>
-                      <div className="text-lg font-bold">{mapPointsData.length}</div>
+              <div className="flex gap-3">
+                {/* Stats sidebar */}
+                <div className="flex flex-col gap-1.5 w-28 shrink-0">
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Total Emails</div>
+                    <div className="text-base font-bold">{loadEmails?.length?.toLocaleString() || 0}</div>
+                  </div>
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Avg Amount</div>
+                    <div className="text-base font-bold">
+                      ${Math.round((loadEmails?.reduce((sum, e) => sum + (e.parsed_data?.posted_amount || 0), 0) || 0) / (loadEmails?.length || 1)).toLocaleString()}
                     </div>
-                    <div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
-                      <div className="text-[10px] text-muted-foreground uppercase">Top Origin</div>
-                      <div className="text-lg font-bold">{stateData[0]?.state || 'N/A'}</div>
-                    </div>
-                    <div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
-                      <div className="text-[10px] text-muted-foreground uppercase">Top Dest</div>
-                      <div className="text-lg font-bold">
-                        {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
-                      </div>
+                  </div>
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">States</div>
+                    <div className="text-base font-bold">{stateData.length}</div>
+                  </div>
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Busiest Day</div>
+                    <div className="text-base font-bold">{busiestInfo.busiestDay || 'N/A'}</div>
+                  </div>
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Peak Hour</div>
+                    <div className="text-base font-bold">{busiestInfo.busiestHour || 'N/A'}</div>
+                  </div>
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Top Origin</div>
+                    <div className="text-base font-bold">{stateData[0]?.state || 'N/A'}</div>
+                  </div>
+                  <div className="bg-muted/30 border rounded px-2 py-1.5">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Top Dest</div>
+                    <div className="text-base font-bold">
+                      {stateData.sort((a, b) => b.deliveries - a.deliveries)[0]?.state || 'N/A'}
                     </div>
                   </div>
                 </div>
-              )}
+                {/* Map */}
+                <div className="flex-1">
+                  {!mapboxToken ? (
+                    <div className="flex items-center justify-center h-[400px] bg-muted/20 rounded-lg">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div 
+                      ref={mapContainer} 
+                      className="rounded-lg" 
+                      style={{ height: '400px', width: '100%', minHeight: '400px' }} 
+                    />
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
