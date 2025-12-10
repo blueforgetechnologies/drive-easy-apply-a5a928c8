@@ -1247,43 +1247,18 @@ export default function LoadAnalyticsTab() {
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4" />
                   <span className="text-sm font-medium">Load Density Heat Map</span>
-                  <Badge variant="outline" className="text-[10px]">
-                    {filteredEmails.length.toLocaleString()} loads
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground ml-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-green-500/60 mr-0.5"></span>Origins
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500/60 mx-0.5 ml-2"></span>Dest
-                    <span className="inline-block w-2 h-2 rounded-full bg-purple-500/60 mx-0.5 ml-2"></span>Both
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <MapIcon className="h-3 w-3" />
-                    <span>{clusterRadius === 0 ? 'No cluster' : `${clusterRadius}mi`}</span>
-                    <Slider
-                      value={[clusterRadius]}
-                      onValueChange={([val]) => setClusterRadius(val)}
-                      min={0}
-                      max={200}
-                      step={10}
-                      className="w-14"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <BarChart3 className="h-3 w-3" />
-                    <Select value={maxRecordsLimit.toString()} onValueChange={(v) => setMaxRecordsLimit(parseInt(v))}>
-                      <SelectTrigger className="h-5 w-[70px] text-[10px] px-1.5">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border z-50">
-                        {Array.from({ length: 50 }, (_, i) => (i + 1) * 5000).map(val => (
-                          <SelectItem key={val} value={val.toString()} className="text-xs">
-                            {(val / 1000).toFixed(0)}K
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select value={maxRecordsLimit.toString()} onValueChange={(v) => setMaxRecordsLimit(parseInt(v))}>
+                    <SelectTrigger className="h-5 w-auto min-w-[90px] text-[10px] px-2 border-dashed">
+                      <SelectValue>{loadEmails.length.toLocaleString()} loads</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {Array.from({ length: 50 }, (_, i) => (i + 1) * 5000).map(val => (
+                        <SelectItem key={val} value={val.toString()} className="text-xs">
+                          {val.toLocaleString()} loads
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
                     <Select value={refreshInterval.toString()} onValueChange={(v) => setRefreshInterval(parseInt(v))}>
