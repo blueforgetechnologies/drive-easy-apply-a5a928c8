@@ -1293,8 +1293,8 @@ export default function LoadAnalyticsTab() {
                   <Globe className="h-4 w-4" />
                   <span className="text-sm font-medium">Load Density Heat Map</span>
                   <Select value={maxRecordsLimit.toString()} onValueChange={(v) => setMaxRecordsLimit(parseInt(v))}>
-                    <SelectTrigger className="h-5 w-auto min-w-[90px] text-[10px] px-2 border-dashed">
-                      <SelectValue>{loadEmails.length.toLocaleString()} loads</SelectValue>
+                    <SelectTrigger className="h-5 w-auto min-w-[70px] text-[10px] px-2 border-dashed">
+                      <SelectValue>{(maxRecordsLimit / 1000).toFixed(0)}K max</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="bg-background border z-50">
                       {Array.from({ length: 50 }, (_, i) => (i + 1) * 5000).map(val => (
@@ -1304,6 +1304,9 @@ export default function LoadAnalyticsTab() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <span className="text-[10px] text-muted-foreground">
+                    ({loadEmails.length.toLocaleString()} loaded)
+                  </span>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Timer className="h-3 w-3" />
                     <Select value={refreshInterval.toString()} onValueChange={(v) => setRefreshInterval(parseInt(v))}>
