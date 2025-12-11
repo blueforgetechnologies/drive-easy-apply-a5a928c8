@@ -35,6 +35,7 @@ import RoleBuilderTab from "./pages/RoleBuilderTab";
 import ScreenshareTab from "./pages/ScreenshareTab";
 import FreightCalculatorTab from "./pages/FreightCalculatorTab";
 import LoadAnalyticsTab from "./pages/LoadAnalyticsTab";
+import SystemPromptExport from "./pages/SystemPromptExport";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
           <Route path="/dashboard/carrier/:id" element={<DashboardLayout><CarrierDetail /></DashboardLayout>} />
           <Route path="/dashboard/customer/:id" element={<DashboardLayout><CustomerDetail /></DashboardLayout>} />
           <Route path="/dashboard/duplicate-customers" element={<DashboardLayout><DuplicateCustomersTab /></DashboardLayout>} />
+          <Route path="/system-prompt" element={<SystemPromptExport />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
