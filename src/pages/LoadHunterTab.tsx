@@ -2741,14 +2741,14 @@ export default function LoadHunterTab() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Filter Bar - Full Width - Always Visible */}
       <div className="flex items-center gap-1.5 py-1.5 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
-          {/* Mode Buttons */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Mode Buttons - Merged Toggle */}
+          <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
             <Button 
               size="sm" 
-              className={`h-6 px-3 text-[11px] font-medium rounded-full border-0 ${
+              className={`h-6 px-3 text-[11px] font-medium !rounded-none !rounded-l-full border-0 ${
                 activeMode === 'admin' 
-                  ? 'btn-glossy-dark text-white' 
-                  : 'btn-glossy text-gray-600 hover:text-gray-800'
+                  ? 'btn-glossy text-gray-600' 
+                  : 'bg-transparent text-gray-400 hover:text-gray-600'
               }`}
               onClick={() => setActiveMode('admin')}
             >
@@ -2757,10 +2757,10 @@ export default function LoadHunterTab() {
             
             <Button 
               size="sm" 
-              className={`h-6 px-3 text-[11px] font-medium rounded-full border-0 ${
+              className={`h-6 px-3 text-[11px] font-medium !rounded-none !rounded-r-full border-0 ${
                 activeMode === 'dispatch' 
                   ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-600 hover:text-gray-800'
+                  : 'bg-transparent text-gray-400 hover:text-gray-600'
               }`}
               onClick={() => setActiveMode('dispatch')}
             >
