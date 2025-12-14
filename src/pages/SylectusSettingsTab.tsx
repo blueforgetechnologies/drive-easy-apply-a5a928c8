@@ -376,6 +376,8 @@ export default function SylectusSettingsTab() {
           ...loadTypes.filter(t => t.isHidden).map(t => ({ ...t, category: 'load' as const }))
         ];
 
+        const totalActiveFilters = canonicalEntries.length + hiddenEntries.length;
+
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Active Filters */}
@@ -385,85 +387,74 @@ export default function SylectusSettingsTab() {
                   <CardTitle className="text-base">Sylectus Active Filters</CardTitle>
                 </div>
                 <CardDescription>
-                  {canonicalEntries.length} canonical types, {hiddenEntries.length} hidden
+                  {totalActiveFilters} active filter{totalActiveFilters !== 1 ? 's' : ''}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[600px] overflow-y-auto">
-                  {/* Canonical Types Section */}
-                  {canonicalEntries.length > 0 && (
-                    <div className="border-b">
-                      <div className="px-3 py-2 bg-muted/50">
-                        <span className="text-xs font-medium text-muted-foreground">CANONICAL TYPES (for Hunt Plans)</span>
-                      </div>
-                      <Table>
-                        <TableBody>
-                          {canonicalEntries.map((entry) => (
-                            <TableRow key={`canonical-${entry.category}-${entry.value}`}>
-                              <TableCell className="font-medium text-sm">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="default" className="text-xs">
-                                    {entry.value}
-                                  </Badge>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="text-xs">
-                                  {entry.category === 'vehicle' ? 'Vehicle' : 'Load'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
-                                ← {entry.mappedFrom.length} merged
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                  
-                  {/* Hidden Types Section */}
-                  {hiddenEntries.length > 0 && (
-                    <div>
-                      <div className="px-3 py-2 bg-muted/50">
-                        <span className="text-xs font-medium text-muted-foreground">HIDDEN TYPES</span>
-                      </div>
-                      <Table>
-                        <TableBody>
-                          {hiddenEntries.map((type) => (
-                            <TableRow key={`hidden-${type.category}-${type.value}`}>
-                              <TableCell className="font-medium text-sm">
-                                <span className="line-through text-muted-foreground">
-                                  {type.value}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="text-xs">
-                                  {type.category === 'vehicle' ? 'Vehicle' : 'Load'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => handleRestoreType(type.category, type.value)}
-                                >
-                                  <Undo2 className="h-3 w-3" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {/* Canonical/Merged Types */}
+                      {canonicalEntries.map((entry) => (
+                        <TableRow key={`canonical-${entry.category}-${entry.value}`}>
+                          <TableCell className="font-medium text-sm">
+                            <Badge variant="default" className="text-xs">
+                              {entry.value}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {entry.category === 'vehicle' ? 'Vehicle' : 'Load'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            ← {entry.mappedFrom.length} merged
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Hidden Types */}
+                      {hiddenEntries.map((type) => (
+                        <TableRow key={`hidden-${type.category}-${type.value}`}>
+                          <TableCell className="font-medium text-sm">
+                            <span className="line-through text-muted-foreground">
+                              {type.value}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {type.category === 'vehicle' ? 'Vehicle' : 'Load'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleRestoreType(type.category, type.value)}
+                            >
+                              <Undo2 className="h-3 w-3" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
 
-                  {canonicalEntries.length === 0 && hiddenEntries.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8">
-                      No active filters
-                    </div>
-                  )}
+                      {totalActiveFilters === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                            No active filters
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
