@@ -4457,6 +4457,8 @@ export default function LoadHunterTab() {
                             ...item,
                             id: (item as any).match_id || (item as any).id,
                           } : null;
+                          // Get the hunt plan for this match to access availableFeet
+                          const matchHuntPlan = match ? huntPlans.find(hp => hp.id === (item as any).hunt_plan_id) : null;
                           const data = email.parsed_data || {};
                           // Use created_at (when WE processed the email) for time display
                           const processedDate = new Date(email.created_at);
@@ -4797,7 +4799,9 @@ export default function LoadHunterTab() {
                                 <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions ?? 'Not Specified'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.avail_ft ? `${data.avail_ft} ft` : '—'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap font-medium text-primary">
+                                  {matchHuntPlan?.availableFeet ? `${matchHuntPlan.availableFeet}'` : '—'}
+                                </div>
                               </TableCell>
                               <TableCell className="py-1">
                                 <Badge variant="secondary" className="text-[12px] h-4 px-1.5">
