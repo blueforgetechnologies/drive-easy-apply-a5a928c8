@@ -1859,12 +1859,12 @@ export default function LoadHunterTab() {
   const handleSkipMatch = async (matchId: string) => {
     setMatchActionTaken(true); // Mark that action was taken
     
-    // Optimistic update - immediately remove from unreviewed UI
+    // Optimistic update - immediately remove from unreviewed UI for instant feedback
     setUnreviewedViewData(prev => prev.filter(m => m.match_id !== matchId));
     setLoadMatches(prev => prev.filter(m => m.id !== matchId));
     
     try {
-      // Run DB operations in parallel
+      // Run DB operations in parallel for speed
       const [, { error }] = await Promise.all([
         trackDispatcherAction(matchId, 'skipped'),
         supabase
@@ -1875,14 +1875,14 @@ export default function LoadHunterTab() {
 
       if (error) throw error;
       
-      // Refresh skipped matches in background for count update (fast, no await needed for UI)
-      loadHuntMatches();
+      // Refresh all match data to update counts (skip, vehicle badges, etc.)
+      await loadHuntMatches();
     } catch (err) {
       console.error('Error skipping match:', err);
       toast.error('Failed to skip match');
       // Refetch all on error to restore correct state
-      loadHuntMatches();
-      loadUnreviewedMatches();
+      await loadHuntMatches();
+      await loadUnreviewedMatches();
     }
   };
 
