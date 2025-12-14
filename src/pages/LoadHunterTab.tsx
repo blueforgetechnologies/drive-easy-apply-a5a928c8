@@ -4891,10 +4891,10 @@ export default function LoadHunterTab() {
                   </div>
                   
                   {/* Pagination bar at bottom - glossy style */}
-                  <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/80 border-t-2 border-border/50">
-                    <div className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+                  <div className="flex-shrink-0 flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-muted/50 to-muted/80 border-t border-border/50">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
-                      <span className="font-semibold">
+                      <span className="font-medium">
                         {(() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
                             : activeFilter === 'skipped' ? skippedMatches.length
@@ -4907,23 +4907,23 @@ export default function LoadHunterTab() {
                         })()}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       <button
-                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-glossy h-6 w-6 rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setCurrentPage(1)}
                         disabled={currentPage === 1}
                       >
-                        <ChevronsLeft className="h-4 w-4 text-muted-foreground" />
+                        <ChevronsLeft className="h-3 w-3 text-muted-foreground" />
                       </button>
                       <button
-                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-glossy h-6 w-6 rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
                       >
-                        <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                        <ChevronLeft className="h-3 w-3 text-muted-foreground" />
                       </button>
                       <button
-                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-glossy h-6 w-6 rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
                             : activeFilter === 'skipped' ? skippedMatches.length
@@ -4945,10 +4945,10 @@ export default function LoadHunterTab() {
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
                         })()}
                       >
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       </button>
                       <button
-                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-glossy h-6 w-6 rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
                             : activeFilter === 'skipped' ? skippedMatches.length
@@ -4970,7 +4970,7 @@ export default function LoadHunterTab() {
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
                         })()}
                       >
-                        <ChevronsRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronsRight className="h-3 w-3 text-muted-foreground" />
                       </button>
                     </div>
                   </div>
