@@ -2746,10 +2746,11 @@ export default function LoadHunterTab() {
           {/* Mode Buttons - Merged Toggle */}
           <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
             <Button 
+              variant="ghost"
               size="sm" 
               className={`h-7 px-3.5 text-xs font-semibold !rounded-none !rounded-l-full border-0 ${
                 activeMode === 'admin' 
-                  ? 'btn-glossy-dark text-white' 
+                  ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-700'
               }`}
               onClick={() => setActiveMode('admin')}
