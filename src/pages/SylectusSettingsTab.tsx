@@ -324,7 +324,7 @@ export default function SylectusSettingsTab() {
   const selectedItems = mergeCategory === "vehicle" ? selectedVehicleTypes : selectedLoadTypes;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Load Hunter / Sylectus Configuration</h3>
@@ -347,10 +347,10 @@ export default function SylectusSettingsTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Vehicle Types */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="py-2 px-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Truck className="h-5 w-5 text-muted-foreground" />
@@ -392,7 +392,7 @@ export default function SylectusSettingsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[600px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -478,7 +478,7 @@ export default function SylectusSettingsTab() {
 
         {/* Load Types */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="py-2 px-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-muted-foreground" />
@@ -520,7 +520,7 @@ export default function SylectusSettingsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[600px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
