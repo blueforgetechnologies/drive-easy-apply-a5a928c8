@@ -2747,8 +2747,8 @@ export default function LoadHunterTab() {
               size="sm" 
               className={`h-6 px-3 text-[11px] font-medium !rounded-none !rounded-l-full border-0 ${
                 activeMode === 'admin' 
-                  ? 'btn-glossy text-gray-600' 
-                  : 'bg-transparent text-gray-400 hover:text-gray-600'
+                  ? 'btn-glossy text-gray-900 font-semibold' 
+                  : 'bg-transparent text-gray-500 hover:text-gray-700'
               }`}
               onClick={() => setActiveMode('admin')}
             >
