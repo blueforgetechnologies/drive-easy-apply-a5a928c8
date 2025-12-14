@@ -935,9 +935,9 @@ All colors MUST be HSL.
 .table-glossy thead {
   @apply sticky top-0 z-10;
   background: linear-gradient(180deg, 
-    hsl(221 55% 88%) 0%, 
-    hsl(221 55% 84%) 100%);
-  border-bottom: 2px solid hsl(221 55% 75%);
+    hsl(221 80% 80%) 0%, 
+    hsl(221 80% 76%) 100%);
+  border-bottom: 2px solid hsl(221 80% 68%);
 }
 
 .table-glossy thead th {
