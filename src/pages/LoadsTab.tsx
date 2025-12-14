@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import {
   DropdownMenu,
@@ -72,6 +72,8 @@ export default function LoadsTab() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     load_number: `LD${Date.now()}`,
     load_type: "internal",
@@ -383,6 +385,13 @@ export default function LoadsTab() {
       (load.broker_name || "").toLowerCase().includes(searchLower)
     );
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLoads.length / ROWS_PER_PAGE);
+  const paginatedLoads = filteredLoads.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -954,166 +963,195 @@ export default function LoadsTab() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
+      <Card className="flex flex-col" style={{ height: 'calc(100vh - 280px)' }}>
+        <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
           {filteredLoads.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               {searchQuery ? "No loads match your search" : `No ${filter === "all" ? "" : filter} loads found`}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12 py-2 px-2">
-                      <Checkbox 
-                        checked={selectedLoadIds.length === filteredLoads.length && filteredLoads.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">Status</TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Truck Id</div>
-                      <div>Driver</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Carrier</div>
-                      <div>Customer</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Our Load ID</div>
-                      <div>Customer Load</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Origin</div>
-                      <div>Destination</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Pickup</div>
-                      <div>Delivery</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>DH</div>
-                      <div>Loaded</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Loaded $/Mi</div>
-                      <div>Total $/Mi</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">Payload</TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">
-                      <div>Load Owner</div>
-                      <div>Dispatcher</div>
-                    </TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">RC</TableHead>
-                    <TableHead className="text-primary text-xs py-2 px-2">BOL</TableHead>
-                  </TableRow>
-                </TableHeader>
-                 <TableBody>
-                  {filteredLoads.map((load) => (
-                    <TableRow 
-                      key={load.id} 
-                      className="cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors" 
-                      onClick={() => viewLoadDetail(load.id)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
+            <>
+              <div className="flex-1 overflow-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-12 py-2 px-2">
                         <Checkbox 
-                          className="h-4 w-4"
-                          checked={selectedLoadIds.includes(load.id)}
-                          onCheckedChange={() => toggleSelectLoad(load.id)}
+                          checked={selectedLoadIds.length === paginatedLoads.length && paginatedLoads.length > 0}
+                          onCheckedChange={toggleSelectAll}
                         />
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
-                        <Select
-                          value={load.status}
-                          onValueChange={(value) => handleStatusChange(load.id, value)}
-                        >
-                          <SelectTrigger 
-                            className={`h-7 text-xs font-semibold border rounded-md shadow-none [text-shadow:none] [background:none] ${getStatusDisplay(load.status).color}`}
-                          >
-                            <SelectValue>
-                              {getStatusDisplay(load.status).label}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="available">Available</SelectItem>
-                            <SelectItem value="booked">Booked</SelectItem>
-                            <SelectItem value="dispatched">Dispatched</SelectItem>
-                            <SelectItem value="at_pickup">At Pickup</SelectItem>
-                            <SelectItem value="in_transit">In Transit</SelectItem>
-                            <SelectItem value="at_delivery">At Delivery</SelectItem>
-                            <SelectItem value="delivered">Delivered</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                            <SelectItem value="tonu">TONU</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="font-semibold text-xs text-foreground">
-                          {load.vehicle?.vehicle_number || "N/A"}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
-                            ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
-                            : "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs text-foreground">{load.carrier?.name || "N/A"}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">-</div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="font-medium text-xs text-foreground">{load.load_number}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{load.reference_number || "-"}</div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs text-foreground">{load.pickup_city}, {load.pickup_state}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs whitespace-nowrap text-foreground">
-                          {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
-                        </div>
-                        <div className="text-xs whitespace-nowrap text-foreground mt-0.5">
-                          {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs text-foreground">0</div>
-                        <div className="text-xs text-foreground mt-0.5">{load.estimated_miles || "N/A"}</div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs text-foreground">
-                          {load.rate && load.estimated_miles 
-                            ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
-                            : "N/A"}
-                        </div>
-                        <div className="text-xs text-foreground mt-0.5">
-                          {load.rate && load.estimated_miles 
-                            ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
-                            : "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs font-semibold text-foreground">
-                          {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 px-2">
-                        <div className="text-xs text-muted-foreground">-</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">-</div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">Status</TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Truck Id</div>
+                        <div>Driver</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Carrier</div>
+                        <div>Customer</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Our Load ID</div>
+                        <div>Customer Load</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Origin</div>
+                        <div>Destination</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Pickup</div>
+                        <div>Delivery</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>DH</div>
+                        <div>Loaded</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Loaded $/Mi</div>
+                        <div>Total $/Mi</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">Payload</TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Load Owner</div>
+                        <div>Dispatcher</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">RC</TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">BOL</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                   <TableBody>
+                    {paginatedLoads.map((load) => (
+                      <TableRow 
+                        key={load.id} 
+                        className="cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors" 
+                        onClick={() => viewLoadDetail(load.id)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
+                          <Checkbox 
+                            className="h-4 w-4"
+                            checked={selectedLoadIds.includes(load.id)}
+                            onCheckedChange={() => toggleSelectLoad(load.id)}
+                          />
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
+                          <Select
+                            value={load.status}
+                            onValueChange={(value) => handleStatusChange(load.id, value)}
+                          >
+                            <SelectTrigger 
+                              className={`h-7 text-xs font-semibold border rounded-md shadow-none [text-shadow:none] [background:none] ${getStatusDisplay(load.status).color}`}
+                            >
+                              <SelectValue>
+                                {getStatusDisplay(load.status).label}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="available">Available</SelectItem>
+                              <SelectItem value="booked">Booked</SelectItem>
+                              <SelectItem value="dispatched">Dispatched</SelectItem>
+                              <SelectItem value="at_pickup">At Pickup</SelectItem>
+                              <SelectItem value="in_transit">In Transit</SelectItem>
+                              <SelectItem value="at_delivery">At Delivery</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                              <SelectItem value="tonu">TONU</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="font-semibold text-xs text-foreground">
+                            {load.vehicle?.vehicle_number || "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
+                              ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
+                              : "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs text-foreground">{load.carrier?.name || "N/A"}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">-</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="font-medium text-xs text-foreground">{load.load_number}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{load.reference_number || "-"}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs text-foreground">{load.pickup_city}, {load.pickup_state}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs whitespace-nowrap text-foreground">
+                            {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
+                          </div>
+                          <div className="text-xs whitespace-nowrap text-foreground mt-0.5">
+                            {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs text-foreground">0</div>
+                          <div className="text-xs text-foreground mt-0.5">{load.estimated_miles || "N/A"}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs text-foreground">
+                            {load.rate && load.estimated_miles 
+                              ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
+                              : "N/A"}
+                          </div>
+                          <div className="text-xs text-foreground mt-0.5">
+                            {load.rate && load.estimated_miles 
+                              ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
+                              : "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs font-semibold text-foreground">
+                            {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="text-xs text-muted-foreground">-</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">-</div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Always visible pagination */}
+              <div className="flex items-center justify-between px-4 py-3 border-t bg-background flex-shrink-0">
+                <span className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredLoads.length)} of {filteredLoads.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-7 px-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">Page {currentPage} of {Math.max(1, totalPages)}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="h-7 px-2"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
-      </CardContent>
-    </Card>
-  </div>
-);
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

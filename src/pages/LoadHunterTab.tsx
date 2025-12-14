@@ -4314,11 +4314,11 @@ export default function LoadHunterTab() {
           </div>
         ) : (
           /* Loads Table */
-          <div className="flex-1 overflow-y-auto flex flex-col">
-          <div className="flex-1 flex flex-col card-glossy-table">
+          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col card-glossy-table overflow-hidden">
             {/* Vehicle Filter Indicator */}
             {filterVehicleId && (
-              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100/50 border-b border-blue-200 flex items-center justify-between">
+              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100/50 border-b border-blue-200 flex items-center justify-between flex-shrink-0">
                 <span className="text-xs text-blue-700 font-medium">
                   Filtering by: <span className="font-bold">{vehicles.find(v => v.id === filterVehicleId)?.vehicle_number || 'Unknown Truck'}</span>
                 </span>
@@ -4333,8 +4333,8 @@ export default function LoadHunterTab() {
                 </Button>
               </div>
             )}
-            <div className="p-0 flex-1 flex flex-col">
-              <div>
+            <div className="p-0 flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex flex-col overflow-hidden">
                 {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
@@ -4359,7 +4359,7 @@ export default function LoadHunterTab() {
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-auto card-glossy-table">
+                    <div className="flex-1 overflow-auto card-glossy-table">
                       <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">

@@ -684,8 +684,8 @@ export default function VehiclesTab() {
           </div>
 
           {/* Desktop Table View */}
-          <Card className="hidden md:block">
-            <CardContent className="p-0 flex flex-col max-h-[calc(100vh-260px)]">
+          <Card className="hidden md:flex md:flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+            <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
               <div className="flex-1 overflow-auto overflow-x-auto">
                 <Table className="text-sm">
                 <TableHeader>
@@ -859,38 +859,37 @@ export default function VehiclesTab() {
                 </TableBody>
               </Table>
             </div>
+            {/* Always visible pagination */}
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-background flex-shrink-0">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredVehicles.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredVehicles.length)} of {filteredVehicles.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-7 px-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  Page {currentPage} of {Math.max(1, totalPages)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="h-7 px-2"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-3 sm:px-4 py-3 border rounded-xl bg-card">
-          <div className="text-xs sm:text-sm text-muted-foreground">
-            {filteredVehicles.length === 0 ? 0 : ((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredVehicles.length)} of {filteredVehicles.length}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="h-9 w-9 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-xs sm:text-sm min-w-[40px] text-center">
-              {currentPage}/{Math.max(1, totalPages)}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-              className="h-9 w-9 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
         </>
       )}
 
