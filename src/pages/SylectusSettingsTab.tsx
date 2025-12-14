@@ -405,9 +405,18 @@ export default function SylectusSettingsTab() {
                       {canonicalEntries.map((entry) => (
                         <TableRow key={`canonical-${entry.category}-${entry.value}`}>
                           <TableCell className="font-medium text-sm">
-                            <Badge variant="default" className="text-xs">
-                              {entry.value}
-                            </Badge>
+                            <div className="space-y-1">
+                              <Badge variant="default" className="text-xs">
+                                {entry.value}
+                              </Badge>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {entry.mappedFrom.map(mapped => (
+                                  <Badge key={mapped} variant="secondary" className="text-xs opacity-70">
+                                    {mapped}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">
@@ -415,7 +424,7 @@ export default function SylectusSettingsTab() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            ← {entry.mappedFrom.length} merged
+                            {entry.mappedFrom.length + 1} combined
                           </TableCell>
                         </TableRow>
                       ))}
