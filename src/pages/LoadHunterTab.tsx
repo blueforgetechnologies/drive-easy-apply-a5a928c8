@@ -3807,33 +3807,63 @@ export default function LoadHunterTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Hunt Dialog */}
+      {/* Edit Hunt Dialog - Glossy */}
       <Dialog open={editHuntOpen} onOpenChange={setEditHuntOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Edit Hunt Plan</DialogTitle>
+        <DialogContent 
+          className="max-w-2xl max-h-[90vh] overflow-y-auto p-0"
+          style={{
+            background: 'linear-gradient(180deg, hsl(220 15% 96%) 0%, hsl(220 10% 92%) 50%, hsl(220 10% 88%) 100%)',
+            border: '1px solid hsl(220 10% 78%)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 hsl(0 0% 100%)'
+          }}
+        >
+          <DialogHeader className="px-5 pt-4 pb-2">
+            <DialogTitle 
+              className="text-lg font-bold"
+              style={{ color: 'hsl(221 70% 45%)', textShadow: '0 1px 0 white' }}
+            >
+              Edit Hunt Plan
+            </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div 
+            className="mx-4 mb-4 rounded-lg p-4 space-y-3"
+            style={{
+              background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 99%) 100%)',
+              border: '1px solid hsl(220 15% 85%)',
+              boxShadow: '0 3px 10px rgba(0,0,0,0.08), inset 0 1px 0 hsl(0 0% 100%)'
+            }}
+          >
             {/* Plan Name */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-planName">Plan Name</Label>
+            <div className="space-y-1">
+              <Label htmlFor="edit-planName" className="text-xs font-semibold uppercase tracking-wide">Plan Name</Label>
               <Input 
                 id="edit-planName" 
                 placeholder="Plan Name" 
+                className="h-8 text-sm"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                }}
                 value={huntFormData.planName}
                 onChange={(e) => setHuntFormData({...huntFormData, planName: e.target.value})}
               />
             </div>
 
             {/* Vehicle Types - Multi-select */}
-            <div className="space-y-2">
-              <Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold uppercase tracking-wide">
                 Vehicle Types <span className="text-destructive">*</span>
               </Label>
-              <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-3 bg-background">
+              <div 
+                className="grid grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto rounded-md p-2"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(220 12% 98%) 0%, hsl(220 12% 96%) 100%)',
+                  boxShadow: 'inset 0 -1px 0 hsl(220 15% 90%), inset 0 1px 0 hsl(0 0% 100%)'
+                }}
+              >
                 {canonicalVehicleTypes.length > 0 ? canonicalVehicleTypes.map((type) => (
-                  <div key={type.value} className="flex items-center space-x-2">
+                  <div key={type.value} className="flex items-center space-x-1.5">
                     <Checkbox
                       id={`edit-${type.value}`}
                       checked={huntFormData.vehicleSizes.includes(type.value)}
@@ -3845,70 +3875,88 @@ export default function LoadHunterTab() {
                         }
                       }}
                     />
-                    <label htmlFor={`edit-${type.value}`} className="text-sm cursor-pointer">{type.label}</label>
+                    <label htmlFor={`edit-${type.value}`} className="text-xs cursor-pointer">{type.label}</label>
                   </div>
                 )) : (
-                  <p className="text-sm text-muted-foreground col-span-2">No vehicle types configured. Configure them in Settings → Sylectus.</p>
+                  <p className="text-xs text-muted-foreground col-span-2">No vehicle types configured.</p>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">{huntFormData.vehicleSizes.length} selected</p>
+              <p className="text-[10px] text-muted-foreground">{huntFormData.vehicleSizes.length} selected</p>
             </div>
 
             {/* Zip Code, Available feet, Partial */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="edit-zipCode">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-zipCode" className="text-xs font-semibold uppercase tracking-wide">
                   Zip Code <span className="text-destructive">*</span>
                 </Label>
                 <div className="relative">
                   <Input 
                     id="edit-zipCode" 
                     placeholder="Zip Code"
+                    className="h-8 text-sm pr-8"
+                    style={{
+                      background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                    }}
                     value={huntFormData.zipCode}
                     onChange={(e) => setHuntFormData({...huntFormData, zipCode: e.target.value})}
                   />
-                  <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
+                  <MapPinned className="absolute right-2 top-2 h-3.5 w-3.5 text-primary" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-availableFeet">Available feet</Label>
+              <div className="space-y-1">
+                <Label htmlFor="edit-availableFeet" className="text-xs font-semibold uppercase tracking-wide">Available feet</Label>
                 <Input 
                   id="edit-availableFeet" 
                   placeholder="Available feet"
+                  className="h-8 text-sm"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                  }}
                   value={huntFormData.availableFeet}
                   onChange={(e) => setHuntFormData({...huntFormData, availableFeet: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>&nbsp;</Label>
-                <div className="flex items-center space-x-2 h-10">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold uppercase tracking-wide">&nbsp;</Label>
+                <div className="flex items-center space-x-1.5 h-8">
                   <Checkbox 
                     id="edit-partial"
                     checked={huntFormData.partial}
                     onCheckedChange={(checked) => setHuntFormData({...huntFormData, partial: checked as boolean})}
                   />
-                  <label htmlFor="edit-partial" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Partial
-                  </label>
+                  <label htmlFor="edit-partial" className="text-xs font-medium">Partial</label>
                 </div>
               </div>
             </div>
 
             {/* Pickup Search Radius, Total Mile Limit */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="edit-pickupRadius">Pickup Search Radius</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-pickupRadius" className="text-xs font-semibold uppercase tracking-wide">Pickup Search Radius</Label>
                 <Input 
                   id="edit-pickupRadius"
+                  className="h-8 text-sm"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                  }}
                   value={huntFormData.pickupRadius}
                   onChange={(e) => setHuntFormData({...huntFormData, pickupRadius: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-mileLimit">Total Mile Limit</Label>
+              <div className="space-y-1">
+                <Label htmlFor="edit-mileLimit" className="text-xs font-semibold uppercase tracking-wide">Total Mile Limit</Label>
                 <Input 
                   id="edit-mileLimit" 
                   placeholder="Total Mile Limit"
+                  className="h-8 text-sm"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                  }}
                   value={huntFormData.mileLimit}
                   onChange={(e) => setHuntFormData({...huntFormData, mileLimit: e.target.value})}
                 />
@@ -3916,31 +3964,46 @@ export default function LoadHunterTab() {
             </div>
 
             {/* Available Load Capacity */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-loadCapacity">Available Load Capacity</Label>
+            <div className="space-y-1">
+              <Label htmlFor="edit-loadCapacity" className="text-xs font-semibold uppercase tracking-wide">Available Load Capacity</Label>
               <Input 
                 id="edit-loadCapacity"
+                className="h-8 text-sm"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                }}
                 value={huntFormData.loadCapacity}
                 onChange={(e) => setHuntFormData({...huntFormData, loadCapacity: e.target.value})}
               />
             </div>
 
             {/* Available Date and Time */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="edit-availableDate">Available Date</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-availableDate" className="text-xs font-semibold uppercase tracking-wide">Available Date</Label>
                 <Input 
                   id="edit-availableDate" 
                   type="date"
+                  className="h-8 text-sm"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                  }}
                   value={huntFormData.availableDate}
                   onChange={(e) => setHuntFormData({...huntFormData, availableDate: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-availableTime">Available Time (Eastern Time)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="edit-availableTime" className="text-xs font-semibold uppercase tracking-wide">Available Time (ET)</Label>
                 <Input 
                   id="edit-availableTime" 
                   type="time"
+                  className="h-8 text-sm"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                  }}
                   value={huntFormData.availableTime}
                   onChange={(e) => setHuntFormData({...huntFormData, availableTime: e.target.value})}
                 />
@@ -3948,52 +4011,81 @@ export default function LoadHunterTab() {
             </div>
 
             {/* Destination Zip Code */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-destinationZip">Destination Zip Code (bring driver to home)</Label>
+            <div className="space-y-1">
+              <Label htmlFor="edit-destinationZip" className="text-xs font-semibold uppercase tracking-wide">Destination Zip Code</Label>
               <div className="relative">
                 <Input 
                   id="edit-destinationZip" 
                   placeholder="Destination Zip Code"
+                  className="h-8 text-sm pr-8"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                  }}
                   value={huntFormData.destinationZip}
                   onChange={(e) => setHuntFormData({...huntFormData, destinationZip: e.target.value})}
                 />
-                <MapPinned className="absolute right-3 top-2.5 h-4 w-4 text-primary" />
+                <MapPinned className="absolute right-2 top-2 h-3.5 w-3.5 text-primary" />
               </div>
             </div>
 
             {/* Destination Search Radius */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-destinationRadius">Destination Search Radius</Label>
+            <div className="space-y-1">
+              <Label htmlFor="edit-destinationRadius" className="text-xs font-semibold uppercase tracking-wide">Destination Search Radius</Label>
               <Input 
                 id="edit-destinationRadius" 
                 placeholder="Destination Search Radius"
+                className="h-8 text-sm"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                }}
                 value={huntFormData.destinationRadius}
                 onChange={(e) => setHuntFormData({...huntFormData, destinationRadius: e.target.value})}
               />
             </div>
 
             {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-notes">Notes</Label>
+            <div className="space-y-1">
+              <Label htmlFor="edit-notes" className="text-xs font-semibold uppercase tracking-wide">Notes</Label>
               <Textarea 
                 id="edit-notes" 
                 placeholder="Notes" 
-                rows={4} 
-                className="resize-none"
+                rows={2} 
+                className="resize-none text-sm"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%)',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06), 0 1px 0 hsl(0 0% 100%)'
+                }}
                 value={huntFormData.notes}
                 onChange={(e) => setHuntFormData({...huntFormData, notes: e.target.value})}
               />
             </div>
 
-            {/* Update and Cancel Buttons */}
-            <div className="flex justify-start gap-3 pt-2">
-              <Button variant="secondary" className="px-8" onClick={handleUpdateHuntPlan}>
+            {/* Update and Cancel Buttons - Glossy */}
+            <div className="flex justify-start gap-2 pt-2">
+              <Button 
+                className="px-6 h-8 text-xs font-semibold"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(221 80% 58%) 0%, hsl(221 80% 50%) 100%)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)'
+                }}
+                onClick={handleUpdateHuntPlan}
+              >
                 Update
               </Button>
-              <Button variant="outline" className="px-8" onClick={() => {
-                setEditHuntOpen(false);
-                setEditingHunt(null);
-              }}>
+              <Button 
+                variant="outline" 
+                className="px-6 h-8 text-xs font-medium"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 96%) 100%)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.08), inset 0 1px 0 hsl(0 0% 100%)'
+                }}
+                onClick={() => {
+                  setEditHuntOpen(false);
+                  setEditingHunt(null);
+                }}
+              >
                 Cancel
               </Button>
             </div>
