@@ -240,13 +240,21 @@ export default function SylectusSettingsTab() {
     }
   };
 
-  const openMergeDialog = (category: "vehicle" | "load") => {
-    const selected = category === "vehicle" ? selectedVehicleTypes : selectedLoadTypes;
-    if (selected.size < 2) {
+  // Get all selected types across both categories
+  const getAllSelectedTypes = (): Array<{ value: string; category: "vehicle" | "load" }> => {
+    const all: Array<{ value: string; category: "vehicle" | "load" }> = [];
+    selectedVehicleTypes.forEach(v => all.push({ value: v, category: "vehicle" }));
+    selectedLoadTypes.forEach(v => all.push({ value: v, category: "load" }));
+    return all;
+  };
+
+  const totalSelectedCount = selectedVehicleTypes.size + selectedLoadTypes.size;
+
+  const openUnifiedMergeDialog = () => {
+    if (totalSelectedCount < 2) {
       toast.error("Select at least 2 types to merge");
       return;
     }
-    setMergeCategory(category);
     setMergeTarget("");
     setMergeDialogOpen(true);
   };
@@ -257,13 +265,14 @@ export default function SylectusSettingsTab() {
       return;
     }
 
-    const selected = mergeCategory === "vehicle" ? selectedVehicleTypes : selectedLoadTypes;
-    const toMerge = [...selected].filter((v) => v !== mergeTarget);
+    const allSelected = getAllSelectedTypes();
+    const toMerge = allSelected.filter((item) => item.value !== mergeTarget);
 
     try {
-      const inserts = toMerge.map((value) => ({
-        type_category: mergeCategory,
-        original_value: value,
+      // Create inserts for both categories - each selected type maps to the target
+      const inserts = toMerge.map((item) => ({
+        type_category: item.category,
+        original_value: item.value,
         mapped_to: mergeTarget,
       }));
 
@@ -273,18 +282,23 @@ export default function SylectusSettingsTab() {
 
       if (error) throw error;
 
-      if (mergeCategory === "vehicle") {
+      // Update local state for both categories
+      const vehicleValuesToMerge = toMerge.filter(t => t.category === "vehicle").map(t => t.value);
+      const loadValuesToMerge = toMerge.filter(t => t.category === "load").map(t => t.value);
+
+      if (vehicleValuesToMerge.length > 0) {
         setVehicleTypes((prev) =>
-          prev.map((t) => (toMerge.includes(t.value) ? { ...t, mappedTo: mergeTarget } : t))
+          prev.map((t) => (vehicleValuesToMerge.includes(t.value) ? { ...t, mappedTo: mergeTarget } : t))
         );
-        setSelectedVehicleTypes(new Set());
-      } else {
+      }
+      if (loadValuesToMerge.length > 0) {
         setLoadTypes((prev) =>
-          prev.map((t) => (toMerge.includes(t.value) ? { ...t, mappedTo: mergeTarget } : t))
+          prev.map((t) => (loadValuesToMerge.includes(t.value) ? { ...t, mappedTo: mergeTarget } : t))
         );
-        setSelectedLoadTypes(new Set());
       }
 
+      setSelectedVehicleTypes(new Set());
+      setSelectedLoadTypes(new Set());
       setMergeDialogOpen(false);
       toast.success(`${toMerge.length} type(s) merged into "${mergeTarget}"`);
     } catch (error) {
@@ -321,7 +335,8 @@ export default function SylectusSettingsTab() {
     ? loadTypes
     : loadTypes.filter((t) => !t.isHidden && !t.mappedTo);
 
-  const selectedItems = mergeCategory === "vehicle" ? selectedVehicleTypes : selectedLoadTypes;
+  // Unified selected items for merge dialog
+  const allSelectedItems = getAllSelectedTypes();
 
   return (
     <div className="space-y-4">
@@ -333,6 +348,12 @@ export default function SylectusSettingsTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {totalSelectedCount >= 2 && (
+            <Button variant="default" size="sm" onClick={openUnifiedMergeDialog}>
+              <Merge className="h-4 w-4 mr-1" />
+              Merge ({totalSelectedCount})
+            </Button>
+          )}
           <Button
             variant={showHidden ? "secondary" : "outline"}
             size="sm"
@@ -483,21 +504,15 @@ export default function SylectusSettingsTab() {
               </div>
               <div className="flex items-center gap-1">
                 {selectedVehicleTypes.size > 0 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteTypes("vehicle")}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete ({selectedVehicleTypes.size})
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openMergeDialog("vehicle")}>
-                      <Merge className="h-4 w-4 mr-1" />
-                      Merge
-                    </Button>
-                  </>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTypes("vehicle")}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete ({selectedVehicleTypes.size})
+                  </Button>
                 )}
                 {newVehicleCount > 0 && (
                   <Button variant="ghost" size="sm" onClick={markAllVehicleTypesSeen}>
@@ -611,21 +626,15 @@ export default function SylectusSettingsTab() {
               </div>
               <div className="flex items-center gap-1">
                 {selectedLoadTypes.size > 0 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteTypes("load")}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete ({selectedLoadTypes.size})
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openMergeDialog("load")}>
-                      <Merge className="h-4 w-4 mr-1" />
-                      Merge
-                    </Button>
-                  </>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTypes("load")}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete ({selectedLoadTypes.size})
+                  </Button>
                 )}
                 {newLoadCount > 0 && (
                   <Button variant="ghost" size="sm" onClick={markAllLoadTypesSeen}>
@@ -731,7 +740,7 @@ export default function SylectusSettingsTab() {
       <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Merge {mergeCategory === "vehicle" ? "Vehicle" : "Load"} Types</DialogTitle>
+            <DialogTitle>Merge Types</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
@@ -742,15 +751,15 @@ export default function SylectusSettingsTab() {
                 <SelectValue placeholder="Select target type" />
               </SelectTrigger>
               <SelectContent>
-                {[...selectedItems].map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
+                {allSelectedItems.map((item) => (
+                  <SelectItem key={`${item.category}-${item.value}`} value={item.value}>
+                    {item.value} <span className="text-muted-foreground text-xs ml-1">({item.category})</span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {selectedItems.size - (mergeTarget ? 1 : 0)} type(s) will be merged into the selected target.
+              {allSelectedItems.length - (mergeTarget ? 1 : 0)} type(s) will be merged into the selected target.
             </p>
           </div>
           <DialogFooter>
