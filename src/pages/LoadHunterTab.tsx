@@ -2853,11 +2853,12 @@ export default function LoadHunterTab() {
             {/* Merged button group: All, Unreviewed, Sound */}
             <div className="flex items-center overflow-hidden rounded-full">
               <Button 
+                variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
                   activeFilter === 'all' 
                     ? 'btn-glossy-dark text-white' 
-                    : 'btn-glossy text-gray-600'
+                    : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('all');
@@ -2871,11 +2872,12 @@ export default function LoadHunterTab() {
               </Button>
               
               <Button
+                variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
                   activeFilter === 'unreviewed' 
                     ? 'btn-glossy-primary text-white' 
-                    : 'btn-glossy text-gray-600'
+                    : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('unreviewed');
@@ -2889,8 +2891,9 @@ export default function LoadHunterTab() {
               </Button>
               
               <Button 
+                variant="ghost"
                 size="sm" 
-                className="h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-600"
+                className="h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-700"
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
@@ -2899,11 +2902,12 @@ export default function LoadHunterTab() {
             </div>
             
             <Button
+              variant="ghost"
               size="sm" 
               className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'missed' 
                   ? 'btn-glossy-danger text-white' 
-                  : 'btn-glossy text-gray-600'
+                  : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveFilter('missed');
@@ -2919,11 +2923,12 @@ export default function LoadHunterTab() {
             {/* Merged button group: Wait, Undec, Skip */}
             <div className="flex items-center overflow-hidden rounded-full">
               <Button 
+                variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
                   activeFilter === 'waitlist' 
                     ? 'btn-glossy-warning text-white' 
-                    : 'btn-glossy text-gray-600'
+                    : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('waitlist');
@@ -2937,11 +2942,12 @@ export default function LoadHunterTab() {
               </Button>
               
               <Button 
+                variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
                   activeFilter === 'undecided' 
                     ? 'btn-glossy-warning text-white' 
-                    : 'btn-glossy text-gray-600'
+                    : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('undecided');
@@ -2955,11 +2961,12 @@ export default function LoadHunterTab() {
               </Button>
               
               <Button 
+                variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
                   activeFilter === 'skipped' 
                     ? 'btn-glossy-dark text-white' 
-                    : 'btn-glossy text-gray-600'
+                    : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('skipped');
@@ -2974,11 +2981,12 @@ export default function LoadHunterTab() {
             </div>
             
             <Button 
+              variant="ghost"
               size="sm" 
               className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'mybids' 
                   ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-600'
+                  : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveFilter('mybids');
@@ -2992,11 +3000,12 @@ export default function LoadHunterTab() {
             </Button>
             
             <Button
+              variant="ghost"
               size="sm" 
               className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'booked' 
                   ? 'btn-glossy-success text-white' 
-                  : 'btn-glossy text-gray-600'
+                  : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveFilter('booked');
