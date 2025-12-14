@@ -4358,8 +4358,9 @@ export default function LoadHunterTab() {
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
-                  <div className="overflow-auto card-glossy-table">
-                    <Table className="table-glossy">
+                  <>
+                    <div className="overflow-auto card-glossy-table">
+                      <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
                           <TableHead className="w-[30px] py-2 px-2 text-white">
@@ -4973,16 +4974,14 @@ export default function LoadHunterTab() {
                       </button>
                     </div>
                   </div>
-                  </div>
+                </>
               )}
-              </div>
             </div>
           </div>
-          </div>
-        )}
+        </div>
+        </div>
+      )}
       </div>
-      </div>
-
       <MultipleMatchesDialog
         open={showMultipleMatchesDialog}
         onOpenChange={setShowMultipleMatchesDialog}
