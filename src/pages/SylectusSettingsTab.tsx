@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Check, RefreshCw, Truck, Package, Trash2, Merge, Undo2 } from "lucide-react";
@@ -37,6 +39,8 @@ export default function SylectusSettingsTab() {
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeCategory, setMergeCategory] = useState<"vehicle" | "load">("vehicle");
   const [mergeTarget, setMergeTarget] = useState<string>("");
+  const [customTargetName, setCustomTargetName] = useState<string>("");
+  const [useCustomName, setUseCustomName] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
 
   const getSeenTypes = (key: string): Set<string> => {
@@ -267,29 +271,41 @@ export default function SylectusSettingsTab() {
   const totalSelectedCount = selectedVehicleTypes.size + selectedLoadTypes.size;
 
   const openUnifiedMergeDialog = () => {
-    if (totalSelectedCount < 2) {
-      toast.error("Select at least 2 types to merge");
+    if (totalSelectedCount < 1) {
+      toast.error("Select at least 1 type to rename/merge");
       return;
     }
     setMergeTarget("");
+    setCustomTargetName("");
+    setUseCustomName(totalSelectedCount === 1); // Default to custom name if only 1 selected
     setMergeDialogOpen(true);
   };
 
   const handleMergeTypes = async () => {
-    if (!mergeTarget) {
-      toast.error("Select a target type");
+    const effectiveTarget = useCustomName ? customTargetName.trim().toUpperCase() : mergeTarget;
+    
+    if (!effectiveTarget) {
+      toast.error(useCustomName ? "Enter a target name" : "Select a target type");
       return;
     }
 
     const allSelected = getAllSelectedTypes();
-    const toMerge = allSelected.filter((item) => item.value !== mergeTarget);
+    const toMerge = allSelected.filter((item) => item.value !== effectiveTarget);
+
+    // If using custom name, all selected items get merged
+    const itemsToMerge = useCustomName ? allSelected : toMerge;
+
+    if (itemsToMerge.length === 0) {
+      toast.error("No items to merge");
+      return;
+    }
 
     try {
       // Create inserts for both categories - each selected type maps to the target
-      const inserts = toMerge.map((item) => ({
+      const inserts = itemsToMerge.map((item) => ({
         type_category: item.category,
         original_value: item.value,
-        mapped_to: mergeTarget,
+        mapped_to: effectiveTarget,
       }));
 
       const { error } = await supabase.from("sylectus_type_config").upsert(inserts, {
@@ -299,17 +315,17 @@ export default function SylectusSettingsTab() {
       if (error) throw error;
 
       // Update local state for both categories
-      const vehicleValuesToMerge = toMerge.filter(t => t.category === "vehicle").map(t => t.value);
-      const loadValuesToMerge = toMerge.filter(t => t.category === "load").map(t => t.value);
-      const totalMerged = toMerge.length;
+      const vehicleValuesToMerge = itemsToMerge.filter(t => t.category === "vehicle").map(t => t.value);
+      const loadValuesToMerge = itemsToMerge.filter(t => t.category === "load").map(t => t.value);
+      const totalMerged = itemsToMerge.length;
 
       // Update vehicle types - mark merged ones and update canonical target
       setVehicleTypes((prev) =>
         prev.map((t) => {
           if (vehicleValuesToMerge.includes(t.value)) {
-            return { ...t, mappedTo: mergeTarget };
+            return { ...t, mappedTo: effectiveTarget };
           }
-          if (t.value === mergeTarget) {
+          if (t.value === effectiveTarget) {
             return { ...t, isCanonical: true, mergedCount: t.mergedCount + totalMerged };
           }
           return t;
@@ -320,9 +336,9 @@ export default function SylectusSettingsTab() {
       setLoadTypes((prev) =>
         prev.map((t) => {
           if (loadValuesToMerge.includes(t.value)) {
-            return { ...t, mappedTo: mergeTarget };
+            return { ...t, mappedTo: effectiveTarget };
           }
-          if (t.value === mergeTarget) {
+          if (t.value === effectiveTarget) {
             return { ...t, isCanonical: true, mergedCount: t.mergedCount + totalMerged };
           }
           return t;
@@ -332,7 +348,7 @@ export default function SylectusSettingsTab() {
       setSelectedVehicleTypes(new Set());
       setSelectedLoadTypes(new Set());
       setMergeDialogOpen(false);
-      toast.success(`${toMerge.length} type(s) merged into "${mergeTarget}"`);
+      toast.success(`${itemsToMerge.length} type(s) merged into "${effectiveTarget}"`);
     } catch (error) {
       console.error("Error merging types:", error);
       toast.error("Failed to merge types");
@@ -380,10 +396,10 @@ export default function SylectusSettingsTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {totalSelectedCount >= 2 && (
+          {totalSelectedCount >= 1 && (
             <Button variant="default" size="sm" onClick={openUnifiedMergeDialog}>
               <Merge className="h-4 w-4 mr-1" />
-              Merge ({totalSelectedCount})
+              {totalSelectedCount === 1 ? "Rename" : `Merge (${totalSelectedCount})`}
             </Button>
           )}
           <Button
@@ -787,38 +803,77 @@ export default function SylectusSettingsTab() {
         );
       })()}
 
-      {/* Merge Dialog */}
+      {/* Merge/Rename Dialog */}
       <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Merge Types</DialogTitle>
+            <DialogTitle>{totalSelectedCount === 1 ? "Rename Type" : "Merge Types"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Select the target type to merge the selected types into:
-            </p>
-            <Select value={mergeTarget} onValueChange={setMergeTarget}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select target type" />
-              </SelectTrigger>
-              <SelectContent>
-                {allSelectedItems.map((item) => (
-                  <SelectItem key={`${item.category}-${item.value}`} value={item.value}>
-                    {item.value} <span className="text-muted-foreground text-xs ml-1">({item.category})</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {allSelectedItems.length - (mergeTarget ? 1 : 0)} type(s) will be merged into the selected target.
-            </p>
+            {totalSelectedCount > 1 && (
+              <div className="flex items-center gap-4">
+                <Button
+                  variant={!useCustomName ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUseCustomName(false)}
+                >
+                  Use Existing
+                </Button>
+                <Button
+                  variant={useCustomName ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUseCustomName(true)}
+                >
+                  Custom Name
+                </Button>
+              </div>
+            )}
+            
+            {useCustomName ? (
+              <div className="space-y-2">
+                <Label htmlFor="customName">Enter canonical name (will be uppercased)</Label>
+                <Input
+                  id="customName"
+                  value={customTargetName}
+                  onChange={(e) => setCustomTargetName(e.target.value)}
+                  placeholder="e.g., SPRINTER"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {allSelectedItems.length} type(s) will be mapped to "{customTargetName.trim().toUpperCase() || "..."}".
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Select the target type to merge the selected types into:
+                </p>
+                <Select value={mergeTarget} onValueChange={setMergeTarget}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select target type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allSelectedItems.map((item) => (
+                      <SelectItem key={`${item.category}-${item.value}`} value={item.value}>
+                        {item.value} <span className="text-muted-foreground text-xs ml-1">({item.category})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {allSelectedItems.length - (mergeTarget ? 1 : 0)} type(s) will be merged into the selected target.
+                </p>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleMergeTypes} disabled={!mergeTarget}>
-              Merge Types
+            <Button 
+              onClick={handleMergeTypes} 
+              disabled={useCustomName ? !customTargetName.trim() : !mergeTarget}
+            >
+              {useCustomName ? "Save" : "Merge Types"}
             </Button>
           </DialogFooter>
         </DialogContent>
