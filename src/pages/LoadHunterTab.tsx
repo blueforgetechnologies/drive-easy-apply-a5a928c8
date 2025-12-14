@@ -4799,9 +4799,13 @@ export default function LoadHunterTab() {
                                 <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions ?? 'Not Specified'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[13px] leading-tight whitespace-nowrap font-medium text-primary">
-                                  {matchHuntPlan?.availableFeet ? `${matchHuntPlan.availableFeet}'` : '—'}
-                                </div>
+                                {matchHuntPlan?.availableFeet ? (
+                                  <div className="inline-block text-[13px] leading-tight whitespace-nowrap font-semibold bg-yellow-300 text-yellow-900 px-1.5 py-0.5 rounded">
+                                    {matchHuntPlan.availableFeet}'
+                                  </div>
+                                ) : (
+                                  <div className="text-[13px] leading-tight whitespace-nowrap text-muted-foreground">—</div>
+                                )}
                               </TableCell>
                               <TableCell className="py-1">
                                 <Badge variant="secondary" className="text-[12px] h-4 px-1.5">
