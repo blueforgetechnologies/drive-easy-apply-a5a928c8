@@ -146,6 +146,158 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  /* ========== GLOSSY MODERN DESIGN SYSTEM ========== */
+  
+  /* Glossy Button Variants */
+  .btn-glossy-primary {
+    background: linear-gradient(180deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(224 76% 48%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.15);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  }
+  .btn-glossy-primary:hover {
+    background: linear-gradient(180deg, hsl(217 91% 65%) 0%, hsl(221 83% 58%) 50%, hsl(224 76% 53%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.2);
+  }
+  
+  .btn-glossy-destructive {
+    background: linear-gradient(180deg, hsl(0 84% 65%) 0%, hsl(0 84% 60%) 50%, hsl(0 72% 51%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.15);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  }
+  .btn-glossy-destructive:hover {
+    background: linear-gradient(180deg, hsl(0 84% 70%) 0%, hsl(0 84% 65%) 50%, hsl(0 72% 56%) 100%);
+  }
+  
+  .btn-glossy-secondary {
+    background: linear-gradient(180deg, hsl(220 14% 98%) 0%, hsl(220 14% 96%) 50%, hsl(220 14% 92%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .btn-glossy-secondary:hover {
+    background: linear-gradient(180deg, hsl(220 14% 100%) 0%, hsl(220 14% 98%) 50%, hsl(220 14% 94%) 100%);
+  }
+  
+  .btn-glossy-outline {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .btn-glossy-outline:hover {
+    background: linear-gradient(180deg, hsl(220 14% 98%) 0%, hsl(220 14% 96%) 100%);
+  }
+  
+  .btn-glossy-success {
+    background: linear-gradient(180deg, hsl(142 71% 50%) 0%, hsl(142 71% 45%) 50%, hsl(142 71% 40%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.15);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  }
+  
+  /* Glossy Card */
+  .card-glossy {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    border-color: hsl(220 13% 91%);
+  }
+  .dark .card-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 10%) 0%, hsl(224 71% 8%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.3);
+    border-color: hsl(215 28% 20%);
+  }
+  
+  /* Glossy Input */
+  .input-glossy {
+    background: linear-gradient(180deg, hsl(220 20% 98%) 0%, hsl(0 0% 100%) 100%);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .input-glossy:focus {
+    background: hsl(0 0% 100%);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04), 0 0 0 2px hsl(221 83% 53% / 0.15);
+  }
+  .dark .input-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 6%) 0%, hsl(224 71% 8%) 100%);
+  }
+  
+  /* Glossy Select */
+  .select-glossy {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .dark .select-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 10%) 0%, hsl(224 71% 8%) 100%);
+  }
+  
+  /* Glossy Dropdown */
+  .dropdown-glossy {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+    border-color: hsl(220 13% 88%);
+  }
+  .dark .dropdown-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 12%) 0%, hsl(224 71% 8%) 100%);
+    border-color: hsl(215 28% 22%);
+  }
+  
+  /* Glossy Tabs */
+  .tabs-list-glossy {
+    background: linear-gradient(180deg, hsl(220 14% 94%) 0%, hsl(220 14% 96%) 100%);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+    border: 1px solid hsl(220 13% 88%);
+  }
+  .dark .tabs-list-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 8%) 0%, hsl(224 71% 10%) 100%);
+    border-color: hsl(215 28% 20%);
+  }
+  
+  .tabs-trigger-glossy[data-state="active"] {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  .dark .tabs-trigger-glossy[data-state="active"] {
+    background: linear-gradient(180deg, hsl(224 71% 14%) 0%, hsl(224 71% 12%) 100%);
+  }
+  
+  /* Glossy Dialog */
+  .dialog-glossy {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+    border-color: hsl(220 13% 88%);
+  }
+  .dark .dialog-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 12%) 0%, hsl(224 71% 8%) 100%);
+    border-color: hsl(215 28% 22%);
+  }
+  
+  /* Glossy Badge */
+  .badge-glossy {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.1);
+  }
+  
+  /* Glossy Table */
+  .table-glossy {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .table-header-glossy {
+    background: linear-gradient(180deg, hsl(220 14% 96%) 0%, hsl(220 14% 94%) 100%);
+  }
+  .dark .table-header-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 12%) 0%, hsl(224 71% 10%) 100%);
+  }
+  
+  .table-row-glossy {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 99%) 100%);
+    box-shadow: inset 0 -1px 0 hsl(220 13% 91%);
+  }
+  .table-row-glossy:hover {
+    background: linear-gradient(180deg, hsl(221 83% 53% / 0.04) 0%, hsl(221 83% 53% / 0.08) 100%);
+  }
+  .dark .table-row-glossy {
+    background: linear-gradient(180deg, hsl(224 71% 8%) 0%, hsl(224 71% 7%) 100%);
+    box-shadow: inset 0 -1px 0 hsl(215 28% 17%);
+  }
+  .dark .table-row-glossy:hover {
+    background: linear-gradient(180deg, hsl(221 83% 53% / 0.08) 0%, hsl(221 83% 53% / 0.12) 100%);
+  }
+
   /* Glass morphism effects */
   .glass {
     @apply bg-background/80 backdrop-blur-xl;
