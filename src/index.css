@@ -935,15 +935,15 @@ All colors MUST be HSL.
 .table-glossy thead {
   @apply sticky top-0 z-10;
   background: linear-gradient(180deg, 
-    hsl(221 60% 78%) 0%, 
-    hsl(221 60% 73%) 100%);
-  border-bottom: 2px solid hsl(221 60% 65%);
+    hsl(221 55% 88%) 0%, 
+    hsl(221 55% 84%) 100%);
+  border-bottom: 2px solid hsl(221 55% 75%);
 }
 
 .table-glossy thead th {
   @apply px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase;
-  color: hsl(0 0% 100%);
-  text-shadow: 0 1px 2px hsl(221 60% 45% / 0.5);
+  color: hsl(221 60% 30%);
+  text-shadow: 0 1px 0 hsl(0 0% 100% / 0.6);
 }
 
 .table-glossy tbody tr {
