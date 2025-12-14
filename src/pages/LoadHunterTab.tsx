@@ -2435,9 +2435,14 @@ export default function LoadHunterTab() {
 
   const handleEditHunt = (hunt: HuntPlan) => {
     setEditingHunt(hunt);
+    // Filter vehicleSizes to only include canonical types (matching the checkbox options)
+    const canonicalValues = canonicalVehicleTypes.map(ct => ct.value.toUpperCase());
+    const filteredVehicleSizes = hunt.vehicleSizes.filter(size => 
+      canonicalValues.includes(size.toUpperCase())
+    );
     setHuntFormData({
       planName: hunt.planName,
-      vehicleSizes: hunt.vehicleSizes,
+      vehicleSizes: filteredVehicleSizes,
       zipCode: hunt.zipCode,
       availableFeet: hunt.availableFeet,
       partial: hunt.partial,
