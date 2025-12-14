@@ -358,6 +358,203 @@ async function lookupCityFromZip(zipCode: string, state?: string): Promise<{city
   return null;
 }
 
+// Parse Full Circle TMS email format
+function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<string, any> {
+  const data: Record<string, any> = {};
+  
+  // Order numbers - Full Circle uses format: ORDER NUMBER: 265637 or 4720340
+  const orderMatch = bodyText?.match(/ORDER\s*NUMBER:?\s*(\d+)(?:\s+or\s+(\d+))?/i);
+  if (orderMatch) {
+    data.order_number = orderMatch[1];
+    if (orderMatch[2]) {
+      data.order_number_secondary = orderMatch[2];
+    }
+  }
+  
+  // Extract stops table - parse each stop for pickup/delivery info
+  const stopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})\s+USA\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
+  const stops: Array<{type: string, city: string, state: string, zip: string, datetime: string, tz: string, sequence: number}> = [];
+  let match;
+  while ((match = stopsPattern.exec(bodyText)) !== null) {
+    stops.push({
+      sequence: parseInt(match[1]),
+      type: match[2].toLowerCase(),
+      city: match[3].trim(),
+      state: match[4],
+      zip: match[5],
+      datetime: match[6],
+      tz: match[7]
+    });
+  }
+  
+  // Set origin from first pickup
+  const firstPickup = stops.find(s => s.type === 'pick up');
+  if (firstPickup) {
+    data.origin_city = firstPickup.city;
+    data.origin_state = firstPickup.state;
+    data.origin_zip = firstPickup.zip;
+    data.pickup_date = firstPickup.datetime.split(' ')[0];
+    data.pickup_time = firstPickup.datetime.split(' ')[1] + ' ' + firstPickup.tz;
+  }
+  
+  // Set destination from first delivery
+  const firstDelivery = stops.find(s => s.type === 'delivery');
+  if (firstDelivery) {
+    data.destination_city = firstDelivery.city;
+    data.destination_state = firstDelivery.state;
+    data.destination_zip = firstDelivery.zip;
+    data.delivery_date = firstDelivery.datetime.split(' ')[0];
+    data.delivery_time = firstDelivery.datetime.split(' ')[1] + ' ' + firstDelivery.tz;
+  }
+  
+  // Store all stops for multi-stop loads
+  if (stops.length > 0) {
+    data.stops = stops;
+    data.stop_count = stops.length;
+    data.has_multiple_stops = stops.length > 2;
+  }
+  
+  // Parse expiration - format: 2025-12-14 10:51 EST (UTC-0500)
+  const expiresMatch = bodyText?.match(/This posting expires:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)(?:\s*\(UTC([+-]\d{4})\))?/i);
+  if (expiresMatch) {
+    const dateStr = expiresMatch[1];
+    const timeStr = expiresMatch[2];
+    const timezone = expiresMatch[3];
+    
+    data.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
+    
+    // Convert to ISO - timezone offsets
+    try {
+      const tzOffsets: Record<string, number> = {
+        'EST': -5, 'EDT': -4, 'CST': -6, 'CDT': -5,
+        'MST': -7, 'MDT': -6, 'PST': -8, 'PDT': -7
+      };
+      const offset = tzOffsets[timezone.toUpperCase()] || -5;
+      
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      
+      const expiresDate = new Date(Date.UTC(year, month - 1, day, hours - offset, minutes, 0));
+      if (!isNaN(expiresDate.getTime())) {
+        data.expires_at = expiresDate.toISOString();
+        console.log(`📅 FCTMS expiration: ${data.expires_datetime} -> ${data.expires_at}`);
+      }
+    } catch (e) {
+      console.error('Error parsing FCTMS expiration:', e);
+    }
+  }
+  
+  // Parse pieces and weight from notes or dedicated fields
+  const totalPiecesMatch = bodyText?.match(/Total Pieces:?\s*(\d+)/i);
+  if (totalPiecesMatch) {
+    data.pieces = parseInt(totalPiecesMatch[1]);
+  }
+  
+  const totalWeightMatch = bodyText?.match(/Total Weight:?\s*([\d,]+)\s*(?:lbs?)?/i);
+  if (totalWeightMatch) {
+    data.weight = totalWeightMatch[1].replace(',', '');
+  }
+  
+  // Parse distance
+  const distanceMatch = bodyText?.match(/Distance:\s*([\d,]+)\s*mi/i);
+  if (distanceMatch) {
+    data.loaded_miles = parseInt(distanceMatch[1].replace(',', ''));
+  }
+  
+  // Parse vehicle type - "Requested Vehicle Class:" or "We call this vehicle class:"
+  const vehicleClassMatch = bodyText?.match(/(?:Requested Vehicle Class|We call this vehicle class):\s*([^\n]+)/i);
+  if (vehicleClassMatch) {
+    data.vehicle_type = vehicleClassMatch[1].trim().toUpperCase();
+  }
+  
+  // Normalize common vehicle names
+  if (data.vehicle_type) {
+    const vehicleNormMap: Record<string, string> = {
+      'SPRINTER VAN': 'SPRINTER',
+      'CARGO VAN': 'CARGO VAN',
+      'SMALL STRAIGHT TRUCK': 'SMALL STRAIGHT',
+      'LARGE STRAIGHT TRUCK': 'LARGE STRAIGHT',
+    };
+    for (const [key, value] of Object.entries(vehicleNormMap)) {
+      if (data.vehicle_type.includes(key)) {
+        data.vehicle_type = value;
+        break;
+      }
+    }
+  }
+  
+  // Parse dock level, hazmat, team requirements
+  const dockLevelMatch = bodyText?.match(/Dock Level.*?:\s*(Yes|No)/i);
+  if (dockLevelMatch) {
+    data.dock_level = dockLevelMatch[1].toLowerCase() === 'yes';
+  }
+  
+  const hazmatMatch = bodyText?.match(/Hazardous\??\s*:\s*(Yes|No)/i);
+  if (hazmatMatch) {
+    data.hazmat = hazmatMatch[1].toLowerCase() === 'yes';
+  }
+  
+  const teamMatch = bodyText?.match(/Driver TEAM.*?:\s*(Yes|No)/i);
+  if (teamMatch) {
+    data.team_required = teamMatch[1].toLowerCase() === 'yes';
+  }
+  
+  // Parse broker company with MC# - format: Load One Interface T+L (MC# 456807)
+  const brokerCompanyMCMatch = bodyText?.match(/please contact:\s*\n?([^\n(]+)\s*\(MC#\s*(\d+)\)/i);
+  if (brokerCompanyMCMatch) {
+    data.broker_company = brokerCompanyMCMatch[1].trim();
+    data.mc_number = brokerCompanyMCMatch[2];
+  }
+  
+  // Parse broker address
+  const addressMatch = bodyText?.match(/\(MC#\s*\d+\)\s*\n([^\n]+)\s*\n([^\n]+),\s*([A-Z]{2})\s+(\d{5})/i);
+  if (addressMatch) {
+    data.broker_address = addressMatch[1].trim();
+    data.broker_city = addressMatch[2].trim();
+    data.broker_state = addressMatch[3];
+    data.broker_zip = addressMatch[4];
+  }
+  
+  // Parse posted by / contact info
+  const postedByMatch = bodyText?.match(/Load posted by:\s*([^\n]+)/i);
+  if (postedByMatch) {
+    data.broker_name = postedByMatch[1].trim();
+  }
+  
+  const phoneMatch = bodyText?.match(/Phone:\s*\(?([\d\-\(\)\s]+)/i);
+  if (phoneMatch) {
+    data.broker_phone = phoneMatch[1].trim();
+  }
+  
+  const faxMatch = bodyText?.match(/Fax:\s*\(?([\d\-\(\)\s]+)/i);
+  if (faxMatch) {
+    data.broker_fax = faxMatch[1].trim();
+  }
+  
+  // Parse dimensions from the dimensions table
+  const dimensionsMatch = bodyText?.match(/Stops\s+Pieces\s+Weight[\s\S]*?1 to 2\s+(\d+)\s+([\d,]+)\s*lbs?\s+(\d+)\s*in\s+(\d+)\s*in\s+(\d+)\s*in\s+(Yes|No)/i);
+  if (dimensionsMatch) {
+    data.dimensions = `${dimensionsMatch[3]}x${dimensionsMatch[4]}x${dimensionsMatch[5]}`;
+    data.stackable = dimensionsMatch[6].toLowerCase() === 'yes';
+    // Use these as primary if not set
+    if (!data.pieces) data.pieces = parseInt(dimensionsMatch[1]);
+    if (!data.weight) data.weight = dimensionsMatch[2].replace(',', '');
+  }
+  
+  // Fallback: parse subject for origin/destination - "Load Available: MI - PA"
+  if (!data.origin_state || !data.destination_state) {
+    const subjectStatesMatch = subject?.match(/Load Available:\s*([A-Z]{2})\s*-\s*([A-Z]{2})/i);
+    if (subjectStatesMatch) {
+      if (!data.origin_state) data.origin_state = subjectStatesMatch[1].toUpperCase();
+      if (!data.destination_state) data.destination_state = subjectStatesMatch[2].toUpperCase();
+    }
+  }
+  
+  console.log(`📦 FCTMS parsed: Order ${data.order_number}${data.order_number_secondary ? '/' + data.order_number_secondary : ''}, ${data.origin_city || data.origin_state} -> ${data.destination_city || data.destination_state}, ${data.vehicle_type}, ${data.pieces} pcs, ${data.weight} lbs, expires ${data.expires_at}`);
+  
+  return data;
+}
+
 function parseSubjectLine(subject: string): Record<string, any> {
   const data: Record<string, any> = {};
   
@@ -575,10 +772,28 @@ serve(async (req) => {
         };
         bodyText = extractBody(message.payload);
 
-        // Parse from subject (primary) then body (fallback)
-        const subjectData = parseSubjectLine(subject);
-        const bodyData = parseSylectusEmail(subject, bodyText);
-        const parsedData = { ...bodyData, ...subjectData };
+        // Detect email source FIRST before parsing
+        let emailSource = 'sylectus'; // Default
+        const isFullCircleTMS = 
+          bodyText.includes('app.fullcircletms.com') ||
+          bodyText.includes('Bid YES to this load') ||
+          subject.match(/^Load Available:\s+[A-Z]{2}\s+-\s+[A-Z]{2}/i);
+        
+        if (isFullCircleTMS) {
+          emailSource = 'fullcircle';
+          console.log('📧 Detected Full Circle TMS email source');
+        }
+
+        // Parse based on source - use dedicated parser for Full Circle TMS
+        let parsedData: Record<string, any>;
+        if (isFullCircleTMS) {
+          parsedData = parseFullCircleTMSEmail(subject, bodyText);
+        } else {
+          // Parse from subject (primary) then body (fallback) for Sylectus
+          const subjectData = parseSubjectLine(subject);
+          const bodyData = parseSylectusEmail(subject, bodyText);
+          parsedData = { ...bodyData, ...subjectData };
+        }
 
         // If origin_city is missing but we have origin_zip, look up the city
         if (!parsedData.origin_city && parsedData.origin_zip) {
@@ -613,9 +828,9 @@ serve(async (req) => {
         }
 
         // Check for issues
-        const hasIssues = !parsedData.broker_email || !parsedData.origin_city || !parsedData.vehicle_type || geocodeFailed;
+        const hasIssues = !parsedData.broker_email && !isFullCircleTMS || !parsedData.origin_city || !parsedData.vehicle_type || geocodeFailed;
         const issueNotes = [];
-        if (!parsedData.broker_email) issueNotes.push('Missing broker email');
+        if (!parsedData.broker_email && !isFullCircleTMS) issueNotes.push('Missing broker email');
         if (!parsedData.origin_city) issueNotes.push('Missing origin location');
         if (!parsedData.vehicle_type) issueNotes.push('Missing vehicle type');
         if (geocodeFailed) issueNotes.push('Geocoding failed');
@@ -625,18 +840,42 @@ serve(async (req) => {
         const fromName = fromMatch ? fromMatch[1].trim() : from;
         const fromEmail = fromMatch ? fromMatch[2] : from;
 
-        // Detect email source based on content
-        let emailSource = 'sylectus'; // Default
-        
-        // Full Circle TMS detection: app.fullcircletms.com links, "Bid YES to this load" text
-        const isFullCircleTMS = 
-          bodyText.includes('app.fullcircletms.com') ||
-          bodyText.includes('Bid YES to this load') ||
-          subject.match(/^Load Available:\s+[A-Z]{2}\s+-\s+[A-Z]{2}/i);
-        
-        if (isFullCircleTMS) {
-          emailSource = 'fullcircle';
-          console.log('📧 Detected Full Circle TMS email source');
+        // For Full Circle TMS: create/update customer with MC# if broker_company is present
+        if (isFullCircleTMS && parsedData.broker_company) {
+          const customerName = parsedData.broker_company;
+          
+          // Check if customer exists
+          const { data: existingCustomer } = await supabase
+            .from('customers')
+            .select('id, mc_number')
+            .ilike('name', customerName)
+            .maybeSingle();
+          
+          if (existingCustomer) {
+            // Update MC# if not set
+            if (!existingCustomer.mc_number && parsedData.mc_number) {
+              await supabase
+                .from('customers')
+                .update({ mc_number: parsedData.mc_number })
+                .eq('id', existingCustomer.id);
+              console.log(`📋 Updated customer ${customerName} with MC# ${parsedData.mc_number}`);
+            }
+          } else {
+            // Create new customer with MC#
+            await supabase
+              .from('customers')
+              .insert({
+                name: customerName,
+                mc_number: parsedData.mc_number || null,
+                contact_name: parsedData.broker_name || null,
+                phone: parsedData.broker_phone || null,
+                address: parsedData.broker_address || null,
+                city: parsedData.broker_city || null,
+                state: parsedData.broker_state || null,
+                zip: parsedData.broker_zip || null,
+              });
+            console.log(`📋 Created customer ${customerName} with MC# ${parsedData.mc_number}`);
+          }
         }
 
         // Insert into load_emails

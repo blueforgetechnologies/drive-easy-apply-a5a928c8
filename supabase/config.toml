@@ -92,3 +92,6 @@ verify_jwt = true
 
 [functions.parse-freight-dimensions]
 verify_jwt = true
+
+[functions.reparse-fullcircle-emails]
+verify_jwt = true
