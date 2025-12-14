@@ -22,12 +22,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [activeTab, setActiveTab] = useState<string>("drivers");
   const [alertCount, setAlertCount] = useState<number>(0);
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
+  const [unmappedTypesCount, setUnmappedTypesCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
     loadAlerts();
     loadIntegrationAlerts();
+    loadUnmappedTypesCount();
     
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
@@ -38,7 +40,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     // Check integration status every 5 minutes
-    const interval = setInterval(loadIntegrationAlerts, 5 * 60 * 1000);
+    const interval = setInterval(() => {
+      loadIntegrationAlerts();
+      loadUnmappedTypesCount();
+    }, 5 * 60 * 1000);
     
     return () => {
       clearInterval(interval);
@@ -131,6 +136,74 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const loadUnmappedTypesCount = async () => {
+    try {
+      // First, get all type configs to understand which types are mapped or canonical
+      const { data: typeConfigs, error: configError } = await supabase
+        .from("sylectus_type_config")
+        .select("type_category, original_value, mapped_to");
+
+      if (configError) throw configError;
+
+      // Build sets of mapped types and canonical types
+      const mappedTypes = new Set<string>(); // Types that are mapped to something
+      const canonicalTypes = new Set<string>(); // Types that have things mapped TO them
+      const hiddenTypes = new Set<string>(); // Types hidden (mapped_to = null in config)
+
+      typeConfigs?.forEach((config: any) => {
+        const key = `${config.type_category}:${config.original_value}`;
+        if (config.mapped_to) {
+          mappedTypes.add(key);
+          canonicalTypes.add(`${config.type_category}:${config.mapped_to}`);
+        } else {
+          hiddenTypes.add(key);
+        }
+      });
+
+      // Get unique types from recent emails
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: emails, error: emailError } = await supabase
+        .from("load_emails")
+        .select("parsed_data")
+        .not("parsed_data", "is", null)
+        .gte("received_at", thirtyDaysAgo)
+        .limit(5000);
+
+      if (emailError) throw emailError;
+
+      const allVehicleTypes = new Set<string>();
+      const allLoadTypes = new Set<string>();
+
+      emails?.forEach((email: any) => {
+        const parsed = email.parsed_data;
+        if (!parsed) return;
+        const vehicleType = (parsed.vehicle_type || parsed.vehicleType) as string | undefined;
+        const loadType = (parsed.load_type || parsed.loadType) as string | undefined;
+        if (vehicleType?.trim()) allVehicleTypes.add(vehicleType.trim());
+        if (loadType?.trim()) allLoadTypes.add(loadType.trim());
+      });
+
+      // Count unmapped types: not mapped, not canonical, not hidden
+      let unmappedCount = 0;
+      allVehicleTypes.forEach(type => {
+        const key = `vehicle:${type}`;
+        if (!mappedTypes.has(key) && !canonicalTypes.has(key) && !hiddenTypes.has(key)) {
+          unmappedCount++;
+        }
+      });
+      allLoadTypes.forEach(type => {
+        const key = `load:${type}`;
+        if (!mappedTypes.has(key) && !canonicalTypes.has(key) && !hiddenTypes.has(key)) {
+          unmappedCount++;
+        }
+      });
+
+      setUnmappedTypesCount(unmappedCount);
+    } catch (error) {
+      console.error("Error loading unmapped types count:", error);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -160,7 +233,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "freight-calc", icon: Ruler, label: "Freight Calc" },
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
-    { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount },
+    { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount + unmappedTypesCount },
     { value: "roles", icon: ShieldCheck, label: "Roles" },
     { value: "screenshare", icon: MonitorUp, label: "Support" },
     { value: "development", icon: FileCode, label: "Dev" },

@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Check, RefreshCw, Truck, Package, Trash2, Merge, Undo2 } from "lucide-react";
+import { Check, RefreshCw, Truck, Package, Trash2, Merge, Undo2, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface TypeEntry {
   value: string;
@@ -376,6 +377,11 @@ export default function SylectusSettingsTab() {
   const newVehicleCount = vehicleTypes.filter((t) => t.isNew && !t.isHidden && !t.mappedTo).length;
   const newLoadCount = loadTypes.filter((t) => t.isNew && !t.isHidden && !t.mappedTo).length;
 
+  // Unmapped types = types that are not hidden, not mapped to anything, and not canonical (no types mapped TO them)
+  const unmappedVehicleTypes = vehicleTypes.filter((t) => !t.isHidden && !t.mappedTo && !t.isCanonical);
+  const unmappedLoadTypes = loadTypes.filter((t) => !t.isHidden && !t.mappedTo && !t.isCanonical);
+  const totalUnmappedCount = unmappedVehicleTypes.length + unmappedLoadTypes.length;
+
   const filteredVehicleTypes = showHidden
     ? vehicleTypes
     : vehicleTypes.filter((t) => !t.isHidden && !t.mappedTo);
@@ -388,6 +394,28 @@ export default function SylectusSettingsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Needs Attention Alert */}
+      {totalUnmappedCount > 0 && (
+        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="font-semibold">
+            {totalUnmappedCount} Unmapped Type{totalUnmappedCount !== 1 ? 's' : ''} Need Attention
+          </AlertTitle>
+          <AlertDescription className="text-sm">
+            New vehicle or load types detected that haven't been merged into a canonical type. 
+            Select them from the tables below and click "Rename" or "Merge" to categorize them.
+            <div className="flex gap-4 mt-2 text-xs">
+              {unmappedVehicleTypes.length > 0 && (
+                <span className="font-medium">{unmappedVehicleTypes.length} vehicle type{unmappedVehicleTypes.length !== 1 ? 's' : ''}</span>
+              )}
+              {unmappedLoadTypes.length > 0 && (
+                <span className="font-medium">{unmappedLoadTypes.length} load type{unmappedLoadTypes.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Load Hunter / Sylectus Configuration</h3>
@@ -617,9 +645,9 @@ export default function SylectusSettingsTab() {
                               ← {type.mergedCount} merged
                             </Badge>
                           )}
-                          {type.isNew && !type.isHidden && !type.mappedTo && !type.isCanonical && (
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                              NEW
+                          {!type.isHidden && !type.mappedTo && !type.isCanonical && (
+                            <Badge variant="destructive" className="text-xs">
+                              Unmapped
                             </Badge>
                           )}
                           {type.isHidden && (
@@ -744,9 +772,9 @@ export default function SylectusSettingsTab() {
                               ← {type.mergedCount} merged
                             </Badge>
                           )}
-                          {type.isNew && !type.isHidden && !type.mappedTo && !type.isCanonical && (
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                              NEW
+                          {!type.isHidden && !type.mappedTo && !type.isCanonical && (
+                            <Badge variant="destructive" className="text-xs">
+                              Unmapped
                             </Badge>
                           )}
                           {type.isHidden && (
