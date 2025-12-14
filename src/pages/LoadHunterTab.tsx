@@ -3125,20 +3125,20 @@ export default function LoadHunterTab() {
               return (
                 <div 
                   key={vehicle.id} 
-                  className={`p-2 cursor-pointer rounded-lg relative border transition-all duration-200 ${
+                  className={`p-2.5 cursor-pointer rounded-lg relative border transition-all duration-200 ${
                     hasEnabledHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-200'
                   } ${selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'}`}
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
-                  <div className="flex items-start justify-between gap-1.5">
-                    <div className="flex-1 min-w-0 space-y-0.5 pr-14">
-                      <div className="font-medium text-xs leading-tight text-carved flex items-center gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0 space-y-0.5 pr-16">
+                      <div className="font-medium text-sm leading-tight text-carved flex items-center gap-1">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
-                      <div className="text-[11px] text-carved-light leading-tight">
+                      <div className="text-xs text-carved-light leading-tight">
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                       </div>
-                      <div className="text-[10px] text-carved-light truncate leading-tight opacity-70">
+                      <div className="text-[11px] text-carved-light truncate leading-tight opacity-70">
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
@@ -3146,7 +3146,7 @@ export default function LoadHunterTab() {
                     <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg">
                       {/* GREEN = Unreviewed */}
                       <div 
-                        className="btn-glossy-success h-5 px-2 !rounded-none !border-0 !border-b-0 text-[10px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
+                        className="btn-glossy-success h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('unreviewed');
@@ -3160,7 +3160,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* GRAY = Skipped */}
                       <div 
-                        className="btn-glossy h-5 px-2 !rounded-none !border-0 !border-b-0 text-[10px] text-gray-600 cursor-pointer hover:brightness-95 transition-all !py-0 flex items-center justify-center"
+                        className="btn-glossy h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] text-gray-600 cursor-pointer hover:brightness-95 transition-all !py-0 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
@@ -3174,7 +3174,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* BLUE = My Bids */}
                       <div 
-                        className="btn-glossy-primary h-5 px-2 !rounded-none !border-0 !border-b-0 text-[10px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
+                        className="btn-glossy-primary h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');
@@ -3190,7 +3190,7 @@ export default function LoadHunterTab() {
                     {/* Status Text - plain text style */}
                     {vehicle.stopped_status && (
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                        <span className={`text-[9px] font-medium whitespace-nowrap ${
+                        <span className={`text-[10px] font-medium whitespace-nowrap ${
                           vehicle.stopped_status === 'Stopped' ? 'text-gray-400' : 
                           vehicle.stopped_status === 'Idling' ? 'text-orange-500' : 
                           'text-green-700'
@@ -3212,10 +3212,10 @@ export default function LoadHunterTab() {
                         }}
                       >
                         {isOilChangeDue && (
-                          <img src={oilChangeIcon} alt="Oil" className="h-5 w-5 drop-shadow-sm" />
+                          <img src={oilChangeIcon} alt="Oil" className="h-6 w-6 drop-shadow-sm" />
                         )}
                         {hasFaultCodes && (
-                          <img src={checkEngineIcon} alt="Engine" className="h-5 w-5 drop-shadow-sm" />
+                          <img src={checkEngineIcon} alt="Engine" className="h-6 w-6 drop-shadow-sm" />
                         )}
                       </div>
                     )}
