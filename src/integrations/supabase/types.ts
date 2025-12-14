@@ -1248,6 +1248,7 @@ export type Database = {
           body_text: string | null
           created_at: string
           email_id: string
+          email_source: string
           expires_at: string | null
           from_email: string
           from_name: string | null
@@ -1269,6 +1270,7 @@ export type Database = {
           body_text?: string | null
           created_at?: string
           email_id: string
+          email_source?: string
           expires_at?: string | null
           from_email: string
           from_name?: string | null
@@ -1290,6 +1292,7 @@ export type Database = {
           body_text?: string | null
           created_at?: string
           email_id?: string
+          email_source?: string
           expires_at?: string | null
           from_email?: string
           from_name?: string | null
