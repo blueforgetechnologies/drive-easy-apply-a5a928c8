@@ -242,29 +242,59 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen w-full bg-background">
-      <header className="sticky top-0 z-40 border-b bg-header border-header/20">
-        <div className="max-w-[1630px] mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
+      <header 
+        className="sticky top-0 z-40 border-b border-white/20"
+        style={{
+          background: 'linear-gradient(180deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(224 76% 48%) 100%)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.15)'
+        }}
+      >
+        <div className="max-w-[1630px] mx-auto px-3 sm:px-4 py-1.5 sm:py-2">
           <div className="flex justify-between items-center gap-2">
             {/* Left: Logo + Desktop Nav */}
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-header-foreground whitespace-nowrap">TMS</h1>
+              <h1 
+                className="text-lg sm:text-xl font-bold text-white whitespace-nowrap"
+                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
+              >
+                TMS
+              </h1>
               
               {/* Desktop Navigation - Hidden on mobile */}
               <div className="hidden md:block overflow-x-auto">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="h-9 bg-header-foreground/10 border-header-foreground/20">
+                  <TabsList 
+                    className="h-8 border border-white/20 p-0.5 gap-0.5"
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 100%)',
+                      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
+                    }}
+                  >
                     {navItems.map((item) => {
                       const Icon = item.icon;
                       return (
                         <TabsTrigger 
                           key={item.value}
                           value={item.value} 
-                          className="gap-1.5 h-8 text-xs text-header-foreground data-[state=active]:bg-header-foreground/20 data-[state=active]:text-header-foreground"
+                          className="gap-1 h-6 text-[11px] px-2 text-white/90 border-0 rounded-md data-[state=active]:text-white data-[state=active]:shadow-none"
+                          style={{
+                            textShadow: '0 1px 1px rgba(0,0,0,0.3)',
+                            ...(activeTab === item.value ? {
+                              background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%)',
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 2px rgba(0,0,0,0.15)'
+                            } : {})
+                          }}
                         >
-                          <Icon className="h-3.5 w-3.5" />
+                          <Icon className="h-3 w-3" />
                           <span>{item.label}</span>
                           {item.badge && item.badge > 0 && (
-                            <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full">
+                            <span 
+                              className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold text-white rounded-full"
+                              style={{
+                                background: 'linear-gradient(180deg, hsl(0 84% 60%) 0%, hsl(0 72% 51%) 100%)',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                              }}
+                            >
                               {item.badge > 9 ? '9+' : item.badge}
                             </span>
                           )}
@@ -341,14 +371,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Right: User info + Logout */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-header-foreground/90 hidden sm:inline truncate max-w-[120px]">
+              <span 
+                className="text-xs sm:text-sm text-white/90 hidden sm:inline truncate max-w-[120px]"
+                style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}
+              >
                 {userName}
               </span>
               <Button 
                 onClick={handleLogout} 
                 variant="outline" 
                 size="sm" 
-                className="h-8 text-xs sm:text-sm px-2 sm:px-3 border-header-foreground/30 text-header-foreground bg-transparent hover:bg-header-foreground/20 hover:text-header-foreground hidden md:flex"
+                className="h-7 text-[11px] px-2.5 border-white/30 text-white bg-white/10 hover:bg-white/20 hover:text-white hidden md:flex"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.15)',
+                  textShadow: '0 1px 1px rgba(0,0,0,0.3)'
+                }}
               >
                 Logout
               </Button>
