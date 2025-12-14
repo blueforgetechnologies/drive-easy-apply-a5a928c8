@@ -329,23 +329,13 @@ export default function LoadHunterTab() {
     if (hunt.vehicleSizes && hunt.vehicleSizes.length > 0 && loadData.vehicleType) {
       const loadVehicleRaw = loadData.vehicleType.toLowerCase();
       
-      // Use mapping to get canonical type, or use raw type if no mapping exists
-      const loadVehicle = vehicleTypeMappings.get(loadVehicleRaw) || loadVehicleRaw;
-      const loadVehicleNormalized = loadVehicle.toLowerCase().replace(/\s+/g, '-');
+      // Use mapping to get canonical type (uppercase), or use raw type uppercased if no mapping
+      const loadVehicleCanonical = vehicleTypeMappings.get(loadVehicleRaw) || loadData.vehicleType.toUpperCase();
 
       // Check if ANY selected vehicle type matches the load's canonical type
       const vehicleMatches = hunt.vehicleSizes.some(huntSize => {
-        const huntSizeNormalized = huntSize.toLowerCase();
-        const loadVehicleLabel = loadVehicle.toLowerCase();
-        
-        // Direct match on normalized values
-        if (huntSizeNormalized === loadVehicleNormalized || huntSizeNormalized === loadVehicleLabel) {
-          return true;
-        }
-        
-        // Fuzzy match - check if one contains the other
-        const huntSizeReadable = huntSize.replace(/-/g, ' ').toLowerCase();
-        return loadVehicleLabel.includes(huntSizeReadable) || huntSizeReadable.includes(loadVehicleLabel);
+        // Direct match - both should be uppercase canonical names
+        return huntSize.toUpperCase() === loadVehicleCanonical.toUpperCase();
       });
       
       if (!vehicleMatches) {
@@ -1254,10 +1244,10 @@ export default function LoadHunterTab() {
   // Load canonical vehicle types from sylectus_type_config
   const loadCanonicalVehicleTypes = async () => {
     try {
+      // Fetch from BOTH vehicle and load categories since they share canonical names
       const { data, error } = await supabase
         .from("sylectus_type_config")
-        .select("original_value, mapped_to")
-        .eq("type_category", "vehicle");
+        .select("type_category, original_value, mapped_to");
 
       if (error) throw error;
 
@@ -1267,9 +1257,9 @@ export default function LoadHunterTab() {
 
       data?.forEach((config: any) => {
         if (config.mapped_to) {
-          // This type maps to a canonical type
-          mappings.set(config.original_value.toLowerCase(), config.mapped_to);
-          canonicalSet.add(config.mapped_to);
+          // This type maps to a canonical type - store lowercase for matching
+          mappings.set(config.original_value.toLowerCase(), config.mapped_to.toUpperCase());
+          canonicalSet.add(config.mapped_to.toUpperCase());
         }
         // If mapped_to is null, it's hidden - don't add to canonical
       });
@@ -1279,19 +1269,19 @@ export default function LoadHunterTab() {
       // If we have canonical types, use them; otherwise fall back to defaults
       if (canonicalSet.size > 0) {
         const types = Array.from(canonicalSet).sort().map(t => ({
-          value: t.toLowerCase().replace(/\s+/g, '-'),
-          label: t
+          value: t, // Keep the canonical name as-is (e.g., "SPRINTER")
+          label: t  // Display same value
         }));
         setCanonicalVehicleTypes(types);
       } else {
         // Default fallback types
         setCanonicalVehicleTypes([
-          { value: 'large-straight', label: 'Large Straight' },
-          { value: 'small-straight', label: 'Small Straight' },
-          { value: 'cargo-van', label: 'Cargo Van' },
-          { value: 'sprinter', label: 'Sprinter' },
-          { value: 'straight', label: 'Straight' },
-          { value: 'flatbed', label: 'Flatbed' },
+          { value: 'LARGE STRAIGHT', label: 'LARGE STRAIGHT' },
+          { value: 'SMALL STRAIGHT', label: 'SMALL STRAIGHT' },
+          { value: 'CARGO VAN', label: 'CARGO VAN' },
+          { value: 'SPRINTER', label: 'SPRINTER' },
+          { value: 'STRAIGHT', label: 'STRAIGHT' },
+          { value: 'FLATBED', label: 'FLATBED' },
         ]);
       }
     } catch (error) {
@@ -3402,23 +3392,13 @@ export default function LoadHunterTab() {
                     if (plan.vehicleSizes && plan.vehicleSizes.length > 0 && loadData.loadType) {
                       const loadTypeRaw = loadData.loadType.toLowerCase();
                       
-                      // Use mapping to get canonical type, or use raw type if no mapping exists
-                      const loadType = vehicleTypeMappings.get(loadTypeRaw) || loadTypeRaw;
-                      const loadTypeNormalized = loadType.toLowerCase().replace(/\s+/g, '-');
+                      // Use mapping to get canonical type (uppercase), or use raw type uppercased if no mapping
+                      const loadTypeCanonical = vehicleTypeMappings.get(loadTypeRaw) || loadData.loadType.toUpperCase();
                       
                       // Check if any of the selected vehicle sizes match the canonical type
                       const anyMatch = plan.vehicleSizes.some(size => {
-                        const sizeNormalized = size.toLowerCase();
-                        const loadTypeLabel = loadType.toLowerCase();
-                        
-                        // Direct match
-                        if (sizeNormalized === loadTypeNormalized || sizeNormalized === loadTypeLabel) {
-                          return true;
-                        }
-                        
-                        // Fuzzy match
-                        const sizeReadable = size.replace(/-/g, ' ').toLowerCase();
-                        return loadTypeLabel.includes(sizeReadable) || sizeReadable.includes(loadTypeLabel);
+                        // Direct match - both should be uppercase canonical names
+                        return size.toUpperCase() === loadTypeCanonical.toUpperCase();
                       });
                       
                       if (!anyMatch) {
@@ -3500,30 +3480,7 @@ export default function LoadHunterTab() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="font-medium">Vehicle Types:</span>
-                      <span className="text-right max-w-[200px]">{(() => {
-                        const labels: Record<string, string> = {
-                          'large-straight': 'Large Straight',
-                          'large-straight-only': 'Large Straight Only',
-                          'small-straight': 'Small Straight',
-                          'cargo-van': 'Cargo Van',
-                          'cube-van': 'Cube Van',
-                          'sprinter': 'Sprinter',
-                          'sprinter-van': 'Sprinter Van',
-                          'sprinter-team': 'Sprinter Team',
-                          'van': 'Van',
-                          'straight': 'Straight',
-                          'straight-truck': 'Straight Truck',
-                          'straight-liftgate': 'Straight With Liftgate',
-                          'dock-high-straight': 'Dock High Straight',
-                          'large-straight-team': 'Large Straight Team',
-                          'lift-gate-truck': 'Lift Gate Truck',
-                          'flatbed': 'Flatbed',
-                          'tractor': 'Tractor',
-                          'semi': 'Semi',
-                          'reefer-sprinter': 'Reefer Sprinter Van',
-                        };
-                        return plan.vehicleSizes.map(s => labels[s] || s).join(', ');
-                      })()}</span>
+                      <span className="text-right max-w-[200px]">{plan.vehicleSizes.join(', ')}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Zipcodes:</span>
