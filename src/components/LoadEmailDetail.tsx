@@ -1532,13 +1532,13 @@ const LoadEmailDetail = ({
                 {/* CARRIER ROWS */}
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
-                    <div 
-                      className={`px-3 py-1.5 font-bold text-sm flex items-center rounded-lg truncate shadow-md ${hasCarrierSafetyIssue ? 'bg-gradient-to-b from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-gradient-to-b from-green-100 to-green-200 text-green-800 border border-green-300'}`}
+                    <button 
+                      className={`px-3 py-1.5 font-bold text-sm flex items-center rounded-lg truncate shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] ${hasCarrierSafetyIssue ? 'bg-gradient-to-b from-red-100 to-red-200 text-red-800 border border-red-300 hover:from-red-150 hover:to-red-250' : 'bg-gradient-to-b from-green-100 to-green-200 text-green-800 border border-green-300 hover:from-green-150 hover:to-green-250'}`}
                       style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
                       title={carrierName || "No Carrier"}
                     >
                       {carrierName || "No Carrier"}
-                    </div>
+                    </button>
                     <div className="text-blue-800 font-bold">
                       <div>Pickup Time</div>
                       <div>Delivery Time</div>
@@ -1564,13 +1564,13 @@ const LoadEmailDetail = ({
 
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
-                    <div 
-                      className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300"
+                    <button 
+                      className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:from-amber-150 hover:to-amber-250 active:scale-[0.98]"
                       style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
                       title={brokerName}
                     >
                       {brokerName}
-                    </div>
+                    </button>
                     <div>
                       <div>   11/30/25 Sun 17:00 EST</div>
                       <div>   12/01/25 Mon 09:00 EST</div>
