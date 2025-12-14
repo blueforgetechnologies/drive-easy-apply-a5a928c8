@@ -4615,14 +4615,19 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="text-right py-1">
                                 <div 
-                                  className="inline-flex items-center gap-0.5 bg-white rounded-lg shadow-md border border-gray-200 p-0.5"
-                                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)' }}
+                                  className="inline-flex items-center gap-0 rounded-md overflow-hidden"
+                                  style={{ 
+                                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 96%) 100%)',
+                                    boxShadow: '0 3px 10px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,1)',
+                                    border: '1px solid hsl(220 10% 80%)'
+                                  }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-7 w-7 p-0 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" 
+                                    className="h-7 w-7 p-0 rounded-none text-red-500 hover:bg-red-100 hover:text-red-700 border-r border-gray-200" 
+                                    style={{ textShadow: '0 1px 0 white' }}
                                     aria-label="Skip load or match"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -4638,7 +4643,11 @@ export default function LoadHunterTab() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-7 w-7 p-0 rounded-md bg-blue-500 text-white hover:bg-blue-600 shadow-sm" 
+                                    className="h-7 w-7 p-0 rounded-none text-white hover:opacity-90" 
+                                    style={{ 
+                                      background: 'linear-gradient(180deg, hsl(221 80% 58%) 0%, hsl(221 80% 50%) 100%)',
+                                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)'
+                                    }}
                                     aria-label="Move to waitlist"
                                     onClick={(e) => {
                                       e.stopPropagation();
