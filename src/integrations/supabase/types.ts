@@ -2642,6 +2642,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sylectus_type_config: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mapped_to: string | null
+          original_value: string
+          type_category: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mapped_to?: string | null
+          original_value: string
+          type_category: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mapped_to?: string | null
+          original_value?: string
+          type_category?: string
+        }
+        Relationships: []
+      }
       user_custom_roles: {
         Row: {
           assigned_at: string | null
