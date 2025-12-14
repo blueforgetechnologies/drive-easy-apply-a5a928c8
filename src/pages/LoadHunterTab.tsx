@@ -2435,14 +2435,25 @@ export default function LoadHunterTab() {
 
   const handleEditHunt = (hunt: HuntPlan) => {
     setEditingHunt(hunt);
-    // Filter vehicleSizes to only include canonical types (matching the checkbox options)
+    // Map stored values to canonical types and deduplicate
     const canonicalValues = canonicalVehicleTypes.map(ct => ct.value.toUpperCase());
-    const filteredVehicleSizes = hunt.vehicleSizes.filter(size => 
-      canonicalValues.includes(size.toUpperCase())
-    );
+    const mappedVehicleSizes = new Set<string>();
+    hunt.vehicleSizes.forEach(size => {
+      const upperSize = size.toUpperCase();
+      // Check if it's already a canonical type
+      if (canonicalValues.includes(upperSize)) {
+        mappedVehicleSizes.add(upperSize);
+      } else {
+        // Check if it maps to a canonical type
+        const mappedTo = vehicleTypeMappings.get(size.toLowerCase());
+        if (mappedTo && canonicalValues.includes(mappedTo.toUpperCase())) {
+          mappedVehicleSizes.add(mappedTo.toUpperCase());
+        }
+      }
+    });
     setHuntFormData({
       planName: hunt.planName,
-      vehicleSizes: filteredVehicleSizes,
+      vehicleSizes: Array.from(mappedVehicleSizes),
       zipCode: hunt.zipCode,
       availableFeet: hunt.availableFeet,
       partial: hunt.partial,
@@ -3493,9 +3504,25 @@ export default function LoadHunterTab() {
                     <div className="flex justify-between">
                       <span className="font-medium">Vehicle Types:</span>
                       <span className="text-right max-w-[200px]">
-                        {plan.vehicleSizes
-                          .filter(size => canonicalVehicleTypes.some(ct => ct.value.toUpperCase() === size.toUpperCase()))
-                          .join(', ') || plan.vehicleSizes.join(', ')}
+                        {(() => {
+                          // Map stored values to canonical types and deduplicate
+                          const canonicalValues = canonicalVehicleTypes.map(ct => ct.value.toUpperCase());
+                          const displayTypes = new Set<string>();
+                          plan.vehicleSizes.forEach(size => {
+                            const upperSize = size.toUpperCase();
+                            // Check if it's already a canonical type
+                            if (canonicalValues.includes(upperSize)) {
+                              displayTypes.add(upperSize);
+                            } else {
+                              // Check if it maps to a canonical type
+                              const mappedTo = vehicleTypeMappings.get(size.toLowerCase());
+                              if (mappedTo && canonicalValues.includes(mappedTo.toUpperCase())) {
+                                displayTypes.add(mappedTo.toUpperCase());
+                              }
+                            }
+                          });
+                          return displayTypes.size > 0 ? Array.from(displayTypes).sort().join(', ') : plan.vehicleSizes.join(', ');
+                        })()}
                       </span>
                     </div>
                     <div className="flex justify-between">
