@@ -4124,17 +4124,17 @@ export default function LoadHunterTab() {
         ) : (
           /* Loads Table */
           <div className="flex-1 overflow-y-auto flex flex-col">
-          <Card className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col card-glossy-table">
             {/* Vehicle Filter Indicator */}
             {filterVehicleId && (
-              <div className="px-3 py-1.5 bg-blue-50 border-b flex items-center justify-between">
-                <span className="text-xs text-blue-700">
-                  Filtering by: <span className="font-semibold">{vehicles.find(v => v.id === filterVehicleId)?.vehicle_number || 'Unknown Truck'}</span>
+              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100/50 border-b border-blue-200 flex items-center justify-between">
+                <span className="text-xs text-blue-700 font-medium">
+                  Filtering by: <span className="font-bold">{vehicles.find(v => v.id === filterVehicleId)?.vehicle_number || 'Unknown Truck'}</span>
                 </span>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-5 px-2 text-xs text-blue-600 hover:text-blue-800"
+                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100"
                   onClick={() => setFilterVehicleId(null)}
                 >
                   <X className="h-3 w-3 mr-1" />
@@ -4142,8 +4142,8 @@ export default function LoadHunterTab() {
                 </Button>
               </div>
             )}
-            <CardContent className="p-0 flex-1 flex flex-col">
-              <div className="border-t">
+            <div className="p-0 flex-1 flex flex-col">
+              <div>
                 {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
@@ -4168,15 +4168,15 @@ export default function LoadHunterTab() {
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto">
-                    <Table>
+                    <div className="overflow-x-auto card-glossy-table">
+                    <Table className="table-glossy">
                       <TableHeader>
-                        <TableRow className="h-7">
-                          <TableHead className="w-[30px] py-0 px-1">
+                        <TableRow className="h-9 bg-gradient-to-b from-primary/95 to-primary">
+                          <TableHead className="w-[30px] py-2 px-2 text-white">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-5 w-5 p-0"
+                              className="h-5 w-5 p-0 text-white hover:bg-white/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowIdColumns(!showIdColumns);
@@ -4188,26 +4188,26 @@ export default function LoadHunterTab() {
                           </TableHead>
                           {showIdColumns && (
                             <>
-                              <TableHead className="w-[80px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Order #</TableHead>
-                              <TableHead className="w-[110px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Load ID</TableHead>
+                              <TableHead className="w-[80px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Order #</TableHead>
+                              <TableHead className="w-[110px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Load ID</TableHead>
                               {activeFilter !== 'all' && (
-                                <TableHead className="w-[100px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Match ID</TableHead>
+                                <TableHead className="w-[100px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Match ID</TableHead>
                               )}
                             </>
                           )}
                           {activeFilter !== 'all' && (
-                            <TableHead className="w-[140px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
+                            <TableHead className="w-[140px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Truck - Drivers<br/>Carrier</TableHead>
                           )}
-                          <TableHead className="w-[60px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
-                          <TableHead className="w-[95px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
-                          <TableHead className="w-[115px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
-                          <TableHead className="w-[130px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
-                          <TableHead className="w-[60px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Empty<br/>Loaded</TableHead>
-                          <TableHead className="w-[100px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Vehicle Type<br/>Weight</TableHead>
-                          <TableHead className="w-[70px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Pieces<br/>Dims</TableHead>
-                          <TableHead className="w-[45px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Avail</TableHead>
-                          <TableHead className="w-[65px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Source</TableHead>
-                          <TableHead className="w-[85px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Actions</TableHead>
+                          <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Customer</TableHead>
+                          <TableHead className="w-[95px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Received<br/>Expires</TableHead>
+                          <TableHead className="w-[115px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pickup Time<br/>Deliver Time</TableHead>
+                          <TableHead className="w-[130px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Origin<br/>Destination</TableHead>
+                          <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Empty<br/>Loaded</TableHead>
+                          <TableHead className="w-[100px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Vehicle Type<br/>Weight</TableHead>
+                          <TableHead className="w-[70px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pieces<br/>Dims</TableHead>
+                          <TableHead className="w-[45px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Avail</TableHead>
+                          <TableHead className="w-[65px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Source</TableHead>
+                          <TableHead className="w-[85px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -4406,7 +4406,7 @@ export default function LoadHunterTab() {
                           return (
                           <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
-                              className={`h-10 cursor-pointer hover:bg-accent transition-colors ${isNewlyProcessed ? 'bg-green-50 dark:bg-green-950/30 animate-pulse' : ''}`}
+                              className={`h-11 cursor-pointer transition-all duration-150 border-b border-border/50 ${isNewlyProcessed ? 'bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20' : 'hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 even:bg-muted/30'}`}
                               onClick={async () => {
                                 // Check if this load has multiple matches
                                 const matchesForLoad = loadMatches.filter(m => m.load_email_id === email.id);
@@ -4656,11 +4656,11 @@ export default function LoadHunterTab() {
                     </Table>
                   </div>
                   
-                  {/* Pagination bar at bottom - inline, not floating */}
-                  <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                  {/* Pagination bar at bottom - glossy style */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/80 border-t-2 border-border/50">
+                    <div className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
-                      <span>
+                      <span className="font-semibold">
                         {(() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
                             : activeFilter === 'skipped' ? skippedMatches.length
@@ -4673,29 +4673,23 @@ export default function LoadHunterTab() {
                         })()}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setCurrentPage(1)}
                         disabled={currentPage === 1}
                       >
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
+                        <ChevronsLeft className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
                       >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
+                        <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
                             : activeFilter === 'skipped' ? skippedMatches.length
@@ -4717,12 +4711,10 @@ export default function LoadHunterTab() {
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
                         })()}
                       >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="btn-glossy h-8 w-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => {
                           const totalItems = activeFilter === 'unreviewed' ? filteredMatches.length 
                             : activeFilter === 'skipped' ? skippedMatches.length
@@ -4744,15 +4736,15 @@ export default function LoadHunterTab() {
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
                         })()}
                       >
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
+                        <ChevronsRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
                     </div>
                   </div>
                 </>
               )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           </div>
         )}
       </div>
