@@ -259,19 +259,19 @@ export default function LoadsTab() {
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case "pending":
-        return { label: "Pending Rate Approval", color: "bg-gray-100 text-gray-800 border-gray-200" };
+        return { label: "Pending Rate Approval", color: "bg-transparent border-slate-300 text-slate-500" };
       case "dispatched":
-        return { label: "Dispatched", color: "bg-blue-500 text-white border-blue-500" };
+        return { label: "Dispatched", color: "bg-transparent border-blue-500 text-blue-600" };
       case "in_transit":
-        return { label: "In Transit", color: "bg-purple-500 text-white border-purple-500" };
+        return { label: "In Transit", color: "bg-transparent border-purple-400 text-purple-500" };
       case "delivered":
-        return { label: "Delivered", color: "bg-green-600 text-white border-green-600" };
+        return { label: "Delivered", color: "bg-transparent border-emerald-500 text-emerald-600" };
       case "completed":
-        return { label: "Completed", color: "bg-green-800 text-white border-green-800" };
+        return { label: "Completed", color: "bg-transparent border-emerald-700 text-emerald-700" };
       case "cancelled":
-        return { label: "Cancelled", color: "bg-red-500 text-white border-red-500" };
+        return { label: "Cancelled", color: "bg-transparent border-red-500 text-red-600" };
       default:
-        return { label: status, color: "bg-muted text-muted-foreground" };
+        return { label: status, color: "bg-transparent border-muted text-muted-foreground" };
     }
   };
 
