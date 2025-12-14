@@ -519,13 +519,13 @@ export default function CarriersTab() {
           <CardTitle>Carriers</CardTitle>
           <CardDescription>Manage carrier companies</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col p-0 max-h-[calc(100vh-260px)]">
           {filteredCarriers.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               {searchQuery ? "No carriers match your search" : "No carriers found"}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="flex-1 overflow-auto overflow-x-auto px-4 pt-4">
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
