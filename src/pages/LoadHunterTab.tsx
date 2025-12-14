@@ -3350,9 +3350,11 @@ export default function LoadHunterTab() {
                           ? `${selectedVehicle.oil_change_remaining} mi`
                           : "N/A"}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {selectedVehicle.next_service_date || "N/A"}
-                      </div>
+                      {selectedVehicle.next_service_date && (
+                        <div className="text-xs text-muted-foreground">
+                          {selectedVehicle.next_service_date}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
