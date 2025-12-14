@@ -3529,15 +3529,15 @@ export default function LoadHunterTab() {
                 <Card key={plan.id} className={`p-4 space-y-3 border-2 ${plan.enabled ? 'bg-card border-border' : 'bg-muted/30 border-muted'}`}>
                   {/* Status and Action Buttons */}
                   <div className="flex items-center justify-between">
-                    <div className="flex gap-2 items-center">
-                      <Badge variant={plan.enabled ? "default" : "secondary"} className="h-6">
-                        {plan.enabled ? "Active" : "Disabled"}
-                      </Badge>
+                    <div className="flex items-center">
                       <div className="flex items-center gap-0">
+                        <div className={`h-8 px-3 text-xs font-medium flex items-center rounded-l-full ${plan.enabled ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}>
+                          {plan.enabled ? "Active" : "Disabled"}
+                        </div>
                         <Button 
                           size="sm" 
                           variant="secondary" 
-                          className="h-8 px-3 text-xs rounded-none rounded-l-full border-r-0"
+                          className="h-8 px-3 text-xs rounded-none border-l-0"
                           onClick={() => handleToggleHunt(plan.id, plan.enabled)}
                         >
                           {plan.enabled ? "Disable" : "Enable"}
@@ -3545,7 +3545,7 @@ export default function LoadHunterTab() {
                         <Button 
                           size="sm" 
                           variant="secondary" 
-                          className="h-8 px-3 text-xs rounded-none border-r-0"
+                          className="h-8 px-3 text-xs rounded-none border-l-0"
                           onClick={() => handleEditHunt(plan)}
                         >
                           Edit
