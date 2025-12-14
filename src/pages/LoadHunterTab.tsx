@@ -4211,7 +4211,7 @@ export default function LoadHunterTab() {
                           {activeFilter !== 'all' && (
                             <TableHead className="w-[140px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Truck - Drivers<br/>Carrier</TableHead>
                           )}
-                          <TableHead className="w-[95px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
+                          <TableHead className="w-[60px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Customer</TableHead>
                           <TableHead className="w-[95px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Received<br/>Expires</TableHead>
                           <TableHead className="w-[115px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Pickup Time<br/>Deliver Time</TableHead>
                           <TableHead className="w-[130px] py-0 text-[13px] leading-[1.1] text-blue-600 font-semibold">Origin<br/>Destination</TableHead>
