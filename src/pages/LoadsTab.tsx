@@ -914,10 +914,10 @@ export default function LoadsTab() {
           setSearchQuery("");
         }} className="overflow-x-auto">
           <TabsList 
-            className="h-10 border border-border/50 p-0.5 gap-0 rounded-none"
+            className="h-11 border border-white/20 p-1 gap-1 rounded-lg"
             style={{
-              background: 'linear-gradient(180deg, hsl(var(--muted)) 0%, hsl(var(--muted) / 0.8) 100%)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.08)'
+              background: 'linear-gradient(180deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(224 76% 48%) 100%)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.15)'
             }}
           >
             {[
@@ -936,18 +936,17 @@ export default function LoadsTab() {
               <TabsTrigger 
                 key={status.key}
                 value={status.key}
-                className="h-9 text-[13px] px-3 gap-1.5 rounded-none border-r border-border/30 last:border-r-0 data-[state=active]:text-primary-foreground"
+                className="h-9 text-sm px-3.5 gap-1.5 rounded-md text-white/90 border-0 data-[state=active]:text-white data-[state=active]:shadow-none"
                 style={{
+                  textShadow: '0 1px 1px rgba(0,0,0,0.3)',
                   ...(filter === status.key ? {
-                    background: 'linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 100%)',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15)'
-                  } : {
-                    background: 'transparent'
-                  })
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 2px rgba(0,0,0,0.15)'
+                  } : {})
                 }}
               >
                 {status.label}
-                <span className="text-[10px] opacity-70">({status.count})</span>
+                <span className="text-[11px] opacity-80">({status.count})</span>
               </TabsTrigger>
             ))}
           </TabsList>
