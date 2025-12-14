@@ -3201,12 +3201,18 @@ export default function LoadHunterTab() {
                     )}
                     {/* Maintenance & Fault Indicators - bottom right corner */}
                     {(isOilChangeDue || hasFaultCodes) && (
-                      <div className="absolute bottom-0 right-0 flex items-center">
+                      <div className="absolute bottom-0 right-0 flex items-center gap-0.5">
                         {isOilChangeDue && (
-                          <img src={oilChangeIcon} alt="Oil change due" title="Oil change due" className="h-6 w-6 drop-shadow-md" />
+                          <Badge variant="destructive" className="h-5 px-1 text-[10px] flex items-center gap-0.5">
+                            <img src={oilChangeIcon} alt="Oil" className="h-3 w-3" />
+                            Oil
+                          </Badge>
                         )}
                         {hasFaultCodes && (
-                          <img src={checkEngineIcon} alt="Check engine" title={`${vehicle.fault_codes?.length || 0} fault code(s)`} className="h-6 w-6 drop-shadow-md" />
+                          <Badge variant="destructive" className="h-5 px-1 text-[10px] flex items-center gap-0.5">
+                            <img src={checkEngineIcon} alt="Engine" className="h-3 w-3" />
+                            {vehicle.fault_codes?.length || 0}
+                          </Badge>
                         )}
                       </div>
                     )}
