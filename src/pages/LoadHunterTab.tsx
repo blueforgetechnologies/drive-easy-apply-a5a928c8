@@ -4978,9 +4978,10 @@ export default function LoadHunterTab() {
               )}
             </div>
           </div>
-        </div>
-        </div>
-      )}
+          </div>
+          </div>
+        )}
+      </div>
       </div>
       <MultipleMatchesDialog
         open={showMultipleMatchesDialog}
