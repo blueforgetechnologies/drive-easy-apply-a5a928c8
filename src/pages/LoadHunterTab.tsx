@@ -4358,8 +4358,8 @@ export default function LoadHunterTab() {
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
-                  <>
-                    <div className="overflow-x-auto card-glossy-table">
+                  <div className="flex flex-col h-[calc(100vh-280px)]">
+                    <div className="flex-1 overflow-auto card-glossy-table">
                     <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
@@ -4974,7 +4974,7 @@ export default function LoadHunterTab() {
                       </button>
                     </div>
                   </div>
-                </>
+                  </div>
               )}
               </div>
             </div>
