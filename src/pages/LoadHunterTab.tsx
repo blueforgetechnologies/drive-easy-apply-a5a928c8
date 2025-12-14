@@ -1857,26 +1857,33 @@ export default function LoadHunterTab() {
   };
 
   const handleSkipMatch = async (matchId: string) => {
-    try {
-      setMatchActionTaken(true); // Mark that action was taken
-      
-      // Track the skip action
-      await trackDispatcherAction(matchId, 'skipped');
-      
-      const { error } = await supabase
+    setMatchActionTaken(true); // Mark that action was taken
+    
+    // Optimistic update - immediately remove from UI
+    setUnreviewedViewData(prev => prev.filter(m => m.match_id !== matchId));
+    setLoadMatches(prev => prev.filter(m => m.id !== matchId));
+    
+    // Run DB operations in background (no await for speed)
+    Promise.all([
+      trackDispatcherAction(matchId, 'skipped'),
+      supabase
         .from('load_hunt_matches')
         .update({ match_status: 'skipped', is_active: false })
-        .eq('id', matchId);
-
-      if (error) throw error;
-
-      await loadHuntMatches();
-      await loadUnreviewedMatches();
-      toast.success('Match skipped');
-    } catch (error) {
-      console.error('Error skipping match:', error);
+        .eq('id', matchId)
+    ]).then(([_, { error }]) => {
+      if (error) {
+        console.error('Error skipping match:', error);
+        toast.error('Failed to skip match');
+        // Refetch on error to restore correct state
+        loadHuntMatches();
+        loadUnreviewedMatches();
+      }
+    }).catch(err => {
+      console.error('Error skipping match:', err);
       toast.error('Failed to skip match');
-    }
+      loadHuntMatches();
+      loadUnreviewedMatches();
+    });
   };
 
   // Handle bid placed - move match to MY BIDS and skip all sibling matches
