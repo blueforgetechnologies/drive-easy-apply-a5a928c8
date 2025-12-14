@@ -925,6 +925,7 @@ export default function LoadsTab() {
           ].map((status) => (
             <Button
               key={status.key}
+              variant="ghost"
               size="sm"
               onClick={() => {
                 setSearchParams({ filter: status.key });
@@ -933,11 +934,11 @@ export default function LoadsTab() {
               className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 filter === status.key 
                   ? `${status.activeClass} text-white` 
-                  : 'btn-glossy text-gray-600'
+                  : 'btn-glossy text-gray-700'
               }`}
             >
               {status.label}
-              <span className={`${status.badgeClass} text-[10px] h-5`}>{status.count}</span>
+              <span className={`${filter === status.key ? status.badgeClass : 'badge-inset'} text-[10px] h-5`}>{status.count}</span>
             </Button>
           ))}
         </div>
