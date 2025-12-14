@@ -931,14 +931,14 @@ export default function LoadsTab() {
                 setSearchParams({ filter: status.key });
                 setSearchQuery("");
               }}
-              className={`h-7 px-3 text-xs font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+              className={`h-8 px-3.5 text-sm font-medium gap-1.5 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
                 filter === status.key 
                   ? `${status.activeClass} text-white` 
                   : 'btn-glossy text-gray-700'
               }`}
             >
               {status.label}
-              <span className={`${filter === status.key ? status.badgeClass : 'badge-inset'} text-[10px] h-5`}>{status.count}</span>
+              <span className={`${filter === status.key ? status.badgeClass : 'badge-inset'} text-[11px] h-5`}>{status.count}</span>
             </Button>
           ))}
         </div>
