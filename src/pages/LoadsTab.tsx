@@ -62,7 +62,7 @@ interface Load {
 export default function LoadsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const filter = searchParams.get("filter") || "pending";
+  const filter = searchParams.get("filter") || "all";
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -258,18 +258,26 @@ export default function LoadsTab() {
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
-      case "pending":
-        return { label: "Pending Rate Approval", color: "bg-transparent border-slate-300 text-slate-500" };
+      case "available":
+        return { label: "Available", color: "bg-transparent border-sky-400 text-sky-500" };
+      case "booked":
+        return { label: "Booked", color: "bg-transparent border-indigo-400 text-indigo-500" };
       case "dispatched":
         return { label: "Dispatched", color: "bg-transparent border-blue-500 text-blue-600" };
+      case "at_pickup":
+        return { label: "At Pickup", color: "bg-transparent border-amber-400 text-amber-500" };
       case "in_transit":
         return { label: "In Transit", color: "bg-transparent border-purple-400 text-purple-500" };
+      case "at_delivery":
+        return { label: "At Delivery", color: "bg-transparent border-teal-400 text-teal-500" };
       case "delivered":
         return { label: "Delivered", color: "bg-transparent border-emerald-500 text-emerald-600" };
       case "completed":
         return { label: "Completed", color: "bg-transparent border-emerald-700 text-emerald-700" };
       case "cancelled":
         return { label: "Cancelled", color: "bg-transparent border-red-500 text-red-600" };
+      case "tonu":
+        return { label: "TONU", color: "bg-transparent border-orange-500 text-orange-600" };
       default:
         return { label: status, color: "bg-transparent border-muted text-muted-foreground" };
     }
@@ -282,7 +290,7 @@ export default function LoadsTab() {
         .from("loads" as any)
         .insert({
           ...formData,
-          status: "pending",
+          status: "available",
           cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
           estimated_miles: formData.estimated_miles ? parseFloat(formData.estimated_miles) : null,
           rate: formData.rate ? parseFloat(formData.rate) : null,
@@ -353,12 +361,16 @@ export default function LoadsTab() {
   // Calculate status counts
   const statusCounts = {
     all: loads.length,
-    pending: loads.filter(l => l.status === 'pending').length,
+    available: loads.filter(l => l.status === 'available').length,
+    booked: loads.filter(l => l.status === 'booked').length,
     dispatched: loads.filter(l => l.status === 'dispatched').length,
+    at_pickup: loads.filter(l => l.status === 'at_pickup').length,
     in_transit: loads.filter(l => l.status === 'in_transit').length,
+    at_delivery: loads.filter(l => l.status === 'at_delivery').length,
     delivered: loads.filter(l => l.status === 'delivered').length,
     completed: loads.filter(l => l.status === 'completed').length,
     cancelled: loads.filter(l => l.status === 'cancelled').length,
+    tonu: loads.filter(l => l.status === 'tonu').length,
   };
 
   const filteredLoads = loads.filter((load) => {
@@ -373,12 +385,16 @@ export default function LoadsTab() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      pending: "bg-yellow-500 hover:bg-yellow-600",
+      available: "bg-sky-500 hover:bg-sky-600",
+      booked: "bg-indigo-500 hover:bg-indigo-600",
       dispatched: "bg-blue-500 hover:bg-blue-600",
+      at_pickup: "bg-amber-500 hover:bg-amber-600",
       in_transit: "bg-purple-500 hover:bg-purple-600",
+      at_delivery: "bg-teal-500 hover:bg-teal-600",
       delivered: "bg-green-600 hover:bg-green-700",
       completed: "bg-green-800 hover:bg-green-900",
       cancelled: "bg-red-500 hover:bg-red-600",
+      tonu: "bg-orange-500 hover:bg-orange-600",
     };
     return colors[status] || "bg-gray-500 hover:bg-gray-600";
   };
@@ -801,14 +817,23 @@ export default function LoadsTab() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("pending")}>
-                      Pending
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("available")}>
+                      Available
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("booked")}>
+                      Booked
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleBulkStatusUpdate("dispatched")}>
                       Dispatched
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("at_pickup")}>
+                      At Pickup
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleBulkStatusUpdate("in_transit")}>
                       In Transit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("at_delivery")}>
+                      At Delivery
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleBulkStatusUpdate("delivered")}>
                       Delivered
@@ -819,6 +844,9 @@ export default function LoadsTab() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleBulkStatusUpdate("cancelled")}>
                       Cancelled
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("tonu")}>
+                      TONU
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -889,22 +917,35 @@ export default function LoadsTab() {
             }}
             className={filter === "all" ? "bg-primary text-primary-foreground" : ""}
           >
-            All Loads
+            All
             <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
               {statusCounts.all}
             </Badge>
           </Button>
           <Button
-            variant={filter === "pending" ? "default" : "outline"}
+            variant={filter === "available" ? "default" : "outline"}
             onClick={() => {
-              setSearchParams({ filter: "pending" });
+              setSearchParams({ filter: "available" });
               setSearchQuery("");
             }}
-            className={filter === "pending" ? "bg-yellow-500 text-white hover:bg-yellow-600" : ""}
+            className={filter === "available" ? "bg-sky-500 text-white hover:bg-sky-600" : ""}
           >
-            Pending
+            Available
             <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.pending}
+              {statusCounts.available}
+            </Badge>
+          </Button>
+          <Button
+            variant={filter === "booked" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "booked" });
+              setSearchQuery("");
+            }}
+            className={filter === "booked" ? "bg-indigo-500 text-white hover:bg-indigo-600" : ""}
+          >
+            Booked
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.booked}
             </Badge>
           </Button>
           <Button
@@ -921,6 +962,19 @@ export default function LoadsTab() {
             </Badge>
           </Button>
           <Button
+            variant={filter === "at_pickup" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "at_pickup" });
+              setSearchQuery("");
+            }}
+            className={filter === "at_pickup" ? "bg-amber-500 text-white hover:bg-amber-600" : ""}
+          >
+            At Pickup
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.at_pickup}
+            </Badge>
+          </Button>
+          <Button
             variant={filter === "in_transit" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "in_transit" });
@@ -931,6 +985,19 @@ export default function LoadsTab() {
             In Transit
             <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
               {statusCounts.in_transit}
+            </Badge>
+          </Button>
+          <Button
+            variant={filter === "at_delivery" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "at_delivery" });
+              setSearchQuery("");
+            }}
+            className={filter === "at_delivery" ? "bg-teal-500 text-white hover:bg-teal-600" : ""}
+          >
+            At Delivery
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.at_delivery}
             </Badge>
           </Button>
           <Button
@@ -970,6 +1037,19 @@ export default function LoadsTab() {
             Cancelled
             <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
               {statusCounts.cancelled}
+            </Badge>
+          </Button>
+          <Button
+            variant={filter === "tonu" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "tonu" });
+              setSearchQuery("");
+            }}
+            className={filter === "tonu" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}
+          >
+            TONU
+            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
+              {statusCounts.tonu}
             </Badge>
           </Button>
         </div>
@@ -1067,12 +1147,16 @@ export default function LoadsTab() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pending">Pending Rate Approval</SelectItem>
+                            <SelectItem value="available">Available</SelectItem>
+                            <SelectItem value="booked">Booked</SelectItem>
                             <SelectItem value="dispatched">Dispatched</SelectItem>
+                            <SelectItem value="at_pickup">At Pickup</SelectItem>
                             <SelectItem value="in_transit">In Transit</SelectItem>
+                            <SelectItem value="at_delivery">At Delivery</SelectItem>
                             <SelectItem value="delivered">Delivered</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="tonu">TONU</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
