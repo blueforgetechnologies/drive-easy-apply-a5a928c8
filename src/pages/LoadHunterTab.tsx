@@ -2745,10 +2745,10 @@ export default function LoadHunterTab() {
           <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
             <Button 
               size="sm" 
-              className={`h-6 px-3 text-[11px] font-medium !rounded-none !rounded-l-full border-0 ${
+              className={`h-6 px-3 text-[11px] font-semibold !rounded-none !rounded-l-full border-0 ${
                 activeMode === 'admin' 
-                  ? 'btn-glossy text-gray-900 font-semibold' 
-                  : 'bg-transparent text-gray-500 hover:text-gray-700'
+                  ? 'btn-glossy text-black' 
+                  : 'bg-transparent text-black/60 hover:text-black'
               }`}
               onClick={() => setActiveMode('admin')}
             >
