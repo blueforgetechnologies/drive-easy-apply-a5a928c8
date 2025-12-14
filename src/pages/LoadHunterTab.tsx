@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
@@ -103,6 +104,7 @@ interface HuntPlan {
 }
 
 export default function LoadHunterTab() {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -3201,7 +3203,14 @@ export default function LoadHunterTab() {
                     )}
                     {/* Maintenance & Fault Indicators - bottom right corner */}
                     {(isOilChangeDue || hasFaultCodes) && (
-                      <div className="absolute bottom-0 right-0 flex items-center gap-0.5 bg-white/90 rounded-tl-md rounded-br-lg shadow-md p-0.5" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' }}>
+                      <div 
+                        className="absolute bottom-0 right-0 flex items-center gap-0.5 bg-white/90 rounded-tl-md rounded-br-lg shadow-md p-0.5 cursor-pointer hover:bg-white transition-colors"
+                        style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/maintenance?vehicle=${vehicle.id}`);
+                        }}
+                      >
                         {isOilChangeDue && (
                           <img src={oilChangeIcon} alt="Oil" className="h-5 w-5 drop-shadow-sm" />
                         )}
