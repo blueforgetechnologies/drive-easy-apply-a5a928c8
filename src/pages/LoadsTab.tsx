@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -908,35 +909,40 @@ export default function LoadsTab() {
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 max-w-full">
-          {[
-            { key: "all", label: "All", count: statusCounts.all, color: "" },
-            { key: "available", label: "Available", count: statusCounts.available, color: "bg-sky-500 hover:bg-sky-600" },
-            { key: "booked", label: "Booked", count: statusCounts.booked, color: "bg-indigo-500 hover:bg-indigo-600" },
-            { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, color: "bg-blue-500 hover:bg-blue-600" },
-            { key: "at_pickup", label: "At Pickup", count: statusCounts.at_pickup, color: "bg-amber-500 hover:bg-amber-600" },
-            { key: "in_transit", label: "In Transit", count: statusCounts.in_transit, color: "bg-purple-500 hover:bg-purple-600" },
-            { key: "at_delivery", label: "At Delivery", count: statusCounts.at_delivery, color: "bg-teal-500 hover:bg-teal-600" },
-            { key: "delivered", label: "Delivered", count: statusCounts.delivered, color: "bg-green-600 hover:bg-green-700" },
-            { key: "completed", label: "Completed", count: statusCounts.completed, color: "bg-green-800 hover:bg-green-900" },
-            { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, color: "bg-red-500 hover:bg-red-600" },
-            { key: "tonu", label: "TONU", count: statusCounts.tonu, color: "bg-orange-500 hover:bg-orange-600" },
-          ].map((status) => (
-            <Button
-              key={status.key}
-              variant={filter === status.key ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setSearchParams({ filter: status.key });
-                setSearchQuery("");
-              }}
-              className={`h-7 px-2 text-xs whitespace-nowrap ${filter === status.key && status.color ? `${status.color} text-white` : ""}`}
-            >
-              {status.label}
-              <span className="ml-1 text-[10px] opacity-70">({status.count})</span>
-            </Button>
-          ))}
-        </div>
+        <Tabs value={filter} onValueChange={(value) => {
+          setSearchParams({ filter: value });
+          setSearchQuery("");
+        }} className="overflow-x-auto">
+          <TabsList 
+            className="h-8 border border-primary/20 p-0.5 gap-0.5"
+            style={{
+              background: 'linear-gradient(180deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.15) 100%)',
+            }}
+          >
+            {[
+              { key: "all", label: "All", count: statusCounts.all },
+              { key: "available", label: "Available", count: statusCounts.available },
+              { key: "booked", label: "Booked", count: statusCounts.booked },
+              { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched },
+              { key: "at_pickup", label: "Pickup", count: statusCounts.at_pickup },
+              { key: "in_transit", label: "Transit", count: statusCounts.in_transit },
+              { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery },
+              { key: "delivered", label: "Delivered", count: statusCounts.delivered },
+              { key: "completed", label: "Completed", count: statusCounts.completed },
+              { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled },
+              { key: "tonu", label: "TONU", count: statusCounts.tonu },
+            ].map((status) => (
+              <TabsTrigger 
+                key={status.key}
+                value={status.key}
+                className="h-7 text-[11px] px-2 gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                {status.label}
+                <span className="text-[9px] opacity-70">({status.count})</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         <div className="relative w-full sm:w-56">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
