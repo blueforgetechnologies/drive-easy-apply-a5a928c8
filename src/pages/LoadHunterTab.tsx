@@ -4819,14 +4819,18 @@ export default function LoadHunterTab() {
                                 {(() => {
                                   // Get source from email_source field (from view or email data)
                                   const emailSource = (item as any).email_source || email.email_source || 'sylectus';
-                                  const sourceConfig: Record<string, { label: string; bg: string; text: string }> = {
-                                    sylectus: { label: 'Sylectus', bg: 'bg-blue-100', text: 'text-blue-700' },
-                                    fullcircle: { label: 'Full Circle TMS', bg: 'bg-purple-100', text: 'text-purple-700' },
+                                  const sourceConfig: Record<string, { label: string; abbr: string; bg: string; text: string }> = {
+                                    sylectus: { label: 'Sylectus', abbr: 'SYL', bg: 'bg-blue-100', text: 'text-blue-700' },
+                                    fullcircle: { label: 'Full Circle TMS', abbr: 'FC', bg: 'bg-purple-100', text: 'text-purple-700' },
                                   };
-                                  const config = sourceConfig[emailSource] || { label: emailSource, bg: 'bg-gray-100', text: 'text-gray-700' };
+                                  const config = sourceConfig[emailSource] || { label: emailSource, abbr: emailSource.slice(0, 3).toUpperCase(), bg: 'bg-gray-100', text: 'text-gray-700' };
                                   return (
-                                    <Badge variant="secondary" className={`text-[11px] h-4 px-1.5 ${config.bg} ${config.text} border-0`}>
-                                      {config.label}
+                                    <Badge 
+                                      variant="secondary" 
+                                      className={`text-[10px] h-4 px-1.5 font-bold ${config.bg} ${config.text} border-0`}
+                                      title={config.label}
+                                    >
+                                      {config.abbr}
                                     </Badge>
                                   );
                                 })()}
