@@ -2260,6 +2260,18 @@ export default function LoadHunterTab() {
 
   const handleDeleteHuntPlan = async (id: string) => {
     try {
+      // First, delete all matches associated with this hunt plan
+      const { error: matchesError } = await supabase
+        .from("load_hunt_matches")
+        .delete()
+        .eq("hunt_plan_id", id);
+
+      if (matchesError) {
+        console.error("Error deleting hunt matches:", matchesError);
+        // Continue anyway to delete the hunt plan
+      }
+
+      // Then delete the hunt plan itself
       const { error } = await supabase
         .from("hunt_plans")
         .delete()
@@ -2269,7 +2281,9 @@ export default function LoadHunterTab() {
       
       // Reload hunt plans from database
       await loadHuntPlans();
-      toast.success("Hunt plan deleted");
+      // Also reload matches to reflect the deletion
+      await loadHuntMatches();
+      toast.success("Hunt plan and all matches deleted");
     } catch (error) {
       console.error("Error deleting hunt plan:", error);
       toast.error("Failed to delete hunt plan");
@@ -3519,30 +3533,32 @@ export default function LoadHunterTab() {
                       <Badge variant={plan.enabled ? "default" : "secondary"} className="h-6">
                         {plan.enabled ? "Active" : "Disabled"}
                       </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="h-8 px-3 text-xs"
-                        onClick={() => handleToggleHunt(plan.id, plan.enabled)}
-                      >
-                        {plan.enabled ? "Disable" : "Enable"}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="h-8 px-3 text-xs"
-                        onClick={() => handleEditHunt(plan)}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="h-8 px-3 text-xs"
-                        onClick={() => handleDeleteHuntPlan(plan.id)}
-                      >
-                        Delete
-                      </Button>
+                      <div className="flex items-center gap-0">
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          className="h-8 px-3 text-xs rounded-none rounded-l-full border-r-0"
+                          onClick={() => handleToggleHunt(plan.id, plan.enabled)}
+                        >
+                          {plan.enabled ? "Disable" : "Enable"}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          className="h-8 px-3 text-xs rounded-none border-r-0"
+                          onClick={() => handleEditHunt(plan)}
+                        >
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          className="h-8 px-3 text-xs rounded-none rounded-r-full"
+                          onClick={() => handleDeleteHuntPlan(plan.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {matchCount > 0 && plan.enabled && (
