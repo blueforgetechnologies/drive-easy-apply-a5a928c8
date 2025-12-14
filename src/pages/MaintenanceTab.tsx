@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,13 +37,15 @@ interface VehicleWithFaults {
 }
 
 export default function MaintenanceTab() {
+  const [searchParams] = useSearchParams();
+  const vehicleIdFromUrl = searchParams.get('vehicle');
   const [records, setRecords] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<VehicleBasic[]>([]);
   const [allVehicles, setAllVehicles] = useState<VehicleWithFaults[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("records");
+  const [activeTab, setActiveTab] = useState(vehicleIdFromUrl ? "faults" : "records");
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleWithFaults | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [newRecord, setNewRecord] = useState({
@@ -67,6 +70,17 @@ export default function MaintenanceTab() {
     loadVehicles();
     loadAllVehiclesWithFaults();
   }, []);
+
+  // Auto-select vehicle from URL parameter
+  useEffect(() => {
+    if (vehicleIdFromUrl && allVehicles.length > 0) {
+      const vehicle = allVehicles.find(v => v.id === vehicleIdFromUrl);
+      if (vehicle) {
+        setSelectedVehicle(vehicle);
+        setActiveTab("faults");
+      }
+    }
+  }, [vehicleIdFromUrl, allVehicles]);
 
   const loadMaintenanceRecords = async () => {
     try {
