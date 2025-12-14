@@ -1060,7 +1060,7 @@ export default function LoadsTab() {
                           onValueChange={(value) => handleStatusChange(load.id, value)}
                         >
                           <SelectTrigger 
-                            className={`h-7 text-xs font-medium border rounded-md ${getStatusDisplay(load.status).color}`}
+                            className={`h-7 text-xs font-semibold border rounded-md shadow-none [text-shadow:none] ${getStatusDisplay(load.status).color}`}
                           >
                             <SelectValue>
                               {getStatusDisplay(load.status).label}
