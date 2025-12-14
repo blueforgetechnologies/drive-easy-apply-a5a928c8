@@ -3126,7 +3126,7 @@ export default function LoadHunterTab() {
                 <div 
                   key={vehicle.id} 
                   className={`p-2.5 cursor-pointer rounded-lg relative border transition-all duration-200 ${
-                    hasEnabledHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-200'
+                    hasEnabledHunt ? 'border-l-[5px] border-l-blue-500' : 'border-l-[5px] border-l-gray-300'
                   } ${selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'}`}
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
