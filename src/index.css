@@ -912,6 +912,122 @@ All colors MUST be HSL.
     0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
+/* Glossy Table Styles - Modern, Sharp, Defined */
+.table-glossy {
+  @apply w-full text-sm;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-glossy-wrapper {
+  @apply rounded-xl overflow-hidden;
+  background: linear-gradient(180deg, 
+    hsl(0 0% 100%) 0%, 
+    hsl(220 14% 98%) 100%);
+  border: 1px solid hsl(220 13% 85%);
+  border-bottom: 3px solid hsl(220 13% 78%);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.table-glossy thead {
+  background: linear-gradient(180deg, 
+    hsl(221 83% 55%) 0%, 
+    hsl(221 83% 48%) 35%,
+    hsl(221 83% 42%) 100%);
+  border-bottom: 2px solid hsl(221 83% 35%);
+}
+
+.table-glossy thead th {
+  @apply px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  border-right: 1px solid hsl(221 83% 60% / 0.3);
+}
+
+.table-glossy thead th:last-child {
+  border-right: none;
+}
+
+.table-glossy tbody tr {
+  @apply transition-all duration-150;
+  background: linear-gradient(180deg, 
+    hsl(0 0% 100%) 0%, 
+    hsl(220 14% 98%) 100%);
+  border-bottom: 1px solid hsl(220 13% 90%);
+}
+
+.table-glossy tbody tr:hover {
+  background: linear-gradient(180deg, 
+    hsl(221 83% 98%) 0%, 
+    hsl(221 83% 95%) 100%);
+  box-shadow: inset 0 0 0 1px hsl(221 83% 80% / 0.3);
+}
+
+.table-glossy tbody tr:nth-child(even) {
+  background: linear-gradient(180deg, 
+    hsl(220 14% 98%) 0%, 
+    hsl(220 14% 96%) 100%);
+}
+
+.table-glossy tbody tr:nth-child(even):hover {
+  background: linear-gradient(180deg, 
+    hsl(221 83% 97%) 0%, 
+    hsl(221 83% 94%) 100%);
+}
+
+.table-glossy tbody td {
+  @apply px-3 py-2;
+  border-right: 1px solid hsl(220 13% 92%);
+}
+
+.table-glossy tbody td:last-child {
+  border-right: none;
+}
+
+/* Glossy table header variant - light header */
+.table-glossy-light thead {
+  background: linear-gradient(180deg, 
+    hsl(220 14% 98%) 0%, 
+    hsl(220 14% 94%) 100%);
+  border-bottom: 2px solid hsl(220 13% 85%);
+}
+
+.table-glossy-light thead th {
+  color: hsl(221 83% 45%);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Glossy card container for tables */
+.card-glossy-table {
+  @apply rounded-xl overflow-hidden;
+  background: linear-gradient(180deg, 
+    hsl(0 0% 100%) 0%, 
+    hsl(220 14% 99%) 30%,
+    hsl(220 14% 97%) 100%);
+  border: 1px solid hsl(220 13% 85%);
+  border-bottom: 3px solid hsl(220 13% 75%);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.12),
+    0 3px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* Glossy filter bar */
+.filter-bar-glossy {
+  @apply flex items-center gap-2 px-4 py-3 rounded-xl;
+  background: linear-gradient(180deg, 
+    hsl(220 14% 97%) 0%, 
+    hsl(220 14% 93%) 100%);
+  border: 1px solid hsl(220 13% 85%);
+  border-bottom: 2px solid hsl(220 13% 78%);
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
 /* Custom scrollbar for non-mobile */
 @media (min-width: 768px) {
   ::-webkit-scrollbar {
