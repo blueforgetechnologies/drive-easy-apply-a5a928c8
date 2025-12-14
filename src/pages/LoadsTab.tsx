@@ -141,13 +141,7 @@ export default function LoadsTab() {
       
       // Only filter by status if not "all"
       if (filter !== "all") {
-        if (filter === "active") {
-          query = query.in("status", ["at_pickup", "in_transit", "at_delivery"]);
-        } else if (filter === "done") {
-          query = query.in("status", ["delivered", "completed"]);
-        } else {
-          query = query.eq("status", filter);
-        }
+        query = query.eq("status", filter);
       }
       
       const { data, error } = await query.order("created_at", { ascending: false });
@@ -371,8 +365,11 @@ export default function LoadsTab() {
     available: loads.filter(l => l.status === 'available').length,
     booked: loads.filter(l => l.status === 'booked').length,
     dispatched: loads.filter(l => l.status === 'dispatched').length,
-    active: loads.filter(l => ['at_pickup', 'in_transit', 'at_delivery'].includes(l.status || '')).length,
-    done: loads.filter(l => ['delivered', 'completed'].includes(l.status || '')).length,
+    at_pickup: loads.filter(l => l.status === 'at_pickup').length,
+    in_transit: loads.filter(l => l.status === 'in_transit').length,
+    at_delivery: loads.filter(l => l.status === 'at_delivery').length,
+    delivered: loads.filter(l => l.status === 'delivered').length,
+    completed: loads.filter(l => l.status === 'completed').length,
     cancelled: loads.filter(l => l.status === 'cancelled').length,
     tonu: loads.filter(l => l.status === 'tonu').length,
   };
@@ -918,8 +915,11 @@ export default function LoadsTab() {
             { key: "available", label: "Available", count: statusCounts.available, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
             { key: "booked", label: "Booked", count: statusCounts.booked, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
             { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
-            { key: "active", label: "Active", count: statusCounts.active, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
-            { key: "done", label: "Done", count: statusCounts.done, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+            { key: "at_pickup", label: "Pickup", count: statusCounts.at_pickup, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
+            { key: "in_transit", label: "Transit", count: statusCounts.in_transit, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
+            { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
+            { key: "delivered", label: "Delivered", count: statusCounts.delivered, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+            { key: "completed", label: "Completed", count: statusCounts.completed, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
             { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger" },
             { key: "tonu", label: "TONU", count: statusCounts.tonu, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
           ].map((status) => (
@@ -931,14 +931,14 @@ export default function LoadsTab() {
                 setSearchParams({ filter: status.key });
                 setSearchQuery("");
               }}
-              className={`h-8 px-3.5 text-sm font-medium gap-1.5 rounded-full border-0 ${
+              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 filter === status.key 
                   ? `${status.activeClass} text-white` 
                   : 'btn-glossy text-gray-700'
               }`}
             >
               {status.label}
-              <span className={`${filter === status.key ? status.badgeClass : 'badge-inset'} text-[11px] h-5`}>{status.count}</span>
+              <span className={`${filter === status.key ? status.badgeClass : 'badge-inset'} text-[10px] h-5`}>{status.count}</span>
             </Button>
           ))}
         </div>
