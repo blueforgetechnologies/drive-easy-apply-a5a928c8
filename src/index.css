@@ -448,6 +448,120 @@ All colors MUST be HSL.
   }
 }
 
+/* Modern glossy button styles */
+.btn-glossy {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(var(--background)) 0%, 
+    hsl(var(--muted)) 100%);
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.btn-glossy:hover {
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.btn-glossy-primary {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(221 83% 58%) 0%, 
+    hsl(221 83% 48%) 100%);
+  box-shadow: 
+    0 1px 3px rgba(37, 99, 235, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-glossy-primary:hover {
+  background: linear-gradient(180deg, 
+    hsl(221 83% 53%) 0%, 
+    hsl(221 83% 43%) 100%);
+  box-shadow: 
+    0 2px 6px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.btn-glossy-success {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(142 71% 50%) 0%, 
+    hsl(142 71% 40%) 100%);
+  box-shadow: 
+    0 1px 3px rgba(34, 197, 94, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-glossy-success:hover {
+  background: linear-gradient(180deg, 
+    hsl(142 71% 45%) 0%, 
+    hsl(142 71% 35%) 100%);
+}
+
+.btn-glossy-danger {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(0 84% 65%) 0%, 
+    hsl(0 84% 55%) 100%);
+  box-shadow: 
+    0 1px 3px rgba(239, 68, 68, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-glossy-warning {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(38 92% 55%) 0%, 
+    hsl(38 92% 45%) 100%);
+  box-shadow: 
+    0 1px 3px rgba(245, 158, 11, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-glossy-dark {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(220 9% 35%) 0%, 
+    hsl(220 9% 25%) 100%);
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn-glossy-dark:hover {
+  background: linear-gradient(180deg, 
+    hsl(220 9% 30%) 0%, 
+    hsl(220 9% 20%) 100%);
+}
+
+/* Truck card glossy style */
+.card-glossy {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(0 0% 100%) 0%, 
+    hsl(220 14% 98%) 100%);
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.card-glossy:hover {
+  box-shadow: 
+    0 3px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.card-glossy-selected {
+  background: linear-gradient(180deg, 
+    hsl(221 83% 97%) 0%, 
+    hsl(221 83% 94%) 100%);
+  box-shadow: 
+    0 2px 6px rgba(37, 99, 235, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
 /* Custom scrollbar for non-mobile */
 @media (min-width: 768px) {
   ::-webkit-scrollbar {
