@@ -3142,7 +3142,8 @@ export default function LoadHunterTab() {
             vehicles
               .filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id))
               .map((vehicle) => {
-              const hasEnabledHunt = huntPlans.some(plan => plan.vehicleId === vehicle.id && plan.enabled);
+              const enabledHuntPlan = huntPlans.find(plan => plan.vehicleId === vehicle.id && plan.enabled);
+              const hasEnabledHunt = !!enabledHuntPlan;
               // Calculate unreviewed count for this vehicle from view data
               const unreviewedCount = unreviewedViewData.filter(m => 
                 m.vehicle_id === vehicle.id
@@ -3173,6 +3174,9 @@ export default function LoadHunterTab() {
                       </div>
                       <div className="text-xs text-carved-light leading-tight truncate">
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
+                        {enabledHuntPlan?.availableFeet && (
+                          <span className="ml-1.5 text-primary font-medium">| Avail: {enabledHuntPlan.availableFeet}'</span>
+                        )}
                       </div>
                       <div className="text-[11px] text-carved-light truncate leading-tight opacity-70">
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
