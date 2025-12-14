@@ -3234,109 +3234,151 @@ export default function LoadHunterTab() {
           /* Vehicle Details View */
           <div className="flex-1 overflow-hidden flex gap-3">
             {/* Left Panel - Vehicle Info */}
-            <div className="w-[380px] flex-shrink-0 space-y-4 overflow-y-auto border rounded-lg p-4 bg-card">
-              {/* Tabs */}
+            <div 
+              className="w-[420px] flex-shrink-0 space-y-3 overflow-y-auto rounded-lg p-3"
+              style={{
+                background: 'linear-gradient(180deg, hsl(220 15% 96%) 0%, hsl(220 10% 92%) 50%, hsl(220 10% 88%) 100%)',
+                border: '1px solid hsl(220 10% 78%)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 hsl(0 0% 100%), inset 0 -1px 0 hsl(220 10% 85%)'
+              }}
+            >
+              {/* Tabs - Glossy */}
               <Tabs defaultValue="empty" className="w-full">
-                <TabsList className="w-full grid grid-cols-4 h-10 bg-muted/30 mb-6">
-                  <TabsTrigger value="empty" className="text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <TabsList 
+                  className="w-full grid grid-cols-4 h-8 p-0.5 rounded-md"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(220 12% 94%) 0%, hsl(220 12% 90%) 100%)',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08), 0 1px 0 hsl(0 0% 100%)'
+                  }}
+                >
+                  <TabsTrigger 
+                    value="empty" 
+                    className="text-xs font-semibold rounded data-[state=active]:text-white data-[state=active]:shadow-md"
+                    style={{ textShadow: '0 1px 0 white' }}
+                  >
                     Empty
                   </TabsTrigger>
-                  <TabsTrigger value="delivery" className="text-sm">
-                    Delivery Date & Time
+                  <TabsTrigger value="delivery" className="text-xs" style={{ textShadow: '0 1px 0 white' }}>
+                    Delivery
                   </TabsTrigger>
-                  <TabsTrigger value="destination" className="text-sm">
+                  <TabsTrigger value="destination" className="text-xs" style={{ textShadow: '0 1px 0 white' }}>
                     Destination
                   </TabsTrigger>
-                  <TabsTrigger value="remaining" className="text-sm">
+                  <TabsTrigger value="remaining" className="text-xs" style={{ textShadow: '0 1px 0 white' }}>
                     Remaining
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              {/* Vehicle Details Section with Border */}
-              <div className="border-2 border-border rounded-lg p-4 space-y-4 bg-background">
+              {/* Vehicle Details Section - Glossy Card */}
+              <div 
+                className="rounded-lg p-3 space-y-3"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 99%) 100%)',
+                  border: '1px solid hsl(220 15% 85%)',
+                  boxShadow: '0 3px 10px rgba(0,0,0,0.08), inset 0 1px 0 hsl(0 0% 100%)'
+                }}
+              >
                 {/* Location & Odometer with Maintenance Box */}
-                <div className="relative">
-                  <div className="space-y-1 pr-[220px]">
-                    <div className="text-sm">Location</div>
-                    <div className="text-sm font-medium whitespace-normal break-words">
+                <div className="flex gap-3">
+                  <div className="flex-1 space-y-1">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Location</div>
+                    <div className="text-sm font-medium whitespace-normal break-words leading-tight">
                       {selectedVehicle.formatted_address || selectedVehicle.last_location || "N/A"}
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Gauge className="h-4 w-4" />
-                      <span>Odometer</span>
-                      <span className="font-semibold">
+                    <div className="flex items-center gap-1.5 text-sm mt-1">
+                      <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Odometer</span>
+                      <span className="font-bold">
                         {selectedVehicle.odometer ? selectedVehicle.odometer.toLocaleString() : "N/A"}
                       </span>
                     </div>
                   </div>
                   
-                  {/* Next Maintenance Due Box - Positioned on the right */}
-                  <div className="absolute top-0 right-0 border-2 border-border rounded-lg px-4 py-2 bg-background min-w-[200px]">
-                    <div className="text-xs text-muted-foreground mb-1">Next Maintenance Due</div>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className={`text-2xl font-bold ${
+                  {/* Next Maintenance Due Box - Glossy */}
+                  <div 
+                    className="rounded-md px-3 py-2 min-w-[160px]"
+                    style={{
+                      background: 'linear-gradient(180deg, hsl(220 12% 98%) 0%, hsl(220 12% 94%) 100%)',
+                      border: '1px solid hsl(220 15% 82%)',
+                      boxShadow: 'inset 0 1px 0 hsl(0 0% 100%), 0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Next Maintenance</div>
+                    <div className="flex items-baseline gap-2">
+                      <div className={`text-xl font-bold ${
                         selectedVehicle.oil_change_remaining !== null && selectedVehicle.oil_change_remaining < 0 
                           ? "text-destructive" 
-                          : ""
+                          : "text-foreground"
                       }`}>
                         {selectedVehicle.oil_change_remaining !== null && selectedVehicle.oil_change_remaining !== undefined
                           ? `${selectedVehicle.oil_change_remaining} mi`
                           : "N/A"}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         {selectedVehicle.next_service_date || "N/A"}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <Button variant="link" className="text-sm text-primary p-0 h-auto">
+                <Button 
+                  variant="link" 
+                  className="text-xs text-primary p-0 h-auto font-semibold"
+                  style={{ textShadow: '0 1px 0 white' }}
+                >
                   View vehicle Details
                 </Button>
 
-                {/* Driver Assignments - Single line format */}
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm">
-                    <span className="font-semibold w-8">D1</span>
-                    <span className="flex-1">
+                {/* Driver Assignments - Compact */}
+                <div 
+                  className="space-y-1 rounded-md p-2"
+                  style={{
+                    background: 'linear-gradient(180deg, hsl(220 12% 98%) 0%, hsl(220 12% 96%) 100%)',
+                    boxShadow: 'inset 0 -1px 0 hsl(220 15% 90%), inset 0 1px 0 hsl(0 0% 100%)'
+                  }}
+                >
+                  <div className="flex items-center text-xs">
+                    <span className="font-bold w-6 text-primary">D1</span>
+                    <span className="flex-1 font-medium">
                       {getDriverName(selectedVehicle.driver_1_id) || "No Driver Assigned"}
                     </span>
-                    <span className="text-muted-foreground">Note: N/A</span>
+                    <span className="text-muted-foreground text-[10px]">Note: N/A</span>
                   </div>
-                  <div className="flex items-center text-sm">
-                    <span className="font-semibold w-8">D2</span>
-                    <span className="flex-1">
+                  <div className="flex items-center text-xs">
+                    <span className="font-bold w-6 text-primary">D2</span>
+                    <span className="flex-1 font-medium">
                       {getDriverName(selectedVehicle.driver_2_id) || "No Driver Assigned"}
                     </span>
-                    <span className="text-muted-foreground">Note: N/A</span>
+                    <span className="text-muted-foreground text-[10px]">Note: N/A</span>
                   </div>
                 </div>
 
-                {/* Vehicle Note - Editable */}
-                <div className="space-y-2">
+                {/* Vehicle Note - Compact */}
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Vehicle Note:</div>
+                    <div className="text-xs font-bold uppercase tracking-wide">Vehicle Note:</div>
                     <Wrench 
-                      className="h-5 w-5 text-primary cursor-pointer hover:text-primary/80" 
+                      className="h-4 w-4 text-primary cursor-pointer hover:text-primary/80" 
                       onClick={() => setEditingNotes(!editingNotes)}
                     />
                   </div>
                   {editingNotes ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Textarea
                         value={vehicleNotes}
                         onChange={(e) => setVehicleNotes(e.target.value)}
                         placeholder="Enter vehicle notes..."
-                        className="min-h-[80px] text-sm"
+                        className="min-h-[60px] text-xs"
                       />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSaveVehicleNotes}>
-                          Save Notes
+                      <div className="flex gap-1.5">
+                        <Button size="sm" className="h-7 text-xs" onClick={handleSaveVehicleNotes}>
+                          Save
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline" 
+                          className="h-7 text-xs"
                           onClick={() => {
                             setEditingNotes(false);
                             setVehicleNotes(selectedVehicle.notes || "");
@@ -3347,19 +3389,33 @@ export default function LoadHunterTab() {
                       </div>
                     </div>
                   ) : (
-                    <div className={`text-sm min-h-[40px] whitespace-pre-wrap ${selectedVehicle.notes ? "text-destructive font-bold" : "text-muted-foreground"}`}>
+                    <div className={`text-xs min-h-[24px] whitespace-pre-wrap ${selectedVehicle.notes ? "text-destructive font-bold" : "text-muted-foreground"}`}>
                       {selectedVehicle.notes || "No notes available"}
                     </div>
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-2">
-                  <Button className="flex-1 h-9" onClick={() => setCreateHuntOpen(true)}>
+                {/* Action Buttons - Glossy */}
+                <div className="flex gap-2 pt-1">
+                  <Button 
+                    className="flex-1 h-8 text-xs font-semibold"
+                    style={{
+                      background: 'linear-gradient(180deg, hsl(221 80% 58%) 0%, hsl(221 80% 50%) 100%)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)'
+                    }}
+                    onClick={() => setCreateHuntOpen(true)}
+                  >
                     Create New Hunt
                   </Button>
-                  <Button variant="outline" className="flex-1 h-9">
-                    Set Driver to Time-Off mode
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 h-8 text-xs font-medium"
+                    style={{
+                      background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 96%) 100%)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.08), inset 0 1px 0 hsl(0 0% 100%)'
+                    }}
+                  >
+                    Set Driver to Time-Off
                   </Button>
                 </div>
               </div>
