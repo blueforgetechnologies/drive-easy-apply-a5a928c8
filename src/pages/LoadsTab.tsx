@@ -909,48 +909,48 @@ export default function LoadsTab() {
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <Tabs value={filter} onValueChange={(value) => {
-          setSearchParams({ filter: value });
-          setSearchQuery("");
-        }} className="overflow-x-auto">
-          <TabsList 
-            className="h-11 border border-white/20 p-1 gap-1 rounded-lg"
-            style={{
-              background: 'linear-gradient(180deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(224 76% 48%) 100%)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.15)'
-            }}
-          >
-            {[
-              { key: "all", label: "All", count: statusCounts.all },
-              { key: "available", label: "Available", count: statusCounts.available },
-              { key: "booked", label: "Booked", count: statusCounts.booked },
-              { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched },
-              { key: "at_pickup", label: "Pickup", count: statusCounts.at_pickup },
-              { key: "in_transit", label: "Transit", count: statusCounts.in_transit },
-              { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery },
-              { key: "delivered", label: "Delivered", count: statusCounts.delivered },
-              { key: "completed", label: "Completed", count: statusCounts.completed },
-              { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled },
-              { key: "tonu", label: "TONU", count: statusCounts.tonu },
-            ].map((status) => (
-              <TabsTrigger 
-                key={status.key}
-                value={status.key}
-                className="h-9 text-sm px-3.5 gap-1.5 rounded-md text-white/90 border-0 data-[state=active]:text-white data-[state=active]:shadow-none"
-                style={{
-                  textShadow: '0 1px 1px rgba(0,0,0,0.3)',
-                  ...(filter === status.key ? {
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%)',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 2px rgba(0,0,0,0.15)'
-                  } : {})
-                }}
-              >
-                {status.label}
-                <span className="text-[11px] opacity-80">({status.count})</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {[
+            { key: "all", label: "All", count: statusCounts.all, bg: "bg-primary", activeBg: "bg-primary" },
+            { key: "available", label: "Available", count: statusCounts.available, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-sky-500" },
+            { key: "booked", label: "Booked", count: statusCounts.booked, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-green-500" },
+            { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-blue-500" },
+            { key: "at_pickup", label: "Pickup", count: statusCounts.at_pickup, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-amber-500" },
+            { key: "in_transit", label: "Transit", count: statusCounts.in_transit, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-purple-500" },
+            { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-teal-500" },
+            { key: "delivered", label: "Delivered", count: statusCounts.delivered, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-green-600" },
+            { key: "completed", label: "Completed", count: statusCounts.completed, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-green-700" },
+            { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-red-500" },
+            { key: "tonu", label: "TONU", count: statusCounts.tonu, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-orange-500" },
+          ].map((status) => (
+            <button
+              key={status.key}
+              onClick={() => {
+                setSearchParams({ filter: status.key });
+                setSearchQuery("");
+              }}
+              className={`inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                filter === status.key 
+                  ? `${status.activeBg} text-white shadow-md` 
+                  : `${status.bg} text-foreground`
+              }`}
+              style={{
+                ...(filter === status.key ? {
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)'
+                } : {})
+              }}
+            >
+              {status.label}
+              <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${
+                filter === status.key 
+                  ? 'bg-white/25 text-white' 
+                  : 'bg-primary/15 text-primary'
+              }`}>
+                {status.count}
+              </span>
+            </button>
+          ))}
+        </div>
 
         <div className="relative w-full sm:w-56">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
