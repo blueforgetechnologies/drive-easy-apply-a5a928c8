@@ -3125,9 +3125,10 @@ export default function LoadHunterTab() {
               return (
                 <div 
                   key={vehicle.id} 
-                  className={`p-2.5 cursor-pointer rounded-lg relative border transition-all duration-200 ${
-                    hasEnabledHunt ? 'border-l-[5px] border-l-blue-500' : 'border-l-[5px] border-l-gray-300'
-                  } ${selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'}`}
+                  className={`p-2.5 cursor-pointer rounded-lg relative transition-all duration-200 ${selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'}`}
+                  style={{ 
+                    borderLeft: hasEnabledHunt ? '5px solid #3b82f6' : '5px solid #d1d5db'
+                  }}
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
                   <div className="flex items-start justify-between gap-2">
