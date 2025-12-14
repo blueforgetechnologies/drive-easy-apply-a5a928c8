@@ -412,16 +412,21 @@ export default function SylectusSettingsTab() {
           if (t.mappedTo) loadCanonicalTypes.add(t.mappedTo);
         });
 
-        const canonicalEntries: Array<{ value: string; category: 'vehicle' | 'load'; mappedFrom: string[] }> = [];
+        // Consolidate canonical types by name across both categories
+        const allCanonicals = new Set([...vehicleCanonicalTypes, ...loadCanonicalTypes]);
+        const canonicalEntries: Array<{ value: string; categories: ('vehicle' | 'load')[]; mappedFrom: string[] }> = [];
         
-        vehicleCanonicalTypes.forEach(canonical => {
-          const mappedFrom = vehicleTypes.filter(t => t.mappedTo === canonical).map(t => t.value);
-          canonicalEntries.push({ value: canonical, category: 'vehicle', mappedFrom });
-        });
-        
-        loadCanonicalTypes.forEach(canonical => {
-          const mappedFrom = loadTypes.filter(t => t.mappedTo === canonical).map(t => t.value);
-          canonicalEntries.push({ value: canonical, category: 'load', mappedFrom });
+        allCanonicals.forEach(canonical => {
+          const vehicleMapped = vehicleTypes.filter(t => t.mappedTo === canonical).map(t => t.value);
+          const loadMapped = loadTypes.filter(t => t.mappedTo === canonical).map(t => t.value);
+          const categories: ('vehicle' | 'load')[] = [];
+          if (vehicleMapped.length > 0) categories.push('vehicle');
+          if (loadMapped.length > 0) categories.push('load');
+          canonicalEntries.push({ 
+            value: canonical, 
+            categories, 
+            mappedFrom: [...vehicleMapped, ...loadMapped] 
+          });
         });
 
         const hiddenEntries = [
@@ -456,7 +461,7 @@ export default function SylectusSettingsTab() {
                     <TableBody>
                       {/* Canonical/Merged Types */}
                       {canonicalEntries.map((entry) => (
-                        <TableRow key={`canonical-${entry.category}-${entry.value}`}>
+                        <TableRow key={`canonical-${entry.value}`}>
                           <TableCell className="font-medium text-sm">
                             <div className="space-y-1">
                               <Badge variant="default" className="text-xs">
@@ -472,9 +477,13 @@ export default function SylectusSettingsTab() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {entry.category === 'vehicle' ? 'Vehicle' : 'Load'}
-                            </Badge>
+                            <div className="flex gap-1">
+                              {entry.categories.map(cat => (
+                                <Badge key={cat} variant="outline" className="text-xs">
+                                  {cat === 'vehicle' ? 'Vehicle' : 'Load'}
+                                </Badge>
+                              ))}
+                            </div>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {entry.mappedFrom.length + 1} combined
