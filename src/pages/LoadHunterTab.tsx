@@ -2740,48 +2740,51 @@ export default function LoadHunterTab() {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Filter Bar - Full Width - Always Visible */}
-      <div className="flex items-center gap-1 py-1.5 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
+      <div className="flex items-center gap-1.5 py-1.5 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
           {/* Mode Buttons */}
-          <div className="flex items-center border rounded-md overflow-hidden pr-2 border-r flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             <Button 
               size="sm" 
-              variant={activeMode === 'admin' ? 'default' : 'ghost'}
-              className="h-7 px-2.5 text-[12px] rounded-none border-0"
+              className={`h-6 px-3 text-[11px] font-medium rounded-full border-0 ${
+                activeMode === 'admin' 
+                  ? 'btn-glossy-dark text-white' 
+                  : 'btn-glossy text-gray-600 hover:text-gray-800'
+              }`}
               onClick={() => setActiveMode('admin')}
             >
               Admin
             </Button>
             
-            <div className="w-px h-5 bg-border"></div>
-            
             <Button 
               size="sm" 
-              variant={activeMode === 'dispatch' ? 'default' : 'ghost'}
-              className="h-7 px-2.5 text-[12px] rounded-none border-0"
+              className={`h-6 px-3 text-[11px] font-medium rounded-full border-0 ${
+                activeMode === 'dispatch' 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-600 hover:text-gray-800'
+              }`}
               onClick={() => setActiveMode('dispatch')}
             >
               MY TRUCKS
             </Button>
           </div>
           
-          <div className="pr-2 border-r flex-shrink-0">
+          <div className="flex-shrink-0">
             <Button 
               size="sm" 
-              variant="default"
-              className="h-7 px-2.5 text-[12px] bg-green-600 hover:bg-green-700"
+              className="h-6 px-3 text-[11px] font-medium rounded-full border-0 btn-glossy-success text-white"
             >
               Add Vehicle
             </Button>
           </div>
 
           {/* Match Search */}
-          <div className="pr-2 border-r flex-shrink-0 relative">
+          <div className="flex-shrink-0 relative">
             <Input
               placeholder="Search match ID..."
               value={matchSearchQuery}
               onChange={(e) => setMatchSearchQuery(e.target.value)}
               onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-              className="h-7 w-36 text-[12px]"
+              className="h-6 w-32 text-[11px] rounded-full px-3"
             />
             {isSearchingArchive && (
               <div className="absolute right-5 top-1.5">
@@ -2845,14 +2848,13 @@ export default function LoadHunterTab() {
 
           {/* Filter Buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+            <div className="flex items-center gap-0.5">
               <Button 
                 size="sm" 
-                variant="ghost"
-                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'all' 
-                    ? 'bg-gray-800 text-white hover:bg-gray-900' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'btn-glossy-dark text-white' 
+                    : 'btn-glossy text-gray-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('all');
@@ -2862,18 +2864,15 @@ export default function LoadHunterTab() {
                 }}
               >
                 All
-                <Badge variant="secondary" className={`h-4 px-1 text-[10px] ${activeFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{loadEmails.length}</Badge>
+                <span className={`text-[9px] px-1 rounded-full ${activeFilter === 'all' ? 'bg-white/20' : 'bg-gray-300'}`}>{loadEmails.length}</span>
               </Button>
-              
-              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button
                 size="sm" 
-                variant="ghost"
-                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'unreviewed' 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('unreviewed');
@@ -2883,29 +2882,25 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <Badge variant="destructive" className="h-4 px-1 text-[10px] bg-red-500 text-white">{unreviewedCount}</Badge>
+                <span className="text-[9px] px-1.5 rounded-full bg-red-500 text-white">{unreviewedCount}</span>
               </Button>
-              
-              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button 
                 size="sm" 
-                variant="ghost"
-                className="h-7 px-2 text-[12px] rounded-none border-0 bg-white text-gray-700 hover:bg-gray-50"
+                className="h-6 w-6 p-0 rounded-full border-0 btn-glossy text-gray-600"
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
-                {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                {isSoundMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
               </Button>
             </div>
             
             <Button
               size="sm" 
-              variant="outline"
-              className={`h-7 px-2 text-[12px] gap-1 ${
+              className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'missed' 
-                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  ? 'btn-glossy-danger text-white' 
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => {
                 setActiveFilter('missed');
@@ -2915,17 +2910,16 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <Badge variant="destructive" className="h-4 px-1 text-[10px] bg-red-400 text-white">{missedCount}</Badge>
+              <span className="text-[9px] px-1.5 rounded-full bg-red-500 text-white">{missedCount}</span>
             </Button>
             
-            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+            <div className="flex items-center gap-0.5">
               <Button 
                 size="sm" 
-                variant="ghost"
-                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'waitlist' 
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'btn-glossy-warning text-white' 
+                    : 'btn-glossy text-gray-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('waitlist');
@@ -2935,18 +2929,15 @@ export default function LoadHunterTab() {
                 }}
               >
                 Wait
-                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-orange-400 text-white">{waitlistCount}</Badge>
+                <span className="text-[9px] px-1.5 rounded-full bg-orange-400 text-white">{waitlistCount}</span>
               </Button>
-              
-              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button 
                 size="sm" 
-                variant="ghost"
-                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'undecided' 
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'btn-glossy-warning text-white' 
+                    : 'btn-glossy text-gray-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('undecided');
@@ -2956,18 +2947,15 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undec
-                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-orange-400 text-white">{undecidedCount}</Badge>
+                <span className="text-[9px] px-1.5 rounded-full bg-orange-400 text-white">{undecidedCount}</span>
               </Button>
-              
-              <div className="w-px h-5 bg-gray-300"></div>
               
               <Button 
                 size="sm" 
-                variant="ghost"
-                className={`h-7 px-2 text-[12px] gap-1 rounded-none border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'skipped' 
-                    ? 'bg-gray-600 hover:bg-gray-700 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'btn-glossy-dark text-white' 
+                    : 'btn-glossy text-gray-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('skipped');
@@ -2977,17 +2965,16 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skip
-                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-gray-300 text-gray-700">{skippedCount}</Badge>
+                <span className="text-[9px] px-1.5 rounded-full bg-gray-400 text-white">{skippedCount}</span>
               </Button>
             </div>
             
             <Button 
               size="sm" 
-              variant="outline"
-              className={`h-7 px-2 text-[12px] gap-1 ${
+              className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'mybids' 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => {
                 setActiveFilter('mybids');
@@ -2997,16 +2984,15 @@ export default function LoadHunterTab() {
               }}
             >
               Bids
-              <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-blue-400 text-white">{bidCount}</Badge>
+              <span className="text-[9px] px-1.5 rounded-full bg-blue-500 text-white">{bidCount}</span>
             </Button>
             
             <Button
               size="sm" 
-              variant="outline"
-              className={`h-7 px-2 text-[12px] gap-1 ${
+              className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'booked' 
-                  ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  ? 'btn-glossy-success text-white' 
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => {
                 setActiveFilter('booked');
@@ -3015,17 +3001,16 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-blue-400 text-white">2</Badge>
+              <span className="text-[9px] px-1.5 rounded-full bg-green-500 text-white">2</span>
             </Button>
             
             {issuesCount > 0 && (
               <Button
                 size="sm" 
-                variant="outline"
-                className={`h-7 px-2 text-[12px] gap-1 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'issues' 
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600' 
-                    : 'bg-white hover:bg-gray-50 text-amber-700 border-amber-300'
+                    ? 'btn-glossy-warning text-white' 
+                    : 'btn-glossy text-amber-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('issues');
@@ -3034,7 +3019,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 ⚠️
-                <Badge variant="destructive" className="h-4 px-1 text-[10px] bg-amber-500 text-white">{issuesCount}</Badge>
+                <span className="text-[9px] px-1.5 rounded-full bg-amber-500 text-white">{issuesCount}</span>
               </Button>
             )}
           </div>
@@ -3043,11 +3028,10 @@ export default function LoadHunterTab() {
           <div className="flex items-center gap-1 ml-auto flex-shrink-0">
             <Button 
               size="sm" 
-              variant="outline"
-              className={`h-7 px-2 text-[12px] ${
+              className={`h-6 px-2.5 text-[11px] font-medium rounded-full border-0 ${
                 activeFilter === 'vehicle-assignment' 
-                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => {
                 setActiveFilter('vehicle-assignment');
@@ -3060,11 +3044,10 @@ export default function LoadHunterTab() {
             
             <Button
               size="sm" 
-              variant="outline"
-              className={`h-7 px-2 text-[12px] ${
+              className={`h-6 px-2.5 text-[11px] font-medium rounded-full border-0 ${
                 activeFilter === 'dispatcher-metrix' 
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => {
                 setActiveFilter('dispatcher-metrix');
@@ -3076,16 +3059,12 @@ export default function LoadHunterTab() {
             </Button>
             
             <Button
-              variant="default"
               size="sm"
-              className="gap-1.5 h-7 text-xs px-2.5"
+              className="gap-1 h-6 text-[11px] px-3 rounded-full border-0 btn-glossy-primary text-white font-medium"
               onClick={async () => {
                 setRefreshing(true);
                 try {
-                  // Refresh both loads and hunts
                   await handleRefreshLoads();
-                  
-                  // Also re-check loads against active hunts
                   const enabledHunts = huntPlans.filter(h => h.enabled);
                   if (enabledHunts.length > 0) {
                     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
@@ -3104,8 +3083,8 @@ export default function LoadHunterTab() {
               }}
               disabled={refreshing}
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Refreshing..." : "Refresh"}
+              <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
             </Button>
           </div>
         </div>
@@ -3140,11 +3119,11 @@ export default function LoadHunterTab() {
               // Check if vehicle has active fault codes
               const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
               return (
-                <Card 
+                <div 
                   key={vehicle.id} 
-                  className={`p-2 hover:bg-muted/50 transition-colors cursor-pointer rounded-sm relative ${
-                    hasEnabledHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-300'
-                  } ${selectedVehicle?.id === vehicle.id ? 'bg-muted' : ''}`}
+                  className={`p-2 cursor-pointer rounded-lg relative border transition-all duration-200 ${
+                    hasEnabledHunt ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-gray-200'
+                  } ${selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'}`}
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
                   <div className="flex items-start justify-between gap-1.5">
@@ -3234,7 +3213,7 @@ export default function LoadHunterTab() {
                       </div>
                     )}
                   </div>
-                </Card>
+                </div>
               );
             })
           )}
