@@ -1533,7 +1533,8 @@ const LoadEmailDetail = ({
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
                     <div 
-                      className={`px-2 py-1 font-bold text-sm flex items-center rounded truncate ${hasCarrierSafetyIssue ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                      className={`px-3 py-1.5 font-bold text-sm flex items-center rounded-lg truncate shadow-md ${hasCarrierSafetyIssue ? 'bg-gradient-to-b from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-gradient-to-b from-green-100 to-green-200 text-green-800 border border-green-300'}`}
+                      style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
                       title={carrierName || "No Carrier"}
                     >
                       {carrierName || "No Carrier"}
@@ -1564,7 +1565,8 @@ const LoadEmailDetail = ({
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
                     <div 
-                      className="bg-yellow-100 px-2 py-1 font-bold text-sm flex items-center rounded text-yellow-800 truncate"
+                      className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300"
+                      style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
                       title={brokerName}
                     >
                       {brokerName}
