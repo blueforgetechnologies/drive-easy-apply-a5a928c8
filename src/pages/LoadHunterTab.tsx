@@ -2865,7 +2865,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 All
-                <span className={`badge-glossy-muted text-[9px] px-1.5 py-0 h-4 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
+                <span className={`badge-inset text-[9px] h-4 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
               </Button>
               
               <Button
@@ -2883,7 +2883,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <span className="badge-glossy-danger text-[9px] px-1.5 py-0 h-4">{unreviewedCount}</span>
+                <span className="badge-inset-danger text-[9px] h-4">{unreviewedCount}</span>
               </Button>
               
               <Button 
@@ -2911,7 +2911,7 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <span className="badge-glossy-danger text-[9px] px-1.5 py-0 h-4">{missedCount}</span>
+              <span className="badge-inset-danger text-[9px] h-4">{missedCount}</span>
             </Button>
             
             {/* Merged button group: Wait, Undec, Skip */}
@@ -2931,7 +2931,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Wait
-                <span className="badge-glossy-warning text-[9px] px-1.5 py-0 h-4">{waitlistCount}</span>
+                <span className="badge-inset-warning text-[9px] h-4">{waitlistCount}</span>
               </Button>
               
               <Button 
@@ -2949,7 +2949,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undec
-                <span className="badge-glossy-warning text-[9px] px-1.5 py-0 h-4">{undecidedCount}</span>
+                <span className="badge-inset-warning text-[9px] h-4">{undecidedCount}</span>
               </Button>
               
               <Button 
@@ -2967,7 +2967,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skip
-                <span className="badge-glossy-muted text-[9px] px-1.5 py-0 h-4">{skippedCount}</span>
+                <span className="badge-inset text-[9px] h-4">{skippedCount}</span>
               </Button>
             </div>
             
@@ -2986,7 +2986,7 @@ export default function LoadHunterTab() {
               }}
             >
               Bids
-              <span className="badge-glossy-primary text-[9px] px-1.5 py-0 h-4">{bidCount}</span>
+              <span className="badge-inset-primary text-[9px] h-4">{bidCount}</span>
             </Button>
             
             <Button
@@ -3003,7 +3003,7 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <span className="badge-glossy-success text-[9px] px-1.5 py-0 h-4">2</span>
+              <span className="badge-inset-success text-[9px] h-4">2</span>
             </Button>
             
             {issuesCount > 0 && (
@@ -3021,7 +3021,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 ⚠️
-                <span className="badge-glossy-warning text-[9px] px-1.5 py-0 h-4">{issuesCount}</span>
+                <span className="badge-inset-warning text-[9px] h-4">{issuesCount}</span>
               </Button>
             )}
           </div>
