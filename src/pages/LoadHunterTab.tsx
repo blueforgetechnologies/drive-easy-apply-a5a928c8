@@ -2848,10 +2848,11 @@ export default function LoadHunterTab() {
 
           {/* Filter Buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            <div className="flex items-center gap-0.5">
+            {/* Merged button group: All, Unreviewed, Sound */}
+            <div className="flex items-center overflow-hidden rounded-full">
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
                   activeFilter === 'all' 
                     ? 'btn-glossy-dark text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2869,7 +2870,7 @@ export default function LoadHunterTab() {
               
               <Button
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none border-0 ${
                   activeFilter === 'unreviewed' 
                     ? 'btn-glossy-primary text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2887,7 +2888,7 @@ export default function LoadHunterTab() {
               
               <Button 
                 size="sm" 
-                className="h-6 w-6 p-0 rounded-full border-0 btn-glossy text-gray-600"
+                className="h-6 w-6 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-600"
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
