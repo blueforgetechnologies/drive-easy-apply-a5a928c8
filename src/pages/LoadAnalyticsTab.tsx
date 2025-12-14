@@ -20,6 +20,7 @@ interface LoadEmailData {
   id: string;
   received_at: string;
   created_at: string;
+  email_source: string;
   parsed_data: {
     origin_state?: string;
     origin_city?: string;
@@ -32,6 +33,14 @@ interface LoadEmailData {
     load_type?: string;
   } | null;
 }
+
+// Email source display configuration
+const EMAIL_SOURCES = {
+  sylectus: { label: 'Sylectus', color: 'bg-blue-500', textColor: 'text-blue-600' },
+  fullcircle: { label: 'Full Circle TMS', color: 'bg-purple-500', textColor: 'text-purple-600' },
+} as const;
+
+type EmailSourceKey = keyof typeof EMAIL_SOURCES;
 
 interface GeocodeData {
   location_key: string;
@@ -159,6 +168,7 @@ export default function LoadAnalyticsTab() {
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'state' | 'city'>('state');
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>([]);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]); // Empty = all sources
   const [startDate, setStartDate] = useState<Date>(() => subHours(new Date(), 24));
   const [endDate, setEndDate] = useState<Date>(() => new Date());
   const [flowDirection, setFlowDirection] = useState<'pickup' | 'delivery' | 'both'>('both');
@@ -290,7 +300,7 @@ export default function LoadAnalyticsTab() {
           const page = i + j;
           return supabase
             .from("load_emails")
-            .select("id, received_at, created_at, parsed_data")
+            .select("id, received_at, created_at, parsed_data, email_source")
             .order("received_at", { ascending: false })
             .range(page * pageSize, (page + 1) * pageSize - 1)
             .gte("received_at", dateFilter)
@@ -313,6 +323,7 @@ export default function LoadAnalyticsTab() {
 
     const typedData = allData.map(item => ({
       ...item,
+      email_source: item.email_source || 'sylectus',
       parsed_data: item.parsed_data as LoadEmailData['parsed_data']
     }));
     
@@ -498,14 +509,42 @@ export default function LoadAnalyticsTab() {
     return Array.from(types).sort();
   }, [loadEmails]);
 
-  // Filter by vehicle types (multi-select)
+  // Get unique email sources
+  const emailSources = useMemo(() => {
+    const sources = new Set<string>();
+    loadEmails.forEach(email => {
+      if (email.email_source) sources.add(email.email_source);
+    });
+    return Array.from(sources).sort();
+  }, [loadEmails]);
+
+  // Source breakdown stats
+  const sourceStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    loadEmails.forEach(email => {
+      const source = email.email_source || 'sylectus';
+      stats[source] = (stats[source] || 0) + 1;
+    });
+    return stats;
+  }, [loadEmails]);
+
+  // Filter by vehicle types and sources (multi-select)
   const filteredEmails = useMemo(() => {
-    const result = selectedVehicleTypes.length === 0 
-      ? loadEmails 
-      : loadEmails.filter(email => email.parsed_data?.vehicle_type && selectedVehicleTypes.includes(email.parsed_data.vehicle_type));
+    let result = loadEmails;
+    
+    // Filter by source
+    if (selectedSources.length > 0) {
+      result = result.filter(email => selectedSources.includes(email.email_source || 'sylectus'));
+    }
+    
+    // Filter by vehicle type
+    if (selectedVehicleTypes.length > 0) {
+      result = result.filter(email => email.parsed_data?.vehicle_type && selectedVehicleTypes.includes(email.parsed_data.vehicle_type));
+    }
+    
     console.log('filteredEmails recalculated:', result.length, 'from', loadEmails.length, 'total');
     return result;
-  }, [loadEmails, selectedVehicleTypes]);
+  }, [loadEmails, selectedVehicleTypes, selectedSources]);
 
   // Haversine distance calculation (returns miles)
   const haversineDistance = useCallback((coord1: [number, number], coord2: [number, number]): number => {
@@ -1119,11 +1158,29 @@ export default function LoadAnalyticsTab() {
 
   return (
     <div className="p-3 md:p-4 space-y-3">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Mail className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold">Load Email Analytics</h1>
-        <Badge variant="secondary" className="text-xs">{stats.totalEmails.toLocaleString()} emails</Badge>
+      {/* Header with Source Breakdown */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Mail className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-bold">Load Email Analytics</h1>
+          <Badge variant="secondary" className="text-xs">{stats.totalEmails.toLocaleString()} emails</Badge>
+        </div>
+        
+        {/* Source Breakdown Badges */}
+        {Object.keys(sourceStats).length > 0 && (
+          <div className="flex items-center gap-1.5">
+            {Object.entries(sourceStats).map(([source, count]) => {
+              const config = EMAIL_SOURCES[source as EmailSourceKey] || { label: source, color: 'bg-gray-500', textColor: 'text-gray-600' };
+              return (
+                <div key={source} className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 border">
+                  <div className={`w-2 h-2 rounded-full ${config.color}`} />
+                  <span className={`text-xs font-medium ${config.textColor}`}>{config.label}</span>
+                  <span className="text-xs text-muted-foreground">{count.toLocaleString()}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Filters Row */}
@@ -1134,6 +1191,55 @@ export default function LoadAnalyticsTab() {
           onDateChange={handleDateChange}
           prefetchStatus={prefetchStatus}
         />
+
+        {/* Source Filter */}
+        {emailSources.length > 1 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-7 text-xs gap-1 px-2">
+                {selectedSources.length === 0 ? 'All Sources' : 
+                 selectedSources.length === 1 ? (EMAIL_SOURCES[selectedSources[0] as EmailSourceKey]?.label || selectedSources[0]) :
+                 `${selectedSources.length} sources`}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-xs h-7"
+                  onClick={() => setSelectedSources([])}
+                >
+                  <Check className={`h-3 w-3 mr-2 ${selectedSources.length === 0 ? 'opacity-100' : 'opacity-0'}`} />
+                  All Sources
+                </Button>
+                {emailSources.map(source => {
+                  const config = EMAIL_SOURCES[source as EmailSourceKey] || { label: source, color: 'bg-gray-500', textColor: 'text-gray-600' };
+                  return (
+                    <Button
+                      key={source}
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start text-xs h-7"
+                      onClick={() => {
+                        setSelectedSources(prev => 
+                          prev.includes(source) 
+                            ? prev.filter(s => s !== source) 
+                            : [...prev, source]
+                        );
+                      }}
+                    >
+                      <Check className={`h-3 w-3 mr-2 ${selectedSources.includes(source) ? 'opacity-100' : 'opacity-0'}`} />
+                      <div className={`w-2 h-2 rounded-full ${config.color} mr-1.5`} />
+                      {config.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
         <Popover>
           <PopoverTrigger asChild>
