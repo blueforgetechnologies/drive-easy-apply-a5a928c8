@@ -4249,14 +4249,24 @@ export default function LoadHunterTab() {
                           const receivedDate = new Date(email.received_at);
                           const now = new Date();
                           
-                          // Calculate time since we processed the email
+                          // Calculate time since we processed the email (for NEW badge)
                           const diffMs = now.getTime() - processedDate.getTime();
                           const diffMins = Math.floor(diffMs / 60000);
-                          const diffHours = Math.floor(diffMins / 60);
-                          const diffDays = Math.floor(diffHours / 24);
                           const isNewlyProcessed = diffMins <= 2;
                           
-                          // Format exact date/time for display
+                          // Calculate time since email was RECEIVED (for display)
+                          const receivedDiffMs = now.getTime() - receivedDate.getTime();
+                          const receivedDiffMins = Math.floor(receivedDiffMs / 60000);
+                          const receivedDiffHours = Math.floor(receivedDiffMins / 60);
+                          const receivedDiffDays = Math.floor(receivedDiffHours / 24);
+                          
+                          // Format relative time for received (e.g., "15m ago", "2h 30m ago")
+                          let receivedAgo = '';
+                          if (receivedDiffDays > 0) receivedAgo = `${receivedDiffDays}d ${receivedDiffHours % 24}h ago`;
+                          else if (receivedDiffHours > 0) receivedAgo = `${receivedDiffHours}h ${receivedDiffMins % 60}m ago`;
+                          else receivedAgo = `${receivedDiffMins}m ago`;
+                          
+                          // Format exact date/time for tooltip
                           const formatDateTime = (date: Date) => {
                             return date.toLocaleString('en-US', {
                               month: 'short',
@@ -4268,12 +4278,6 @@ export default function LoadHunterTab() {
                           };
                           
                           const exactReceived = formatDateTime(receivedDate);
-                          const exactProcessed = formatDateTime(processedDate);
-                          
-                          let receivedAgo = '';
-                          if (diffDays > 0) receivedAgo = `${diffDays}d ${diffHours % 24}h ago`;
-                          else if (diffHours > 0) receivedAgo = `${diffHours}h ${diffMins % 60}m ago`;
-                          else receivedAgo = `${diffMins}m ago`;
 
                           // Calculate expiration time
                           let expiresIn = '';
@@ -4523,7 +4527,7 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[13px] leading-tight whitespace-nowrap font-medium">{exactReceived}</span>
+                                  <span className="text-[13px] leading-tight whitespace-nowrap font-medium" title={exactReceived}>{receivedAgo}</span>
                                   {isNewlyProcessed && (
                                     <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500">NEW</Badge>
                                   )}
