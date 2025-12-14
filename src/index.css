@@ -934,18 +934,16 @@ All colors MUST be HSL.
 
 .table-glossy thead {
   @apply sticky top-0 z-10;
-  background: hsl(0 0% 100% / 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 2px solid hsl(220 13% 85%);
-  box-shadow: 0 4px 16px -4px hsl(220 20% 30% / 0.12);
+  background: linear-gradient(180deg, 
+    hsl(221 75% 58%) 0%, 
+    hsl(221 75% 52%) 100%);
+  border-bottom: 2px solid hsl(221 75% 45%);
 }
 
 .table-glossy thead th {
-  @apply px-3 py-2.5 text-left text-xs font-bold tracking-wide uppercase;
-  color: hsl(220 20% 22%);
-  text-shadow: 0 1px 0 hsl(0 0% 100%);
-  letter-spacing: 0.08em;
+  @apply px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase;
+  color: hsl(0 0% 100%);
+  text-shadow: 0 1px 2px hsl(221 75% 30% / 0.4);
 }
 
 .table-glossy tbody tr {
