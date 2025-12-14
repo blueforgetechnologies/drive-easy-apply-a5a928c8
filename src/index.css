@@ -448,154 +448,246 @@ All colors MUST be HSL.
   }
 }
 
-/* Modern glossy button styles */
+/* Modern glossy button styles - Puffed 3D */
 .btn-glossy {
   @apply relative overflow-hidden transition-all duration-200;
   background: linear-gradient(180deg, 
     hsl(0 0% 100%) 0%, 
-    hsl(220 14% 96%) 100%);
-  border: 1px solid hsl(220 13% 85%);
+    hsl(220 14% 98%) 35%,
+    hsl(220 14% 94%) 100%);
+  border: 1px solid hsl(220 13% 82%);
+  border-bottom: 3px solid hsl(220 13% 75%);
   box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .btn-glossy:hover {
+  transform: translateY(-1px);
   background: linear-gradient(180deg, 
     hsl(0 0% 100%) 0%, 
-    hsl(220 14% 93%) 100%);
+    hsl(220 14% 97%) 35%,
+    hsl(220 14% 92%) 100%);
   box-shadow: 
-    0 2px 5px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+    0 6px 12px rgba(0, 0, 0, 0.18),
+    0 3px 6px rgba(0, 0, 0, 0.12),
+    inset 0 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-glossy:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .btn-glossy-primary {
-  @apply relative overflow-hidden transition-all duration-200;
+  @apply relative overflow-hidden transition-all duration-200 text-white;
   background: linear-gradient(180deg, 
-    hsl(221 83% 58%) 0%, 
+    hsl(221 83% 62%) 0%, 
+    hsl(221 83% 55%) 35%,
     hsl(221 83% 48%) 100%);
-  border: 1px solid hsl(221 83% 40%);
+  border: 1px solid hsl(221 83% 45%);
+  border-bottom: 3px solid hsl(221 83% 38%);
   box-shadow: 
-    0 1px 3px rgba(37, 99, 235, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 4px 8px rgba(37, 99, 235, 0.35),
+    0 2px 4px rgba(37, 99, 235, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .btn-glossy-primary:hover {
+  transform: translateY(-1px);
   background: linear-gradient(180deg, 
-    hsl(221 83% 55%) 0%, 
-    hsl(221 83% 45%) 100%);
+    hsl(221 83% 65%) 0%, 
+    hsl(221 83% 58%) 35%,
+    hsl(221 83% 50%) 100%);
   box-shadow: 
-    0 2px 6px rgba(37, 99, 235, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 6px 14px rgba(37, 99, 235, 0.45),
+    0 3px 6px rgba(37, 99, 235, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glossy-primary:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
 }
 
 .btn-glossy-success {
-  @apply relative overflow-hidden transition-all duration-200;
+  @apply relative overflow-hidden transition-all duration-200 text-white;
   background: linear-gradient(180deg, 
-    hsl(142 71% 50%) 0%, 
+    hsl(142 71% 55%) 0%, 
+    hsl(142 71% 48%) 35%,
     hsl(142 71% 40%) 100%);
-  border: 1px solid hsl(142 71% 32%);
+  border: 1px solid hsl(142 71% 35%);
+  border-bottom: 3px solid hsl(142 71% 28%);
   box-shadow: 
-    0 1px 3px rgba(34, 197, 94, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 4px 8px rgba(34, 197, 94, 0.35),
+    0 2px 4px rgba(34, 197, 94, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .btn-glossy-success:hover {
+  transform: translateY(-1px);
   background: linear-gradient(180deg, 
-    hsl(142 71% 47%) 0%, 
-    hsl(142 71% 37%) 100%);
+    hsl(142 71% 58%) 0%, 
+    hsl(142 71% 50%) 35%,
+    hsl(142 71% 42%) 100%);
   box-shadow: 
-    0 2px 6px rgba(34, 197, 94, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 6px 14px rgba(34, 197, 94, 0.45),
+    0 3px 6px rgba(34, 197, 94, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glossy-success:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
 }
 
 .btn-glossy-danger {
-  @apply relative overflow-hidden transition-all duration-200;
+  @apply relative overflow-hidden transition-all duration-200 text-white;
   background: linear-gradient(180deg, 
-    hsl(0 84% 65%) 0%, 
+    hsl(0 84% 68%) 0%, 
+    hsl(0 84% 62%) 35%,
     hsl(0 84% 55%) 100%);
-  border: 1px solid hsl(0 84% 45%);
+  border: 1px solid hsl(0 84% 48%);
+  border-bottom: 3px solid hsl(0 84% 40%);
   box-shadow: 
-    0 1px 3px rgba(239, 68, 68, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 4px 8px rgba(239, 68, 68, 0.35),
+    0 2px 4px rgba(239, 68, 68, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .btn-glossy-danger:hover {
+  transform: translateY(-1px);
   background: linear-gradient(180deg, 
-    hsl(0 84% 62%) 0%, 
-    hsl(0 84% 52%) 100%);
+    hsl(0 84% 70%) 0%, 
+    hsl(0 84% 64%) 35%,
+    hsl(0 84% 57%) 100%);
   box-shadow: 
-    0 2px 6px rgba(239, 68, 68, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 6px 14px rgba(239, 68, 68, 0.45),
+    0 3px 6px rgba(239, 68, 68, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glossy-danger:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
 }
 
 .btn-glossy-warning {
-  @apply relative overflow-hidden transition-all duration-200;
+  @apply relative overflow-hidden transition-all duration-200 text-white;
   background: linear-gradient(180deg, 
-    hsl(38 92% 55%) 0%, 
+    hsl(38 92% 58%) 0%, 
+    hsl(38 92% 52%) 35%,
     hsl(38 92% 45%) 100%);
-  border: 1px solid hsl(38 92% 38%);
+  border: 1px solid hsl(38 92% 40%);
+  border-bottom: 3px solid hsl(38 92% 32%);
   box-shadow: 
-    0 1px 3px rgba(245, 158, 11, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 4px 8px rgba(245, 158, 11, 0.35),
+    0 2px 4px rgba(245, 158, 11, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .btn-glossy-warning:hover {
+  transform: translateY(-1px);
   background: linear-gradient(180deg, 
-    hsl(38 92% 52%) 0%, 
-    hsl(38 92% 42%) 100%);
+    hsl(38 92% 60%) 0%, 
+    hsl(38 92% 54%) 35%,
+    hsl(38 92% 47%) 100%);
   box-shadow: 
-    0 2px 6px rgba(245, 158, 11, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 6px 14px rgba(245, 158, 11, 0.45),
+    0 3px 6px rgba(245, 158, 11, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glossy-warning:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
 }
 
 .btn-glossy-dark {
-  @apply relative overflow-hidden transition-all duration-200;
+  @apply relative overflow-hidden transition-all duration-200 text-white;
   background: linear-gradient(180deg, 
-    hsl(220 9% 40%) 0%, 
+    hsl(220 9% 45%) 0%, 
+    hsl(220 9% 38%) 35%,
     hsl(220 9% 28%) 100%);
-  border: 1px solid hsl(220 9% 20%);
+  border: 1px solid hsl(220 9% 22%);
+  border-bottom: 3px solid hsl(220 9% 15%);
   box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .btn-glossy-dark:hover {
+  transform: translateY(-1px);
   background: linear-gradient(180deg, 
-    hsl(220 9% 35%) 0%, 
-    hsl(220 9% 23%) 100%);
+    hsl(220 9% 48%) 0%, 
+    hsl(220 9% 40%) 35%,
+    hsl(220 9% 30%) 100%);
   box-shadow: 
-    0 2px 6px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 6px 14px rgba(0, 0, 0, 0.4),
+    0 3px 6px rgba(0, 0, 0, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Truck card glossy style */
+.btn-glossy-dark:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
+/* Truck card glossy style - Puffed 3D */
 .card-glossy {
   @apply relative overflow-hidden transition-all duration-200;
   background: linear-gradient(180deg, 
     hsl(0 0% 100%) 0%, 
-    hsl(220 14% 97%) 100%);
-  border: 1px solid hsl(220 13% 88%);
+    hsl(220 14% 99%) 30%,
+    hsl(220 14% 96%) 100%);
+  border: 1px solid hsl(220 13% 85%);
+  border-bottom: 3px solid hsl(220 13% 78%);
   box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    0 4px 10px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .card-glossy:hover {
-  border-color: hsl(220 13% 82%);
+  transform: translateY(-2px);
+  border-color: hsl(220 13% 80%);
   box-shadow: 
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .card-glossy-selected {
   background: linear-gradient(180deg, 
-    hsl(221 83% 97%) 0%, 
-    hsl(221 83% 94%) 100%);
-  border: 1px solid hsl(221 83% 75%);
+    hsl(221 83% 98%) 0%, 
+    hsl(221 83% 96%) 30%,
+    hsl(221 83% 93%) 100%);
+  border: 1px solid hsl(221 83% 70%);
+  border-bottom: 3px solid hsl(221 83% 60%);
   box-shadow: 
-    0 2px 6px rgba(37, 99, 235, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    0 4px 10px rgba(37, 99, 235, 0.25),
+    0 2px 4px rgba(37, 99, 235, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 3px rgba(37, 99, 235, 0.08);
 }
 
 /* Custom scrollbar for non-mobile */
