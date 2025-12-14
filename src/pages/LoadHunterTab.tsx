@@ -3487,7 +3487,11 @@ export default function LoadHunterTab() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="font-medium">Vehicle Types:</span>
-                      <span className="text-right max-w-[200px]">{plan.vehicleSizes.join(', ')}</span>
+                      <span className="text-right max-w-[200px]">
+                        {plan.vehicleSizes
+                          .filter(size => canonicalVehicleTypes.some(ct => ct.value.toUpperCase() === size.toUpperCase()))
+                          .join(', ') || plan.vehicleSizes.join(', ')}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Zipcodes:</span>
