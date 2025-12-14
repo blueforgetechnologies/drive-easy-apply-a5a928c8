@@ -1701,18 +1701,18 @@ const LoadEmailDetail = ({
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-1">
-                  <Button variant="destructive" size="sm" className="h-6 text-[10px] flex-1 whitespace-nowrap font-medium px-1" onClick={handleSkip}>
+                {/* Action Buttons - Connected button group */}
+                <div className="flex gap-0">
+                  <Button variant="destructive" size="sm" className="h-7 text-[11px] flex-1 whitespace-nowrap font-medium px-2 rounded-none rounded-l-full" onClick={handleSkip}>
                     Skip
                   </Button>
-                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleUndecided}>
+                  <Button size="sm" className="h-7 text-[11px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-2 rounded-none border-l border-blue-400/50" onClick={handleUndecided}>
                     Undecided
                   </Button>
-                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleMarkUnreviewed}>
-                    Mark Unreviewed
+                  <Button size="sm" className="h-7 text-[11px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-2 rounded-none border-l border-blue-400/50" onClick={handleMarkUnreviewed}>
+                    Unreviewed
                   </Button>
-                  <Button size="sm" className="h-6 text-[10px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-1" onClick={handleWait}>
+                  <Button size="sm" className="h-7 text-[11px] flex-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap font-medium px-2 rounded-none rounded-r-full border-l border-blue-400/50" onClick={handleWait}>
                     Wait
                   </Button>
                 </div>
