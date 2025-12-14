@@ -2742,12 +2742,12 @@ export default function LoadHunterTab() {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Filter Bar - Full Width - Always Visible */}
-      <div className="flex items-center gap-1.5 py-1.5 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
+      <div className="flex items-center gap-2 py-2 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
           {/* Mode Buttons - Merged Toggle */}
           <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
             <Button 
               size="sm" 
-              className={`h-6 px-3 text-[11px] font-semibold !rounded-none !rounded-l-full border-0 ${
+              className={`h-7 px-3.5 text-xs font-semibold !rounded-none !rounded-l-full border-0 ${
                 activeMode === 'admin' 
                   ? 'btn-glossy text-black' 
                   : 'bg-transparent text-black/60 hover:text-black'
@@ -2759,7 +2759,7 @@ export default function LoadHunterTab() {
             
             <Button 
               size="sm" 
-              className={`h-6 px-3 text-[11px] font-medium !rounded-none !rounded-r-full border-0 ${
+              className={`h-7 px-3.5 text-xs font-medium !rounded-none !rounded-r-full border-0 ${
                 activeMode === 'dispatch' 
                   ? 'btn-glossy-primary text-white' 
                   : 'bg-transparent text-gray-400 hover:text-gray-600'
@@ -2773,7 +2773,7 @@ export default function LoadHunterTab() {
           <div className="flex-shrink-0">
             <Button 
               size="sm" 
-              className="h-6 px-3 text-[11px] font-medium rounded-full border-0 btn-glossy-success text-white"
+              className="h-7 px-3.5 text-xs font-medium rounded-full border-0 btn-glossy-success text-white"
             >
               Add Vehicle
             </Button>
@@ -2786,7 +2786,7 @@ export default function LoadHunterTab() {
               value={matchSearchQuery}
               onChange={(e) => setMatchSearchQuery(e.target.value)}
               onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-              className="h-6 w-32 text-[11px] rounded-full px-3 input-inset"
+              className="h-7 w-36 text-xs rounded-full px-3.5 input-inset"
             />
             {isSearchingArchive && (
               <div className="absolute right-5 top-1.5">
@@ -2854,7 +2854,7 @@ export default function LoadHunterTab() {
             <div className="flex items-center overflow-hidden rounded-full">
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
                   activeFilter === 'all' 
                     ? 'btn-glossy-dark text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2867,12 +2867,12 @@ export default function LoadHunterTab() {
                 }}
               >
                 All
-                <span className={`badge-inset text-[9px] h-4 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
+                <span className={`badge-inset text-[10px] h-5 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
               </Button>
               
               <Button
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none border-0 ${
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
                   activeFilter === 'unreviewed' 
                     ? 'btn-glossy-primary text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2885,22 +2885,22 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <span className="badge-inset-danger-bright text-[9px] h-4">{unreviewedCount}</span>
+                <span className="badge-inset-danger-bright text-[10px] h-5">{unreviewedCount}</span>
               </Button>
               
               <Button 
                 size="sm" 
-                className="h-6 w-6 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-600"
+                className="h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-600"
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
-                {isSoundMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
               </Button>
             </div>
             
             <Button
               size="sm" 
-              className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'missed' 
                   ? 'btn-glossy-danger text-white' 
                   : 'btn-glossy text-gray-600'
@@ -2913,14 +2913,14 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <span className="badge-inset-danger text-[9px] h-4">{missedCount}</span>
+              <span className="badge-inset-danger text-[10px] h-5">{missedCount}</span>
             </Button>
             
             {/* Merged button group: Wait, Undec, Skip */}
             <div className="flex items-center overflow-hidden rounded-full">
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
                   activeFilter === 'waitlist' 
                     ? 'btn-glossy-warning text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2933,12 +2933,12 @@ export default function LoadHunterTab() {
                 }}
               >
                 Wait
-                <span className="badge-inset-warning text-[9px] h-4">{waitlistCount}</span>
+                <span className="badge-inset-warning text-[10px] h-5">{waitlistCount}</span>
               </Button>
               
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none border-0 ${
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
                   activeFilter === 'undecided' 
                     ? 'btn-glossy-warning text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2951,12 +2951,12 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undec
-                <span className="badge-inset-warning text-[9px] h-4">{undecidedCount}</span>
+                <span className="badge-inset-warning text-[10px] h-5">{undecidedCount}</span>
               </Button>
               
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
                   activeFilter === 'skipped' 
                     ? 'btn-glossy-dark text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2969,13 +2969,13 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skip
-                <span className="badge-inset text-[9px] h-4">{skippedCount}</span>
+                <span className="badge-inset text-[10px] h-5">{skippedCount}</span>
               </Button>
             </div>
             
             <Button 
               size="sm" 
-              className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'mybids' 
                   ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-600'
@@ -2988,12 +2988,12 @@ export default function LoadHunterTab() {
               }}
             >
               Bids
-              <span className="badge-inset-primary text-[9px] h-4">{bidCount}</span>
+              <span className="badge-inset-primary text-[10px] h-5">{bidCount}</span>
             </Button>
             
             <Button
               size="sm" 
-              className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'booked' 
                   ? 'btn-glossy-success text-white' 
                   : 'btn-glossy text-gray-600'
@@ -3005,13 +3005,13 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <span className="badge-inset-success text-[9px] h-4">2</span>
+              <span className="badge-inset-success text-[10px] h-5">2</span>
             </Button>
             
             {issuesCount > 0 && (
               <Button
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+                className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                   activeFilter === 'issues' 
                     ? 'btn-glossy-warning text-white' 
                     : 'btn-glossy text-amber-600'
@@ -3023,7 +3023,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 ⚠️
-                <span className="badge-inset-warning text-[9px] h-4">{issuesCount}</span>
+                <span className="badge-inset-warning text-[10px] h-5">{issuesCount}</span>
               </Button>
             )}
           </div>
@@ -3032,7 +3032,7 @@ export default function LoadHunterTab() {
           <div className="flex items-center gap-1 ml-auto flex-shrink-0">
             <Button 
               size="sm" 
-              className={`h-6 px-2.5 text-[11px] font-medium rounded-full border-0 ${
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
                 activeFilter === 'vehicle-assignment' 
                   ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-600'
@@ -3048,7 +3048,7 @@ export default function LoadHunterTab() {
             
             <Button
               size="sm" 
-              className={`h-6 px-2.5 text-[11px] font-medium rounded-full border-0 ${
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
                 activeFilter === 'dispatcher-metrix' 
                   ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-600'
@@ -3064,7 +3064,7 @@ export default function LoadHunterTab() {
             
             <Button
               size="sm"
-              className="gap-1 h-6 text-[11px] px-3 rounded-full border-0 btn-glossy-primary text-white font-medium"
+              className="gap-1 h-7 text-xs px-3.5 rounded-full border-0 btn-glossy-primary text-white font-medium"
               onClick={async () => {
                 setRefreshing(true);
                 try {
@@ -3087,7 +3087,7 @@ export default function LoadHunterTab() {
               }}
               disabled={refreshing}
             >
-              <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
