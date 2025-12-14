@@ -421,7 +421,7 @@ export default function LoadsTab() {
   }
 
   return (
-    <div className="space-y-4 px-3 md:px-0">
+    <div className="flex flex-col flex-1 min-h-0 px-3 md:px-0 gap-4">
       {/* Header - Mobile optimized */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-xl sm:text-2xl font-bold">Booked Loads</h2>
@@ -963,7 +963,7 @@ export default function LoadsTab() {
         </div>
       </div>
 
-      <Card className="flex flex-col" style={{ height: 'calc(100vh - 280px)' }}>
+      <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
           {filteredLoads.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
@@ -1122,29 +1122,29 @@ export default function LoadsTab() {
                 </Table>
               </div>
               {/* Always visible pagination */}
-              <div className="flex items-center justify-between px-4 py-3 border-t bg-background flex-shrink-0">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between px-3 py-1.5 border-t bg-background flex-shrink-0">
+                <span className="text-xs text-muted-foreground">
                   Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredLoads.length)} of {filteredLoads.length}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="h-7 px-2"
+                    className="h-6 w-6 p-0"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3 w-3" />
                   </Button>
-                  <span className="text-sm">Page {currentPage} of {Math.max(1, totalPages)}</span>
+                  <span className="text-xs">Page {currentPage} of {Math.max(1, totalPages)}</span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage >= totalPages}
-                    className="h-7 px-2"
+                    className="h-6 w-6 p-0"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
