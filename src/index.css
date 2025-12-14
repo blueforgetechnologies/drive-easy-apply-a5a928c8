@@ -604,29 +604,29 @@ All colors MUST be HSL.
 .btn-glossy {
   @apply relative overflow-hidden transition-all duration-200;
   background: linear-gradient(180deg, 
-    hsl(0 0% 100%) 0%, 
-    hsl(220 14% 98%) 35%,
-    hsl(220 14% 94%) 100%);
-  border: 1px solid hsl(220 13% 82%);
-  border-bottom: 3px solid hsl(220 13% 75%);
+    hsl(220 10% 92%) 0%, 
+    hsl(220 10% 88%) 35%,
+    hsl(220 10% 82%) 100%);
+  border: 1px solid hsl(220 10% 72%);
+  border-bottom: 3px solid hsl(220 10% 65%);
   box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.15),
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 2px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 3px rgba(0, 0, 0, 0.05);
+    0 4px 8px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .btn-glossy:hover {
   transform: translateY(-1px);
   background: linear-gradient(180deg, 
-    hsl(0 0% 100%) 0%, 
-    hsl(220 14% 97%) 35%,
-    hsl(220 14% 92%) 100%);
+    hsl(220 10% 95%) 0%, 
+    hsl(220 10% 90%) 35%,
+    hsl(220 10% 85%) 100%);
   box-shadow: 
-    0 6px 12px rgba(0, 0, 0, 0.18),
-    0 3px 6px rgba(0, 0, 0, 0.12),
-    inset 0 2px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 3px rgba(0, 0, 0, 0.05);
+    0 6px 12px rgba(0, 0, 0, 0.15),
+    0 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .btn-glossy:active {
@@ -634,7 +634,7 @@ All colors MUST be HSL.
   border-bottom-width: 1px;
   box-shadow: 
     0 1px 2px rgba(0, 0, 0, 0.1),
-    inset 0 2px 4px rgba(0, 0, 0, 0.08);
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-glossy-primary {
