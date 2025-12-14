@@ -2913,10 +2913,11 @@ export default function LoadHunterTab() {
               <span className="badge-glossy-danger text-[9px] px-1.5 py-0 h-4">{missedCount}</span>
             </Button>
             
-            <div className="flex items-center gap-0.5">
+            {/* Merged button group: Wait, Undec, Skip */}
+            <div className="flex items-center overflow-hidden rounded-full">
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
                   activeFilter === 'waitlist' 
                     ? 'btn-glossy-warning text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2934,7 +2935,7 @@ export default function LoadHunterTab() {
               
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none border-0 ${
                   activeFilter === 'undecided' 
                     ? 'btn-glossy-warning text-white' 
                     : 'btn-glossy text-gray-600'
@@ -2952,7 +2953,7 @@ export default function LoadHunterTab() {
               
               <Button 
                 size="sm" 
-                className={`h-6 px-2.5 text-[11px] font-medium gap-1 rounded-full border-0 ${
+                className={`h-6 px-2.5 text-[11px] font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
                   activeFilter === 'skipped' 
                     ? 'btn-glossy-dark text-white' 
                     : 'btn-glossy text-gray-600'
