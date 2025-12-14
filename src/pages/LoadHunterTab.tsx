@@ -3130,13 +3130,13 @@ export default function LoadHunterTab() {
                 >
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="flex-1 min-w-0 space-y-0.5 pr-14">
-                      <div className="font-medium text-xs leading-tight text-foreground flex items-center gap-1">
+                      <div className="font-medium text-xs leading-tight text-carved flex items-center gap-1">
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
-                      <div className="text-[11px] text-muted-foreground leading-tight">
+                      <div className="text-[11px] text-carved-light leading-tight">
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                       </div>
-                      <div className="text-[10px] text-muted-foreground/60 truncate leading-tight">
+                      <div className="text-[10px] text-carved-light truncate leading-tight opacity-70">
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>

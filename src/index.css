@@ -817,6 +817,21 @@ All colors MUST be HSL.
   color: hsl(220 9% 55%);
 }
 
+/* Carved/Engraved Text Style */
+.text-carved {
+  color: hsl(220 15% 35%);
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.8),
+    0 -1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.text-carved-light {
+  color: hsl(220 10% 50%);
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
 /* Inset Badge Styles - Indented appearance */
 .badge-inset {
   @apply inline-flex items-center justify-center px-1.5 py-0 rounded-md text-[9px] font-semibold;
