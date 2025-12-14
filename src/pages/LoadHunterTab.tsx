@@ -4800,7 +4800,15 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 {matchHuntPlan?.availableFeet ? (
-                                  <div className="inline-block text-[13px] leading-tight whitespace-nowrap font-semibold bg-yellow-300 text-yellow-900 px-1.5 py-0.5 rounded">
+                                  <div 
+                                    className="inline-flex items-center justify-center text-[12px] font-semibold h-6 px-2 rounded-md text-yellow-900"
+                                    style={{
+                                      background: 'linear-gradient(180deg, hsl(48 96% 70%) 0%, hsl(45 93% 55%) 100%)',
+                                      boxShadow: '0 3px 10px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)',
+                                      border: '1px solid hsl(45 80% 45%)',
+                                      textShadow: '0 1px 0 rgba(255,255,255,0.4)'
+                                    }}
+                                  >
                                     {matchHuntPlan.availableFeet}'
                                   </div>
                                 ) : (
