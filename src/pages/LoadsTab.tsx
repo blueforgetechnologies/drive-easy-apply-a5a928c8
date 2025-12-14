@@ -907,160 +907,44 @@ export default function LoadsTab() {
         </Card>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "all" });
-              setSearchQuery("");
-            }}
-            className={filter === "all" ? "bg-primary text-primary-foreground" : ""}
-          >
-            All
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.all}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "available" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "available" });
-              setSearchQuery("");
-            }}
-            className={filter === "available" ? "bg-sky-500 text-white hover:bg-sky-600" : ""}
-          >
-            Available
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.available}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "booked" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "booked" });
-              setSearchQuery("");
-            }}
-            className={filter === "booked" ? "bg-indigo-500 text-white hover:bg-indigo-600" : ""}
-          >
-            Booked
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.booked}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "dispatched" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "dispatched" });
-              setSearchQuery("");
-            }}
-            className={filter === "dispatched" ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
-          >
-            Dispatched
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.dispatched}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "at_pickup" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "at_pickup" });
-              setSearchQuery("");
-            }}
-            className={filter === "at_pickup" ? "bg-amber-500 text-white hover:bg-amber-600" : ""}
-          >
-            At Pickup
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.at_pickup}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "in_transit" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "in_transit" });
-              setSearchQuery("");
-            }}
-            className={filter === "in_transit" ? "bg-purple-500 text-white hover:bg-purple-600" : ""}
-          >
-            In Transit
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.in_transit}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "at_delivery" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "at_delivery" });
-              setSearchQuery("");
-            }}
-            className={filter === "at_delivery" ? "bg-teal-500 text-white hover:bg-teal-600" : ""}
-          >
-            At Delivery
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.at_delivery}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "delivered" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "delivered" });
-              setSearchQuery("");
-            }}
-            className={filter === "delivered" ? "bg-green-600 text-white hover:bg-green-700" : ""}
-          >
-            Delivered
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.delivered}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "completed" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "completed" });
-              setSearchQuery("");
-            }}
-            className={filter === "completed" ? "bg-green-800 text-white hover:bg-green-900" : ""}
-          >
-            Completed
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.completed}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "cancelled" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "cancelled" });
-              setSearchQuery("");
-            }}
-            className={filter === "cancelled" ? "bg-red-500 text-white hover:bg-red-600" : ""}
-          >
-            Cancelled
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.cancelled}
-            </Badge>
-          </Button>
-          <Button
-            variant={filter === "tonu" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "tonu" });
-              setSearchQuery("");
-            }}
-            className={filter === "tonu" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}
-          >
-            TONU
-            <Badge variant="secondary" className="ml-2 bg-background/80 text-foreground">
-              {statusCounts.tonu}
-            </Badge>
-          </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 max-w-full">
+          {[
+            { key: "all", label: "All", count: statusCounts.all, color: "" },
+            { key: "available", label: "Available", count: statusCounts.available, color: "bg-sky-500 hover:bg-sky-600" },
+            { key: "booked", label: "Booked", count: statusCounts.booked, color: "bg-indigo-500 hover:bg-indigo-600" },
+            { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, color: "bg-blue-500 hover:bg-blue-600" },
+            { key: "at_pickup", label: "At Pickup", count: statusCounts.at_pickup, color: "bg-amber-500 hover:bg-amber-600" },
+            { key: "in_transit", label: "In Transit", count: statusCounts.in_transit, color: "bg-purple-500 hover:bg-purple-600" },
+            { key: "at_delivery", label: "At Delivery", count: statusCounts.at_delivery, color: "bg-teal-500 hover:bg-teal-600" },
+            { key: "delivered", label: "Delivered", count: statusCounts.delivered, color: "bg-green-600 hover:bg-green-700" },
+            { key: "completed", label: "Completed", count: statusCounts.completed, color: "bg-green-800 hover:bg-green-900" },
+            { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, color: "bg-red-500 hover:bg-red-600" },
+            { key: "tonu", label: "TONU", count: statusCounts.tonu, color: "bg-orange-500 hover:bg-orange-600" },
+          ].map((status) => (
+            <Button
+              key={status.key}
+              variant={filter === status.key ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setSearchParams({ filter: status.key });
+                setSearchQuery("");
+              }}
+              className={`h-7 px-2 text-xs whitespace-nowrap ${filter === status.key && status.color ? `${status.color} text-white` : ""}`}
+            >
+              {status.label}
+              <span className="ml-1 text-[10px] opacity-70">({status.count})</span>
+            </Button>
+          ))}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full sm:w-56">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search loads..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-8 h-7 text-xs"
           />
         </div>
       </div>
