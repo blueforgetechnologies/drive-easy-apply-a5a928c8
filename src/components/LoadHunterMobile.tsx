@@ -519,7 +519,7 @@ export default function LoadHunterMobile({
                     </div>
 
                     {/* Details Row */}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {data.vehicle_type && (
                         <span className="flex items-center gap-1">
                           <Truck className="h-3 w-3" />
@@ -534,6 +534,20 @@ export default function LoadHunterMobile({
                       {match?.distance_miles && (
                         <span>{Math.round(match.distance_miles)} mi away</span>
                       )}
+                      {/* Source Badge */}
+                      {(() => {
+                        const emailSource = (item as any).email_source || email?.email_source || 'sylectus';
+                        const sourceConfig: Record<string, { label: string; className: string }> = {
+                          sylectus: { label: 'Sylectus', className: 'bg-blue-100 text-blue-700' },
+                          fullcircle: { label: 'Full Circle', className: 'bg-purple-100 text-purple-700' },
+                        };
+                        const config = sourceConfig[emailSource] || { label: emailSource, className: 'bg-gray-100 text-gray-700' };
+                        return (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${config.className}`}>
+                            {config.label}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     {/* Matched Vehicle (for unreviewed) */}

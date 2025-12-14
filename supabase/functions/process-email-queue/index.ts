@@ -625,6 +625,20 @@ serve(async (req) => {
         const fromName = fromMatch ? fromMatch[1].trim() : from;
         const fromEmail = fromMatch ? fromMatch[2] : from;
 
+        // Detect email source based on content
+        let emailSource = 'sylectus'; // Default
+        
+        // Full Circle TMS detection: app.fullcircletms.com links, "Bid YES to this load" text
+        const isFullCircleTMS = 
+          bodyText.includes('app.fullcircletms.com') ||
+          bodyText.includes('Bid YES to this load') ||
+          subject.match(/^Load Available:\s+[A-Z]{2}\s+-\s+[A-Z]{2}/i);
+        
+        if (isFullCircleTMS) {
+          emailSource = 'fullcircle';
+          console.log('📧 Detected Full Circle TMS email source');
+        }
+
         // Insert into load_emails
         const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
@@ -642,6 +656,7 @@ serve(async (req) => {
             status: 'new',
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
+            email_source: emailSource,
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();

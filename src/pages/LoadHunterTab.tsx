@@ -4816,9 +4816,20 @@ export default function LoadHunterTab() {
                                 )}
                               </TableCell>
                               <TableCell className="py-1">
-                                <Badge variant="secondary" className="text-[12px] h-4 px-1.5">
-                                  {email.from_email.includes('@') ? email.from_email.split('@')[1].split('.')[0] : 'Email'}
-                                </Badge>
+                                {(() => {
+                                  // Get source from email_source field (from view or email data)
+                                  const emailSource = (item as any).email_source || email.email_source || 'sylectus';
+                                  const sourceConfig: Record<string, { label: string; bg: string; text: string }> = {
+                                    sylectus: { label: 'Sylectus', bg: 'bg-blue-100', text: 'text-blue-700' },
+                                    fullcircle: { label: 'Full Circle TMS', bg: 'bg-purple-100', text: 'text-purple-700' },
+                                  };
+                                  const config = sourceConfig[emailSource] || { label: emailSource, bg: 'bg-gray-100', text: 'text-gray-700' };
+                                  return (
+                                    <Badge variant="secondary" className={`text-[11px] h-4 px-1.5 ${config.bg} ${config.text} border-0`}>
+                                      {config.label}
+                                    </Badge>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell className="text-right py-1">
                                 <div 

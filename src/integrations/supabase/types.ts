@@ -3054,6 +3054,7 @@ export type Database = {
         Row: {
           distance_miles: number | null
           email_id: string | null
+          email_source: string | null
           email_status: string | null
           expires_at: string | null
           from_email: string | null
