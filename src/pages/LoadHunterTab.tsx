@@ -4568,8 +4568,8 @@ export default function LoadHunterTab() {
                                     <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500">NEW</Badge>
                                   )}
                                 </div>
-                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">
-                                  Expires: {email.expires_at ? new Date(email.expires_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '—'} ({expiresIn})
+                                <div className="text-[11px] text-muted-foreground leading-tight whitespace-nowrap">
+                                  {email.expires_at ? new Date(email.expires_at).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
