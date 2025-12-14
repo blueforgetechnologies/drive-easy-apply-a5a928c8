@@ -3138,11 +3138,11 @@ export default function LoadHunterTab() {
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
-                    {/* Merged badge pill - glossy 3D style */}
-                    <div className="absolute top-0 right-0 flex items-center rounded-bl-lg rounded-tr-lg overflow-hidden">
+                    {/* Merged badge pill - glossy 3D button style, flush with edge */}
+                    <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg">
                       {/* GREEN = Unreviewed */}
                       <div 
-                        className="badge-glossy-success h-5 px-2 rounded-none border-0 text-[10px] cursor-pointer hover:brightness-110 transition-all"
+                        className="btn-glossy-success h-5 px-2 !rounded-none !border-0 !border-b-0 text-[10px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('unreviewed');
@@ -3156,7 +3156,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* GRAY = Skipped */}
                       <div 
-                        className="badge-glossy-muted h-5 px-2 rounded-none border-0 text-[10px] cursor-pointer hover:brightness-95 transition-all"
+                        className="btn-glossy h-5 px-2 !rounded-none !border-0 !border-b-0 text-[10px] text-gray-600 cursor-pointer hover:brightness-95 transition-all !py-0 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
@@ -3170,7 +3170,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* BLUE = My Bids */}
                       <div 
-                        className="badge-glossy-primary h-5 px-2 rounded-none border-0 text-[10px] cursor-pointer hover:brightness-110 transition-all"
+                        className="btn-glossy-primary h-5 px-2 !rounded-none !border-0 !border-b-0 text-[10px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');
@@ -3183,12 +3183,12 @@ export default function LoadHunterTab() {
                         {bidCount}
                       </div>
                     </div>
-                    {/* Status Text - glossy pill style */}
+                    {/* Status Text - plain text style */}
                     {vehicle.stopped_status && (
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                        <span className={`status-glossy text-[9px] font-medium whitespace-nowrap ${
-                          vehicle.stopped_status === 'Stopped' ? 'text-gray-500' : 
-                          vehicle.stopped_status === 'Idling' ? 'text-orange-600' : 
+                        <span className={`text-[9px] font-medium whitespace-nowrap ${
+                          vehicle.stopped_status === 'Stopped' ? 'text-gray-400' : 
+                          vehicle.stopped_status === 'Idling' ? 'text-orange-500' : 
                           'text-green-700'
                         }`}>
                           {vehicle.stopped_status === 'Stopped' ? 'Stopped' : 
