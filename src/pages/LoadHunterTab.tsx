@@ -2749,8 +2749,8 @@ export default function LoadHunterTab() {
               size="sm" 
               className={`h-7 px-3.5 text-xs font-semibold !rounded-none !rounded-l-full border-0 ${
                 activeMode === 'admin' 
-                  ? 'btn-glossy text-black' 
-                  : 'bg-transparent text-black/60 hover:text-black'
+                  ? 'btn-glossy-dark text-white' 
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => setActiveMode('admin')}
             >
@@ -2762,7 +2762,7 @@ export default function LoadHunterTab() {
               className={`h-7 px-3.5 text-xs font-medium !rounded-none !rounded-r-full border-0 ${
                 activeMode === 'dispatch' 
                   ? 'btn-glossy-primary text-white' 
-                  : 'bg-transparent text-gray-400 hover:text-gray-600'
+                  : 'btn-glossy text-gray-600'
               }`}
               onClick={() => setActiveMode('dispatch')}
             >
