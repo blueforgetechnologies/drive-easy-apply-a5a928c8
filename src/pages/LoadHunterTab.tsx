@@ -4333,8 +4333,8 @@ export default function LoadHunterTab() {
                 </Button>
               </div>
             )}
-            <div className="p-0 flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="p-0 flex-1 flex flex-col">
+              <div>
                 {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
@@ -4358,8 +4358,8 @@ export default function LoadHunterTab() {
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
-                  <div className="flex flex-col h-full">
-                    <div className="flex-1 overflow-auto card-glossy-table min-h-0">
+                  <>
+                    <div className="overflow-x-auto card-glossy-table">
                     <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
@@ -4888,10 +4888,10 @@ export default function LoadHunterTab() {
                         })}
                       </TableBody>
                     </Table>
-                    </div>
+                  </div>
                   
                   {/* Pagination bar at bottom - glossy style */}
-                  <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-muted/50 to-muted/80 border-t-2 border-border/50 shrink-0">
+                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/80 border-t-2 border-border/50">
                     <div className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span className="font-semibold">
@@ -4974,7 +4974,7 @@ export default function LoadHunterTab() {
                       </button>
                     </div>
                   </div>
-                  </div>
+                </>
               )}
               </div>
             </div>
