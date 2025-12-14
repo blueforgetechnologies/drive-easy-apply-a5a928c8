@@ -2883,7 +2883,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <span className="badge-inset-danger text-[9px] h-4">{unreviewedCount}</span>
+                <span className="badge-inset-danger-bright text-[9px] h-4">{unreviewedCount}</span>
               </Button>
               
               <Button 
