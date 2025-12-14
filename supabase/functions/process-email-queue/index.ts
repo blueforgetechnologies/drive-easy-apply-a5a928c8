@@ -701,13 +701,30 @@ serve(async (req) => {
         const distance = haversineDistance(loadCoords.lat, loadCoords.lng, huntCoords.lat, huntCoords.lng);
         if (distance > parseFloat(hunt.pickup_radius || '200')) continue;
 
-        const huntVehicleSize = hunt.vehicle_size?.toLowerCase().replace(/[^a-z]/g, '');
-        if (huntVehicleSize && loadVehicleType) {
-          const matches = loadVehicleType.includes(huntVehicleSize) || huntVehicleSize.includes(loadVehicleType) ||
-            (loadVehicleType.includes('cargo') && huntVehicleSize.includes('cargo')) ||
-            (loadVehicleType.includes('sprinter') && huntVehicleSize.includes('sprinter')) ||
-            (loadVehicleType.includes('straight') && huntVehicleSize.includes('straight'));
-          if (!matches) continue;
+        // Parse vehicle_sizes as JSON array (hunt plans store multiple vehicle types)
+        let huntVehicleSizes: string[] = [];
+        if (hunt.vehicle_size) {
+          try {
+            const parsed = JSON.parse(hunt.vehicle_size);
+            huntVehicleSizes = Array.isArray(parsed) ? parsed : [hunt.vehicle_size];
+          } catch {
+            huntVehicleSizes = [hunt.vehicle_size];
+          }
+        }
+        
+        // Check if load's vehicle type matches ANY of the hunt's selected types
+        if (huntVehicleSizes.length > 0 && loadVehicleType) {
+          const loadTypeNormalized = loadVehicleType.toLowerCase().replace(/[^a-z-]/g, '');
+          const vehicleMatches = huntVehicleSizes.some(huntSize => {
+            const huntNormalized = huntSize.toLowerCase().replace(/[^a-z-]/g, '');
+            return loadTypeNormalized === huntNormalized ||
+              loadTypeNormalized.includes(huntNormalized) || 
+              huntNormalized.includes(loadTypeNormalized) ||
+              (loadTypeNormalized.includes('cargo') && huntNormalized.includes('cargo')) ||
+              (loadTypeNormalized.includes('sprinter') && huntNormalized.includes('sprinter')) ||
+              (loadTypeNormalized.includes('straight') && huntNormalized.includes('straight'));
+          });
+          if (!vehicleMatches) continue;
         }
 
         const { count: existingMatch } = await supabase
