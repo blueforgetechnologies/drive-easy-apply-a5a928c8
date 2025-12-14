@@ -685,8 +685,8 @@ export default function VehiclesTab() {
 
           {/* Desktop Table View */}
           <Card className="hidden md:block">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
+            <CardContent className="p-0 flex flex-col max-h-[calc(100vh-260px)]">
+              <div className="flex-1 overflow-auto overflow-x-auto">
                 <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">

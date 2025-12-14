@@ -421,13 +421,13 @@ export default function DriversTab() {
 
       {(filter === "active" || filter === "inactive" || filter === "pending") && (
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 flex flex-col max-h-[calc(100vh-260px)]">
             {filteredApplications.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery ? "No drivers match your search" : `No ${filter} drivers found`}
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="flex-1 overflow-auto overflow-x-auto">
                 <Table className="text-sm">
                   <TableHeader>
                     <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
