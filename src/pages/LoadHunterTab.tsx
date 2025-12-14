@@ -2761,7 +2761,7 @@ export default function LoadHunterTab() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Filter Bar - Full Width - Always Visible */}
       <div className="flex items-center gap-2 py-2 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
           {/* Mode Buttons - Merged Toggle */}
