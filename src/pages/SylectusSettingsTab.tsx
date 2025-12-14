@@ -23,25 +23,6 @@ interface TypeConfig {
   mapped_to: string | null;
 }
 
-const VALID_LOAD_TYPES: string[] = [
-  "Cargo Van",
-  "Climate Control",
-  "Courier type work",
-  "Dump Trailer",
-  "Expedited Load",
-  "Expedited Truck Load",
-  "Flatbed",
-  "Lane/Project RFQ",
-  "Large Straight",
-  "Less Than Truckload",
-  "Other",
-  "Reefer",
-  "Small Straight",
-  "Sprinter",
-  "Truckload",
-  "Truckload/LTL",
-];
-
 const SEEN_VEHICLE_TYPES_KEY = "sylectus_seen_vehicle_types";
 const SEEN_LOAD_TYPES_KEY = "sylectus_seen_load_types";
 
@@ -135,9 +116,7 @@ export default function SylectusSettingsTab() {
         })
         .sort((a, b) => b.count - a.count);
 
-      const validLoadTypesSet = new Set(VALID_LOAD_TYPES);
       const loadEntries: TypeEntry[] = Object.entries(loadTypeCounts)
-        .filter(([value]) => validLoadTypesSet.has(value))
         .map(([value, count]) => {
           const config = loadConfigs.get(value);
           return {
