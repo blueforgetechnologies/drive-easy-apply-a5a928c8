@@ -1335,6 +1335,7 @@ export default function LoadHunterTab() {
         const { data, error } = await supabase
           .from("hunt_plans")
           .select("*")
+          .not('plan_name', 'ilike', '[DELETED]%')
           .order("created_at", { ascending: false });
 
         if (error) {
@@ -2260,6 +2261,9 @@ export default function LoadHunterTab() {
 
   const handleDeleteHuntPlan = async (id: string) => {
     try {
+      // Soft delete: Disable the hunt plan and delete all matches
+      // This avoids foreign key constraints with missed_loads_history
+      
       // First, delete all matches associated with this hunt plan
       const { error: matchesError } = await supabase
         .from("load_hunt_matches")
@@ -2268,25 +2272,28 @@ export default function LoadHunterTab() {
 
       if (matchesError) {
         console.error("Error deleting hunt matches:", matchesError);
-        // Continue anyway to delete the hunt plan
       }
 
-      // Then delete the hunt plan itself
+      // Mark the hunt plan as disabled and add [DELETED] prefix to name
       const { error } = await supabase
         .from("hunt_plans")
-        .delete()
+        .update({ 
+          enabled: false,
+          plan_name: `[DELETED] ${new Date().toISOString().split('T')[0]}`
+        })
         .eq("id", id);
 
       if (error) throw error;
       
-      // Reload hunt plans from database
-      await loadHuntPlans();
-      // Also reload matches to reflect the deletion
+      // Remove from local state immediately (soft delete - hide from UI)
+      setHuntPlans(prev => prev.filter(p => p.id !== id));
+      
+      // Reload matches to reflect the deletion
       await loadHuntMatches();
-      toast.success("Hunt plan and all matches deleted");
+      toast.success("Hunt plan deactivated and matches cleared");
     } catch (error) {
-      console.error("Error deleting hunt plan:", error);
-      toast.error("Failed to delete hunt plan");
+      console.error("Error deactivating hunt plan:", error);
+      toast.error("Failed to deactivate hunt plan");
     }
   };
 
