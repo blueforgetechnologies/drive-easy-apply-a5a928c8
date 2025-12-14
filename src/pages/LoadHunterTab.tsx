@@ -4359,7 +4359,7 @@ export default function LoadHunterTab() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex-1 overflow-auto card-glossy-table">
+                    <div className="flex-1 overflow-auto min-h-0">
                       <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
@@ -4891,7 +4891,7 @@ export default function LoadHunterTab() {
                   </div>
                   
                   {/* Pagination bar at bottom - glossy style */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/80 border-t-2 border-border/50">
+                  <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-muted/50 to-muted/80 border-t-2 border-border/50">
                     <div className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
                       <span>Items per page: {itemsPerPage}</span>
                       <span className="font-semibold">
