@@ -4333,8 +4333,7 @@ export default function LoadHunterTab() {
                 </Button>
               </div>
             )}
-            <div className="p-0 flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
                 {(activeFilter === 'unreviewed' ? filteredMatches.length === 0 
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
@@ -4977,7 +4976,6 @@ export default function LoadHunterTab() {
                 </>
               )}
             </div>
-          </div>
           </div>
           </div>
         )}
