@@ -4171,7 +4171,7 @@ export default function LoadHunterTab() {
                     <div className="overflow-x-auto card-glossy-table">
                     <Table className="table-glossy">
                       <TableHeader>
-                        <TableRow className="h-9 bg-gradient-to-b from-primary/95 to-primary">
+                        <TableRow className="h-9">
                           <TableHead className="w-[30px] py-2 px-2 text-white">
                             <Button
                               variant="ghost"
