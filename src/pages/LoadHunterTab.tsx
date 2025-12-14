@@ -2864,7 +2864,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 All
-                <span className={`text-[9px] px-1 rounded-full ${activeFilter === 'all' ? 'bg-white/20' : 'bg-gray-300'}`}>{loadEmails.length}</span>
+                <span className={`badge-glossy-muted text-[9px] px-1.5 py-0 h-4 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
               </Button>
               
               <Button
@@ -2882,7 +2882,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <span className="text-[9px] px-1.5 rounded-full bg-red-500 text-white">{unreviewedCount}</span>
+                <span className="badge-glossy-danger text-[9px] px-1.5 py-0 h-4">{unreviewedCount}</span>
               </Button>
               
               <Button 
@@ -2910,7 +2910,7 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <span className="text-[9px] px-1.5 rounded-full bg-red-500 text-white">{missedCount}</span>
+              <span className="badge-glossy-danger text-[9px] px-1.5 py-0 h-4">{missedCount}</span>
             </Button>
             
             <div className="flex items-center gap-0.5">
@@ -2929,7 +2929,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Wait
-                <span className="text-[9px] px-1.5 rounded-full bg-orange-400 text-white">{waitlistCount}</span>
+                <span className="badge-glossy-warning text-[9px] px-1.5 py-0 h-4">{waitlistCount}</span>
               </Button>
               
               <Button 
@@ -2947,7 +2947,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undec
-                <span className="text-[9px] px-1.5 rounded-full bg-orange-400 text-white">{undecidedCount}</span>
+                <span className="badge-glossy-warning text-[9px] px-1.5 py-0 h-4">{undecidedCount}</span>
               </Button>
               
               <Button 
@@ -2965,7 +2965,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skip
-                <span className="text-[9px] px-1.5 rounded-full bg-gray-400 text-white">{skippedCount}</span>
+                <span className="badge-glossy-muted text-[9px] px-1.5 py-0 h-4">{skippedCount}</span>
               </Button>
             </div>
             
@@ -2984,7 +2984,7 @@ export default function LoadHunterTab() {
               }}
             >
               Bids
-              <span className="text-[9px] px-1.5 rounded-full bg-blue-500 text-white">{bidCount}</span>
+              <span className="badge-glossy-primary text-[9px] px-1.5 py-0 h-4">{bidCount}</span>
             </Button>
             
             <Button
@@ -3001,7 +3001,7 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <span className="text-[9px] px-1.5 rounded-full bg-green-500 text-white">2</span>
+              <span className="badge-glossy-success text-[9px] px-1.5 py-0 h-4">2</span>
             </Button>
             
             {issuesCount > 0 && (
@@ -3019,7 +3019,7 @@ export default function LoadHunterTab() {
                 }}
               >
                 ⚠️
-                <span className="text-[9px] px-1.5 rounded-full bg-amber-500 text-white">{issuesCount}</span>
+                <span className="badge-glossy-warning text-[9px] px-1.5 py-0 h-4">{issuesCount}</span>
               </Button>
             )}
           </div>
@@ -3138,11 +3138,11 @@ export default function LoadHunterTab() {
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
-                    {/* Merged badge pill - flush top right edge */}
-                    <div className="absolute top-0 right-0 flex items-center rounded-bl-md rounded-tr-sm overflow-hidden border-l border-b border-border/50">
+                    {/* Merged badge pill - glossy 3D style */}
+                    <div className="absolute top-0 right-0 flex items-center rounded-bl-lg rounded-tr-lg overflow-hidden">
                       {/* GREEN = Unreviewed */}
                       <div 
-                        className="h-4 px-1.5 bg-green-400 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-green-500 transition-colors"
+                        className="badge-glossy-success h-5 px-2 rounded-none border-0 text-[10px] cursor-pointer hover:brightness-110 transition-all"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('unreviewed');
@@ -3156,7 +3156,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* GRAY = Skipped */}
                       <div 
-                        className="h-4 px-1.5 bg-gray-300 flex items-center justify-center text-gray-700 text-[9px] font-medium cursor-pointer hover:bg-gray-400 transition-colors border-l border-white/30"
+                        className="badge-glossy-muted h-5 px-2 rounded-none border-0 text-[10px] cursor-pointer hover:brightness-95 transition-all"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
@@ -3170,7 +3170,7 @@ export default function LoadHunterTab() {
                       </div>
                       {/* BLUE = My Bids */}
                       <div 
-                        className="h-4 px-1.5 bg-blue-400 flex items-center justify-center text-white text-[9px] font-medium cursor-pointer hover:bg-blue-500 transition-colors border-l border-white/30"
+                        className="badge-glossy-primary h-5 px-2 rounded-none border-0 text-[10px] cursor-pointer hover:brightness-110 transition-all"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');
@@ -3183,12 +3183,12 @@ export default function LoadHunterTab() {
                         {bidCount}
                       </div>
                     </div>
-                    {/* Status Text - centered on right edge */}
+                    {/* Status Text - glossy pill style */}
                     {vehicle.stopped_status && (
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                        <span className={`text-[9px] font-medium whitespace-nowrap ${
-                          vehicle.stopped_status === 'Stopped' ? 'text-gray-400' : 
-                          vehicle.stopped_status === 'Idling' ? 'text-orange-500' : 
+                        <span className={`status-glossy text-[9px] font-medium whitespace-nowrap ${
+                          vehicle.stopped_status === 'Stopped' ? 'text-gray-500' : 
+                          vehicle.stopped_status === 'Idling' ? 'text-orange-600' : 
                           'text-green-700'
                         }`}>
                           {vehicle.stopped_status === 'Stopped' ? 'Stopped' : 
