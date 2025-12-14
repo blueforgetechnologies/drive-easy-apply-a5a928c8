@@ -4614,11 +4614,15 @@ export default function LoadHunterTab() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right py-1">
-                                <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                <div 
+                                  className="inline-flex items-center gap-0.5 bg-white rounded-lg shadow-md border border-gray-200 p-0.5"
+                                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)' }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-6 w-6 p-0 rounded-full text-red-500 hover:bg-red-50 hover:text-red-700" 
+                                    className="h-7 w-7 p-0 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" 
                                     aria-label="Skip load or match"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -4634,7 +4638,7 @@ export default function LoadHunterTab() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-6 w-6 p-0 rounded-full bg-blue-500 text-white hover:bg-blue-600" 
+                                    className="h-7 w-7 p-0 rounded-md bg-blue-500 text-white hover:bg-blue-600 shadow-sm" 
                                     aria-label="Move to waitlist"
                                     onClick={(e) => {
                                       e.stopPropagation();
