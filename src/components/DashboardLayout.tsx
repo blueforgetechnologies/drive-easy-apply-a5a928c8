@@ -249,12 +249,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.15)'
         }}
       >
-        <div className="max-w-[1630px] mx-auto px-3 sm:px-4 py-1.5 sm:py-2">
-          <div className="flex justify-between items-center gap-2">
+        <div className="max-w-[1630px] mx-auto px-3 sm:px-5 py-2 sm:py-2.5">
+          <div className="flex justify-between items-center gap-3">
             {/* Left: Logo + Desktop Nav */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
               <h1 
-                className="text-lg sm:text-xl font-bold text-white whitespace-nowrap"
+                className="text-xl sm:text-2xl font-bold text-white whitespace-nowrap"
                 style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
               >
                 TMS
@@ -264,7 +264,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="hidden md:block overflow-x-auto">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList 
-                    className="h-8 border border-white/20 p-0.5 gap-0.5"
+                    className="h-10 border border-white/20 p-1 gap-1"
                     style={{
                       background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 100%)',
                       boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
@@ -276,7 +276,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <TabsTrigger 
                           key={item.value}
                           value={item.value} 
-                          className="gap-1 h-6 text-[11px] px-2 text-white/90 border-0 rounded-md data-[state=active]:text-white data-[state=active]:shadow-none"
+                          className="gap-1.5 h-8 text-[13px] px-2.5 text-white/90 border-0 rounded-md data-[state=active]:text-white data-[state=active]:shadow-none"
                           style={{
                             textShadow: '0 1px 1px rgba(0,0,0,0.3)',
                             ...(activeTab === item.value ? {
@@ -285,11 +285,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             } : {})
                           }}
                         >
-                          <Icon className="h-3 w-3" />
+                          <Icon className="h-4 w-4" />
                           <span>{item.label}</span>
                           {item.badge && item.badge > 0 && (
                             <span 
-                              className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold text-white rounded-full"
+                              className="ml-0.5 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white rounded-full"
                               style={{
                                 background: 'linear-gradient(180deg, hsl(0 84% 60%) 0%, hsl(0 72% 51%) 100%)',
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
