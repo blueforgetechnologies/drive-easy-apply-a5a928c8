@@ -2784,7 +2784,7 @@ export default function LoadHunterTab() {
               value={matchSearchQuery}
               onChange={(e) => setMatchSearchQuery(e.target.value)}
               onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-              className="h-6 w-32 text-[11px] rounded-full px-3"
+              className="h-6 w-32 text-[11px] rounded-full px-3 input-inset"
             />
             {isSearchingArchive && (
               <div className="absolute right-5 top-1.5">
