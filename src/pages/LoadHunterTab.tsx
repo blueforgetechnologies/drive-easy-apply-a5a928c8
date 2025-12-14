@@ -159,6 +159,8 @@ export default function LoadHunterTab() {
   const [matchSearchQuery, setMatchSearchQuery] = useState('');
   const [archivedSearchResults, setArchivedSearchResults] = useState<any[]>([]);
   const [isSearchingArchive, setIsSearchingArchive] = useState(false);
+  const [canonicalVehicleTypes, setCanonicalVehicleTypes] = useState<{ value: string; label: string }[]>([]);
+  const [vehicleTypeMappings, setVehicleTypeMappings] = useState<Map<string, string>>(new Map());
   const [showArchiveResults, setShowArchiveResults] = useState(false);
   const itemsPerPage = 17;
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
@@ -325,35 +327,25 @@ export default function LoadHunterTab() {
 
     // Match by load type/vehicle size if specified
     if (hunt.vehicleSizes && hunt.vehicleSizes.length > 0 && loadData.vehicleType) {
-      const loadVehicle = loadData.vehicleType.toLowerCase();
+      const loadVehicleRaw = loadData.vehicleType.toLowerCase();
+      
+      // Use mapping to get canonical type, or use raw type if no mapping exists
+      const loadVehicle = vehicleTypeMappings.get(loadVehicleRaw) || loadVehicleRaw;
+      const loadVehicleNormalized = loadVehicle.toLowerCase().replace(/\s+/g, '-');
 
-      // Define matching rules for each hunt type
-      const matchRules: Record<string, string[]> = {
-        'large-straight': ['large straight', 'small straight', 'straight', 'straight truck'],
-        'large-straight-only': ['large straight'],
-        'small-straight': ['small straight'],
-        'cargo-van': ['cargo van'],
-        'cube-van': ['cube van'],
-        'sprinter': ['sprinter', 'sprinter van'],
-        'sprinter-van': ['sprinter van', 'sprinter'],
-        'sprinter-team': ['sprinter team'],
-        'van': ['van', 'cargo van', 'sprinter van', 'cube van'],
-        'straight': ['straight', 'straight truck', 'large straight', 'small straight'],
-        'straight-truck': ['straight truck', 'straight', 'large straight', 'small straight'],
-        'straight-liftgate': ['straight with liftgate', 'lift gate truck'],
-        'dock-high-straight': ['dock high straight'],
-        'large-straight-team': ['large straight team'],
-        'lift-gate-truck': ['lift gate truck', 'straight with liftgate'],
-        'flatbed': ['flatbed'],
-        'tractor': ['tractor', 'semi'],
-        'semi': ['semi', 'tractor'],
-        'reefer-sprinter': ['reefer sprinter van'],
-      };
-
-      // Check if ANY selected vehicle type matches the load
+      // Check if ANY selected vehicle type matches the load's canonical type
       const vehicleMatches = hunt.vehicleSizes.some(huntSize => {
-        const allowedVehicles = matchRules[huntSize] || [huntSize.replace(/-/g, ' ')];
-        return allowedVehicles.some(v => loadVehicle.includes(v) || v.includes(loadVehicle));
+        const huntSizeNormalized = huntSize.toLowerCase();
+        const loadVehicleLabel = loadVehicle.toLowerCase();
+        
+        // Direct match on normalized values
+        if (huntSizeNormalized === loadVehicleNormalized || huntSizeNormalized === loadVehicleLabel) {
+          return true;
+        }
+        
+        // Fuzzy match - check if one contains the other
+        const huntSizeReadable = huntSize.replace(/-/g, ' ').toLowerCase();
+        return loadVehicleLabel.includes(huntSizeReadable) || huntSizeReadable.includes(loadVehicleLabel);
       });
       
       if (!vehicleMatches) {
@@ -1013,6 +1005,7 @@ export default function LoadHunterTab() {
     loadUnreviewedMatches(); // Load from efficient server-side view
     loadMissedHistory(); // Load missed history for Missed tab
     loadCarriersAndPayees();
+    loadCanonicalVehicleTypes();
     fetchMapboxToken();
 
     // Subscribe to real-time updates for load_emails
@@ -1255,6 +1248,54 @@ export default function LoadHunterTab() {
       }
     } catch (error: any) {
       console.error("Failed to load carriers/payees", error);
+    }
+  };
+
+  // Load canonical vehicle types from sylectus_type_config
+  const loadCanonicalVehicleTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sylectus_type_config")
+        .select("original_value, mapped_to")
+        .eq("type_category", "vehicle");
+
+      if (error) throw error;
+
+      // Build mappings: original_value -> mapped_to (or null if hidden)
+      const mappings = new Map<string, string>();
+      const canonicalSet = new Set<string>();
+
+      data?.forEach((config: any) => {
+        if (config.mapped_to) {
+          // This type maps to a canonical type
+          mappings.set(config.original_value.toLowerCase(), config.mapped_to);
+          canonicalSet.add(config.mapped_to);
+        }
+        // If mapped_to is null, it's hidden - don't add to canonical
+      });
+
+      setVehicleTypeMappings(mappings);
+
+      // If we have canonical types, use them; otherwise fall back to defaults
+      if (canonicalSet.size > 0) {
+        const types = Array.from(canonicalSet).sort().map(t => ({
+          value: t.toLowerCase().replace(/\s+/g, '-'),
+          label: t
+        }));
+        setCanonicalVehicleTypes(types);
+      } else {
+        // Default fallback types
+        setCanonicalVehicleTypes([
+          { value: 'large-straight', label: 'Large Straight' },
+          { value: 'small-straight', label: 'Small Straight' },
+          { value: 'cargo-van', label: 'Cargo Van' },
+          { value: 'sprinter', label: 'Sprinter' },
+          { value: 'straight', label: 'Straight' },
+          { value: 'flatbed', label: 'Flatbed' },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to load canonical vehicle types:", error);
     }
   };
 
@@ -3359,15 +3400,25 @@ export default function LoadHunterTab() {
 
                     // Match by load type/vehicle size if specified
                     if (plan.vehicleSizes && plan.vehicleSizes.length > 0 && loadData.loadType) {
-                      const loadTypeLower = loadData.loadType.toLowerCase();
+                      const loadTypeRaw = loadData.loadType.toLowerCase();
                       
-                      // Check if any of the selected vehicle sizes match
+                      // Use mapping to get canonical type, or use raw type if no mapping exists
+                      const loadType = vehicleTypeMappings.get(loadTypeRaw) || loadTypeRaw;
+                      const loadTypeNormalized = loadType.toLowerCase().replace(/\s+/g, '-');
+                      
+                      // Check if any of the selected vehicle sizes match the canonical type
                       const anyMatch = plan.vehicleSizes.some(size => {
-                        const sizeLower = size.replace(/-/g, ' ').toLowerCase();
-                        if (sizeLower.includes('straight')) {
-                          return loadTypeLower.includes('straight') || loadTypeLower.includes('van') || loadTypeLower.includes('truck');
+                        const sizeNormalized = size.toLowerCase();
+                        const loadTypeLabel = loadType.toLowerCase();
+                        
+                        // Direct match
+                        if (sizeNormalized === loadTypeNormalized || sizeNormalized === loadTypeLabel) {
+                          return true;
                         }
-                        return loadTypeLower.includes(sizeLower) || sizeLower.includes(loadTypeLower);
+                        
+                        // Fuzzy match
+                        const sizeReadable = size.replace(/-/g, ' ').toLowerCase();
+                        return loadTypeLabel.includes(sizeReadable) || sizeReadable.includes(loadTypeLabel);
                       });
                       
                       if (!anyMatch) {
@@ -3547,27 +3598,7 @@ export default function LoadHunterTab() {
                 Vehicle Types <span className="text-destructive">*</span>
               </Label>
               <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-3 bg-background">
-                {[
-                  { value: 'large-straight', label: 'Large Straight' },
-                  { value: 'large-straight-only', label: 'Large Straight Only' },
-                  { value: 'small-straight', label: 'Small Straight' },
-                  { value: 'cargo-van', label: 'Cargo Van' },
-                  { value: 'cube-van', label: 'Cube Van' },
-                  { value: 'sprinter', label: 'Sprinter' },
-                  { value: 'sprinter-van', label: 'Sprinter Van' },
-                  { value: 'sprinter-team', label: 'Sprinter Team' },
-                  { value: 'van', label: 'Van' },
-                  { value: 'straight', label: 'Straight' },
-                  { value: 'straight-truck', label: 'Straight Truck' },
-                  { value: 'straight-liftgate', label: 'Straight With Liftgate' },
-                  { value: 'dock-high-straight', label: 'Dock High Straight' },
-                  { value: 'large-straight-team', label: 'Large Straight Team' },
-                  { value: 'lift-gate-truck', label: 'Lift Gate Truck' },
-                  { value: 'flatbed', label: 'Flatbed' },
-                  { value: 'tractor', label: 'Tractor' },
-                  { value: 'semi', label: 'Semi' },
-                  { value: 'reefer-sprinter', label: 'Reefer Sprinter Van' },
-                ].map((type) => (
+                {canonicalVehicleTypes.length > 0 ? canonicalVehicleTypes.map((type) => (
                   <div key={type.value} className="flex items-center space-x-2">
                     <Checkbox
                       id={`create-${type.value}`}
@@ -3582,7 +3613,9 @@ export default function LoadHunterTab() {
                     />
                     <label htmlFor={`create-${type.value}`} className="text-sm cursor-pointer">{type.label}</label>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-muted-foreground col-span-2">No vehicle types configured. Configure them in Settings → Sylectus.</p>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">{huntFormData.vehicleSizes.length} selected</p>
             </div>
@@ -3756,27 +3789,7 @@ export default function LoadHunterTab() {
                 Vehicle Types <span className="text-destructive">*</span>
               </Label>
               <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-3 bg-background">
-                {[
-                  { value: 'large-straight', label: 'Large Straight' },
-                  { value: 'large-straight-only', label: 'Large Straight Only' },
-                  { value: 'small-straight', label: 'Small Straight' },
-                  { value: 'cargo-van', label: 'Cargo Van' },
-                  { value: 'cube-van', label: 'Cube Van' },
-                  { value: 'sprinter', label: 'Sprinter' },
-                  { value: 'sprinter-van', label: 'Sprinter Van' },
-                  { value: 'sprinter-team', label: 'Sprinter Team' },
-                  { value: 'van', label: 'Van' },
-                  { value: 'straight', label: 'Straight' },
-                  { value: 'straight-truck', label: 'Straight Truck' },
-                  { value: 'straight-liftgate', label: 'Straight With Liftgate' },
-                  { value: 'dock-high-straight', label: 'Dock High Straight' },
-                  { value: 'large-straight-team', label: 'Large Straight Team' },
-                  { value: 'lift-gate-truck', label: 'Lift Gate Truck' },
-                  { value: 'flatbed', label: 'Flatbed' },
-                  { value: 'tractor', label: 'Tractor' },
-                  { value: 'semi', label: 'Semi' },
-                  { value: 'reefer-sprinter', label: 'Reefer Sprinter Van' },
-                ].map((type) => (
+                {canonicalVehicleTypes.length > 0 ? canonicalVehicleTypes.map((type) => (
                   <div key={type.value} className="flex items-center space-x-2">
                     <Checkbox
                       id={`edit-${type.value}`}
@@ -3791,7 +3804,9 @@ export default function LoadHunterTab() {
                     />
                     <label htmlFor={`edit-${type.value}`} className="text-sm cursor-pointer">{type.label}</label>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-muted-foreground col-span-2">No vehicle types configured. Configure them in Settings → Sylectus.</p>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">{huntFormData.vehicleSizes.length} selected</p>
             </div>
