@@ -243,7 +243,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen w-full bg-background">
       <header className="sticky top-0 z-40 border-b bg-header border-header/20">
-        <div className="max-w-[1920px] mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
+        <div className="max-w-[1630px] mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
           <div className="flex justify-between items-center gap-2">
             {/* Left: Logo + Desktop Nav */}
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -357,7 +357,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <main className="max-w-[1920px] mx-auto px-3 sm:px-4 py-0 sm:py-4 pb-20 md:pb-4">
+      <main className="max-w-[1630px] mx-auto px-3 sm:px-4 py-0 sm:py-4 pb-20 md:pb-4">
         {children}
       </main>
 
