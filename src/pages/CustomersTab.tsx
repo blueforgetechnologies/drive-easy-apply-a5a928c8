@@ -754,160 +754,138 @@ export default function CustomersTab() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
+      <Card className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+        <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
           {filteredCustomers.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               {searchQuery ? "No customers match your search" : `No ${filter} customers found`}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="text-sm">
-                <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-40">Company Name</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide whitespace-nowrap w-32">Factoring approval<br/>MC Number</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-32">Contact</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Phone</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Location</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Terms</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Credit Limit</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedCustomers.map((customer) => (
-                    <TableRow key={customer.id} className="h-10 hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/dashboard/customer/${customer.id}`)}>
-                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
-                          <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
-                            customer.status === "active" 
-                              ? "bg-green-600" 
-                              : customer.status === "pending"
-                              ? "bg-orange-500"
-                              : "bg-gray-500"
-                          }`}>
-                            0
-                          </div>
-                          <Select
-                            value={customer.status}
-                            onValueChange={(value) => handleStatusChange(customer.id, value)}
-                          >
-                            <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
-                              customer.status === "active"
-                                ? "bg-green-100 text-green-800 border-green-200"
-                                : customer.status === "pending"
-                                ? "bg-orange-100 text-orange-800 border-orange-200"
-                                : "bg-gray-100 text-gray-800 border-gray-200"
-                            }`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active" className="text-sm">Active</SelectItem>
-                              <SelectItem value="pending" className="text-sm">Pending</SelectItem>
-                              <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
-                      <TableCell className="py-1 px-2">
-                        <div className="flex flex-col">
-                          <span className={`text-xs font-medium ${
-                            customer.factoring_approval === 'approved' 
-                              ? 'text-green-600' 
-                              : customer.factoring_approval === 'not_approved'
-                              ? 'text-red-600'
-                              : 'text-orange-500'
-                          }`}>
-                            {customer.factoring_approval === 'approved' ? 'Approved' : 
-                             customer.factoring_approval === 'not_approved' ? 'Not Approved' : 'Pending'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{customer.mc_number || '—'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1 px-2">{customer.contact_name || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">{customer.email || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">{customer.phone || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">
-                        {customer.city && customer.state ? `${customer.city}, ${customer.state}` : "—"}
-                      </TableCell>
-                      <TableCell className="py-1 px-2">{customer.payment_terms || "—"}</TableCell>
-                      <TableCell className="py-1 px-2">
-                        {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
-                      </TableCell>
-                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEdit(customer)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDelete(customer.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <>
+              <div className="flex-1 overflow-auto">
+                <Table className="text-sm">
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-40">Company Name</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide whitespace-nowrap w-32">Factoring approval<br/>MC Number</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-32">Contact</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Phone</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Location</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Terms</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Credit Limit</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedCustomers.map((customer) => (
+                      <TableRow key={customer.id} className="h-10 hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/dashboard/customer/${customer.id}`)}>
+                        <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
+                              customer.status === "active" 
+                                ? "bg-green-600" 
+                                : customer.status === "pending"
+                                ? "bg-orange-500"
+                                : "bg-gray-500"
+                            }`}>
+                              0
+                            </div>
+                            <Select
+                              value={customer.status}
+                              onValueChange={(value) => handleStatusChange(customer.id, value)}
+                            >
+                              <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
+                                customer.status === "active"
+                                  ? "bg-green-100 text-green-800 border-green-200"
+                                  : customer.status === "pending"
+                                  ? "bg-orange-100 text-orange-800 border-orange-200"
+                                  : "bg-gray-100 text-gray-800 border-gray-200"
+                              }`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active" className="text-sm">Active</SelectItem>
+                                <SelectItem value="pending" className="text-sm">Pending</SelectItem>
+                                <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          <div className="flex flex-col">
+                            <span className={`text-xs font-medium ${
+                              customer.factoring_approval === 'approved' 
+                                ? 'text-green-600' 
+                                : customer.factoring_approval === 'not_approved'
+                                ? 'text-red-600'
+                                : 'text-orange-500'
+                            }`}>
+                              {customer.factoring_approval === 'approved' ? 'Approved' : 
+                               customer.factoring_approval === 'not_approved' ? 'Not Approved' : 'Pending'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{customer.mc_number || '—'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-1 px-2">{customer.contact_name || "—"}</TableCell>
+                        <TableCell className="py-1 px-2">{customer.email || "—"}</TableCell>
+                        <TableCell className="py-1 px-2">{customer.phone || "—"}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          {customer.city && customer.state ? `${customer.city}, ${customer.state}` : "—"}
+                        </TableCell>
+                        <TableCell className="py-1 px-2">{customer.payment_terms || "—"}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
+                        </TableCell>
+                        <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEdit(customer)}>
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDelete(customer.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Always visible pagination */}
+              <div className="flex items-center justify-between px-4 py-3 border-t bg-background flex-shrink-0">
+                <span className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm px-2">Page {currentPage} of {Math.max(1, totalPages)}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
-      {/* Pagination */}
-      {filteredCustomers.length > ROWS_PER_PAGE && (
-        <div className="flex items-center justify-between px-2">
-          <span className="text-sm text-muted-foreground">
-            Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum: number;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
