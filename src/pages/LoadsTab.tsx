@@ -914,9 +914,10 @@ export default function LoadsTab() {
           setSearchQuery("");
         }} className="overflow-x-auto">
           <TabsList 
-            className="h-8 border border-primary/20 p-0.5 gap-0.5"
+            className="h-10 border border-border/50 p-0.5 gap-0 rounded-none"
             style={{
-              background: 'linear-gradient(180deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.15) 100%)',
+              background: 'linear-gradient(180deg, hsl(var(--muted)) 0%, hsl(var(--muted) / 0.8) 100%)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.08)'
             }}
           >
             {[
@@ -935,10 +936,18 @@ export default function LoadsTab() {
               <TabsTrigger 
                 key={status.key}
                 value={status.key}
-                className="h-7 text-[11px] px-2 gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="h-9 text-[13px] px-3 gap-1.5 rounded-none border-r border-border/30 last:border-r-0 data-[state=active]:text-primary-foreground"
+                style={{
+                  ...(filter === status.key ? {
+                    background: 'linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 100%)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.15)'
+                  } : {
+                    background: 'transparent'
+                  })
+                }}
               >
                 {status.label}
-                <span className="text-[9px] opacity-70">({status.count})</span>
+                <span className="text-[10px] opacity-70">({status.count})</span>
               </TabsTrigger>
             ))}
           </TabsList>
