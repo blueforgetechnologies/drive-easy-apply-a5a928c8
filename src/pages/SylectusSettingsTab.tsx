@@ -16,6 +16,8 @@ interface TypeEntry {
   isNew: boolean;
   isHidden: boolean;
   mappedTo: string | null;
+  isCanonical: boolean; // true if other types are merged into this one
+  mergedCount: number;  // number of types merged into this one
 }
 
 interface TypeConfig {
@@ -62,6 +64,9 @@ export default function SylectusSettingsTab() {
 
       const vehicleConfigs: Map<string, TypeConfig> = new Map();
       const loadConfigs: Map<string, TypeConfig> = new Map();
+      
+      // Track canonical types (merge targets) across ALL categories
+      const allCanonicalTypes: Map<string, number> = new Map(); // value -> count of things merged into it
 
       typeConfigs?.forEach((config) => {
         const configEntry = { original_value: config.original_value, mapped_to: config.mapped_to };
@@ -69,6 +74,11 @@ export default function SylectusSettingsTab() {
           vehicleConfigs.set(config.original_value, configEntry);
         } else {
           loadConfigs.set(config.original_value, configEntry);
+        }
+        
+        // Track canonical types (what things are merged INTO)
+        if (config.mapped_to) {
+          allCanonicalTypes.set(config.mapped_to, (allCanonicalTypes.get(config.mapped_to) || 0) + 1);
         }
       });
 
@@ -108,12 +118,15 @@ export default function SylectusSettingsTab() {
       const vehicleEntries: TypeEntry[] = Object.entries(vehicleTypeCounts)
         .map(([value, count]) => {
           const config = vehicleConfigs.get(value);
+          const mergedCount = allCanonicalTypes.get(value) || 0;
           return {
             value,
             count,
             isNew: !seenVehicleTypes.has(value),
             isHidden: config ? config.mapped_to === null : false,
             mappedTo: config?.mapped_to || null,
+            isCanonical: mergedCount > 0,
+            mergedCount,
           };
         })
         .sort((a, b) => b.count - a.count);
@@ -121,12 +134,15 @@ export default function SylectusSettingsTab() {
       const loadEntries: TypeEntry[] = Object.entries(loadTypeCounts)
         .map(([value, count]) => {
           const config = loadConfigs.get(value);
+          const mergedCount = allCanonicalTypes.get(value) || 0;
           return {
             value,
             count,
             isNew: !seenLoadTypes.has(value),
             isHidden: config ? config.mapped_to === null : false,
             mappedTo: config?.mapped_to || null,
+            isCanonical: mergedCount > 0,
+            mergedCount,
           };
         })
         .sort((a, b) => b.count - a.count);
@@ -285,17 +301,33 @@ export default function SylectusSettingsTab() {
       // Update local state for both categories
       const vehicleValuesToMerge = toMerge.filter(t => t.category === "vehicle").map(t => t.value);
       const loadValuesToMerge = toMerge.filter(t => t.category === "load").map(t => t.value);
+      const totalMerged = toMerge.length;
 
-      if (vehicleValuesToMerge.length > 0) {
-        setVehicleTypes((prev) =>
-          prev.map((t) => (vehicleValuesToMerge.includes(t.value) ? { ...t, mappedTo: mergeTarget } : t))
-        );
-      }
-      if (loadValuesToMerge.length > 0) {
-        setLoadTypes((prev) =>
-          prev.map((t) => (loadValuesToMerge.includes(t.value) ? { ...t, mappedTo: mergeTarget } : t))
-        );
-      }
+      // Update vehicle types - mark merged ones and update canonical target
+      setVehicleTypes((prev) =>
+        prev.map((t) => {
+          if (vehicleValuesToMerge.includes(t.value)) {
+            return { ...t, mappedTo: mergeTarget };
+          }
+          if (t.value === mergeTarget) {
+            return { ...t, isCanonical: true, mergedCount: t.mergedCount + totalMerged };
+          }
+          return t;
+        })
+      );
+
+      // Update load types - mark merged ones and update canonical target
+      setLoadTypes((prev) =>
+        prev.map((t) => {
+          if (loadValuesToMerge.includes(t.value)) {
+            return { ...t, mappedTo: mergeTarget };
+          }
+          if (t.value === mergeTarget) {
+            return { ...t, isCanonical: true, mergedCount: t.mergedCount + totalMerged };
+          }
+          return t;
+        })
+      );
 
       setSelectedVehicleTypes(new Set());
       setSelectedLoadTypes(new Set());
@@ -555,7 +587,12 @@ export default function SylectusSettingsTab() {
                           <span className={type.isHidden ? "line-through" : ""}>
                             {type.value}
                           </span>
-                          {type.isNew && !type.isHidden && !type.mappedTo && (
+                          {type.isCanonical && !type.isHidden && !type.mappedTo && (
+                            <Badge variant="default" className="text-xs bg-green-600 text-white">
+                              ← {type.mergedCount} merged
+                            </Badge>
+                          )}
+                          {type.isNew && !type.isHidden && !type.mappedTo && !type.isCanonical && (
                             <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
                               NEW
                             </Badge>
@@ -677,7 +714,12 @@ export default function SylectusSettingsTab() {
                           <span className={type.isHidden ? "line-through" : ""}>
                             {type.value}
                           </span>
-                          {type.isNew && !type.isHidden && !type.mappedTo && (
+                          {type.isCanonical && !type.isHidden && !type.mappedTo && (
+                            <Badge variant="default" className="text-xs bg-green-600 text-white">
+                              ← {type.mergedCount} merged
+                            </Badge>
+                          )}
+                          {type.isNew && !type.isHidden && !type.mappedTo && !type.isCanonical && (
                             <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
                               NEW
                             </Badge>
