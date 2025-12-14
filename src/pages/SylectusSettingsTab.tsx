@@ -74,8 +74,10 @@ export default function SylectusSettingsTab() {
 
       const { data: emails, error } = await supabase
         .from("load_emails")
-        .select("parsed_data")
-        .not("parsed_data", "is", null);
+        .select("parsed_data, received_at")
+        .not("parsed_data", "is", null)
+        .order("received_at", { ascending: false })
+        .limit(30000);
 
       if (error) throw error;
 
