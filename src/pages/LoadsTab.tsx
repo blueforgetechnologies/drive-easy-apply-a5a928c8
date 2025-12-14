@@ -909,46 +909,36 @@ export default function LoadsTab() {
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1">
           {[
-            { key: "all", label: "All", count: statusCounts.all, bg: "bg-primary", activeBg: "bg-primary" },
-            { key: "available", label: "Available", count: statusCounts.available, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-sky-500" },
-            { key: "booked", label: "Booked", count: statusCounts.booked, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-green-500" },
-            { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-blue-500" },
-            { key: "at_pickup", label: "Pickup", count: statusCounts.at_pickup, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-amber-500" },
-            { key: "in_transit", label: "Transit", count: statusCounts.in_transit, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-purple-500" },
-            { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-teal-500" },
-            { key: "delivered", label: "Delivered", count: statusCounts.delivered, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-green-600" },
-            { key: "completed", label: "Completed", count: statusCounts.completed, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-green-700" },
-            { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-red-500" },
-            { key: "tonu", label: "TONU", count: statusCounts.tonu, bg: "bg-muted hover:bg-muted/80", activeBg: "bg-orange-500" },
+            { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset" },
+            { key: "available", label: "Available", count: statusCounts.available, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
+            { key: "booked", label: "Booked", count: statusCounts.booked, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+            { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
+            { key: "at_pickup", label: "Pickup", count: statusCounts.at_pickup, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
+            { key: "in_transit", label: "Transit", count: statusCounts.in_transit, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
+            { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
+            { key: "delivered", label: "Delivered", count: statusCounts.delivered, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+            { key: "completed", label: "Completed", count: statusCounts.completed, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+            { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger" },
+            { key: "tonu", label: "TONU", count: statusCounts.tonu, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
           ].map((status) => (
-            <button
+            <Button
               key={status.key}
+              size="sm"
               onClick={() => {
                 setSearchParams({ filter: status.key });
                 setSearchQuery("");
               }}
-              className={`inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 filter === status.key 
-                  ? `${status.activeBg} text-white shadow-md` 
-                  : `${status.bg} text-foreground`
+                  ? `${status.activeClass} text-white` 
+                  : 'btn-glossy text-gray-600'
               }`}
-              style={{
-                ...(filter === status.key ? {
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)'
-                } : {})
-              }}
             >
               {status.label}
-              <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${
-                filter === status.key 
-                  ? 'bg-white/25 text-white' 
-                  : 'bg-primary/15 text-primary'
-              }`}>
-                {status.count}
-              </span>
-            </button>
+              <span className={`${status.badgeClass} text-[10px] h-5`}>{status.count}</span>
+            </Button>
           ))}
         </div>
 
