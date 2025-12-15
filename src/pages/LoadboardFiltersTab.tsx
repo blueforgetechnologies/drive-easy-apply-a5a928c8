@@ -21,7 +21,7 @@ interface LoadboardFilter {
   source: EmailSource;
   filter_type: 'vehicle' | 'load';
   original_value: string;
-  canonical_value: string | null;
+  canonical_value: string[] | null;
   is_hidden: boolean;
   auto_mapped: boolean;
   reviewed_at: string | null;
@@ -115,7 +115,7 @@ export default function LoadboardFiltersTab() {
         source: EmailSource;
         filter_type: 'vehicle' | 'load';
         original_value: string;
-        canonical_value: string;
+        canonical_value: string[];
         auto_mapped: boolean;
       }> = [];
 
@@ -125,12 +125,12 @@ export default function LoadboardFiltersTab() {
           const existingKey = `${source}:${filterType}:${value}`;
           
           if (!existingFilters.has(existingKey)) {
-            // Auto-create with auto-mapping to uppercase version
+            // Auto-create with auto-mapping to uppercase version (as array)
             newFilters.push({
               source: source as EmailSource,
               filter_type: filterType as 'vehicle' | 'load',
               original_value: value,
-              canonical_value: value.toUpperCase(),
+              canonical_value: [value.toUpperCase()],
               auto_mapped: true
             });
           }
@@ -189,26 +189,33 @@ export default function LoadboardFiltersTab() {
   const getCanonicalFilters = (): CanonicalFilter[] => {
     const canonicalMap = new Map<string, CanonicalFilter>();
 
-    filters.filter(f => f.canonical_value && !f.is_hidden).forEach(f => {
-      const key = `${f.filter_type}:${f.canonical_value}`;
-      
-      if (!canonicalMap.has(key)) {
-        canonicalMap.set(key, {
-          value: f.canonical_value!,
-          filter_type: f.filter_type,
-          sources: [],
-          totalCount: 0
-        });
-      }
+    filters.filter(f => f.canonical_value && f.canonical_value.length > 0 && !f.is_hidden).forEach(f => {
+      // Each filter can map to multiple canonical values
+      f.canonical_value!.forEach(canonicalVal => {
+        const key = `${f.filter_type}:${canonicalVal}`;
+        
+        if (!canonicalMap.has(key)) {
+          canonicalMap.set(key, {
+            value: canonicalVal,
+            filter_type: f.filter_type,
+            sources: [],
+            totalCount: 0
+          });
+        }
 
-      const canonical = canonicalMap.get(key)!;
-      const count = getFilterCount(f.source, f.filter_type, f.original_value);
-      canonical.sources.push({
-        source: f.source,
-        original_value: f.original_value,
-        count
+        const canonical = canonicalMap.get(key)!;
+        const count = getFilterCount(f.source, f.filter_type, f.original_value);
+        // Avoid duplicate sources for same canonical
+        const existingSource = canonical.sources.find(s => s.source === f.source && s.original_value === f.original_value);
+        if (!existingSource) {
+          canonical.sources.push({
+            source: f.source,
+            original_value: f.original_value,
+            count
+          });
+          canonical.totalCount += count;
+        }
       });
-      canonical.totalCount += count;
     });
 
     return Array.from(canonicalMap.values()).sort((a, b) => b.totalCount - a.totalCount);
@@ -244,13 +251,14 @@ export default function LoadboardFiltersTab() {
     }
   };
 
-  // Update canonical mapping
-  const updateCanonicalMapping = async (filterId: string, newCanonical: string) => {
+  // Update canonical mapping (adds to existing array or replaces)
+  const updateCanonicalMapping = async (filterId: string, newCanonicals: string[]) => {
     try {
+      const uppercased = newCanonicals.map(c => c.toUpperCase());
       const { error } = await supabase
         .from("loadboard_filters")
         .update({ 
-          canonical_value: newCanonical.toUpperCase(),
+          canonical_value: uppercased,
           reviewed_at: new Date().toISOString()
         })
         .eq("id", filterId);
@@ -260,7 +268,7 @@ export default function LoadboardFiltersTab() {
       setFilters(prev => prev.map(f => 
         f.id === filterId ? { 
           ...f, 
-          canonical_value: newCanonical.toUpperCase(),
+          canonical_value: uppercased,
           reviewed_at: new Date().toISOString()
         } : f
       ));
@@ -291,7 +299,7 @@ export default function LoadboardFiltersTab() {
     }
   };
 
-  // Merge selected filters
+  // Merge selected filters - adds canonical to all selected
   const handleMergeFilters = async () => {
     if (!customTargetName.trim()) {
       toast.error("Enter a canonical name");
@@ -299,30 +307,47 @@ export default function LoadboardFiltersTab() {
     }
 
     const selectedFiltersList = filters.filter(f => selectedFilters.has(f.id));
+    const newCanonical = customTargetName.trim().toUpperCase();
     
     try {
-      const { error } = await supabase
-        .from("loadboard_filters")
-        .update({ 
-          canonical_value: customTargetName.trim().toUpperCase(),
-          reviewed_at: new Date().toISOString()
-        })
-        .in("id", [...selectedFilters]);
+      // For each selected filter, add the new canonical to their existing array
+      for (const filter of selectedFiltersList) {
+        const existingCanonicals = filter.canonical_value || [];
+        const updatedCanonicals = existingCanonicals.includes(newCanonical) 
+          ? existingCanonicals 
+          : [...existingCanonicals, newCanonical];
+        
+        const { error } = await supabase
+          .from("loadboard_filters")
+          .update({ 
+            canonical_value: updatedCanonicals,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq("id", filter.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
-      setFilters(prev => prev.map(f => 
-        selectedFilters.has(f.id) ? { 
-          ...f, 
-          canonical_value: customTargetName.trim().toUpperCase(),
-          reviewed_at: new Date().toISOString()
-        } : f
-      ));
+      // Update local state
+      setFilters(prev => prev.map(f => {
+        if (selectedFilters.has(f.id)) {
+          const existingCanonicals = f.canonical_value || [];
+          const updatedCanonicals = existingCanonicals.includes(newCanonical) 
+            ? existingCanonicals 
+            : [...existingCanonicals, newCanonical];
+          return { 
+            ...f, 
+            canonical_value: updatedCanonicals,
+            reviewed_at: new Date().toISOString()
+          };
+        }
+        return f;
+      }));
       
       setSelectedFilters(new Set());
       setMergeDialogOpen(false);
       setCustomTargetName("");
-      toast.success(`${selectedFiltersList.length} filter(s) mapped to "${customTargetName.trim().toUpperCase()}"`);
+      toast.success(`Added "${newCanonical}" to ${selectedFiltersList.length} filter(s)`);
     } catch (error) {
       console.error("Error merging filters:", error);
       toast.error("Failed to merge filters");
@@ -610,9 +635,17 @@ export default function LoadboardFiltersTab() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {filter.canonical_value || '-'}
-                                  </Badge>
+                                  <div className="flex flex-wrap gap-1">
+                                    {filter.canonical_value && filter.canonical_value.length > 0 ? (
+                                      filter.canonical_value.map((cv, idx) => (
+                                        <span key={idx} className="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs font-medium">
+                                          {cv}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-muted-foreground text-xs">-</span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
                                   {count}
@@ -711,9 +744,17 @@ export default function LoadboardFiltersTab() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {filter.canonical_value || '-'}
-                                  </Badge>
+                                  <div className="flex flex-wrap gap-1">
+                                    {filter.canonical_value && filter.canonical_value.length > 0 ? (
+                                      filter.canonical_value.map((cv, idx) => (
+                                        <span key={idx} className="inline-flex items-center rounded-md bg-secondary text-secondary-foreground px-2 py-0.5 text-xs font-medium">
+                                          {cv}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-muted-foreground text-xs">-</span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
                                   {count}
