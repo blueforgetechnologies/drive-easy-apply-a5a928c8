@@ -56,6 +56,7 @@ export default function LoadboardFiltersTab() {
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [customTargetName, setCustomTargetName] = useState("");
+  const [selectedCanonicals, setSelectedCanonicals] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
   const [emailCounts, setEmailCounts] = useState<Record<string, Record<string, number>>>({});
 
@@ -299,23 +300,35 @@ export default function LoadboardFiltersTab() {
     }
   };
 
-  // Merge selected filters - adds canonical to all selected
+  // Merge selected filters - adds canonical(s) to all selected
   const handleMergeFilters = async () => {
-    if (!customTargetName.trim()) {
-      toast.error("Enter a canonical name");
+    // Combine selected canonicals from checkboxes + custom typed name
+    const allCanonicals = [...selectedCanonicals];
+    if (customTargetName.trim()) {
+      const customUpper = customTargetName.trim().toUpperCase();
+      if (!allCanonicals.includes(customUpper)) {
+        allCanonicals.push(customUpper);
+      }
+    }
+
+    if (allCanonicals.length === 0) {
+      toast.error("Select or enter at least one canonical name");
       return;
     }
 
     const selectedFiltersList = filters.filter(f => selectedFilters.has(f.id));
-    const newCanonical = customTargetName.trim().toUpperCase();
     
     try {
-      // For each selected filter, add the new canonical to their existing array
+      // For each selected filter, add all new canonicals to their existing array
       for (const filter of selectedFiltersList) {
         const existingCanonicals = filter.canonical_value || [];
-        const updatedCanonicals = existingCanonicals.includes(newCanonical) 
-          ? existingCanonicals 
-          : [...existingCanonicals, newCanonical];
+        const updatedCanonicals = [...existingCanonicals];
+        
+        allCanonicals.forEach(canonical => {
+          if (!updatedCanonicals.includes(canonical)) {
+            updatedCanonicals.push(canonical);
+          }
+        });
         
         const { error } = await supabase
           .from("loadboard_filters")
@@ -332,9 +345,14 @@ export default function LoadboardFiltersTab() {
       setFilters(prev => prev.map(f => {
         if (selectedFilters.has(f.id)) {
           const existingCanonicals = f.canonical_value || [];
-          const updatedCanonicals = existingCanonicals.includes(newCanonical) 
-            ? existingCanonicals 
-            : [...existingCanonicals, newCanonical];
+          const updatedCanonicals = [...existingCanonicals];
+          
+          allCanonicals.forEach(canonical => {
+            if (!updatedCanonicals.includes(canonical)) {
+              updatedCanonicals.push(canonical);
+            }
+          });
+          
           return { 
             ...f, 
             canonical_value: updatedCanonicals,
@@ -347,7 +365,8 @@ export default function LoadboardFiltersTab() {
       setSelectedFilters(new Set());
       setMergeDialogOpen(false);
       setCustomTargetName("");
-      toast.success(`Added "${newCanonical}" to ${selectedFiltersList.length} filter(s)`);
+      setSelectedCanonicals([]);
+      toast.success(`Added ${allCanonicals.length} canonical(s) to ${selectedFiltersList.length} filter(s)`);
     } catch (error) {
       console.error("Error merging filters:", error);
       toast.error("Failed to merge filters");
@@ -813,7 +832,7 @@ export default function LoadboardFiltersTab() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* Existing Canonical Filters Dropdown */}
+            {/* Existing Canonical Filters Multi-Select */}
             {(() => {
               const selectedFiltersList = filters.filter(f => selectedFilters.has(f.id));
               const filterType = selectedFiltersList[0]?.filter_type || 'vehicle';
@@ -822,25 +841,35 @@ export default function LoadboardFiltersTab() {
               if (existingCanonicals.length > 0) {
                 return (
                   <div className="space-y-2">
-                    <Label>Select Existing Canonical</Label>
-                    <Select
-                      value={customTargetName}
-                      onValueChange={(value) => setCustomTargetName(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose an existing canonical..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {existingCanonicals.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.value} ({c.sources.length} source{c.sources.length !== 1 ? 's' : ''})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Or type a new name below to create a new canonical
-                    </p>
+                    <Label>Select Existing Canonical(s)</Label>
+                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                      {existingCanonicals.map((c) => (
+                        <div key={c.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`canonical-${c.value}`}
+                            checked={selectedCanonicals.includes(c.value)}
+                            onCheckedChange={(checked) => {
+                              setSelectedCanonicals(prev => 
+                                checked 
+                                  ? [...prev, c.value]
+                                  : prev.filter(v => v !== c.value)
+                              );
+                            }}
+                          />
+                          <label 
+                            htmlFor={`canonical-${c.value}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {c.value} <span className="text-muted-foreground">({c.sources.length} source{c.sources.length !== 1 ? 's' : ''})</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedCanonicals.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedCanonicals.length} canonical(s) selected
+                      </p>
+                    )}
                   </div>
                 );
               }
@@ -848,14 +877,14 @@ export default function LoadboardFiltersTab() {
             })()}
 
             <div className="space-y-2">
-              <Label>Canonical Name</Label>
+              <Label>Or Create New Canonical</Label>
               <Input
                 value={customTargetName}
                 onChange={(e) => setCustomTargetName(e.target.value)}
-                placeholder="Enter canonical filter name"
+                placeholder="Enter new canonical filter name"
               />
               <p className="text-xs text-muted-foreground">
-                This will be the unified name shown in hunt plans
+                Type a name to create a new canonical (in addition to any selected above)
               </p>
             </div>
 
@@ -872,10 +901,14 @@ export default function LoadboardFiltersTab() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setMergeDialogOpen(false);
+              setSelectedCanonicals([]);
+              setCustomTargetName("");
+            }}>
               Cancel
             </Button>
-            <Button onClick={handleMergeFilters} disabled={!customTargetName.trim()}>
+            <Button onClick={handleMergeFilters} disabled={selectedCanonicals.length === 0 && !customTargetName.trim()}>
               {selectedFilters.size === 1 ? "Rename" : "Merge"}
             </Button>
           </DialogFooter>
