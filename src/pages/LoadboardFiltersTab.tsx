@@ -43,10 +43,10 @@ const SOURCE_LABELS: Record<EmailSource, string> = {
 };
 
 const SOURCE_COLORS: Record<EmailSource, string> = {
-  sylectus: 'bg-blue-500',
-  fullcircle: 'bg-emerald-500',
-  '123loadboard': 'bg-purple-500',
-  truckstop: 'bg-orange-500'
+  sylectus: 'bg-blue-600 text-white',
+  fullcircle: 'bg-emerald-600 text-white',
+  '123loadboard': 'bg-purple-600 text-white',
+  truckstop: 'bg-orange-600 text-white'
 };
 
 export default function LoadboardFiltersTab() {
@@ -460,7 +460,7 @@ export default function LoadboardFiltersTab() {
                               {canonical.sources.map((s, i) => (
                                 <Badge 
                                   key={i} 
-                                  className={`text-[10px] text-white ${SOURCE_COLORS[s.source]}`}
+                                  className={`text-xs font-medium px-2 py-0.5 ${SOURCE_COLORS[s.source]}`}
                                 >
                                   {s.original_value}
                                 </Badge>
@@ -520,7 +520,7 @@ export default function LoadboardFiltersTab() {
                               {canonical.sources.map((s, i) => (
                                 <Badge 
                                   key={i} 
-                                  className={`text-[10px] text-white ${SOURCE_COLORS[s.source]}`}
+                                  className={`text-xs font-medium px-2 py-0.5 ${SOURCE_COLORS[s.source]}`}
                                 >
                                   {s.original_value}
                                 </Badge>
