@@ -999,6 +999,7 @@ export type Database = {
           partial: boolean | null
           pickup_radius: string | null
           plan_name: string
+          sources: Database["public"]["Enums"]["email_source"][] | null
           updated_at: string | null
           vehicle_id: string
           vehicle_size: string | null
@@ -1024,6 +1025,7 @@ export type Database = {
           partial?: boolean | null
           pickup_radius?: string | null
           plan_name: string
+          sources?: Database["public"]["Enums"]["email_source"][] | null
           updated_at?: string | null
           vehicle_id: string
           vehicle_size?: string | null
@@ -1049,6 +1051,7 @@ export type Database = {
           partial?: boolean | null
           pickup_radius?: string | null
           plan_name?: string
+          sources?: Database["public"]["Enums"]["email_source"][] | null
           updated_at?: string | null
           vehicle_id?: string
           vehicle_size?: string | null
@@ -1581,6 +1584,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      loadboard_filters: {
+        Row: {
+          auto_mapped: boolean
+          canonical_value: string | null
+          created_at: string
+          filter_type: string
+          id: string
+          is_hidden: boolean
+          original_value: string
+          reviewed_at: string | null
+          source: Database["public"]["Enums"]["email_source"]
+          updated_at: string
+        }
+        Insert: {
+          auto_mapped?: boolean
+          canonical_value?: string | null
+          created_at?: string
+          filter_type: string
+          id?: string
+          is_hidden?: boolean
+          original_value: string
+          reviewed_at?: string | null
+          source: Database["public"]["Enums"]["email_source"]
+          updated_at?: string
+        }
+        Update: {
+          auto_mapped?: boolean
+          canonical_value?: string | null
+          created_at?: string
+          filter_type?: string
+          id?: string
+          is_hidden?: boolean
+          original_value?: string
+          reviewed_at?: string | null
+          source?: Database["public"]["Enums"]["email_source"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       loads: {
         Row: {
@@ -3123,6 +3165,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "dispatcher"
+      email_source: "sylectus" | "fullcircle" | "123loadboard" | "truckstop"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3251,6 +3294,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "dispatcher"],
+      email_source: ["sylectus", "fullcircle", "123loadboard", "truckstop"],
     },
   },
 } as const
