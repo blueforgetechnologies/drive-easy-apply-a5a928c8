@@ -362,6 +362,24 @@ async function lookupCityFromZip(zipCode: string, state?: string): Promise<{city
 function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<string, any> {
   const data: Record<string, any> = {};
   
+  // First, parse origin/destination from subject line as reliable fallback
+  // Subject format: "Sprinter Van from Whitehall, MI to Greer, SC - Expedite / Hot-Shot"
+  const subjectRouteMatch = subject?.match(/from\s+([A-Za-z\s]+),\s*([A-Z]{2})\s+to\s+([A-Za-z\s]+),\s*([A-Z]{2})/i);
+  if (subjectRouteMatch) {
+    data.origin_city = subjectRouteMatch[1].trim();
+    data.origin_state = subjectRouteMatch[2];
+    data.destination_city = subjectRouteMatch[3].trim();
+    data.destination_state = subjectRouteMatch[4];
+    console.log(`📍 FCTMS: Parsed route from subject: ${data.origin_city}, ${data.origin_state} -> ${data.destination_city}, ${data.destination_state}`);
+  }
+  
+  // Parse vehicle type from subject
+  // Format: "Sprinter Van from..." or "Large Straight from..."
+  const vehicleSubjectMatch = subject?.match(/^([A-Za-z\s]+)\s+from\s+/i);
+  if (vehicleSubjectMatch) {
+    data.vehicle_type = vehicleSubjectMatch[1].trim();
+  }
+  
   // Order numbers - Full Circle uses format: ORDER NUMBER: 265637 or 4720340
   const orderMatch = bodyText?.match(/ORDER\s*NUMBER:?\s*(\d+)(?:\s+or\s+(\d+))?/i);
   if (orderMatch) {
@@ -371,11 +389,12 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     }
   }
   
-  // Extract stops table - parse each stop for pickup/delivery info
-  const stopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})\s+USA\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
+  // Extract stops from HTML table - Full Circle uses <td> tags
+  // Format: <td>1</td><td>Pick Up</td><td>Whitehall</td><td>MI</td><td>49461</td><td>USA</td><td>2025-12-14 16:00 EST</td>
+  const htmlStopsPattern = /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>(\d{5})<\/td>\s*<td[^>]*>USA<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
   const stops: Array<{type: string, city: string, state: string, zip: string, datetime: string, tz: string, sequence: number}> = [];
   let match;
-  while ((match = stopsPattern.exec(bodyText)) !== null) {
+  while ((match = htmlStopsPattern.exec(bodyText)) !== null) {
     stops.push({
       sequence: parseInt(match[1]),
       type: match[2].toLowerCase(),
@@ -383,11 +402,27 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
       state: match[4],
       zip: match[5],
       datetime: match[6],
-      tz: match[7]
+      tz: match[7] || 'EST'
     });
   }
   
-  // Set origin from first pickup
+  // Also try plain text format as fallback
+  if (stops.length === 0) {
+    const plainStopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})\s+USA\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
+    while ((match = plainStopsPattern.exec(bodyText)) !== null) {
+      stops.push({
+        sequence: parseInt(match[1]),
+        type: match[2].toLowerCase(),
+        city: match[3].trim(),
+        state: match[4],
+        zip: match[5],
+        datetime: match[6],
+        tz: match[7]
+      });
+    }
+  }
+  
+  // Set origin from first pickup (overrides subject if found)
   const firstPickup = stops.find(s => s.type === 'pick up');
   if (firstPickup) {
     data.origin_city = firstPickup.city;
@@ -397,7 +432,7 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     data.pickup_time = firstPickup.datetime.split(' ')[1] + ' ' + firstPickup.tz;
   }
   
-  // Set destination from first delivery
+  // Set destination from first delivery (overrides subject if found)
   const firstDelivery = stops.find(s => s.type === 'delivery');
   if (firstDelivery) {
     data.destination_city = firstDelivery.city;
@@ -412,6 +447,7 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     data.stops = stops;
     data.stop_count = stops.length;
     data.has_multiple_stops = stops.length > 2;
+    console.log(`📍 FCTMS: Parsed ${stops.length} stops from HTML table`);
   }
   
   // Parse expiration - format: 2025-12-14 10:51 EST (UTC-0500)
