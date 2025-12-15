@@ -458,12 +458,12 @@ export default function LoadboardFiltersTab() {
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {canonical.sources.map((s, i) => (
-                                <Badge 
+                                <span
                                   key={i} 
-                                  className={`text-xs font-medium px-2 py-0.5 ${SOURCE_COLORS[s.source]}`}
+                                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${SOURCE_COLORS[s.source]}`}
                                 >
                                   {s.original_value}
-                                </Badge>
+                                </span>
                               ))}
                             </div>
                           </TableCell>
@@ -518,12 +518,12 @@ export default function LoadboardFiltersTab() {
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {canonical.sources.map((s, i) => (
-                                <Badge 
+                                <span
                                   key={i} 
-                                  className={`text-xs font-medium px-2 py-0.5 ${SOURCE_COLORS[s.source]}`}
+                                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${SOURCE_COLORS[s.source]}`}
                                 >
                                   {s.original_value}
-                                </Badge>
+                                </span>
                               ))}
                             </div>
                           </TableCell>
