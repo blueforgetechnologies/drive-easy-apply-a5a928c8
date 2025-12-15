@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
-import { KeyRound, Mail, RotateCw, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, KeyRound, Mail, RotateCw, Search, Trash2 } from "lucide-react";
+
+const ROWS_PER_PAGE = 10;
 
 interface Profile {
   id: string;
@@ -45,9 +47,11 @@ export default function UsersTab() {
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadData();
+    setCurrentPage(1);
   }, [filter]);
 
   const loadData = async () => {
@@ -203,6 +207,28 @@ export default function UsersTab() {
     return email.includes(searchQuery.toLowerCase());
   });
 
+  // Pagination calculations
+  const totalUsers = filteredUsers.length;
+  const totalUsersPages = Math.ceil(totalUsers / ROWS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  const totalInvites = filteredInvites.length;
+  const totalInvitesPages = Math.ceil(totalInvites / ROWS_PER_PAGE);
+  const paginatedInvites = filteredInvites.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  const totalHistory = loginHistory.length;
+  const totalHistoryPages = Math.ceil(totalHistory / ROWS_PER_PAGE);
+  const paginatedHistory = loginHistory.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -263,66 +289,98 @@ export default function UsersTab() {
       </div>
 
       {filter === "invitations" && (
-        <Card>
-          <CardHeader>
+        <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <CardHeader className="flex-shrink-0">
             <CardTitle>User Invitations</CardTitle>
             <CardDescription>Manage team member invitations</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
             {filteredInvites.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery ? "No invitations match your search" : "No invitations sent yet"}
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Invited</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredInvites.map((invite) => (
-                    <TableRow key={invite.id}>
-                      <TableCell className="font-medium">{invite.email}</TableCell>
-                      <TableCell>
-                        {invite.invited_at ? format(new Date(invite.invited_at), "MM/dd/yyyy") : "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {invite.accepted_at ? (
-                          <Badge className="bg-green-600 hover:bg-green-700">Accepted</Badge>
-                        ) : (
-                          <Badge variant="secondary">Pending</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {!invite.accepted_at && (
-                            <Button
-                              onClick={() => handleResendInvite(invite)}
-                              size="sm"
-                              variant="outline"
-                              className="gap-2"
-                            >
-                              <RotateCw className="h-4 w-4" />
-                              Resend
-                            </Button>
-                          )}
-                          <Button
-                            onClick={() => handleDeleteInvite(invite.id)}
-                            size="sm"
-                            variant="destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <>
+                <div className="flex-1 overflow-y-auto px-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Invited</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedInvites.map((invite) => (
+                        <TableRow key={invite.id}>
+                          <TableCell className="font-medium">{invite.email}</TableCell>
+                          <TableCell>
+                            {invite.invited_at ? format(new Date(invite.invited_at), "MM/dd/yyyy") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {invite.accepted_at ? (
+                              <Badge className="bg-green-600 hover:bg-green-700">Accepted</Badge>
+                            ) : (
+                              <Badge variant="secondary">Pending</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {!invite.accepted_at && (
+                                <Button
+                                  onClick={() => handleResendInvite(invite)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2"
+                                >
+                                  <RotateCw className="h-4 w-4" />
+                                  Resend
+                                </Button>
+                              )}
+                              <Button
+                                onClick={() => handleDeleteInvite(invite.id)}
+                                size="sm"
+                                variant="destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {totalInvitesPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-background flex-shrink-0">
+                    <span className="text-xs text-muted-foreground">
+                      Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalInvites)} of {totalInvites}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                      <span className="text-xs">Page {currentPage} of {totalInvitesPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalInvitesPages, p + 1))}
+                        disabled={currentPage >= totalInvitesPages}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -330,107 +388,169 @@ export default function UsersTab() {
 
       {(filter === "active" || filter === "inactive") && (
         <>
-          <Card>
-            <CardHeader>
+          <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+            <CardHeader className="flex-shrink-0">
               <CardTitle>{filter === "active" ? "Active" : "Inactive"} Users</CardTitle>
               <CardDescription>
                 {filter === "active" ? "Team members with admin access" : "Users without admin access"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
               {filteredUsers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   {searchQuery ? "No users match your search" : `No ${filter} users found`}
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          {format(new Date(user.created_at), "MM/dd/yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            className={filter === "active" ? "bg-green-600 hover:bg-green-700" : "bg-gray-500 hover:bg-gray-600"}
-                          >
-                            {filter === "active" ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => handleSendLogin(user)}
-                              size="sm"
-                              variant="outline"
-                              className="gap-2"
-                            >
-                              <Mail className="h-4 w-4" />
-                              Send Login
-                            </Button>
-                            <Button
-                              onClick={() => handleResetPassword(user.email)}
-                              size="sm"
-                              variant="outline"
-                              className="gap-2"
-                            >
-                              <KeyRound className="h-4 w-4" />
-                              Reset
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <>
+                  <div className="flex-1 overflow-y-auto px-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Joined</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              {format(new Date(user.created_at), "MM/dd/yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={filter === "active" ? "bg-green-600 hover:bg-green-700" : "bg-gray-500 hover:bg-gray-600"}
+                              >
+                                {filter === "active" ? "Active" : "Inactive"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => handleSendLogin(user)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2"
+                                >
+                                  <Mail className="h-4 w-4" />
+                                  Send Login
+                                </Button>
+                                <Button
+                                  onClick={() => handleResetPassword(user.email)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2"
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                  Reset
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {totalUsersPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-2 border-t bg-background flex-shrink-0">
+                      <span className="text-xs text-muted-foreground">
+                        Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalUsers)} of {totalUsers}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="h-6 w-6 p-0"
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs">Page {currentPage} of {totalUsersPages}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(totalUsersPages, p + 1))}
+                          disabled={currentPage >= totalUsersPages}
+                          className="h-6 w-6 p-0"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
 
           {filter === "active" && loginHistory.length > 0 && (
-            <Card>
-              <CardHeader>
+            <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <CardHeader className="flex-shrink-0">
                 <CardTitle>Recent Login Activity</CardTitle>
                 <CardDescription>Track when users logged in and from where</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Login Time</TableHead>
-                      <TableHead>IP Address</TableHead>
-                      <TableHead>Location</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loginHistory.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium">
-                          {log.profile?.full_name || "Unknown"}
-                        </TableCell>
-                        <TableCell>{log.profile?.email || "N/A"}</TableCell>
-                        <TableCell>
-                          {format(new Date(log.logged_in_at), "MM/dd/yyyy h:mm a")}
-                        </TableCell>
-                        <TableCell>{log.ip_address || "N/A"}</TableCell>
-                        <TableCell>{log.location || "N/A"}</TableCell>
+              <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
+                <div className="flex-1 overflow-y-auto px-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Login Time</TableHead>
+                        <TableHead>IP Address</TableHead>
+                        <TableHead>Location</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedHistory.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell className="font-medium">
+                            {log.profile?.full_name || "Unknown"}
+                          </TableCell>
+                          <TableCell>{log.profile?.email || "N/A"}</TableCell>
+                          <TableCell>
+                            {format(new Date(log.logged_in_at), "MM/dd/yyyy h:mm a")}
+                          </TableCell>
+                          <TableCell>{log.ip_address || "N/A"}</TableCell>
+                          <TableCell>{log.location || "N/A"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {totalHistoryPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-background flex-shrink-0">
+                    <span className="text-xs text-muted-foreground">
+                      Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalHistory)} of {totalHistory}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                      <span className="text-xs">Page {currentPage} of {totalHistoryPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalHistoryPages, p + 1))}
+                        disabled={currentPage >= totalHistoryPages}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
