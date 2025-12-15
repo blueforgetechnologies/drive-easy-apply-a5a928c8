@@ -7,7 +7,7 @@ import LocationsTab from "./LocationsTab";
 import PlaceholderTab from "./PlaceholderTab";
 import IntegrationsTab from "./IntegrationsTab";
 import UsageCostsTab from "./UsageCostsTab";
-import SylectusSettingsTab from "./SylectusSettingsTab";
+import LoadboardFiltersTab from "./LoadboardFiltersTab";
 
 export default function SettingsTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,7 +71,7 @@ export default function SettingsTab() {
         </TabsContent>
 
         <TabsContent value="sylectus" className="mt-4">
-          <SylectusSettingsTab />
+          <LoadboardFiltersTab />
         </TabsContent>
 
         <TabsContent value="roles" className="mt-4">
