@@ -451,9 +451,9 @@ export default function LoadboardFiltersTab() {
                       {vehicleCanonicals.map((canonical) => (
                         <TableRow key={`vehicle-${canonical.value}`}>
                           <TableCell className="font-medium">
-                            <Badge variant="default" className="text-xs">
+                            <span className="inline-flex items-center rounded-md bg-slate-700 text-white px-2.5 py-1 text-xs font-semibold">
                               {canonical.value}
-                            </Badge>
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -511,9 +511,9 @@ export default function LoadboardFiltersTab() {
                       {loadCanonicals.map((canonical) => (
                         <TableRow key={`load-${canonical.value}`}>
                           <TableCell className="font-medium">
-                            <Badge variant="default" className="text-xs">
+                            <span className="inline-flex items-center rounded-md bg-slate-700 text-white px-2.5 py-1 text-xs font-semibold">
                               {canonical.value}
-                            </Badge>
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
