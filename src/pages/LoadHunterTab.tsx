@@ -164,7 +164,7 @@ export default function LoadHunterTab() {
   const [canonicalVehicleTypes, setCanonicalVehicleTypes] = useState<{ value: string; label: string }[]>([]);
   const [vehicleTypeMappings, setVehicleTypeMappings] = useState<Map<string, string>>(new Map());
   const [showArchiveResults, setShowArchiveResults] = useState(false);
-  const itemsPerPage = 17;
+  const itemsPerPage = 14;
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string } | null>(null);
   const currentDispatcherIdRef = useRef<string | null>(null);
