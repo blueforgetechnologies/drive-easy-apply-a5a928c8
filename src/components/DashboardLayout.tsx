@@ -241,7 +241,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   return (
-    <div className="h-screen w-full bg-background flex flex-col overflow-hidden">
+    <div className="min-h-screen w-full bg-background flex flex-col">
       <header 
         className="sticky top-0 z-40 border-b border-white/20"
         style={{
@@ -395,7 +395,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <main className="max-w-[1630px] mx-auto px-3 sm:px-4 py-0 pb-16 md:pb-0 flex-1 flex flex-col overflow-hidden">
+      <main className="max-w-[1630px] w-full mx-auto px-3 sm:px-4 py-4 pb-20 md:pb-4 flex-1">
         {children}
       </main>
 
