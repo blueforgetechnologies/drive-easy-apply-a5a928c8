@@ -641,22 +641,22 @@ export default function SylectusSettingsTab() {
                             {type.value}
                           </span>
                           {type.isCanonical && !type.isHidden && !type.mappedTo && (
-                            <Badge variant="default" className="text-xs bg-green-600 text-white">
+                            <Badge className="text-xs bg-emerald-600 text-white font-medium border-0">
                               ← {type.mergedCount} merged
                             </Badge>
                           )}
                           {!type.isHidden && !type.mappedTo && !type.isCanonical && (
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge className="text-xs bg-orange-500 text-white font-medium border-0">
                               Unmapped
                             </Badge>
                           )}
                           {type.isHidden && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs font-medium">
                               Hidden
                             </Badge>
                           )}
                           {type.mappedTo && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge className="text-xs bg-blue-500 text-white font-medium border-0">
                               → {type.mappedTo}
                             </Badge>
                           )}
@@ -768,22 +768,22 @@ export default function SylectusSettingsTab() {
                             {type.value}
                           </span>
                           {type.isCanonical && !type.isHidden && !type.mappedTo && (
-                            <Badge variant="default" className="text-xs bg-green-600 text-white">
+                            <Badge className="text-xs bg-emerald-600 text-white font-medium border-0">
                               ← {type.mergedCount} merged
                             </Badge>
                           )}
                           {!type.isHidden && !type.mappedTo && !type.isCanonical && (
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge className="text-xs bg-orange-500 text-white font-medium border-0">
                               Unmapped
                             </Badge>
                           )}
                           {type.isHidden && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs font-medium">
                               Hidden
                             </Badge>
                           )}
                           {type.mappedTo && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge className="text-xs bg-blue-500 text-white font-medium border-0">
                               → {type.mappedTo}
                             </Badge>
                           )}
