@@ -813,6 +813,40 @@ export default function LoadboardFiltersTab() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Existing Canonical Filters Dropdown */}
+            {(() => {
+              const selectedFiltersList = filters.filter(f => selectedFilters.has(f.id));
+              const filterType = selectedFiltersList[0]?.filter_type || 'vehicle';
+              const existingCanonicals = filterType === 'vehicle' ? vehicleCanonicals : loadCanonicals;
+              
+              if (existingCanonicals.length > 0) {
+                return (
+                  <div className="space-y-2">
+                    <Label>Select Existing Canonical</Label>
+                    <Select
+                      value={customTargetName}
+                      onValueChange={(value) => setCustomTargetName(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose an existing canonical..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {existingCanonicals.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.value} ({c.sources.length} source{c.sources.length !== 1 ? 's' : ''})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Or type a new name below to create a new canonical
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             <div className="space-y-2">
               <Label>Canonical Name</Label>
               <Input
