@@ -71,16 +71,7 @@ export default function LoadboardFiltersTab() {
 
       if (error) throw error;
 
-      // Fetch email counts for each source
-      const { data: emails, error: emailError } = await supabase
-        .from("load_emails")
-        .select("email_source, parsed_data")
-        .not("parsed_data", "is", null)
-        .limit(50000);
-
-      if (emailError) throw emailError;
-
-      // Count vehicle and load types per source
+      // Fetch email counts per source separately to avoid limit issues
       const counts: Record<string, Record<string, number>> = {
         sylectus: {},
         fullcircle: {},
@@ -88,22 +79,31 @@ export default function LoadboardFiltersTab() {
         truckstop: {}
       };
 
-      emails?.forEach((email) => {
-        const source = email.email_source as EmailSource || 'sylectus';
-        const parsed = email.parsed_data as Record<string, unknown>;
-        
-        const vehicleType = (parsed?.vehicle_type || parsed?.vehicleType) as string | undefined;
-        const loadType = (parsed?.load_type || parsed?.loadType) as string | undefined;
+      // Fetch counts for each source separately
+      for (const source of ['sylectus', 'fullcircle', '123loadboard', 'truckstop'] as EmailSource[]) {
+        const { data: sourceEmails } = await supabase
+          .from("load_emails")
+          .select("parsed_data")
+          .eq("email_source", source)
+          .not("parsed_data", "is", null)
+          .limit(100000);
 
-        if (vehicleType?.trim()) {
-          const key = `vehicle:${vehicleType.trim()}`;
-          counts[source][key] = (counts[source][key] || 0) + 1;
-        }
-        if (loadType?.trim()) {
-          const key = `load:${loadType.trim()}`;
-          counts[source][key] = (counts[source][key] || 0) + 1;
-        }
-      });
+        sourceEmails?.forEach((email) => {
+          const parsed = email.parsed_data as Record<string, unknown>;
+          
+          const vehicleType = (parsed?.vehicle_type || parsed?.vehicleType) as string | undefined;
+          const loadType = (parsed?.load_type || parsed?.loadType) as string | undefined;
+
+          if (vehicleType?.trim()) {
+            const key = `vehicle:${vehicleType.trim()}`;
+            counts[source][key] = (counts[source][key] || 0) + 1;
+          }
+          if (loadType?.trim()) {
+            const key = `load:${loadType.trim()}`;
+            counts[source][key] = (counts[source][key] || 0) + 1;
+          }
+        });
+      }
 
       setEmailCounts(counts);
 
