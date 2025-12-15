@@ -289,19 +289,19 @@ export default function UsersTab() {
       </div>
 
       {filter === "invitations" && (
-        <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-          <CardHeader className="flex-shrink-0">
+        <Card>
+          <CardHeader>
             <CardTitle>User Invitations</CardTitle>
             <CardDescription>Manage team member invitations</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
+          <CardContent>
             {filteredInvites.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery ? "No invitations match your search" : "No invitations sent yet"}
               </p>
             ) : (
               <>
-                <div className="flex-1 overflow-y-auto px-6">
+                <div className="max-h-96 overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -353,7 +353,7 @@ export default function UsersTab() {
                   </Table>
                 </div>
                 {totalInvitesPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-2 border-t bg-background flex-shrink-0">
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30">
                     <span className="text-xs text-muted-foreground">
                       Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalInvites)} of {totalInvites}
                     </span>
@@ -388,21 +388,21 @@ export default function UsersTab() {
 
       {(filter === "active" || filter === "inactive") && (
         <>
-          <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-            <CardHeader className="flex-shrink-0">
+          <Card>
+            <CardHeader>
               <CardTitle>{filter === "active" ? "Active" : "Inactive"} Users</CardTitle>
               <CardDescription>
                 {filter === "active" ? "Team members with admin access" : "Users without admin access"}
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
+            <CardContent>
               {filteredUsers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   {searchQuery ? "No users match your search" : `No ${filter} users found`}
                 </p>
               ) : (
                 <>
-                  <div className="flex-1 overflow-y-auto px-6">
+                  <div className="max-h-96 overflow-y-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -456,7 +456,7 @@ export default function UsersTab() {
                     </Table>
                   </div>
                   {totalUsersPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-2 border-t bg-background flex-shrink-0">
+                    <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30">
                       <span className="text-xs text-muted-foreground">
                         Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalUsers)} of {totalUsers}
                       </span>
@@ -489,13 +489,13 @@ export default function UsersTab() {
           </Card>
 
           {filter === "active" && loginHistory.length > 0 && (
-            <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-              <CardHeader className="flex-shrink-0">
+            <Card>
+              <CardHeader>
                 <CardTitle>Recent Login Activity</CardTitle>
                 <CardDescription>Track when users logged in and from where</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
-                <div className="flex-1 overflow-y-auto px-6">
+              <CardContent>
+                <div className="max-h-96 overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -524,7 +524,7 @@ export default function UsersTab() {
                   </Table>
                 </div>
                 {totalHistoryPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-2 border-t bg-background flex-shrink-0">
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30 mt-2">
                     <span className="text-xs text-muted-foreground">
                       Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalHistory)} of {totalHistory}
                     </span>
