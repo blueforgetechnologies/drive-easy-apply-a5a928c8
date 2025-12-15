@@ -1588,7 +1588,7 @@ export type Database = {
       loadboard_filters: {
         Row: {
           auto_mapped: boolean
-          canonical_value: string | null
+          canonical_value: string[] | null
           created_at: string
           filter_type: string
           id: string
@@ -1600,7 +1600,7 @@ export type Database = {
         }
         Insert: {
           auto_mapped?: boolean
-          canonical_value?: string | null
+          canonical_value?: string[] | null
           created_at?: string
           filter_type: string
           id?: string
@@ -1612,7 +1612,7 @@ export type Database = {
         }
         Update: {
           auto_mapped?: boolean
-          canonical_value?: string | null
+          canonical_value?: string[] | null
           created_at?: string
           filter_type?: string
           id?: string
