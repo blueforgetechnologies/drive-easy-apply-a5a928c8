@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -166,6 +167,7 @@ export default function LoadHunterTab() {
   const [vehicleTypeMappings, setVehicleTypeMappings] = useState<Map<string, string>>(new Map());
   const [showArchiveResults, setShowArchiveResults] = useState(false);
   const itemsPerPage = 14;
+  const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string } | null>(null);
   const currentDispatcherIdRef = useRef<string | null>(null);
@@ -621,6 +623,11 @@ export default function LoadHunterTab() {
           // Only filter if we're in dispatch mode AND we have vehicle IDs loaded
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
+          }
+          // Filter by email source
+          if (selectedSources.length > 0 && selectedSources.length < 2) {
+            const emailSource = match.email_source || 'sylectus';
+            if (!selectedSources.includes(emailSource)) return false;
           }
           // Filter by search query - check multiple fields
           if (matchSearchQuery) {
@@ -3059,6 +3066,61 @@ export default function LoadHunterTab() {
                 <span className="badge-inset-warning text-[10px] h-5">{issuesCount}</span>
               </Button>
             )}
+            
+            {/* Source Filter Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-7 px-3 text-xs font-medium gap-1.5 rounded-full border-0 ${
+                    selectedSources.length < 2
+                      ? 'btn-glossy-primary text-white'
+                      : 'btn-glossy text-gray-700'
+                  }`}
+                >
+                  Source
+                  {selectedSources.length < 2 && (
+                    <span className="badge-inset text-[10px] h-5">{selectedSources.length}</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52 p-2" align="start">
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground px-2 py-1">Filter by Source</div>
+                  <div 
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                      selectedSources.includes('sylectus') ? 'bg-primary/10' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => {
+                      setSelectedSources(prev => 
+                        prev.includes('sylectus') 
+                          ? prev.filter(s => s !== 'sylectus')
+                          : [...prev, 'sylectus']
+                      );
+                    }}
+                  >
+                    <Checkbox checked={selectedSources.includes('sylectus')} />
+                    <span className="text-sm">Sylectus</span>
+                  </div>
+                  <div 
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                      selectedSources.includes('fullcircle') ? 'bg-primary/10' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => {
+                      setSelectedSources(prev => 
+                        prev.includes('fullcircle') 
+                          ? prev.filter(s => s !== 'fullcircle')
+                          : [...prev, 'fullcircle']
+                      );
+                    }}
+                  >
+                    <Checkbox checked={selectedSources.includes('fullcircle')} />
+                    <span className="text-sm">Full Circle TMS</span>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Action Buttons */}
