@@ -1,16 +1,35 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch } from "lucide-react";
+import ParserHelper from "@/components/ParserHelper";
 
 export default function DevelopmentTab() {
+  const [activeTab, setActiveTab] = useState("documentation");
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold mb-2">Development Documentation</h2>
-        <p className="text-muted-foreground">Comprehensive step-by-step documentation of Load Hunter system</p>
+        <h2 className="text-3xl font-bold mb-2">Development</h2>
+        <p className="text-muted-foreground">Documentation and development tools</p>
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList>
+          <TabsTrigger value="documentation">Documentation</TabsTrigger>
+          <TabsTrigger value="parser-helper" className="flex items-center gap-2">
+            <FileSearch className="h-4 w-4" />
+            Parser Helper
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="parser-helper" className="mt-4">
+          <ParserHelper />
+        </TabsContent>
+
+        <TabsContent value="documentation" className="mt-4">
       <Accordion type="multiple" className="w-full space-y-4" defaultValue={["step-by-step"]}>
         {/* Step-by-Step Flow */}
         <AccordionItem value="step-by-step" className="border rounded-lg px-6">
@@ -631,6 +650,8 @@ export default function DevelopmentTab() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
