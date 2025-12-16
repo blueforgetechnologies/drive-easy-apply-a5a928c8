@@ -4423,8 +4423,8 @@ export default function LoadHunterTab() {
                   <>
                     <div className="flex-1 overflow-auto min-h-0">
                       <Table className="table-glossy">
-                      <TableHeader>
-                        <TableRow className="h-9">
+                      <TableHeader className="bg-primary/90">
+                        <TableRow className="h-9 hover:bg-primary/90">
                           <TableHead className="w-[30px] py-2 px-2 text-white">
                             <Button
                               variant="ghost"
