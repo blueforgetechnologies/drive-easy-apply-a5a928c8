@@ -4811,8 +4811,8 @@ export default function LoadHunterTab() {
                                 <div className="text-[13px] leading-tight whitespace-nowrap">{data.weight ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces ?? '—'}</div>
-                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions ?? 'Not Specified'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces && data.pieces > 0 ? data.pieces : '—'}</div>
+                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions && data.dimensions !== '0x0x0' ? data.dimensions : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
                                 {matchHuntPlan?.availableFeet ? (
