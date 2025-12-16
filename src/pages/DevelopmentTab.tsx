@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -7,7 +8,17 @@ import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mai
 import ParserHelper from "@/components/ParserHelper";
 
 export default function DevelopmentTab() {
-  const [activeTab, setActiveTab] = useState("documentation");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const loadIdParam = searchParams.get("loadId");
+  
+  const [activeTab, setActiveTab] = useState(tabParam === "parser-helper" ? "parser-helper" : "documentation");
+
+  useEffect(() => {
+    if (tabParam === "parser-helper") {
+      setActiveTab("parser-helper");
+    }
+  }, [tabParam]);
 
   return (
     <div className="space-y-6">
@@ -26,7 +37,7 @@ export default function DevelopmentTab() {
         </TabsList>
 
         <TabsContent value="parser-helper" className="mt-4">
-          <ParserHelper />
+          <ParserHelper initialLoadId={loadIdParam} />
         </TabsContent>
 
         <TabsContent value="documentation" className="mt-4">
