@@ -14,8 +14,10 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<string, any> {
   const data: Record<string, any> = {};
   
-  // First, parse origin/destination from subject line as reliable fallback
-  // Subject format: "Sprinter Van from Whitehall, MI to Greer, SC - Expedite / Hot-Shot"
+  // FCTMS Subject format: "Vehicle from City, ST to City, ST - Type : XXX mi, XXX lbs - Posted by Company email - Network"
+  // Example: "Large Straight from Kansas City, MO to Ozark, MO - Premium - Truck Load : 188 mi, 440 lbs - Posted by Imperative Logistics LLC jhood@dthx.net - Private Network"
+  
+  // Parse route from subject
   const subjectRouteMatch = subject?.match(/from\s+([A-Za-z\s]+),\s*([A-Z]{2})\s+to\s+([A-Za-z\s]+),\s*([A-Z]{2})/i);
   if (subjectRouteMatch) {
     data.origin_city = subjectRouteMatch[1].trim();
@@ -25,13 +27,29 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     console.log(`📍 FCTMS: Parsed route from subject: ${data.origin_city}, ${data.origin_state} -> ${data.destination_city}, ${data.destination_state}`);
   }
   
-  // Parse vehicle type from subject
+  // Parse vehicle type from subject (everything before "from")
   const vehicleSubjectMatch = subject?.match(/^([A-Za-z\s]+)\s+from\s+/i);
   if (vehicleSubjectMatch) {
     data.vehicle_type = vehicleSubjectMatch[1].trim();
   }
   
-  // Order numbers - Full Circle uses format: ORDER NUMBER: 265637 or 4720340
+  // Parse miles and weight from subject: ": 188 mi, 440 lbs"
+  const milesWeightMatch = subject?.match(/:\s*(\d+)\s*mi,\s*(\d+)\s*lbs/i);
+  if (milesWeightMatch) {
+    data.loaded_miles = parseInt(milesWeightMatch[1]);
+    data.weight = milesWeightMatch[2];
+    console.log(`📍 FCTMS: Parsed miles/weight from subject: ${data.loaded_miles} mi, ${data.weight} lbs`);
+  }
+  
+  // Parse broker info from subject: "Posted by Company Name email@domain.com"
+  const postedByMatch = subject?.match(/Posted by\s+(.+?)\s+([\w.+-]+@[\w.-]+\.\w+)/i);
+  if (postedByMatch) {
+    data.broker_company = postedByMatch[1].trim();
+    data.broker_email = postedByMatch[2].trim();
+    console.log(`📍 FCTMS: Parsed broker from subject: ${data.broker_company} <${data.broker_email}>`);
+  }
+  
+  // Order numbers - Full Circle uses format: ORDER NUMBER: 265637 (rare, only some emails have this)
   const orderMatch = bodyText?.match(/ORDER\s*NUMBER:?\s*(\d+)(?:\s+or\s+(\d+))?/i);
   if (orderMatch) {
     data.order_number = orderMatch[1];
@@ -48,6 +66,15 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
       if (refMatch[2]) {
         data.order_number_secondary = refMatch[2];
       }
+    }
+  }
+  
+  // Extract posting ID from URL as fallback order number: posting/1243419/bid
+  if (!data.order_number) {
+    const postingIdMatch = bodyText?.match(/posting\/(\d+)\/bid/i);
+    if (postingIdMatch) {
+      data.order_number = postingIdMatch[1];
+      console.log(`📍 FCTMS: Extracted posting ID as order: ${data.order_number}`);
     }
   }
   
@@ -225,10 +252,12 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     }
   }
   
-  // Parse posted by / contact info
-  const postedByMatch = bodyText?.match(/Load posted by:\s*([^<\n]+)/i);
-  if (postedByMatch) {
-    data.broker_name = postedByMatch[1].trim();
+  // Parse posted by / contact info from body (fallback if not in subject)
+  if (!data.broker_name) {
+    const bodyPostedByMatch = bodyText?.match(/Load posted by:\s*([^<\n]+)/i);
+    if (bodyPostedByMatch) {
+      data.broker_name = bodyPostedByMatch[1].trim();
+    }
   }
   
   const phoneMatch = bodyText?.match(/Phone:\s*\(?([\d\-\(\)\s]+)/i);
