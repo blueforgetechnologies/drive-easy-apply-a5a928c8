@@ -11,7 +11,7 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Parse Full Circle TMS email format
-function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<string, any> {
+function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: string): Record<string, any> {
   const data: Record<string, any> = {};
   
   // FCTMS Subject format: "Vehicle from City, ST to City, ST - Type : XXX mi, XXX lbs - Posted by Company email - Network"
@@ -239,20 +239,40 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     data.team_required = teamMatch[1].toLowerCase() === 'yes';
   }
   
-  // Parse broker company with MC# - look for it in the contact section
-  const brokerCompanyMCMatch = bodyText?.match(/please contact:[\s\S]*?<b>([^<]+)<\/b>(?:\s*\(MC#\s*(\d+)\))?/i);
-  if (brokerCompanyMCMatch) {
-    data.broker_company = brokerCompanyMCMatch[1].trim();
-    if (brokerCompanyMCMatch[2]) {
-      data.mc_number = brokerCompanyMCMatch[2];
+  // Parse broker company with MC# from "please contact:" section
+  // Check bodyHtml first (MC# is in HTML not plain text)
+  // Format in HTML: "please contact:<br />\nCompany Name (MC# 478717)"
+  if (bodyHtml) {
+    const htmlContactMatch = bodyHtml.match(/please contact:[\s\S]*?<br\s*\/?>\s*([^<\n(]+)\s*\(MC#\s*(\d+)\)/i);
+    if (htmlContactMatch) {
+      // Decode HTML entities like &#x2B; -> +
+      const companyName = htmlContactMatch[1].trim().replace(/&#x([0-9A-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+      if (!data.broker_company) {
+        data.broker_company = companyName;
+      }
+      data.mc_number = htmlContactMatch[2];
+      console.log(`📍 FCTMS: Extracted MC# ${data.mc_number} for ${data.broker_company} from body_html`);
     }
   }
   
-  // Also look for MC# in standalone format
+  // Fallback: check bodyText
+  if (!data.mc_number && bodyText) {
+    const contactSectionMatch = bodyText.match(/please contact:\s*\n?\s*([^\n(]+)\s*\(MC#\s*(\d+)\)/i);
+    if (contactSectionMatch) {
+      if (!data.broker_company) {
+        data.broker_company = contactSectionMatch[1].trim();
+      }
+      data.mc_number = contactSectionMatch[2];
+      console.log(`📍 FCTMS: Extracted MC# ${data.mc_number} for ${data.broker_company} from body_text`);
+    }
+  }
+  
+  // Fallback: look for any (MC# XXXXXX) pattern in both body_html and body_text
   if (!data.mc_number) {
-    const mcMatch = bodyText?.match(/\(MC#\s*(\d+)\)/i);
+    const mcMatch = (bodyHtml || bodyText)?.match(/\(MC#\s*(\d+)\)/i);
     if (mcMatch) {
       data.mc_number = mcMatch[1];
+      console.log(`📍 FCTMS: Extracted MC# ${data.mc_number} from standalone pattern`);
     }
   }
   
@@ -458,7 +478,7 @@ serve(async (req) => {
     // Find all Full Circle TMS emails that need geocoding (missing pickup_coordinates)
     const { data: emails, error: fetchError } = await supabase
       .from('load_emails')
-      .select('id, subject, body_text, parsed_data, email_source')
+      .select('id, subject, body_text, body_html, parsed_data, email_source')
       .eq('email_source', 'fullcircle')
       .limit(500);
 
@@ -475,8 +495,8 @@ serve(async (req) => {
     let customersUpdated = 0;
 
     for (const email of (emails || [])) {
-      // Re-parse with updated FCTMS parser
-      const parsedData = parseFullCircleTMSEmail(email.subject || '', email.body_text || '');
+      // Re-parse with updated FCTMS parser (pass body_html for MC# extraction)
+      const parsedData = parseFullCircleTMSEmail(email.subject || '', email.body_text || '', email.body_html || '');
       
       // Check if we need to geocode
       const existingCoords = email.parsed_data?.pickup_coordinates;
