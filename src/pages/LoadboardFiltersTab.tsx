@@ -594,8 +594,19 @@ export default function LoadboardFiltersTab() {
         {/* Source-specific Tabs */}
         {activeSources.map(source => {
           const sourceFilters = getSourceFilters(source);
-          const vehicleFilters = sourceFilters.filter(f => f.filter_type === 'vehicle' && (showHidden || !f.is_hidden));
-          const loadFilters_ = sourceFilters.filter(f => f.filter_type === 'load' && (showHidden || !f.is_hidden));
+          // Sort: unreviewed first, then reviewed at bottom
+          const sortByReviewStatus = (a: LoadboardFilter, b: LoadboardFilter) => {
+            const aReviewed = a.reviewed_at !== null;
+            const bReviewed = b.reviewed_at !== null;
+            if (aReviewed === bReviewed) return 0;
+            return aReviewed ? 1 : -1;
+          };
+          const vehicleFilters = sourceFilters
+            .filter(f => f.filter_type === 'vehicle' && (showHidden || !f.is_hidden))
+            .sort(sortByReviewStatus);
+          const loadFilters_ = sourceFilters
+            .filter(f => f.filter_type === 'load' && (showHidden || !f.is_hidden))
+            .sort(sortByReviewStatus);
 
           return (
             <TabsContent key={source} value={source} className="mt-4">
@@ -629,10 +640,18 @@ export default function LoadboardFiltersTab() {
                             const count = getFilterCount(source, 'vehicle', filter.original_value);
                             const needsReview = filter.auto_mapped && !filter.reviewed_at;
                             
+                            const isReviewed = filter.reviewed_at !== null && !filter.auto_mapped;
+                            const wasAutoMappedAndReviewed = filter.auto_mapped && filter.reviewed_at !== null;
+                            const isCompleted = isReviewed || wasAutoMappedAndReviewed;
+                            
                             return (
                               <TableRow 
                                 key={filter.id}
-                                className={filter.is_hidden ? "opacity-50" : needsReview ? "bg-amber-50 dark:bg-amber-950/20" : ""}
+                                className={
+                                  filter.is_hidden ? "opacity-50" : 
+                                  isCompleted ? "opacity-50 bg-muted/30" :
+                                  needsReview ? "bg-amber-50 dark:bg-amber-950/20" : ""
+                                }
                               >
                                 <TableCell>
                                   <Checkbox
@@ -643,12 +662,17 @@ export default function LoadboardFiltersTab() {
                                 </TableCell>
                                 <TableCell className="font-medium">
                                   <div className="flex items-center gap-2">
-                                    <span className={filter.is_hidden ? "line-through" : ""}>
+                                    <span className={filter.is_hidden ? "line-through" : isCompleted ? "text-muted-foreground" : ""}>
                                       {filter.original_value}
                                     </span>
                                     {needsReview && (
                                       <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-400">
                                         Auto
+                                      </Badge>
+                                    )}
+                                    {isCompleted && (
+                                      <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-400">
+                                        ✓ Done
                                       </Badge>
                                     )}
                                   </div>
@@ -737,11 +761,18 @@ export default function LoadboardFiltersTab() {
                           {loadFilters_.map((filter) => {
                             const count = getFilterCount(source, 'load', filter.original_value);
                             const needsReview = filter.auto_mapped && !filter.reviewed_at;
+                            const isReviewed = filter.reviewed_at !== null && !filter.auto_mapped;
+                            const wasAutoMappedAndReviewed = filter.auto_mapped && filter.reviewed_at !== null;
+                            const isCompleted = isReviewed || wasAutoMappedAndReviewed;
                             
                             return (
                               <TableRow 
                                 key={filter.id}
-                                className={filter.is_hidden ? "opacity-50" : needsReview ? "bg-amber-50 dark:bg-amber-950/20" : ""}
+                                className={
+                                  filter.is_hidden ? "opacity-50" : 
+                                  isCompleted ? "opacity-50 bg-muted/30" :
+                                  needsReview ? "bg-amber-50 dark:bg-amber-950/20" : ""
+                                }
                               >
                                 <TableCell>
                                   <Checkbox
@@ -752,12 +783,17 @@ export default function LoadboardFiltersTab() {
                                 </TableCell>
                                 <TableCell className="font-medium">
                                   <div className="flex items-center gap-2">
-                                    <span className={filter.is_hidden ? "line-through" : ""}>
+                                    <span className={filter.is_hidden ? "line-through" : isCompleted ? "text-muted-foreground" : ""}>
                                       {filter.original_value}
                                     </span>
                                     {needsReview && (
                                       <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-400">
                                         Auto
+                                      </Badge>
+                                    )}
+                                    {isCompleted && (
+                                      <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-400">
+                                        ✓ Done
                                       </Badge>
                                     )}
                                   </div>
