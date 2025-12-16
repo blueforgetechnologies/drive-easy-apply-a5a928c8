@@ -124,22 +124,42 @@ serve(async (req) => {
       }
     }
 
-    // Fetch only 5 unread Sylectus messages - minimal fetch
-    const messagesResponse = await fetch(
+    // Fetch unread messages from BOTH Sylectus and Full Circle TMS
+    // Use OR query to get emails from either source
+    const sylectusResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&q=is:unread from:sylectus.com`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
+    
+    const fullCircleResponse = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&q=is:unread (from:fullcircletms.com OR from:fctms.com)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
 
-    if (!messagesResponse.ok) {
-      console.error('Gmail API error:', messagesResponse.status);
+    if (!sylectusResponse.ok && !fullCircleResponse.ok) {
+      console.error('Gmail API error:', sylectusResponse.status, fullCircleResponse.status);
       return new Response(JSON.stringify({ error: 'Gmail API error' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    // Combine messages from both sources
+    const sylectusData = sylectusResponse.ok ? await sylectusResponse.json() : { messages: [] };
+    const fullCircleData = fullCircleResponse.ok ? await fullCircleResponse.json() : { messages: [] };
+    
+    // Merge and dedupe by message id
+    const allMessageIds = new Set<string>();
+    const allMessages: any[] = [];
+    
+    for (const msg of [...(sylectusData.messages || []), ...(fullCircleData.messages || [])]) {
+      if (!allMessageIds.has(msg.id)) {
+        allMessageIds.add(msg.id);
+        allMessages.push(msg);
+      }
+    }
 
-    const messagesData = await messagesResponse.json();
-    const messages = messagesData.messages || [];
+    const messages = allMessages;
 
     if (messages.length === 0) {
       console.log('No new messages');
