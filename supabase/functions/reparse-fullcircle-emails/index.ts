@@ -79,8 +79,9 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
   }
   
   // Extract stops from HTML table - Full Circle uses <td> tags
-  const htmlStopsPattern = /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>(\d{5})<\/td>\s*<td[^>]*>USA<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
-  const stops: Array<{type: string, city: string, state: string, zip: string, datetime: string, tz: string, sequence: number}> = [];
+  // Supports both US (5-digit zip, USA) and Canadian (alphanumeric postal, CAN) addresses
+  const htmlStopsPattern = /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>([A-Z0-9]{5,7})<\/td>\s*<td[^>]*>(USA|CAN)<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
+  const stops: Array<{type: string, city: string, state: string, zip: string, country: string, datetime: string, tz: string, sequence: number}> = [];
   let match;
   while ((match = htmlStopsPattern.exec(bodyText)) !== null) {
     stops.push({
@@ -89,14 +90,15 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
       city: match[3].trim(),
       state: match[4],
       zip: match[5],
-      datetime: match[6],
-      tz: match[7] || 'EST'
+      country: match[6],
+      datetime: match[7],
+      tz: match[8] || 'EST'
     });
   }
   
-  // Also try plain text format as fallback
+  // Also try plain text format as fallback (supports both USA and CAN)
   if (stops.length === 0) {
-    const plainStopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})\s+USA\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
+    const plainStopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+([A-Z0-9]{5,7})\s+(USA|CAN)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
     while ((match = plainStopsPattern.exec(bodyText)) !== null) {
       stops.push({
         sequence: parseInt(match[1]),
@@ -104,9 +106,19 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
         city: match[3].trim(),
         state: match[4],
         zip: match[5],
-        datetime: match[6],
-        tz: match[7]
+        country: match[6],
+        datetime: match[7],
+        tz: match[8]
       });
+    }
+  }
+  
+  // Extract broker email from mailto link in body if not found in subject
+  if (!data.broker_email) {
+    const mailtoMatch = bodyText?.match(/mailto:([^\s"<>]+@[^\s"<>]+)/i);
+    if (mailtoMatch) {
+      data.broker_email = mailtoMatch[1].trim();
+      console.log(`📍 FCTMS: Extracted broker email from mailto: ${data.broker_email}`);
     }
   }
   
