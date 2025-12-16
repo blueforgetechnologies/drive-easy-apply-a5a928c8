@@ -624,11 +624,10 @@ export default function LoadHunterTab() {
           if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
           }
-          // Filter by email source
-          if (selectedSources.length > 0 && selectedSources.length < 2) {
-            const emailSource = match.email_source || 'sylectus';
-            if (!selectedSources.includes(emailSource)) return false;
-          }
+          // Filter by email source - if no sources selected, show nothing
+          if (selectedSources.length === 0) return false;
+          const emailSource = match.email_source || 'sylectus';
+          if (!selectedSources.includes(emailSource)) return false;
           // Filter by search query - check multiple fields
           if (matchSearchQuery) {
             const query = matchSearchQuery.toLowerCase();
