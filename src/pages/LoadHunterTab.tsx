@@ -4429,6 +4429,7 @@ export default function LoadHunterTab() {
                               from_name: (item as any).from_name,
                               load_id: (item as any).load_id,
                               status: (item as any).email_status,
+                              email_source: (item as any).email_source,
                             };
                           } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided' || activeFilter === 'waitlist') {
                             // Skipped/bid/undecided/waitlist matches now include email data from the join
@@ -4817,7 +4818,12 @@ export default function LoadHunterTab() {
                               <TableCell className="py-1">
                                 {(() => {
                                   // Get source from email_source field (from view or email data)
-                                  const emailSource = (item as any).email_source || email.email_source || 'sylectus';
+                                  const rawEmailSource = (item as any).email_source || email.email_source || 'sylectus';
+                                  const inferredSource = (email.from_email || '').toLowerCase().includes('fullcircletms.com') || (email.from_email || '').toLowerCase().includes('fctms.com')
+                                    ? 'fullcircle'
+                                    : rawEmailSource;
+                                  const emailSource = inferredSource;
+
                                   const sourceConfig: Record<string, { label: string; bg: string; text: string }> = {
                                     sylectus: { label: 'Sylectus', bg: 'bg-blue-100', text: 'text-blue-700' },
                                     fullcircle: { label: 'FullCircle', bg: 'bg-purple-100', text: 'text-purple-700' },
