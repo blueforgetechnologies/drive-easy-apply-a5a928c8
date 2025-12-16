@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, Plus, Minus } from "lucide-react";
@@ -4653,9 +4654,24 @@ export default function LoadHunterTab() {
                                   </TableCell>
                                   {/* Our internal Load ID */}
                                   <TableCell className="py-1">
-                                    <div className="text-[13px] font-mono leading-tight whitespace-nowrap">
-                                      {email.load_id || '—'}
-                                    </div>
+                                    <HoverCard openDelay={800} closeDelay={200}>
+                                      <HoverCardTrigger asChild>
+                                        <div className="text-[13px] font-mono leading-tight whitespace-nowrap cursor-pointer hover:text-primary">
+                                          {email.load_id || '—'}
+                                        </div>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent className="w-auto p-2" side="top">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-xs gap-2"
+                                          onClick={() => navigate(`/dashboard/development?tab=parser-helper&loadId=${email.load_id}`)}
+                                        >
+                                          <Wrench className="h-3 w-3" />
+                                          Open in Parser Helper
+                                        </Button>
+                                      </HoverCardContent>
+                                    </HoverCard>
                                   </TableCell>
                                   {/* Load Hunt Match ID - hidden on ALL filter */}
                                   {activeFilter !== 'all' && (

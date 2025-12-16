@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,27 @@ interface LoadEmail {
   received_at: string;
 }
 
-export default function ParserHelper() {
-  const [searchId, setSearchId] = useState("");
+interface ParserHelperProps {
+  initialLoadId?: string | null;
+}
+
+export default function ParserHelper({ initialLoadId }: ParserHelperProps) {
+  const [searchId, setSearchId] = useState(initialLoadId || "");
   const [loading, setLoading] = useState(false);
   const [loadEmail, setLoadEmail] = useState<LoadEmail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [highlightedText, setHighlightedText] = useState<string[]>([]);
 
-  const handleSearch = async () => {
-    if (!searchId.trim()) {
+  // Auto-search when initialLoadId is provided
+  useEffect(() => {
+    if (initialLoadId) {
+      setSearchId(initialLoadId);
+      performSearch(initialLoadId);
+    }
+  }, [initialLoadId]);
+
+  const performSearch = async (idToSearch: string) => {
+    if (!idToSearch.trim()) {
       toast.error("Please enter a load ID or match ID");
       return;
     }
@@ -43,7 +55,7 @@ export default function ParserHelper() {
       let { data, error: queryError } = await supabase
         .from("load_emails")
         .select("*")
-        .eq("load_id", searchId.trim())
+        .eq("load_id", idToSearch.trim())
         .maybeSingle();
 
       // If not found, try by match ID
@@ -51,7 +63,7 @@ export default function ParserHelper() {
         const { data: matchData } = await supabase
           .from("load_hunt_matches")
           .select("load_email_id")
-          .eq("id", searchId.trim())
+          .eq("id", idToSearch.trim())
           .maybeSingle();
 
         if (matchData?.load_email_id) {
@@ -69,7 +81,7 @@ export default function ParserHelper() {
         const { data: emailData } = await supabase
           .from("load_emails")
           .select("*")
-          .eq("id", searchId.trim())
+          .eq("id", idToSearch.trim())
           .maybeSingle();
         data = emailData;
       }
@@ -77,7 +89,7 @@ export default function ParserHelper() {
       if (queryError) throw queryError;
 
       if (!data) {
-        setError(`No load found with ID: ${searchId}`);
+        setError(`No load found with ID: ${idToSearch}`);
         return;
       }
 
@@ -88,6 +100,8 @@ export default function ParserHelper() {
       setLoading(false);
     }
   };
+
+  const handleSearch = () => performSearch(searchId);
 
   const handleHighlight = () => {
     const selection = window.getSelection();
