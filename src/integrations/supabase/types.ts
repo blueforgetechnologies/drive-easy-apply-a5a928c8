@@ -2280,6 +2280,54 @@ export type Database = {
           },
         ]
       }
+      parser_hints: {
+        Row: {
+          context_after: string | null
+          context_before: string | null
+          created_at: string
+          created_by: string | null
+          email_source: string
+          example_value: string | null
+          field_name: string
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          pattern: string
+          priority: number | null
+          updated_at: string
+        }
+        Insert: {
+          context_after?: string | null
+          context_before?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_source?: string
+          example_value?: string | null
+          field_name: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          pattern: string
+          priority?: number | null
+          updated_at?: string
+        }
+        Update: {
+          context_after?: string | null
+          context_before?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_source?: string
+          example_value?: string | null
+          field_name?: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          pattern?: string
+          priority?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payees: {
         Row: {
           account_number: string | null
