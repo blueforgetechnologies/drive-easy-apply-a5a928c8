@@ -836,11 +836,18 @@ serve(async (req) => {
 
         // Detect email source FIRST before parsing
         let emailSource = 'sylectus'; // Default
-        const isFullCircleTMS = 
-          bodyText.includes('app.fullcircletms.com') ||
-          bodyText.includes('Bid YES to this load') ||
-          subject.match(/^Load Available:\s+[A-Z]{2}\s+-\s+[A-Z]{2}/i);
-        
+
+        const fromEmailForDetection = (from.match(/<([^>]+)>/)?.[1] || from).trim();
+        const fromEmailLower = fromEmailForDetection.toLowerCase();
+        const bodyCombinedLower = `${bodyText}\n${bodyHtml}`.toLowerCase();
+
+        const isFullCircleTMS =
+          fromEmailLower.includes('fullcircletms.com') ||
+          fromEmailLower.includes('fctms.com') ||
+          bodyCombinedLower.includes('app.fullcircletms.com') ||
+          bodyCombinedLower.includes('bid yes to this load') ||
+          /^Load Available:\s+[A-Z]{2}\s+-\s+[A-Z]{2}/i.test(subject);
+
         if (isFullCircleTMS) {
           emailSource = 'fullcircle';
           console.log('📧 Detected Full Circle TMS email source');
