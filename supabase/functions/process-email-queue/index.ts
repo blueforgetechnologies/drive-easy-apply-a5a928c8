@@ -359,7 +359,7 @@ async function lookupCityFromZip(zipCode: string, state?: string): Promise<{city
 }
 
 // Parse Full Circle TMS email format
-function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<string, any> {
+function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: string): Record<string, any> {
   const data: Record<string, any> = {};
   
   // First, parse origin/destination from subject line as reliable fallback
@@ -535,11 +535,35 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): Record<stri
     data.team_required = teamMatch[1].toLowerCase() === 'yes';
   }
   
-  // Parse broker company with MC# - format: Load One Interface T+L (MC# 456807)
-  const brokerCompanyMCMatch = bodyText?.match(/please contact:\s*\n?([^\n(]+)\s*\(MC#\s*(\d+)\)/i);
-  if (brokerCompanyMCMatch) {
-    data.broker_company = brokerCompanyMCMatch[1].trim();
-    data.mc_number = brokerCompanyMCMatch[2];
+  // Parse broker company with MC# - check bodyHtml first (MC# is in HTML)
+  // Format: "please contact:<br />\nCompany Name (MC# 478717)"
+  if (bodyHtml) {
+    const htmlContactMatch = bodyHtml.match(/please contact:[\s\S]*?<br\s*\/?>\s*([^<\n(]+)\s*\(MC#\s*(\d+)\)/i);
+    if (htmlContactMatch) {
+      const companyName = htmlContactMatch[1].trim().replace(/&#x([0-9A-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+      if (!data.broker_company) data.broker_company = companyName;
+      data.mc_number = htmlContactMatch[2];
+      console.log(`📍 FCTMS: Extracted MC# ${data.mc_number} for ${data.broker_company} from body_html`);
+    }
+  }
+  
+  // Fallback: check bodyText
+  if (!data.mc_number && bodyText) {
+    const brokerCompanyMCMatch = bodyText.match(/please contact:\s*\n?\s*([^\n(]+)\s*\(MC#\s*(\d+)\)/i);
+    if (brokerCompanyMCMatch) {
+      if (!data.broker_company) data.broker_company = brokerCompanyMCMatch[1].trim();
+      data.mc_number = brokerCompanyMCMatch[2];
+      console.log(`📍 FCTMS: Extracted MC# ${data.mc_number} from body_text`);
+    }
+  }
+  
+  // Fallback: look for any (MC# XXXXXX) pattern
+  if (!data.mc_number) {
+    const mcFallback = (bodyHtml || bodyText)?.match(/\(MC#\s*(\d+)\)/i);
+    if (mcFallback) {
+      data.mc_number = mcFallback[1];
+      console.log(`📍 FCTMS: Extracted MC# ${data.mc_number} from fallback pattern`);
+    }
   }
   
   // Parse broker address
@@ -794,19 +818,21 @@ serve(async (req) => {
 
         // Extract body
         let bodyText = '';
-        const extractBody = (part: any): string => {
-          if (part.body?.data) {
+        let bodyHtml = '';
+        const extractBody = (part: any, mimeType: string): string => {
+          if (part.mimeType === mimeType && part.body?.data) {
             return atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
           }
           if (part.parts) {
             for (const p of part.parts) {
-              const text = extractBody(p);
+              const text = extractBody(p, mimeType);
               if (text) return text;
             }
           }
           return '';
         };
-        bodyText = extractBody(message.payload);
+        bodyText = extractBody(message.payload, 'text/plain') || extractBody(message.payload, 'text/html');
+        bodyHtml = extractBody(message.payload, 'text/html');
 
         // Detect email source FIRST before parsing
         let emailSource = 'sylectus'; // Default
@@ -823,7 +849,7 @@ serve(async (req) => {
         // Parse based on source - use dedicated parser for Full Circle TMS
         let parsedData: Record<string, any>;
         if (isFullCircleTMS) {
-          parsedData = parseFullCircleTMSEmail(subject, bodyText);
+          parsedData = parseFullCircleTMSEmail(subject, bodyText, bodyHtml);
         } else {
           // Parse from subject (primary) then body (fallback) for Sylectus
           const subjectData = parseSubjectLine(subject);
