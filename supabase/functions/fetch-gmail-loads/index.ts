@@ -62,6 +62,204 @@ async function getAccessToken(userEmail: string): Promise<string> {
   return tokenData.access_token;
 }
 
+// Detect if email is Full Circle TMS
+function isFullCircleEmail(fromEmail: string, subject: string, bodyHtml: string): boolean {
+  const fromLower = fromEmail.toLowerCase();
+  const subjectLower = subject.toLowerCase();
+  const bodyLower = bodyHtml.toLowerCase();
+  
+  // Check from email
+  if (fromLower.includes('fullcircletms.com') || fromLower.includes('fctms.com')) {
+    return true;
+  }
+  
+  // Check subject
+  if (subjectLower.includes('private network load board') || 
+      subjectLower.includes('yfnplb') ||
+      subjectLower.includes('fullcircle')) {
+    return true;
+  }
+  
+  // Check body content
+  if (bodyLower.includes('app.fullcircletms.com') || 
+      bodyLower.includes('bid yes to this load') ||
+      bodyLower.includes('fctms.com') ||
+      bodyLower.includes('fullcircletms.com')) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Parse Full Circle TMS email format
+function parseFullCircleTMSEmail(subject: string, bodyText: string): any {
+  const data: any = {};
+  
+  // Parse route from subject
+  const subjectRouteMatch = subject?.match(/from\s+([A-Za-z\s]+),\s*([A-Z]{2})\s+to\s+([A-Za-z\s]+),\s*([A-Z]{2})/i);
+  if (subjectRouteMatch) {
+    data.origin_city = subjectRouteMatch[1].trim();
+    data.origin_state = subjectRouteMatch[2];
+    data.destination_city = subjectRouteMatch[3].trim();
+    data.destination_state = subjectRouteMatch[4];
+  }
+  
+  // Parse vehicle type from subject
+  const vehicleSubjectMatch = subject?.match(/^([A-Za-z\s]+)\s+from\s+/i);
+  if (vehicleSubjectMatch) {
+    data.vehicle_type = vehicleSubjectMatch[1].trim();
+  }
+  
+  // Parse miles and weight from subject
+  const milesWeightMatch = subject?.match(/:\s*(\d+)\s*mi,\s*(\d+)\s*lbs/i);
+  if (milesWeightMatch) {
+    data.loaded_miles = parseInt(milesWeightMatch[1]);
+    data.weight = milesWeightMatch[2];
+  }
+  
+  // Parse broker info from subject
+  const postedByMatch = subject?.match(/Posted by\s+(.+?)\s+([\w.+-]+@[\w.-]+\.\w+)/i);
+  if (postedByMatch) {
+    data.broker_company = postedByMatch[1].trim();
+    data.broker_email = postedByMatch[2].trim();
+  }
+  
+  // Order numbers
+  const orderMatch = bodyText?.match(/ORDER\s*NUMBER:?\s*(\d+)(?:\s+or\s+(\d+))?/i);
+  if (orderMatch) {
+    data.order_number = orderMatch[1];
+    if (orderMatch[2]) data.order_number_secondary = orderMatch[2];
+  }
+  
+  if (!data.order_number) {
+    const postingIdMatch = bodyText?.match(/posting\/(\d+)\/bid/i);
+    if (postingIdMatch) {
+      data.order_number = postingIdMatch[1];
+    }
+  }
+  
+  // Extract stops from HTML table
+  const htmlStopsPattern = /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>([A-Z0-9]{5,7})<\/td>\s*<td[^>]*>(USA|CAN)<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
+  const stops: Array<{type: string, city: string, state: string, zip: string, country: string, datetime: string, tz: string, sequence: number}> = [];
+  let match;
+  while ((match = htmlStopsPattern.exec(bodyText)) !== null) {
+    stops.push({
+      sequence: parseInt(match[1]),
+      type: match[2].toLowerCase(),
+      city: match[3].trim(),
+      state: match[4],
+      zip: match[5],
+      country: match[6],
+      datetime: match[7],
+      tz: match[8] || 'EST'
+    });
+  }
+  
+  // Set origin from first pickup
+  const firstPickup = stops.find(s => s.type === 'pick up');
+  if (firstPickup) {
+    data.origin_city = firstPickup.city;
+    data.origin_state = firstPickup.state;
+    data.origin_zip = firstPickup.zip;
+    data.pickup_date = firstPickup.datetime.split(' ')[0];
+    data.pickup_time = firstPickup.datetime.split(' ')[1] + ' ' + firstPickup.tz;
+  }
+  
+  // Set destination from first delivery
+  const firstDelivery = stops.find(s => s.type === 'delivery');
+  if (firstDelivery) {
+    data.destination_city = firstDelivery.city;
+    data.destination_state = firstDelivery.state;
+    data.destination_zip = firstDelivery.zip;
+    data.delivery_date = firstDelivery.datetime.split(' ')[0];
+    data.delivery_time = firstDelivery.datetime.split(' ')[1] + ' ' + firstDelivery.tz;
+  }
+  
+  if (stops.length > 0) {
+    data.stops = stops;
+    data.stop_count = stops.length;
+    data.has_multiple_stops = stops.length > 2;
+  }
+  
+  // Parse expiration
+  const expiresMatch = bodyText?.match(/This posting expires:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/i);
+  if (expiresMatch) {
+    const dateStr = expiresMatch[1];
+    const timeStr = expiresMatch[2];
+    const timezone = expiresMatch[3];
+    data.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
+    
+    try {
+      const tzOffsets: Record<string, number> = {
+        'EST': -5, 'EDT': -4, 'CST': -6, 'CDT': -5,
+        'MST': -7, 'MDT': -6, 'PST': -8, 'PDT': -7
+      };
+      const offset = tzOffsets[timezone.toUpperCase()] || -5;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const expiresDate = new Date(Date.UTC(year, month - 1, day, hours - offset, minutes, 0));
+      if (!isNaN(expiresDate.getTime())) {
+        data.expires_at = expiresDate.toISOString();
+      }
+    } catch (e) {
+      console.error('Error parsing FCTMS expiration:', e);
+    }
+  }
+  
+  // Parse pieces and weight
+  const totalPiecesMatch = bodyText?.match(/<b>Total Pieces:<\/b>\s*(\d+)|Total Pieces:?\s*(\d+)/i);
+  if (totalPiecesMatch) {
+    data.pieces = parseInt(totalPiecesMatch[1] || totalPiecesMatch[2]);
+  }
+  
+  if (!data.weight) {
+    const totalWeightMatch = bodyText?.match(/<b>Total Weight:<\/b>\s*([\d,]+)|Total Weight:?\s*([\d,]+)\s*lbs?/i);
+    if (totalWeightMatch) {
+      data.weight = (totalWeightMatch[1] || totalWeightMatch[2]).replace(',', '');
+    }
+  }
+  
+  // Parse distance if not from subject
+  if (!data.loaded_miles) {
+    const distanceMatch = bodyText?.match(/<b>Distance:<\/b>\s*([\d,]+)\s*mi|Distance:?\s*([\d,]+)\s*mi/i);
+    if (distanceMatch) {
+      data.loaded_miles = parseInt((distanceMatch[1] || distanceMatch[2]).replace(',', ''));
+    }
+  }
+  
+  // Extract broker email from mailto link
+  if (!data.broker_email) {
+    const mailtoMatch = bodyText?.match(/mailto:([^\s"<>]+@[^\s"<>]+)/i);
+    if (mailtoMatch) {
+      data.broker_email = mailtoMatch[1].trim();
+    }
+  }
+  
+  // MC# extraction
+  const mcMatch = bodyText?.match(/\(MC#\s*(\d+)\)/i);
+  if (mcMatch) {
+    data.mc_number = mcMatch[1];
+  }
+  
+  // Broker company from "please contact:" section
+  if (!data.broker_company) {
+    const contactMatch = bodyText?.match(/please contact:[\s\S]*?<br\s*\/?>\s*([^<\n(]+)/i);
+    if (contactMatch) {
+      data.broker_company = contactMatch[1].trim().replace(/\(MC#.*$/, '').trim();
+    }
+  }
+  
+  // Broker phone
+  const phoneMatch = bodyText?.match(/Phone:\s*\(?([\d\-\(\)\s]+)/i);
+  if (phoneMatch) {
+    data.broker_phone = phoneMatch[1].trim();
+  }
+  
+  console.log(`📦 FCTMS parsed: Order ${data.order_number}, ${data.origin_city || data.origin_state} -> ${data.destination_city || data.destination_state}, ${data.vehicle_type}`);
+  
+  return data;
+}
+
 function parseLoadEmail(subject: string, bodyText: string): any {
   const parsed: any = {};
 
@@ -506,8 +704,14 @@ serve(async (req) => {
           }
         }
 
-        // Parse load data
-        const parsedData = parseLoadEmail(subject, bodyText);
+        // Detect email source and parse accordingly
+        const emailSource = isFullCircleEmail(fromEmail, subject, bodyText) ? 'fullcircle' : 'sylectus';
+        console.log(`📧 Email source detected: ${emailSource} for: ${subject.substring(0, 60)}...`);
+        
+        // Parse load data using appropriate parser
+        const parsedData = emailSource === 'fullcircle' 
+          ? parseFullCircleTMSEmail(subject, bodyText)
+          : parseLoadEmail(subject, bodyText);
 
         // Check and create customer if needed
         await ensureCustomerExists(parsedData);
@@ -520,7 +724,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!existing) {
-          // Insert into database
+          // Insert into database with correct email_source
           const { error: insertError } = await supabase
             .from('load_emails')
             .insert({
@@ -529,12 +733,13 @@ serve(async (req) => {
               from_email: fromEmail,
               from_name: fromName,
               subject: subject,
-              body_html: bodyText, // Store full HTML content
-              body_text: bodyText.substring(0, 5000), // Short text preview for parsing/search
+              body_html: bodyText,
+              body_text: bodyText.substring(0, 5000),
               received_at: receivedDate.toISOString(),
               parsed_data: parsedData,
               expires_at: parsedData.expires_at || null,
               status: 'new',
+              email_source: emailSource,
             });
 
           if (insertError) {
