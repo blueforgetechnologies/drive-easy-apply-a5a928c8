@@ -1627,50 +1627,71 @@ export default function LoadHunterTab() {
 
   // Load missed history from database - shows all loads that went 15+ min without action
   const loadMissedHistory = async () => {
+    const MAX_RECORDS = 9999;
+    const PAGE_SIZE = 1000;
+    const EMAIL_CHUNK_SIZE = 500;
+
     try {
-      const { data, error } = await supabase
-        .from('missed_loads_history')
-        .select(`
-          id,
-          load_email_id,
-          hunt_plan_id,
-          vehicle_id,
-          match_id,
-          missed_at,
-          received_at,
-          from_email,
-          subject,
-          dispatcher_id
-        `)
-        .order('missed_at', { ascending: false })
-        .limit(9999);
+      const allMissed: any[] = [];
+      const emailMap = new Map<string, any>();
 
-      if (error) {
-        console.error('Error loading missed history:', error);
-        return;
+      for (let offset = 0; offset < MAX_RECORDS; offset += PAGE_SIZE) {
+        const { data: page, error } = await supabase
+          .from('missed_loads_history')
+          .select(`
+            id,
+            load_email_id,
+            hunt_plan_id,
+            vehicle_id,
+            match_id,
+            missed_at,
+            received_at,
+            from_email,
+            subject,
+            dispatcher_id
+          `)
+          .order('missed_at', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1);
+
+        if (error) {
+          console.error('Error loading missed history:', error);
+          break;
+        }
+
+        const pageRows = page || [];
+        allMissed.push(...pageRows);
+
+        const pageEmailIds = [...new Set(pageRows.map((m) => m.load_email_id).filter(Boolean))].filter(
+          (id) => !emailMap.has(id)
+        );
+
+        for (let i = 0; i < pageEmailIds.length; i += EMAIL_CHUNK_SIZE) {
+          const chunk = pageEmailIds.slice(i, i + EMAIL_CHUNK_SIZE);
+          const { data: emails, error: emailsError } = await supabase
+            .from('load_emails')
+            .select('*')
+            .in('id', chunk);
+
+          if (emailsError) {
+            console.error('Error loading missed email details:', emailsError);
+            continue;
+          }
+
+          (emails || []).forEach((e) => emailMap.set(e.id, e));
+        }
+
+        if (pageRows.length < PAGE_SIZE || allMissed.length >= MAX_RECORDS) {
+          break;
+        }
       }
 
-      // Fetch full email data for each missed record
-      if (data && data.length > 0) {
-        const emailIds = [...new Set(data.map(m => m.load_email_id))];
-        const { data: emails } = await supabase
-          .from('load_emails')
-          .select('*')
-          .in('id', emailIds);
+      const enrichedData = allMissed.map((m) => ({
+        ...m,
+        email: m.load_email_id ? emailMap.get(m.load_email_id) || null : null,
+      }));
 
-        const emailMap = new Map(emails?.map(e => [e.id, e]) || []);
-        
-        // Enrich missed history with full email data
-        const enrichedData = data.map(m => ({
-          ...m,
-          email: emailMap.get(m.load_email_id) || null
-        }));
-
-        console.log(`📊 Loaded ${enrichedData.length} missed history records`);
-        setMissedHistory(enrichedData);
-      } else {
-        setMissedHistory([]);
-      }
+      console.log(`📊 Loaded ${enrichedData.length} missed history records`);
+      setMissedHistory(enrichedData);
     } catch (err) {
       console.error('Error in loadMissedHistory:', err);
     }
