@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, AlertCircle, CheckCircle, Copy, Save, Database, Trash2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 
 interface LoadEmail {
   id: string;
@@ -431,7 +432,15 @@ export default function ParserHelper({ initialLoadId }: ParserHelperProps) {
 
                   <div 
                     className="text-sm bg-muted p-4 rounded prose prose-sm max-w-none dark:prose-invert select-text"
-                    dangerouslySetInnerHTML={{ __html: loadEmail.body_html || loadEmail.body_text || "No body content" }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: DOMPurify.sanitize(
+                        loadEmail.body_html || loadEmail.body_text || "No body content",
+                        {
+                          ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'ul', 'ol', 'li', 'font', 'center', 'blockquote', 'pre', 'code', 'hr', 'img'],
+                          ALLOWED_ATTR: ['href', 'style', 'class', 'color', 'size', 'face', 'align', 'valign', 'width', 'height', 'cellpadding', 'cellspacing', 'border', 'bgcolor', 'src', 'alt']
+                        }
+                      ) 
+                    }}
                   />
                 </div>
               </CardContent>
