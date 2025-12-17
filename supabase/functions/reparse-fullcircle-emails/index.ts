@@ -321,6 +321,32 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
     }
   }
   
+  // Extract notes from Full Circle TMS - they appear in red <h4> tags
+  // Pattern: <h4 style="color:red;"><b>Notes: ...</b></h4>
+  const redNotesMatches = (bodyHtml || bodyText)?.match(/<h4[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>\s*<b>([^<]+)<\/b>\s*<\/h4>/gi);
+  if (redNotesMatches && redNotesMatches.length > 0) {
+    const allNotes: string[] = [];
+    for (const noteMatch of redNotesMatches) {
+      // Extract content between <b> tags
+      const contentMatch = noteMatch.match(/<b>([^<]+)<\/b>/i);
+      if (contentMatch) {
+        let noteText = contentMatch[1].trim();
+        // Decode HTML entities
+        noteText = noteText.replace(/&#x2013;/g, '–').replace(/&#x2014;/g, '—');
+        // Remove "Notes:" prefix if present
+        noteText = noteText.replace(/^Notes:\s*/i, '');
+        // Skip bid instruction lines
+        if (!noteText.toLowerCase().includes('submit your bid via') && !noteText.toLowerCase().includes('submitted bids must include')) {
+          allNotes.push(noteText);
+        }
+      }
+    }
+    if (allNotes.length > 0) {
+      data.notes = allNotes.join(' | ');
+      console.log(`📝 FCTMS: Extracted notes: ${data.notes.substring(0, 100)}...`);
+    }
+  }
+  
   console.log(`📦 FCTMS parsed: Order ${data.order_number}${data.order_number_secondary ? '/' + data.order_number_secondary : ''}, ${data.origin_city || data.origin_state} -> ${data.destination_city || data.destination_state}, ${data.vehicle_type}, ${data.pieces} pcs, ${data.weight} lbs, expires ${data.expires_at}, MC# ${data.mc_number}`);
   
   return data;
