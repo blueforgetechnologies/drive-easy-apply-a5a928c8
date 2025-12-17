@@ -701,21 +701,24 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
   const redNotesMatches = (bodyHtml || '')?.match(/<h4[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>\s*<b>([^<]+)<\/b>\s*<\/h4>/gi);
   if (redNotesMatches && redNotesMatches.length > 0) {
     const allNotes: string[] = [];
-    for (const match of redNotesMatches) {
+    for (const noteMatch of redNotesMatches) {
       // Extract content between <b> tags
-      const contentMatch = match.match(/<b>([^<]+)<\/b>/i);
+      const contentMatch = noteMatch.match(/<b>([^<]+)<\/b>/i);
       if (contentMatch) {
         let noteText = contentMatch[1].trim();
+        // Decode HTML entities
+        noteText = noteText.replace(/&#x2013;/g, '–').replace(/&#x2014;/g, '—');
         // Remove "Notes:" prefix if present
         noteText = noteText.replace(/^Notes:\s*/i, '');
         // Skip bid instruction lines
-        if (!noteText.toLowerCase().includes('submit your bid via')) {
+        if (!noteText.toLowerCase().includes('submit your bid via') && !noteText.toLowerCase().includes('submitted bids must include')) {
           allNotes.push(noteText);
         }
       }
     }
     if (allNotes.length > 0) {
       data.notes = allNotes.join(' | ');
+      console.log(`📝 FCTMS: Extracted notes: ${data.notes.substring(0, 100)}...`);
     }
   }
   
