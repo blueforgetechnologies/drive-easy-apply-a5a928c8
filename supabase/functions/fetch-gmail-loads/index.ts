@@ -580,6 +580,140 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   return parsed;
 }
 
+// Geocode location using Mapbox and cache
+async function geocodeLocation(city: string, state: string): Promise<{lat: number, lng: number} | null> {
+  const mapboxToken = Deno.env.get('VITE_MAPBOX_TOKEN');
+  if (!mapboxToken || !city || !state) return null;
+
+  const locationKey = `${city.toLowerCase().trim()}, ${state.toLowerCase().trim()}`;
+
+  try {
+    // Check cache first
+    const { data: cached } = await supabase
+      .from('geocode_cache')
+      .select('latitude, longitude, id, hit_count')
+      .eq('location_key', locationKey)
+      .maybeSingle();
+
+    if (cached) {
+      supabase
+        .from('geocode_cache')
+        .update({ hit_count: (cached.hit_count || 1) + 1 })
+        .eq('id', cached.id)
+        .then(() => {});
+      console.log(`📍 Geocode cache HIT: ${city}, ${state}`);
+      return { lat: Number(cached.latitude), lng: Number(cached.longitude) };
+    }
+
+    // Cache miss - call Mapbox
+    const query = encodeURIComponent(`${city}, ${state}, USA`);
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&limit=1`
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.features?.[0]?.center) {
+        const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
+        
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        await supabase
+          .from('geocode_cache')
+          .upsert({
+            location_key: locationKey,
+            city: city.trim(),
+            state: state.trim(),
+            latitude: coords.lat,
+            longitude: coords.lng,
+            month_created: currentMonth,
+          }, { onConflict: 'location_key' });
+        
+        console.log(`📍 Geocode cache MISS (stored): ${city}, ${state}`);
+        return coords;
+      }
+    }
+  } catch (e) {
+    console.error('Geocoding error:', e);
+  }
+  return null;
+}
+
+// Match load to active hunt plans
+async function matchLoadToHunts(loadEmailId: string, loadId: string, parsedData: any) {
+  const { data: enabledHunts } = await supabase
+    .from('hunt_plans')
+    .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id')
+    .eq('enabled', true);
+
+  if (!enabledHunts?.length) return;
+
+  const loadCoords = parsedData.pickup_coordinates;
+  if (!loadCoords) return;
+  
+  const loadVehicleType = parsedData.vehicle_type?.toLowerCase().replace(/[^a-z]/g, '');
+
+  const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  for (const hunt of enabledHunts) {
+    if (hunt.floor_load_id && loadId <= hunt.floor_load_id) continue;
+
+    const huntCoords = hunt.hunt_coordinates as { lat: number; lng: number } | null;
+    if (!huntCoords?.lat || !huntCoords?.lng) continue;
+
+    const distance = haversineDistance(loadCoords.lat, loadCoords.lng, huntCoords.lat, huntCoords.lng);
+    if (distance > parseFloat(hunt.pickup_radius || '200')) continue;
+
+    let huntVehicleSizes: string[] = [];
+    if (hunt.vehicle_size) {
+      try {
+        const parsed = JSON.parse(hunt.vehicle_size);
+        huntVehicleSizes = Array.isArray(parsed) ? parsed : [hunt.vehicle_size];
+      } catch {
+        huntVehicleSizes = [hunt.vehicle_size];
+      }
+    }
+
+    if (huntVehicleSizes.length > 0 && loadVehicleType) {
+      const loadTypeNormalized = loadVehicleType.toLowerCase().replace(/[^a-z-]/g, '');
+      const vehicleMatches = huntVehicleSizes.some(huntSize => {
+        const huntNormalized = huntSize.toLowerCase().replace(/[^a-z-]/g, '');
+        return loadTypeNormalized === huntNormalized ||
+          loadTypeNormalized.includes(huntNormalized) || 
+          huntNormalized.includes(loadTypeNormalized) ||
+          (loadTypeNormalized.includes('tractor') && huntNormalized.includes('tractor'));
+      });
+      if (!vehicleMatches) continue;
+    }
+
+    const { count: existingMatch } = await supabase
+      .from('load_hunt_matches')
+      .select('id', { count: 'exact', head: true })
+      .eq('load_email_id', loadEmailId)
+      .eq('hunt_plan_id', hunt.id);
+
+    if (existingMatch && existingMatch > 0) continue;
+
+    await supabase.from('load_hunt_matches').insert({
+      load_email_id: loadEmailId,
+      hunt_plan_id: hunt.id,
+      vehicle_id: hunt.vehicle_id,
+      distance_miles: Math.round(distance),
+      is_active: true,
+      match_status: 'active',
+      matched_at: new Date().toISOString(),
+    });
+    console.log(`🎯 Hunt match created: ${loadId} -> plan ${hunt.id} (${Math.round(distance)} mi)`);
+  }
+}
+
 async function ensureCustomerExists(parsedData: any): Promise<void> {
   // Use broker_company as the customer name (broker company is the customer)
   const customerName = parsedData?.broker_company || parsedData?.customer;
@@ -713,6 +847,15 @@ serve(async (req) => {
           ? parseFullCircleTMSEmail(subject, bodyText)
           : parseLoadEmail(subject, bodyText);
 
+        // Geocode if we have origin location
+        if (parsedData.origin_city && parsedData.origin_state) {
+          const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
+          if (coords) {
+            parsedData.pickup_coordinates = coords;
+            console.log(`📍 Geocoded ${parsedData.origin_city}, ${parsedData.origin_state}`);
+          }
+        }
+
         // Check and create customer if needed
         await ensureCustomerExists(parsedData);
 
@@ -725,7 +868,7 @@ serve(async (req) => {
 
         if (!existing) {
           // Insert into database with correct email_source
-          const { error: insertError } = await supabase
+          const { data: inserted, error: insertError } = await supabase
             .from('load_emails')
             .insert({
               email_id: fullMessage.id,
@@ -740,13 +883,22 @@ serve(async (req) => {
               expires_at: parsedData.expires_at || null,
               status: 'new',
               email_source: emailSource,
-            });
+            })
+            .select('id, load_id')
+            .single();
 
           if (insertError) {
             console.error('Error inserting email:', insertError);
           } else {
             processedCount++;
             console.log(`Processed email: ${subject}`);
+            
+            // Run hunt matching if we have coordinates and vehicle type
+            if (inserted && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+              matchLoadToHunts(inserted.id, inserted.load_id, parsedData).catch(e => 
+                console.error('Hunt matching error:', e)
+              );
+            }
           }
         }
       } catch (error) {
