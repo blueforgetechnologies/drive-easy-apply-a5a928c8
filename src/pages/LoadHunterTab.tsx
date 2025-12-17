@@ -4919,7 +4919,7 @@ export default function LoadHunterTab() {
                                   </Badge>
                                   <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                     {(() => {
-                                      const customerName = data.customer || email.from_name || 'Unknown';
+                                      const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
                                       return customerName.length > 22 ? customerName.slice(0, 22) + '...' : customerName;
                                     })()}
                                   </div>
