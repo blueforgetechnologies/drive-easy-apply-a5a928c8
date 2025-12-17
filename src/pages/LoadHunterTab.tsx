@@ -4811,7 +4811,7 @@ export default function LoadHunterTab() {
                               <TableCell className="py-1">
                                 {(() => {
                                   // Get broker info from parsed data
-                                  const brokerName = data.broker || data.customer || email.from_name || email.from_email.split('@')[0];
+                                  const brokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email.split('@')[0];
                                   
                                   if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
