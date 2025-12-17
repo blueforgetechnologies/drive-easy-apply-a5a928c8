@@ -3767,14 +3767,33 @@ export default function LoadHunterTab() {
                     size="sm" 
                     className="w-full"
                     onClick={async () => {
-                      if (!confirm(`Clear all matches for this hunt plan?`)) return;
+                      if (!confirm(`Clear all matches for this hunt plan? Only NEW loads will match going forward.`)) return;
                       try {
-                        const { error } = await supabase
+                        // Delete all matches for this hunt plan
+                        const { error: deleteError } = await supabase
                           .from('load_hunt_matches')
                           .delete()
                           .eq('hunt_plan_id', plan.id);
-                        if (error) throw error;
-                        toast.success('All matches cleared for this hunt plan');
+                        if (deleteError) throw deleteError;
+                        
+                        // Get current highest load_id to update cursor
+                        const { data: latestLoad } = await supabase
+                          .from('load_emails')
+                          .select('load_id')
+                          .order('created_at', { ascending: false })
+                          .limit(1)
+                          .single();
+                        
+                        // Update floor_load_id so only NEW loads match going forward
+                        if (latestLoad?.load_id) {
+                          const { error: updateError } = await supabase
+                            .from('hunt_plans')
+                            .update({ floor_load_id: latestLoad.load_id })
+                            .eq('id', plan.id);
+                          if (updateError) console.error('Error updating floor_load_id:', updateError);
+                        }
+                        
+                        toast.success('All matches cleared - only new loads will match');
                         // Refresh matches
                         const { data: newMatches } = await supabase
                           .from('load_hunt_matches')
