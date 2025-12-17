@@ -386,6 +386,66 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
   return null;
 }
 
+// Apply parser hints from database to fill missing fields
+async function applyParserHints(
+  emailSource: string, 
+  parsedData: Record<string, any>, 
+  bodyText: string, 
+  bodyHtml: string
+): Promise<Record<string, any>> {
+  try {
+    // Load active hints for this source
+    const { data: hints } = await supabase
+      .from('parser_hints')
+      .select('field_name, pattern, context_before, context_after')
+      .eq('email_source', emailSource)
+      .eq('is_active', true);
+
+    if (!hints?.length) return parsedData;
+
+    const searchText = bodyHtml || bodyText || '';
+    const result = { ...parsedData };
+
+    for (const hint of hints) {
+      // Skip if field already has a value
+      if (result[hint.field_name] !== null && result[hint.field_name] !== undefined && result[hint.field_name] !== '') {
+        continue;
+      }
+
+      try {
+        // Try the stored pattern
+        const regex = new RegExp(hint.pattern, 'i');
+        const match = searchText.match(regex);
+        
+        if (match) {
+          // If pattern has capture group, use it; otherwise use full match
+          const value = match[1] || match[0];
+          result[hint.field_name] = value.trim();
+          console.log(`🔧 Hint applied: ${hint.field_name} = "${value.substring(0, 30)}..."`);
+        }
+      } catch (e) {
+        // If regex fails, try simple substring search with context
+        if (hint.context_before || hint.context_after) {
+          const contextPattern = `${hint.context_before || ''}([\\s\\S]*?)${hint.context_after || ''}`;
+          try {
+            const contextRegex = new RegExp(contextPattern, 'i');
+            const contextMatch = searchText.match(contextRegex);
+            if (contextMatch?.[1]) {
+              result[hint.field_name] = contextMatch[1].trim();
+              console.log(`🔧 Context hint applied: ${hint.field_name}`);
+            }
+          } catch {}
+        }
+      }
+    }
+
+    return result;
+  } catch (e) {
+    console.error('Error applying parser hints:', e);
+    return parsedData;
+  }
+}
+
 // Match load to active hunt plans
 async function matchLoadToHunts(loadEmailId: string, parsedData: any) {
   const { data: enabledHunts } = await supabase
@@ -496,7 +556,10 @@ serve(async (req) => {
 
     for (const email of (emails || [])) {
       // Re-parse with updated FCTMS parser (pass body_html for MC# extraction)
-      const parsedData = parseFullCircleTMSEmail(email.subject || '', email.body_text || '', email.body_html || '');
+      let parsedData = parseFullCircleTMSEmail(email.subject || '', email.body_text || '', email.body_html || '');
+      
+      // Apply parser hints from database to fill in missing fields
+      parsedData = await applyParserHints('fullcircle', parsedData, email.body_text || '', email.body_html || '');
       
       // Check if we need to geocode
       const existingCoords = email.parsed_data?.pickup_coordinates;
