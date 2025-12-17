@@ -568,6 +568,69 @@ export default function LoadHunterTab() {
     };
   }, [huntPlans]);
 
+  // REALTIME SUBSCRIPTION: Auto-refresh when new matches arrive
+  useEffect(() => {
+    console.log('🔴 Setting up realtime subscription for load_hunt_matches');
+    
+    const channel = supabase
+      .channel('load-hunter-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'load_hunt_matches'
+        },
+        (payload) => {
+          console.log('🔴 New match inserted via realtime:', payload);
+          // Refresh unreviewed matches when new match arrives
+          loadUnreviewedMatches();
+          loadHuntMatches();
+          
+          // Play sound alert if enabled
+          if (!isSoundMuted) {
+            playAlertSound();
+            showSystemNotification('New Load Match', 'A new load has matched your hunt criteria');
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'load_hunt_matches'
+        },
+        (payload) => {
+          console.log('🔴 Match updated via realtime:', payload);
+          // Refresh on status changes (skip, bid, etc.)
+          loadUnreviewedMatches();
+          loadHuntMatches();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'load_emails'
+        },
+        (payload) => {
+          console.log('🔴 New email inserted via realtime:', payload);
+          // Refresh emails when new one arrives
+          loadLoadEmails();
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔴 Realtime subscription status:', status);
+      });
+    
+    return () => {
+      console.log('🔴 Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [isSoundMuted]);
+
   // Use saved distance from match - no recalculation needed
   useEffect(() => {
     // If we have a match, use its saved distance_miles value
