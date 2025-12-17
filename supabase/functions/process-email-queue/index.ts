@@ -450,9 +450,9 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
   }
   
   // Extract stops from HTML table - Full Circle uses <td> tags
-  // Format: <td>1</td><td>Pick Up</td><td>Whitehall</td><td>MI</td><td>49461</td><td>USA</td><td>2025-12-14 16:00 EST</td>
-  const htmlStopsPattern = /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>(\d{5})<\/td>\s*<td[^>]*>USA<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
-  const stops: Array<{type: string, city: string, state: string, zip: string, datetime: string, tz: string, sequence: number}> = [];
+  // Supports US/Canadian addresses, zip can be empty
+  const htmlStopsPattern = /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>([A-Z0-9]*)<\/td>\s*<td[^>]*>(USA|CAN)<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
+  const stops: Array<{type: string, city: string, state: string, zip: string, country: string, datetime: string, tz: string, sequence: number}> = [];
   let match;
   while ((match = htmlStopsPattern.exec(bodyText)) !== null) {
     stops.push({
@@ -460,24 +460,26 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
       type: match[2].toLowerCase(),
       city: match[3].trim(),
       state: match[4],
-      zip: match[5],
-      datetime: match[6],
-      tz: match[7] || 'EST'
+      zip: match[5] || '',
+      country: match[6],
+      datetime: match[7],
+      tz: match[8] || 'EST'
     });
   }
   
-  // Also try plain text format as fallback
+  // Also try plain text format as fallback - supports US/CAN, zip optional
   if (stops.length === 0) {
-    const plainStopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})\s+USA\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
+    const plainStopsPattern = /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+([A-Z0-9]*)\s+(USA|CAN)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
     while ((match = plainStopsPattern.exec(bodyText)) !== null) {
       stops.push({
         sequence: parseInt(match[1]),
         type: match[2].toLowerCase(),
         city: match[3].trim(),
         state: match[4],
-        zip: match[5],
-        datetime: match[6],
-        tz: match[7]
+        zip: match[5] || '',
+        country: match[6],
+        datetime: match[7],
+        tz: match[8]
       });
     }
   }
