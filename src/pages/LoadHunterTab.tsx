@@ -4640,15 +4640,16 @@ export default function LoadHunterTab() {
                           
                           // Calculate time since email was RECEIVED (for display)
                           const receivedDiffMs = now.getTime() - receivedDate.getTime();
-                          const receivedDiffMins = Math.floor(receivedDiffMs / 60000);
+                          const receivedDiffSecs = Math.floor(receivedDiffMs / 1000);
+                          const receivedDiffMins = Math.floor(receivedDiffSecs / 60);
                           const receivedDiffHours = Math.floor(receivedDiffMins / 60);
                           const receivedDiffDays = Math.floor(receivedDiffHours / 24);
                           
-                          // Format relative time for received (e.g., "15m ago", "2h 30m ago")
+                          // Format relative time for received (e.g., "15m 30s ago", "2h 30m ago")
                           let receivedAgo = '';
                           if (receivedDiffDays > 0) receivedAgo = `${receivedDiffDays}d ${receivedDiffHours % 24}h ago`;
                           else if (receivedDiffHours > 0) receivedAgo = `${receivedDiffHours}h ${receivedDiffMins % 60}m ago`;
-                          else receivedAgo = `${receivedDiffMins}m ago`;
+                          else receivedAgo = `${receivedDiffMins}m ${receivedDiffSecs % 60}s ago`;
                           
                           // Format exact date/time for tooltip
                           const formatDateTime = (date: Date) => {
