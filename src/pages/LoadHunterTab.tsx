@@ -3762,7 +3762,31 @@ export default function LoadHunterTab() {
                   </div>
 
                   {/* Clear Matches Button */}
-                  <Button variant="destructive" size="sm" className="w-full">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={async () => {
+                      if (!confirm(`Clear all matches for this hunt plan?`)) return;
+                      try {
+                        const { error } = await supabase
+                          .from('load_hunt_matches')
+                          .delete()
+                          .eq('hunt_plan_id', plan.id);
+                        if (error) throw error;
+                        toast.success('All matches cleared for this hunt plan');
+                        // Refresh matches
+                        const { data: newMatches } = await supabase
+                          .from('load_hunt_matches')
+                          .select('*')
+                          .eq('is_active', true);
+                        setLoadMatches(newMatches || []);
+                      } catch (err) {
+                        console.error('Error clearing matches:', err);
+                        toast.error('Failed to clear matches');
+                      }
+                    }}
+                  >
                     Clear Matches
                   </Button>
                 </Card>
