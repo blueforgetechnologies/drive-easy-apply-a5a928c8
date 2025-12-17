@@ -696,17 +696,34 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
     }
   }
   
-  // Extract notes from Full Circle TMS - look for "Notes:" or "Special Instructions:" patterns
-  const fctmsNotesMatch = (bodyHtml || bodyText)?.match(/(?:Notes?|Special Instructions?):\s*([^\n<]+)/i);
-  if (fctmsNotesMatch) {
-    data.notes = fctmsNotesMatch[1].trim();
+  // Extract notes from Full Circle TMS - they appear in red <h4> tags
+  // Pattern: <h4 style="color:red;"><b>Notes: ...</b></h4>
+  const redNotesMatches = (bodyHtml || '')?.match(/<h4[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>\s*<b>([^<]+)<\/b>\s*<\/h4>/gi);
+  if (redNotesMatches && redNotesMatches.length > 0) {
+    const allNotes: string[] = [];
+    for (const match of redNotesMatches) {
+      // Extract content between <b> tags
+      const contentMatch = match.match(/<b>([^<]+)<\/b>/i);
+      if (contentMatch) {
+        let noteText = contentMatch[1].trim();
+        // Remove "Notes:" prefix if present
+        noteText = noteText.replace(/^Notes:\s*/i, '');
+        // Skip bid instruction lines
+        if (!noteText.toLowerCase().includes('submit your bid via')) {
+          allNotes.push(noteText);
+        }
+      }
+    }
+    if (allNotes.length > 0) {
+      data.notes = allNotes.join(' | ');
+    }
   }
   
-  // Also check for notes in HTML table or formatted section
+  // Fallback: try plain text "Notes:" pattern
   if (!data.notes) {
-    const notesTableMatch = (bodyHtml || bodyText)?.match(/<td[^>]*>Notes?<\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
-    if (notesTableMatch) {
-      data.notes = notesTableMatch[1].trim();
+    const fctmsNotesMatch = (bodyHtml || bodyText)?.match(/(?:Notes?|Special Instructions?):\s*([^\n<]+)/i);
+    if (fctmsNotesMatch) {
+      data.notes = fctmsNotesMatch[1].trim();
     }
   }
   
