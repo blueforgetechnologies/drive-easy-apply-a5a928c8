@@ -1643,7 +1643,7 @@ export default function LoadHunterTab() {
           dispatcher_id
         `)
         .order('missed_at', { ascending: false })
-        .limit(1000);
+        .limit(9999);
 
       if (error) {
         console.error('Error loading missed history:', error);
