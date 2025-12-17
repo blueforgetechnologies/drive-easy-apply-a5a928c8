@@ -4929,7 +4929,7 @@ export default function LoadHunterTab() {
                                 <div className="flex items-center gap-1">
                                   <span className={`text-[13px] leading-tight whitespace-nowrap font-medium ${receivedDiffMins >= 15 ? 'text-red-500' : receivedDiffMins >= 5 ? 'text-orange-500' : 'text-green-500'}`} title={exactReceived}>{receivedAgo}</span>
                                   {isNewlyProcessed && (
-                                    <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-white">NEW</Badge>
+                                    <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-black font-semibold">NEW</Badge>
                                   )}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground leading-tight whitespace-nowrap">
