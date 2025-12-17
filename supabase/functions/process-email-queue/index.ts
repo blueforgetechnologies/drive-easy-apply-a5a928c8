@@ -698,28 +698,32 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
   
   // Extract notes from Full Circle TMS - they appear in red <h4> tags
   // Pattern: <h4 style="color:red;"><b>Notes: ...</b></h4>
-  const redNotesMatches = (bodyHtml || '')?.match(/<h4[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>\s*<b>([^<]+)<\/b>\s*<\/h4>/gi);
-  if (redNotesMatches && redNotesMatches.length > 0) {
-    const allNotes: string[] = [];
-    for (const noteMatch of redNotesMatches) {
-      // Extract content between <b> tags
-      const contentMatch = noteMatch.match(/<b>([^<]+)<\/b>/i);
-      if (contentMatch) {
-        let noteText = contentMatch[1].trim();
-        // Decode HTML entities
-        noteText = noteText.replace(/&#x2013;/g, '–').replace(/&#x2014;/g, '—');
-        // Remove "Notes:" prefix if present
-        noteText = noteText.replace(/^Notes:\s*/i, '');
-        // Skip bid instruction lines
-        if (!noteText.toLowerCase().includes('submit your bid via') && !noteText.toLowerCase().includes('submitted bids must include')) {
-          allNotes.push(noteText);
-        }
-      }
+  const searchContent = bodyHtml || bodyText || '';
+  const extractedNotes: string[] = [];
+  
+  // More robust regex - use [\s\S]*? to handle whitespace/newlines, look for red in style
+  const redH4Pattern = /<h4[^>]*style\s*=\s*["'][^"']*red[^"']*["'][^>]*>[\s\S]*?<b>([\s\S]*?)<\/b>[\s\S]*?<\/h4>/gi;
+  let noteMatch;
+  while ((noteMatch = redH4Pattern.exec(searchContent)) !== null) {
+    let noteText = noteMatch[1].trim();
+    // Decode HTML entities
+    noteText = noteText.replace(/&#x([0-9A-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    noteText = noteText.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec)));
+    noteText = noteText.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    // Remove "Notes:" prefix if present
+    noteText = noteText.replace(/^Notes:\s*/i, '');
+    // Skip bid instruction lines
+    if (noteText && 
+        !noteText.toLowerCase().includes('submit your bid via') && 
+        !noteText.toLowerCase().includes('submitted bids must include') &&
+        !noteText.toLowerCase().includes('location of your vehicle')) {
+      extractedNotes.push(noteText);
     }
-    if (allNotes.length > 0) {
-      data.notes = allNotes.join(' | ');
-      console.log(`📝 FCTMS: Extracted notes: ${data.notes.substring(0, 100)}...`);
-    }
+  }
+  
+  if (extractedNotes.length > 0) {
+    data.notes = extractedNotes.join(' | ');
+    console.log(`📝 FCTMS: Extracted notes: ${data.notes.substring(0, 100)}...`);
   }
   
   // Fallback: try plain text "Notes:" pattern
