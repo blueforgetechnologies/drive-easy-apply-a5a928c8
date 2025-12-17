@@ -516,7 +516,7 @@ const LoadEmailDetail = ({
     const orderLine = `Order Number: ${data.order_number || 'N/A'} [${originCity}, ${originState} to ${destCity}, ${destState}]`;
     setEditableOrderLine(orderLine);
   }, [vehicle, data.broker_name, data.broker_email, data.order_number, originCity, originState, destCity, destState]);
-  const brokerName = data.broker || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
+  const brokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
 
   // Haversine distance calculation (returns distance in miles)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
