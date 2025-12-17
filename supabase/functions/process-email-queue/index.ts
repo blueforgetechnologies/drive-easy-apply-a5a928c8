@@ -305,6 +305,30 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
+  // Extract notes from HTML structure (notes-section class) - Sylectus format
+  const notesMatch = bodyText?.match(/<div[^>]*class=['"]notes-section['"][^>]*>([\s\S]*?)<\/div>/i);
+  if (notesMatch) {
+    const notesContent = notesMatch[1];
+    const notesPTags = notesContent.match(/<p[^>]*>(.*?)<\/p>/gi);
+    if (notesPTags && notesPTags.length > 0) {
+      const notesText = notesPTags
+        .map(tag => tag.replace(/<[^>]*>/g, '').trim())
+        .filter(text => text.length > 0)
+        .join(', ');
+      if (notesText) {
+        data.notes = notesText;
+      }
+    }
+  }
+  
+  // Fallback: try plain text "Notes:" pattern
+  if (!data.notes) {
+    const notesPlainMatch = bodyText?.match(/Notes?:\s*([^\n<]+)/i);
+    if (notesPlainMatch) {
+      data.notes = notesPlainMatch[1].trim();
+    }
+  }
+
   return data;
 }
 
@@ -669,6 +693,20 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
     if (subjectStatesMatch) {
       if (!data.origin_state) data.origin_state = subjectStatesMatch[1].toUpperCase();
       if (!data.destination_state) data.destination_state = subjectStatesMatch[2].toUpperCase();
+    }
+  }
+  
+  // Extract notes from Full Circle TMS - look for "Notes:" or "Special Instructions:" patterns
+  const fctmsNotesMatch = (bodyHtml || bodyText)?.match(/(?:Notes?|Special Instructions?):\s*([^\n<]+)/i);
+  if (fctmsNotesMatch) {
+    data.notes = fctmsNotesMatch[1].trim();
+  }
+  
+  // Also check for notes in HTML table or formatted section
+  if (!data.notes) {
+    const notesTableMatch = (bodyHtml || bodyText)?.match(/<td[^>]*>Notes?<\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+    if (notesTableMatch) {
+      data.notes = notesTableMatch[1].trim();
     }
   }
   
