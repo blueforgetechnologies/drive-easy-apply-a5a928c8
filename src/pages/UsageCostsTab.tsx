@@ -735,13 +735,33 @@ const UsageCostsTab = () => {
     }
   };
 
+  // Parse AI cost to number (remove $ and 'Free tier' handling)
+  const aiCostNumber = aiStats?.estimatedCost && aiStats.estimatedCost !== 'Free tier' 
+    ? parseFloat(aiStats.estimatedCost.replace('$', '')) 
+    : 0;
+
+  // Cost breakdown object for detailed display
+  const costBreakdown = {
+    mapbox: {
+      geocoding: geocodingCost,
+      mapLoads: mapLoadsCost,
+      directions: directionsCost,
+      total: geocodingCost + mapLoadsCost + directionsCost
+    },
+    ai: {
+      total: aiCostNumber
+    },
+    email: {
+      resend: parseFloat(resendStats?.estimatedCost || '0'),
+      pubsub: parseFloat(pubsubStats?.estimatedCost || '0'),
+      total: parseFloat(resendStats?.estimatedCost || '0') + parseFloat(pubsubStats?.estimatedCost || '0')
+    }
+  };
+
   const totalEstimatedMonthlyCost = (
-    geocodingCost +
-    mapLoadsCost +
-    directionsCost +
-    parseFloat(estimatedCosts.resend.estimatedCost) +
-    parseFloat(pubsubStats?.estimatedCost || '0') +
-    parseFloat(resendStats?.estimatedCost || '0')
+    costBreakdown.mapbox.total +
+    costBreakdown.ai.total +
+    costBreakdown.email.total
   ).toFixed(2);
 
   return (
@@ -774,14 +794,14 @@ const UsageCostsTab = () => {
         </div>
       </div>
 
-      {/* Total Cost Overview */}
+      {/* Total Cost Overview with Detailed Breakdown */}
       <Card className={`border-primary/20 bg-primary/5 ${isCompactView ? 'py-0' : ''}`}>
         <CardHeader className={isCompactView ? 'py-3 px-4' : ''}>
           <div className="flex items-center justify-between">
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
               {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
-              <InfoTooltip text="Sum of all estimated service costs (Mapbox geocoding, map loads, directions). Based on current month usage and tiered pricing." />
+              <InfoTooltip text="Sum of all tracked service costs: Mapbox APIs, Lovable AI usage, and email services (Resend, Pub/Sub). Note: Lovable Cloud infrastructure usage (database ops, edge functions) is billed separately by Lovable at ~$0.01/unit." />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -789,13 +809,94 @@ const UsageCostsTab = () => {
           </div>
           {!isCompactView && <CardDescription>Based on current usage patterns</CardDescription>}
         </CardHeader>
-        {!isCompactView && (
-          <CardContent>
-            <div className="text-4xl font-bold text-primary hidden">
-              ${totalEstimatedMonthlyCost}
+        <CardContent className={isCompactView ? 'pt-0 pb-3 px-4' : ''}>
+          {/* Detailed Cost Breakdown */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              Cost Breakdown
+              <InfoTooltip text="Detailed breakdown of all tracked costs. Each service shows its individual components and subtotal." />
             </div>
-          </CardContent>
-        )}
+            
+            <div className="grid gap-3">
+              {/* Mapbox Section */}
+              <div className="bg-background/50 rounded-lg p-3 border">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Map className="h-4 w-4 text-blue-500" />
+                    <span className="font-medium text-sm">Mapbox APIs</span>
+                  </div>
+                  <span className="font-semibold text-sm">${costBreakdown.mapbox.total.toFixed(2)}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Geocoding:</span>
+                    <span>${costBreakdown.mapbox.geocoding.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Map Loads:</span>
+                    <span>${costBreakdown.mapbox.mapLoads.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Directions:</span>
+                    <span>${costBreakdown.mapbox.directions.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Section */}
+              <div className="bg-background/50 rounded-lg p-3 border">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    <span className="font-medium text-sm">Lovable AI</span>
+                  </div>
+                  <span className="font-semibold text-sm">
+                    {aiCostNumber > 0 ? `$${aiCostNumber.toFixed(4)}` : 'Free tier'}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Requests: {aiStats?.count || 0}</span>
+                    <span>Tokens: {(aiStats?.totalTokens || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Services Section */}
+              <div className="bg-background/50 rounded-lg p-3 border">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-orange-500" />
+                    <span className="font-medium text-sm">Email Services</span>
+                  </div>
+                  <span className="font-semibold text-sm">${costBreakdown.email.total.toFixed(2)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Resend ({resendStats?.count || 0} emails):</span>
+                    <span>${costBreakdown.email.resend.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Pub/Sub:</span>
+                    <span>${costBreakdown.email.pubsub.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cloud Infrastructure Note */}
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <HardDrive className="h-4 w-4 text-amber-600" />
+                  <span className="font-medium text-sm text-amber-700 dark:text-amber-400">Lovable Cloud (Separate Billing)</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Database operations, edge function invocations, and storage are billed by Lovable at ~$0.01/unit. 
+                  Check <strong>Settings → Plans & Credits</strong> for your Cloud usage details.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Geocode Cache Stats */}
