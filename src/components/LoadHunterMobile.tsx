@@ -356,7 +356,7 @@ export default function LoadHunterMobile({
       )}
 
       {/* Content Area */}
-      <ScrollArea className="flex-1 px-3 py-2">
+      <ScrollArea className="flex-1 pl-3 pr-16 sm:pr-3 py-2">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -615,7 +615,7 @@ export default function LoadHunterMobile({
                   className={`overflow-hidden ${isNew ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}
                   onClick={() => onSelectLoad(email, match)}
                 >
-                  <CardContent className="p-2 space-y-1.5">
+                  <CardContent className="p-1.5 space-y-1">
                     {/* Header Row - Order #, NEW badge, Time */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -634,7 +634,7 @@ export default function LoadHunterMobile({
                             <Badge className="bg-green-500 text-[10px] px-1.5 h-5">NEW</Badge>
                           )}
                         </div>
-                        <p className="font-medium text-sm mt-1 truncate">
+                        <p className="font-medium text-[13px] mt-1 truncate">
                           {data.customer || data.broker_company || email.from_name || 'Unknown Customer'}
                         </p>
                       </div>
@@ -652,7 +652,7 @@ export default function LoadHunterMobile({
                     </div>
 
                     {/* Route Info - Origin → Destination */}
-                    <div className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1 text-[11px]">
                       <MapPin className="h-2.5 w-2.5 text-green-600 flex-shrink-0" />
                       <span className="truncate font-medium">
                         {data.origin_city && data.origin_state 
@@ -684,22 +684,22 @@ export default function LoadHunterMobile({
                     )}
 
                     {/* Load Details Grid - Miles, Weight, Pieces, Dims */}
-                    <div className="grid grid-cols-4 gap-1 text-[9px]">
-                      <div className="bg-muted/50 rounded p-1 text-center">
+                    <div className="grid grid-cols-4 gap-0.5 text-[8px]">
+                      <div className="bg-muted/50 rounded p-0.5 text-center">
                         <div className="text-muted-foreground">Out</div>
                         <div className="font-semibold text-primary">
                           {match?.distance_miles ? `${Math.round(match.distance_miles)}` : data.empty_miles || '—'}
                         </div>
                       </div>
-                      <div className="bg-muted/50 rounded p-1 text-center">
+                      <div className="bg-muted/50 rounded p-0.5 text-center">
                         <div className="text-muted-foreground">Loaded</div>
                         <div className="font-semibold">{data.loaded_miles || data.miles || '—'}</div>
                       </div>
-                      <div className="bg-muted/50 rounded p-1 text-center">
+                      <div className="bg-muted/50 rounded p-0.5 text-center">
                         <div className="text-muted-foreground">Pcs</div>
                         <div className="font-semibold">{data.pieces || '—'}</div>
                       </div>
-                      <div className="bg-muted/50 rounded p-1 text-center">
+                      <div className="bg-muted/50 rounded p-0.5 text-center">
                         <div className="text-muted-foreground">Wt</div>
                         <div className="font-semibold">{data.weight ? `${data.weight}` : '—'}</div>
                       </div>
@@ -748,14 +748,14 @@ export default function LoadHunterMobile({
 
                     {/* Load Notes (if present) */}
                     {data.notes && (
-                      <div className="bg-amber-50 dark:bg-amber-950/30 rounded p-2 text-[10px] text-amber-800 dark:text-amber-300">
+                      <div className="bg-amber-50 dark:bg-amber-950/30 rounded p-1.5 text-[9px] text-amber-800 dark:text-amber-300">
                         <span className="font-semibold">Notes:</span> {data.notes}
                       </div>
                     )}
 
                     {/* Matched Vehicle (for match-based filters) */}
                     {vehicle && (
-                      <div className="pt-2 border-t space-y-1.5">
+                      <div className="pt-1.5 border-t space-y-1.5">
                         <div className="flex items-center gap-2">
                           <div className="w-1.5 h-8 bg-blue-500 rounded-full" />
                           <div>
