@@ -445,12 +445,12 @@ export default function UsersTab() {
                                       key={role}
                                       className={
                                         role === "admin" 
-                                          ? "bg-blue-600 hover:bg-blue-700" 
+                                          ? "bg-blue-600 hover:bg-blue-700 text-white" 
                                           : role === "dispatcher" 
-                                          ? "bg-green-600 hover:bg-green-700"
+                                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                                           : role === "driver"
-                                          ? "bg-orange-600 hover:bg-orange-700"
-                                          : "bg-gray-600 hover:bg-gray-700"
+                                          ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                          : "bg-slate-600 hover:bg-slate-700 text-white"
                                       }
                                     >
                                       {role}
