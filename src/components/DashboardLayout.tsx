@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, Sparkles } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
@@ -385,7 +385,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     className="hidden sm:flex items-center gap-1.5 text-xs sm:text-sm text-white/90 hover:text-white transition-colors cursor-pointer rounded-md px-2 py-1 hover:bg-white/10"
                     style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                    <CircleUser className="h-4 w-4" />
                     <span className="truncate max-w-[120px]">{userName}</span>
                     <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                   </button>
