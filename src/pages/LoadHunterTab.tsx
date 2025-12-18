@@ -4997,10 +4997,10 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[13px] leading-tight whitespace-nowrap">{data.vehicle_type || '—'}</div>
-                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.weight ? `${data.weight} lbs` : '—'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.weight !== undefined && data.weight !== null ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces && data.pieces > 0 ? data.pieces : '—'}</div>
+                                <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces !== undefined && data?.pieces !== null ? data.pieces : '—'}</div>
                                 <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions || '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
