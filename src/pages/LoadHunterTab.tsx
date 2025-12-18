@@ -170,6 +170,7 @@ export default function LoadHunterTab() {
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
+  const showAllTabEnabled = currentDispatcherInfo?.show_all_tab || localStorage.getItem('showAllTab') === 'true';
   const currentDispatcherIdRef = useRef<string | null>(null);
   const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
@@ -2966,7 +2967,7 @@ export default function LoadHunterTab() {
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* Merged button group: All, Unreviewed, Sound */}
             <div className="flex items-center overflow-hidden rounded-full">
-              {currentDispatcherInfo?.show_all_tab && (
+              {showAllTabEnabled && (
                 <Button 
                   variant="ghost"
                   size="sm" 
@@ -2991,7 +2992,7 @@ export default function LoadHunterTab() {
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
-                  !currentDispatcherInfo?.show_all_tab ? '!rounded-l-full' : ''
+                  !showAllTabEnabled ? '!rounded-l-full' : ''
                 } ${
                   activeFilter === 'unreviewed' 
                     ? 'btn-glossy-primary text-white' 

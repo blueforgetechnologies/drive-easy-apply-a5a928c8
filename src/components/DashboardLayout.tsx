@@ -29,7 +29,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
   const [unmappedTypesCount, setUnmappedTypesCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showAllTab, setShowAllTab] = useState<boolean>(false);
+  const [showAllTab, setShowAllTab] = useState<boolean>(() => {
+    return localStorage.getItem('showAllTab') === 'true';
+  });
   const [dispatcherId, setDispatcherId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,23 +97,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const toggleShowAllTab = async () => {
-    if (!dispatcherId) {
-      toast.error("No dispatcher profile linked to your account");
-      return;
-    }
-    
     const newValue = !showAllTab;
-    const { error } = await supabase
-      .from("dispatchers")
-      .update({ show_all_tab: newValue })
-      .eq("id", dispatcherId);
     
-    if (error) {
-      toast.error("Failed to update setting");
-      return;
+    // Always save to localStorage
+    localStorage.setItem('showAllTab', String(newValue));
+    setShowAllTab(newValue);
+    
+    // If dispatcher profile exists, also save to database
+    if (dispatcherId) {
+      await supabase
+        .from("dispatchers")
+        .update({ show_all_tab: newValue })
+        .eq("id", dispatcherId);
     }
     
-    setShowAllTab(newValue);
     toast.success(newValue ? "All Loads tab enabled" : "All Loads tab disabled");
   };
 
@@ -471,24 +470,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       Support
                     </button>
                   </div>
-                  {dispatcherId && (
-                    <div className="px-2 py-1.5 border-t">
-                      <div 
-                        className="flex items-center justify-between px-2 py-1 rounded hover:bg-muted transition-colors cursor-pointer"
-                        onClick={toggleShowAllTab}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-sm">All Loads</span>
-                        </div>
-                        <Switch 
-                          checked={showAllTab} 
-                          onCheckedChange={toggleShowAllTab}
-                          className="scale-75"
-                        />
+                  <div className="px-2 py-1.5 border-t">
+                    <div 
+                      className="flex items-center justify-between px-2 py-1 rounded hover:bg-muted transition-colors cursor-pointer"
+                      onClick={toggleShowAllTab}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm">All Loads</span>
                       </div>
+                      <Switch 
+                        checked={showAllTab} 
+                        onCheckedChange={toggleShowAllTab}
+                        className="scale-75"
+                      />
                     </div>
-                  )}
+                  </div>
                   <div className="p-1 border-t">
                     <button 
                       onClick={handleLogout} 
