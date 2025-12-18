@@ -94,11 +94,12 @@ const UsageCostsTab = () => {
       return data;
     },
     refetchInterval: mapboxRefreshInterval,
-    refetchIntervalInBackground: true, // Keep refetching even when tab is not focused
-    staleTime: 0,
+    refetchIntervalInBackground: true,
+    staleTime: 10000, // Show cached data for 10s while refreshing in background
+    gcTime: 300000,
   });
 
-  // Fetch incremental calls since last sync (new calls made by the app AFTER baseline was recorded)
+  // Fetch incremental calls since last sync - PARALLEL queries
   const { data: incrementalCalls, refetch: refetchIncremental } = useQuery({
     queryKey: ["mapbox-incremental", currentMonth, baselineUsage?.last_synced_at],
     queryFn: async () => {
@@ -110,31 +111,29 @@ const UsageCostsTab = () => {
         return { geocoding: 0, mapLoads: 0, directions: 0 };
       }
       
-      // Count new geocoding calls since last sync
-      const { count: geocodingCount } = await supabase
-        .from('geocode_cache')
-        .select('*', { count: 'exact', head: true })
-        .gt('created_at', lastSyncedAt)
-        .eq('month_created', currentMonth);
-      
-      // Count new map loads since last sync
-      const { count: mapLoadsCount } = await supabase
-        .from('map_load_tracking')
-        .select('*', { count: 'exact', head: true })
-        .gt('created_at', lastSyncedAt)
-        .eq('month_year', currentMonth);
-      
-      // Count new directions API calls since last sync
-      const { count: directionsCount } = await supabase
-        .from('directions_api_tracking')
-        .select('*', { count: 'exact', head: true })
-        .gt('created_at', lastSyncedAt)
-        .eq('month_year', currentMonth);
+      // Run all three counts in PARALLEL
+      const [geocodingResult, mapLoadsResult, directionsResult] = await Promise.all([
+        supabase
+          .from('geocode_cache')
+          .select('*', { count: 'exact', head: true })
+          .gt('created_at', lastSyncedAt)
+          .eq('month_created', currentMonth),
+        supabase
+          .from('map_load_tracking')
+          .select('*', { count: 'exact', head: true })
+          .gt('created_at', lastSyncedAt)
+          .eq('month_year', currentMonth),
+        supabase
+          .from('directions_api_tracking')
+          .select('*', { count: 'exact', head: true })
+          .gt('created_at', lastSyncedAt)
+          .eq('month_year', currentMonth)
+      ]);
       
       const result = {
-        geocoding: geocodingCount || 0,
-        mapLoads: mapLoadsCount || 0,
-        directions: directionsCount || 0
+        geocoding: geocodingResult.count || 0,
+        mapLoads: mapLoadsResult.count || 0,
+        directions: directionsResult.count || 0
       };
       console.log('[Mapbox] Incremental data:', result);
       setLastRefresh(new Date());
@@ -143,7 +142,8 @@ const UsageCostsTab = () => {
     enabled: !!baselineUsage,
     refetchInterval: mapboxRefreshInterval,
     refetchIntervalInBackground: true,
-    staleTime: 0,
+    staleTime: 10000, // Show cached data while refreshing
+    gcTime: 300000,
   });
 
   // FALLBACK: Manual interval to force refresh if React Query fails to auto-refresh
@@ -178,52 +178,37 @@ const UsageCostsTab = () => {
     }
   }, [baselineUsage, incrementalCalls, currentMonthUsage]);
 
-  // Fetch geocode cache stats for cache performance display
+  // Fetch geocode cache stats - use daily stats table for instant load (already aggregated)
   const { data: geocodeStats, isFetching: isGeocodeStatsFetching, refetch: refetchGeocodeStats } = useQuery({
-    queryKey: ["geocode-cache-stats", geocodeCacheRefreshInterval],
+    queryKey: ["geocode-cache-stats"],
     queryFn: async () => {
-      console.log('[Geocode Cache] Fetching stats...');
-      // Get total locations count
-      const { count: totalLocations } = await supabase
-        .from('geocode_cache')
-        .select('*', { count: 'exact', head: true });
+      console.log('[Geocode Cache] Fetching stats from daily stats...');
       
-      // Get sum of hit_count using a manual aggregation query
-      const { data: hitData, error } = await supabase
-        .from('geocode_cache')
-        .select('hit_count');
+      // Use the pre-aggregated daily stats table for fast reads
+      const { data: latestStats, error } = await supabase
+        .from('geocode_cache_daily_stats')
+        .select('total_locations, total_hits, estimated_savings')
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
       if (error) throw error;
       
-      // Since we can't easily sum in Supabase client, fetch in batches if needed
-      // For now, use a workaround: fetch all hit_counts with pagination
-      let totalHits = 0;
-      let offset = 0;
-      const batchSize = 1000;
+      // Also get a quick count for current total (just count, no data fetch)
+      const { count: currentCount } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true });
       
-      while (true) {
-        const { data: batch, error: batchError } = await supabase
-          .from('geocode_cache')
-          .select('hit_count')
-          .range(offset, offset + batchSize - 1);
-        
-        if (batchError) throw batchError;
-        if (!batch || batch.length === 0) break;
-        
-        totalHits += batch.reduce((sum, row) => sum + (row.hit_count || 1), 0);
-        
-        if (batch.length < batchSize) break;
-        offset += batchSize;
-      }
-      
-      const cacheSaved = Math.max(0, totalHits - (totalLocations || 0));
-      const estimatedSavings = cacheSaved * 0.00075;
+      const totalLocations = currentCount || latestStats?.total_locations || 0;
+      const totalHits = latestStats?.total_hits || 0;
+      const cacheSaved = Math.max(0, totalHits - totalLocations);
+      const estimatedSavings = latestStats?.estimated_savings || cacheSaved * 0.00075;
       
       setLastGeocodeRefresh(new Date());
       console.log('[Geocode Cache] Stats:', { totalLocations, totalHits, cacheSaved });
       
       return {
-        totalLocations: totalLocations || 0,
+        totalLocations,
         totalHits,
         cacheSaved,
         estimatedSavings: estimatedSavings.toFixed(2),
@@ -232,7 +217,8 @@ const UsageCostsTab = () => {
     },
     refetchInterval: geocodeCacheRefreshInterval,
     refetchIntervalInBackground: true,
-    staleTime: 0,
+    staleTime: 30000, // Keep data fresh for 30 seconds to avoid unnecessary refetches
+    gcTime: 300000, // Keep in cache for 5 minutes
   });
 
   // Fetch historical geocode cache stats
@@ -250,7 +236,7 @@ const UsageCostsTab = () => {
     }
   });
 
-  // Fetch table counts
+  // Fetch table counts - PARALLEL queries for speed
   const { data: tableCounts } = useQuery({
     queryKey: ["usage-table-counts"],
     queryFn: async () => {
@@ -261,48 +247,57 @@ const UsageCostsTab = () => {
         'maintenance_records', 'audit_logs', 'load_documents', 'geocode_cache'
       ] as const;
       
-      const counts: Record<string, number> = {};
-      for (const table of tables) {
-        const { count } = await supabase
+      // Run all count queries in parallel instead of sequentially
+      const countPromises = tables.map(table => 
+        supabase
           .from(table as any)
-          .select('*', { count: 'exact', head: true });
-        counts[table] = count || 0;
-      }
+          .select('*', { count: 'exact', head: true })
+          .then(({ count }) => ({ table, count: count || 0 }))
+      );
+      
+      const results = await Promise.all(countPromises);
+      const counts: Record<string, number> = {};
+      results.forEach(({ table, count }) => { counts[table] = count; });
       return counts;
-    }
+    },
+    staleTime: 60000, // Keep fresh for 1 minute
+    gcTime: 300000, // Cache for 5 minutes
   });
 
-  // Fetch recent activity counts (last 30 days)
+  // Fetch recent activity counts (last 30 days) - PARALLEL queries
   const { data: recentActivity, refetch: refetchRecentActivity } = useQuery({
     queryKey: ["usage-recent-activity"],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
       
-      const { count: emailsCount } = await supabase
-        .from('load_emails')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
-      
-      const { count: loadsCount } = await supabase
-        .from('loads')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
-      
-      const { count: matchesCount } = await supabase
-        .from('load_hunt_matches')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
+      const [emailsResult, loadsResult, matchesResult] = await Promise.all([
+        supabase
+          .from('load_emails')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgoISO),
+        supabase
+          .from('loads')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgoISO),
+        supabase
+          .from('load_hunt_matches')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgoISO)
+      ]);
       
       setLastActivityRefresh(new Date());
       return {
-        emails: emailsCount || 0,
-        loads: loadsCount || 0,
-        matches: matchesCount || 0
+        emails: emailsResult.count || 0,
+        loads: loadsResult.count || 0,
+        matches: matchesResult.count || 0
       };
     },
     refetchInterval: activityRefreshInterval,
     refetchIntervalInBackground: true,
+    staleTime: 30000, // Show cached data for 30s
+    gcTime: 300000,
   });
 
   // Fetch map load tracking (current month)
@@ -316,7 +311,9 @@ const UsageCostsTab = () => {
       
       return count || 0;
     },
-    refetchInterval: mapboxRefreshInterval
+    refetchInterval: mapboxRefreshInterval,
+    staleTime: 10000,
+    gcTime: 300000,
   });
 
   // Fetch email volume stats (hourly history)
