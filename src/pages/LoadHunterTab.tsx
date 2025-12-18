@@ -5206,8 +5206,7 @@ export default function LoadHunterTab() {
                                     {(item as any).booked_load_id ? (
                                       <Button
                                         size="sm"
-                                        className="h-6 px-2 text-[11px] font-semibold"
-                                        variant="secondary"
+                                        className="h-6 px-2 text-[11px] font-semibold bg-yellow-500 hover:bg-yellow-500 text-white cursor-default"
                                         disabled
                                       >
                                         BOOKED
