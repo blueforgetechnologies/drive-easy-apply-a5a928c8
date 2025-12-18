@@ -278,16 +278,16 @@ export default function LoadHunterMobile({
 
       </div>
 
-      {/* Primary Filter Tab Bar */}
-      <div className="border-b bg-card px-1 py-1">
-        <div className="flex items-center gap-1">
+      {/* Primary Filter Tab Bar - Horizontally Scrollable */}
+      <div className="border-b bg-card px-1 py-1 overflow-x-auto">
+        <div className="flex items-center gap-1 min-w-max">
           {/* Primary Tabs */}
           {primaryFilterTabs.map(tab => (
             <Button
               key={tab.id}
               size="sm"
               variant={activeTab === 'loads' && activeFilter === tab.id ? 'default' : 'ghost'}
-              className={`h-9 px-3 text-xs flex-1 ${
+              className={`h-9 px-3 text-xs flex-shrink-0 ${
                 activeTab === 'loads' && activeFilter === tab.id 
                   ? tab.id === 'missed' ? 'bg-destructive hover:bg-destructive/90' : ''
                   : ''
