@@ -590,6 +590,21 @@ All colors MUST be HSL.
     100% { transform: translateX(100%); }
   }
 
+  @keyframes portal-flash {
+    0%, 100% { 
+      opacity: 1;
+      box-shadow: 0 0 0 0 hsl(270 80% 60% / 0.7);
+    }
+    50% { 
+      opacity: 0.85;
+      box-shadow: 0 0 15px 5px hsl(270 80% 60% / 0.5);
+    }
+  }
+
+  .animate-portal-flash {
+    animation: portal-flash 1s ease-in-out infinite;
+  }
+
   /* Smooth slide transitions */
   .slide-up-enter {
     @apply animate-in slide-in-from-bottom-4 fade-in duration-300;
