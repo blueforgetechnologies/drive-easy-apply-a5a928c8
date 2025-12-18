@@ -3,13 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser, Eye } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -27,6 +29,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
   const [unmappedTypesCount, setUnmappedTypesCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showAllTab, setShowAllTab] = useState<boolean>(false);
+  const [dispatcherId, setDispatcherId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUserProfile();
@@ -75,7 +79,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       if (roles && roles.length > 0) {
         setUserRoles(roles.map(r => r.role));
       }
+
+      // Fetch dispatcher show_all_tab setting
+      const { data: dispatcher } = await supabase
+        .from("dispatchers")
+        .select("id, show_all_tab")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (dispatcher) {
+        setDispatcherId(dispatcher.id);
+        setShowAllTab(dispatcher.show_all_tab || false);
+      }
     }
+  };
+
+  const toggleShowAllTab = async () => {
+    if (!dispatcherId) {
+      toast.error("No dispatcher profile linked to your account");
+      return;
+    }
+    
+    const newValue = !showAllTab;
+    const { error } = await supabase
+      .from("dispatchers")
+      .update({ show_all_tab: newValue })
+      .eq("id", dispatcherId);
+    
+    if (error) {
+      toast.error("Failed to update setting");
+      return;
+    }
+    
+    setShowAllTab(newValue);
+    toast.success(newValue ? "All Loads tab enabled" : "All Loads tab disabled");
   };
 
   const loadAlerts = async () => {
@@ -434,6 +471,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       Support
                     </button>
                   </div>
+                  {dispatcherId && (
+                    <div className="px-2 py-1.5 border-t">
+                      <div 
+                        className="flex items-center justify-between px-2 py-1 rounded hover:bg-muted transition-colors cursor-pointer"
+                        onClick={toggleShowAllTab}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">All Loads</span>
+                        </div>
+                        <Switch 
+                          checked={showAllTab} 
+                          onCheckedChange={toggleShowAllTab}
+                          className="scale-75"
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="p-1 border-t">
                     <button 
                       onClick={handleLogout} 
