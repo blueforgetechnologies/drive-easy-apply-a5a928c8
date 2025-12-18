@@ -607,6 +607,131 @@ const UsageCostsTab = () => {
     refetchInterval: mapboxRefreshInterval
   });
 
+  // Estimate Lovable Cloud usage (database operations, edge functions, storage)
+  // Cloud is billed at ~$0.01 per unit
+  const { data: cloudUsageStats } = useQuery({
+    queryKey: ["cloud-usage-estimate", currentMonth],
+    queryFn: async () => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      // Count database operations (writes are ~1 unit each, reads are fractional)
+      // Estimate based on recent activity in high-volume tables
+      
+      // Email processing operations
+      const { count: emailOps } = await supabase
+        .from('load_emails')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      // Hunt match operations (high volume - created/updated frequently)
+      const { count: matchOps } = await supabase
+        .from('load_hunt_matches')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      // Geocode cache operations
+      const { count: geocodeOps } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      // Map load tracking operations
+      const { count: mapTrackingOps } = await supabase
+        .from('map_load_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      // Directions API tracking operations
+      const { count: directionsOps } = await supabase
+        .from('directions_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      // AI usage tracking operations
+      const { count: aiOps } = await supabase
+        .from('ai_usage_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      // Email send tracking operations
+      const { count: emailSendOps } = await supabase
+        .from('email_send_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', currentMonth);
+      
+      // Audit log operations
+      const { count: auditOps } = await supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true })
+        .gte('timestamp', thirtyDaysAgo.toISOString());
+
+      // Match action history
+      const { count: matchActionOps } = await supabase
+        .from('match_action_history')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      // Email volume stats
+      const { count: emailVolumeOps } = await supabase
+        .from('email_volume_stats')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      // Calculate total write operations
+      const writeOps = (emailOps || 0) + (matchOps || 0) + (geocodeOps || 0) + 
+                       (mapTrackingOps || 0) + (directionsOps || 0) + (aiOps || 0) + 
+                       (emailSendOps || 0) + (auditOps || 0) + (matchActionOps || 0) + 
+                       (emailVolumeOps || 0);
+      
+      // Estimate read operations (typically 3-5x write operations for active apps)
+      // Load Hunter does many reads for matching, filtering, realtime subscriptions
+      const estimatedReadMultiplier = 4;
+      const estimatedReadOps = writeOps * estimatedReadMultiplier;
+      
+      // Edge function invocations (estimate based on email processing + AI + other functions)
+      // Each email triggers ~2-3 edge function calls (webhook, process-queue, etc.)
+      const edgeFunctionCalls = (emailOps || 0) * 2.5 + (aiOps || 0) + (emailSendOps || 0);
+      
+      // Realtime subscriptions add to read operations
+      // Estimate ~10 subscription updates per email received
+      const realtimeOps = (emailOps || 0) * 10;
+      
+      // Total estimated units (Lovable charges ~$0.01 per unit)
+      // Formula: writes + (reads * 0.1) + edge functions + (realtime * 0.05)
+      const totalUnits = Math.round(
+        writeOps + 
+        (estimatedReadOps * 0.1) + 
+        edgeFunctionCalls + 
+        (realtimeOps * 0.05)
+      );
+      
+      const estimatedCost = totalUnits * 0.01;
+      
+      return {
+        writeOps,
+        estimatedReadOps,
+        edgeFunctionCalls: Math.round(edgeFunctionCalls),
+        realtimeOps,
+        totalUnits,
+        estimatedCost: estimatedCost.toFixed(2),
+        breakdown: {
+          emails: emailOps || 0,
+          matches: matchOps || 0,
+          geocode: geocodeOps || 0,
+          mapTracking: mapTrackingOps || 0,
+          directions: directionsOps || 0,
+          ai: aiOps || 0,
+          emailSend: emailSendOps || 0,
+          audit: auditOps || 0,
+          matchActions: matchActionOps || 0,
+          emailVolume: emailVolumeOps || 0
+        }
+      };
+    },
+    refetchInterval: 60000, // Refresh every minute
+  });
+
   // Track if any mapbox query is fetching
   const isRefreshing = isUsageFetching;
 
@@ -740,6 +865,9 @@ const UsageCostsTab = () => {
     ? parseFloat(aiStats.estimatedCost.replace('$', '')) 
     : 0;
 
+  // Cloud usage cost
+  const cloudCostNumber = parseFloat(cloudUsageStats?.estimatedCost || '0');
+
   // Cost breakdown object for detailed display
   const costBreakdown = {
     mapbox: {
@@ -755,13 +883,22 @@ const UsageCostsTab = () => {
       resend: parseFloat(resendStats?.estimatedCost || '0'),
       pubsub: parseFloat(pubsubStats?.estimatedCost || '0'),
       total: parseFloat(resendStats?.estimatedCost || '0') + parseFloat(pubsubStats?.estimatedCost || '0')
+    },
+    cloud: {
+      units: cloudUsageStats?.totalUnits || 0,
+      writeOps: cloudUsageStats?.writeOps || 0,
+      readOps: cloudUsageStats?.estimatedReadOps || 0,
+      edgeFunctions: cloudUsageStats?.edgeFunctionCalls || 0,
+      realtime: cloudUsageStats?.realtimeOps || 0,
+      total: cloudCostNumber
     }
   };
 
   const totalEstimatedMonthlyCost = (
     costBreakdown.mapbox.total +
     costBreakdown.ai.total +
-    costBreakdown.email.total
+    costBreakdown.email.total +
+    costBreakdown.cloud.total
   ).toFixed(2);
 
   return (
@@ -801,7 +938,7 @@ const UsageCostsTab = () => {
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
               {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
-              <InfoTooltip text="Sum of all tracked service costs: Mapbox APIs, Lovable AI usage, and email services (Resend, Pub/Sub). Note: Lovable Cloud infrastructure usage (database ops, edge functions) is billed separately by Lovable at ~$0.01/unit." />
+              <InfoTooltip text="Sum of all tracked service costs: Mapbox APIs, Lovable AI usage, email services (Resend, Pub/Sub), and Lovable Cloud (database ops, edge functions, realtime). Cloud usage is estimated based on tracked operations." />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -883,15 +1020,42 @@ const UsageCostsTab = () => {
                 </div>
               </div>
 
-              {/* Cloud Infrastructure Note */}
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <HardDrive className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-sm text-amber-700 dark:text-amber-400">Lovable Cloud (Separate Billing)</span>
+              {/* Lovable Cloud Section - Calculated */}
+              <div className="bg-background/50 rounded-lg p-3 border border-amber-500/30">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="h-4 w-4 text-amber-600" />
+                    <span className="font-medium text-sm">Lovable Cloud</span>
+                    <InfoTooltip text="Estimated based on database operations (writes, reads), edge function invocations, and realtime subscriptions. Actual billing may vary. Lovable charges ~$0.01 per unit." />
+                  </div>
+                  <span className="font-semibold text-sm text-amber-600">${costBreakdown.cloud.total.toFixed(2)}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Database operations, edge function invocations, and storage are billed by Lovable at ~$0.01/unit. 
-                  Check <strong>Settings → Plans & Credits</strong> for your Cloud usage details.
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Estimated Units:</span>
+                    <span className="font-medium">{costBreakdown.cloud.units.toLocaleString()}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/50">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>DB Writes:</span>
+                      <span>{costBreakdown.cloud.writeOps.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>DB Reads (est):</span>
+                      <span>{costBreakdown.cloud.readOps.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Edge Functions:</span>
+                      <span>{costBreakdown.cloud.edgeFunctions.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Realtime (est):</span>
+                      <span>{costBreakdown.cloud.realtime.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
+                  <strong>Note:</strong> This is an estimate. Check <strong>Settings → Plans & Credits</strong> for actual billing.
                 </p>
               </div>
             </div>
