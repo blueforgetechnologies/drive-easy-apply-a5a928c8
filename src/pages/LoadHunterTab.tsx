@@ -4584,7 +4584,9 @@ export default function LoadHunterTab() {
                             <TableHead className="w-[140px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Truck - Drivers<br/>Carrier</TableHead>
                           )}
                           <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Customer</TableHead>
-                          <TableHead className="w-[95px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Received<br/>Expires</TableHead>
+                          {activeFilter !== 'mybids' && (
+                            <TableHead className="w-[95px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Received<br/>Expires</TableHead>
+                          )}
                           <TableHead className="w-[115px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pickup Time<br/>Deliver Time</TableHead>
                           <TableHead className="w-[130px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Origin<br/>Destination</TableHead>
                           <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Empty<br/>Loaded</TableHead>
@@ -4592,7 +4594,17 @@ export default function LoadHunterTab() {
                           <TableHead className="w-[70px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pieces<br/>Dims</TableHead>
                           <TableHead className="w-[45px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Avail</TableHead>
                           <TableHead className="w-[65px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Source</TableHead>
-                          <TableHead className="w-[85px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Actions</TableHead>
+                          {activeFilter !== 'mybids' && (
+                            <TableHead className="w-[85px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Actions</TableHead>
+                          )}
+                          {activeFilter === 'mybids' && (
+                            <>
+                              <TableHead className="w-[70px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Rate</TableHead>
+                              <TableHead className="w-[90px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Dispatcher</TableHead>
+                              <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Award</TableHead>
+                              <TableHead className="w-[80px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Bid Time</TableHead>
+                            </>
+                          )}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -4952,17 +4964,19 @@ export default function LoadHunterTab() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="py-1">
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-[13px] leading-tight whitespace-nowrap font-medium ${receivedDiffMins >= 15 ? 'text-red-500' : receivedDiffMins >= 5 ? 'text-orange-500' : 'text-green-500'}`} title={exactReceived}>{receivedAgo}</span>
-                                  {isNewlyProcessed && (
-                                    <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-black font-semibold">NEW</Badge>
-                                  )}
-                                </div>
-                                <div className="text-[11px] text-muted-foreground leading-tight whitespace-nowrap">
-                                  {email.expires_at ? new Date(email.expires_at).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
-                                </div>
-                              </TableCell>
+                              {activeFilter !== 'mybids' && (
+                                <TableCell className="py-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className={`text-[13px] leading-tight whitespace-nowrap font-medium ${receivedDiffMins >= 15 ? 'text-red-500' : receivedDiffMins >= 5 ? 'text-orange-500' : 'text-green-500'}`} title={exactReceived}>{receivedAgo}</span>
+                                    {isNewlyProcessed && (
+                                      <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-black font-semibold">NEW</Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground leading-tight whitespace-nowrap">
+                                    {email.expires_at ? new Date(email.expires_at).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                                  </div>
+                                </TableCell>
+                              )}
                               <TableCell className="py-1">
                                 <div className="text-[13px] leading-tight whitespace-nowrap">
                                   {pickupDisplay}
@@ -5050,55 +5064,109 @@ export default function LoadHunterTab() {
                                   );
                                 })()}
                               </TableCell>
-                              <TableCell className="text-right py-1">
-                                <div 
-                                  className="inline-flex items-center gap-0 rounded-md overflow-hidden"
-                                  style={{ 
-                                    background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 96%) 100%)',
-                                    boxShadow: '0 3px 10px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,1)',
-                                    border: '1px solid hsl(220 10% 80%)'
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 w-7 p-0 rounded-none text-red-500 hover:bg-red-100 hover:text-red-700 border-r border-gray-200" 
-                                    style={{ textShadow: '0 1px 0 white' }}
-                                    aria-label="Skip load or match"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (activeFilter === 'unreviewed' && match) {
-                                        handleSkipMatch((match as any).id);
-                                      } else {
-                                        handleSkipEmail(email.id, match?.id);
-                                      }
-                                    }}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 w-7 p-0 rounded-none text-white hover:opacity-90" 
+                              {activeFilter !== 'mybids' && (
+                                <TableCell className="text-right py-1">
+                                  <div 
+                                    className="inline-flex items-center gap-0 rounded-md overflow-hidden"
                                     style={{ 
-                                      background: 'linear-gradient(180deg, hsl(221 80% 58%) 0%, hsl(221 80% 50%) 100%)',
-                                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)'
+                                      background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 10% 96%) 100%)',
+                                      boxShadow: '0 3px 10px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,1)',
+                                      border: '1px solid hsl(220 10% 80%)'
                                     }}
-                                    aria-label="Move to waitlist"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (activeFilter === 'unreviewed' && match) {
-                                        handleWaitlistMatch((match as any).id);
-                                      } else {
-                                        handleMoveToWaitlist(email.id, match?.id);
-                                      }
-                                    }}
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <MoreVertical className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </TableCell>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0 rounded-none text-red-500 hover:bg-red-100 hover:text-red-700 border-r border-gray-200" 
+                                      style={{ textShadow: '0 1px 0 white' }}
+                                      aria-label="Skip load or match"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (activeFilter === 'unreviewed' && match) {
+                                          handleSkipMatch((match as any).id);
+                                        } else {
+                                          handleSkipEmail(email.id, match?.id);
+                                        }
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0 rounded-none text-white hover:opacity-90" 
+                                      style={{ 
+                                        background: 'linear-gradient(180deg, hsl(221 80% 58%) 0%, hsl(221 80% 50%) 100%)',
+                                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)'
+                                      }}
+                                      aria-label="Move to waitlist"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (activeFilter === 'unreviewed' && match) {
+                                          handleWaitlistMatch((match as any).id);
+                                        } else {
+                                          handleMoveToWaitlist(email.id, match?.id);
+                                        }
+                                      }}
+                                    >
+                                      <MoreVertical className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              )}
+                              {activeFilter === 'mybids' && (
+                                <>
+                                  {/* Rate column */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
+                                      {data.rate ? `$${Number(data.rate).toLocaleString()}` : '—'}
+                                    </div>
+                                  </TableCell>
+                                  {/* Dispatcher column */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[13px] leading-tight whitespace-nowrap">
+                                      {(() => {
+                                        // Get dispatcher from hunt plan creator
+                                        if (matchHuntPlan?.createdBy) {
+                                          const dispatcher = currentDispatcherInfo?.id === matchHuntPlan.createdBy 
+                                            ? currentDispatcherInfo 
+                                            : null;
+                                          if (dispatcher) {
+                                            return `${dispatcher.first_name} ${dispatcher.last_name?.[0] || ''}.`;
+                                          }
+                                        }
+                                        return '—';
+                                      })()}
+                                    </div>
+                                  </TableCell>
+                                  {/* Award column */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[13px] leading-tight whitespace-nowrap text-muted-foreground">
+                                      —
+                                    </div>
+                                  </TableCell>
+                                  {/* Bid Time column */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[13px] leading-tight whitespace-nowrap">
+                                      {(() => {
+                                        const bidItem = item as any;
+                                        if (bidItem.updated_at) {
+                                          const bidDate = new Date(bidItem.updated_at);
+                                          return bidDate.toLocaleString('en-US', {
+                                            month: 'numeric',
+                                            day: 'numeric',
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true
+                                          });
+                                        }
+                                        return '—';
+                                      })()}
+                                    </div>
+                                  </TableCell>
+                                </>
+                              )}
                             </TableRow>
                           );
                         })}
