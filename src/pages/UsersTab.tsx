@@ -441,21 +441,17 @@ export default function UsersTab() {
                               <div className="flex flex-wrap gap-1">
                                 {user.roles && user.roles.length > 0 ? (
                                   user.roles.map((role) => (
-                                    <Badge 
+                                    <span 
                                       key={role}
-                                      variant="outline"
-                                      className={
-                                        role === "admin" 
-                                          ? "border-blue-600 bg-blue-600 text-white" 
-                                          : role === "dispatcher" 
-                                          ? "border-emerald-600 bg-emerald-600 text-white"
-                                          : role === "driver"
-                                          ? "border-amber-600 bg-amber-600 text-white"
-                                          : "border-slate-600 bg-slate-600 text-white"
-                                      }
+                                      className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold"
+                                      style={{
+                                        backgroundColor: role === "admin" ? "#2563eb" : role === "dispatcher" ? "#059669" : role === "driver" ? "#d97706" : "#475569",
+                                        color: "#ffffff",
+                                        border: `1px solid ${role === "admin" ? "#2563eb" : role === "dispatcher" ? "#059669" : role === "driver" ? "#d97706" : "#475569"}`
+                                      }}
                                     >
                                       {role}
-                                    </Badge>
+                                    </span>
                                   ))
                                 ) : (
                                   <Badge variant="secondary">No role</Badge>
