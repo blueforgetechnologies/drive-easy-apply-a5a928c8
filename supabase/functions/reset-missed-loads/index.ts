@@ -101,6 +101,19 @@ serve(async (req) => {
       throw resetError;
     }
 
+    // 5. Clear missed_loads_history table (reset the Missed count)
+    const { error: clearHistoryError } = await supabaseClient
+      .from('missed_loads_history')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+    if (clearHistoryError) {
+      console.error('Error clearing missed_loads_history:', clearHistoryError);
+      // Don't throw - this is non-critical
+    } else {
+      console.log('Cleared missed_loads_history table');
+    }
+
     console.log('Successfully completed midnight reset');
 
     return new Response(
