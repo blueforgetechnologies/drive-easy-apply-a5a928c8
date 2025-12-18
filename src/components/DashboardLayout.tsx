@@ -261,7 +261,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const secondaryNavItems = [
     { value: "tools", icon: Ruler, label: "Tools" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
-    { value: "screenshare", icon: MonitorUp, label: "Support" },
     { value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount },
   ];
 
@@ -500,7 +499,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="p-3 border-t">
+                  <div className="p-3 border-t space-y-2">
+                    <Button 
+                      onClick={() => navigate('/dashboard/screenshare')} 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full h-8 gap-2 justify-start"
+                    >
+                      <MonitorUp className="h-3.5 w-3.5" />
+                      Support
+                    </Button>
                     <Button 
                       onClick={handleLogout} 
                       variant="outline" 
