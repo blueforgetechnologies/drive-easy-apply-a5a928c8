@@ -443,14 +443,15 @@ export default function UsersTab() {
                                   user.roles.map((role) => (
                                     <Badge 
                                       key={role}
+                                      variant="outline"
                                       className={
                                         role === "admin" 
-                                          ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                          ? "border-blue-600 bg-blue-600 text-white" 
                                           : role === "dispatcher" 
-                                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                          ? "border-emerald-600 bg-emerald-600 text-white"
                                           : role === "driver"
-                                          ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                          : "bg-slate-600 hover:bg-slate-700 text-white"
+                                          ? "border-amber-600 bg-amber-600 text-white"
+                                          : "border-slate-600 bg-slate-600 text-white"
                                       }
                                     >
                                       {role}
