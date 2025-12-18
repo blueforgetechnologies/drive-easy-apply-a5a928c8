@@ -774,30 +774,14 @@ export default function LoadHunterMobile({
                     {/* Matched Vehicle (for match-based filters) */}
                     {vehicle && (
                       <div className="pt-2 border-t space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-8 bg-blue-500 rounded-full" />
-                            <div>
-                              <p className="text-xs font-semibold">{vehicle.vehicle_number}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {getDriverName(vehicle.driver_1_id) || 'No Driver'}
-                              </p>
-                            </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-8 bg-blue-500 rounded-full" />
+                          <div>
+                            <p className="text-xs font-semibold">{vehicle.vehicle_number}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {getDriverName(vehicle.driver_1_id) || 'No Driver'}
+                            </p>
                           </div>
-                          {activeFilter === 'unreviewed' && match && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSkipMatch(match.match_id || match.id);
-                              }}
-                            >
-                              <SkipForward className="h-3 w-3 mr-1" />
-                              Skip
-                            </Button>
-                          )}
                         </div>
                         {/* Carrier Name */}
                         {vehicle.carrier && carriersMap[vehicle.carrier] && (
@@ -811,6 +795,35 @@ export default function LoadHunterMobile({
                             Hunt Note: {huntPlan.notes}
                           </p>
                         )}
+                      </div>
+                    )}
+
+                    {/* Action Buttons - Skip for unreviewed */}
+                    {activeFilter === 'unreviewed' && match && (
+                      <div className="pt-2 border-t flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-9"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSkipMatch(match.match_id || match.id);
+                          }}
+                        >
+                          <SkipForward className="h-4 w-4 mr-1.5" />
+                          Skip
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 h-9"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectLoad(email, match);
+                          }}
+                        >
+                          <DollarSign className="h-4 w-4 mr-1.5" />
+                          View & Bid
+                        </Button>
                       </div>
                     )}
                   </CardContent>
