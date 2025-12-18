@@ -116,12 +116,11 @@ export function BookLoadDialog({
 
       if (loadError) throw loadError;
 
-      // Update the match to 'booked' status and link to the new load
+      // Update the match with the booked load ID (keep match_status as 'bid' so it stays visible)
       const { error: matchError } = await supabase
         .from('load_hunt_matches')
         .update({
-          match_status: 'booked',
-          is_active: false,
+          booked_load_id: newLoad.id,
         })
         .eq('id', match.id);
 
