@@ -4658,6 +4658,12 @@ export default function LoadHunterTab() {
                               <TableHead className="w-[80px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Bid Time</TableHead>
                             </>
                           )}
+                          {activeFilter === 'booked' && (
+                            <>
+                              <TableHead className="w-[70px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Rate</TableHead>
+                              <TableHead className="w-[90px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Dispatcher</TableHead>
+                            </>
+                          )}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -5264,6 +5270,45 @@ export default function LoadHunterTab() {
                                             minute: '2-digit',
                                             hour12: true
                                           });
+                                        }
+                                        return '—';
+                                      })()}
+                                    </div>
+                                  </TableCell>
+                                </>
+                              )}
+                              {activeFilter === 'booked' && (
+                                <>
+                                  {/* Rate column */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
+                                      {(() => {
+                                        const bookedItem = item as any;
+                                        if (bookedItem.bid_rate) {
+                                          return `$${Number(bookedItem.bid_rate).toLocaleString()}`;
+                                        }
+                                        return data.rate ? `$${Number(data.rate).toLocaleString()}` : '—';
+                                      })()}
+                                    </div>
+                                  </TableCell>
+                                  {/* Dispatcher column */}
+                                  <TableCell className="py-1">
+                                    <div className="text-[13px] leading-tight whitespace-nowrap">
+                                      {(() => {
+                                        const bookedItem = item as any;
+                                        // Use bid_by from match if available
+                                        if (bookedItem.bid_by) {
+                                          // Check if it's the current dispatcher
+                                          if (currentDispatcherInfo?.id === bookedItem.bid_by) {
+                                            return `${currentDispatcherInfo.first_name} ${currentDispatcherInfo.last_name?.[0] || ''}.`;
+                                          }
+                                          // Look up dispatcher from allDispatchers
+                                          const dispatcher = allDispatchers.find(d => d.id === bookedItem.bid_by);
+                                          if (dispatcher) {
+                                            return `${dispatcher.first_name} ${dispatcher.last_name?.[0] || ''}.`;
+                                          }
+                                          // Return abbreviated ID if dispatcher not found
+                                          return bookedItem.bid_by.slice(0, 8);
                                         }
                                         return '—';
                                       })()}
