@@ -4637,7 +4637,7 @@ export default function LoadHunterTab() {
                             <TableHead className="w-[140px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Truck - Drivers<br/>Carrier</TableHead>
                           )}
                           <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Customer</TableHead>
-                          {activeFilter !== 'mybids' && (
+                          {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
                             <TableHead className="w-[95px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Received<br/>Expires</TableHead>
                           )}
                           <TableHead className="w-[115px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pickup Time<br/>Deliver Time</TableHead>
@@ -4647,7 +4647,7 @@ export default function LoadHunterTab() {
                           <TableHead className="w-[70px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pieces<br/>Dims</TableHead>
                           <TableHead className="w-[45px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Avail</TableHead>
                           <TableHead className="w-[65px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Source</TableHead>
-                          {activeFilter !== 'mybids' && (
+                          {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
                             <TableHead className="w-[85px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Actions</TableHead>
                           )}
                           {activeFilter === 'mybids' && (
@@ -4973,7 +4973,7 @@ export default function LoadHunterTab() {
                                   // Get broker info from parsed data
                                   const brokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email.split('@')[0];
                                   
-                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
+                                  if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
                                     if (vehicle) {
@@ -5041,7 +5041,7 @@ export default function LoadHunterTab() {
                                   </div>
                                 </div>
                               </TableCell>
-                              {activeFilter !== 'mybids' && (
+                              {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
                                 <TableCell className="py-1">
                                   <div className="flex items-center gap-1">
                                     <span className={`text-[13px] leading-tight whitespace-nowrap font-medium ${receivedDiffMins >= 15 ? 'text-red-500' : receivedDiffMins >= 5 ? 'text-orange-500' : 'text-green-500'}`} title={exactReceived}>{receivedAgo}</span>
@@ -5141,7 +5141,7 @@ export default function LoadHunterTab() {
                                   );
                                 })()}
                               </TableCell>
-                              {activeFilter !== 'mybids' && (
+                              {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
                                 <TableCell className="text-right py-1">
                                   <div 
                                     className="inline-flex items-center gap-0 rounded-md overflow-hidden"
