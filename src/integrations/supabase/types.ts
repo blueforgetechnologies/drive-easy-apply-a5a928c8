@@ -3215,7 +3215,7 @@ export type Database = {
       is_email_invited: { Args: { check_email: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user" | "dispatcher"
+      app_role: "admin" | "user" | "dispatcher" | "driver"
       email_source: "sylectus" | "fullcircle" | "123loadboard" | "truckstop"
     }
     CompositeTypes: {
@@ -3344,7 +3344,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "dispatcher"],
+      app_role: ["admin", "user", "dispatcher", "driver"],
       email_source: ["sylectus", "fullcircle", "123loadboard", "truckstop"],
     },
   },
