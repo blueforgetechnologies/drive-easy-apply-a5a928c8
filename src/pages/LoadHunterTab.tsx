@@ -4610,18 +4610,18 @@ export default function LoadHunterTab() {
                       <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
-                          <TableHead className="w-3 min-w-[12px] max-w-[12px] py-2 px-0 text-white">
+                          <TableHead className="w-1.5 min-w-[6px] max-w-[6px] py-2 px-0 text-white">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-3 w-3 p-0 text-white hover:bg-white/20"
+                              className="h-2.5 w-2.5 p-0 text-white hover:bg-white/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowIdColumns(!showIdColumns);
                               }}
                               title={showIdColumns ? "Hide ID columns" : "Show ID columns"}
                             >
-                              {showIdColumns ? <Minus className="h-2.5 w-2.5" /> : <Plus className="h-2.5 w-2.5" />}
+                              {showIdColumns ? <Minus className="h-2 w-2" /> : <Plus className="h-2 w-2" />}
                             </Button>
                           </TableHead>
                           {showIdColumns && (
@@ -4904,7 +4904,7 @@ export default function LoadHunterTab() {
                               }}
                             >
                               {/* Expand/collapse placeholder cell */}
-                              <TableCell className="py-1 px-0 w-3 min-w-[12px] max-w-[12px]" />
+                              <TableCell className="py-1 px-0 w-1.5 min-w-[6px] max-w-[6px]" />
                               {showIdColumns && (
                                 <>
                                   {/* Order Number from Sylectus */}
