@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, memo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -511,7 +511,7 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
 }
 
 // Memoize the component to prevent unnecessary re-renders
-const LoadRouteMap = memo(LoadRouteMapComponent, (prevProps, nextProps) => {
+const LoadRouteMap = React.memo(LoadRouteMapComponent, (prevProps, nextProps) => {
   // Custom comparison - only re-render if stops actually changed by value
   const prevKey = getStopsKey(prevProps.stops);
   const nextKey = getStopsKey(nextProps.stops);
