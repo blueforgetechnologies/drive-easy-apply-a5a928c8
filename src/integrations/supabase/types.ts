@@ -2452,25 +2452,52 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
+          city: string | null
+          country: string | null
           created_at: string | null
           email: string
           full_name: string | null
           id: string
+          notes: string | null
+          phone: string | null
+          phone_secondary: string | null
+          state: string | null
+          status: string | null
           updated_at: string | null
+          zip: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
           id: string
+          notes?: string | null
+          phone?: string | null
+          phone_secondary?: string | null
+          state?: string | null
+          status?: string | null
           updated_at?: string | null
+          zip?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          notes?: string | null
+          phone?: string | null
+          phone_secondary?: string | null
+          state?: string | null
+          status?: string | null
           updated_at?: string | null
+          zip?: string | null
         }
         Relationships: []
       }
