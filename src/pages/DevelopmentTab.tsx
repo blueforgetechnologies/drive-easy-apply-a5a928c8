@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch, Plug, BarChart3, Target } from "lucide-react";
+import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch, Plug, BarChart3, Target, History } from "lucide-react";
 import ParserHelper from "@/components/ParserHelper";
 import IntegrationsTab from "./IntegrationsTab";
 import UsageCostsTab from "./UsageCostsTab";
 import LoadboardFiltersTab from "./LoadboardFiltersTab";
+import ChangelogTab from "./ChangelogTab";
 
 export default function DevelopmentTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,6 +56,10 @@ export default function DevelopmentTab() {
               <Target className="h-4 w-4" />
               Load Hunter
             </TabsTrigger>
+            <TabsTrigger value="changelog" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Changelog
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -72,6 +77,10 @@ export default function DevelopmentTab() {
 
         <TabsContent value="loadboard" className="mt-4">
           <LoadboardFiltersTab />
+        </TabsContent>
+
+        <TabsContent value="changelog" className="mt-4">
+          <ChangelogTab />
         </TabsContent>
 
         <TabsContent value="documentation" className="mt-4">
