@@ -615,7 +615,7 @@ export default function LoadHunterMobile({
                   className={`overflow-hidden ${isNew ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}
                   onClick={() => onSelectLoad(email, match)}
                 >
-                  <CardContent className="p-3 space-y-2">
+                  <CardContent className="p-2 space-y-1.5">
                     {/* Header Row - Order #, NEW badge, Time */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -652,30 +652,22 @@ export default function LoadHunterMobile({
                     </div>
 
                     {/* Route Info - Origin → Destination */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-green-600 flex-shrink-0" />
-                          <span className="truncate font-medium">
-                            {data.origin_city && data.origin_state 
-                              ? `${data.origin_city}, ${data.origin_state}`
-                              : 'Unknown'
-                            }
-                          </span>
-                        </div>
-                      </div>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-blue-600 flex-shrink-0" />
-                          <span className="truncate font-medium">
-                            {data.destination_city && data.destination_state 
-                              ? `${data.destination_city}, ${data.destination_state}`
-                              : 'Unknown'
-                            }
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      <MapPin className="h-2.5 w-2.5 text-green-600 flex-shrink-0" />
+                      <span className="truncate font-medium">
+                        {data.origin_city && data.origin_state 
+                          ? `${data.origin_city}, ${data.origin_state}`
+                          : 'Unknown'
+                        }
+                      </span>
+                      <ArrowRight className="h-2.5 w-2.5 text-muted-foreground flex-shrink-0" />
+                      <MapPin className="h-2.5 w-2.5 text-blue-600 flex-shrink-0" />
+                      <span className="truncate font-medium">
+                        {data.destination_city && data.destination_state 
+                          ? `${data.destination_city}, ${data.destination_state}`
+                          : 'Unknown'
+                        }
+                      </span>
                     </div>
 
                     {/* Pickup/Delivery Times */}
@@ -692,34 +684,24 @@ export default function LoadHunterMobile({
                     )}
 
                     {/* Load Details Grid - Miles, Weight, Pieces, Dims */}
-                    <div className="grid grid-cols-4 gap-2 text-[10px]">
-                      {/* Miles */}
-                      <div className="bg-muted/50 rounded p-1.5 text-center">
-                        <div className="text-muted-foreground">Miles Out</div>
+                    <div className="grid grid-cols-4 gap-1 text-[9px]">
+                      <div className="bg-muted/50 rounded p-1 text-center">
+                        <div className="text-muted-foreground">Out</div>
                         <div className="font-semibold text-primary">
                           {match?.distance_miles ? `${Math.round(match.distance_miles)}` : data.empty_miles || '—'}
                         </div>
                       </div>
-                      {/* Loaded Miles */}
-                      <div className="bg-muted/50 rounded p-1.5 text-center">
+                      <div className="bg-muted/50 rounded p-1 text-center">
                         <div className="text-muted-foreground">Loaded</div>
-                        <div className="font-semibold">
-                          {data.loaded_miles || data.miles || '—'}
-                        </div>
+                        <div className="font-semibold">{data.loaded_miles || data.miles || '—'}</div>
                       </div>
-                      {/* Pieces */}
-                      <div className="bg-muted/50 rounded p-1.5 text-center">
-                        <div className="text-muted-foreground">Pieces</div>
-                        <div className="font-semibold">
-                          {data.pieces || '—'}
-                        </div>
+                      <div className="bg-muted/50 rounded p-1 text-center">
+                        <div className="text-muted-foreground">Pcs</div>
+                        <div className="font-semibold">{data.pieces || '—'}</div>
                       </div>
-                      {/* Weight */}
-                      <div className="bg-muted/50 rounded p-1.5 text-center">
-                        <div className="text-muted-foreground">Weight</div>
-                        <div className="font-semibold">
-                          {data.weight ? `${data.weight}` : '—'}
-                        </div>
+                      <div className="bg-muted/50 rounded p-1 text-center">
+                        <div className="text-muted-foreground">Wt</div>
+                        <div className="font-semibold">{data.weight ? `${data.weight}` : '—'}</div>
                       </div>
                     </div>
 
@@ -800,28 +782,28 @@ export default function LoadHunterMobile({
 
                     {/* Action Buttons - Skip for unreviewed - Compact */}
                     {activeFilter === 'unreviewed' && match && (
-                      <div className="pt-1.5 border-t flex gap-1.5">
+                      <div className="pt-1 border-t flex gap-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="min-w-0 flex-1 h-7 px-2 text-[11px] gap-1"
+                          className="min-w-0 flex-1 h-6 px-1.5 text-[10px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSkipMatch(match.match_id || match.id);
                           }}
                         >
-                          <SkipForward className="h-3 w-3 mr-0.5" />
+                          <SkipForward className="h-2.5 w-2.5 mr-0.5" />
                           Skip
                         </Button>
                         <Button
                           size="sm"
-                          className="min-w-0 flex-1 h-7 px-2 text-[11px] gap-1"
+                          className="min-w-0 flex-1 h-6 px-1.5 text-[10px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectLoad(email, match);
                           }}
                         >
-                          <DollarSign className="h-3 w-3 mr-0.5" />
+                          <DollarSign className="h-2.5 w-2.5 mr-0.5" />
                           View
                         </Button>
                       </div>
