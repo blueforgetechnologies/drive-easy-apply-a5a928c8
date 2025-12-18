@@ -2721,6 +2721,8 @@ export default function LoadHunterTab() {
           unreviewedViewData={unreviewedViewData}
           skippedMatches={skippedMatches}
           bidMatches={bidMatches}
+          undecidedMatches={undecidedMatches}
+          waitlistMatches={waitlistMatches}
           missedHistory={missedHistory}
           loadMatches={loadMatches}
           loading={loading}
