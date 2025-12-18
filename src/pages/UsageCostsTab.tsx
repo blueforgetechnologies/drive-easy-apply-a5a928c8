@@ -381,51 +381,62 @@ const UsageCostsTab = () => {
   });
 
   // Fetch Pub/Sub tracking (current month) - Google Cloud costs based on email volume
+  // IMPORTANT: Keep this query lightweight (counts + min/max timestamps only)
   const { data: pubsubStats, refetch: refetchPubsub } = useQuery({
     queryKey: ["usage-pubsub", currentMonth],
     queryFn: async () => {
-      // Get email count and date range from load_emails for accurate Pub/Sub calculation
-      const { data: emailData, count: emailCount } = await supabase
-        .from('load_emails')
-        .select('received_at', { count: 'exact' })
-        .order('received_at', { ascending: true });
-      
-      const totalEmails = emailCount || 0;
-      
-      // Calculate days of data
+      // Run the minimum required queries in PARALLEL
+      const [countRes, firstRes, lastRes] = await Promise.all([
+        supabase.from('load_emails').select('*', { count: 'exact', head: true }),
+        supabase
+          .from('load_emails')
+          .select('received_at')
+          .order('received_at', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('load_emails')
+          .select('received_at')
+          .order('received_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      const totalEmails = countRes.count || 0;
+
+      // Calculate days of data using min/max timestamps
       let daysOfData = 1;
-      if (emailData && emailData.length >= 2) {
-        const firstEmail = new Date(emailData[0].received_at);
-        const lastEmail = new Date(emailData[emailData.length - 1].received_at);
-        daysOfData = Math.max(1, (lastEmail.getTime() - firstEmail.getTime()) / (1000 * 60 * 60 * 24));
+      const firstReceivedAt = firstRes.data?.received_at ? new Date(firstRes.data.received_at) : null;
+      const lastReceivedAt = lastRes.data?.received_at ? new Date(lastRes.data.received_at) : null;
+      if (firstReceivedAt && lastReceivedAt) {
+        daysOfData = Math.max(1, (lastReceivedAt.getTime() - firstReceivedAt.getTime()) / (1000 * 60 * 60 * 24));
       }
-      
+
       // Each Pub/Sub notification is ~1.5KB average
       const avgMessageSize = 1500; // bytes
       const totalBytes = totalEmails * avgMessageSize;
       const totalMB = totalBytes / (1024 * 1024);
       const totalGB = totalMB / 1024;
-      
+
       // Gmail API calls estimation (~45 API calls per email processed)
-      // Breakdown: token refresh, list messages, get message details, mark as read, retries
       const API_CALLS_PER_EMAIL = 45;
       const totalApiCalls = totalEmails * API_CALLS_PER_EMAIL;
       const apiCallsPerDay = totalApiCalls / daysOfData;
       const projected30DayApiCalls = Math.round(apiCallsPerDay * 30);
-      
+
       // Project to 30 days
       const emailsPerDay = totalEmails / daysOfData;
       const projected30DayEmails = Math.round(emailsPerDay * 30);
       const projected30DayGB = (projected30DayEmails * avgMessageSize) / (1024 * 1024 * 1024);
-      
+
       // Free tier is 10GB, cost is ~$40 per TiB after that
       const FREE_TIER_GB = 10;
-      const estimatedCost = projected30DayGB > FREE_TIER_GB 
-        ? ((projected30DayGB - FREE_TIER_GB) * 0.04).toFixed(2) 
+      const estimatedCost = projected30DayGB > FREE_TIER_GB
+        ? ((projected30DayGB - FREE_TIER_GB) * 0.04).toFixed(2)
         : '0.00';
-      
+
       setLastPubsubRefresh(new Date());
-      return { 
+      return {
         count: totalEmails,
         totalBytes,
         totalMB: totalMB.toFixed(2),
@@ -442,11 +453,13 @@ const UsageCostsTab = () => {
         apiCallsPerDay: Math.round(apiCallsPerDay),
         projected30DayApiCalls,
         apiCallsInMillions: (totalApiCalls / 1_000_000).toFixed(2),
-        projected30DayApiCallsInMillions: (projected30DayApiCalls / 1_000_000).toFixed(2)
+        projected30DayApiCallsInMillions: (projected30DayApiCalls / 1_000_000).toFixed(2),
       };
     },
     refetchInterval: pubsubRefreshInterval,
     refetchIntervalInBackground: true,
+    staleTime: 60000,
+    gcTime: 300000,
   });
 
   // Fetch Resend email tracking (current month)
