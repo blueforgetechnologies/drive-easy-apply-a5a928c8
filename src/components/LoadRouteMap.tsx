@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,16 +6,34 @@ import { Card, CardContent } from './ui/card';
 import { DollarSign, Leaf } from 'lucide-react';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
 
+interface Stop {
+  location_city?: string;
+  location_state?: string;
+  location_address?: string;
+  location_zip?: string;
+  stop_type: string;
+  stop_sequence?: number;
+  scheduled_date?: string;
+  location_name?: string;
+}
+
 interface LoadRouteMapProps {
-  stops: any[];
-  optimizedStops?: any[];
+  stops: Stop[];
+  optimizedStops?: Stop[];
   requiredBreaks?: any[];
   vehicle?: any;
   onOptimize?: () => void;
   optimizing?: boolean;
 }
 
-export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [], vehicle, onOptimize, optimizing = false }: LoadRouteMapProps) {
+// Create stable stop key for comparison
+const getStopsKey = (stops: Stop[]): string => {
+  return stops
+    .map(s => `${s.location_city || ''}-${s.location_state || ''}-${s.stop_type}`)
+    .join('|');
+};
+
+function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], vehicle, onOptimize, optimizing = false }: LoadRouteMapProps) {
   useMapLoadTracker('LoadRouteMap');
   
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -23,9 +41,17 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
   const markers = useRef<mapboxgl.Marker[]>([]);
   const [routeDistance, setRouteDistance] = useState<number>(0);
   const [fuelEstimate, setFuelEstimate] = useState<any>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const initializingRef = useRef(false);
+  
+  // Track last processed stops to avoid redundant updates
+  const lastStopsKeyRef = useRef<string>('');
 
+  // Initialize map only once
   useEffect(() => {
-    if (!mapContainer.current || stops.length === 0) return;
+    if (!mapContainer.current || stops.length === 0 || initializingRef.current) return;
+    
+    initializingRef.current = true;
 
     const initializeMap = async () => {
       try {
@@ -33,6 +59,7 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
         const { data: tokenData } = await supabase.functions.invoke('get-mapbox-token');
         if (!tokenData?.token) {
           console.error('No Mapbox token available');
+          initializingRef.current = false;
           return;
         }
 
@@ -49,10 +76,11 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         map.current.on('load', () => {
-          updateMarkersAndRoute();
+          setMapReady(true);
         });
       } catch (error) {
         console.error('Error initializing map:', error);
+        initializingRef.current = false;
       }
     };
 
@@ -60,39 +88,75 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
 
     return () => {
       markers.current.forEach(marker => marker.remove());
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      initializingRef.current = false;
+      setMapReady(false);
     };
+  }, []); // Only run once on mount
+
+  // Geocode address function
+  const geocodeAddress = useCallback(async (stop: Stop): Promise<[number, number] | null> => {
+    try {
+      if (!mapboxgl.accessToken) return null;
+      
+      const query = `${stop.location_address || ''} ${stop.location_city || ''} ${stop.location_state || ''} ${stop.location_zip || ''}`.trim();
+      if (!query) return null;
+
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=1`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        return data.features[0].center as [number, number];
+      }
+      return null;
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return null;
+    }
   }, []);
 
+  // Update markers when stops change AND map is ready
   useEffect(() => {
-    if (map.current && map.current.isStyleLoaded()) {
-      updateMarkersAndRoute();
+    if (!map.current || !mapReady) return;
+    
+    // Create a key from current stops to check if we need to update
+    const currentStopsKey = getStopsKey(stops);
+    const optimizedKey = optimizedStops ? getStopsKey(optimizedStops) : '';
+    const combinedKey = `${currentStopsKey}|${optimizedKey}`;
+    
+    // Skip if stops haven't actually changed
+    if (combinedKey === lastStopsKeyRef.current) {
+      return;
     }
-  }, [stops, optimizedStops, requiredBreaks]);
+    lastStopsKeyRef.current = combinedKey;
 
-  const updateMarkersAndRoute = () => {
-    if (!map.current) return;
+    const updateMarkersAndRoute = async () => {
+      // Clear existing markers
+      markers.current.forEach(marker => marker.remove());
+      markers.current = [];
 
-    // Clear existing markers
-    markers.current.forEach(marker => marker.remove());
-    markers.current = [];
+      const coordinates: [number, number][] = [];
+      const bounds = new mapboxgl.LngLatBounds();
 
-    const coordinates: [number, number][] = [];
-    const bounds = new mapboxgl.LngLatBounds();
+      // Use optimized stops if available, otherwise use original stops
+      const stopsToDisplay = optimizedStops && optimizedStops.length > 0 
+        ? optimizedStops 
+        : [...stops].sort((a, b) => (a.stop_sequence || 0) - (b.stop_sequence || 0));
 
-    // Use optimized stops if available, otherwise use original stops
-    const stopsToDisplay = optimizedStops && optimizedStops.length > 0 
-      ? optimizedStops 
-      : [...stops].sort((a, b) => a.stop_sequence - b.stop_sequence);
+      // Process all stops
+      for (let index = 0; index < stopsToDisplay.length; index++) {
+        const stop = stopsToDisplay[index];
+        
+        // Skip stops without location data
+        if (!stop.location_city || !stop.location_state) continue;
 
-    stopsToDisplay.forEach((stop, index) => {
-      // Skip stops without location data
-      if (!stop.location_city || !stop.location_state) return;
-
-      // Geocode the address (simplified - using city/state as fallback)
-      // In production, you'd want to use proper geocoding
-      geocodeAddress(stop).then(coords => {
-        if (!coords) return;
+        const coords = await geocodeAddress(stop);
+        if (!coords) continue;
 
         coordinates.push(coords);
         bounds.extend(coords);
@@ -147,27 +211,26 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
           .addTo(map.current!);
 
         markers.current.push(marker);
+      }
 
-        // Draw route line if we have enough points
-        if (coordinates.length > 1) {
-          drawRoute(coordinates);
-        }
+      // Draw route and fit bounds after all markers
+      if (coordinates.length > 1) {
+        drawRoute(coordinates);
+        calculateRouteDistance(coordinates);
+      }
 
-        // Fit bounds and calculate distance after all markers are added
-        if (index === stopsToDisplay.length - 1 && coordinates.length > 0) {
-          // Calculate total route distance
-          calculateRouteDistance(coordinates);
-          
-          // Add break markers if available
-          if (requiredBreaks.length > 0) {
-            addBreakMarkers(requiredBreaks);
-          }
-          
-          map.current!.fitBounds(bounds, { padding: 100, maxZoom: 10 });
-        }
-      });
-    });
-  };
+      // Add break markers if available
+      if (requiredBreaks.length > 0) {
+        addBreakMarkers(requiredBreaks);
+      }
+
+      if (coordinates.length > 0 && map.current) {
+        map.current.fitBounds(bounds, { padding: 100, maxZoom: 10 });
+      }
+    };
+
+    updateMarkersAndRoute();
+  }, [stops, optimizedStops, requiredBreaks, mapReady, geocodeAddress]);
 
   // Calculate total route distance using Haversine formula
   const calculateRouteDistance = (coordinates: [number, number][]) => {
@@ -279,27 +342,6 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
     });
   };
 
-  const geocodeAddress = async (stop: any): Promise<[number, number] | null> => {
-    try {
-      // Use Mapbox Geocoding API
-      const query = `${stop.location_address || ''} ${stop.location_city || ''} ${stop.location_state || ''} ${stop.location_zip || ''}`.trim();
-      if (!query) return null;
-
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=1`
-      );
-      const data = await response.json();
-      
-      if (data.features && data.features.length > 0) {
-        return data.features[0].center as [number, number];
-      }
-      return null;
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      return null;
-    }
-  };
-
   const drawRoute = (coordinates: [number, number][]) => {
     if (!map.current) return;
 
@@ -355,8 +397,8 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative w-full h-[600px] rounded-lg overflow-hidden border">
+    <div className="space-y-4 h-full">
+      <div className="relative w-full h-full min-h-[200px] rounded-lg overflow-hidden">
         <div ref={mapContainer} className="absolute inset-0" />
         
         {onOptimize && (
@@ -467,3 +509,19 @@ export default function LoadRouteMap({ stops, optimizedStops, requiredBreaks = [
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+const LoadRouteMap = memo(LoadRouteMapComponent, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if stops actually changed by value
+  const prevKey = getStopsKey(prevProps.stops);
+  const nextKey = getStopsKey(nextProps.stops);
+  const prevOptKey = prevProps.optimizedStops ? getStopsKey(prevProps.optimizedStops) : '';
+  const nextOptKey = nextProps.optimizedStops ? getStopsKey(nextProps.optimizedStops) : '';
+  
+  return prevKey === nextKey && 
+         prevOptKey === nextOptKey && 
+         prevProps.optimizing === nextProps.optimizing &&
+         prevProps.requiredBreaks?.length === nextProps.requiredBreaks?.length;
+});
+
+export default LoadRouteMap;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, memo } from "react";
 import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check, History, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -391,6 +391,24 @@ const LoadEmailDetail = ({
   const originState = data.origin_state || "GA";
   const destCity = data.destination_city || "MEMPHIS";
   const destState = data.destination_state || "TN";
+
+  // Memoize map stops to prevent map flickering on parent re-renders
+  const mapStops = useMemo(() => [
+    {
+      location_city: originCity,
+      location_state: originState,
+      location_address: `${originCity}, ${originState}`,
+      stop_type: "pickup",
+      stop_sequence: 1
+    },
+    {
+      location_city: destCity,
+      location_state: destState,
+      location_address: `${destCity}, ${destState}`,
+      stop_type: "delivery",
+      stop_sequence: 2
+    }
+  ], [originCity, originState, destCity, destState]);
 
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
@@ -1068,17 +1086,7 @@ const LoadEmailDetail = ({
             </div>}
 
           {mobileSection === 'map' && <Card className="h-[400px] overflow-hidden rounded-md">
-              <LoadRouteMap stops={[{
-            location_city: originCity,
-            location_state: originState,
-            location_address: `${originCity}, ${originState}`,
-            stop_type: "pickup"
-          }, {
-            location_city: destCity,
-            location_state: destState,
-            location_address: `${destCity}, ${destState}`,
-            stop_type: "delivery"
-          }]} />
+              <LoadRouteMap stops={mapStops} />
             </Card>}
 
           {mobileSection === 'bid' && <div className="space-y-3">
@@ -1785,17 +1793,7 @@ const LoadEmailDetail = ({
           {/* MAP - Full Width Below */}
           <div className="relative">
             <Card className="h-[calc(100vh-380px)] min-h-[200px] overflow-hidden rounded-md">
-              <LoadRouteMap stops={[{
-                location_city: originCity,
-                location_state: originState,
-                location_address: `${originCity}, ${originState}`,
-                stop_type: "pickup"
-              }, {
-                location_city: destCity,
-                location_state: destState,
-                location_address: `${destCity}, ${destState}`,
-                stop_type: "delivery"
-              }]} />
+              <LoadRouteMap stops={mapStops} />
             </Card>
           </div>
         </div>
