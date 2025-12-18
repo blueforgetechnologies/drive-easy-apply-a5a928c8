@@ -36,6 +36,7 @@ import ScreenshareTab from "./pages/ScreenshareTab";
 import FreightCalculatorTab from "./pages/FreightCalculatorTab";
 import LoadAnalyticsTab from "./pages/LoadAnalyticsTab";
 import SystemPromptExport from "./pages/SystemPromptExport";
+import UserDetail from "./pages/UserDetail";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
+          <Route path="/dashboard/user/:id" element={<DashboardLayout><UserDetail /></DashboardLayout>} />
           <Route path="/dashboard/roles" element={<DashboardLayout><RoleBuilderTab /></DashboardLayout>} />
           <Route path="/dashboard/screenshare" element={<DashboardLayout><ScreenshareTab /></DashboardLayout>} />
           <Route path="/dashboard/freight-calc" element={<DashboardLayout><FreightCalculatorTab /></DashboardLayout>} />

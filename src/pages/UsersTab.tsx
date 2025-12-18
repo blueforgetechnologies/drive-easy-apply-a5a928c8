@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,6 +42,7 @@ interface LoginHistory {
 
 export default function UsersTab() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const filter = searchParams.get("filter") || "active";
   const [users, setUsers] = useState<Profile[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -434,7 +435,11 @@ export default function UsersTab() {
                       </TableHeader>
                       <TableBody>
                         {paginatedUsers.map((user) => (
-                          <TableRow key={user.id}>
+                          <TableRow 
+                            key={user.id} 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => navigate(`/dashboard/user/${user.id}`)}
+                          >
                             <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
@@ -465,7 +470,7 @@ export default function UsersTab() {
                               {format(new Date(user.created_at), "MM/dd/yyyy")}
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                                 <Button
                                   onClick={() => handleSendLogin(user)}
                                   size="sm"
