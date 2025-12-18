@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, Mail, Shield, ChevronDown } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
@@ -389,80 +389,54 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 p-0" sideOffset={8}>
-                  <div className="p-4 border-b">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-5 w-5 text-primary" />
+                <PopoverContent align="end" className="w-56 p-0" sideOffset={8}>
+                  <div className="px-3 py-2.5 border-b">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{userName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                        <p className="font-medium text-sm truncate leading-tight">{userName}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{userEmail}</p>
                       </div>
+                      {userRoles.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary capitalize flex-shrink-0">
+                          {userRoles[0]}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-center gap-2.5 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Email:</span>
-                      <span className="truncate flex-1 text-right">{userEmail}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5 text-sm">
-                      <Shield className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Role:</span>
-                      <div className="flex-1 flex justify-end gap-1 flex-wrap">
-                        {userRoles.length > 0 ? (
-                          userRoles.map((role) => (
-                            <span 
-                              key={role} 
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize"
-                            >
-                              {role}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground text-xs">No role assigned</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-3 border-t space-y-2">
-                    <Button 
+                  <div className="p-1">
+                    <button 
                       onClick={() => navigate('/dashboard/settings')} 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full h-8 gap-2 justify-start"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
                     >
-                      <Settings className="h-3.5 w-3.5" />
+                      <Settings className="h-3.5 w-3.5 text-muted-foreground" />
                       Settings
-                    </Button>
-                    <Button 
+                    </button>
+                    <button 
                       onClick={() => navigate('/dashboard/tools')} 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full h-8 gap-2 justify-start"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
                     >
-                      <Ruler className="h-3.5 w-3.5" />
+                      <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
                       Tools
-                    </Button>
-                    <Button 
+                    </button>
+                    <button 
                       onClick={() => navigate('/dashboard/screenshare')} 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full h-8 gap-2 justify-start"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
                     >
-                      <MonitorUp className="h-3.5 w-3.5" />
+                      <MonitorUp className="h-3.5 w-3.5 text-muted-foreground" />
                       Support
-                    </Button>
-                    <Button 
+                    </button>
+                  </div>
+                  <div className="p-1 border-t">
+                    <button 
                       onClick={handleLogout} 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full h-8 gap-2"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-destructive/10 text-destructive transition-colors text-left"
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      Logout
-                    </Button>
+                      Sign out
+                    </button>
                   </div>
                 </PopoverContent>
               </Popover>
