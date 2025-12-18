@@ -400,9 +400,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <p className="text-[11px] text-muted-foreground truncate">{userEmail}</p>
                       </div>
                       {userRoles.length > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary capitalize flex-shrink-0">
-                          {userRoles[0]}
-                        </span>
+                        <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end max-w-[80px]">
+                          {userRoles.map((role) => (
+                            <span key={role} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary capitalize">
+                              {role}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -440,19 +444,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button 
-                onClick={handleLogout} 
-                variant="outline" 
-                size="sm" 
-                className="h-7 text-[11px] px-2.5 border-white/30 text-white bg-white/10 hover:bg-white/20 hover:text-white hidden md:flex"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.15)',
-                  textShadow: '0 1px 1px rgba(0,0,0,0.3)'
-                }}
-              >
-                Logout
-              </Button>
             </div>
           </div>
         </div>
