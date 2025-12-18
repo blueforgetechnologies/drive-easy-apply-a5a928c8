@@ -3,14 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut, ShieldCheck, MonitorUp, Ruler, TrendingUp, User, Mail, Shield, ChevronDown, MoreHorizontal } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, Mail, Shield, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
@@ -254,21 +247,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "analytics", icon: TrendingUp, label: "Analytics" },
-  ];
-
-  // Secondary nav items - less frequent, in dropdown
-  const secondaryNavItems = [
-    { value: "tools", icon: Ruler, label: "Tools" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     { value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount },
   ];
 
-  // Combined for mobile menu
-  const allNavItems = [...primaryNavItems, ...secondaryNavItems];
-
-  // Check if current tab is in secondary
-  const isSecondaryActive = secondaryNavItems.some(item => item.value === activeTab);
-  const totalSecondaryBadge = integrationAlertCount + unmappedTypesCount;
+  // Combined for mobile menu (includes items from user dropdown)
+  const allNavItems = [
+    ...primaryNavItems,
+    { value: "tools", icon: Ruler, label: "Tools" },
+    { value: "settings", icon: Settings, label: "Settings" },
+  ];
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col">
@@ -322,66 +310,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     })}
                   </TabsList>
                 </Tabs>
-
-                {/* More Dropdown for secondary items */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className={cn(
-                        "flex items-center gap-1.5 h-8 text-[13px] px-2.5 text-white/90 border border-white/20 rounded-md transition-colors",
-                        isSecondaryActive ? "bg-white/20" : "hover:bg-white/10"
-                      )}
-                      style={{
-                        textShadow: '0 1px 1px rgba(0,0,0,0.3)',
-                        background: isSecondaryActive 
-                          ? 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%)'
-                          : 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 100%)',
-                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
-                      }}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span>More</span>
-                      {totalSecondaryBadge > 0 && (
-                        <span 
-                          className="ml-0.5 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white rounded-full"
-                          style={{
-                            background: 'linear-gradient(180deg, hsl(0 84% 60%) 0%, hsl(0 72% 51%) 100%)',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                          }}
-                        >
-                          {totalSecondaryBadge > 9 ? '9+' : totalSecondaryBadge}
-                        </span>
-                      )}
-                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-52 bg-background">
-                    {secondaryNavItems.map((item, index) => {
-                      const Icon = item.icon;
-                      const isActive = activeTab === item.value;
-                      return (
-                        <div key={item.value}>
-                          {index === 4 && <DropdownMenuSeparator />}
-                          <DropdownMenuItem 
-                            onClick={() => handleTabChange(item.value)}
-                            className={cn(
-                              "flex items-center gap-2.5 cursor-pointer",
-                              isActive && "bg-accent"
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            <span className="flex-1">{item.label}</span>
-                            {item.badge && item.badge > 0 && (
-                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-destructive-foreground bg-destructive rounded-full">
-                                {item.badge > 9 ? '9+' : item.badge}
-                              </span>
-                            )}
-                          </DropdownMenuItem>
-                        </div>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
 
               {/* Mobile Menu Button */}
@@ -507,6 +435,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     >
                       <Settings className="h-3.5 w-3.5" />
                       Settings
+                    </Button>
+                    <Button 
+                      onClick={() => navigate('/dashboard/tools')} 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full h-8 gap-2 justify-start"
+                    >
+                      <Ruler className="h-3.5 w-3.5" />
+                      Tools
                     </Button>
                     <Button 
                       onClick={() => navigate('/dashboard/screenshare')} 
