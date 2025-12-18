@@ -88,10 +88,11 @@ const LoadEmailDetail = ({
   const [editableOrderLine, setEditableOrderLine] = useState<string>("");
   const data = email.parsed_data || {};
   
-  // Check if broker email contains "donotreply" for button styling - must be reactive to toEmail state
+  // Check if broker email contains "do not reply" variants (DONOTREPLY / DO-NOT-REPLY / DO_NOT_REPLY)
+  // for button styling - must be reactive to toEmail state
   const isDoNotReplyEmail = useMemo(() => {
-    const emailToCheck = toEmail || data.broker_email || '';
-    return emailToCheck.toLowerCase().includes('donotreply');
+    const emailToCheck = (toEmail || data.broker_email || '').trim();
+    return /do[-_]?not[-_]?reply/i.test(emailToCheck);
   }, [toEmail, data.broker_email]);
 
   const DEFAULT_TEMPLATES = {
@@ -1251,7 +1252,8 @@ const LoadEmailDetail = ({
               <div className={`grid gap-2 ${portalBidUrl ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <Button 
                   size="sm" 
-                  className={`h-11 ${isDoNotReplyEmail ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`} 
+                  variant={isDoNotReplyEmail ? "secondary" : "default"}
+                  className="h-11"
                   onClick={() => setShowEmailConfirmDialog(true)}
                 >
                   Email Bid
@@ -1426,7 +1428,8 @@ const LoadEmailDetail = ({
           <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
             <Button 
               size="sm" 
-              className={`flex-1 h-10 font-semibold shadow-sm ${isDoNotReplyEmail ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`} 
+              variant={isDoNotReplyEmail ? "secondary" : "default"}
+              className="flex-1 h-10 font-semibold shadow-sm"
               onClick={() => setShowEmailConfirmDialog(true)}
             >
               <Mail className="w-4 h-4 mr-2" />
