@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'changelog', 'tools', 'analytics'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'tools', 'analytics'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -263,7 +263,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     { value: "screenshare", icon: MonitorUp, label: "Support" },
     { value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount },
-    { value: "changelog", icon: History, label: "Changelog" },
   ];
 
   // Combined for mobile menu
