@@ -4610,7 +4610,7 @@ export default function LoadHunterTab() {
                       <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
-                          <TableHead className="w-[30px] py-2 px-2 text-white">
+                          <TableHead className="w-[20px] py-2 px-1 text-white">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -5013,7 +5013,7 @@ export default function LoadHunterTab() {
                                   <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                     {(() => {
                                       const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
-                                      return customerName.length > 22 ? customerName.slice(0, 22) + '...' : customerName;
+                                      return customerName.length > 18 ? customerName.slice(0, 18) + '...' : customerName;
                                     })()}
                                   </div>
                                 </div>
