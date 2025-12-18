@@ -30,7 +30,7 @@ interface LoadEmailDetailProps {
   drivers?: any[];
   carriersMap?: Record<string, string>;
   onClose: () => void;
-  onBidPlaced?: (matchId: string, loadEmailId: string) => void;
+  onBidPlaced?: (matchId: string, loadEmailId: string, bidRate?: number) => void;
   onUndecided?: (matchId: string) => void;
   onSkip?: (matchId: string) => Promise<void> | void;
   onWait?: (matchId: string) => Promise<void> | void;
@@ -872,7 +872,8 @@ const LoadEmailDetail = ({
 
       // Notify parent that bid was placed - move to MY BIDS and skip siblings
       if (onBidPlaced && match?.id && email?.id) {
-        onBidPlaced(match.id, email.id);
+        const bidRateNum = bidAmount ? parseFloat(bidAmount.replace(/[^0-9.]/g, '')) : undefined;
+        onBidPlaced(match.id, email.id, bidRateNum);
       }
     } catch (err: any) {
       console.error('Error sending bid email:', err);
