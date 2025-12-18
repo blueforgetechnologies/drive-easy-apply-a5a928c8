@@ -3,7 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut, ShieldCheck, MonitorUp, Ruler, TrendingUp, User, Mail, Shield, ChevronDown } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut, ShieldCheck, MonitorUp, Ruler, TrendingUp, User, Mail, Shield, ChevronDown, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
@@ -239,21 +246,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  const navItems = [
+  // Primary nav items - most frequently used
+  const primaryNavItems = [
     { value: "map", icon: Map, label: "Map" },
     { value: "load-hunter", icon: Target, label: "Load Hunter" },
-    { value: "business", icon: Briefcase, label: "Business", badge: alertCount },
     { value: "loads", icon: Package, label: "Loads" },
-    { value: "analytics", icon: TrendingUp, label: "Analytics" },
-    { value: "freight-calc", icon: Ruler, label: "Freight Calc" },
     { value: "accounting", icon: Calculator, label: "Accounting" },
+    { value: "analytics", icon: TrendingUp, label: "Analytics" },
+  ];
+
+  // Secondary nav items - less frequent, in dropdown
+  const secondaryNavItems = [
+    { value: "business", icon: Briefcase, label: "Business", badge: alertCount },
+    { value: "freight-calc", icon: Ruler, label: "Freight Calculator" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount + unmappedTypesCount },
     { value: "roles", icon: ShieldCheck, label: "Roles" },
     { value: "screenshare", icon: MonitorUp, label: "Support" },
-    { value: "development", icon: FileCode, label: "Dev" },
+    { value: "development", icon: FileCode, label: "Development" },
     { value: "changelog", icon: History, label: "Changelog" },
   ];
+
+  // Combined for mobile menu
+  const allNavItems = [...primaryNavItems, ...secondaryNavItems];
+
+  // Check if current tab is in secondary
+  const isSecondaryActive = secondaryNavItems.some(item => item.value === activeTab);
+  const totalSecondaryBadge = alertCount + integrationAlertCount + unmappedTypesCount;
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col">
@@ -276,7 +295,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </h1>
               
               {/* Desktop Navigation - Hidden on mobile */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden md:flex items-center gap-2 overflow-x-auto">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList 
                     className="h-10 border border-white/20 p-1 gap-1"
@@ -285,7 +304,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
                     }}
                   >
-                    {navItems.map((item) => {
+                    {primaryNavItems.map((item) => {
                       const Icon = item.icon;
                       return (
                         <TabsTrigger 
@@ -302,22 +321,71 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         >
                           <Icon className="h-4 w-4" />
                           <span>{item.label}</span>
-                          {item.badge && item.badge > 0 && (
-                            <span 
-                              className="ml-0.5 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white rounded-full"
-                              style={{
-                                background: 'linear-gradient(180deg, hsl(0 84% 60%) 0%, hsl(0 72% 51%) 100%)',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                              }}
-                            >
-                              {item.badge > 9 ? '9+' : item.badge}
-                            </span>
-                          )}
                         </TabsTrigger>
                       );
                     })}
                   </TabsList>
                 </Tabs>
+
+                {/* More Dropdown for secondary items */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        "flex items-center gap-1.5 h-8 text-[13px] px-2.5 text-white/90 border border-white/20 rounded-md transition-colors",
+                        isSecondaryActive ? "bg-white/20" : "hover:bg-white/10"
+                      )}
+                      style={{
+                        textShadow: '0 1px 1px rgba(0,0,0,0.3)',
+                        background: isSecondaryActive 
+                          ? 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%)'
+                          : 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 100%)',
+                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
+                      }}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span>More</span>
+                      {totalSecondaryBadge > 0 && (
+                        <span 
+                          className="ml-0.5 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white rounded-full"
+                          style={{
+                            background: 'linear-gradient(180deg, hsl(0 84% 60%) 0%, hsl(0 72% 51%) 100%)',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                          }}
+                        >
+                          {totalSecondaryBadge > 9 ? '9+' : totalSecondaryBadge}
+                        </span>
+                      )}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-52 bg-background">
+                    {secondaryNavItems.map((item, index) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.value;
+                      return (
+                        <div key={item.value}>
+                          {index === 4 && <DropdownMenuSeparator />}
+                          <DropdownMenuItem 
+                            onClick={() => handleTabChange(item.value)}
+                            className={cn(
+                              "flex items-center gap-2.5 cursor-pointer",
+                              isActive && "bg-accent"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span className="flex-1">{item.label}</span>
+                            {item.badge && item.badge > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-destructive-foreground bg-destructive rounded-full">
+                                {item.badge > 9 ? '9+' : item.badge}
+                              </span>
+                            )}
+                          </DropdownMenuItem>
+                        </div>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Mobile Menu Button */}
@@ -335,9 +403,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
                     <div className="flex-1 overflow-auto py-3">
                       <nav className="flex flex-col gap-1 px-3">
-                        {navItems.map((item) => {
+                        {allNavItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = activeTab === item.value;
+                          const badge = 'badge' in item ? (item as any).badge : undefined;
                           return (
                             <button
                               key={item.value}
@@ -354,14 +423,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             >
                               <Icon className="h-5 w-5" />
                               <span className="flex-1 text-left">{item.label}</span>
-                              {item.badge && item.badge > 0 && (
+                              {badge && badge > 0 && (
                                 <span className={cn(
                                   "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full",
                                   isActive 
                                     ? "bg-primary-foreground/20 text-primary-foreground"
                                     : "bg-destructive text-destructive-foreground"
                                 )}>
-                                  {item.badge > 9 ? '9+' : item.badge}
+                                  {badge > 9 ? '9+' : badge}
                                 </span>
                               )}
                             </button>
