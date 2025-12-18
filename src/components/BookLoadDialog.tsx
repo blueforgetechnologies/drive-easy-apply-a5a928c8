@@ -116,11 +116,12 @@ export function BookLoadDialog({
 
       if (loadError) throw loadError;
 
-      // Update the match with the booked load ID (keep match_status as 'bid' so it stays visible)
+      // Update the match with the booked load ID and confirmed rate (keep match_status as 'bid' so it stays visible)
       const { error: matchError } = await supabase
         .from('load_hunt_matches')
         .update({
           booked_load_id: newLoad.id,
+          bid_rate: parseFloat(rate), // Store the confirmed rate
         })
         .eq('id', match.id);
 
