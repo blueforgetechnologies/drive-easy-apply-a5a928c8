@@ -1524,7 +1524,21 @@ const LoadEmailDetail = ({
                     </div>
                   </div>
 
-                  {/* Other viewers indicator - stacked avatars with dropdown */}
+                  {/* Match ID and History - moved left */}
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <div className="text-[13px] font-bold mb-0.5">Match ID: {match?.id?.substring(0, 8) || "N/A"}</div>
+                      <button className="text-[10px] text-blue-500 hover:underline flex items-center gap-1" onClick={() => {
+                        fetchMatchHistory();
+                        setShowMatchHistory(true);
+                      }}>
+                        <History className="h-3 w-3" />
+                        View Match History
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Other viewers indicator - moved right */}
                   {otherViewers.length > 0 && (
                     <HoverCard>
                       <HoverCardTrigger asChild>
@@ -1555,7 +1569,7 @@ const LoadEmailDetail = ({
                           </span>
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-48 p-2 bg-popover" align="start">
+                      <HoverCardContent className="w-48 p-2 bg-popover" align="end">
                         <div className="text-xs font-semibold mb-2 text-foreground">Currently Viewing</div>
                         <div className="space-y-1.5">
                           {otherViewers.map((viewer) => (
@@ -1573,19 +1587,6 @@ const LoadEmailDetail = ({
                       </HoverCardContent>
                     </HoverCard>
                   )}
-
-                  <div className="flex items-center gap-6">
-                    <div>
-                      <div className="text-[13px] font-bold mb-0.5">Match ID: {match?.id?.substring(0, 8) || "N/A"}</div>
-                      <button className="text-[10px] text-blue-500 hover:underline flex items-center gap-1" onClick={() => {
-                        fetchMatchHistory();
-                        setShowMatchHistory(true);
-                      }}>
-                        <History className="h-3 w-3" />
-                        View Match History
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
                 {/* CARRIER ROWS */}
