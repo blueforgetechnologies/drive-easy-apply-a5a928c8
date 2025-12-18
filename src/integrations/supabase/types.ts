@@ -1376,6 +1376,9 @@ export type Database = {
       }
       load_hunt_matches: {
         Row: {
+          bid_at: string | null
+          bid_by: string | null
+          bid_rate: number | null
           created_at: string
           distance_miles: number | null
           hunt_plan_id: string
@@ -1389,6 +1392,9 @@ export type Database = {
           vehicle_id: string
         }
         Insert: {
+          bid_at?: string | null
+          bid_by?: string | null
+          bid_rate?: number | null
           created_at?: string
           distance_miles?: number | null
           hunt_plan_id: string
@@ -1402,6 +1408,9 @@ export type Database = {
           vehicle_id: string
         }
         Update: {
+          bid_at?: string | null
+          bid_by?: string | null
+          bid_rate?: number | null
           created_at?: string
           distance_miles?: number | null
           hunt_plan_id?: string

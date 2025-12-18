@@ -1981,15 +1981,21 @@ export default function LoadHunterTab() {
   };
 
   // Handle bid placed - move match to MY BIDS and skip all sibling matches
-  const handleBidPlaced = async (matchId: string, loadEmailId: string) => {
+  const handleBidPlaced = async (matchId: string, loadEmailId: string, bidRate?: number) => {
     try {
       setMatchActionTaken(true); // Mark that action was taken
-      console.log('💰 Bid placed for match:', matchId, 'load:', loadEmailId);
+      console.log('💰 Bid placed for match:', matchId, 'load:', loadEmailId, 'rate:', bidRate);
       
-      // 1. Set this match to 'bid' status
+      // 1. Set this match to 'bid' status with bid details
       const { error: bidError } = await supabase
         .from('load_hunt_matches')
-        .update({ match_status: 'bid', is_active: false })
+        .update({ 
+          match_status: 'bid', 
+          is_active: false,
+          bid_rate: bidRate || null,
+          bid_by: currentDispatcherId || null,
+          bid_at: new Date().toISOString()
+        })
         .eq('id', matchId);
 
       if (bidError) throw bidError;
@@ -5120,21 +5126,28 @@ export default function LoadHunterTab() {
                                   {/* Rate column */}
                                   <TableCell className="py-1">
                                     <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
-                                      {data.rate ? `$${Number(data.rate).toLocaleString()}` : '—'}
+                                      {(() => {
+                                        const bidItem = item as any;
+                                        if (bidItem.bid_rate) {
+                                          return `$${Number(bidItem.bid_rate).toLocaleString()}`;
+                                        }
+                                        return data.rate ? `$${Number(data.rate).toLocaleString()}` : '—';
+                                      })()}
                                     </div>
                                   </TableCell>
                                   {/* Dispatcher column */}
                                   <TableCell className="py-1">
                                     <div className="text-[13px] leading-tight whitespace-nowrap">
                                       {(() => {
-                                        // Get dispatcher from hunt plan creator
-                                        if (matchHuntPlan?.createdBy) {
-                                          const dispatcher = currentDispatcherInfo?.id === matchHuntPlan.createdBy 
-                                            ? currentDispatcherInfo 
-                                            : null;
-                                          if (dispatcher) {
-                                            return `${dispatcher.first_name} ${dispatcher.last_name?.[0] || ''}.`;
+                                        const bidItem = item as any;
+                                        // Use bid_by from match if available
+                                        if (bidItem.bid_by) {
+                                          // Check if it's the current dispatcher
+                                          if (currentDispatcherInfo?.id === bidItem.bid_by) {
+                                            return `${currentDispatcherInfo.first_name} ${currentDispatcherInfo.last_name?.[0] || ''}.`;
                                           }
+                                          // Return abbreviated ID if dispatcher not found
+                                          return bidItem.bid_by.slice(0, 8);
                                         }
                                         return '—';
                                       })()}
@@ -5151,8 +5164,10 @@ export default function LoadHunterTab() {
                                     <div className="text-[13px] leading-tight whitespace-nowrap">
                                       {(() => {
                                         const bidItem = item as any;
-                                        if (bidItem.updated_at) {
-                                          const bidDate = new Date(bidItem.updated_at);
+                                        // Use bid_at if available, fallback to updated_at
+                                        const bidTime = bidItem.bid_at || bidItem.updated_at;
+                                        if (bidTime) {
+                                          const bidDate = new Date(bidTime);
                                           return bidDate.toLocaleString('en-US', {
                                             month: 'numeric',
                                             day: 'numeric',
