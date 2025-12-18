@@ -4610,11 +4610,11 @@ export default function LoadHunterTab() {
                       <Table className="table-glossy">
                       <TableHeader>
                         <TableRow className="h-9">
-                          <TableHead className="w-[20px] py-2 px-1 text-white">
+                          <TableHead className="w-[18px] py-2 px-0 text-white">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-5 w-5 p-0 text-white hover:bg-white/20"
+                              className="h-4 w-4 p-0 text-white hover:bg-white/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowIdColumns(!showIdColumns);
@@ -5013,7 +5013,7 @@ export default function LoadHunterTab() {
                                   <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
                                     {(() => {
                                       const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
-                                      return customerName.length > 18 ? customerName.slice(0, 18) + '...' : customerName;
+                                      return customerName.length > 14 ? customerName.slice(0, 14) + '...' : customerName;
                                     })()}
                                   </div>
                                 </div>
