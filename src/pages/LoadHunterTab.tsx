@@ -587,8 +587,8 @@ export default function LoadHunterTab() {
           loadUnreviewedMatches();
           loadHuntMatches();
           
-          // Play sound alert if enabled
-          if (!isSoundMuted) {
+          // Play sound alert if enabled and on Unreviewed tab only
+          if (!isSoundMuted && activeFilter === 'unreviewed') {
             playAlertSound();
             showSystemNotification('New Load Match', 'A new load has matched your hunt criteria');
           }
