@@ -40,7 +40,7 @@ export default function SettingsTab() {
             <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
             <TabsTrigger value="company" className="text-xs sm:text-sm">Company</TabsTrigger>
             <TabsTrigger value="locations" className="text-xs sm:text-sm">Locations</TabsTrigger>
-            <TabsTrigger value="roles" className="text-xs sm:text-sm">Roles</TabsTrigger>
+            <TabsTrigger value="roles" className="text-xs sm:text-sm">Role Builder</TabsTrigger>
           </TabsList>
         </div>
 
