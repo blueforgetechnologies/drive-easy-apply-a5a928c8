@@ -311,8 +311,8 @@ export default function LoadHunterMobile({
       </div>
 
       {/* Secondary Filter Tabs (scrollable) */}
-      <div className="border-b bg-muted/30 px-1 py-1">
-        <div className="flex items-center gap-1 overflow-x-auto">
+      <div className="border-b bg-muted/30 px-1 py-1 overflow-x-auto">
+        <div className="flex items-center gap-1 min-w-max">
           {secondaryFilterTabs.map(tab => (
             <Button
               key={tab.id}
@@ -804,24 +804,24 @@ export default function LoadHunterMobile({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 h-7 text-xs"
+                          className="min-w-0 flex-1 h-7 px-2 text-[11px] gap-1"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSkipMatch(match.match_id || match.id);
                           }}
                         >
-                          <SkipForward className="h-3 w-3 mr-1" />
+                          <SkipForward className="h-3 w-3 mr-0.5" />
                           Skip
                         </Button>
                         <Button
                           size="sm"
-                          className="flex-1 h-7 text-xs"
+                          className="min-w-0 flex-1 h-7 px-2 text-[11px] gap-1"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectLoad(email, match);
                           }}
                         >
-                          <DollarSign className="h-3 w-3 mr-1" />
+                          <DollarSign className="h-3 w-3 mr-0.5" />
                           View
                         </Button>
                       </div>
