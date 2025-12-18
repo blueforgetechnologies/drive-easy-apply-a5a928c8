@@ -696,28 +696,56 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
     }
   }
   
-  // Extract notes from Full Circle TMS - they appear in red <h4> tags
-  // Pattern: <h4 style="color:red;"><b>Notes: ...</b></h4>
+  // Extract notes from Full Circle TMS - they appear in red <h4> OR <p> tags
   const searchContent = bodyHtml || bodyText || '';
   const extractedNotes: string[] = [];
   
-  // More robust regex - use [\s\S]*? to handle whitespace/newlines, look for red in style
-  const redH4Pattern = /<h4[^>]*style\s*=\s*["'][^"']*red[^"']*["'][^>]*>[\s\S]*?<b>([\s\S]*?)<\/b>[\s\S]*?<\/h4>/gi;
-  let noteMatch;
-  while ((noteMatch = redH4Pattern.exec(searchContent)) !== null) {
-    let noteText = noteMatch[1].trim();
+  // Helper to clean and validate note text
+  const processNoteText = (text: string): string | null => {
+    let noteText = text.trim();
     // Decode HTML entities
     noteText = noteText.replace(/&#x([0-9A-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
     noteText = noteText.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec)));
     noteText = noteText.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    // Remove HTML tags
+    noteText = noteText.replace(/<[^>]*>/g, '').trim();
     // Remove "Notes:" prefix if present
     noteText = noteText.replace(/^Notes:\s*/i, '');
-    // Skip bid instruction lines
-    if (noteText && 
-        !noteText.toLowerCase().includes('submit your bid via') && 
-        !noteText.toLowerCase().includes('submitted bids must include') &&
-        !noteText.toLowerCase().includes('location of your vehicle')) {
-      extractedNotes.push(noteText);
+    // Skip empty or bid instruction lines
+    if (!noteText || 
+        noteText.toLowerCase().includes('submit your bid via') || 
+        noteText.toLowerCase().includes('submitted bids must include') ||
+        noteText.toLowerCase().includes('location of your vehicle') ||
+        noteText.toLowerCase().includes('confirm all key requirements')) {
+      return null;
+    }
+    return noteText;
+  };
+  
+  // Pattern 1: Red <p> tags (MOST common for actual notes)
+  const redPPattern = /<p[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi;
+  let noteMatch;
+  while ((noteMatch = redPPattern.exec(searchContent)) !== null) {
+    const processed = processNoteText(noteMatch[1]);
+    if (processed) extractedNotes.push(processed);
+  }
+  
+  // Pattern 2: Red <h4> tags with <b> inside
+  const redH4Pattern = /<h4[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>([\s\S]*?)<\/h4>/gi;
+  while ((noteMatch = redH4Pattern.exec(searchContent)) !== null) {
+    const processed = processNoteText(noteMatch[1]);
+    if (processed) extractedNotes.push(processed);
+  }
+  
+  // Pattern 3: Any text after "Notes:" header until next section
+  const notesBlockMatch = searchContent.match(/<h4[^>]*>[\s\S]*?Notes:[\s\S]*?<\/h4>([\s\S]*?)(?:<p>[\s\S]*?Distance:|<p>[\s\S]*?Total Pieces:)/i);
+  if (notesBlockMatch) {
+    // Extract any red text from this block
+    const blockContent = notesBlockMatch[1];
+    const redTextPattern = /<[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    while ((noteMatch = redTextPattern.exec(blockContent)) !== null) {
+      const processed = processNoteText(noteMatch[1]);
+      if (processed && !extractedNotes.includes(processed)) extractedNotes.push(processed);
     }
   }
   
@@ -729,7 +757,7 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
   // Fallback: try plain text "Notes:" pattern
   if (!data.notes) {
     const fctmsNotesMatch = (bodyHtml || bodyText)?.match(/(?:Notes?|Special Instructions?):\s*([^\n<]+)/i);
-    if (fctmsNotesMatch) {
+    if (fctmsNotesMatch && fctmsNotesMatch[1].trim()) {
       data.notes = fctmsNotesMatch[1].trim();
     }
   }
