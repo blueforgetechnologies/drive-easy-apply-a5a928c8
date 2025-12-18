@@ -4,40 +4,74 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch } from "lucide-react";
+import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch, Plug, BarChart3, Target } from "lucide-react";
 import ParserHelper from "@/components/ParserHelper";
+import IntegrationsTab from "./IntegrationsTab";
+import UsageCostsTab from "./UsageCostsTab";
+import LoadboardFiltersTab from "./LoadboardFiltersTab";
 
 export default function DevelopmentTab() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const loadIdParam = searchParams.get("loadId");
   
-  const [activeTab, setActiveTab] = useState(tabParam === "parser-helper" ? "parser-helper" : "documentation");
+  const [activeTab, setActiveTab] = useState(tabParam || "documentation");
 
   useEffect(() => {
-    if (tabParam === "parser-helper") {
-      setActiveTab("parser-helper");
+    if (tabParam) {
+      setActiveTab(tabParam);
     }
   }, [tabParam]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold mb-2">Development</h2>
-        <p className="text-muted-foreground">Documentation and development tools</p>
+        <p className="text-muted-foreground">Documentation, integrations, and development tools</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList>
-          <TabsTrigger value="documentation">Documentation</TabsTrigger>
-          <TabsTrigger value="parser-helper" className="flex items-center gap-2">
-            <FileSearch className="h-4 w-4" />
-            Parser Helper
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="documentation">Docs</TabsTrigger>
+            <TabsTrigger value="parser-helper" className="flex items-center gap-2">
+              <FileSearch className="h-4 w-4" />
+              Parser
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex items-center gap-2">
+              <Plug className="h-4 w-4" />
+              Integrations
+            </TabsTrigger>
+            <TabsTrigger value="usage" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Usage
+            </TabsTrigger>
+            <TabsTrigger value="loadboard" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Load Hunter
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="parser-helper" className="mt-4">
           <ParserHelper initialLoadId={loadIdParam} />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-4">
+          <IntegrationsTab />
+        </TabsContent>
+
+        <TabsContent value="usage" className="mt-4">
+          <UsageCostsTab />
+        </TabsContent>
+
+        <TabsContent value="loadboard" className="mt-4">
+          <LoadboardFiltersTab />
         </TabsContent>
 
         <TabsContent value="documentation" className="mt-4">

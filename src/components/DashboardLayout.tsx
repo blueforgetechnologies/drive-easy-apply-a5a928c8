@@ -253,7 +253,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "loads", icon: Package, label: "Loads" },
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "analytics", icon: TrendingUp, label: "Analytics" },
-    { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount + unmappedTypesCount },
+    { value: "settings", icon: Settings, label: "Settings" },
   ];
 
   // Secondary nav items - less frequent, in dropdown
@@ -262,7 +262,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "tools", icon: Ruler, label: "Tools" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     { value: "screenshare", icon: MonitorUp, label: "Support" },
-    { value: "development", icon: FileCode, label: "Development" },
+    { value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount },
     { value: "changelog", icon: History, label: "Changelog" },
   ];
 
@@ -271,7 +271,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Check if current tab is in secondary
   const isSecondaryActive = secondaryNavItems.some(item => item.value === activeTab);
-  const totalSecondaryBadge = alertCount;
+  const totalSecondaryBadge = alertCount + integrationAlertCount + unmappedTypesCount;
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col">
