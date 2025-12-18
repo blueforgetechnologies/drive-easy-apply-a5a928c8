@@ -1246,7 +1246,7 @@ const LoadEmailDetail = ({
               <div className={`grid gap-2 ${portalBidUrl ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <Button 
                   size="sm" 
-                  className={`h-11 ${toEmail?.toLowerCase().includes('donotreply') ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`} 
+                  className={`h-11 ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`} 
                   onClick={() => setShowEmailConfirmDialog(true)}
                 >
                   Email Bid
@@ -1260,7 +1260,7 @@ const LoadEmailDetail = ({
                 {portalBidUrl && (
                   <Button 
                     size="sm" 
-                    className={`bg-purple-600 hover:bg-purple-700 h-11 ${toEmail?.toLowerCase().includes('donotreply') ? 'animate-portal-flash' : ''}`} 
+                    className={`bg-purple-600 hover:bg-purple-700 h-11 ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'animate-portal-flash' : ''}`} 
                     onClick={() => window.open(portalBidUrl, '_blank', 'noopener,noreferrer')}
                   >
                     Portal
@@ -1421,7 +1421,7 @@ const LoadEmailDetail = ({
           <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
             <Button 
               size="sm" 
-              className={`flex-1 h-10 font-semibold shadow-sm ${toEmail?.toLowerCase().includes('donotreply') ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`} 
+              className={`flex-1 h-10 font-semibold shadow-sm ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`} 
               onClick={() => setShowEmailConfirmDialog(true)}
             >
               <Mail className="w-4 h-4 mr-2" />
@@ -1436,7 +1436,7 @@ const LoadEmailDetail = ({
             {portalBidUrl && (
               <Button 
                 size="sm" 
-                className={`flex-1 bg-purple-600 hover:bg-purple-700 h-10 font-semibold shadow-sm ${toEmail?.toLowerCase().includes('donotreply') ? 'animate-portal-flash' : ''}`} 
+                className={`flex-1 bg-purple-600 hover:bg-purple-700 h-10 font-semibold shadow-sm ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'animate-portal-flash' : ''}`} 
                 onClick={() => window.open(portalBidUrl, '_blank', 'noopener,noreferrer')}
               >
                 Bid on Portal
