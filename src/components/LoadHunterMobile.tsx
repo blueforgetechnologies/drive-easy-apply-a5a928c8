@@ -798,31 +798,31 @@ export default function LoadHunterMobile({
                       </div>
                     )}
 
-                    {/* Action Buttons - Skip for unreviewed */}
+                    {/* Action Buttons - Skip for unreviewed - Compact */}
                     {activeFilter === 'unreviewed' && match && (
-                      <div className="pt-2 border-t flex gap-2">
+                      <div className="pt-1.5 border-t flex gap-1.5">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 h-9"
+                          className="flex-1 h-7 text-xs"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSkipMatch(match.match_id || match.id);
                           }}
                         >
-                          <SkipForward className="h-4 w-4 mr-1.5" />
+                          <SkipForward className="h-3 w-3 mr-1" />
                           Skip
                         </Button>
                         <Button
                           size="sm"
-                          className="flex-1 h-9"
+                          className="flex-1 h-7 text-xs"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectLoad(email, match);
                           }}
                         >
-                          <DollarSign className="h-4 w-4 mr-1.5" />
-                          View & Bid
+                          <DollarSign className="h-3 w-3 mr-1" />
+                          View
                         </Button>
                       </div>
                     )}
@@ -835,11 +835,11 @@ export default function LoadHunterMobile({
       </ScrollArea>
 
       {/* Hunt Plans Quick Access - Bottom Sheet Trigger */}
-      <div className="fixed bottom-20 right-4 z-40">
+      <div className="fixed bottom-4 right-4 z-40">
         <Sheet>
           <SheetTrigger asChild>
-            <Button size="lg" className="rounded-full h-14 w-14 shadow-lg">
-              <Target className="h-6 w-6" />
+            <Button size="lg" className="rounded-full h-12 w-12 shadow-lg">
+              <Target className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[80vh]">
