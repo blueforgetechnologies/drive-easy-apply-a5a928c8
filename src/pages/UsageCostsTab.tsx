@@ -697,24 +697,15 @@ const UsageCostsTab = () => {
       // Estimate ~10 subscription updates per email received
       const realtimeOps = (emailOps || 0) * 10;
       
-      // Total estimated units (Lovable charges ~$0.01 per unit)
-      // Formula: writes + (reads * 0.1) + edge functions + (realtime * 0.05)
-      const totalUnits = Math.round(
-        writeOps + 
-        (estimatedReadOps * 0.1) + 
-        edgeFunctionCalls + 
-        (realtimeOps * 0.05)
-      );
-      
-      const estimatedCost = totalUnits * 0.01;
+      // Total operations (for informational metrics only - Cloud billing is separate)
+      const totalOps = writeOps + Math.round(estimatedReadOps) + Math.round(edgeFunctionCalls) + realtimeOps;
       
       return {
         writeOps,
         estimatedReadOps,
         edgeFunctionCalls: Math.round(edgeFunctionCalls),
         realtimeOps,
-        totalUnits,
-        estimatedCost: estimatedCost.toFixed(2),
+        totalOps,
         breakdown: {
           emails: emailOps || 0,
           matches: matchOps || 0,
@@ -865,9 +856,6 @@ const UsageCostsTab = () => {
     ? parseFloat(aiStats.estimatedCost.replace('$', '')) 
     : 0;
 
-  // Cloud usage cost
-  const cloudCostNumber = parseFloat(cloudUsageStats?.estimatedCost || '0');
-
   // Cost breakdown object for detailed display
   const costBreakdown = {
     mapbox: {
@@ -885,20 +873,19 @@ const UsageCostsTab = () => {
       total: parseFloat(resendStats?.estimatedCost || '0') + parseFloat(pubsubStats?.estimatedCost || '0')
     },
     cloud: {
-      units: cloudUsageStats?.totalUnits || 0,
+      totalOps: cloudUsageStats?.totalOps || 0,
       writeOps: cloudUsageStats?.writeOps || 0,
       readOps: cloudUsageStats?.estimatedReadOps || 0,
       edgeFunctions: cloudUsageStats?.edgeFunctionCalls || 0,
-      realtime: cloudUsageStats?.realtimeOps || 0,
-      total: cloudCostNumber
+      realtime: cloudUsageStats?.realtimeOps || 0
     }
   };
 
+  // Total known costs (excluding Cloud - billed separately by Lovable)
   const totalEstimatedMonthlyCost = (
     costBreakdown.mapbox.total +
     costBreakdown.ai.total +
-    costBreakdown.email.total +
-    costBreakdown.cloud.total
+    costBreakdown.email.total
   ).toFixed(2);
 
   return (
@@ -938,7 +925,7 @@ const UsageCostsTab = () => {
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
               {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
-              <InfoTooltip text="Sum of all tracked service costs: Mapbox APIs, Lovable AI usage, email services (Resend, Pub/Sub), and Lovable Cloud (database ops, edge functions, realtime). Cloud usage is estimated based on tracked operations." />
+              <InfoTooltip text="Sum of known service costs: Mapbox APIs, Lovable AI usage, and email services (Resend, Pub/Sub). Lovable Cloud is billed separately - check Settings → Plans & Credits for actual Cloud costs." />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -1020,20 +1007,20 @@ const UsageCostsTab = () => {
                 </div>
               </div>
 
-              {/* Lovable Cloud Section - Calculated */}
-              <div className="bg-background/50 rounded-lg p-3 border border-amber-500/30">
+              {/* Lovable Cloud Section - Metrics Only */}
+              <div className="bg-background/50 rounded-lg p-3 border border-muted">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-sm">Lovable Cloud</span>
-                    <InfoTooltip text="Estimated based on database operations (writes, reads), edge function invocations, and realtime subscriptions. Actual billing may vary. Lovable charges ~$0.01 per unit." />
+                    <HardDrive className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Lovable Cloud (Metrics)</span>
+                    <InfoTooltip text="Database operations tracked this month. Cloud billing is separate - check Settings → Plans & Credits for actual costs." />
                   </div>
-                  <span className="font-semibold text-sm text-amber-600">${costBreakdown.cloud.total.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground">Billed separately</span>
                 </div>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Estimated Units:</span>
-                    <span className="font-medium">{costBreakdown.cloud.units.toLocaleString()}</span>
+                    <span>Total Operations:</span>
+                    <span className="font-medium">{costBreakdown.cloud.totalOps.toLocaleString()}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/50">
                     <div className="flex justify-between text-muted-foreground">
@@ -1054,9 +1041,6 @@ const UsageCostsTab = () => {
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
-                  <strong>Note:</strong> This is an estimate. Check <strong>Settings → Plans & Credits</strong> for actual billing.
-                </p>
               </div>
             </div>
           </div>
