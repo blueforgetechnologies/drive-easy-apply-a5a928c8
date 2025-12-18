@@ -255,6 +255,45 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string): any {
     data.broker_phone = phoneMatch[1].trim();
   }
   
+  // Extract notes from red-colored text (h4 or p tags with style="color:red")
+  const extractedNotes: string[] = [];
+  const processNoteText = (text: string): string | null => {
+    let noteText = text.trim();
+    noteText = noteText.replace(/&#x([0-9A-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    noteText = noteText.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec)));
+    noteText = noteText.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    noteText = noteText.replace(/<[^>]*>/g, '').trim();
+    noteText = noteText.replace(/^Notes:\s*/i, '');
+    if (!noteText || 
+        noteText.toLowerCase().includes('submit your bid via') || 
+        noteText.toLowerCase().includes('submitted bids must include') ||
+        noteText.toLowerCase().includes('location of your vehicle') ||
+        noteText.toLowerCase().includes('confirm all key requirements')) {
+      return null;
+    }
+    return noteText;
+  };
+  
+  // Pattern 1: Red <p> tags
+  const redPPattern = /<p[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi;
+  let noteMatch;
+  while ((noteMatch = redPPattern.exec(bodyText)) !== null) {
+    const processed = processNoteText(noteMatch[1]);
+    if (processed) extractedNotes.push(processed);
+  }
+  
+  // Pattern 2: Red <h4> tags
+  const redH4Pattern = /<h4[^>]*style\s*=\s*["'][^"']*color\s*:\s*red[^"']*["'][^>]*>([\s\S]*?)<\/h4>/gi;
+  while ((noteMatch = redH4Pattern.exec(bodyText)) !== null) {
+    const processed = processNoteText(noteMatch[1]);
+    if (processed) extractedNotes.push(processed);
+  }
+  
+  if (extractedNotes.length > 0) {
+    data.notes = extractedNotes.join(' | ');
+    console.log(`📝 FCTMS: Extracted notes: ${data.notes.substring(0, 100)}...`);
+  }
+  
   console.log(`📦 FCTMS parsed: Order ${data.order_number}, ${data.origin_city || data.origin_state} -> ${data.destination_city || data.destination_state}, ${data.vehicle_type}`);
   
   return data;
