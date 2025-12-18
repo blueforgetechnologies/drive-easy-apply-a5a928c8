@@ -754,9 +754,22 @@ const LoadEmailDetail = ({
   };
 
   // Ensure we use the broker_email from parsed_data for the bid email
+  // Priority: broker_email > email field > NEVER use from_email if it's postedloads@sylectus.com
   useEffect(() => {
     const resolveToEmail = async () => {
       try {
+        // Helper to check if email is a "do not use" address
+        const isDoNotUseEmail = (addr: string | null | undefined) => {
+          if (!addr) return true;
+          const lower = addr.toLowerCase();
+          return lower.includes('postedloads@sylectus') || 
+                 lower.includes('donotreply') || 
+                 lower.includes('do-not-reply') || 
+                 lower.includes('do_not_reply') ||
+                 lower.includes('noreply') ||
+                 lower.includes('no-reply');
+        };
+
         if (match?.load_email_id) {
           const {
             data: loadEmail,
@@ -764,21 +777,47 @@ const LoadEmailDetail = ({
           } = await supabase.from("load_emails").select("parsed_data").eq("id", match.load_email_id).maybeSingle();
           if (!error && loadEmail?.parsed_data) {
             const parsedData = loadEmail.parsed_data as Record<string, any>;
-            if (parsedData.broker_email) {
+            // Check broker_email first, then email field from parsed data
+            if (parsedData.broker_email && !isDoNotUseEmail(parsedData.broker_email)) {
               setToEmail(parsedData.broker_email);
+              return;
+            }
+            if (parsedData.email && !isDoNotUseEmail(parsedData.email)) {
+              setToEmail(parsedData.email);
               return;
             }
           }
         }
-        // Fallback to broker_email from email prop if available
-        setToEmail(data.broker_email || email.from_email || null);
+        // Fallback to broker_email or email from current data prop, never use from_email if it's sylectus
+        if (data.broker_email && !isDoNotUseEmail(data.broker_email)) {
+          setToEmail(data.broker_email);
+        } else if (data.email && !isDoNotUseEmail(data.email)) {
+          setToEmail(data.email);
+        } else if (!isDoNotUseEmail(email.from_email)) {
+          setToEmail(email.from_email);
+        } else {
+          // No valid email found
+          setToEmail(null);
+        }
       } catch (e) {
         console.error("Error resolving toEmail from match:", e);
-        setToEmail(data.broker_email || email.from_email || null);
+        // Same fallback logic on error
+        const isDoNotUseEmail = (addr: string | null | undefined) => {
+          if (!addr) return true;
+          const lower = addr.toLowerCase();
+          return lower.includes('postedloads@sylectus') || lower.includes('donotreply') || lower.includes('noreply');
+        };
+        if (data.broker_email && !isDoNotUseEmail(data.broker_email)) {
+          setToEmail(data.broker_email);
+        } else if (data.email && !isDoNotUseEmail(data.email)) {
+          setToEmail(data.email);
+        } else {
+          setToEmail(null);
+        }
       }
     };
     resolveToEmail();
-  }, [match, email.from_email, data.broker_email]);
+  }, [match, email.from_email, data.broker_email, data.email]);
 
   // Dispatcher signature info for email - use bid_as carrier if available, fallback to company_profile
   const dispatcherName = currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : 'Dispatcher Name';
