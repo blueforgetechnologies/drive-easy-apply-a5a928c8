@@ -431,7 +431,7 @@ export function UserActivityTracker() {
       {!isExpanded && (
         <Button
           onClick={() => setIsExpanded(true)}
-          className="absolute bottom-4 right-4 z-50 h-10 w-10 rounded-full shadow-lg bg-primary"
+          className="fixed bottom-4 right-4 z-50 h-10 w-10 rounded-full shadow-lg bg-primary"
         >
           <Users className="h-4 w-4" />
           {onlineCount > 0 && (
@@ -444,7 +444,7 @@ export function UserActivityTracker() {
 
       {/* Expanded card */}
       {isExpanded && (
-        <Card className="absolute bottom-4 right-4 w-72 z-50 shadow-lg border-border/50 bg-card/95 backdrop-blur-sm">
+        <Card className="fixed bottom-4 right-4 w-72 z-50 shadow-lg border-border/50 bg-card/95 backdrop-blur-sm">
           <CardHeader 
             className="py-1.5 px-2 cursor-pointer flex flex-row items-center justify-between"
             onClick={() => setIsExpanded(false)}
