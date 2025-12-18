@@ -33,13 +33,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return localStorage.getItem('showAllTab') === 'true';
   });
   const [dispatcherId, setDispatcherId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  // Keep UI in sync with auth state (fixes "logged in but UI not updating")
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setAuthUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // If user is signed out, bounce to /auth
+  useEffect(() => {
+    if (!authReady) return;
+    if (!authUserId) {
+      setUserName("");
+      setUserEmail("");
+      setUserRoles([]);
+      setDispatcherId(null);
+      navigate("/auth", { replace: true });
+    }
+  }, [authReady, authUserId, navigate]);
 
   useEffect(() => {
+    if (!authReady || !authUserId) return;
+
     loadUserProfile();
     loadAlerts();
     loadIntegrationAlerts();
     loadUnmappedTypesCount();
-    
+
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
@@ -53,46 +84,52 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       loadIntegrationAlerts();
       loadUnmappedTypesCount();
     }, 5 * 60 * 1000);
-    
+
     return () => {
       clearInterval(interval);
     };
-  }, [location.pathname]);
+  }, [location.pathname, authReady, authUserId]);
 
   const loadUserProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserEmail(user.email || "");
-      
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
-      
-      setUserName(profile?.full_name || user.email || "User");
-      
-      // Fetch user roles
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      
-      if (roles && roles.length > 0) {
-        setUserRoles(roles.map(r => r.role));
-      }
+    if (!user) {
+      setUserName("");
+      setUserEmail("");
+      setUserRoles([]);
+      setDispatcherId(null);
+      return;
+    }
 
-      // Fetch dispatcher show_all_tab setting
-      const { data: dispatcher } = await supabase
-        .from("dispatchers")
-        .select("id, show_all_tab")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (dispatcher) {
-        setDispatcherId(dispatcher.id);
-        setShowAllTab(dispatcher.show_all_tab || false);
-      }
+    setUserEmail(user.email || "");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    setUserName(profile?.full_name || user.email || "User");
+
+    // Fetch user roles
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    setUserRoles(roles?.map(r => r.role) ?? []);
+
+    // Fetch dispatcher show_all_tab setting
+    const { data: dispatcher } = await supabase
+      .from("dispatchers")
+      .select("id, show_all_tab")
+      .eq("user_id", user.id)
+      .single();
+
+    if (dispatcher) {
+      setDispatcherId(dispatcher.id);
+      setShowAllTab(dispatcher.show_all_tab || false);
+    } else {
+      setDispatcherId(null);
     }
   };
 
