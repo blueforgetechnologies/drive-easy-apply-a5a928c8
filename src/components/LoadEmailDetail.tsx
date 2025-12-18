@@ -63,6 +63,8 @@ const LoadEmailDetail = ({
   const [showEmailConfirmDialog, setShowEmailConfirmDialog] = useState(false);
   const [bidConfirmed, setBidConfirmed] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
+  const [showPortalPanel, setShowPortalPanel] = useState(false);
+  const [portalBidUrl, setPortalBidUrl] = useState<string | null>(null);
   const [currentDispatcher, setCurrentDispatcher] = useState<any>(null);
 
   // Match history state
@@ -204,6 +206,26 @@ const LoadEmailDetail = ({
     };
     fetchFullEmail();
   }, [email.id, email.body_text, email.body_html]);
+
+  // Extract Full Circle TMS portal bid URL from email body
+  useEffect(() => {
+    const extractPortalUrl = () => {
+      const emailBody = fullEmailData?.body_html || email.body_html || '';
+      // Look for Full Circle TMS bid URL pattern
+      const bidUrlMatch = emailBody.match(/href="(https:\/\/app\.fullcircletms\.com\/[^"]*BidOnOrder[^"]*)"/i);
+      if (bidUrlMatch && bidUrlMatch[1]) {
+        // Decode HTML entities
+        const decodedUrl = bidUrlMatch[1]
+          .replace(/&amp;/g, '&')
+          .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
+        setPortalBidUrl(decodedUrl);
+      } else {
+        setPortalBidUrl(null);
+      }
+    };
+    extractPortalUrl();
+  }, [email.body_html, fullEmailData]);
+
   const [bidAsCarrier, setBidAsCarrier] = useState<any>(null);
   const [vehicleCarrier, setVehicleCarrier] = useState<any>(null);
 
@@ -1221,7 +1243,7 @@ const LoadEmailDetail = ({
             </div>
             {/* Sticky Footer with Action Buttons */}
             <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 safe-area-bottom">
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${portalBidUrl ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <Button size="sm" className="bg-blue-500 hover:bg-blue-600 h-11" onClick={() => setShowEmailConfirmDialog(true)}>
                   Email Bid
                 </Button>
@@ -1231,9 +1253,35 @@ const LoadEmailDetail = ({
                 <Button size="sm" className="bg-green-600 hover:bg-green-700 h-11">
                   Book
                 </Button>
+                {portalBidUrl && (
+                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700 h-11" onClick={() => setShowPortalPanel(true)}>
+                    Portal
+                  </Button>
+                )}
               </div>
             </div>
           </div>}
+
+        {/* Mobile Portal Panel */}
+        {showPortalPanel && portalBidUrl && (
+          <div className="fixed inset-0 z-50 bg-background animate-in slide-in-from-right flex flex-col">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-3 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-lg font-semibold">Full Circle TMS Portal</h3>
+              <Button variant="ghost" size="icon" className="text-white/80 hover:text-white" onClick={() => setShowPortalPanel(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe 
+                src={portalBidUrl} 
+                className="w-full h-full border-0" 
+                title="Full Circle TMS Portal"
+                allow="clipboard-write"
+              />
+            </div>
+          </div>
+        )}
+
         {EmailConfirmDialog}
       </div>;
   }
@@ -1392,8 +1440,37 @@ const LoadEmailDetail = ({
             <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-10 font-semibold shadow-sm">
               Book Load
             </Button>
+            {portalBidUrl && (
+              <Button 
+                size="sm" 
+                className="flex-1 bg-purple-600 hover:bg-purple-700 h-10 font-semibold shadow-sm" 
+                onClick={() => setShowPortalPanel(true)}
+              >
+                Bid on Portal
+              </Button>
+            )}
           </div>
         </div>}
+
+      {/* Full Circle TMS Portal Side Panel */}
+      {showPortalPanel && portalBidUrl && (
+        <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-background z-50 shadow-2xl border-l animate-in slide-in-from-right duration-300 flex flex-col">
+          <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-3 flex items-center justify-between z-10 flex-shrink-0">
+            <h3 className="text-lg font-semibold">Full Circle TMS Portal</h3>
+            <Button variant="ghost" size="icon" className="text-white/80 hover:text-white hover:bg-white/20" onClick={() => setShowPortalPanel(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <iframe 
+              src={portalBidUrl} 
+              className="w-full h-full border-0" 
+              title="Full Circle TMS Portal"
+              allow="clipboard-write"
+            />
+          </div>
+        </div>
+      )}
       
       <div className="flex gap-2 p-2">
         {/* LEFT SIDE - Load Details + Stats + Map */}
