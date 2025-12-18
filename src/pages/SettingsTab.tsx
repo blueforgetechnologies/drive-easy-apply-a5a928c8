@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import UsersTab from "./UsersTab";
 import CompanyProfileTab from "./CompanyProfileTab";
 import LocationsTab from "./LocationsTab";
-import PlaceholderTab from "./PlaceholderTab";
+import RoleBuilderTab from "./RoleBuilderTab";
 import IntegrationsTab from "./IntegrationsTab";
 import UsageCostsTab from "./UsageCostsTab";
 import LoadboardFiltersTab from "./LoadboardFiltersTab";
@@ -75,10 +75,7 @@ export default function SettingsTab() {
         </TabsContent>
 
         <TabsContent value="roles" className="mt-4">
-          <PlaceholderTab 
-            title="Roles & Permissions"
-            description="Manage user roles and permissions for system access control"
-          />
+          <RoleBuilderTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'roles', 'screenshare', 'development', 'changelog', 'freight-calc', 'analytics'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'changelog', 'tools', 'analytics'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -239,7 +239,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
       navigate(`/dashboard/${value}?subtab=users`);
-    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'roles' || value === 'screenshare' || value === 'freight-calc' || value === 'analytics') {
+    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'screenshare' || value === 'tools' || value === 'analytics') {
       navigate(`/dashboard/${value}`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
@@ -253,15 +253,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "loads", icon: Package, label: "Loads" },
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "analytics", icon: TrendingUp, label: "Analytics" },
+    { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount + unmappedTypesCount },
   ];
 
   // Secondary nav items - less frequent, in dropdown
   const secondaryNavItems = [
     { value: "business", icon: Briefcase, label: "Business", badge: alertCount },
-    { value: "freight-calc", icon: Ruler, label: "Freight Calculator" },
+    { value: "tools", icon: Ruler, label: "Tools" },
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
-    { value: "settings", icon: Settings, label: "Settings", badge: integrationAlertCount + unmappedTypesCount },
-    { value: "roles", icon: ShieldCheck, label: "Roles" },
     { value: "screenshare", icon: MonitorUp, label: "Support" },
     { value: "development", icon: FileCode, label: "Development" },
     { value: "changelog", icon: History, label: "Changelog" },
@@ -272,7 +271,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Check if current tab is in secondary
   const isSecondaryActive = secondaryNavItems.some(item => item.value === activeTab);
-  const totalSecondaryBadge = alertCount + integrationAlertCount + unmappedTypesCount;
+  const totalSecondaryBadge = alertCount;
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col">
