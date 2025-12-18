@@ -169,7 +169,7 @@ export default function LoadHunterTab() {
   const itemsPerPage = 14;
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
-  const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string } | null>(null);
+  const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
   const currentDispatcherIdRef = useRef<string | null>(null);
   const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
@@ -1026,7 +1026,7 @@ export default function LoadHunterTab() {
         // Check if user is a dispatcher
         const { data: dispatcher, error: dispatcherError } = await supabase
           .from('dispatchers')
-          .select('id, first_name, last_name, email')
+          .select('id, first_name, last_name, email, show_all_tab')
           .ilike('email', user.email)
           .single();
         
@@ -2966,29 +2966,33 @@ export default function LoadHunterTab() {
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* Merged button group: All, Unreviewed, Sound */}
             <div className="flex items-center overflow-hidden rounded-full">
-              <Button 
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                  activeFilter === 'all' 
-                    ? 'btn-glossy-dark text-white' 
-                    : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('all');
-                  setFilterVehicleId(null);
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                All
-                <span className={`badge-inset text-[10px] h-5 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
-              </Button>
+              {currentDispatcherInfo?.show_all_tab && (
+                <Button 
+                  variant="ghost"
+                  size="sm" 
+                  className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
+                    activeFilter === 'all' 
+                      ? 'btn-glossy-dark text-white' 
+                      : 'btn-glossy text-gray-700'
+                  }`}
+                  onClick={() => {
+                    setActiveFilter('all');
+                    setFilterVehicleId(null);
+                    setSelectedVehicle(null);
+                    setSelectedEmailForDetail(null);
+                  }}
+                >
+                  All
+                  <span className={`badge-inset text-[10px] h-5 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
+                </Button>
+              )}
               
               <Button
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
+                  !currentDispatcherInfo?.show_all_tab ? '!rounded-l-full' : ''
+                } ${
                   activeFilter === 'unreviewed' 
                     ? 'btn-glossy-primary text-white' 
                     : 'btn-glossy text-gray-700'

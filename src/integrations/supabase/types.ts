@@ -595,6 +595,7 @@ export type Database = {
           pay_percentage: number | null
           phone: string | null
           role: string | null
+          show_all_tab: boolean | null
           status: string | null
           termination_date: string | null
           updated_at: string | null
@@ -626,6 +627,7 @@ export type Database = {
           pay_percentage?: number | null
           phone?: string | null
           role?: string | null
+          show_all_tab?: boolean | null
           status?: string | null
           termination_date?: string | null
           updated_at?: string | null
@@ -657,6 +659,7 @@ export type Database = {
           pay_percentage?: number | null
           phone?: string | null
           role?: string | null
+          show_all_tab?: boolean | null
           status?: string | null
           termination_date?: string | null
           updated_at?: string | null
