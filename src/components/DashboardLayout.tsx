@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut, ShieldCheck, MonitorUp, Ruler, TrendingUp } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, History, LogOut, ShieldCheck, MonitorUp, Ruler, TrendingUp, User, Mail, Shield, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -19,6 +20,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [userName, setUserName] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("drivers");
   const [alertCount, setAlertCount] = useState<number>(0);
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
@@ -53,6 +56,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const loadUserProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      setUserEmail(user.email || "");
+      
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name")
@@ -60,6 +65,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         .single();
       
       setUserName(profile?.full_name || user.email || "User");
+      
+      // Fetch user roles
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      
+      if (roles && roles.length > 0) {
+        setUserRoles(roles.map(r => r.role));
+      }
     }
   };
 
@@ -371,12 +386,66 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Right: User info + Logout */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <span 
-                className="text-xs sm:text-sm text-white/90 hidden sm:inline truncate max-w-[120px]"
-                style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}
-              >
-                {userName}
-              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button 
+                    className="hidden sm:flex items-center gap-1.5 text-xs sm:text-sm text-white/90 hover:text-white transition-colors cursor-pointer rounded-md px-2 py-1 hover:bg-white/10"
+                    style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}
+                  >
+                    <span className="truncate max-w-[120px]">{userName}</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 p-0" sideOffset={8}>
+                  <div className="p-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{userName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="truncate flex-1 text-right">{userEmail}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Role:</span>
+                      <div className="flex-1 flex justify-end gap-1 flex-wrap">
+                        {userRoles.length > 0 ? (
+                          userRoles.map((role) => (
+                            <span 
+                              key={role} 
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize"
+                            >
+                              {role}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-xs">No role assigned</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 border-t">
+                    <Button 
+                      onClick={handleLogout} 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full h-8 gap-2"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logout
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button 
                 onClick={handleLogout} 
                 variant="outline" 
