@@ -254,7 +254,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "analytics", icon: TrendingUp, label: "Analytics" },
-    { value: "settings", icon: Settings, label: "Settings" },
   ];
 
   // Secondary nav items - less frequent, in dropdown
@@ -500,6 +499,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
                   </div>
                   <div className="p-3 border-t space-y-2">
+                    <Button 
+                      onClick={() => navigate('/dashboard/settings')} 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full h-8 gap-2 justify-start"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      Settings
+                    </Button>
                     <Button 
                       onClick={() => navigate('/dashboard/screenshare')} 
                       variant="ghost" 
