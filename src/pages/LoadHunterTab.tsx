@@ -3154,6 +3154,26 @@ export default function LoadHunterTab() {
                 <span className="badge-inset-warning text-[10px] h-5">{issuesCount}</span>
               </Button>
             )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+            <Button 
+              variant="ghost"
+              size="sm" 
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
+                activeFilter === 'vehicle-assignment' 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700'
+              }`}
+              onClick={() => {
+                setActiveFilter('vehicle-assignment');
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              Assign
+            </Button>
             
             {/* Source Filter Popover */}
             <Popover>
@@ -3209,26 +3229,6 @@ export default function LoadHunterTab() {
                 </div>
               </PopoverContent>
             </Popover>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'vehicle-assignment' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('vehicle-assignment');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Assign
-            </Button>
             
             <Button
               variant="ghost"
