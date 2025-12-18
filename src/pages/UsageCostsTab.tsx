@@ -700,12 +700,19 @@ const UsageCostsTab = () => {
       // Total operations (for informational metrics only - Cloud billing is separate)
       const totalOps = writeOps + Math.round(estimatedReadOps) + Math.round(edgeFunctionCalls) + realtimeOps;
       
+      // Estimated cost calculation based on actual historical data:
+      // Known: $25 actual cost for ~186K write operations = $0.000134 per write op
+      // This rate is derived from real Lovable Cloud billing data
+      const COST_PER_WRITE_OP = 0.000134;
+      const estimatedCost = writeOps * COST_PER_WRITE_OP;
+      
       return {
         writeOps,
         estimatedReadOps,
         edgeFunctionCalls: Math.round(edgeFunctionCalls),
         realtimeOps,
         totalOps,
+        estimatedCost: estimatedCost.toFixed(2),
         breakdown: {
           emails: emailOps || 0,
           matches: matchOps || 0,
@@ -856,6 +863,9 @@ const UsageCostsTab = () => {
     ? parseFloat(aiStats.estimatedCost.replace('$', '')) 
     : 0;
 
+  // Cloud usage cost (based on historical rate: $25 / 186K write ops = $0.000134/op)
+  const cloudCostNumber = parseFloat(cloudUsageStats?.estimatedCost || '0');
+
   // Cost breakdown object for detailed display
   const costBreakdown = {
     mapbox: {
@@ -877,15 +887,17 @@ const UsageCostsTab = () => {
       writeOps: cloudUsageStats?.writeOps || 0,
       readOps: cloudUsageStats?.estimatedReadOps || 0,
       edgeFunctions: cloudUsageStats?.edgeFunctionCalls || 0,
-      realtime: cloudUsageStats?.realtimeOps || 0
+      realtime: cloudUsageStats?.realtimeOps || 0,
+      estimatedCost: cloudCostNumber
     }
   };
 
-  // Total known costs (excluding Cloud - billed separately by Lovable)
+  // Total estimated monthly cost (includes Cloud estimate based on historical rate)
   const totalEstimatedMonthlyCost = (
     costBreakdown.mapbox.total +
     costBreakdown.ai.total +
-    costBreakdown.email.total
+    costBreakdown.email.total +
+    costBreakdown.cloud.estimatedCost
   ).toFixed(2);
 
   return (
@@ -925,7 +937,7 @@ const UsageCostsTab = () => {
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
               {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
-              <InfoTooltip text="Sum of known service costs: Mapbox APIs, Lovable AI usage, and email services (Resend, Pub/Sub). Lovable Cloud is billed separately - check Settings → Plans & Credits for actual Cloud costs." />
+              <InfoTooltip text="Sum of all estimated service costs: Mapbox APIs, Lovable AI usage, email services, and Lovable Cloud (estimated at $0.000134 per write op based on your actual $25 billing for 186K ops)." />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -1007,28 +1019,24 @@ const UsageCostsTab = () => {
                 </div>
               </div>
 
-              {/* Lovable Cloud Section - Metrics Only */}
-              <div className="bg-background/50 rounded-lg p-3 border border-muted">
+              {/* Lovable Cloud Section - Estimated */}
+              <div className="bg-background/50 rounded-lg p-3 border border-amber-500/30">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-sm">Lovable Cloud (Metrics)</span>
-                    <InfoTooltip text="Database operations tracked this month. Cloud billing is separate - check Settings → Plans & Credits for actual costs." />
+                    <HardDrive className="h-4 w-4 text-amber-600" />
+                    <span className="font-medium text-sm">Lovable Cloud</span>
+                    <InfoTooltip text="Estimated based on historical rate: $25 actual cost / 186K write ops = $0.000134 per write operation. Compare with Settings → Plans & Credits for actual billing." />
                   </div>
-                  <span className="text-xs text-muted-foreground">Billed separately</span>
+                  <span className="font-semibold text-sm text-amber-600">~${costBreakdown.cloud.estimatedCost.toFixed(2)}</span>
                 </div>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Total Operations:</span>
-                    <span className="font-medium">{costBreakdown.cloud.totalOps.toLocaleString()}</span>
+                    <span>Write Operations:</span>
+                    <span className="font-medium">{costBreakdown.cloud.writeOps.toLocaleString()}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/50">
                     <div className="flex justify-between text-muted-foreground">
-                      <span>DB Writes:</span>
-                      <span>{costBreakdown.cloud.writeOps.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>DB Reads (est):</span>
+                      <span>DB Reads (est 4x):</span>
                       <span>{costBreakdown.cloud.readOps.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
@@ -1038,6 +1046,10 @@ const UsageCostsTab = () => {
                     <div className="flex justify-between text-muted-foreground">
                       <span>Realtime (est):</span>
                       <span>{costBreakdown.cloud.realtime.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Rate:</span>
+                      <span>$0.000134/write</span>
                     </div>
                   </div>
                 </div>
