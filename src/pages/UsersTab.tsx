@@ -443,12 +443,15 @@ export default function UsersTab() {
                                   user.roles.map((role) => (
                                     <span 
                                       key={role}
-                                      className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold"
-                                      style={{
-                                        backgroundColor: role === "admin" ? "#2563eb" : role === "dispatcher" ? "#059669" : role === "driver" ? "#d97706" : "#475569",
-                                        color: "#ffffff",
-                                        border: `1px solid ${role === "admin" ? "#2563eb" : role === "dispatcher" ? "#059669" : role === "driver" ? "#d97706" : "#475569"}`
-                                      }}
+                                      className={
+                                        role === "admin" 
+                                          ? "badge-glossy-primary" 
+                                          : role === "dispatcher" 
+                                          ? "badge-glossy-success"
+                                          : role === "driver"
+                                          ? "badge-glossy-warning"
+                                          : "badge-glossy-muted"
+                                      }
                                     >
                                       {role}
                                     </span>
