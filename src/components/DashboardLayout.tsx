@@ -539,12 +539,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <main className="max-w-[1630px] w-full mx-auto px-3 sm:px-4 py-4 pb-20 md:pb-4 flex-1">
+      <main className={cn(
+        "max-w-[1630px] w-full mx-auto px-3 sm:px-4 py-4 flex-1",
+        location.pathname.includes('/load-hunter') ? "pb-4" : "pb-20 md:pb-4"
+      )}>
         {children}
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <MobileNav alertCount={alertCount} integrationAlertCount={integrationAlertCount} />
+      {/* Mobile Bottom Navigation - Hidden on Load Hunter for more screen space */}
+      {!location.pathname.includes('/load-hunter') && (
+        <MobileNav alertCount={alertCount} integrationAlertCount={integrationAlertCount} />
+      )}
 
       {/* Mapbox Usage Alert - checks on login */}
       <MapboxUsageAlert />
