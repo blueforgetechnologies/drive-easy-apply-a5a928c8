@@ -4816,14 +4816,35 @@ export default function LoadHunterTab() {
                           const rawBody = (email.body_text || email.body_html || '').toString();
                           const cleanBody = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
+                          // Helper to normalize date format from "2025-12-19" or "2025-12-19 08:00 CST" to "12/19/25"
+                          const normalizeDate = (dateStr: string | undefined): string => {
+                            if (!dateStr) return '';
+                            // Match ISO-like format: 2025-12-19 or 2025-12-19 08:00 CST
+                            const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                            if (isoMatch) {
+                              const [, year, month, day] = isoMatch;
+                              return `${month}/${day}/${year.slice(2)}`;
+                            }
+                            return dateStr;
+                          };
+
+                          // Helper to normalize time format - strip timezone suffix like " CST"
+                          const normalizeTime = (timeStr: string | undefined): string => {
+                            if (!timeStr) return '';
+                            // Remove timezone suffix like " CST", " EST", " PST"
+                            return timeStr.replace(/\s+[A-Z]{2,4}$/i, '');
+                          };
+
                           // Build pickup display: show date + time when both available, otherwise show what we have
                           let pickupDisplay = '';
-                          if (data.pickup_date && data.pickup_time) {
-                            pickupDisplay = `${data.pickup_date} ${data.pickup_time}`;
-                          } else if (data.pickup_date) {
-                            pickupDisplay = data.pickup_date;
-                          } else if (data.pickup_time) {
-                            pickupDisplay = data.pickup_time;
+                          const normPickupDate = normalizeDate(data.pickup_date);
+                          const normPickupTime = normalizeTime(data.pickup_time);
+                          if (normPickupDate && normPickupTime) {
+                            pickupDisplay = `${normPickupDate} ${normPickupTime}`;
+                          } else if (normPickupDate) {
+                            pickupDisplay = normPickupDate;
+                          } else if (normPickupTime) {
+                            pickupDisplay = normPickupTime;
                           }
                           
                           if (!pickupDisplay) {
@@ -4839,12 +4860,14 @@ export default function LoadHunterTab() {
 
                           // Build delivery display: show date + time when both available, otherwise show what we have
                           let deliveryDisplay = '';
-                          if (data.delivery_date && data.delivery_time) {
-                            deliveryDisplay = `${data.delivery_date} ${data.delivery_time}`;
-                          } else if (data.delivery_date) {
-                            deliveryDisplay = data.delivery_date;
-                          } else if (data.delivery_time) {
-                            deliveryDisplay = data.delivery_time;
+                          const normDeliveryDate = normalizeDate(data.delivery_date);
+                          const normDeliveryTime = normalizeTime(data.delivery_time);
+                          if (normDeliveryDate && normDeliveryTime) {
+                            deliveryDisplay = `${normDeliveryDate} ${normDeliveryTime}`;
+                          } else if (normDeliveryDate) {
+                            deliveryDisplay = normDeliveryDate;
+                          } else if (normDeliveryTime) {
+                            deliveryDisplay = normDeliveryTime;
                           }
                           
                           if (!deliveryDisplay) {
