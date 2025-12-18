@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { 
   RefreshCw, ChevronRight, MapPin, Truck, Target, 
   Filter, Clock, Package, ArrowRight, X, Check, 
-  SkipForward, AlertTriangle, Volume2, VolumeX, List
+  SkipForward, AlertTriangle, Volume2, VolumeX, List,
+  Timer, Pause, FileQuestion, DollarSign, Scale, Ruler, Box, Calendar
 } from "lucide-react";
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
@@ -38,6 +40,10 @@ interface HuntPlan {
   zipCode: string;
   pickupRadius: string;
   enabled: boolean;
+  notes?: string;
+  availableDate?: string;
+  availableTime?: string;
+  availableFeet?: string;
 }
 
 interface LoadHunterMobileProps {
@@ -48,6 +54,8 @@ interface LoadHunterMobileProps {
   unreviewedViewData: any[];
   skippedMatches: any[];
   bidMatches: any[];
+  undecidedMatches: any[];
+  waitlistMatches: any[];
   missedHistory: any[];
   loadMatches: any[];
   loading: boolean;
@@ -75,6 +83,8 @@ export default function LoadHunterMobile({
   unreviewedViewData,
   skippedMatches,
   bidMatches,
+  undecidedMatches = [],
+  waitlistMatches = [],
   missedHistory,
   loadMatches,
   loading,
@@ -105,6 +115,12 @@ export default function LoadHunterMobile({
         return unreviewedViewData.length;
       case 'skipped':
         return skippedMatches.length;
+      case 'mybids':
+        return bidMatches.length;
+      case 'undecided':
+        return undecidedMatches.length;
+      case 'waitlist':
+        return waitlistMatches.length;
       case 'missed':
         return missedHistory.length;
       case 'issues':
@@ -136,6 +152,18 @@ export default function LoadHunterMobile({
           match: m
         })).filter(d => d.id);
         break;
+      case 'undecided':
+        data = undecidedMatches.map(m => ({
+          ...loadEmails.find(e => e.id === m.load_email_id),
+          match: m
+        })).filter(d => d.id);
+        break;
+      case 'waitlist':
+        data = waitlistMatches.map(m => ({
+          ...loadEmails.find(e => e.id === m.load_email_id),
+          match: m
+        })).filter(d => d.id);
+        break;
       case 'missed':
         data = missedHistory;
         break;
@@ -152,7 +180,7 @@ export default function LoadHunterMobile({
     if (filterVehicleId) {
       if (activeFilter === 'unreviewed') {
         data = data.filter(item => item.vehicle_id === filterVehicleId);
-      } else if (activeFilter === 'skipped' || activeFilter === 'mybids') {
+      } else if (['skipped', 'mybids', 'undecided', 'waitlist'].includes(activeFilter)) {
         data = data.filter(item => item.match?.vehicle_id === filterVehicleId);
       } else if (activeFilter === 'missed') {
         data = data.filter(item => item.vehicle_id === filterVehicleId);
@@ -167,17 +195,24 @@ export default function LoadHunterMobile({
       }
     }
 
-    return data.slice(0, 50); // Limit for performance
+    return data.slice(0, 100); // Increased limit for better coverage
   };
 
   const displayData = getDisplayData();
   const filteredVehicles = vehicles.filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id));
 
-  // Filter options for bottom tabs
-  const filterTabs = [
-    { id: 'unreviewed', label: 'Unreviewed', icon: Target },
-    { id: 'skipped', label: 'Skipped', icon: SkipForward },
-    { id: 'missed', label: 'Missed', icon: AlertTriangle },
+  // Primary filter tabs (most important)
+  const primaryFilterTabs = [
+    { id: 'unreviewed', label: 'Unreviewed', icon: Target, color: 'bg-primary' },
+    { id: 'missed', label: 'Missed', icon: AlertTriangle, color: 'bg-destructive' },
+  ];
+
+  // Secondary filter tabs (scrollable row)
+  const secondaryFilterTabs = [
+    { id: 'waitlist', label: 'Wait', icon: Timer },
+    { id: 'undecided', label: 'Undec', icon: FileQuestion },
+    { id: 'mybids', label: 'My Bids', icon: DollarSign },
+    { id: 'skipped', label: 'Skip', icon: SkipForward },
     { id: 'all', label: 'All', icon: List },
   ];
 
@@ -243,16 +278,20 @@ export default function LoadHunterMobile({
 
       </div>
 
-      {/* Bottom Tab Bar - Filter Navigation */}
+      {/* Primary Filter Tab Bar */}
       <div className="border-b bg-card px-1 py-1">
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {/* Filter Tabs */}
-          {filterTabs.map(tab => (
+        <div className="flex items-center gap-1">
+          {/* Primary Tabs */}
+          {primaryFilterTabs.map(tab => (
             <Button
               key={tab.id}
               size="sm"
               variant={activeTab === 'loads' && activeFilter === tab.id ? 'default' : 'ghost'}
-              className="h-9 px-3 text-xs flex-shrink-0"
+              className={`h-9 px-3 text-xs flex-1 ${
+                activeTab === 'loads' && activeFilter === tab.id 
+                  ? tab.id === 'missed' ? 'bg-destructive hover:bg-destructive/90' : ''
+                  : ''
+              }`}
               onClick={() => {
                 setActiveTab('loads');
                 onFilterChange(tab.id);
@@ -270,6 +309,51 @@ export default function LoadHunterMobile({
           ))}
         </div>
       </div>
+
+      {/* Secondary Filter Tabs (scrollable) */}
+      <div className="border-b bg-muted/30 px-1 py-1">
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {secondaryFilterTabs.map(tab => (
+            <Button
+              key={tab.id}
+              size="sm"
+              variant={activeTab === 'loads' && activeFilter === tab.id ? 'secondary' : 'ghost'}
+              className="h-7 px-2 text-xs flex-shrink-0"
+              onClick={() => {
+                setActiveTab('loads');
+                onFilterChange(tab.id);
+              }}
+            >
+              <tab.icon className="h-3 w-3 mr-1" />
+              {tab.label}
+              <Badge 
+                variant="outline" 
+                className="ml-1 h-4 px-1 text-[9px]"
+              >
+                {getFilterCount(tab.id)}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Vehicle Filter Indicator */}
+      {filterVehicleId && (
+        <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b flex items-center justify-between">
+          <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+            Filtering: <span className="font-bold">{vehicles.find(v => v.id === filterVehicleId)?.vehicle_number || 'Unknown'}</span>
+          </span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-6 px-2 text-xs"
+            onClick={() => onFilterChange(activeFilter, null)}
+          >
+            <X className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Content Area */}
       <ScrollArea className="flex-1 px-3 py-2">
@@ -291,6 +375,8 @@ export default function LoadHunterMobile({
                 const unreviewedCount = unreviewedViewData.filter(m => m.vehicle_id === vehicle.id).length;
                 const skippedCount = skippedMatches.filter(m => m.vehicle_id === vehicle.id).length;
                 const bidCount = bidMatches.filter(m => m.vehicle_id === vehicle.id).length;
+                const waitlistCount = waitlistMatches.filter(m => m.vehicle_id === vehicle.id).length;
+                const undecidedCount = undecidedMatches.filter(m => m.vehicle_id === vehicle.id).length;
                 const hunt = huntPlans.find(p => p.vehicleId === vehicle.id);
                 const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
                 const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
@@ -329,11 +415,11 @@ export default function LoadHunterMobile({
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          {/* Clickable Badge Filters */}
-                          <div className="flex gap-1 mr-2">
+                          {/* Clickable Badge Filters - Expanded */}
+                          <div className="flex gap-0.5 mr-2 flex-wrap">
                             {/* GREEN = Unreviewed */}
                             <div 
-                              className="h-5 w-5 rounded-full bg-green-400 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-green-500"
+                              className="h-5 min-w-5 px-1 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-green-600"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('loads');
@@ -342,20 +428,31 @@ export default function LoadHunterMobile({
                             >
                               {unreviewedCount}
                             </div>
-                            {/* GRAY = Skipped */}
+                            {/* YELLOW = Waitlist */}
                             <div 
-                              className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 text-[10px] font-medium cursor-pointer active:bg-gray-400"
+                              className="h-5 min-w-5 px-1 rounded-full bg-amber-400 flex items-center justify-center text-amber-900 text-[10px] font-medium cursor-pointer active:bg-amber-500"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('loads');
-                                onFilterChange('skipped', vehicle.id);
+                                onFilterChange('waitlist', vehicle.id);
                               }}
                             >
-                              {skippedCount}
+                              {waitlistCount}
+                            </div>
+                            {/* ORANGE = Undecided */}
+                            <div 
+                              className="h-5 min-w-5 px-1 rounded-full bg-orange-400 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-orange-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab('loads');
+                                onFilterChange('undecided', vehicle.id);
+                              }}
+                            >
+                              {undecidedCount}
                             </div>
                             {/* BLUE = My Bids */}
                             <div 
-                              className="h-5 w-5 rounded-full bg-blue-400 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-blue-500"
+                              className="h-5 min-w-5 px-1 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-blue-600"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('loads');
@@ -364,18 +461,29 @@ export default function LoadHunterMobile({
                             >
                               {bidCount}
                             </div>
+                            {/* GRAY = Skipped */}
+                            <div 
+                              className="h-5 min-w-5 px-1 rounded-full bg-gray-400 flex items-center justify-center text-white text-[10px] font-medium cursor-pointer active:bg-gray-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab('loads');
+                                onFilterChange('skipped', vehicle.id);
+                              }}
+                            >
+                              {skippedCount}
+                            </div>
                           </div>
                           {hunt && (
                             <Button
                               size="sm"
                               variant={hunt.enabled ? 'default' : 'outline'}
-                              className={`h-8 text-xs ${hunt.enabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                              className={`h-7 text-[10px] px-2 ${hunt.enabled ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleHunt(hunt.id, hunt.enabled);
                               }}
                             >
-                              {hunt.enabled ? '● Hunting' : 'Start Hunt'}
+                              {hunt.enabled ? '● Hunting' : 'Start'}
                             </Button>
                           )}
                         </div>
@@ -395,14 +503,27 @@ export default function LoadHunterMobile({
                         </div>
                       )}
                       {hunt && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {hunt.zipCode || 'No location'}
-                          </span>
-                          <span>{hunt.pickupRadius} mi radius</span>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {hunt.zipCode || 'No location'}
+                            </span>
+                            <span>{hunt.pickupRadius} mi radius</span>
+                            {hunt.availableFeet && (
+                              <span className="flex items-center gap-1">
+                                <Ruler className="h-3 w-3" />
+                                {hunt.availableFeet} ft
+                              </span>
+                            )}
+                          </div>
                           {hunt.vehicleSizes?.length > 0 && (
-                            <span>{hunt.vehicleSizes.slice(0, 2).join(', ')}{hunt.vehicleSizes.length > 2 ? '...' : ''}</span>
+                            <span className="text-[10px]">{hunt.vehicleSizes.slice(0, 3).join(', ')}{hunt.vehicleSizes.length > 3 ? '...' : ''}</span>
+                          )}
+                          {hunt.notes && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400 italic line-clamp-1">
+                              Note: {hunt.notes}
+                            </p>
                           )}
                         </div>
                       )}
@@ -419,6 +540,12 @@ export default function LoadHunterMobile({
             <p className="text-xs text-muted-foreground/70 mt-1">
               {activeFilter === 'unreviewed' 
                 ? 'Enable a hunt plan to start matching loads'
+                : activeFilter === 'mybids'
+                ? 'Send a bid to see it here'
+                : activeFilter === 'waitlist'
+                ? 'Waitlisted loads will appear here'
+                : activeFilter === 'undecided'
+                ? 'Viewed loads with no action appear here'
                 : 'Try a different filter'
               }
             </p>
@@ -439,6 +566,7 @@ export default function LoadHunterMobile({
                   expires_at: item.expires_at,
                   parsed_data: item.parsed_data,
                   status: item.status,
+                  email_source: item.email_source,
                 };
                 match = item;
               } else if (activeFilter === 'missed') {
@@ -456,10 +584,30 @@ export default function LoadHunterMobile({
               const now = new Date();
               const diffMs = now.getTime() - receivedDate.getTime();
               const diffMins = Math.floor(diffMs / 60000);
+              const diffHours = Math.floor(diffMins / 60);
               const isNew = diffMins <= 5;
+
+              // Calculate expiration
+              let expiresIn = '';
+              if (email.expires_at) {
+                const expiresDate = new Date(email.expires_at);
+                const timeUntil = expiresDate.getTime() - now.getTime();
+                const minsUntil = Math.floor(timeUntil / 60000);
+                if (minsUntil > 60) {
+                  expiresIn = `${Math.floor(minsUntil / 60)}h ${minsUntil % 60}m`;
+                } else if (minsUntil > 0) {
+                  expiresIn = `${minsUntil}m`;
+                } else {
+                  expiresIn = `Expired`;
+                }
+              }
 
               // Get vehicle info for matched loads
               const vehicle = match ? vehicles.find(v => v.id === match.vehicle_id) : null;
+              const huntPlan = match ? huntPlans.find(hp => hp.id === match.hunt_plan_id) : null;
+
+              // Time display
+              const timeAgo = diffHours > 0 ? `${diffHours}h ${diffMins % 60}m` : `${diffMins}m`;
 
               return (
                 <Card 
@@ -468,13 +616,18 @@ export default function LoadHunterMobile({
                   onClick={() => onSelectLoad(email, match)}
                 >
                   <CardContent className="p-3 space-y-2">
-                    {/* Header Row */}
+                    {/* Header Row - Order #, NEW badge, Time */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {data.order_number && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 h-5">
+                            <Badge variant="outline" className="text-[10px] px-1.5 h-5 font-mono">
                               #{data.order_number}
+                            </Badge>
+                          )}
+                          {email.load_id && (
+                            <Badge variant="secondary" className="text-[9px] px-1 h-4 font-mono">
+                              {email.load_id}
                             </Badge>
                           )}
                           {isNew && (
@@ -482,21 +635,28 @@ export default function LoadHunterMobile({
                           )}
                         </div>
                         <p className="font-medium text-sm mt-1 truncate">
-                          {data.customer || email.from_name || 'Unknown Customer'}
+                          {data.customer || data.broker_company || email.from_name || 'Unknown Customer'}
                         </p>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-destructive">{diffMins}</p>
-                        <p className="text-[10px] text-destructive">min</p>
+                      <div className="text-right flex-shrink-0 space-y-0.5">
+                        <div className="flex items-center gap-1 justify-end">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs font-medium">{timeAgo}</span>
+                        </div>
+                        {expiresIn && (
+                          <p className={`text-[10px] ${expiresIn === 'Expired' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            {expiresIn === 'Expired' ? 'Expired' : `Exp: ${expiresIn}`}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Route Info */}
+                    {/* Route Info - Origin → Destination */}
                     <div className="flex items-center gap-2 text-sm">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-green-600 flex-shrink-0" />
-                          <span className="truncate">
+                          <span className="truncate font-medium">
                             {data.origin_city && data.origin_state 
                               ? `${data.origin_city}, ${data.origin_state}`
                               : 'Unknown'
@@ -508,7 +668,7 @@ export default function LoadHunterMobile({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-blue-600 flex-shrink-0" />
-                          <span className="truncate">
+                          <span className="truncate font-medium">
                             {data.destination_city && data.destination_state 
                               ? `${data.destination_city}, ${data.destination_state}`
                               : 'Unknown'
@@ -518,46 +678,107 @@ export default function LoadHunterMobile({
                       </div>
                     </div>
 
-                    {/* Details Row */}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    {/* Pickup/Delivery Times */}
+                    {(data.pickup_date || data.pickup_time || data.delivery_date || data.delivery_time) && (
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>P: {data.pickup_date || ''} {data.pickup_time || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>D: {data.delivery_date || ''} {data.delivery_time || '—'}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Load Details Grid - Miles, Weight, Pieces, Dims */}
+                    <div className="grid grid-cols-4 gap-2 text-[10px]">
+                      {/* Miles */}
+                      <div className="bg-muted/50 rounded p-1.5 text-center">
+                        <div className="text-muted-foreground">Miles Out</div>
+                        <div className="font-semibold text-primary">
+                          {match?.distance_miles ? `${Math.round(match.distance_miles)}` : data.empty_miles || '—'}
+                        </div>
+                      </div>
+                      {/* Loaded Miles */}
+                      <div className="bg-muted/50 rounded p-1.5 text-center">
+                        <div className="text-muted-foreground">Loaded</div>
+                        <div className="font-semibold">
+                          {data.loaded_miles || data.miles || '—'}
+                        </div>
+                      </div>
+                      {/* Pieces */}
+                      <div className="bg-muted/50 rounded p-1.5 text-center">
+                        <div className="text-muted-foreground">Pieces</div>
+                        <div className="font-semibold">
+                          {data.pieces || '—'}
+                        </div>
+                      </div>
+                      {/* Weight */}
+                      <div className="bg-muted/50 rounded p-1.5 text-center">
+                        <div className="text-muted-foreground">Weight</div>
+                        <div className="font-semibold">
+                          {data.weight ? `${data.weight}` : '—'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Secondary Details Row - Vehicle Type, Dims, Amount */}
+                    <div className="flex items-center gap-2 text-xs flex-wrap">
                       {data.vehicle_type && (
-                        <span className="flex items-center gap-1">
-                          <Truck className="h-3 w-3" />
+                        <Badge variant="outline" className="text-[10px] h-5">
+                          <Truck className="h-3 w-3 mr-1" />
                           {data.vehicle_type}
-                        </span>
+                        </Badge>
+                      )}
+                      {data.dimensions && (
+                        <Badge variant="outline" className="text-[10px] h-5">
+                          <Box className="h-3 w-3 mr-1" />
+                          {data.dimensions}
+                        </Badge>
+                      )}
+                      {data.available_feet && (
+                        <Badge variant="outline" className="text-[10px] h-5">
+                          <Ruler className="h-3 w-3 mr-1" />
+                          {data.available_feet} ft
+                        </Badge>
                       )}
                       {data.posted_amount && (
-                        <span className="font-semibold text-green-600">
+                        <Badge className="bg-green-600 text-[10px] h-5">
                           ${data.posted_amount}
-                        </span>
-                      )}
-                      {match?.distance_miles && (
-                        <span>{Math.round(match.distance_miles)} mi away</span>
+                        </Badge>
                       )}
                       {/* Source Badge */}
                       {(() => {
                         const emailSource = (item as any).email_source || email?.email_source || 'sylectus';
                         const sourceConfig: Record<string, { label: string; className: string }> = {
-                          sylectus: { label: 'Sylectus', className: 'bg-blue-100 text-blue-700' },
-                          fullcircle: { label: 'Full Circle', className: 'bg-purple-100 text-purple-700' },
+                          sylectus: { label: 'SYL', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+                          fullcircle: { label: 'FC', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
                         };
                         const config = sourceConfig[emailSource] || { label: emailSource, className: 'bg-gray-100 text-gray-700' };
                         return (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${config.className}`}>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${config.className}`}>
                             {config.label}
                           </span>
                         );
                       })()}
                     </div>
 
-                    {/* Matched Vehicle (for unreviewed) */}
+                    {/* Load Notes (if present) */}
+                    {data.notes && (
+                      <div className="bg-amber-50 dark:bg-amber-950/30 rounded p-2 text-[10px] text-amber-800 dark:text-amber-300">
+                        <span className="font-semibold">Notes:</span> {data.notes}
+                      </div>
+                    )}
+
+                    {/* Matched Vehicle (for match-based filters) */}
                     {vehicle && (
                       <div className="pt-2 border-t space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                            <div className="w-1.5 h-8 bg-blue-500 rounded-full" />
                             <div>
-                              <p className="text-xs font-medium">{vehicle.vehicle_number}</p>
+                              <p className="text-xs font-semibold">{vehicle.vehicle_number}</p>
                               <p className="text-[10px] text-muted-foreground">
                                 {getDriverName(vehicle.driver_1_id) || 'No Driver'}
                               </p>
@@ -585,9 +806,9 @@ export default function LoadHunterMobile({
                           </p>
                         )}
                         {/* Hunt Plan Notes */}
-                        {match?.hunt_plan_notes && (
+                        {huntPlan?.notes && (
                           <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-3.5 italic">
-                            Note: {match.hunt_plan_notes}
+                            Hunt Note: {huntPlan.notes}
                           </p>
                         )}
                       </div>
@@ -639,8 +860,18 @@ export default function LoadHunterMobile({
                                 {vehicle?.vehicle_number || 'Unknown'} • {plan.zipCode} • {plan.pickupRadius}mi
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                Types: {plan.vehicleSizes.join(', ')}
+                                Types: {plan.vehicleSizes?.slice(0, 3).join(', ')}{plan.vehicleSizes?.length > 3 ? '...' : ''}
                               </p>
+                              {plan.availableFeet && (
+                                <p className="text-xs text-muted-foreground">
+                                  Available: {plan.availableFeet} ft
+                                </p>
+                              )}
+                              {plan.notes && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
+                                  {plan.notes}
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               {matchCount > 0 && plan.enabled && (
