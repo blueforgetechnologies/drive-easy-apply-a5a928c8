@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Truck, X, ChevronDown, ChevronUp, MapPin, Mail, DollarSign, ArrowLeft, Check, History, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -87,8 +87,13 @@ const LoadEmailDetail = ({
   const [editableHelpLine, setEditableHelpLine] = useState<string>("Please let me know if I can help on this load:");
   const [editableOrderLine, setEditableOrderLine] = useState<string>("");
   const data = email.parsed_data || {};
+  
+  // Check if broker email contains "donotreply" for button styling - must be reactive to toEmail state
+  const isDoNotReplyEmail = useMemo(() => {
+    const emailToCheck = toEmail || data.broker_email || '';
+    return emailToCheck.toLowerCase().includes('donotreply');
+  }, [toEmail, data.broker_email]);
 
-  // Email templates - editable and selectable
   const DEFAULT_TEMPLATES = {
     nearby: 'Vehicle {distance} away. We can pick up on time and deliver as scheduled.',
     driver: 'Driver is U.S. citizen with birth certificate in hand. Clean criminal record.',
@@ -1246,7 +1251,7 @@ const LoadEmailDetail = ({
               <div className={`grid gap-2 ${portalBidUrl ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <Button 
                   size="sm" 
-                  className={`h-11 ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`} 
+                  className={`h-11 ${isDoNotReplyEmail ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`} 
                   onClick={() => setShowEmailConfirmDialog(true)}
                 >
                   Email Bid
@@ -1260,7 +1265,7 @@ const LoadEmailDetail = ({
                 {portalBidUrl && (
                   <Button 
                     size="sm" 
-                    className={`bg-purple-600 hover:bg-purple-700 h-11 ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'animate-portal-flash' : ''}`} 
+                    className={`bg-purple-600 hover:bg-purple-700 h-11 ${isDoNotReplyEmail ? 'animate-portal-flash' : ''}`} 
                     onClick={() => window.open(portalBidUrl, '_blank', 'noopener,noreferrer')}
                   >
                     Portal
@@ -1421,7 +1426,7 @@ const LoadEmailDetail = ({
           <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
             <Button 
               size="sm" 
-              className={`flex-1 h-10 font-semibold shadow-sm ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`} 
+              className={`flex-1 h-10 font-semibold shadow-sm ${isDoNotReplyEmail ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`} 
               onClick={() => setShowEmailConfirmDialog(true)}
             >
               <Mail className="w-4 h-4 mr-2" />
@@ -1436,7 +1441,7 @@ const LoadEmailDetail = ({
             {portalBidUrl && (
               <Button 
                 size="sm" 
-                className={`flex-1 bg-purple-600 hover:bg-purple-700 h-10 font-semibold shadow-sm ${(toEmail || data.broker_email || '')?.toLowerCase().includes('donotreply') ? 'animate-portal-flash' : ''}`} 
+                className={`flex-1 bg-purple-600 hover:bg-purple-700 h-10 font-semibold shadow-sm ${isDoNotReplyEmail ? 'animate-portal-flash' : ''}`} 
                 onClick={() => window.open(portalBidUrl, '_blank', 'noopener,noreferrer')}
               >
                 Bid on Portal
