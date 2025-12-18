@@ -18,6 +18,7 @@ interface Profile {
   email: string;
   full_name: string | null;
   created_at: string;
+  roles?: string[];
 }
 
 interface Invite {
@@ -80,13 +81,25 @@ export default function UsersTab() {
       return;
     }
 
+    // Get ALL roles for all users
     const { data: rolesData } = await supabase
       .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
+      .select("user_id, role");
 
-    const adminIds = new Set(rolesData?.map((r) => r.user_id) || []);
-    const activeUsers = profilesData?.filter((p) => adminIds.has(p.id)) || [];
+    // Build a map of user_id -> roles[]
+    const userRolesMap = new Map<string, string[]>();
+    rolesData?.forEach((r) => {
+      const existing = userRolesMap.get(r.user_id) || [];
+      existing.push(r.role);
+      userRolesMap.set(r.user_id, existing);
+    });
+
+    // Active users = users who have at least one role
+    const activeUsers = profilesData?.filter((p) => userRolesMap.has(p.id)).map((p) => ({
+      ...p,
+      roles: userRolesMap.get(p.id) || [],
+    })) || [];
+    
     setUsers(activeUsers);
 
     const { data: historyData } = await supabase
@@ -128,13 +141,19 @@ export default function UsersTab() {
       return;
     }
 
+    // Get ALL roles for all users
     const { data: rolesData } = await supabase
       .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
+      .select("user_id, role");
 
-    const adminIds = new Set(rolesData?.map((r) => r.user_id) || []);
-    const inactiveUsers = profilesData?.filter((p) => !adminIds.has(p.id)) || [];
+    const usersWithRoles = new Set(rolesData?.map((r) => r.user_id) || []);
+    
+    // Inactive users = users without any role
+    const inactiveUsers = profilesData?.filter((p) => !usersWithRoles.has(p.id)).map((p) => ({
+      ...p,
+      roles: [],
+    })) || [];
+    
     setUsers(inactiveUsers);
   };
 
@@ -392,7 +411,7 @@ export default function UsersTab() {
             <CardHeader>
               <CardTitle>{filter === "active" ? "Active" : "Inactive"} Users</CardTitle>
               <CardDescription>
-                {filter === "active" ? "Team members with admin access" : "Users without admin access"}
+                {filter === "active" ? "Team members with assigned roles" : "Users without any role assigned"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -408,8 +427,8 @@ export default function UsersTab() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
+                          <TableHead>Roles</TableHead>
                           <TableHead>Joined</TableHead>
-                          <TableHead>Status</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -419,14 +438,31 @@ export default function UsersTab() {
                             <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
-                              {format(new Date(user.created_at), "MM/dd/yyyy")}
+                              <div className="flex flex-wrap gap-1">
+                                {user.roles && user.roles.length > 0 ? (
+                                  user.roles.map((role) => (
+                                    <Badge 
+                                      key={role}
+                                      className={
+                                        role === "admin" 
+                                          ? "bg-blue-600 hover:bg-blue-700" 
+                                          : role === "dispatcher" 
+                                          ? "bg-green-600 hover:bg-green-700"
+                                          : role === "driver"
+                                          ? "bg-orange-600 hover:bg-orange-700"
+                                          : "bg-gray-600 hover:bg-gray-700"
+                                      }
+                                    >
+                                      {role}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Badge variant="secondary">No role</Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
-                              <Badge 
-                                className={filter === "active" ? "bg-green-600 hover:bg-green-700" : "bg-gray-500 hover:bg-gray-600"}
-                              >
-                                {filter === "active" ? "Active" : "Inactive"}
-                              </Badge>
+                              {format(new Date(user.created_at), "MM/dd/yyyy")}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
