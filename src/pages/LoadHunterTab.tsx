@@ -8,6 +8,7 @@ import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
 import { DispatcherMetricsView } from "@/components/DispatcherMetricsView";
 import { UserActivityTracker } from "@/components/UserActivityTracker";
 import LoadHunterMobile from "@/components/LoadHunterMobile";
+import { BookLoadDialog } from "@/components/BookLoadDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -115,10 +116,14 @@ export default function LoadHunterTab() {
   const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (match_status = 'active')
   const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Manually skipped matches (match_status = 'skipped')
   const [bidMatches, setBidMatches] = useState<any[]>([]); // Matches with bids placed (match_status = 'bid')
+  const [bookedMatches, setBookedMatches] = useState<any[]>([]); // Matches that were booked (match_status = 'booked')
   const [undecidedMatches, setUndecidedMatches] = useState<any[]>([]); // Matches viewed but no action (match_status = 'undecided')
   const [waitlistMatches, setWaitlistMatches] = useState<any[]>([]); // Matches moved to waitlist (match_status = 'waitlist')
   const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
   const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
+  const [allDispatchers, setAllDispatchers] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
+  const [bookingMatch, setBookingMatch] = useState<any | null>(null); // Match being booked
+  const [bookingEmail, setBookingEmail] = useState<any | null>(null); // Email for booking dialog
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -743,6 +748,7 @@ export default function LoadHunterTab() {
   const waitlistCount = waitlistMatches.length; // Use match-based count
   const skippedCount = skippedMatches.length;
   const bidCount = bidMatches.length;
+  const bookedCount = bookedMatches.length;
   const undecidedCount = undecidedMatches.length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
 
@@ -1069,6 +1075,7 @@ export default function LoadHunterTab() {
     loadMissedHistory(); // Load missed history for Missed tab
     loadCarriersAndPayees();
     loadCanonicalVehicleTypes();
+    loadAllDispatchers();
     fetchMapboxToken();
 
     // Subscribe to real-time updates for load_emails
@@ -1276,6 +1283,20 @@ export default function LoadHunterTab() {
       setDrivers(data || []);
     } catch (error: any) {
       console.error("Failed to load drivers", error);
+    }
+  };
+
+  const loadAllDispatchers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("dispatchers")
+        .select("id, first_name, last_name")
+        .in("status", ["active", "Active", "ACTIVE"]);
+
+      if (error) throw error;
+      setAllDispatchers(data || []);
+    } catch (error: any) {
+      console.error("Failed to load dispatchers", error);
     }
   };
 
@@ -1539,8 +1560,21 @@ export default function LoadHunterTab() {
           .eq('match_status', 'waitlist')
           .gte('updated_at', midnightETIso);
 
-        if (activeError || skippedError || bidError || undecidedError || waitlistError) {
-          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError);
+        // Fetch booked matches (match_status = 'booked', today only) - include email data
+        const { data: bookedData, error: bookedError } = await supabase
+          .from("load_hunt_matches")
+          .select(`
+            *,
+            load_emails (
+              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
+              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues, assigned_load_id
+            )
+          `)
+          .eq('match_status', 'booked')
+          .gte('updated_at', midnightETIso);
+
+        if (activeError || skippedError || bidError || undecidedError || waitlistError || bookedError) {
+          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError || bookedError);
           if (attempt === retries) {
             toast.error('Failed to load hunt matches - please refresh');
             return;
@@ -1554,14 +1588,16 @@ export default function LoadHunterTab() {
         const bids = bidData || [];
         const undecided = undecidedData || [];
         const waitlist = waitlistData || [];
+        const booked = bookedData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
         setBidMatches(bids);
         setUndecidedMatches(undecided);
         setWaitlistMatches(waitlist);
+        setBookedMatches(booked);
         
         const huntMap = new Map<string, string>();
         const distances = new Map<string, number>();
@@ -2033,6 +2069,14 @@ export default function LoadHunterTab() {
       console.error('Error placing bid:', error);
       toast.error('Failed to update match status');
     }
+  };
+
+  // Handle booking complete - refresh matches after load is created
+  const handleBookingComplete = async (matchId: string, loadId: string) => {
+    console.log('📦 Load booked:', matchId, 'created load:', loadId);
+    await loadHuntMatches();
+    setBookingMatch(null);
+    setBookingEmail(null);
   };
 
   const handleDismissIssue = async (emailId: string) => {
@@ -3140,7 +3184,7 @@ export default function LoadHunterTab() {
               }}
             >
               Booked
-              <span className="badge-inset-success text-[10px] h-5">2</span>
+              <span className="badge-inset-success text-[10px] h-5">{bookedCount}</span>
             </Button>
             
             {issuesCount > 0 && (
@@ -4539,6 +4583,7 @@ export default function LoadHunterTab() {
                   : activeFilter === 'missed' ? missedHistory.length === 0 
                   : activeFilter === 'skipped' ? skippedMatches.length === 0
                   : activeFilter === 'mybids' ? bidMatches.length === 0
+                  : activeFilter === 'booked' ? bookedMatches.length === 0
                   : activeFilter === 'undecided' ? undecidedMatches.length === 0
                   : activeFilter === 'waitlist' ? waitlistMatches.length === 0
                   : filteredEmails.length === 0) ? (
@@ -4551,6 +4596,8 @@ export default function LoadHunterTab() {
                       ? 'No missed loads. Loads that go 15+ minutes without action appear here.'
                       : activeFilter === 'mybids'
                       ? 'No bids placed yet. Send a bid on a load to see it here.'
+                      : activeFilter === 'booked'
+                      ? 'No booked loads yet. Book a load from My Bids to see it here.'
                       : activeFilter === 'undecided'
                       ? 'No undecided loads. Loads you viewed but took no action on will appear here.'
                       : activeFilter === 'waitlist'
@@ -4617,18 +4664,19 @@ export default function LoadHunterTab() {
                         {(activeFilter === 'unreviewed' ? filteredMatches 
                           : activeFilter === 'skipped' ? [...filteredSkippedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'mybids' ? [...filteredBidMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
+                          : activeFilter === 'booked' ? [...bookedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'undecided' ? undecidedMatches
                           : activeFilter === 'waitlist' ? [...waitlistMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'missed' ? filteredMissedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed, item is from view with email data included
-                          // For skipped/mybids/undecided/waitlist, item is a match that needs email lookup
+                          // For skipped/mybids/booked/undecided/waitlist, item is a match that needs email lookup
                           // For missed, item is from missedHistory with email data
                           // For others, item is an email
-                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'missed' || activeFilter === 'undecided' || activeFilter === 'waitlist';
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'missed' || activeFilter === 'undecided' || activeFilter === 'waitlist';
                           
-                          // Get email data - from view (unreviewed) or lookup (skipped/mybids/undecided/waitlist) or missedHistory (missed) or item itself (other)
+                          // Get email data - from view (unreviewed) or lookup (skipped/mybids/booked/undecided/waitlist) or missedHistory (missed) or item itself (other)
                           let email: any;
                           if (activeFilter === 'unreviewed') {
                             // View data includes email fields directly
@@ -4644,8 +4692,8 @@ export default function LoadHunterTab() {
                               status: (item as any).email_status,
                               email_source: (item as any).email_source,
                             };
-                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'undecided' || activeFilter === 'waitlist') {
-                            // Skipped/bid/undecided/waitlist matches now include email data from the join
+                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') {
+                            // Skipped/bid/booked/undecided/waitlist matches now include email data from the join
                             const matchItem = item as any;
                             email = matchItem.load_emails || loadEmails.find(e => e.id === matchItem.load_email_id);
                           } else if (activeFilter === 'missed') {
@@ -5155,9 +5203,17 @@ export default function LoadHunterTab() {
                                   </TableCell>
                                   {/* Award column */}
                                   <TableCell className="py-1">
-                                    <div className="text-[13px] leading-tight whitespace-nowrap text-muted-foreground">
-                                      —
-                                    </div>
+                                    <Button
+                                      size="sm"
+                                      className="h-6 px-2 text-[11px] font-semibold btn-glossy-success text-white"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setBookingMatch(item);
+                                        setBookingEmail(email);
+                                      }}
+                                    >
+                                      BOOK IT
+                                    </Button>
                                   </TableCell>
                                   {/* Bid Time column */}
                                   <TableCell className="py-1">
@@ -5336,6 +5392,24 @@ export default function LoadHunterTab() {
       
       {/* User Activity Tracker */}
       <UserActivityTracker />
+
+      {/* Book Load Dialog */}
+      <BookLoadDialog
+        open={!!bookingMatch}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBookingMatch(null);
+            setBookingEmail(null);
+          }
+        }}
+        match={bookingMatch}
+        email={bookingEmail}
+        parsedData={bookingEmail?.parsed_data || {}}
+        vehicles={vehicles}
+        dispatchers={allDispatchers}
+        currentDispatcherId={currentDispatcherId}
+        onBookingComplete={handleBookingComplete}
+      />
     </div>
   );
 }
