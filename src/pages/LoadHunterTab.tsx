@@ -1087,8 +1087,7 @@ export default function LoadHunterTab() {
           setLoadEmails((current) => [payload.new, ...current]);
           // Reset to page 1 so user sees the new email at the top
           setCurrentPage(1);
-          toast.success('New load email received!');
-          // Sound will be handled by the loadEmails length watcher
+          // NOTE: No toast here - notifications only for MATCHES (handled in load-hunter-realtime channel)
         }
       )
       .subscribe();
