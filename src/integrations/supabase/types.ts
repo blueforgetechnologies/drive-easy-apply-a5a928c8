@@ -1379,6 +1379,7 @@ export type Database = {
           bid_at: string | null
           bid_by: string | null
           bid_rate: number | null
+          booked_load_id: string | null
           created_at: string
           distance_miles: number | null
           hunt_plan_id: string
@@ -1395,6 +1396,7 @@ export type Database = {
           bid_at?: string | null
           bid_by?: string | null
           bid_rate?: number | null
+          booked_load_id?: string | null
           created_at?: string
           distance_miles?: number | null
           hunt_plan_id: string
@@ -1411,6 +1413,7 @@ export type Database = {
           bid_at?: string | null
           bid_by?: string | null
           bid_rate?: number | null
+          booked_load_id?: string | null
           created_at?: string
           distance_miles?: number | null
           hunt_plan_id?: string
@@ -1424,6 +1427,13 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "load_hunt_matches_booked_load_id_fkey"
+            columns: ["booked_load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "load_hunt_matches_hunt_plan_id_fkey"
             columns: ["hunt_plan_id"]

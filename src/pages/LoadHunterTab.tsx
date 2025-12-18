@@ -1560,7 +1560,7 @@ export default function LoadHunterTab() {
           .eq('match_status', 'waitlist')
           .gte('updated_at', midnightETIso);
 
-        // Fetch booked matches (match_status = 'booked', today only) - include email data
+        // Fetch booked matches (has booked_load_id, today only) - include email data
         const { data: bookedData, error: bookedError } = await supabase
           .from("load_hunt_matches")
           .select(`
@@ -1570,7 +1570,7 @@ export default function LoadHunterTab() {
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues, assigned_load_id
             )
           `)
-          .eq('match_status', 'booked')
+          .not('booked_load_id', 'is', null)
           .gte('updated_at', midnightETIso);
 
         if (activeError || skippedError || bidError || undecidedError || waitlistError || bookedError) {
@@ -5203,17 +5203,28 @@ export default function LoadHunterTab() {
                                   </TableCell>
                                   {/* Award column */}
                                   <TableCell className="py-1">
-                                    <Button
-                                      size="sm"
-                                      className="h-6 px-2 text-[11px] font-semibold btn-glossy-success text-white"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setBookingMatch(item);
-                                        setBookingEmail(email);
-                                      }}
-                                    >
-                                      BOOK IT
-                                    </Button>
+                                    {(item as any).booked_load_id ? (
+                                      <Button
+                                        size="sm"
+                                        className="h-6 px-2 text-[11px] font-semibold"
+                                        variant="secondary"
+                                        disabled
+                                      >
+                                        BOOKED
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        className="h-6 px-2 text-[11px] font-semibold btn-glossy-success text-white"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setBookingMatch(item);
+                                          setBookingEmail(email);
+                                        }}
+                                      >
+                                        BOOK IT
+                                      </Button>
+                                    )}
                                   </TableCell>
                                   {/* Bid Time column */}
                                   <TableCell className="py-1">
