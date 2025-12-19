@@ -1184,99 +1184,194 @@ export default function LoadDetail() {
             </Card>
           )}
 
-          <div className="space-y-3">
-            {stops.map((stop, index) => (
-              <Card key={stop.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline">Stop {index + 1}</Badge>
-                      <Badge className={stop.stop_type === "pickup" ? "bg-blue-500" : "bg-green-500"}>
-                        {stop.stop_type}
-                      </Badge>
-                      <Badge className={getStopStatusColor(stop.status)}>
-                        {stop.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={stop.status}
-                        onValueChange={(value) => handleUpdateStopStatus(stop.id, value)}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="arrived">Arrived</SelectItem>
-                          <SelectItem value="loading">Loading</SelectItem>
-                          <SelectItem value="unloading">Unloading</SelectItem>
-                          <SelectItem value="departed">Departed</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteStop(stop.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+          {/* Origin and Destination from Load Record */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Origin Card */}
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-500">Origin</Badge>
+                  <span className="text-sm text-muted-foreground">From Load Hunter</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="font-semibold text-lg">
+                    {load.pickup_city && load.pickup_state 
+                      ? `${load.pickup_city}, ${load.pickup_state}` 
+                      : 'No origin set'}
+                  </p>
+                  {load.pickup_address && (
+                    <p className="text-sm text-muted-foreground">{load.pickup_address}</p>
+                  )}
+                  {load.pickup_zip && (
+                    <p className="text-sm text-muted-foreground">ZIP: {load.pickup_zip}</p>
+                  )}
+                </div>
+                {(load.pickup_date || load.pickup_time) && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Pickup: </span>
+                    {load.pickup_date && format(new Date(load.pickup_date), "MM/dd/yyyy")}
+                    {load.pickup_time && ` @ ${load.pickup_time}`}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="font-semibold">{stop.location_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {stop.location_address}, {stop.location_city}, {stop.location_state} {stop.location_zip}
-                    </p>
+                )}
+                {load.pickup_contact && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Contact: </span>
+                    {load.pickup_contact} {load.pickup_phone && `• ${load.pickup_phone}`}
                   </div>
+                )}
+                {load.pickup_notes && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Notes: </span>
+                    {load.pickup_notes}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  {stop.contact_name && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Contact: </span>
-                      {stop.contact_name} {stop.contact_phone && `• ${stop.contact_phone}`}
-                    </div>
+            {/* Destination Card */}
+            <Card className="border-green-200 bg-green-50/50">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-green-500">Destination</Badge>
+                  <span className="text-sm text-muted-foreground">From Load Hunter</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="font-semibold text-lg">
+                    {load.delivery_city && load.delivery_state 
+                      ? `${load.delivery_city}, ${load.delivery_state}` 
+                      : 'No destination set'}
+                  </p>
+                  {load.delivery_address && (
+                    <p className="text-sm text-muted-foreground">{load.delivery_address}</p>
                   )}
-
-                  {stop.scheduled_date && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Scheduled: </span>
-                      {format(new Date(stop.scheduled_date), "MM/dd/yyyy")}
-                      {stop.scheduled_time_start && ` ${stop.scheduled_time_start}`}
-                      {stop.scheduled_time_end && ` - ${stop.scheduled_time_end}`}
-                    </div>
+                  {load.delivery_zip && (
+                    <p className="text-sm text-muted-foreground">ZIP: {load.delivery_zip}</p>
                   )}
-
-                  {stop.actual_arrival && (
-                    <div className="text-sm flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-muted-foreground">Arrived: </span>
-                      {format(new Date(stop.actual_arrival), "MM/dd/yyyy h:mm a")}
-                    </div>
-                  )}
-
-                  {stop.actual_departure && (
-                    <div className="text-sm flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-muted-foreground">Departed: </span>
-                      {format(new Date(stop.actual_departure), "MM/dd/yyyy h:mm a")}
-                    </div>
-                  )}
-
-                  {stop.notes && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Notes: </span>
-                      {stop.notes}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+                {(load.delivery_date || load.delivery_time) && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Delivery: </span>
+                    {load.delivery_date && format(new Date(load.delivery_date), "MM/dd/yyyy")}
+                    {load.delivery_time && ` @ ${load.delivery_time}`}
+                  </div>
+                )}
+                {load.delivery_contact && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Contact: </span>
+                    {load.delivery_contact} {load.delivery_phone && `• ${load.delivery_phone}`}
+                  </div>
+                )}
+                {load.delivery_notes && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Notes: </span>
+                    {load.delivery_notes}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {stops.length === 0 && (
+          {/* Additional Stops */}
+          {stops.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-md font-semibold text-muted-foreground">Additional Stops</h4>
+              {stops.map((stop, index) => (
+                <Card key={stop.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">Stop {index + 1}</Badge>
+                        <Badge className={stop.stop_type === "pickup" ? "bg-blue-500" : "bg-green-500"}>
+                          {stop.stop_type}
+                        </Badge>
+                        <Badge className={getStopStatusColor(stop.status)}>
+                          {stop.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={stop.status}
+                          onValueChange={(value) => handleUpdateStopStatus(stop.id, value)}
+                        >
+                          <SelectTrigger className="w-40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="scheduled">Scheduled</SelectItem>
+                            <SelectItem value="arrived">Arrived</SelectItem>
+                            <SelectItem value="loading">Loading</SelectItem>
+                            <SelectItem value="unloading">Unloading</SelectItem>
+                            <SelectItem value="departed">Departed</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteStop(stop.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="font-semibold">{stop.location_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {stop.location_address}, {stop.location_city}, {stop.location_state} {stop.location_zip}
+                      </p>
+                    </div>
+
+                    {stop.contact_name && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Contact: </span>
+                        {stop.contact_name} {stop.contact_phone && `• ${stop.contact_phone}`}
+                      </div>
+                    )}
+
+                    {stop.scheduled_date && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Scheduled: </span>
+                        {format(new Date(stop.scheduled_date), "MM/dd/yyyy")}
+                        {stop.scheduled_time_start && ` ${stop.scheduled_time_start}`}
+                        {stop.scheduled_time_end && ` - ${stop.scheduled_time_end}`}
+                      </div>
+                    )}
+
+                    {stop.actual_arrival && (
+                      <div className="text-sm flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-muted-foreground">Arrived: </span>
+                        {format(new Date(stop.actual_arrival), "MM/dd/yyyy h:mm a")}
+                      </div>
+                    )}
+
+                    {stop.actual_departure && (
+                      <div className="text-sm flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-muted-foreground">Departed: </span>
+                        {format(new Date(stop.actual_departure), "MM/dd/yyyy h:mm a")}
+                      </div>
+                    )}
+
+                    {stop.notes && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Notes: </span>
+                        {stop.notes}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {stops.length === 0 && !load.pickup_city && !load.delivery_city && (
             <div className="text-center py-12 text-muted-foreground">
               No stops added yet. Click "Add Stop" to create pickup and delivery stops.
             </div>
