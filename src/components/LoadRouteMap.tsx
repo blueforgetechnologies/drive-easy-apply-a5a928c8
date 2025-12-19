@@ -97,21 +97,24 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
     };
   }, []); // Only run once on mount
 
-  // Geocode address function
+  // Geocode address function using cached edge function
   const geocodeAddress = useCallback(async (stop: Stop): Promise<[number, number] | null> => {
     try {
-      if (!mapboxgl.accessToken) return null;
-      
       const query = `${stop.location_address || ''} ${stop.location_city || ''} ${stop.location_state || ''} ${stop.location_zip || ''}`.trim();
       if (!query) return null;
 
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=1`
-      );
-      const data = await response.json();
-      
-      if (data.features && data.features.length > 0) {
-        return data.features[0].center as [number, number];
+      // Use the cached geocode edge function
+      const { data, error } = await supabase.functions.invoke('geocode', {
+        body: { query }
+      });
+
+      if (error) {
+        console.error('Geocode edge function error:', error);
+        return null;
+      }
+
+      if (data && data.lat && data.lng) {
+        return [data.lng, data.lat];
       }
       return null;
     } catch (error) {

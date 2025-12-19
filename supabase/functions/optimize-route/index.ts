@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,8 +99,72 @@ serve(async (req) => {
 
     console.log(`Optimizing route for ${stops.length} stops`);
 
-    // Step 1: Geocode all stops to get coordinates
+    // Initialize Supabase client for cache access
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Helper function to normalize location keys for cache
+    const normalizeLocationKey = (query: string): string => {
+      return query
+        .toUpperCase()
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[.,]/g, '')
+        .replace(/\s+(USA|US|UNITED STATES)$/i, '');
+    };
+
+    // Helper function to geocode with cache
+    const geocodeWithCache = async (query: string): Promise<[number, number] | null> => {
+      const normalizedKey = normalizeLocationKey(query);
+      
+      // Check cache first
+      const { data: cached } = await supabase
+        .from('geocode_cache')
+        .select('latitude, longitude, id, hit_count')
+        .eq('location_key', normalizedKey)
+        .maybeSingle();
+
+      if (cached) {
+        console.log(`📍 Cache HIT: ${normalizedKey}`);
+        // Increment hit count (fire and forget)
+        supabase
+          .from('geocode_cache')
+          .update({ hit_count: (cached.hit_count || 1) + 1 })
+          .eq('id', cached.id)
+          .then(() => {});
+        return [cached.longitude, cached.latitude];
+      }
+
+      // Cache miss - call Mapbox API
+      console.log(`🌐 Cache MISS - calling Mapbox: ${normalizedKey}`);
+      const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + ', USA')}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`;
+      const geocodeResponse = await fetch(geocodeUrl);
+      const geocodeData = await geocodeResponse.json();
+      
+      if (geocodeData.features && geocodeData.features.length > 0) {
+        const [lng, lat] = geocodeData.features[0].center;
+        
+        // Save to cache
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        await supabase.from('geocode_cache').upsert({
+          location_key: normalizedKey,
+          latitude: lat,
+          longitude: lng,
+          month_created: currentMonth,
+          hit_count: 1
+        }, { onConflict: 'location_key' });
+        
+        console.log(`💾 Cached: ${normalizedKey}`);
+        return [lng, lat];
+      }
+      
+      return null;
+    };
+
+    // Step 1: Geocode all stops to get coordinates (using cache)
     const stopsWithCoords: Stop[] = [];
+    let cacheHits = 0;
+    let cacheMisses = 0;
+    
     for (const stop of stops) {
       const query = `${stop.location_address || ''} ${stop.location_city || ''} ${stop.location_state || ''} ${stop.location_zip || ''}`.trim();
       
@@ -109,14 +174,11 @@ serve(async (req) => {
       }
 
       try {
-        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
-        const geocodeResponse = await fetch(geocodeUrl);
-        const geocodeData = await geocodeResponse.json();
-        
-        if (geocodeData.features && geocodeData.features.length > 0) {
+        const coords = await geocodeWithCache(query);
+        if (coords) {
           stopsWithCoords.push({
             ...stop,
-            coordinates: geocodeData.features[0].center as [number, number]
+            coordinates: coords as [number, number]
           });
         } else {
           console.warn(`Could not geocode stop ${stop.id}`);
@@ -125,6 +187,8 @@ serve(async (req) => {
         console.error(`Geocoding error for stop ${stop.id}:`, error);
       }
     }
+    
+    console.log(`📊 Geocoding: ${stopsWithCoords.length} stops resolved`);
 
     if (stopsWithCoords.length < 2) {
       return new Response(
