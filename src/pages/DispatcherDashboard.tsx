@@ -23,6 +23,10 @@ interface Load {
   delivery_date: string | null;
   customer_id: string | null;
   created_at: string;
+  assigned_vehicle_id: string | null;
+  assigned_driver_id: string | null;
+  vehicle?: { vehicle_number: string | null } | null;
+  driver?: { personal_info: unknown } | null;
 }
 
 interface Dispatcher {
@@ -112,7 +116,11 @@ export default function DispatcherDashboard() {
 
       const { data, error } = await supabase
         .from("loads")
-        .select("*")
+        .select(`
+          *,
+          vehicle:assigned_vehicle_id(vehicle_number),
+          driver:assigned_driver_id(personal_info)
+        `)
         .eq("assigned_dispatcher_id", dispatcher.id)
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString())
@@ -346,6 +354,8 @@ export default function DispatcherDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Load #</TableHead>
+                    <TableHead>Truck ID</TableHead>
+                    <TableHead>Driver</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Origin</TableHead>
                     <TableHead>Destination</TableHead>
@@ -358,9 +368,15 @@ export default function DispatcherDashboard() {
                 <TableBody>
                   {loads.map((load) => {
                     const yourPay = (load.rate || 0) * ((dispatcher.pay_percentage || 0) / 100);
+                    const driverInfo = load.driver?.personal_info as { first_name?: string; last_name?: string } | null;
+                    const driverName = driverInfo 
+                      ? `${driverInfo.first_name || ''} ${driverInfo.last_name || ''}`.trim() 
+                      : null;
                     return (
                       <TableRow key={load.id} className="cursor-pointer hover:bg-muted/50">
                         <TableCell className="font-medium">{load.load_number}</TableCell>
+                        <TableCell>{load.vehicle?.vehicle_number || "-"}</TableCell>
+                        <TableCell>{driverName || "-"}</TableCell>
                         <TableCell>{getStatusBadge(load.status)}</TableCell>
                         <TableCell>
                           {load.pickup_city && load.pickup_state 
