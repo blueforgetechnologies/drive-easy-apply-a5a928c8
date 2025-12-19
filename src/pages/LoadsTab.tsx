@@ -86,8 +86,9 @@ export default function LoadsTab() {
   const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const ROWS_PER_PAGE = 14;
   
-  // Status priority order matching the tab order
+  // Status priority order matching the tab order - action_needed first!
   const STATUS_ORDER = [
+    'action_needed',
     'pending_dispatch',
     'available',
     'booked', 
@@ -330,6 +331,8 @@ export default function LoadsTab() {
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
+      case "action_needed":
+        return { label: "Action Needed", color: "bg-red-500 border-red-500 text-white" };
       case "pending_dispatch":
         return { label: "Pending Dispatch", color: "bg-transparent border-yellow-400 text-yellow-500" };
       case "available":
@@ -437,6 +440,7 @@ export default function LoadsTab() {
   // Calculate status counts
   const statusCounts = {
     all: loads.length,
+    action_needed: loads.filter(l => l.status === 'action_needed').length,
     available: loads.filter(l => l.status === 'available').length,
     booked: loads.filter(l => l.status === 'booked').length,
     dispatched: loads.filter(l => l.status === 'dispatched').length,
@@ -1235,7 +1239,9 @@ export default function LoadsTab() {
                     {paginatedLoads.map((load) => (
                       <TableRow 
                         key={load.id} 
-                        className="cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors" 
+                        className={`cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors ${
+                          load.status === 'action_needed' ? 'bg-red-100 dark:bg-red-950/50 hover:bg-red-200 dark:hover:bg-red-950/70' : ''
+                        }`}
                         onClick={() => viewLoadDetail(load.id)}
                       >
                         <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">

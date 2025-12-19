@@ -87,8 +87,14 @@ export default function AuditDetail() {
     onSuccess: (_, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads"] });
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads-nav"] });
-      toast.success(newStatus === "completed" ? "Audit approved!" : "Audit failed");
-      navigate("/dashboard/accounting?subtab=ready_for_audit");
+      queryClient.invalidateQueries({ queryKey: ["loads"] });
+      if (newStatus === "completed") {
+        toast.success("Audit approved!");
+        navigate("/dashboard/accounting?subtab=ready_for_audit");
+      } else {
+        toast.error("Audit failed - Load requires action");
+        navigate("/dashboard/loads?filter=all");
+      }
     },
     onError: () => {
       toast.error("Failed to update load status");
@@ -353,7 +359,7 @@ export default function AuditDetail() {
               Approve Audit
             </Button>
             <Button
-              onClick={() => updateStatusMutation.mutate("cancelled")}
+              onClick={() => updateStatusMutation.mutate("action_needed")}
               disabled={updateStatusMutation.isPending}
               className="bg-rose-400 hover:bg-rose-500 text-white flex-1"
             >
