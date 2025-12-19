@@ -1,0 +1,406 @@
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { DollarSign, Truck, TrendingUp, Calendar, Loader2, FileText, Clock, CheckCircle2, XCircle } from "lucide-react";
+
+interface Load {
+  id: string;
+  load_number: string;
+  status: string;
+  rate: number | null;
+  pickup_city: string | null;
+  pickup_state: string | null;
+  delivery_city: string | null;
+  delivery_state: string | null;
+  pickup_date: string | null;
+  delivery_date: string | null;
+  customer_id: string | null;
+  created_at: string;
+}
+
+interface Dispatcher {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  pay_percentage: number | null;
+  user_id: string | null;
+}
+
+export default function DispatcherDashboard() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [dispatcher, setDispatcher] = useState<Dispatcher | null>(null);
+  const [loads, setLoads] = useState<Load[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Generate month and year options
+  const months = [
+    { value: 1, label: "January" },
+    { value: 2, label: "February" },
+    { value: 3, label: "March" },
+    { value: 4, label: "April" },
+    { value: 5, label: "May" },
+    { value: 6, label: "June" },
+    { value: 7, label: "July" },
+    { value: 8, label: "August" },
+    { value: 9, label: "September" },
+    { value: 10, label: "October" },
+    { value: 11, label: "November" },
+    { value: 12, label: "December" },
+  ];
+
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, i) => currentYear - i);
+  }, []);
+
+  useEffect(() => {
+    loadDispatcherData();
+  }, []);
+
+  useEffect(() => {
+    if (dispatcher) {
+      loadLoads();
+    }
+  }, [dispatcher, selectedMonth, selectedYear]);
+
+  const loadDispatcherData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in to view your dashboard");
+        navigate("/auth");
+        return;
+      }
+
+      // Find dispatcher by user_id
+      const { data: dispatcherData, error } = await supabase
+        .from("dispatchers")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error || !dispatcherData) {
+        toast.error("Dispatcher profile not found");
+        setLoading(false);
+        return;
+      }
+
+      setDispatcher(dispatcherData);
+    } catch (error: any) {
+      toast.error("Error loading dispatcher data");
+      console.error(error);
+    }
+  };
+
+  const loadLoads = async () => {
+    if (!dispatcher) return;
+    
+    setLoading(true);
+    try {
+      const startDate = startOfMonth(new Date(selectedYear, selectedMonth - 1));
+      const endDate = endOfMonth(new Date(selectedYear, selectedMonth - 1));
+
+      const { data, error } = await supabase
+        .from("loads")
+        .select("*")
+        .eq("assigned_dispatcher_id", dispatcher.id)
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString())
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setLoads(data || []);
+    } catch (error: any) {
+      toast.error("Error loading loads");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate earnings
+  const stats = useMemo(() => {
+    const payPercentage = dispatcher?.pay_percentage || 0;
+    
+    const totalRevenue = loads.reduce((sum, load) => sum + (load.rate || 0), 0);
+    const totalEarnings = totalRevenue * (payPercentage / 100);
+    
+    const statusCounts = loads.reduce((acc, load) => {
+      const status = load.status || "unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const bookedLoads = loads.filter(l => 
+      ["booked", "dispatched", "in_transit", "picked_up"].includes(l.status || "")
+    ).length;
+    
+    const completedLoads = loads.filter(l => 
+      ["delivered", "completed"].includes(l.status || "")
+    ).length;
+
+    const cancelledLoads = loads.filter(l => 
+      ["cancelled"].includes(l.status || "")
+    ).length;
+
+    return {
+      totalLoads: loads.length,
+      totalRevenue,
+      totalEarnings,
+      bookedLoads,
+      completedLoads,
+      cancelledLoads,
+      payPercentage,
+      statusCounts,
+    };
+  }, [loads, dispatcher]);
+
+  const getStatusBadge = (status: string | null) => {
+    const statusLower = (status || "unknown").toLowerCase();
+    const variants: Record<string, { className: string; label: string }> = {
+      booked: { className: "bg-blue-500 text-white", label: "Booked" },
+      dispatched: { className: "bg-purple-500 text-white", label: "Dispatched" },
+      in_transit: { className: "bg-amber-500 text-white", label: "In Transit" },
+      picked_up: { className: "bg-orange-500 text-white", label: "Picked Up" },
+      delivered: { className: "bg-green-500 text-white", label: "Delivered" },
+      completed: { className: "bg-green-600 text-white", label: "Completed" },
+      cancelled: { className: "bg-red-500 text-white", label: "Cancelled" },
+      pending: { className: "bg-yellow-500 text-white", label: "Pending" },
+    };
+    
+    const variant = variants[statusLower] || { className: "bg-muted", label: status || "Unknown" };
+    return <Badge className={variant.className}>{variant.label}</Badge>;
+  };
+
+  if (loading && !dispatcher) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!dispatcher) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No dispatcher profile found for your account.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">
+            Welcome, {dispatcher.first_name} {dispatcher.last_name}
+          </h1>
+          <p className="text-muted-foreground">
+            Pay Rate: <span className="font-semibold text-primary">{dispatcher.pay_percentage || 0}%</span>
+          </p>
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-2">
+          <Select
+            value={selectedMonth.toString()}
+            onValueChange={(value) => setSelectedMonth(parseInt(value))}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month) => (
+                <SelectItem key={month.value} value={month.value.toString()}>
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={selectedYear.toString()}
+            onValueChange={(value) => setSelectedYear(parseInt(value))}
+          >
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Your Earnings</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  ${stats.totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Loads</p>
+                <p className="text-2xl font-bold">{stats.totalLoads}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold">
+                  ${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold">{stats.completedLoads}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Status Summary */}
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline" className="gap-1">
+          <Clock className="h-3 w-3" /> Booked: {stats.bookedLoads}
+        </Badge>
+        <Badge variant="outline" className="gap-1">
+          <CheckCircle2 className="h-3 w-3 text-green-500" /> Completed: {stats.completedLoads}
+        </Badge>
+        <Badge variant="outline" className="gap-1">
+          <XCircle className="h-3 w-3 text-red-500" /> Cancelled: {stats.cancelledLoads}
+        </Badge>
+      </div>
+
+      {/* Loads Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            {months.find(m => m.value === selectedMonth)?.label} {selectedYear} Loads
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : loads.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No loads found for this period
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Load #</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Origin</TableHead>
+                    <TableHead>Destination</TableHead>
+                    <TableHead>Pickup Date</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
+                    <TableHead className="text-right">Your Pay</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loads.map((load) => {
+                    const yourPay = (load.rate || 0) * ((dispatcher.pay_percentage || 0) / 100);
+                    return (
+                      <TableRow key={load.id} className="cursor-pointer hover:bg-muted/50">
+                        <TableCell className="font-medium">{load.load_number}</TableCell>
+                        <TableCell>{getStatusBadge(load.status)}</TableCell>
+                        <TableCell>
+                          {load.pickup_city && load.pickup_state 
+                            ? `${load.pickup_city}, ${load.pickup_state}` 
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {load.delivery_city && load.delivery_state 
+                            ? `${load.delivery_city}, ${load.delivery_state}` 
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {load.pickup_date 
+                            ? format(parseISO(load.pickup_date), "MM/dd/yyyy") 
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          ${(load.rate || 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
+                          ${yourPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => navigate(`/dashboard/load/${load.id}`)}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
