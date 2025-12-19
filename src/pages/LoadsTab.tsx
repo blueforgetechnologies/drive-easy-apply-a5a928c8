@@ -44,11 +44,13 @@ interface Load {
   rate: number | null;
   total_revenue: number | null;
   estimated_miles: number | null;
+  empty_miles: number | null;
   cargo_weight: number | null;
   cargo_description: string | null;
   customer_id: string | null;
   broker_name: string | null;
   reference_number: string | null;
+  email_source: string | null;
   created_at: string;
   vehicle?: {
     vehicle_number: string | null;
@@ -66,9 +68,6 @@ interface Load {
     first_name: string | null;
     last_name: string | null;
   };
-  load_hunt_match?: {
-    distance_miles: number | null;
-  }[];
 }
 
 export default function LoadsTab() {
@@ -151,8 +150,7 @@ export default function LoadsTab() {
           driver:applications!assigned_driver_id(personal_info),
           carrier:carriers!carrier_id(name),
           customer:customers!customer_id(name),
-          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name),
-          load_hunt_match:load_hunt_matches!booked_load_id(distance_miles)
+          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `);
       
       // Only filter by status if not "all"
@@ -1105,11 +1103,9 @@ export default function LoadsTab() {
                         </TableCell>
                         <TableCell className="py-2 px-2">
                           <div className="text-xs text-foreground">
-                            {load.load_hunt_match?.[0]?.distance_miles 
-                              ? Math.round(load.load_hunt_match[0].distance_miles) 
-                              : 0}
+                            {load.empty_miles ? Math.round(load.empty_miles) : 0}
                           </div>
-                          <div className="text-xs text-foreground mt-0.5">{load.estimated_miles || "-"}</div>
+                          <div className="text-xs text-foreground mt-0.5">{load.estimated_miles ? Math.round(load.estimated_miles) : "-"}</div>
                         </TableCell>
                         <TableCell className="py-2 px-2">
                           <div className="text-xs text-foreground">

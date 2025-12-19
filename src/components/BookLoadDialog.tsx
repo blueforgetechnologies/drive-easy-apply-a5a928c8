@@ -79,7 +79,7 @@ export function BookLoadDialog({
       // Get vehicle info
       const vehicle = vehicles.find(v => v.id === vehicleId);
 
-      // Create the load in the loads table
+      // Create the load in the loads table with ALL data from the match and parsed email
       const { data: newLoad, error: loadError } = await supabase
         .from('loads')
         .insert({
@@ -88,27 +88,67 @@ export function BookLoadDialog({
           rate: parseFloat(rate),
           assigned_vehicle_id: vehicleId,
           assigned_dispatcher_id: dispatcherId || null,
+          
+          // Pickup info
           pickup_date: pickupDate || null,
           pickup_time: pickupTime || null,
           pickup_city: parsedData.origin_city || null,
           pickup_state: parsedData.origin_state || null,
           pickup_zip: parsedData.origin_zip || null,
           pickup_address: parsedData.origin_address || null,
+          pickup_location: parsedData.origin_facility || parsedData.origin_name || null,
+          
+          // Delivery info
           delivery_city: parsedData.destination_city || null,
           delivery_state: parsedData.destination_state || null,
           delivery_zip: parsedData.destination_zip || null,
           delivery_address: parsedData.destination_address || null,
           delivery_date: parsedData.delivery_date || null,
           delivery_time: parsedData.delivery_time || null,
-          broker_name: parsedData.broker_company || parsedData.broker || email?.from_name || null,
-          broker_email: parsedData.broker_email || null,
+          delivery_location: parsedData.destination_facility || parsedData.destination_name || null,
+          
+          // Broker info
+          broker_name: parsedData.broker_company || parsedData.broker || parsedData.customer || email?.from_name || null,
+          broker_email: parsedData.broker_email || email?.from_email || null,
           broker_phone: parsedData.broker_phone || null,
-          cargo_weight: parsedData.weight ? parseFloat(parsedData.weight) : null,
+          broker_contact: parsedData.broker_contact || null,
+          
+          // Cargo info
+          cargo_weight: parsedData.weight ? parseFloat(String(parsedData.weight).replace(/[^0-9.]/g, '')) : null,
           cargo_pieces: parsedData.pieces || null,
-          equipment_type: parsedData.vehicle_type || null,
-          estimated_miles: parsedData.loaded_miles ? parseFloat(parsedData.loaded_miles) : null,
-          reference_number: parsedData.order_number || parsedData.load_id || null,
-          special_instructions: parsedData.notes || null,
+          cargo_description: parsedData.commodity || parsedData.description || null,
+          commodity_type: parsedData.commodity_type || parsedData.commodity || null,
+          cargo_dimensions: parsedData.dimensions || null,
+          cargo_length: parsedData.length || null,
+          cargo_width: parsedData.width || null,
+          cargo_height: parsedData.height || null,
+          
+          // Equipment info
+          equipment_type: parsedData.vehicle_type || parsedData.equipment || null,
+          available_feet: parsedData.available_feet || null,
+          
+          // Miles
+          estimated_miles: parsedData.loaded_miles ? parseFloat(String(parsedData.loaded_miles).replace(/[^0-9.]/g, '')) : null,
+          empty_miles: match.distance_miles || null,
+          
+          // Reference numbers
+          reference_number: parsedData.order_number || parsedData.load_id || parsedData.reference || null,
+          shipper_load_id: parsedData.load_id || parsedData.shipper_load_id || null,
+          po_number: parsedData.po_number || null,
+          
+          // Special instructions and notes
+          special_instructions: parsedData.notes || parsedData.special_instructions || null,
+          route_notes: parsedData.route_notes || null,
+          
+          // Source tracking
+          email_source: email?.email_source || null,
+          load_email_id: email?.id || null,
+          match_id: match.id || null,
+          
+          // Bid tracking
+          bid_placed_at: match.bid_at || null,
+          bid_placed_by: match.bid_by || null,
+          
           created_at: new Date().toISOString(),
         })
         .select()
@@ -116,12 +156,15 @@ export function BookLoadDialog({
 
       if (loadError) throw loadError;
 
-      // Update the match with the booked load ID and confirmed rate (keep match_status as 'bid' so it stays visible)
+      // Update the match with the booked load ID and confirmed rate
+      // Set match_status to 'booked' so it shows in the Booked tab while retaining all data
       const { error: matchError } = await supabase
         .from('load_hunt_matches')
         .update({
           booked_load_id: newLoad.id,
           bid_rate: parseFloat(rate), // Store the confirmed rate
+          match_status: 'booked', // Mark as booked so it appears in Booked tab
+          is_active: true, // Keep active so it remains visible
         })
         .eq('id', match.id);
 
