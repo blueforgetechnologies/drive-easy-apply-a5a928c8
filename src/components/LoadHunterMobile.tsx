@@ -613,7 +613,7 @@ export default function LoadHunterMobile({
               return (
                 <Card 
                   key={`${email.id}-${index}`}
-                  className={`overflow-hidden text-[85%] scale-[0.95] origin-left ${isNew ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}
+                  className={`overflow-hidden text-[85%] !transform-none hover:!transform-none active:!transform-none ${isNew ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}
                   onClick={() => onSelectLoad(email, match)}
                 >
                   <CardContent className="p-0.5 space-y-0.5">
