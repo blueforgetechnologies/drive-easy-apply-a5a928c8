@@ -1655,6 +1655,9 @@ export type Database = {
           assigned_dispatcher_id: string | null
           assigned_driver_id: string | null
           assigned_vehicle_id: string | null
+          available_feet: string | null
+          bid_placed_at: string | null
+          bid_placed_by: string | null
           billing_notes: string | null
           bol_number: string | null
           broker_contact: string | null
@@ -1664,8 +1667,12 @@ export type Database = {
           broker_phone: string | null
           cancelled_at: string | null
           cargo_description: string | null
+          cargo_dimensions: string | null
+          cargo_height: string | null
+          cargo_length: string | null
           cargo_pieces: number | null
           cargo_weight: number | null
+          cargo_width: string | null
           carrier_id: string | null
           commodity_type: string | null
           completed_at: string | null
@@ -1686,6 +1693,8 @@ export type Database = {
           delivery_zip: string | null
           detention_charges: number | null
           dispatch_notes: string | null
+          email_source: string | null
+          empty_miles: number | null
           equipment_type: string | null
           estimated_miles: number | null
           eta: string | null
@@ -1695,8 +1704,10 @@ export type Database = {
           id: string
           last_updated_location: string | null
           layover_charges: number | null
+          load_email_id: string | null
           load_number: string
           load_type: string | null
+          match_id: string | null
           notes: string | null
           other_charges: number | null
           pickup_address: string | null
@@ -1728,6 +1739,7 @@ export type Database = {
           shipper_city: string | null
           shipper_contact: string | null
           shipper_email: string | null
+          shipper_load_id: string | null
           shipper_name: string | null
           shipper_phone: string | null
           shipper_state: string | null
@@ -1749,6 +1761,9 @@ export type Database = {
           assigned_dispatcher_id?: string | null
           assigned_driver_id?: string | null
           assigned_vehicle_id?: string | null
+          available_feet?: string | null
+          bid_placed_at?: string | null
+          bid_placed_by?: string | null
           billing_notes?: string | null
           bol_number?: string | null
           broker_contact?: string | null
@@ -1758,8 +1773,12 @@ export type Database = {
           broker_phone?: string | null
           cancelled_at?: string | null
           cargo_description?: string | null
+          cargo_dimensions?: string | null
+          cargo_height?: string | null
+          cargo_length?: string | null
           cargo_pieces?: number | null
           cargo_weight?: number | null
+          cargo_width?: string | null
           carrier_id?: string | null
           commodity_type?: string | null
           completed_at?: string | null
@@ -1780,6 +1799,8 @@ export type Database = {
           delivery_zip?: string | null
           detention_charges?: number | null
           dispatch_notes?: string | null
+          email_source?: string | null
+          empty_miles?: number | null
           equipment_type?: string | null
           estimated_miles?: number | null
           eta?: string | null
@@ -1789,8 +1810,10 @@ export type Database = {
           id?: string
           last_updated_location?: string | null
           layover_charges?: number | null
+          load_email_id?: string | null
           load_number: string
           load_type?: string | null
+          match_id?: string | null
           notes?: string | null
           other_charges?: number | null
           pickup_address?: string | null
@@ -1822,6 +1845,7 @@ export type Database = {
           shipper_city?: string | null
           shipper_contact?: string | null
           shipper_email?: string | null
+          shipper_load_id?: string | null
           shipper_name?: string | null
           shipper_phone?: string | null
           shipper_state?: string | null
@@ -1843,6 +1867,9 @@ export type Database = {
           assigned_dispatcher_id?: string | null
           assigned_driver_id?: string | null
           assigned_vehicle_id?: string | null
+          available_feet?: string | null
+          bid_placed_at?: string | null
+          bid_placed_by?: string | null
           billing_notes?: string | null
           bol_number?: string | null
           broker_contact?: string | null
@@ -1852,8 +1879,12 @@ export type Database = {
           broker_phone?: string | null
           cancelled_at?: string | null
           cargo_description?: string | null
+          cargo_dimensions?: string | null
+          cargo_height?: string | null
+          cargo_length?: string | null
           cargo_pieces?: number | null
           cargo_weight?: number | null
+          cargo_width?: string | null
           carrier_id?: string | null
           commodity_type?: string | null
           completed_at?: string | null
@@ -1874,6 +1905,8 @@ export type Database = {
           delivery_zip?: string | null
           detention_charges?: number | null
           dispatch_notes?: string | null
+          email_source?: string | null
+          empty_miles?: number | null
           equipment_type?: string | null
           estimated_miles?: number | null
           eta?: string | null
@@ -1883,8 +1916,10 @@ export type Database = {
           id?: string
           last_updated_location?: string | null
           layover_charges?: number | null
+          load_email_id?: string | null
           load_number?: string
           load_type?: string | null
+          match_id?: string | null
           notes?: string | null
           other_charges?: number | null
           pickup_address?: string | null
@@ -1916,6 +1951,7 @@ export type Database = {
           shipper_city?: string | null
           shipper_contact?: string | null
           shipper_email?: string | null
+          shipper_load_id?: string | null
           shipper_name?: string | null
           shipper_phone?: string | null
           shipper_state?: string | null
@@ -1945,11 +1981,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "loads_bid_placed_by_fkey"
+            columns: ["bid_placed_by"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "loads_carrier_id_fkey"
             columns: ["carrier_id"]
             isOneToOne: false
             referencedRelation: "carriers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loads_load_email_id_fkey"
+            columns: ["load_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loads_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "load_hunt_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loads_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "unreviewed_matches"
+            referencedColumns: ["match_id"]
           },
         ]
       }
