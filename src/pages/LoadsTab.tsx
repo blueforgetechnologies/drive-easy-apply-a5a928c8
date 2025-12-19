@@ -66,6 +66,9 @@ interface Load {
     first_name: string | null;
     last_name: string | null;
   };
+  load_hunt_match?: {
+    distance_miles: number | null;
+  }[];
 }
 
 export default function LoadsTab() {
@@ -148,7 +151,8 @@ export default function LoadsTab() {
           driver:applications!assigned_driver_id(personal_info),
           carrier:carriers!carrier_id(name),
           customer:customers!customer_id(name),
-          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
+          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name),
+          load_hunt_match:load_hunt_matches!booked_load_id(distance_miles)
         `);
       
       // Only filter by status if not "all"
@@ -1100,8 +1104,12 @@ export default function LoadsTab() {
                           </div>
                         </TableCell>
                         <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">0</div>
-                          <div className="text-xs text-foreground mt-0.5">{load.estimated_miles || "N/A"}</div>
+                          <div className="text-xs text-foreground">
+                            {load.load_hunt_match?.[0]?.distance_miles 
+                              ? Math.round(load.load_hunt_match[0].distance_miles) 
+                              : 0}
+                          </div>
+                          <div className="text-xs text-foreground mt-0.5">{load.estimated_miles || "-"}</div>
                         </TableCell>
                         <TableCell className="py-2 px-2">
                           <div className="text-xs text-foreground">
