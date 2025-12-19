@@ -39,6 +39,7 @@ interface Load {
   delivery_date: string | null;
   assigned_driver_id: string | null;
   assigned_vehicle_id: string | null;
+  assigned_dispatcher_id: string | null;
   carrier_id: string | null;
   rate: number | null;
   total_revenue: number | null;
@@ -57,6 +58,13 @@ interface Load {
   };
   carrier?: {
     name: string | null;
+  };
+  customer?: {
+    name: string | null;
+  };
+  dispatcher?: {
+    first_name: string | null;
+    last_name: string | null;
   };
 }
 
@@ -138,7 +146,9 @@ export default function LoadsTab() {
           *,
           vehicle:vehicles!assigned_vehicle_id(vehicle_number),
           driver:applications!assigned_driver_id(personal_info),
-          carrier:carriers!carrier_id(name)
+          carrier:carriers!carrier_id(name),
+          customer:customers!customer_id(name),
+          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `);
       
       // Only filter by status if not "all"
@@ -1070,8 +1080,8 @@ export default function LoadsTab() {
                           </div>
                         </TableCell>
                         <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">{load.carrier?.name || "N/A"}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">-</div>
+                          <div className="text-xs text-foreground">{load.carrier?.name || "-"}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{load.customer?.name || "-"}</div>
                         </TableCell>
                         <TableCell className="py-2 px-2">
                           <div className="font-medium text-xs text-foreground">{load.load_number}</div>
@@ -1111,8 +1121,12 @@ export default function LoadsTab() {
                           </div>
                         </TableCell>
                         <TableCell className="py-2 px-2">
-                          <div className="text-xs text-muted-foreground">-</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">-</div>
+                          <div className="text-xs text-foreground">-</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {load.dispatcher?.first_name && load.dispatcher?.last_name
+                              ? `${load.dispatcher.first_name} ${load.dispatcher.last_name}`
+                              : "-"}
+                          </div>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
                         <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
