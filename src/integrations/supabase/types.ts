@@ -1967,6 +1967,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "loads_assigned_dispatcher_id_fkey"
+            columns: ["assigned_dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "loads_assigned_driver_id_fkey"
             columns: ["assigned_driver_id"]
             isOneToOne: false
