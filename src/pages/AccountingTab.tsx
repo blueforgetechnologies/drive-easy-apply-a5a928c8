@@ -4,14 +4,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import InvoicesTab from "./InvoicesTab";
 import SettlementsTab from "./SettlementsTab";
 import AuditLogsTab from "./AuditLogsTab";
+import ReadyForAuditTab from "./ReadyForAuditTab";
 
 export default function AccountingTab() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSubTab, setActiveSubTab] = useState<string>("invoices");
+  const [activeSubTab, setActiveSubTab] = useState<string>("ready_for_audit");
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
-    if (subTab && ["invoices", "settlements", "audit"].includes(subTab)) {
+    if (subTab && ["ready_for_audit", "invoices", "settlements", "audit"].includes(subTab)) {
       setActiveSubTab(subTab);
     }
   }, [searchParams]);
@@ -32,14 +33,19 @@ export default function AccountingTab() {
         </div>
       </div>
 
-      <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
+      <Tabs value={activeSubTab} onValueChange={handleSubTabChange} defaultValue="ready_for_audit">
         <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="ready_for_audit" className="text-xs sm:text-sm">Ready for Audit</TabsTrigger>
             <TabsTrigger value="invoices" className="text-xs sm:text-sm">Invoices</TabsTrigger>
             <TabsTrigger value="settlements" className="text-xs sm:text-sm">Settlements</TabsTrigger>
             <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit Logs</TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="ready_for_audit" className="mt-4">
+          <ReadyForAuditTab />
+        </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
           <InvoicesTab />
