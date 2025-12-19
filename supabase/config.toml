@@ -98,3 +98,6 @@ verify_jwt = false
 
 [functions.geocode]
 verify_jwt = true
+
+[functions.archive-old-emails]
+verify_jwt = true

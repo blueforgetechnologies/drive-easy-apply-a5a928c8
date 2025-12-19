@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info, Archive } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,24 @@ const UsageCostsTab = () => {
     onError: (error: any) => {
       console.error("AI test error:", error);
       toast.error(error.message || "AI test failed");
+    }
+  });
+
+  // Archive old emails mutation (moves emails >30 days to archive table)
+  const archiveEmailsMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('archive-old-emails');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Archived ${data.archived} emails. Main: ${data.mainTableCount}, Archive: ${data.archiveTableCount}`);
+      queryClient.invalidateQueries({ queryKey: ["usage-table-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["usage-pubsub"] });
+    },
+    onError: (error: any) => {
+      console.error("Archive error:", error);
+      toast.error(error.message || "Failed to archive emails");
     }
   });
 
@@ -1854,6 +1872,29 @@ const UsageCostsTab = () => {
                 ))}
             </div>
           </div>
+
+          {/* Archive Old Emails Button */}
+          {!isCompactView && (
+            <div className="pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => archiveEmailsMutation.mutate()}
+                disabled={archiveEmailsMutation.isPending}
+              >
+                {archiveEmailsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Archive className="h-4 w-4" />
+                )}
+                Archive Emails &gt; 30 Days
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Moves old load emails to archive table to reduce main table size and improve query performance.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1921,11 +1962,12 @@ const UsageCostsTab = () => {
         <CardContent className={isCompactView ? 'pt-0 px-3 pb-2' : ''}>
           <div className={`space-y-1 ${isCompactView ? 'text-xs' : 'text-sm'}`}>
             <p className="flex gap-1"><span>•</span><span>Disable hunt plans when not actively searching</span></p>
-            <p className="flex gap-1"><span>•</span><span>Geocoding only occurs when loads match hunt criteria</span></p>
+            <p className="flex gap-1"><span>•</span><span>Smart matching pre-filters emails by region (saves ~60% matching costs)</span></p>
             {!isCompactView && (
               <>
-                <p className="flex gap-2"><span>•</span><span>Regular database cleanup of old records can help manage storage</span></p>
-                <p className="flex gap-2"><span>•</span><span>Lovable Cloud includes generous free tiers for most services</span></p>
+                <p className="flex gap-2"><span>•</span><span>Archive old emails to keep the main table small and queries fast</span></p>
+                <p className="flex gap-2"><span>•</span><span>Shared realtime updates reduce duplicate polling across dispatchers</span></p>
+                <p className="flex gap-2"><span>•</span><span>Keep ALL tab disabled when not testing to avoid expensive queries</span></p>
               </>
             )}
           </div>

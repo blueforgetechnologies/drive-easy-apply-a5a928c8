@@ -554,19 +554,20 @@ export default function LoadHunterTab() {
     return () => clearInterval(interval);
   }, []);
 
-  // BACKUP: Periodic re-match every 20 seconds (primary matching is in gmail-webhook)
-  // This catches any loads that failed initial matching
+  // BACKUP: Periodic re-match every 60 seconds (reduced from 20s for cost savings)
+  // Primary matching is handled by gmail-webhook and realtime subscriptions
+  // This only catches loads that failed initial matching
   useEffect(() => {
     const readyHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
     if (readyHunts.length === 0) return;
     
-    console.log('⏰ Starting backup periodic re-match (every 20 seconds)');
+    console.log('⏰ Starting backup periodic re-match (every 60 seconds)');
     
     const interval = setInterval(() => {
       console.log('⏰ Backup re-match triggered');
       // Force re-matching by updating state (triggers the matching useEffect above)
       setLoadEmails(current => [...current]);
-    }, 20 * 1000); // Every 20 seconds
+    }, 60 * 1000); // Every 60 seconds (was 20s)
     
     return () => {
       console.log('⏰ Stopping backup periodic re-match');
