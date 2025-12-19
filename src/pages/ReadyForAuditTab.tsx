@@ -138,10 +138,10 @@ export default function ReadyForAuditTab() {
                 const driverName = getDriverName(load.driver);
 
                 return (
-                  <TableRow
+                  <TableRow 
                     key={load.id} 
                     className="cursor-pointer hover:bg-muted/50 border-t"
-                    onClick={() => navigate(`/dashboard/loads/${load.id}`)}
+                    onClick={() => navigate(`/dashboard/accounting/audit/${load.id}`)}
                   >
                     <TableCell className="align-top py-3">
                       <div className="font-medium">{load.load_number}</div>
