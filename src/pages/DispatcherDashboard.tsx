@@ -25,8 +25,12 @@ interface Load {
   created_at: string;
   assigned_vehicle_id: string | null;
   assigned_driver_id: string | null;
-  vehicle?: { vehicle_number: string | null } | null;
-  driver?: { personal_info: unknown } | null;
+}
+
+interface LoadWithDetails extends Load {
+  vehicleNumber?: string | null;
+  driverName?: string | null;
+  customerName?: string | null;
 }
 
 interface Dispatcher {
@@ -42,7 +46,7 @@ export default function DispatcherDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [dispatcher, setDispatcher] = useState<Dispatcher | null>(null);
-  const [loads, setLoads] = useState<Load[]>([]);
+  const [loads, setLoads] = useState<LoadWithDetails[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -114,20 +118,53 @@ export default function DispatcherDashboard() {
       const startDate = startOfMonth(new Date(selectedYear, selectedMonth - 1));
       const endDate = endOfMonth(new Date(selectedYear, selectedMonth - 1));
 
-      const { data, error } = await supabase
+      // Fetch loads
+      const { data: loadsData, error: loadsError } = await supabase
         .from("loads")
-        .select(`
-          *,
-          vehicle:assigned_vehicle_id(vehicle_number),
-          driver:assigned_driver_id(personal_info)
-        `)
+        .select("*")
         .eq("assigned_dispatcher_id", dispatcher.id)
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString())
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setLoads(data || []);
+      if (loadsError) throw loadsError;
+
+      // Get unique IDs for lookups
+      const vehicleIds = [...new Set((loadsData || []).map(l => l.assigned_vehicle_id).filter(Boolean))];
+      const driverIds = [...new Set((loadsData || []).map(l => l.assigned_driver_id).filter(Boolean))];
+      const customerIds = [...new Set((loadsData || []).map(l => l.customer_id).filter(Boolean))];
+
+      // Fetch related data in parallel
+      const [vehiclesRes, driversRes, customersRes] = await Promise.all([
+        vehicleIds.length > 0 
+          ? supabase.from("vehicles").select("id, vehicle_number").in("id", vehicleIds)
+          : { data: [] },
+        driverIds.length > 0 
+          ? supabase.from("applications").select("id, personal_info").in("id", driverIds)
+          : { data: [] },
+        customerIds.length > 0 
+          ? supabase.from("customers").select("id, name").in("id", customerIds)
+          : { data: [] },
+      ]);
+
+      // Create lookup maps
+      const vehicleMap = new Map((vehiclesRes.data || []).map(v => [v.id, v.vehicle_number]));
+      const driverMap = new Map((driversRes.data || []).map(d => {
+        const info = d.personal_info as { firstName?: string; lastName?: string } | null;
+        const name = info ? `${info.firstName || ''} ${info.lastName || ''}`.trim() : null;
+        return [d.id, name];
+      }));
+      const customerMap = new Map((customersRes.data || []).map(c => [c.id, c.name]));
+
+      // Combine data
+      const enrichedLoads: LoadWithDetails[] = (loadsData || []).map(load => ({
+        ...load,
+        vehicleNumber: load.assigned_vehicle_id ? vehicleMap.get(load.assigned_vehicle_id) : null,
+        driverName: load.assigned_driver_id ? driverMap.get(load.assigned_driver_id) : null,
+        customerName: load.customer_id ? customerMap.get(load.customer_id) : null,
+      }));
+
+      setLoads(enrichedLoads);
     } catch (error: any) {
       toast.error("Error loading loads");
       console.error(error);
@@ -354,6 +391,7 @@ export default function DispatcherDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Load #</TableHead>
+                    <TableHead>Customer</TableHead>
                     <TableHead>Truck ID</TableHead>
                     <TableHead>Driver</TableHead>
                     <TableHead>Status</TableHead>
@@ -368,15 +406,12 @@ export default function DispatcherDashboard() {
                 <TableBody>
                   {loads.map((load) => {
                     const yourPay = (load.rate || 0) * ((dispatcher.pay_percentage || 0) / 100);
-                    const driverInfo = load.driver?.personal_info as { first_name?: string; last_name?: string } | null;
-                    const driverName = driverInfo 
-                      ? `${driverInfo.first_name || ''} ${driverInfo.last_name || ''}`.trim() 
-                      : null;
                     return (
                       <TableRow key={load.id} className="cursor-pointer hover:bg-muted/50">
                         <TableCell className="font-medium">{load.load_number}</TableCell>
-                        <TableCell>{load.vehicle?.vehicle_number || "-"}</TableCell>
-                        <TableCell>{driverName || "-"}</TableCell>
+                        <TableCell>{load.customerName || "-"}</TableCell>
+                        <TableCell>{load.vehicleNumber || "-"}</TableCell>
+                        <TableCell>{load.driverName || "-"}</TableCell>
                         <TableCell>{getStatusBadge(load.status)}</TableCell>
                         <TableCell>
                           {load.pickup_city && load.pickup_state 
