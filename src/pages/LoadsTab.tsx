@@ -88,6 +88,7 @@ export default function LoadsTab() {
   
   // Status priority order matching the tab order
   const STATUS_ORDER = [
+    'pending_dispatch',
     'available',
     'booked', 
     'dispatched',
@@ -329,6 +330,8 @@ export default function LoadsTab() {
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
+      case "pending_dispatch":
+        return { label: "Pending Dispatch", color: "bg-transparent border-yellow-400 text-yellow-500" };
       case "available":
         return { label: "Available", color: "bg-transparent border-sky-400 text-sky-500" };
       case "booked":
@@ -542,6 +545,7 @@ export default function LoadsTab() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
+      pending_dispatch: "bg-yellow-500 hover:bg-yellow-600",
       available: "bg-sky-500 hover:bg-sky-600",
       booked: "bg-indigo-500 hover:bg-indigo-600",
       dispatched: "bg-blue-500 hover:bg-blue-600",
@@ -1249,6 +1253,7 @@ export default function LoadsTab() {
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
                               <SelectItem value="available">Available</SelectItem>
                               <SelectItem value="booked">Booked</SelectItem>
                               <SelectItem value="dispatched">Dispatched</SelectItem>
