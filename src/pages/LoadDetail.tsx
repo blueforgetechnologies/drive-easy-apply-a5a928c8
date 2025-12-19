@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle, Mail } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
@@ -65,6 +65,8 @@ export default function LoadDetail() {
     paid_by: "driver",
     notes: "",
   });
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [originalEmail, setOriginalEmail] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
@@ -99,6 +101,16 @@ export default function LoadDetail() {
       setLocations(locationsRes.data || []);
       setCarriers(carriersRes.data || []);
       setCustomers(customersRes.data || []);
+
+      // Fetch original email if load came from Load Hunter
+      if (loadRes.data?.load_email_id) {
+        const { data: emailData } = await supabase
+          .from("load_emails")
+          .select("*")
+          .eq("id", loadRes.data.load_email_id)
+          .single();
+        setOriginalEmail(emailData);
+      }
     } catch (error: any) {
       toast.error("Error loading load details");
       console.error(error);
@@ -489,9 +501,72 @@ export default function LoadDetail() {
             <p className="text-muted-foreground">Load Details & Management</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {originalEmail && (
+            <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Mail className="mr-2 h-4 w-4" />
+                  View Original Email
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    Original Load Email
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">From: </span>
+                      <span className="font-medium">{originalEmail.from_name || originalEmail.from_email}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Source: </span>
+                      <Badge variant="outline">{originalEmail.email_source}</Badge>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Received: </span>
+                      <span>{format(new Date(originalEmail.received_at), "MM/dd/yyyy h:mm a")}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Load ID: </span>
+                      <span className="font-mono">{originalEmail.load_id}</span>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Subject:</p>
+                    <p className="font-medium">{originalEmail.subject}</p>
+                  </div>
+                  <Separator />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Email Body:</p>
+                    <div className="bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">
+                      {originalEmail.body_text || "No text content available"}
+                    </div>
+                  </div>
+                  {originalEmail.parsed_data && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Parsed Data:</p>
+                        <pre className="bg-muted/50 rounded-lg p-4 text-xs overflow-x-auto">
+                          {JSON.stringify(originalEmail.parsed_data, null, 2)}
+                        </pre>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
