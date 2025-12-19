@@ -357,7 +357,7 @@ export default function LoadHunterMobile({
 
       {/* Content Area */}
       <ScrollArea className="flex-1">
-        <div className="px-3 py-2">
+        <div className="pl-2 pr-2 py-2">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -616,7 +616,7 @@ export default function LoadHunterMobile({
                   className={`overflow-hidden ${isNew ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}
                   onClick={() => onSelectLoad(email, match)}
                 >
-                  <CardContent className="p-1.5 space-y-1">
+                  <CardContent className="p-1 space-y-0.5">
                     {/* Header Row - Order #, NEW badge, Time */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
