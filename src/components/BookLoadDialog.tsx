@@ -76,8 +76,38 @@ export function BookLoadDialog({
       const seqNumber = ((count || 0) + 1).toString().padStart(3, '0');
       const loadNumber = `${datePrefix}-${seqNumber}`;
 
-      // Get vehicle info (including carrier)
+      // Get vehicle info (including carrier + driver)
       const vehicle = vehicles.find(v => v.id === vehicleId);
+      const driverFromVehicle = vehicle?.assigned_driver_id || vehicle?.driver_1_id || vehicle?.driver_2_id || null;
+
+      // Resolve customer from parsed broker/customer info (match against existing customers)
+      const customerName = parsedData.broker_company || parsedData.customer || parsedData.broker || email?.from_name || null;
+      const customerEmail = parsedData.broker_email || email?.from_email || null;
+      let customerId: string | null = null;
+
+      try {
+        if (customerName) {
+          const { data } = await supabase
+            .from('customers')
+            .select('id')
+            .ilike('name', customerName)
+            .limit(1);
+
+          customerId = (data?.[0] as any)?.id || null;
+        }
+
+        if (!customerId && customerEmail) {
+          const { data } = await supabase
+            .from('customers')
+            .select('id')
+            .ilike('email', customerEmail)
+            .limit(1);
+
+          customerId = (data?.[0] as any)?.id || null;
+        }
+      } catch (e) {
+        console.warn('Could not resolve customer for booked load', e);
+      }
 
       // Create the load in the loads table with ALL data from the match and parsed email
       const { data: newLoad, error: loadError } = await supabase
@@ -87,8 +117,10 @@ export function BookLoadDialog({
           status: 'pending_dispatch',
           rate: parseFloat(rate),
           assigned_vehicle_id: vehicleId,
+          assigned_driver_id: driverFromVehicle,
           assigned_dispatcher_id: dispatcherId || null,
-          carrier_id: vehicle?.carrier || null,
+          carrier_id: (vehicle?.carrier as any) || null,
+          customer_id: customerId,
           
           // Pickup info
           pickup_date: pickupDate || null,
