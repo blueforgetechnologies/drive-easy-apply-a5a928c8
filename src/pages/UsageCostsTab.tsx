@@ -1,8 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info, Archive } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info, Archive, Settings, Zap, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,7 +48,18 @@ const UsageCostsTab = () => {
   const [lastResendRefresh, setLastResendRefresh] = useState<Date>(new Date());
   const [lastAiRefresh, setLastAiRefresh] = useState<Date>(new Date());
   const [isCompactView, setIsCompactView] = useState<boolean>(false);
+  const [showCalibration, setShowCalibration] = useState<boolean>(false);
+  const [actualSpend, setActualSpend] = useState<string>("");
+  const [calibratedRate, setCalibratedRate] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  
+  // Load calibrated rate from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('cloud_calibrated_rate');
+    if (saved) {
+      setCalibratedRate(parseFloat(saved));
+    }
+  }, []);
 
   // Test AI mutation
   const testAiMutation = useMutation({
@@ -773,6 +785,120 @@ const UsageCostsTab = () => {
     gcTime: 300000,
   });
 
+  // Query for real-time cost drivers (1h and 24h breakdown)
+  const { data: costDrivers, refetch: refetchCostDrivers, isFetching: isCostDriversFetching } = useQuery({
+    queryKey: ["cost-drivers"],
+    queryFn: async () => {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
+      // Run all queries in parallel
+      const [
+        emails1h, emails24h,
+        geocode1h, geocode24h,
+        matches1h, matches24h,
+        mapLoads1h, mapLoads24h,
+        emailVolume1h, emailVolume24h
+      ] = await Promise.all([
+        // Emails
+        supabase.from('load_emails').select('*', { count: 'exact', head: true }).gte('created_at', oneHourAgo),
+        supabase.from('load_emails').select('*', { count: 'exact', head: true }).gte('created_at', twentyFourHoursAgo),
+        // Geocode
+        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }).gte('created_at', oneHourAgo),
+        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }).gte('created_at', twentyFourHoursAgo),
+        // Matches
+        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }).gte('created_at', oneHourAgo),
+        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }).gte('created_at', twentyFourHoursAgo),
+        // Map loads
+        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }).gte('created_at', oneHourAgo),
+        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }).gte('created_at', twentyFourHoursAgo),
+        // Email volume stats
+        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }).gte('created_at', oneHourAgo),
+        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }).gte('created_at', twentyFourHoursAgo),
+      ]);
+      
+      // Get hourly breakdown for chart
+      const { data: hourlyEmails } = await supabase
+        .from('load_emails')
+        .select('created_at')
+        .gte('created_at', twentyFourHoursAgo)
+        .order('created_at', { ascending: true });
+      
+      // Group by hour
+      const hourlyBreakdown: Record<string, number> = {};
+      hourlyEmails?.forEach((email) => {
+        const hour = new Date(email.created_at).toISOString().slice(0, 13);
+        hourlyBreakdown[hour] = (hourlyBreakdown[hour] || 0) + 1;
+      });
+      
+      const result = {
+        oneHour: {
+          emails: emails1h.count ?? 0,
+          geocode: geocode1h.count ?? 0,
+          matches: matches1h.count ?? 0,
+          mapLoads: mapLoads1h.count ?? 0,
+          emailVolume: emailVolume1h.count ?? 0,
+        },
+        twentyFourHours: {
+          emails: emails24h.count ?? 0,
+          geocode: geocode24h.count ?? 0,
+          matches: matches24h.count ?? 0,
+          mapLoads: mapLoads24h.count ?? 0,
+          emailVolume: emailVolume24h.count ?? 0,
+        },
+        hourlyBreakdown,
+        // Calculate estimated hourly rate based on 24h data
+        hourlyRate: (emails24h.count ?? 0) / 24,
+        // Estimated edge function calls (each email = ~2.5 function calls)
+        edgeFunctions1h: Math.round((emails1h.count ?? 0) * 2.5),
+        edgeFunctions24h: Math.round((emails24h.count ?? 0) * 2.5),
+      };
+      
+      console.log('[Cost Drivers]', result);
+      return result;
+    },
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+  
+  // Handle calibration save
+  const handleCalibrate = () => {
+    const spend = parseFloat(actualSpend);
+    if (isNaN(spend) || spend <= 0) {
+      toast.error('Please enter a valid spend amount');
+      return;
+    }
+    
+    const writeOps = cloudUsageStats?.writeOps || 0;
+    if (writeOps <= 0) {
+      toast.error('No write operations recorded yet');
+      return;
+    }
+    
+    const newRate = spend / writeOps;
+    setCalibratedRate(newRate);
+    localStorage.setItem('cloud_calibrated_rate', newRate.toString());
+    localStorage.setItem('cloud_calibration_date', new Date().toISOString());
+    localStorage.setItem('cloud_calibration_spend', spend.toString());
+    localStorage.setItem('cloud_calibration_ops', writeOps.toString());
+    toast.success(`Calibrated! New rate: $${newRate.toFixed(6)}/write op`);
+    setShowCalibration(false);
+    setActualSpend("");
+  };
+  
+  // Clear calibration
+  const clearCalibration = () => {
+    setCalibratedRate(null);
+    localStorage.removeItem('cloud_calibrated_rate');
+    localStorage.removeItem('cloud_calibration_date');
+    localStorage.removeItem('cloud_calibration_spend');
+    localStorage.removeItem('cloud_calibration_ops');
+    toast.success('Calibration cleared, using default rate');
+  };
+  
+  // Get effective rate (calibrated or default)
+  const effectiveRate = calibratedRate ?? 0.000134;
+
   // Track if any mapbox query is fetching
   const isRefreshing = isUsageFetching;
 
@@ -906,8 +1032,8 @@ const UsageCostsTab = () => {
     ? parseFloat(aiStats.estimatedCost.replace('$', '')) 
     : 0;
 
-  // Cloud usage cost (based on historical rate: $25 / 186K write ops = $0.000134/op)
-  const cloudCostNumber = parseFloat(cloudUsageStats?.estimatedCost || '0');
+  // Cloud usage cost - uses calibrated rate if available
+  const cloudCostNumber = (cloudUsageStats?.writeOps || 0) * effectiveRate;
 
   // Cost breakdown object for detailed display
   const costBreakdown = {
@@ -980,7 +1106,10 @@ const UsageCostsTab = () => {
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
               {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
-              <InfoTooltip text="Sum of all estimated service costs: Mapbox APIs, Lovable AI usage, email services, and Lovable Cloud (estimated at $0.000134 per write op based on your actual $25 billing for 186K ops)." />
+              <InfoTooltip text={calibratedRate 
+                ? `Sum of all estimated service costs using your calibrated rate ($${calibratedRate.toFixed(6)}/write op). Check Settings → Plans & Credits for actual billing.` 
+                : "Sum of all estimated service costs: Mapbox APIs, Lovable AI usage, email services, and Lovable Cloud. Calibrate with actual billing for better accuracy."
+              } />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -1135,8 +1264,8 @@ const UsageCostsTab = () => {
                       <span>{costBreakdown.cloud.realtime.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Rate:</span>
-                      <span>$0.000134/write</span>
+                      <span>Rate{calibratedRate ? ' (calibrated)' : ''}:</span>
+                      <span className={calibratedRate ? 'text-amber-600 font-medium' : ''}>${effectiveRate.toFixed(6)}/write</span>
                     </div>
                   </div>
                 </div>
@@ -1144,6 +1273,201 @@ const UsageCostsTab = () => {
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Cost Drivers Panel - Real-time activity */}
+      <Card className="border-orange-500/20 bg-orange-500/5">
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+                <Zap className={`text-orange-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                {isCompactView ? 'Cost Drivers' : 'Real-Time Cost Drivers'}
+                <InfoTooltip text="Shows what's actually consuming resources right now. High numbers here indicate where costs are coming from." />
+              </CardTitle>
+              {!isCompactView && <CardDescription>Activity breakdown for last 1 hour and 24 hours</CardDescription>}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => refetchCostDrivers()}
+              disabled={isCostDriversFetching}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${isCostDriversFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className={isCompactView ? 'pt-0 px-3 pb-3' : ''}>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Last 1 Hour */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Clock className="h-4 w-4 text-orange-500" />
+                Last 1 Hour
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Emails Processed</span>
+                  <span className={`font-medium ${(costDrivers?.oneHour.emails || 0) > 500 ? 'text-red-500' : ''}`}>
+                    {(costDrivers?.oneHour.emails || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Geocode Calls</span>
+                  <span className="font-medium">{(costDrivers?.oneHour.geocode || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Match Operations</span>
+                  <span className="font-medium">{(costDrivers?.oneHour.matches || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Edge Functions (est)</span>
+                  <span className="font-medium">{(costDrivers?.edgeFunctions1h || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Last 24 Hours */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <BarChart3 className="h-4 w-4 text-orange-500" />
+                Last 24 Hours
+                {costDrivers?.hourlyRate && (
+                  <span className="text-xs text-muted-foreground">
+                    (~{Math.round(costDrivers.hourlyRate)}/hr avg)
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Emails Processed</span>
+                  <span className={`font-medium ${(costDrivers?.twentyFourHours.emails || 0) > 10000 ? 'text-red-500' : ''}`}>
+                    {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Geocode Calls</span>
+                  <span className="font-medium">{(costDrivers?.twentyFourHours.geocode || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Match Operations</span>
+                  <span className="font-medium">{(costDrivers?.twentyFourHours.matches || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-background/50">
+                  <span className="text-muted-foreground">Edge Functions (est)</span>
+                  <span className="font-medium">{(costDrivers?.edgeFunctions24h || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Warning if high volume */}
+          {(costDrivers?.twentyFourHours.emails || 0) > 10000 && (
+            <div className="mt-3 p-2 rounded bg-red-500/10 border border-red-500/20 flex items-start gap-2 text-xs">
+              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-medium text-red-600">High Volume Alert:</span>
+                <span className="text-muted-foreground ml-1">
+                  {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()} emails in 24h. 
+                  Est. ~${((costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5).toFixed(2)}/day in Cloud costs.
+                </span>
+              </div>
+            </div>
+          )}
+          
+          {/* Projection */}
+          <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Projected 30-day cost (at current rate):</span>
+              <span className="font-medium text-foreground">
+                ~${((costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5 * 30).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Calibration Panel */}
+      <Card className="border-blue-500/20 bg-blue-500/5">
+        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
+                <Settings className={`text-blue-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                {isCompactView ? 'Calibrate' : 'Calibrate Cost Estimates'}
+                <InfoTooltip text="Enter your actual billing to compute a more accurate cost-per-operation rate. This improves future projections." />
+              </CardTitle>
+              {!isCompactView && <CardDescription>Sync estimates with actual Lovable billing for accuracy</CardDescription>}
+            </div>
+            <Button 
+              variant={showCalibration ? "secondary" : "outline"}
+              size="sm" 
+              onClick={() => setShowCalibration(!showCalibration)}
+            >
+              {showCalibration ? 'Hide' : 'Calibrate'}
+            </Button>
+          </div>
+        </CardHeader>
+        {(showCalibration || calibratedRate) && (
+          <CardContent className={isCompactView ? 'pt-0 px-3 pb-3' : ''}>
+            {calibratedRate && (
+              <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium text-blue-600">Calibrated Rate Active:</span>
+                    <span className="text-muted-foreground ml-1">
+                      ${calibratedRate.toFixed(6)}/write op
+                    </span>
+                    {localStorage.getItem('cloud_calibration_date') && (
+                      <span className="text-muted-foreground ml-2">
+                        (set {new Date(localStorage.getItem('cloud_calibration_date')!).toLocaleDateString()})
+                      </span>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={clearCalibration} className="h-6 text-xs">
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {showCalibration && (
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground">
+                  <p>Check your Lovable billing (Settings → Plans & Credits) and enter the actual amount spent on Cloud this billing period:</p>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 75.00"
+                      value={actualSpend}
+                      onChange={(e) => setActualSpend(e.target.value)}
+                      className="pl-7"
+                    />
+                  </div>
+                  <Button onClick={handleCalibrate} disabled={!actualSpend}>
+                    Calibrate
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Current tracked write operations: <span className="font-medium">{(cloudUsageStats?.writeOps || 0).toLocaleString()}</span></p>
+                  {actualSpend && parseFloat(actualSpend) > 0 && (cloudUsageStats?.writeOps || 0) > 0 && (
+                    <p>
+                      This would set rate to: <span className="font-medium text-blue-600">
+                        ${(parseFloat(actualSpend) / (cloudUsageStats?.writeOps || 1)).toFixed(6)}/write
+                      </span>
+                      {' '}(vs default $0.000134)
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {/* Geocode Cache Stats */}
