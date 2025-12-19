@@ -212,19 +212,38 @@ export default function DispatcherDashboard() {
 
   const getStatusBadge = (status: string | null) => {
     const statusLower = (status || "unknown").toLowerCase();
-    const variants: Record<string, { className: string; label: string }> = {
-      booked: { className: "bg-blue-500 text-white", label: "Booked" },
-      dispatched: { className: "bg-purple-500 text-white", label: "Dispatched" },
-      in_transit: { className: "bg-amber-500 text-white", label: "In Transit" },
-      picked_up: { className: "bg-orange-500 text-white", label: "Picked Up" },
-      delivered: { className: "bg-green-500 text-white", label: "Delivered" },
-      completed: { className: "bg-green-600 text-white", label: "Completed" },
-      cancelled: { className: "bg-red-500 text-white", label: "Cancelled" },
-      pending: { className: "bg-yellow-500 text-white", label: "Pending" },
+    const colors: Record<string, string> = {
+      pending_dispatch: "bg-yellow-500",
+      available: "bg-sky-500",
+      booked: "bg-indigo-500",
+      dispatched: "bg-blue-500",
+      at_pickup: "bg-amber-500",
+      in_transit: "bg-purple-500",
+      at_delivery: "bg-teal-500",
+      delivered: "bg-green-600",
+      completed: "bg-green-800",
+      cancelled: "bg-red-500",
+      tonu: "bg-orange-500",
     };
     
-    const variant = variants[statusLower] || { className: "bg-muted", label: status || "Unknown" };
-    return <Badge className={variant.className}>{variant.label}</Badge>;
+    const labels: Record<string, string> = {
+      pending_dispatch: "Pending",
+      available: "Available",
+      booked: "Booked",
+      dispatched: "Dispatched",
+      at_pickup: "At Pickup",
+      in_transit: "In Transit",
+      at_delivery: "At Delivery",
+      delivered: "Delivered",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      tonu: "TONU",
+    };
+    
+    const colorClass = colors[statusLower] || "bg-gray-500";
+    const label = labels[statusLower] || status || "Unknown";
+    
+    return <Badge className={`${colorClass} text-white border-0`}>{label}</Badge>;
   };
 
   if (loading && !dispatcher) {
