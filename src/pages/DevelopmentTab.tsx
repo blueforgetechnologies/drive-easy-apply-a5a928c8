@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch, Plug, BarChart3, Target, History } from "lucide-react";
+import { Code, AlertCircle, Filter, Clock, CheckCircle, Database, Zap, Bell, Mail, ArrowRight, RefreshCw, FileSearch, Plug, BarChart3, Target, History, Cloud } from "lucide-react";
 import ParserHelper from "@/components/ParserHelper";
 import IntegrationsTab from "./IntegrationsTab";
 import UsageCostsTab from "./UsageCostsTab";
 import LoadboardFiltersTab from "./LoadboardFiltersTab";
 import ChangelogTab from "./ChangelogTab";
+import LovableCloudAITab from "./LovableCloudAITab";
 
 export default function DevelopmentTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,6 +49,10 @@ export default function DevelopmentTab() {
               <Plug className="h-4 w-4" />
               Integrations
             </TabsTrigger>
+            <TabsTrigger value="cloud-ai" className="flex items-center gap-2">
+              <Cloud className="h-4 w-4" />
+              Cloud & AI
+            </TabsTrigger>
             <TabsTrigger value="usage" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Usage
@@ -69,6 +74,10 @@ export default function DevelopmentTab() {
 
         <TabsContent value="integrations" className="mt-4">
           <IntegrationsTab />
+        </TabsContent>
+
+        <TabsContent value="cloud-ai" className="mt-4">
+          <LovableCloudAITab />
         </TabsContent>
 
         <TabsContent value="usage" className="mt-4">
