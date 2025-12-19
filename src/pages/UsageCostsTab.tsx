@@ -178,37 +178,43 @@ const UsageCostsTab = () => {
     }
   }, [baselineUsage, incrementalCalls, currentMonthUsage]);
 
-  // Fetch geocode cache stats - use daily stats table for instant load (already aggregated)
+  // Fetch geocode cache stats - read directly from cache for accurate real-time data
   const { data: geocodeStats, isFetching: isGeocodeStatsFetching, refetch: refetchGeocodeStats } = useQuery({
     queryKey: ["geocode-cache-stats"],
     queryFn: async () => {
-      console.log('[Geocode Cache] Fetching stats from daily stats...');
+      console.log('[Geocode Cache] Fetching real-time stats from cache table...');
       
-      // Use the pre-aggregated daily stats table for fast reads
-      const { data: latestStats, error } = await supabase
-        .from('geocode_cache_daily_stats')
-        .select('total_locations, total_hits, estimated_savings')
-        .order('recorded_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (error) throw error;
-      
-      // Also get a quick count for current total (just count, no data fetch)
-      const { count: currentCount } = await supabase
+      // Get count of locations
+      const { count: totalLocations } = await supabase
         .from('geocode_cache')
         .select('*', { count: 'exact', head: true });
       
-      const totalLocations = currentCount || latestStats?.total_locations || 0;
-      const totalHits = latestStats?.total_hits || 0;
-      const cacheSaved = Math.max(0, totalHits - totalLocations);
-      const estimatedSavings = latestStats?.estimated_savings || cacheSaved * 0.00075;
+      // Get sum of hit_count - need to fetch all rows due to no aggregate support
+      // Fetch in batches to handle large tables
+      let totalHits = 0;
+      let offset = 0;
+      const batchSize = 1000;
+      
+      while (true) {
+        const { data: batch } = await supabase
+          .from('geocode_cache')
+          .select('hit_count')
+          .range(offset, offset + batchSize - 1);
+        
+        if (!batch || batch.length === 0) break;
+        totalHits += batch.reduce((sum, row) => sum + (row.hit_count || 1), 0);
+        offset += batchSize;
+        if (batch.length < batchSize) break;
+      }
+      
+      const cacheSaved = Math.max(0, totalHits - (totalLocations || 0));
+      const estimatedSavings = cacheSaved * 0.00075; // $0.75 per 1000 calls saved
       
       setLastGeocodeRefresh(new Date());
-      console.log('[Geocode Cache] Stats:', { totalLocations, totalHits, cacheSaved });
+      console.log('[Geocode Cache] Real-time stats:', { totalLocations, totalHits, cacheSaved });
       
       return {
-        totalLocations,
+        totalLocations: totalLocations || 0,
         totalHits,
         cacheSaved,
         estimatedSavings: estimatedSavings.toFixed(2),
@@ -217,8 +223,8 @@ const UsageCostsTab = () => {
     },
     refetchInterval: geocodeCacheRefreshInterval,
     refetchIntervalInBackground: true,
-    staleTime: 30000, // Keep data fresh for 30 seconds to avoid unnecessary refetches
-    gcTime: 300000, // Keep in cache for 5 minutes
+    staleTime: 30000,
+    gcTime: 300000,
   });
 
   // Fetch historical geocode cache stats

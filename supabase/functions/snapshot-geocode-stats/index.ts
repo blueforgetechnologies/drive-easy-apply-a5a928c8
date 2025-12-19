@@ -19,25 +19,48 @@ serve(async (req) => {
 
     console.log('Starting daily geocode cache stats snapshot');
 
-    // Get current stats from geocode_cache
-    const { data: cacheData, error: cacheError } = await supabaseClient
+    // Get total count of locations
+    const { count: totalLocations, error: countError } = await supabaseClient
       .from('geocode_cache')
-      .select('hit_count, created_at');
+      .select('*', { count: 'exact', head: true });
 
-    if (cacheError) {
-      console.error('Error fetching cache data:', cacheError);
-      throw cacheError;
+    if (countError) {
+      console.error('Error counting locations:', countError);
+      throw countError;
     }
 
-    const totalLocations = cacheData?.length || 0;
-    const totalHits = cacheData?.reduce((sum, row) => sum + (row.hit_count || 1), 0) || 0;
+    // Get sum of hit_count by fetching all rows (need to handle pagination for large tables)
+    let totalHits = 0;
+    let offset = 0;
+    const batchSize = 1000;
+    
+    while (true) {
+      const { data: batch, error: batchError } = await supabaseClient
+        .from('geocode_cache')
+        .select('hit_count')
+        .range(offset, offset + batchSize - 1);
+      
+      if (batchError) {
+        console.error('Error fetching hits batch:', batchError);
+        throw batchError;
+      }
+      
+      if (!batch || batch.length === 0) break;
+      
+      totalHits += batch.reduce((sum, row) => sum + (row.hit_count || 1), 0);
+      offset += batchSize;
+      
+      if (batch.length < batchSize) break;
+    }
+
     const estimatedSavings = totalHits * 0.00075; // $0.75 per 1000 calls
 
     // Count locations added today
     const today = new Date().toISOString().split('T')[0];
-    const newLocationsToday = cacheData?.filter(row => 
-      row.created_at && row.created_at.startsWith(today)
-    ).length || 0;
+    const { count: newLocationsToday } = await supabaseClient
+      .from('geocode_cache')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', `${today}T00:00:00Z`);
 
     // Get yesterday's stats to calculate hits today
     const { data: yesterdayStats } = await supabaseClient
@@ -54,9 +77,9 @@ serve(async (req) => {
       .from('geocode_cache_daily_stats')
       .upsert({
         recorded_at: today,
-        total_locations: totalLocations,
+        total_locations: totalLocations || 0,
         total_hits: totalHits,
-        new_locations_today: newLocationsToday,
+        new_locations_today: newLocationsToday || 0,
         hits_today: Math.max(0, hitsToday),
         estimated_savings: estimatedSavings,
       }, { onConflict: 'recorded_at' });
@@ -66,15 +89,15 @@ serve(async (req) => {
       throw insertError;
     }
 
-    console.log(`Stats snapshot saved: ${totalLocations} locations, ${totalHits} total hits, $${estimatedSavings.toFixed(2)} saved`);
+    console.log(`✅ Stats snapshot saved: ${totalLocations} locations, ${totalHits} total hits, $${estimatedSavings.toFixed(2)} saved`);
 
     return new Response(
       JSON.stringify({
         success: true,
         stats: {
-          totalLocations,
+          totalLocations: totalLocations || 0,
           totalHits,
-          newLocationsToday,
+          newLocationsToday: newLocationsToday || 0,
           hitsToday: Math.max(0, hitsToday),
           estimatedSavings: estimatedSavings.toFixed(2),
         }
