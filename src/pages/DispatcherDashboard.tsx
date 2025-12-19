@@ -222,6 +222,7 @@ export default function DispatcherDashboard() {
       at_delivery: { bg: "#14b8a6", text: "#fff" },
       delivered: { bg: "#16a34a", text: "#fff" },
       completed: { bg: "#166534", text: "#fff" },
+      ready_for_audit: { bg: "#0891b2", text: "#fff" },
       cancelled: { bg: "#ef4444", text: "#fff" },
       tonu: { bg: "#f97316", text: "#000" },
     };
@@ -236,6 +237,7 @@ export default function DispatcherDashboard() {
       at_delivery: "At Delivery",
       delivered: "Delivered",
       completed: "Completed",
+      ready_for_audit: "Ready for Audit",
       cancelled: "Cancelled",
       tonu: "TONU",
     };
