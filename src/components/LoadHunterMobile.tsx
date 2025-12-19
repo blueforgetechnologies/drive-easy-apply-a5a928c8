@@ -636,7 +636,10 @@ export default function LoadHunterMobile({
                           )}
                         </div>
                         <p className="font-medium text-[13px] mt-1 truncate">
-                          {data.customer || data.broker_company || email.from_name || 'Unknown Customer'}
+                          {(() => {
+                            const customerName = data.customer || data.broker_company || email.from_name || 'Unknown Customer';
+                            return customerName.length > 14 ? customerName.slice(0, 14) + '...' : customerName;
+                          })()}
                         </p>
                       </div>
                       <div className="text-right flex-shrink-0 space-y-0.5">
