@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import {
   DropdownMenu,
@@ -99,6 +99,47 @@ export default function LoadsTab() {
     'cancelled',
     'tonu'
   ];
+  
+  // Sorting state
+  type SortField = 'status' | 'pickup_date' | 'delivery_date' | 'rate' | 'load_number' | 'created_at';
+  type SortDirection = 'asc' | 'desc' | null;
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cycle through: asc -> desc -> null (default status order)
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortDirection(null);
+        setSortField(null);
+      } else {
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <div 
+      className="flex items-center gap-1 cursor-pointer hover:text-primary/80 select-none"
+      onClick={() => handleSort(field)}
+    >
+      {children}
+      {sortField === field ? (
+        sortDirection === 'asc' ? (
+          <ArrowUp className="h-3 w-3" />
+        ) : (
+          <ArrowDown className="h-3 w-3" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      )}
+    </div>
+  );
   const [formData, setFormData] = useState({
     load_number: `LD${Date.now()}`,
     load_type: "internal",
@@ -436,12 +477,49 @@ export default function LoadsTab() {
       
       return matchesSearch && matchesDate;
     })
-    // Sort by status priority order, then by created_at within same status
+    // Apply sorting
     .sort((a, b) => {
+      // If a column sort is active, use that
+      if (sortField && sortDirection) {
+        let comparison = 0;
+        
+        switch (sortField) {
+          case 'pickup_date':
+            const pickupA = a.pickup_date ? new Date(a.pickup_date).getTime() : 0;
+            const pickupB = b.pickup_date ? new Date(b.pickup_date).getTime() : 0;
+            comparison = pickupA - pickupB;
+            break;
+          case 'delivery_date':
+            const deliveryA = a.delivery_date ? new Date(a.delivery_date).getTime() : 0;
+            const deliveryB = b.delivery_date ? new Date(b.delivery_date).getTime() : 0;
+            comparison = deliveryA - deliveryB;
+            break;
+          case 'rate':
+            comparison = (a.rate || 0) - (b.rate || 0);
+            break;
+          case 'load_number':
+            comparison = (a.load_number || '').localeCompare(b.load_number || '');
+            break;
+          case 'created_at':
+            const createdA = new Date(a.created_at || 0).getTime();
+            const createdB = new Date(b.created_at || 0).getTime();
+            comparison = createdA - createdB;
+            break;
+          case 'status':
+            const statusOrderA = STATUS_ORDER.indexOf(a.status?.toLowerCase() || '');
+            const statusOrderB = STATUS_ORDER.indexOf(b.status?.toLowerCase() || '');
+            comparison = (statusOrderA === -1 ? STATUS_ORDER.length : statusOrderA) - 
+                        (statusOrderB === -1 ? STATUS_ORDER.length : statusOrderB);
+            break;
+        }
+        
+        return sortDirection === 'desc' ? -comparison : comparison;
+      }
+      
+      // Default: sort by status priority order, then by created_at within same status
       const statusA = STATUS_ORDER.indexOf(a.status?.toLowerCase() || '');
       const statusB = STATUS_ORDER.indexOf(b.status?.toLowerCase() || '');
       
-      // Put unknown statuses at the end
       const orderA = statusA === -1 ? STATUS_ORDER.length : statusA;
       const orderB = statusB === -1 ? STATUS_ORDER.length : statusB;
       
@@ -1082,7 +1160,9 @@ export default function LoadsTab() {
                           onCheckedChange={toggleSelectAll}
                         />
                       </TableHead>
-                      <TableHead className="text-primary text-xs py-2 px-2">Status</TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <SortableHeader field="status">Status</SortableHeader>
+                      </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
                         <div>Truck Id</div>
                         <div>Driver</div>
@@ -1092,16 +1172,22 @@ export default function LoadsTab() {
                         <div>Customer</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
-                        <div>Our Load ID</div>
-                        <div>Customer Load</div>
+                        <SortableHeader field="load_number">
+                          <div>Our Load ID</div>
+                        </SortableHeader>
+                        <div className="text-muted-foreground">Customer Load</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
                         <div>Origin</div>
                         <div>Destination</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
-                        <div>Pickup</div>
-                        <div>Delivery</div>
+                        <SortableHeader field="pickup_date">
+                          <div>Pickup</div>
+                        </SortableHeader>
+                        <SortableHeader field="delivery_date">
+                          <div className="text-muted-foreground">Delivery</div>
+                        </SortableHeader>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
                         <div>DH</div>
@@ -1111,7 +1197,9 @@ export default function LoadsTab() {
                         <div>Loaded $/Mi</div>
                         <div>Total $/Mi</div>
                       </TableHead>
-                      <TableHead className="text-primary text-xs py-2 px-2">Payload</TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
+                        <SortableHeader field="rate">Payload</SortableHeader>
+                      </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
                         <div>Load Owner</div>
                         <div>Dispatcher</div>
