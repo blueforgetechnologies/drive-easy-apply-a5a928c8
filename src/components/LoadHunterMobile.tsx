@@ -357,7 +357,7 @@ export default function LoadHunterMobile({
 
       {/* Content Area */}
       <ScrollArea className="flex-1">
-        <div className="pl-3 pr-20 sm:pr-3 py-2">
+        <div className="px-3 py-2">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
