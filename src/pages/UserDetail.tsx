@@ -11,7 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, KeyRound, Mail, Shield, User, Calendar, Clock, Save, X, Pencil } from "lucide-react";
+import { ArrowLeft, KeyRound, Mail, Shield, User, Calendar, Clock, Save, X, Pencil, Link2, Unlink } from "lucide-react";
+
+interface Dispatcher {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  user_id: string | null;
+  pay_percentage: number | null;
+}
 
 interface Profile {
   id: string;
@@ -62,10 +71,15 @@ export default function UserDetail() {
   const [savingRoles, setSavingRoles] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
+  const [linkedDispatcher, setLinkedDispatcher] = useState<Dispatcher | null>(null);
+  const [selectedDispatcherId, setSelectedDispatcherId] = useState<string>("");
+  const [linkingDispatcher, setLinkingDispatcher] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadUserData();
+      loadDispatchers();
     }
   }, [id]);
 
@@ -101,6 +115,71 @@ export default function UserDetail() {
       toast.error("Error loading user: " + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDispatchers = async () => {
+    try {
+      // Get all dispatchers
+      const { data: allDispatchers, error } = await supabase
+        .from("dispatchers")
+        .select("id, first_name, last_name, email, user_id, pay_percentage")
+        .order("first_name");
+
+      if (error) throw error;
+
+      // Find if this user is already linked to a dispatcher
+      const linked = allDispatchers?.find(d => d.user_id === id) || null;
+      setLinkedDispatcher(linked);
+      
+      // Get unlinked dispatchers (user_id is null) for the dropdown
+      const unlinked = allDispatchers?.filter(d => d.user_id === null) || [];
+      setDispatchers(unlinked);
+    } catch (error: any) {
+      console.error("Error loading dispatchers:", error);
+    }
+  };
+
+  const handleLinkDispatcher = async () => {
+    if (!selectedDispatcherId || !id) return;
+    
+    setLinkingDispatcher(true);
+    try {
+      const { error } = await supabase
+        .from("dispatchers")
+        .update({ user_id: id })
+        .eq("id", selectedDispatcherId);
+
+      if (error) throw error;
+      
+      toast.success("Dispatcher profile linked successfully");
+      setSelectedDispatcherId("");
+      loadDispatchers();
+    } catch (error: any) {
+      toast.error("Error linking dispatcher: " + error.message);
+    } finally {
+      setLinkingDispatcher(false);
+    }
+  };
+
+  const handleUnlinkDispatcher = async () => {
+    if (!linkedDispatcher) return;
+    
+    setLinkingDispatcher(true);
+    try {
+      const { error } = await supabase
+        .from("dispatchers")
+        .update({ user_id: null })
+        .eq("id", linkedDispatcher.id);
+
+      if (error) throw error;
+      
+      toast.success("Dispatcher profile unlinked");
+      loadDispatchers();
+    } catch (error: any) {
+      toast.error("Error unlinking dispatcher: " + error.message);
+    } finally {
+      setLinkingDispatcher(false);
     }
   };
 
@@ -495,6 +574,93 @@ export default function UserDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Dispatcher Profile Link Card - Only show if user has dispatcher role */}
+        {userRoles.includes("dispatcher") && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Link2 className="h-5 w-5" />
+                Dispatcher Profile
+              </CardTitle>
+              <CardDescription>
+                Link this user to a dispatcher profile to enable pay tracking
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {linkedDispatcher ? (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-green-800 dark:text-green-200">
+                          {linkedDispatcher.first_name} {linkedDispatcher.last_name}
+                        </p>
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          {linkedDispatcher.email}
+                        </p>
+                        {linkedDispatcher.pay_percentage && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            Pay Rate: {linkedDispatcher.pay_percentage}%
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnlinkDispatcher}
+                        disabled={linkingDispatcher}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Unlink className="h-4 w-4 mr-1" />
+                        Unlink
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {dispatchers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No unlinked dispatcher profiles available. Create a dispatcher first in the Dispatchers section.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <Select
+                          value={selectedDispatcherId}
+                          onValueChange={setSelectedDispatcherId}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select a dispatcher profile..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dispatchers.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.first_name} {d.last_name} ({d.email})
+                                {d.pay_percentage && ` - ${d.pay_percentage}%`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          onClick={handleLinkDispatcher}
+                          disabled={!selectedDispatcherId || linkingDispatcher}
+                        >
+                          <Link2 className="h-4 w-4 mr-1" />
+                          Link
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Linking enables the dispatcher dashboard with pay tracking
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Login History Card */}
         <Card>
