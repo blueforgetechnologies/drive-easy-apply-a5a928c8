@@ -1188,9 +1188,7 @@ export default function LoadsTab() {
                         <div>Customer</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
-                        <SortableHeader field="load_number">
-                          <div>Our Load ID</div>
-                        </SortableHeader>
+                        <div>Our Load ID</div>
                         <div className="text-muted-foreground">Customer Load</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
@@ -1214,7 +1212,7 @@ export default function LoadsTab() {
                         <div>Total $/Mi</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
-                        <SortableHeader field="rate">Payload</SortableHeader>
+                        <div>Payload</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
                         <div>Load Owner</div>
