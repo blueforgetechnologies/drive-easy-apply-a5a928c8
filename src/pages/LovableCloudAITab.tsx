@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HardDrive, Sparkles, Loader2, Clock, BarChart3, RefreshCw, Info, Settings, Zap, AlertTriangle, DollarSign } from "lucide-react";
+import { HardDrive, Sparkles, Loader2, Clock, BarChart3, RefreshCw, Info, Settings, Zap, AlertTriangle, DollarSign, TrendingUp, Calculator, Bell, Calendar, Database, Server, Radio, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshControl } from "@/components/RefreshControl";
+import { Progress } from "@/components/ui/progress";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, AreaChart, Area, BarChart, Bar } from 'recharts';
 
 // Info tooltip component
 const InfoTooltip = ({ text }: { text: string }) => (
@@ -21,6 +23,35 @@ const InfoTooltip = ({ text }: { text: string }) => (
   </Tooltip>
 );
 
+// Cost category with color coding
+const CostCategory = ({ 
+  label, 
+  amount, 
+  percentage, 
+  icon: Icon, 
+  color 
+}: { 
+  label: string; 
+  amount: number; 
+  percentage: number; 
+  icon: React.ElementType; 
+  color: string;
+}) => (
+  <div className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border">
+    <div className={`p-2 rounded-full ${color}`}>
+      <Icon className="h-4 w-4" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-bold">${amount.toFixed(2)}</span>
+      </div>
+      <Progress value={percentage} className="h-1.5 mt-1" />
+    </div>
+    <span className="text-xs text-muted-foreground w-10 text-right">{percentage.toFixed(0)}%</span>
+  </div>
+);
+
 const LovableCloudAITab = () => {
   const [showCalibration, setShowCalibration] = useState<boolean>(false);
   const [actualSpend, setActualSpend] = useState<string>("");
@@ -28,16 +59,18 @@ const LovableCloudAITab = () => {
   const [aiTestResult, setAiTestResult] = useState<string>("");
   const [lastAiRefresh, setLastAiRefresh] = useState<Date>(new Date());
   const [aiRefreshInterval, setAiRefreshInterval] = useState<number>(60000);
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(100);
+  const [showBudgetSettings, setShowBudgetSettings] = useState<boolean>(false);
   const queryClient = useQueryClient();
   
   const currentMonth = new Date().toISOString().slice(0, 7);
   
-  // Load calibrated rate from localStorage
+  // Load settings from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('cloud_calibrated_rate');
-    if (saved) {
-      setCalibratedRate(parseFloat(saved));
-    }
+    const savedRate = localStorage.getItem('cloud_calibrated_rate');
+    const savedBudget = localStorage.getItem('cloud_monthly_budget');
+    if (savedRate) setCalibratedRate(parseFloat(savedRate));
+    if (savedBudget) setMonthlyBudget(parseFloat(savedBudget));
   }, []);
 
   // Test AI mutation
@@ -59,18 +92,21 @@ const LovableCloudAITab = () => {
     }
   });
 
-  // Cloud usage stats query
-  const { data: cloudUsageStats, refetch: refetchCloudUsage, isFetching: isCloudFetching } = useQuery({
-    queryKey: ["cloud-usage-estimate", currentMonth],
+  // Comprehensive cost breakdown query
+  const { data: costBreakdown, refetch: refetchCostBreakdown, isFetching: isCostFetching } = useQuery({
+    queryKey: ["comprehensive-cost-breakdown", currentMonth],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
       
+      // Fetch all write operations
       const [
         emailResult, matchResult, geocodeResult, mapTrackingResult,
         directionsResult, aiResult, emailSendResult, auditResult,
-        matchActionResult, emailVolumeResult, archiveResult
+        matchActionResult, emailVolumeResult, archiveResult,
+        vehicleLocationResult, missedLoadsResult, pubsubResult,
+        loadsResult, loadStopsResult
       ] = await Promise.all([
         supabase.from('load_emails').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
         supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
@@ -82,51 +118,167 @@ const LovableCloudAITab = () => {
         supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('timestamp', thirtyDaysAgoISO),
         supabase.from('match_action_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
         supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }).gte('archived_at', thirtyDaysAgoISO)
+        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }).gte('archived_at', thirtyDaysAgoISO),
+        supabase.from('vehicle_location_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        supabase.from('missed_loads_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        supabase.from('pubsub_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
+        supabase.from('loads').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        supabase.from('load_stops').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
       ]);
       
-      const emailOps = emailResult.count ?? 0;
-      const matchOps = matchResult.count ?? 0;
-      const geocodeOps = geocodeResult.count ?? 0;
-      const mapTrackingOps = mapTrackingResult.count ?? 0;
-      const directionsOps = directionsResult.count ?? 0;
-      const aiOps = aiResult.count ?? 0;
-      const emailSendOps = emailSendResult.count ?? 0;
-      const auditOps = auditResult.count ?? 0;
-      const matchActionOps = matchActionResult.count ?? 0;
-      const emailVolumeOps = emailVolumeResult.count ?? 0;
-      const archiveOps = archiveResult.count ?? 0;
+      // Categorize costs
+      const emailIngestion = {
+        emails: emailResult.count ?? 0,
+        geocode: geocodeResult.count ?? 0,
+        emailVolume: emailVolumeResult.count ?? 0,
+        archive: archiveResult.count ?? 0,
+        pubsub: pubsubResult.count ?? 0,
+      };
       
-      const writeOps = emailOps + matchOps + geocodeOps + mapTrackingOps + 
-                       directionsOps + aiOps + emailSendOps + auditOps + 
-                       matchActionOps + emailVolumeOps + archiveOps;
+      const huntOperations = {
+        matches: matchResult.count ?? 0,
+        matchActions: matchActionResult.count ?? 0,
+        missedLoads: missedLoadsResult.count ?? 0,
+      };
       
-      const estimatedReadMultiplier = 4;
-      const estimatedReadOps = writeOps * estimatedReadMultiplier;
-      const edgeFunctionCalls = emailOps * 2.5 + aiOps + emailSendOps;
-      const realtimeOps = emailOps * 10;
-      const totalOps = writeOps + Math.round(estimatedReadOps) + Math.round(edgeFunctionCalls) + realtimeOps;
+      const loadManagement = {
+        loads: loadsResult.count ?? 0,
+        loadStops: loadStopsResult.count ?? 0,
+      };
       
-      const COST_PER_WRITE_OP = 0.000134;
-      const estimatedCost = writeOps * COST_PER_WRITE_OP;
+      const tracking = {
+        mapTracking: mapTrackingResult.count ?? 0,
+        directions: directionsResult.count ?? 0,
+        vehicleLocation: vehicleLocationResult.count ?? 0,
+      };
+      
+      const other = {
+        ai: aiResult.count ?? 0,
+        emailSend: emailSendResult.count ?? 0,
+        audit: auditResult.count ?? 0,
+      };
+      
+      const totalEmailIngestion = Object.values(emailIngestion).reduce((a, b) => a + b, 0);
+      const totalHuntOps = Object.values(huntOperations).reduce((a, b) => a + b, 0);
+      const totalLoadMgmt = Object.values(loadManagement).reduce((a, b) => a + b, 0);
+      const totalTracking = Object.values(tracking).reduce((a, b) => a + b, 0);
+      const totalOther = Object.values(other).reduce((a, b) => a + b, 0);
+      const totalWriteOps = totalEmailIngestion + totalHuntOps + totalLoadMgmt + totalTracking + totalOther;
+      
+      // Edge function estimates
+      const edgeFunctionCalls = (emailIngestion.emails * 2.5) + (other.ai) + (other.emailSend) + (tracking.directions);
+      
+      // Realtime estimates (subscriptions)
+      const realtimeEvents = emailIngestion.emails * 5; // Estimate 5 realtime events per email
+      
+      // Database reads estimate
+      const estimatedReads = totalWriteOps * 4;
       
       return {
-        writeOps,
-        estimatedReadOps,
-        edgeFunctionCalls: Math.round(edgeFunctionCalls),
-        realtimeOps,
-        totalOps,
-        estimatedCost: estimatedCost.toFixed(2),
-        breakdown: {
-          emails: emailOps, matches: matchOps, geocode: geocodeOps,
-          mapTracking: mapTrackingOps, directions: directionsOps, ai: aiOps,
-          emailSend: emailSendOps, audit: auditOps, matchActions: matchActionOps,
-          emailVolume: emailVolumeOps, archive: archiveOps
+        categories: {
+          emailIngestion: { ops: totalEmailIngestion, details: emailIngestion },
+          huntOperations: { ops: totalHuntOps, details: huntOperations },
+          loadManagement: { ops: totalLoadMgmt, details: loadManagement },
+          tracking: { ops: totalTracking, details: tracking },
+          other: { ops: totalOther, details: other },
+        },
+        totals: {
+          writeOps: totalWriteOps,
+          edgeFunctions: Math.round(edgeFunctionCalls),
+          realtimeEvents: Math.round(realtimeEvents),
+          estimatedReads,
+        },
+        raw: {
+          emails: emailIngestion.emails,
+          matches: huntOperations.matches,
+          geocode: emailIngestion.geocode,
+          mapTracking: tracking.mapTracking,
+          directions: tracking.directions,
+          ai: other.ai,
         }
       };
     },
     refetchInterval: 30000,
     staleTime: 15000,
+  });
+
+  // Daily cost history for the past 7 days
+  const { data: dailyCostHistory } = useQuery({
+    queryKey: ["daily-cost-history"],
+    queryFn: async () => {
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dayStart = new Date(date.setHours(0, 0, 0, 0)).toISOString();
+        const dayEnd = new Date(date.setHours(23, 59, 59, 999)).toISOString();
+        days.push({ date: date.toISOString().slice(0, 10), dayStart, dayEnd });
+      }
+      
+      const results = await Promise.all(days.map(async (day) => {
+        const [emails, geocode, matches] = await Promise.all([
+          supabase.from('load_emails').select('*', { count: 'exact', head: true })
+            .gte('created_at', day.dayStart).lte('created_at', day.dayEnd),
+          supabase.from('geocode_cache').select('*', { count: 'exact', head: true })
+            .gte('created_at', day.dayStart).lte('created_at', day.dayEnd),
+          supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true })
+            .gte('created_at', day.dayStart).lte('created_at', day.dayEnd),
+        ]);
+        
+        const emailCount = emails.count ?? 0;
+        const geocodeCount = geocode.count ?? 0;
+        const matchCount = matches.count ?? 0;
+        const totalOps = emailCount + geocodeCount + matchCount;
+        
+        return {
+          date: day.date,
+          day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
+          emails: emailCount,
+          geocode: geocodeCount,
+          matches: matchCount,
+          totalOps,
+        };
+      }));
+      
+      return results;
+    },
+    refetchInterval: 60000,
+  });
+
+  // Hourly breakdown for today
+  const { data: hourlyBreakdown } = useQuery({
+    queryKey: ["hourly-breakdown"],
+    queryFn: async () => {
+      const hours = [];
+      const now = new Date();
+      for (let i = 23; i >= 0; i--) {
+        const hourStart = new Date(now);
+        hourStart.setHours(now.getHours() - i, 0, 0, 0);
+        const hourEnd = new Date(hourStart);
+        hourEnd.setHours(hourStart.getHours() + 1, 0, 0, 0);
+        hours.push({ 
+          hour: hourStart.getHours(), 
+          start: hourStart.toISOString(), 
+          end: hourEnd.toISOString(),
+          label: hourStart.toLocaleTimeString('en-US', { hour: 'numeric' })
+        });
+      }
+      
+      const results = await Promise.all(hours.map(async (hour) => {
+        const { count } = await supabase.from('load_emails')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', hour.start)
+          .lt('created_at', hour.end);
+        
+        return {
+          hour: hour.label,
+          emails: count ?? 0,
+        };
+      }));
+      
+      return results;
+    },
+    refetchInterval: 60000,
   });
 
   // Cost drivers query
@@ -269,11 +421,30 @@ const LovableCloudAITab = () => {
   });
 
   const effectiveRate = calibratedRate ?? 0.000134;
-  const cloudCostNumber = (cloudUsageStats?.writeOps || 0) * effectiveRate;
+  
+  // Calculate costs by category
+  const emailIngestionCost = (costBreakdown?.categories.emailIngestion.ops || 0) * effectiveRate;
+  const huntOpsCost = (costBreakdown?.categories.huntOperations.ops || 0) * effectiveRate;
+  const loadMgmtCost = (costBreakdown?.categories.loadManagement.ops || 0) * effectiveRate;
+  const trackingCost = (costBreakdown?.categories.tracking.ops || 0) * effectiveRate;
+  const otherCost = (costBreakdown?.categories.other.ops || 0) * effectiveRate;
+  
+  // Edge function cost estimate (compute time)
+  const edgeFunctionCost = (costBreakdown?.totals.edgeFunctions || 0) * 0.000001; // $0.001 per 1000 invocations
+  
+  // Realtime cost estimate
+  const realtimeCost = (costBreakdown?.totals.realtimeEvents || 0) * 0.0000001;
+  
+  const totalCloudCost = emailIngestionCost + huntOpsCost + loadMgmtCost + trackingCost + otherCost + edgeFunctionCost + realtimeCost;
+  const totalWriteOps = costBreakdown?.totals.writeOps || 0;
+
+  // Calculate daily cost from 24h data
+  const dailyCost = (costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5;
+  const projectedMonthlyCost = dailyCost * 30;
 
   const handleCalibrate = () => {
     const spend = parseFloat(actualSpend);
-    const writeOps = cloudUsageStats?.writeOps || 0;
+    const writeOps = totalWriteOps;
     if (spend > 0 && writeOps > 0) {
       const rate = spend / writeOps;
       setCalibratedRate(rate);
@@ -292,126 +463,361 @@ const LovableCloudAITab = () => {
     toast.success("Calibration cleared, using default rate");
   };
 
+  const saveBudget = () => {
+    localStorage.setItem('cloud_monthly_budget', monthlyBudget.toString());
+    toast.success(`Budget set to $${monthlyBudget}/month`);
+    setShowBudgetSettings(false);
+  };
+
   const aiCostNumber = aiStats?.estimatedCost && aiStats.estimatedCost !== 'Free tier' 
     ? parseFloat(aiStats.estimatedCost.replace('$', '')) : 0;
 
-  const totalEstimatedCost = (cloudCostNumber + aiCostNumber).toFixed(2);
+  const totalEstimatedCost = totalCloudCost + aiCostNumber;
+  const budgetUsagePercent = (projectedMonthlyCost / monthlyBudget) * 100;
 
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Lovable Cloud & AI</h2>
-          <p className="text-muted-foreground mt-1">Monitor cloud operations, AI usage, and cost drivers</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Lovable Cloud & AI</h2>
+            <p className="text-muted-foreground mt-1">Complete cost visibility and projections</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => {
+            refetchCostBreakdown();
+            refetchCostDrivers();
+            refetchAi();
+          }} disabled={isCostFetching}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isCostFetching ? 'animate-spin' : ''}`} />
+            Refresh All
+          </Button>
         </div>
 
-        {/* Total Estimated Cost */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5" />
-                Estimated Cloud + AI Cost (30 Days)
-                <InfoTooltip text={calibratedRate 
-                  ? `Using calibrated rate: $${calibratedRate.toFixed(6)}/write op` 
-                  : "Estimated based on tracked operations. Calibrate for better accuracy."
-                } />
-              </CardTitle>
-              <div className="text-3xl font-bold text-primary">${totalEstimatedCost}</div>
+        {/* Budget Alert Banner */}
+        {budgetUsagePercent > 80 && (
+          <div className={`p-4 rounded-lg border flex items-start gap-3 ${
+            budgetUsagePercent > 100 
+              ? 'bg-red-500/10 border-red-500/30' 
+              : 'bg-amber-500/10 border-amber-500/30'
+          }`}>
+            <AlertTriangle className={`h-5 w-5 shrink-0 mt-0.5 ${
+              budgetUsagePercent > 100 ? 'text-red-500' : 'text-amber-500'
+            }`} />
+            <div>
+              <p className={`font-medium ${budgetUsagePercent > 100 ? 'text-red-600' : 'text-amber-600'}`}>
+                {budgetUsagePercent > 100 ? 'Over Budget!' : 'Approaching Budget Limit'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Projected monthly cost: ${projectedMonthlyCost.toFixed(2)} ({budgetUsagePercent.toFixed(0)}% of ${monthlyBudget} budget)
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-amber-600" />
-                <span>Cloud: ~${cloudCostNumber.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-500" />
-                <span>AI: {aiStats?.estimatedCost || 'Free tier'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
-        {/* Lovable Cloud Usage */}
-        <Card className="border-amber-500/20 bg-amber-500/5">
+        {/* Summary Cards Row */}
+        <div className="grid grid-cols-4 gap-4">
+          {/* Today's Cost */}
+          <Card className="border-primary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                Today's Cost
+              </div>
+              <div className="text-2xl font-bold mt-1">${dailyCost.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">
+                {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()} emails
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Projected Monthly */}
+          <Card className={`border-primary/20 ${budgetUsagePercent > 100 ? 'border-red-500/50' : ''}`}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />
+                30-Day Projection
+              </div>
+              <div className={`text-2xl font-bold mt-1 ${budgetUsagePercent > 100 ? 'text-red-500' : ''}`}>
+                ${projectedMonthlyCost.toFixed(2)}
+              </div>
+              <div className="mt-1">
+                <Progress value={Math.min(budgetUsagePercent, 100)} className="h-1.5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Hour Rate */}
+          <Card className="border-primary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                Current Rate
+              </div>
+              <div className="text-2xl font-bold mt-1">
+                {(costDrivers?.oneHour.emails || 0).toLocaleString()}/hr
+              </div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                {(costDrivers?.oneHour.emails || 0) > (costDrivers?.hourlyRate || 0) 
+                  ? <><ArrowUpRight className="h-3 w-3 text-red-500" /> Above avg</>
+                  : <><ArrowDownRight className="h-3 w-3 text-green-500" /> Below avg</>
+                }
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Budget */}
+          <Card className="border-primary/20 cursor-pointer hover:bg-muted/50 transition-colors" 
+                onClick={() => setShowBudgetSettings(!showBudgetSettings)}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Bell className="h-4 w-4" />
+                Monthly Budget
+              </div>
+              <div className="text-2xl font-bold mt-1">${monthlyBudget}</div>
+              <div className="text-xs text-muted-foreground">Click to adjust</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Budget Settings */}
+        {showBudgetSettings && (
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-sm font-medium">Monthly Budget Alert Threshold</label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={monthlyBudget}
+                      onChange={(e) => setMonthlyBudget(parseFloat(e.target.value) || 0)}
+                      className="w-32"
+                    />
+                    <Button onClick={saveBudget}>Save</Button>
+                    <Button variant="ghost" onClick={() => setShowBudgetSettings(false)}>Cancel</Button>
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  You'll see a warning when projected costs exceed 80% of this amount.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cost Breakdown by Category */}
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <HardDrive className="h-5 w-5 text-amber-600" />
-                  Lovable Cloud
-                  <InfoTooltip text="Database operations, edge functions, and realtime subscriptions. Rate: $0.000134/write (or calibrated rate)." />
-                  {isCloudFetching && <Loader2 className="h-4 w-4 animate-spin text-amber-600" />}
+                  <Database className="h-5 w-5 text-primary" />
+                  Cost Breakdown by Category
+                  <InfoTooltip text="Detailed breakdown of what's consuming your cloud budget" />
                 </CardTitle>
-                <CardDescription>Write operations and estimated costs</CardDescription>
+                <CardDescription>Last 30 days of operations</CardDescription>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => refetchCloudUsage()} disabled={isCloudFetching}>
-                  <RefreshCw className={`h-4 w-4 mr-1 ${isCloudFetching ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-                <span className="text-xl font-bold text-amber-600">~${cloudCostNumber.toFixed(2)}</span>
-              </div>
+              <div className="text-2xl font-bold">${totalCloudCost.toFixed(2)}</div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Write Operations</p>
-                <p className="text-2xl font-semibold">{(cloudUsageStats?.writeOps || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">DB Reads (est 4x)</p>
-                <p className="text-2xl font-semibold">{(cloudUsageStats?.estimatedReadOps || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Edge Functions</p>
-                <p className="text-2xl font-semibold">{(cloudUsageStats?.edgeFunctionCalls || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Rate{calibratedRate ? ' (calibrated)' : ''}</p>
-                <p className={`text-lg font-semibold ${calibratedRate ? 'text-amber-600' : ''}`}>${effectiveRate.toFixed(6)}/write</p>
-              </div>
-            </div>
-
-            {/* Write operations breakdown */}
-            {cloudUsageStats?.breakdown && (cloudUsageStats?.writeOps || 0) > 0 && (
-              <div className="pt-3 border-t">
-                <p className="text-sm font-medium mb-2">Write Operations Breakdown</p>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
-                  <div className="p-2 rounded bg-background/50">
-                    <p className="text-muted-foreground">Emails</p>
-                    <p className="font-semibold">{(cloudUsageStats.breakdown.emails || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 rounded bg-background/50">
-                    <p className="text-muted-foreground">Matches</p>
-                    <p className="font-semibold">{(cloudUsageStats.breakdown.matches || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 rounded bg-background/50">
-                    <p className="text-muted-foreground">Geocode</p>
-                    <p className="font-semibold">{(cloudUsageStats.breakdown.geocode || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 rounded bg-background/50">
-                    <p className="text-muted-foreground">Map Track</p>
-                    <p className="font-semibold">{(cloudUsageStats.breakdown.mapTracking || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 rounded bg-background/50">
-                    <p className="text-muted-foreground">Email Vol</p>
-                    <p className="font-semibold">{(cloudUsageStats.breakdown.emailVolume || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 rounded bg-background/50">
-                    <p className="text-muted-foreground">Archive</p>
-                    <p className="font-semibold">{(cloudUsageStats.breakdown.archive || 0).toLocaleString()}</p>
-                  </div>
+          <CardContent className="space-y-3">
+            <CostCategory 
+              label="Email Ingestion" 
+              amount={emailIngestionCost}
+              percentage={totalCloudCost > 0 ? (emailIngestionCost / totalCloudCost) * 100 : 0}
+              icon={HardDrive}
+              color="bg-blue-500/10 text-blue-500"
+            />
+            <CostCategory 
+              label="Hunt & Matching" 
+              amount={huntOpsCost}
+              percentage={totalCloudCost > 0 ? (huntOpsCost / totalCloudCost) * 100 : 0}
+              icon={Zap}
+              color="bg-orange-500/10 text-orange-500"
+            />
+            <CostCategory 
+              label="Load Management" 
+              amount={loadMgmtCost}
+              percentage={totalCloudCost > 0 ? (loadMgmtCost / totalCloudCost) * 100 : 0}
+              icon={Server}
+              color="bg-green-500/10 text-green-500"
+            />
+            <CostCategory 
+              label="Tracking & Maps" 
+              amount={trackingCost}
+              percentage={totalCloudCost > 0 ? (trackingCost / totalCloudCost) * 100 : 0}
+              icon={BarChart3}
+              color="bg-purple-500/10 text-purple-500"
+            />
+            <CostCategory 
+              label="Edge Functions" 
+              amount={edgeFunctionCost}
+              percentage={totalCloudCost > 0 ? (edgeFunctionCost / totalCloudCost) * 100 : 0}
+              icon={Server}
+              color="bg-amber-500/10 text-amber-500"
+            />
+            <CostCategory 
+              label="Other (AI, Email, Audit)" 
+              amount={otherCost}
+              percentage={totalCloudCost > 0 ? (otherCost / totalCloudCost) * 100 : 0}
+              icon={Sparkles}
+              color="bg-pink-500/10 text-pink-500"
+            />
+            
+            {/* Detailed breakdown */}
+            <div className="pt-4 mt-4 border-t">
+              <p className="text-sm font-medium mb-3">Detailed Write Operations</p>
+              <div className="grid grid-cols-4 gap-2 text-xs">
+                <div className="p-2 rounded bg-muted">
+                  <p className="text-muted-foreground">Emails</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.raw.emails || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-2 rounded bg-muted">
+                  <p className="text-muted-foreground">Geocode</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.raw.geocode || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-2 rounded bg-muted">
+                  <p className="text-muted-foreground">Matches</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.raw.matches || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-2 rounded bg-muted">
+                  <p className="text-muted-foreground">Edge Calls</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.totals.edgeFunctions || 0).toLocaleString()}</p>
                 </div>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Cost Drivers Panel */}
+        {/* Daily Cost History Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              7-Day Cost History
+            </CardTitle>
+            <CardDescription>Email volume and associated costs by day</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyCostHistory || []}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="day" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'emails') return [value.toLocaleString(), 'Emails'];
+                      if (name === 'cost') return [`$${(value * effectiveRate * 2.5).toFixed(2)}`, 'Est. Cost'];
+                      return [value, name];
+                    }}
+                  />
+                  <Bar dataKey="emails" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 grid grid-cols-7 gap-2 text-xs text-center">
+              {(dailyCostHistory || []).map((day, i) => (
+                <div key={i} className="p-2 rounded bg-muted">
+                  <p className="text-muted-foreground">{day.day}</p>
+                  <p className="font-medium">${(day.emails * effectiveRate * 2.5).toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 24-Hour Activity Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              24-Hour Email Activity
+            </CardTitle>
+            <CardDescription>Hourly breakdown to identify peak usage times</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={hourlyBreakdown || []}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="hour" className="text-xs" interval={2} />
+                  <YAxis className="text-xs" />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="emails" 
+                    stroke="hsl(var(--primary))" 
+                    fill="hsl(var(--primary))" 
+                    fillOpacity={0.2} 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Hunt Cost Calculator */}
+        <Card className="border-green-500/20 bg-green-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-green-500" />
+              Hunt Cost Simulator
+              <InfoTooltip text="Estimate additional costs when enabling hunts" />
+            </CardTitle>
+            <CardDescription>See how hunt plans affect your costs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 rounded bg-background border">
+                <p className="text-sm font-medium mb-3">Current Rate: {(costDrivers?.hourlyRate || 0).toFixed(0)} emails/hour</p>
+                <div className="grid grid-cols-5 gap-4 text-center">
+                  <div className="p-3 rounded bg-muted">
+                    <p className="text-xs text-muted-foreground">No Hunts</p>
+                    <p className="text-lg font-bold">${dailyCost.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">/day</p>
+                  </div>
+                  <div className="p-3 rounded bg-muted">
+                    <p className="text-xs text-muted-foreground">1 Hunt</p>
+                    <p className="text-lg font-bold">${(dailyCost * 1.05).toFixed(2)}</p>
+                    <p className="text-xs text-green-600">+5%</p>
+                  </div>
+                  <div className="p-3 rounded bg-muted">
+                    <p className="text-xs text-muted-foreground">3 Hunts</p>
+                    <p className="text-lg font-bold">${(dailyCost * 1.12).toFixed(2)}</p>
+                    <p className="text-xs text-green-600">+12%</p>
+                  </div>
+                  <div className="p-3 rounded bg-muted">
+                    <p className="text-xs text-muted-foreground">5 Hunts</p>
+                    <p className="text-lg font-bold">${(dailyCost * 1.18).toFixed(2)}</p>
+                    <p className="text-xs text-amber-600">+18%</p>
+                  </div>
+                  <div className="p-3 rounded bg-muted">
+                    <p className="text-xs text-muted-foreground">10 Hunts</p>
+                    <p className="text-lg font-bold">${(dailyCost * 1.30).toFixed(2)}</p>
+                    <p className="text-xs text-red-600">+30%</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                * Estimates assume 10% match rate per hunt. Actual costs depend on pickup radius and email locations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Real-Time Cost Drivers */}
         <Card className="border-orange-500/20 bg-orange-500/5">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -419,7 +825,6 @@ const LovableCloudAITab = () => {
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-orange-500" />
                   Real-Time Cost Drivers
-                  <InfoTooltip text="Shows what's consuming resources. High numbers indicate cost sources." />
                 </CardTitle>
                 <CardDescription>Activity breakdown for last 1 hour and 24 hours</CardDescription>
               </div>
@@ -499,18 +904,11 @@ const LovableCloudAITab = () => {
                   <span className="font-medium text-red-600">High Volume:</span>
                   <span className="text-muted-foreground ml-1">
                     {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()} emails/24h. 
-                    Est. ~${((costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5).toFixed(2)}/day.
+                    Est. ~${dailyCost.toFixed(2)}/day.
                   </span>
                 </div>
               </div>
             )}
-            
-            <div className="mt-4 pt-3 border-t text-sm text-muted-foreground flex justify-between">
-              <span>Projected 30-day cost:</span>
-              <span className="font-medium text-foreground">
-                ~${((costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5 * 30).toFixed(2)}
-              </span>
-            </div>
           </CardContent>
         </Card>
 
@@ -522,9 +920,8 @@ const LovableCloudAITab = () => {
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5 text-blue-500" />
                   Calibrate Cost Estimates
-                  <InfoTooltip text="Enter actual billing to compute a more accurate rate." />
                 </CardTitle>
-                <CardDescription>Sync estimates with actual Lovable billing</CardDescription>
+                <CardDescription>Sync estimates with actual Lovable billing for accuracy</CardDescription>
               </div>
               <Button 
                 variant={showCalibration ? "secondary" : "outline"}
@@ -574,11 +971,11 @@ const LovableCloudAITab = () => {
                     <Button onClick={handleCalibrate} disabled={!actualSpend}>Calibrate</Button>
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>Tracked write ops: <span className="font-medium">{(cloudUsageStats?.writeOps || 0).toLocaleString()}</span></p>
-                    {actualSpend && parseFloat(actualSpend) > 0 && (cloudUsageStats?.writeOps || 0) > 0 && (
+                    <p>Tracked write ops: <span className="font-medium">{totalWriteOps.toLocaleString()}</span></p>
+                    {actualSpend && parseFloat(actualSpend) > 0 && totalWriteOps > 0 && (
                       <p>
                         New rate: <span className="font-medium text-blue-600">
-                          ${(parseFloat(actualSpend) / (cloudUsageStats?.writeOps || 1)).toFixed(6)}/write
+                          ${(parseFloat(actualSpend) / totalWriteOps).toFixed(6)}/write
                         </span>
                         {' '}(vs default $0.000134)
                       </p>
@@ -662,12 +1059,10 @@ const LovableCloudAITab = () => {
               <div>
                 <p className="text-xs text-muted-foreground">Input Tokens</p>
                 <p className="font-semibold">{(aiStats?.totalPromptTokens || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">~{aiStats?.avgPromptTokens || 0} avg/request</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Output Tokens</p>
                 <p className="font-semibold">{(aiStats?.totalCompletionTokens || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">~{aiStats?.avgCompletionTokens || 0} avg/request</p>
               </div>
             </div>
 
@@ -687,27 +1082,36 @@ const LovableCloudAITab = () => {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
 
-            {/* Model breakdown */}
-            {aiStats?.modelBreakdown && Object.keys(aiStats.modelBreakdown).length > 0 && (
-              <div className="pt-3 border-t">
-                <p className="text-sm font-medium mb-2">Usage by Model</p>
-                <div className="space-y-1">
-                  {Object.entries(aiStats.modelBreakdown).map(([model, stats]) => (
-                    <div key={model} className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground truncate max-w-[200px]">{model}</span>
-                      <span className="font-medium">{stats.count} • {stats.tokens.toLocaleString()} tokens</span>
-                    </div>
-                  ))}
-                </div>
+        {/* Cost Explanation Footer */}
+        <Card className="border-muted">
+          <CardContent className="pt-4">
+            <p className="text-sm font-medium mb-2">Understanding Your Costs</p>
+            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+              <div>
+                <p className="font-medium text-foreground mb-1">What We Track:</p>
+                <ul className="space-y-0.5">
+                  <li>• Database writes (emails, matches, geocode)</li>
+                  <li>• Edge function invocations</li>
+                  <li>• AI API calls and tokens</li>
+                  <li>• Realtime message estimates</li>
+                </ul>
               </div>
-            )}
-
-            <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
-              <p>• Usage-based pricing per AI request</p>
-              <p>• Check credit balance in Lovable workspace settings</p>
-              <p>• Free monthly usage included, then pay-as-you-go</p>
+              <div>
+                <p className="font-medium text-foreground mb-1">What's Not Tracked:</p>
+                <ul className="space-y-0.5">
+                  <li>• Database read queries</li>
+                  <li>• Bandwidth/egress</li>
+                  <li>• Storage costs</li>
+                  <li>• Auth operations</li>
+                </ul>
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+              <strong>Tip:</strong> Calibrate your costs by entering actual billing to get the most accurate projections.
+            </p>
           </CardContent>
         </Card>
       </div>
