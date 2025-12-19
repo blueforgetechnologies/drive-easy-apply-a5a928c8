@@ -1002,6 +1002,7 @@ export type Database = {
           partial: boolean | null
           pickup_radius: string | null
           plan_name: string
+          regional_bounds: Json | null
           sources: Database["public"]["Enums"]["email_source"][] | null
           updated_at: string | null
           vehicle_id: string
@@ -1028,6 +1029,7 @@ export type Database = {
           partial?: boolean | null
           pickup_radius?: string | null
           plan_name: string
+          regional_bounds?: Json | null
           sources?: Database["public"]["Enums"]["email_source"][] | null
           updated_at?: string | null
           vehicle_id: string
@@ -1054,6 +1056,7 @@ export type Database = {
           partial?: boolean | null
           pickup_radius?: string | null
           plan_name?: string
+          regional_bounds?: Json | null
           sources?: Database["public"]["Enums"]["email_source"][] | null
           updated_at?: string | null
           vehicle_id?: string
@@ -1323,6 +1326,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      load_emails_archive: {
+        Row: {
+          archived_at: string
+          assigned_load_id: string | null
+          body_html: string | null
+          body_text: string | null
+          email_id: string
+          email_source: string
+          expires_at: string | null
+          from_email: string
+          from_name: string | null
+          has_issues: boolean | null
+          id: string
+          issue_notes: string | null
+          load_id: string | null
+          marked_missed_at: string | null
+          original_created_at: string
+          original_id: string
+          original_updated_at: string
+          parsed_data: Json | null
+          received_at: string
+          status: string
+          subject: string | null
+          thread_id: string | null
+        }
+        Insert: {
+          archived_at?: string
+          assigned_load_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          email_id: string
+          email_source: string
+          expires_at?: string | null
+          from_email: string
+          from_name?: string | null
+          has_issues?: boolean | null
+          id?: string
+          issue_notes?: string | null
+          load_id?: string | null
+          marked_missed_at?: string | null
+          original_created_at: string
+          original_id: string
+          original_updated_at: string
+          parsed_data?: Json | null
+          received_at: string
+          status: string
+          subject?: string | null
+          thread_id?: string | null
+        }
+        Update: {
+          archived_at?: string
+          assigned_load_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          email_id?: string
+          email_source?: string
+          expires_at?: string | null
+          from_email?: string
+          from_name?: string | null
+          has_issues?: boolean | null
+          id?: string
+          issue_notes?: string | null
+          load_id?: string | null
+          marked_missed_at?: string | null
+          original_created_at?: string
+          original_id?: string
+          original_updated_at?: string
+          parsed_data?: Json | null
+          received_at?: string
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+        }
+        Relationships: []
       }
       load_expenses: {
         Row: {
@@ -3329,6 +3407,7 @@ export type Database = {
       }
     }
     Functions: {
+      archive_old_load_emails: { Args: never; Returns: number }
       can_manage_roles: { Args: { _user_id: string }; Returns: boolean }
       generate_load_id_for_date: {
         Args: { target_date: string }
