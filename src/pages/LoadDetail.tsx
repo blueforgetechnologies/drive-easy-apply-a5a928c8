@@ -543,22 +543,18 @@ export default function LoadDetail() {
                   </div>
                   <Separator />
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Email Body:</p>
-                    <div className="bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">
-                      {originalEmail.body_text || "No text content available"}
-                    </div>
-                  </div>
-                  {originalEmail.parsed_data && (
-                    <>
-                      <Separator />
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-2">Parsed Data:</p>
-                        <pre className="bg-muted/50 rounded-lg p-4 text-xs overflow-x-auto">
-                          {JSON.stringify(originalEmail.parsed_data, null, 2)}
-                        </pre>
+                    <p className="text-sm text-muted-foreground mb-2">Email Content:</p>
+                    {originalEmail.body_html ? (
+                      <div 
+                        className="bg-white rounded-lg p-4 border max-h-[500px] overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: originalEmail.body_html }}
+                      />
+                    ) : (
+                      <div className="bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+                        {originalEmail.body_text || "No content available"}
                       </div>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
