@@ -512,7 +512,7 @@ export default function LoadDetail() {
   const netProfit = totalRevenue - totalExpenses - (parseFloat(load.rate) || 0);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-3 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/loads")}>
@@ -590,71 +590,71 @@ export default function LoadDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="stops">Stops ({stops.length})</TabsTrigger>
-          <TabsTrigger value="route">Route Map</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-          <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
-          <TabsTrigger value="financials">Financials</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-3">
+        <TabsList className="grid w-full grid-cols-6 h-9">
+          <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+          <TabsTrigger value="stops" className="text-xs">Stops ({stops.length})</TabsTrigger>
+          <TabsTrigger value="route" className="text-xs">Route Map</TabsTrigger>
+          <TabsTrigger value="expenses" className="text-xs">Expenses ({expenses.length})</TabsTrigger>
+          <TabsTrigger value="documents" className="text-xs">Documents ({documents.length})</TabsTrigger>
+          <TabsTrigger value="financials" className="text-xs">Financials</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Load Information</CardTitle>
+        <TabsContent value="overview" className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card className="shadow-sm">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm font-medium">Load Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Load Number</Label>
-                  <Input value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
-                </div>
-
-                <div>
-                  <Label>Status</Label>
-                  <Select value={load.status || "pending_dispatch"} onValueChange={(value) => updateField("status", value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
-                      <SelectItem value="booked">Booked</SelectItem>
-                      <SelectItem value="dispatched">Dispatched</SelectItem>
-                      <SelectItem value="at_pickup">At Pickup</SelectItem>
-                      <SelectItem value="in_transit">In Transit</SelectItem>
-                      <SelectItem value="at_delivery">At Delivery</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="tonu">TONU</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="space-y-2 px-3 pb-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label>Financial Status</Label>
-                    <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
-                      <SelectTrigger>
+                    <Label className="text-xs text-muted-foreground">Load Number</Label>
+                    <Input className="h-8 text-sm" value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <Select value={load.status || "pending_dispatch"} onValueChange={(value) => updateField("status", value)}>
+                      <SelectTrigger className="h-8 text-sm">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background">
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
+                        <SelectItem value="booked">Booked</SelectItem>
+                        <SelectItem value="dispatched">Dispatched</SelectItem>
+                        <SelectItem value="at_pickup">At Pickup</SelectItem>
+                        <SelectItem value="in_transit">In Transit</SelectItem>
+                        <SelectItem value="at_delivery">At Delivery</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="tonu">TONU</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Financial</Label>
+                    <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background">
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="billed">Billed</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div>
-                    <Label>Settlement Status</Label>
+                    <Label className="text-xs text-muted-foreground">Settlement</Label>
                     <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background">
                         <SelectItem value="unsettled">Unsettled</SelectItem>
                         <SelectItem value="included">Included</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
@@ -664,12 +664,12 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
-                  <Label>Equipment Type</Label>
+                  <Label className="text-xs text-muted-foreground">Equipment</Label>
                   <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select equipment type" />
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select equipment" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-background">
                       <SelectItem value="dry_van">Dry Van</SelectItem>
                       <SelectItem value="reefer">Reefer</SelectItem>
                       <SelectItem value="flatbed">Flatbed</SelectItem>
@@ -680,39 +680,39 @@ export default function LoadDetail() {
                   </Select>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4 pt-1">
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input
                       type="checkbox"
                       checked={load.hazmat || false}
                       onChange={(e) => updateField("hazmat", e.target.checked)}
-                      className="rounded"
+                      className="rounded h-3.5 w-3.5"
                     />
-                    <Label>Hazmat</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
+                    Hazmat
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input
                       type="checkbox"
                       checked={load.team_required || false}
                       onChange={(e) => updateField("team_required", e.target.checked)}
-                      className="rounded"
+                      className="rounded h-3.5 w-3.5"
                     />
-                    <Label>Team Required</Label>
-                  </div>
+                    Team Required
+                  </label>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Assignment</CardTitle>
+            <Card className="shadow-sm">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm font-medium">Assignment</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-2 px-3 pb-3">
                 <div>
-                  <Label>Customer (Pays for Load)</Label>
-                  <div className="flex gap-2">
+                  <Label className="text-xs text-muted-foreground">Customer</Label>
+                  <div className="flex gap-1">
                     <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm">
                         <SelectValue placeholder="Select customer" />
                       </SelectTrigger>
                       <SelectContent className="bg-background z-50">
@@ -739,9 +739,9 @@ export default function LoadDetail() {
                     const selectedCustomer = customers.find(c => c.id === load.customer_id);
                     if (selectedCustomer) {
                       return (
-                        <div className="mt-2 text-sm text-muted-foreground">
-                          {selectedCustomer.phone && <div>Phone: {selectedCustomer.phone}</div>}
-                          {selectedCustomer.email && <div>Email: {selectedCustomer.email}</div>}
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {selectedCustomer.phone && <span className="mr-3">{selectedCustomer.phone}</span>}
+                          {selectedCustomer.email && <span>{selectedCustomer.email}</span>}
                         </div>
                       );
                     }
@@ -750,10 +750,10 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
-                  <Label>Assigned Carrier</Label>
-                  <div className="flex gap-2">
+                  <Label className="text-xs text-muted-foreground">Carrier</Label>
+                  <div className="flex gap-1">
                     <Select value={load.carrier_id || ""} onValueChange={(value) => updateField("carrier_id", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm">
                         <SelectValue placeholder="Select carrier" />
                       </SelectTrigger>
                       <SelectContent className="bg-background z-50">
@@ -767,27 +767,28 @@ export default function LoadDetail() {
                     <Button 
                       variant="outline" 
                       size="icon"
+                      className="h-8 w-8"
                       onClick={() => setCarrierDialogOpen(true)}
                       type="button"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                   {load.carrier_id && (() => {
                     const selectedCarrier = carriers.find(c => c.id === load.carrier_id);
                     if (selectedCarrier) {
                       return (
-                        <div className="flex gap-6 mt-3">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">Operating Authority Status</span>
+                        <div className="flex gap-4 mt-1 text-xs">
+                          <div>
+                            <span className="text-muted-foreground">Auth: </span>
                             {selectedCarrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ? (
                               <span className="text-destructive font-medium">{selectedCarrier.safer_status}</span>
                             ) : (
-                              <span className="text-green-700 font-medium">{selectedCarrier.safer_status || "AUTHORIZED FOR Property"}</span>
+                              <span className="text-green-700 font-medium">{selectedCarrier.safer_status || "Authorized"}</span>
                             )}
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">Safer Rating Check</span>
+                          <div>
+                            <span className="text-muted-foreground">Rating: </span>
                             {selectedCarrier.safety_rating?.toUpperCase() === 'CONDITIONAL' ? (
                               <span className="text-destructive">{selectedCarrier.safety_rating}</span>
                             ) : (
@@ -802,13 +803,13 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
-                  <Label>Assigned Vehicle</Label>
-                  <div className="flex gap-2">
+                  <Label className="text-xs text-muted-foreground">Vehicle</Label>
+                  <div className="flex gap-1">
                     <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm">
                         <SelectValue placeholder="Select vehicle" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background">
                         {vehicles.map((vehicle) => (
                           <SelectItem key={vehicle.id} value={vehicle.id}>
                             {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
@@ -831,13 +832,13 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
-                  <Label>Assigned Driver</Label>
-                  <div className="flex gap-2">
+                  <Label className="text-xs text-muted-foreground">Driver</Label>
+                  <div className="flex gap-1">
                     <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm">
                         <SelectValue placeholder="Select driver" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background">
                         {drivers.map((driver) => (
                           <SelectItem key={driver.id} value={driver.id}>
                             {driver.personal_info?.firstName} {driver.personal_info?.lastName}
@@ -859,150 +860,122 @@ export default function LoadDetail() {
                   </div>
                 </div>
 
-                <div>
-                  <Label>Assigned Dispatcher</Label>
-                  <div className="flex gap-2">
-                    <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select dispatcher" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
-                        {dispatchers.map((dispatcher) => (
-                          <SelectItem key={dispatcher.id} value={dispatcher.id}>
-                            {dispatcher.first_name} {dispatcher.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {load.assigned_dispatcher_id && (
-                      <EditEntityDialog 
-                        entityId={load.assigned_dispatcher_id} 
-                        entityType="dispatcher"
-                        onEntityUpdated={loadData}
-                      />
-                    )}
-                    <AddDispatcherDialog onDispatcherAdded={async (dispatcherId) => {
-                      await loadData();
-                      updateField("assigned_dispatcher_id", dispatcherId);
-                    }} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Dispatcher</Label>
+                    <div className="flex gap-1">
+                      <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {dispatchers.map((dispatcher) => (
+                            <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                              {dispatcher.first_name} {dispatcher.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {load.assigned_dispatcher_id && (
+                        <EditEntityDialog 
+                          entityId={load.assigned_dispatcher_id} 
+                          entityType="dispatcher"
+                          onEntityUpdated={loadData}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <Label>Load Owner</Label>
-                  <div className="flex gap-2">
-                    <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select load owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
-                        {dispatchers.map((dispatcher) => (
-                          <SelectItem key={dispatcher.id} value={dispatcher.id}>
-                            {dispatcher.first_name} {dispatcher.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {load.load_owner_id && (
-                      <EditEntityDialog 
-                        entityId={load.load_owner_id} 
-                        entityType="dispatcher"
-                        onEntityUpdated={loadData}
-                      />
-                    )}
-                    <AddDispatcherDialog onDispatcherAdded={async (dispatcherId) => {
-                      await loadData();
-                      updateField("load_owner_id", dispatcherId);
-                    }} />
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Owner</Label>
+                    <div className="flex gap-1">
+                      <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {dispatchers.map((dispatcher) => (
+                            <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                              {dispatcher.first_name} {dispatcher.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Cargo Information</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label>Commodity Type</Label>
-                <Input value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
-              </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card className="shadow-sm">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm font-medium">Cargo Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 px-3 pb-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Commodity</Label>
+                    <Input className="h-8 text-sm" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Temp Req</Label>
+                    <Input className="h-8 text-sm" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Description</Label>
+                  <Input className="h-8 text-sm" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Weight</Label>
+                    <Input className="h-8 text-sm" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} placeholder="lbs" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Pieces</Label>
+                    <Input className="h-8 text-sm" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Est. Miles</Label>
+                    <Input className="h-8 text-sm" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              <div>
-                <Label>Description</Label>
-                <Input value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
-              </div>
-
-              <div>
-                <Label>Weight (lbs)</Label>
-                <Input type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
-              </div>
-
-              <div>
-                <Label>Pieces</Label>
-                <Input type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
-              </div>
-
-              <div>
-                <Label>Temperature (if reefer)</Label>
-                <Input value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 34-38°F" />
-              </div>
-
-              <div>
-                <Label>Estimated Miles</Label>
-                <Input type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
-              </div>
-
-              <div>
-                <Label>Actual Miles</Label>
-                <Input type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes & Instructions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Special Instructions</Label>
-                <Textarea
-                  value={load.special_instructions || ""}
-                  onChange={(e) => updateField("special_instructions", e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label>Dispatch Notes</Label>
-                <Textarea
-                  value={load.dispatch_notes || ""}
-                  onChange={(e) => updateField("dispatch_notes", e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label>Billing Notes</Label>
-                <Textarea
-                  value={load.billing_notes || ""}
-                  onChange={(e) => updateField("billing_notes", e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="shadow-sm">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm font-medium">Notes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 px-3 pb-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Special Instructions</Label>
+                  <Textarea className="text-sm min-h-[32px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={1} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Dispatch Notes</Label>
+                    <Textarea className="text-sm min-h-[32px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={1} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Billing Notes</Label>
+                    <Textarea className="text-sm min-h-[32px]" value={load.billing_notes || ""} onChange={(e) => updateField("billing_notes", e.target.value)} rows={1} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
-        <TabsContent value="stops" className="space-y-4">
+        <TabsContent value="stops" className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Load Stops</h3>
-            <div className="flex gap-2">
+            <h3 className="text-sm font-semibold">Load Stops</h3>
+            <div className="flex gap-1.5">
               <Button 
                 variant="outline" 
+                size="sm"
+                className="h-8 text-xs"
                 onClick={handleOptimizeRoute}
                 disabled={optimizing || stops.length < 2}
               >
@@ -1010,120 +983,79 @@ export default function LoadDetail() {
               </Button>
               <Dialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button><Plus className="mr-2 h-4 w-4" /> Add Stop</Button>
+                  <Button size="sm" className="h-8 text-xs"><Plus className="mr-1 h-3.5 w-3.5" /> Add Stop</Button>
                 </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Add Stop</DialogTitle>
+                  <DialogTitle className="text-base">Add Stop</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-3 py-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Stop Type</Label>
+                      <Select value={newStop.stop_type} onValueChange={(value) => setNewStop({ ...newStop, stop_type: value })}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background">
+                          <SelectItem value="pickup">Pickup</SelectItem>
+                          <SelectItem value="delivery">Delivery</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Location Name</Label>
+                      <Input className="h-8 text-sm" value={newStop.location_name} onChange={(e) => setNewStop({ ...newStop, location_name: e.target.value })} />
+                    </div>
+                  </div>
                   <div>
-                    <Label>Stop Type</Label>
-                    <Select value={newStop.stop_type} onValueChange={(value) => setNewStop({ ...newStop, stop_type: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pickup">Pickup</SelectItem>
-                        <SelectItem value="delivery">Delivery</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs">Address</Label>
+                    <Input className="h-8 text-sm" value={newStop.location_address} onChange={(e) => setNewStop({ ...newStop, location_address: e.target.value })} />
                   </div>
-
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs">City</Label>
+                      <Input className="h-8 text-sm" value={newStop.location_city} onChange={(e) => setNewStop({ ...newStop, location_city: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">State</Label>
+                      <Input className="h-8 text-sm" value={newStop.location_state} onChange={(e) => setNewStop({ ...newStop, location_state: e.target.value })} maxLength={2} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">ZIP</Label>
+                      <Input className="h-8 text-sm" value={newStop.location_zip} onChange={(e) => setNewStop({ ...newStop, location_zip: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Contact</Label>
+                      <Input className="h-8 text-sm" value={newStop.contact_name} onChange={(e) => setNewStop({ ...newStop, contact_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Phone</Label>
+                      <Input className="h-8 text-sm" value={newStop.contact_phone} onChange={(e) => setNewStop({ ...newStop, contact_phone: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs">Date</Label>
+                      <Input className="h-8 text-sm" type="date" value={newStop.scheduled_date} onChange={(e) => setNewStop({ ...newStop, scheduled_date: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Start</Label>
+                      <Input className="h-8 text-sm" type="time" value={newStop.scheduled_time_start} onChange={(e) => setNewStop({ ...newStop, scheduled_time_start: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">End</Label>
+                      <Input className="h-8 text-sm" type="time" value={newStop.scheduled_time_end} onChange={(e) => setNewStop({ ...newStop, scheduled_time_end: e.target.value })} />
+                    </div>
+                  </div>
                   <div>
-                    <Label>Location Name</Label>
-                    <Input
-                      value={newStop.location_name}
-                      onChange={(e) => setNewStop({ ...newStop, location_name: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Address</Label>
-                    <Input
-                      value={newStop.location_address}
-                      onChange={(e) => setNewStop({ ...newStop, location_address: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>City</Label>
-                      <Input
-                        value={newStop.location_city}
-                        onChange={(e) => setNewStop({ ...newStop, location_city: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>State</Label>
-                      <Input
-                        value={newStop.location_state}
-                        onChange={(e) => setNewStop({ ...newStop, location_state: e.target.value })}
-                        maxLength={2}
-                      />
-                    </div>
-                    <div>
-                      <Label>ZIP</Label>
-                      <Input
-                        value={newStop.location_zip}
-                        onChange={(e) => setNewStop({ ...newStop, location_zip: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Contact Name</Label>
-                      <Input
-                        value={newStop.contact_name}
-                        onChange={(e) => setNewStop({ ...newStop, contact_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Contact Phone</Label>
-                      <Input
-                        value={newStop.contact_phone}
-                        onChange={(e) => setNewStop({ ...newStop, contact_phone: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>Scheduled Date</Label>
-                      <Input
-                        type="date"
-                        value={newStop.scheduled_date}
-                        onChange={(e) => setNewStop({ ...newStop, scheduled_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Time Start</Label>
-                      <Input
-                        type="time"
-                        value={newStop.scheduled_time_start}
-                        onChange={(e) => setNewStop({ ...newStop, scheduled_time_start: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Time End</Label>
-                      <Input
-                        type="time"
-                        value={newStop.scheduled_time_end}
-                        onChange={(e) => setNewStop({ ...newStop, scheduled_time_end: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Notes</Label>
-                    <Textarea
-                      value={newStop.notes}
-                      onChange={(e) => setNewStop({ ...newStop, notes: e.target.value })}
-                    />
+                    <Label className="text-xs">Notes</Label>
+                    <Textarea className="text-sm min-h-[40px]" value={newStop.notes} onChange={(e) => setNewStop({ ...newStop, notes: e.target.value })} rows={1} />
                   </div>
                 </div>
-                <Button onClick={handleAddStop} className="w-full">Add Stop</Button>
+                <Button onClick={handleAddStop} size="sm" className="w-full">Add Stop</Button>
               </DialogContent>
             </Dialog>
             </div>
@@ -1280,177 +1212,140 @@ export default function LoadDetail() {
             </Card>
           )}
 
-          {/* Email Notes Alert */}
           {originalEmail?.parsed_data?.notes && (
-            <Card className="border-red-300 bg-red-50">
-              <CardContent className="py-3">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-red-700">Email Notes:</p>
-                    <p className="text-red-600">{originalEmail.parsed_data.notes}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-2 p-2 rounded-md bg-red-50 border border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+              <p className="text-xs text-red-600"><span className="font-semibold">Email Notes:</span> {originalEmail.parsed_data.notes}</p>
+            </div>
           )}
 
-          {/* Origin and Destination from Load Record */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2">
             {/* Origin Card */}
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-blue-500">Origin / Shipper</Badge>
-                </div>
+            <Card className="border-blue-200 bg-blue-50/30 shadow-sm">
+              <CardHeader className="py-1.5 px-3">
+                <Badge className="bg-blue-500 w-fit text-xs">Origin / Shipper</Badge>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+              <CardContent className="space-y-1.5 px-3 pb-3">
+                <div className="grid grid-cols-3 gap-1.5">
                   <div>
-                    <Label className="text-xs">City</Label>
-                    <Input 
-                      value={load.pickup_city || ""} 
-                      onChange={(e) => updateField("pickup_city", e.target.value)}
-                      placeholder="City"
-                    />
+                    <Label className="text-[10px] text-muted-foreground">City</Label>
+                    <Input className="h-7 text-xs" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
                   </div>
                   <div>
-                    <Label className="text-xs">State</Label>
-                    <Input 
-                      value={load.pickup_state || ""} 
-                      onChange={(e) => updateField("pickup_state", e.target.value)}
-                      placeholder="State"
-                      maxLength={2}
-                    />
+                    <Label className="text-[10px] text-muted-foreground">State</Label>
+                    <Input className="h-7 text-xs" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value)} placeholder="ST" maxLength={2} />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">ZIP</Label>
+                    <Input className="h-7 text-xs" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} placeholder="ZIP" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Address</Label>
-                  <Input 
-                    value={load.pickup_address || ""} 
-                    onChange={(e) => updateField("pickup_address", e.target.value)}
-                    placeholder="Address"
-                  />
+                  <Label className="text-[10px] text-muted-foreground">Address</Label>
+                  <Input className="h-7 text-xs" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Address" />
                 </div>
-                <div>
-                  <Label className="text-xs">ZIP</Label>
-                  <Input 
-                    value={load.pickup_zip || ""} 
-                    onChange={(e) => updateField("pickup_zip", e.target.value)}
-                    placeholder="ZIP Code"
-                  />
-                </div>
-                <Separator />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <Label className="text-xs">Pickup Date</Label>
-                    <Input 
-                      type="date"
-                      value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} 
-                      onChange={(e) => updateField("pickup_date", e.target.value)}
-                    />
+                    <Label className="text-[10px] text-muted-foreground">Date</Label>
+                    <Input className="h-7 text-xs" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
                   </div>
                   <div>
-                    <Label className="text-xs">Pickup Time</Label>
-                    <Input 
-                      value={load.pickup_time || ""} 
-                      onChange={(e) => updateField("pickup_time", e.target.value)}
-                      placeholder="e.g. 08:00"
-                    />
+                    <Label className="text-[10px] text-muted-foreground">Time</Label>
+                    <Input className="h-7 text-xs" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="HH:MM" />
                   </div>
                 </div>
-                <Separator />
-                <p className="text-xs font-semibold text-muted-foreground">Shipper Info</p>
-                <div>
-                  <Label className="text-xs">Shipper Name</Label>
-                  <Input 
-                    value={load.shipper_name || ""} 
-                    onChange={(e) => updateField("shipper_name", e.target.value)}
-                    placeholder="Shipper name"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Shipper Address</Label>
-                  <Input 
-                    value={load.shipper_address || ""} 
-                    onChange={(e) => updateField("shipper_address", e.target.value)}
-                    placeholder="Shipper address"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+                <Separator className="my-1" />
+                <p className="text-[10px] font-semibold text-muted-foreground">Shipper</p>
+                <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <Label className="text-xs">Phone</Label>
-                    <Input 
-                      value={load.shipper_phone || ""} 
-                      onChange={(e) => updateField("shipper_phone", e.target.value)}
-                      placeholder="Phone"
-                    />
+                    <Label className="text-[10px] text-muted-foreground">Name</Label>
+                    <Input className="h-7 text-xs" value={load.shipper_name || ""} onChange={(e) => updateField("shipper_name", e.target.value)} />
                   </div>
                   <div>
-                    <Label className="text-xs">Email</Label>
-                    <Input 
-                      value={load.shipper_email || ""} 
-                      onChange={(e) => updateField("shipper_email", e.target.value)}
-                      placeholder="Email"
-                    />
+                    <Label className="text-[10px] text-muted-foreground">Phone</Label>
+                    <Input className="h-7 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Address</Label>
+                    <Input className="h-7 text-xs" value={load.shipper_address || ""} onChange={(e) => updateField("shipper_address", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Email</Label>
+                    <Input className="h-7 text-xs" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Pickup Notes</Label>
-                  <Textarea 
-                    value={load.pickup_notes || ""} 
-                    onChange={(e) => updateField("pickup_notes", e.target.value)}
-                    placeholder="Notes"
-                    rows={2}
-                  />
+                  <Label className="text-[10px] text-muted-foreground">Pickup Notes</Label>
+                  <Textarea className="text-xs min-h-[28px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Destination Card */}
-            <Card className="border-green-200 bg-green-50/50">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-green-500">Destination / Receiver</Badge>
-                </div>
+            <Card className="border-green-200 bg-green-50/30 shadow-sm">
+              <CardHeader className="py-1.5 px-3">
+                <Badge className="bg-green-500 w-fit text-xs">Destination / Receiver</Badge>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+              <CardContent className="space-y-1.5 px-3 pb-3">
+                <div className="grid grid-cols-3 gap-1.5">
                   <div>
-                    <Label className="text-xs">City</Label>
-                    <Input 
-                      value={load.delivery_city || ""} 
-                      onChange={(e) => updateField("delivery_city", e.target.value)}
-                      placeholder="City"
-                    />
+                    <Label className="text-[10px] text-muted-foreground">City</Label>
+                    <Input className="h-7 text-xs" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
                   </div>
                   <div>
-                    <Label className="text-xs">State</Label>
-                    <Input 
-                      value={load.delivery_state || ""} 
-                      onChange={(e) => updateField("delivery_state", e.target.value)}
-                      placeholder="State"
-                      maxLength={2}
-                    />
+                    <Label className="text-[10px] text-muted-foreground">State</Label>
+                    <Input className="h-7 text-xs" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value)} placeholder="ST" maxLength={2} />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">ZIP</Label>
+                    <Input className="h-7 text-xs" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} placeholder="ZIP" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Address</Label>
-                  <Input 
-                    value={load.delivery_address || ""} 
-                    onChange={(e) => updateField("delivery_address", e.target.value)}
-                    placeholder="Address"
-                  />
+                  <Label className="text-[10px] text-muted-foreground">Address</Label>
+                  <Input className="h-7 text-xs" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Address" />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Date</Label>
+                    <Input className="h-7 text-xs" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Time</Label>
+                    <Input className="h-7 text-xs" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="HH:MM" />
+                  </div>
+                </div>
+                <Separator className="my-1" />
+                <p className="text-[10px] font-semibold text-muted-foreground">Receiver</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Name</Label>
+                    <Input className="h-7 text-xs" value={load.receiver_name || ""} onChange={(e) => updateField("receiver_name", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Phone</Label>
+                    <Input className="h-7 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Address</Label>
+                    <Input className="h-7 text-xs" value={load.receiver_address || ""} onChange={(e) => updateField("receiver_address", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Email</Label>
+                    <Input className="h-7 text-xs" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} />
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-xs">ZIP</Label>
-                  <Input 
-                    value={load.delivery_zip || ""} 
-                    onChange={(e) => updateField("delivery_zip", e.target.value)}
-                    placeholder="ZIP Code"
-                  />
+                  <Label className="text-[10px] text-muted-foreground">Delivery Notes</Label>
+                  <Textarea className="text-xs min-h-[28px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} />
                 </div>
-                <Separator />
+              </CardContent>
+            </Card>
+          </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Delivery Date</Label>
