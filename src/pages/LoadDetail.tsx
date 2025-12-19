@@ -121,6 +121,7 @@ export default function LoadDetail() {
           assigned_driver_id: load.assigned_driver_id,
           assigned_vehicle_id: load.assigned_vehicle_id,
           assigned_dispatcher_id: load.assigned_dispatcher_id,
+          load_owner_id: load.load_owner_id,
           carrier_id: load.carrier_id,
           equipment_type: load.equipment_type,
           temperature_required: load.temperature_required,
@@ -431,13 +432,15 @@ export default function LoadDetail() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "draft": return "bg-gray-500";
+      case "available": return "bg-gray-500";
+      case "pending_dispatch": return "bg-blue-400";
       case "booked": return "bg-blue-500";
       case "dispatched": return "bg-purple-500";
-      case "loaded": return "bg-yellow-500";
+      case "at_pickup": return "bg-yellow-500";
       case "in_transit": return "bg-orange-500";
-      case "delivered": return "bg-green-500";
+      case "at_delivery": return "bg-green-500";
       case "completed": return "bg-green-700";
+      case "tonu": return "bg-red-400";
       case "cancelled": return "bg-red-500";
       default: return "bg-gray-500";
     }
@@ -515,18 +518,20 @@ export default function LoadDetail() {
 
                 <div>
                   <Label>Status</Label>
-                  <Select value={load.status || "draft"} onValueChange={(value) => updateField("status", value)}>
+                  <Select value={load.status || "pending_dispatch"} onValueChange={(value) => updateField("status", value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
                       <SelectItem value="booked">Booked</SelectItem>
                       <SelectItem value="dispatched">Dispatched</SelectItem>
-                      <SelectItem value="loaded">Loaded</SelectItem>
+                      <SelectItem value="at_pickup">At Pickup</SelectItem>
                       <SelectItem value="in_transit">In Transit</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="at_delivery">At Delivery</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="tonu">TONU</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
@@ -783,6 +788,35 @@ export default function LoadDetail() {
                     <AddDispatcherDialog onDispatcherAdded={async (dispatcherId) => {
                       await loadData();
                       updateField("assigned_dispatcher_id", dispatcherId);
+                    }} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Load Owner</Label>
+                  <div className="flex gap-2">
+                    <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select load owner" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        {dispatchers.map((dispatcher) => (
+                          <SelectItem key={dispatcher.id} value={dispatcher.id}>
+                            {dispatcher.first_name} {dispatcher.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {load.load_owner_id && (
+                      <EditEntityDialog 
+                        entityId={load.load_owner_id} 
+                        entityType="dispatcher"
+                        onEntityUpdated={loadData}
+                      />
+                    )}
+                    <AddDispatcherDialog onDispatcherAdded={async (dispatcherId) => {
+                      await loadData();
+                      updateField("load_owner_id", dispatcherId);
                     }} />
                   </div>
                 </div>

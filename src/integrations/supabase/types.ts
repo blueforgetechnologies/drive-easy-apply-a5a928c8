@@ -1706,6 +1706,7 @@ export type Database = {
           layover_charges: number | null
           load_email_id: string | null
           load_number: string
+          load_owner_id: string | null
           load_type: string | null
           match_id: string | null
           notes: string | null
@@ -1812,6 +1813,7 @@ export type Database = {
           layover_charges?: number | null
           load_email_id?: string | null
           load_number: string
+          load_owner_id?: string | null
           load_type?: string | null
           match_id?: string | null
           notes?: string | null
@@ -1918,6 +1920,7 @@ export type Database = {
           layover_charges?: number | null
           load_email_id?: string | null
           load_number?: string
+          load_owner_id?: string | null
           load_type?: string | null
           match_id?: string | null
           notes?: string | null
@@ -2013,6 +2016,13 @@ export type Database = {
             columns: ["load_email_id"]
             isOneToOne: false
             referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loads_load_owner_id_fkey"
+            columns: ["load_owner_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
             referencedColumns: ["id"]
           },
           {
