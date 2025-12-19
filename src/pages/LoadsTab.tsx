@@ -1129,6 +1129,22 @@ export default function LoadsTab() {
             )}
           </div>
           
+          {/* Reset Sort Button */}
+          {sortField && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs border-dashed"
+              onClick={() => {
+                setSortField(null);
+                setSortDirection('asc');
+              }}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Reset Sort
+            </Button>
+          )}
+          
           {/* Search */}
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
