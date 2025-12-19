@@ -332,7 +332,8 @@ export default function LoadsTab() {
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case "action_needed":
-        return { label: "Action Needed", color: "bg-red-500 border-red-500 text-white" };
+        // Force solid red pill (avoid glossy gradient causing low contrast)
+        return { label: "Action Needed", color: "bg-none !bg-red-600 !border-red-600 !text-white" };
       case "pending_dispatch":
         return { label: "Pending Dispatch", color: "bg-transparent border-yellow-400 text-yellow-500" };
       case "available":
