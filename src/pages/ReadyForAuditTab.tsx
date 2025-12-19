@@ -3,9 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, FileCheck, DollarSign, Truck, Calendar, MapPin } from "lucide-react";
+import { Search, FileCheck } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,8 +21,11 @@ export default function ReadyForAuditTab() {
         .select(`
           *,
           customers(name),
+          carriers(name),
           vehicles(vehicle_number),
-          dispatchers:assigned_dispatcher_id(first_name, last_name)
+          dispatchers:assigned_dispatcher_id(first_name, last_name),
+          load_owner:load_owner_id(first_name, last_name),
+          driver:assigned_driver_id(personal_info)
         `)
         .eq("status", "ready_for_audit")
         .order("completed_at", { ascending: false });
@@ -38,6 +40,7 @@ export default function ReadyForAuditTab() {
     return (
       load.load_number?.toLowerCase().includes(search) ||
       load.customers?.name?.toLowerCase().includes(search) ||
+      load.carriers?.name?.toLowerCase().includes(search) ||
       load.pickup_city?.toLowerCase().includes(search) ||
       load.delivery_city?.toLowerCase().includes(search) ||
       load.reference_number?.toLowerCase().includes(search)
@@ -45,7 +48,7 @@ export default function ReadyForAuditTab() {
   });
 
   const formatCurrency = (amount: number | null) => {
-    if (!amount) return "-";
+    if (!amount) return "";
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
@@ -53,8 +56,14 @@ export default function ReadyForAuditTab() {
   };
 
   const formatDate = (date: string | null) => {
-    if (!date) return "-";
+    if (!date) return "";
     return format(new Date(date), "MMM d, yyyy");
+  };
+
+  const getDriverName = (driver: any) => {
+    if (!driver?.personal_info) return "";
+    const info = driver.personal_info as any;
+    return `${info.first_name || ""} ${info.last_name || ""}`.trim() || "";
   };
 
   if (isLoading) {
@@ -97,65 +106,75 @@ export default function ReadyForAuditTab() {
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
+              <TableRow className="bg-muted/50 border-b-0">
+                <TableHead className="text-primary font-medium">Our Load ID</TableHead>
+                <TableHead className="text-primary font-medium">Carrier</TableHead>
+                <TableHead className="text-primary font-medium">Origin</TableHead>
+                <TableHead className="text-primary font-medium">Pick Up</TableHead>
+                <TableHead className="text-primary font-medium">Rate</TableHead>
+                <TableHead className="text-primary font-medium">Load Owner</TableHead>
+                <TableHead className="text-primary font-medium">Truck ID</TableHead>
+              </TableRow>
               <TableRow className="bg-muted/50">
-                <TableHead>Load #</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Completed</TableHead>
-                <TableHead>Vehicle</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-primary font-medium pt-0">Customer Load</TableHead>
+                <TableHead className="text-primary font-medium pt-0">Customer</TableHead>
+                <TableHead className="text-primary font-medium pt-0">Destination</TableHead>
+                <TableHead className="text-primary font-medium pt-0">Drop Off Date</TableHead>
+                <TableHead></TableHead>
+                <TableHead className="text-primary font-medium pt-0">Dispatcher</TableHead>
+                <TableHead className="text-primary font-medium pt-0">Driver</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLoads?.map((load) => (
-                <TableRow 
-                  key={load.id} 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/dashboard/loads/${load.id}`)}
-                >
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-4 w-4 text-muted-foreground" />
-                      {load.load_number}
-                    </div>
-                  </TableCell>
-                  <TableCell>{load.customers?.name || "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <span>{load.pickup_city}, {load.pickup_state}</span>
-                      <span className="text-muted-foreground">→</span>
-                      <span>{load.delivery_city}, {load.delivery_state}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Calendar className="h-3 w-3 text-muted-foreground" />
-                      {formatDate(load.completed_at)}
-                    </div>
-                  </TableCell>
-                  <TableCell>{load.vehicles?.vehicle_number || "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <DollarSign className="h-3 w-3 text-muted-foreground" />
-                      {formatCurrency(load.rate)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/dashboard/loads/${load.id}`);
-                      }}
-                    >
-                      Review
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredLoads?.map((load) => {
+                const loadOwner = load.load_owner as any;
+                const dispatcher = load.dispatchers as any;
+                const loadOwnerName = loadOwner 
+                  ? `${loadOwner.first_name || ""} ${loadOwner.last_name || ""}`.trim()
+                  : "";
+                const dispatcherName = dispatcher 
+                  ? `${dispatcher.first_name || ""} ${dispatcher.last_name || ""}`.trim()
+                  : "";
+                const driverName = getDriverName(load.driver);
+
+                return (
+                  <TableRow
+                    key={load.id} 
+                    className="cursor-pointer hover:bg-muted/50 border-t"
+                    onClick={() => navigate(`/dashboard/loads/${load.id}`)}
+                  >
+                    <TableCell className="align-top py-3">
+                      <div className="font-medium">{load.load_number}</div>
+                      <div className="text-muted-foreground text-sm">{load.reference_number || ""}</div>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <div className="font-semibold">{load.carriers?.name || ""}</div>
+                      <div className="text-muted-foreground text-sm">{load.customers?.name || ""}</div>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <div>{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}`.trim() : ""}</div>
+                      <div className="text-muted-foreground text-sm">
+                        {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}`.trim() : ""}
+                      </div>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <div>{formatDate(load.pickup_date)}</div>
+                      <div className="text-muted-foreground text-sm">{formatDate(load.delivery_date)}</div>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <div className="font-medium">{formatCurrency(load.rate)}</div>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <div className="font-medium">{loadOwnerName}</div>
+                      <div className="text-muted-foreground text-sm">{dispatcherName}</div>
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <div className="font-medium">{load.vehicles?.vehicle_number || ""}</div>
+                      <div className="text-muted-foreground text-sm">{driverName}</div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
