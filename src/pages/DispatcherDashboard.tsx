@@ -212,18 +212,18 @@ export default function DispatcherDashboard() {
 
   const getStatusBadge = (status: string | null) => {
     const statusLower = (status || "unknown").toLowerCase();
-    const colors: Record<string, string> = {
-      pending_dispatch: "bg-yellow-500",
-      available: "bg-sky-500",
-      booked: "bg-indigo-500",
-      dispatched: "bg-blue-500",
-      at_pickup: "bg-amber-500",
-      in_transit: "bg-purple-500",
-      at_delivery: "bg-teal-500",
-      delivered: "bg-green-600",
-      completed: "bg-green-800",
-      cancelled: "bg-red-500",
-      tonu: "bg-orange-500",
+    const styles: Record<string, { bg: string; text: string }> = {
+      pending_dispatch: { bg: "#eab308", text: "#000" },
+      available: { bg: "#0ea5e9", text: "#fff" },
+      booked: { bg: "#6366f1", text: "#fff" },
+      dispatched: { bg: "#3b82f6", text: "#fff" },
+      at_pickup: { bg: "#f59e0b", text: "#000" },
+      in_transit: { bg: "#a855f7", text: "#fff" },
+      at_delivery: { bg: "#14b8a6", text: "#fff" },
+      delivered: { bg: "#16a34a", text: "#fff" },
+      completed: { bg: "#166534", text: "#fff" },
+      cancelled: { bg: "#ef4444", text: "#fff" },
+      tonu: { bg: "#f97316", text: "#000" },
     };
     
     const labels: Record<string, string> = {
@@ -240,10 +240,17 @@ export default function DispatcherDashboard() {
       tonu: "TONU",
     };
     
-    const colorClass = colors[statusLower] || "bg-gray-500";
+    const style = styles[statusLower] || { bg: "#6b7280", text: "#fff" };
     const label = labels[statusLower] || status || "Unknown";
     
-    return <Badge className={`${colorClass} text-white border-0`}>{label}</Badge>;
+    return (
+      <span 
+        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+        style={{ backgroundColor: style.bg, color: style.text }}
+      >
+        {label}
+      </span>
+    );
   };
 
   if (loading && !dispatcher) {
