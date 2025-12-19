@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1235,115 +1235,133 @@ export default function LoadsTab() {
                       <TableHead className="text-primary text-xs py-2 px-2">BOL</TableHead>
                     </TableRow>
                   </TableHeader>
-                   <TableBody>
-                    {paginatedLoads.map((load) => (
-                      <TableRow 
-                        key={load.id} 
-                        className={`cursor-pointer hover:bg-muted/40 border-b border-border/50 transition-colors ${
-                          load.status === 'action_needed' ? 'bg-red-100 dark:bg-red-950/50 hover:bg-red-200 dark:hover:bg-red-950/70' : ''
-                        }`}
-                        onClick={() => viewLoadDetail(load.id)}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
-                          <Checkbox 
-                            className="h-4 w-4"
-                            checked={selectedLoadIds.includes(load.id)}
-                            onCheckedChange={() => toggleSelectLoad(load.id)}
-                          />
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
-                          <Select
-                            value={load.status}
-                            onValueChange={(value) => handleStatusChange(load.id, value)}
+                  <TableBody>
+                    {paginatedLoads.map((load, index) => {
+                      const isActionNeeded = load.status === 'action_needed';
+                      const nextLoad = paginatedLoads[index + 1];
+                      const isLastActionNeeded = isActionNeeded && nextLoad && nextLoad.status !== 'action_needed';
+                      
+                      return (
+                        <React.Fragment key={load.id}>
+                          <TableRow 
+                            className={`cursor-pointer transition-colors ${
+                              isActionNeeded 
+                                ? 'bg-red-600/25 dark:bg-red-800/50 hover:bg-red-600/35 dark:hover:bg-red-800/60' 
+                                : 'hover:bg-muted/40 border-b border-border/50'
+                            }`}
+                            onClick={() => viewLoadDetail(load.id)}
                           >
-                            <SelectTrigger 
-                              className={`h-7 text-xs font-semibold border rounded-md shadow-none [text-shadow:none] [background:none] ${getStatusDisplay(load.status).color}`}
-                            >
-                              <SelectValue>
-                                {getStatusDisplay(load.status).label}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
-                              <SelectItem value="available">Available</SelectItem>
-                              <SelectItem value="booked">Booked</SelectItem>
-                              <SelectItem value="dispatched">Dispatched</SelectItem>
-                              <SelectItem value="at_pickup">At Pickup</SelectItem>
-                              <SelectItem value="in_transit">In Transit</SelectItem>
-                              <SelectItem value="at_delivery">At Delivery</SelectItem>
-                              <SelectItem value="delivered">Delivered</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="ready_for_audit">Ready for Audit</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                              <SelectItem value="tonu">TONU</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="font-semibold text-xs text-foreground">
-                            {load.vehicle?.vehicle_number || "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
-                              ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
-                              : "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">{load.carrier?.name || "-"}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{load.customer?.name || "-"}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="font-medium text-xs text-foreground">{load.load_number}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{load.reference_number || "-"}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">{load.pickup_city}, {load.pickup_state}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs whitespace-nowrap text-foreground">
-                            {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
-                          </div>
-                          <div className="text-xs whitespace-nowrap text-foreground mt-0.5">
-                            {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">
-                            {load.empty_miles ? Math.round(load.empty_miles) : 0}
-                          </div>
-                          <div className="text-xs text-foreground mt-0.5">{load.estimated_miles ? Math.round(load.estimated_miles) : "-"}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">
-                            {load.rate && load.estimated_miles 
-                              ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
-                              : "N/A"}
-                          </div>
-                          <div className="text-xs text-foreground mt-0.5">
-                            {load.rate && load.estimated_miles 
-                              ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
-                              : "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs font-semibold text-foreground">
-                            {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <div className="text-xs text-foreground">-</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {load.dispatcher?.first_name && load.dispatcher?.last_name
-                              ? `${load.dispatcher.first_name} ${load.dispatcher.last_name}`
-                              : "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
-                        <TableCell className="text-xs text-muted-foreground py-2 px-2">N/A</TableCell>
-                      </TableRow>
-                    ))}
+                            <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
+                              <Checkbox 
+                                className="h-4 w-4"
+                                checked={selectedLoadIds.includes(load.id)}
+                                onCheckedChange={() => toggleSelectLoad(load.id)}
+                              />
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
+                              <Select
+                                value={load.status}
+                                onValueChange={(value) => handleStatusChange(load.id, value)}
+                              >
+                                <SelectTrigger 
+                                  className={`h-7 text-xs font-semibold border rounded-md shadow-none [text-shadow:none] [background:none] ${getStatusDisplay(load.status).color}`}
+                                >
+                                  <SelectValue>
+                                    {getStatusDisplay(load.status).label}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="action_needed">Action Needed</SelectItem>
+                                  <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
+                                  <SelectItem value="available">Available</SelectItem>
+                                  <SelectItem value="booked">Booked</SelectItem>
+                                  <SelectItem value="dispatched">Dispatched</SelectItem>
+                                  <SelectItem value="at_pickup">At Pickup</SelectItem>
+                                  <SelectItem value="in_transit">In Transit</SelectItem>
+                                  <SelectItem value="at_delivery">At Delivery</SelectItem>
+                                  <SelectItem value="delivered">Delivered</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="ready_for_audit">Ready for Audit</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  <SelectItem value="tonu">TONU</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="font-semibold text-xs">
+                                {load.vehicle?.vehicle_number || "N/A"}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
+                                  ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
+                                  : "-"}
+                              </div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs">{load.carrier?.name || "-"}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{load.customer?.name || "-"}</div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="font-medium text-xs">{load.load_number}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{load.reference_number || "-"}</div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs">{load.pickup_city}, {load.pickup_state}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{load.delivery_city}, {load.delivery_state}</div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs whitespace-nowrap">
+                                {load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy HH:mm") : "N/A"}
+                              </div>
+                              <div className="text-xs whitespace-nowrap mt-0.5">
+                                {load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy HH:mm") : "N/A"}
+                              </div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs">
+                                {load.empty_miles ? Math.round(load.empty_miles) : 0}
+                              </div>
+                              <div className="text-xs mt-0.5">{load.estimated_miles ? Math.round(load.estimated_miles) : "-"}</div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs">
+                                {load.rate && load.estimated_miles 
+                                  ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
+                                  : "N/A"}
+                              </div>
+                              <div className="text-xs mt-0.5">
+                                {load.rate && load.estimated_miles 
+                                  ? `$${(load.rate / load.estimated_miles).toFixed(2)}`
+                                  : "N/A"}
+                              </div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs font-semibold">
+                                {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
+                              </div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs">-</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {load.dispatcher?.first_name && load.dispatcher?.last_name
+                                  ? `${load.dispatcher.first_name} ${load.dispatcher.last_name}`
+                                  : "-"}
+                              </div>
+                            </TableCell>
+                            <TableCell className={`text-xs py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>N/A</TableCell>
+                            <TableCell className={`text-xs py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>N/A</TableCell>
+                          </TableRow>
+                          {/* Red separator line after last action_needed load */}
+                          {isLastActionNeeded && (
+                            <TableRow className="h-1 bg-transparent border-0 p-0">
+                              <TableCell colSpan={13} className="p-0 border-0">
+                                <div className="h-1 bg-red-500 dark:bg-red-600 shadow-md shadow-red-500/50" />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
