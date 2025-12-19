@@ -39,6 +39,7 @@ import LoadAnalyticsTab from "./pages/LoadAnalyticsTab";
 import SystemPromptExport from "./pages/SystemPromptExport";
 import UserDetail from "./pages/UserDetail";
 import ToolsTab from "./pages/ToolsTab";
+import AuditDetail from "./pages/AuditDetail";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
           <Route path="/dashboard/my-dashboard" element={<DashboardLayout><DispatcherDashboard /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
           <Route path="/dashboard/accounting" element={<DashboardLayout><AccountingTab /></DashboardLayout>} />
+          <Route path="/dashboard/accounting/audit/:id" element={<DashboardLayout><AuditDetail /></DashboardLayout>} />
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />
           <Route path="/dashboard/maintenance" element={<DashboardLayout><MaintenanceTab /></DashboardLayout>} />
           <Route path="/dashboard/settings" element={<DashboardLayout><SettingsTab /></DashboardLayout>} />
