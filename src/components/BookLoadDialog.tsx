@@ -76,7 +76,7 @@ export function BookLoadDialog({
       const seqNumber = ((count || 0) + 1).toString().padStart(3, '0');
       const loadNumber = `${datePrefix}-${seqNumber}`;
 
-      // Get vehicle info
+      // Get vehicle info (including carrier)
       const vehicle = vehicles.find(v => v.id === vehicleId);
 
       // Create the load in the loads table with ALL data from the match and parsed email
@@ -84,10 +84,11 @@ export function BookLoadDialog({
         .from('loads')
         .insert({
           load_number: loadNumber,
-          status: 'Pending Dispatch',
+          status: 'pending_dispatch',
           rate: parseFloat(rate),
           assigned_vehicle_id: vehicleId,
           assigned_dispatcher_id: dispatcherId || null,
+          carrier_id: vehicle?.carrier || null,
           
           // Pickup info
           pickup_date: pickupDate || null,
