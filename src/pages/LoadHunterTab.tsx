@@ -4967,7 +4967,7 @@ export default function LoadHunterTab() {
                                   {activeFilter !== 'all' && (
                                     <TableCell className="py-1">
                                       <div className="text-[12px] font-mono text-muted-foreground leading-tight whitespace-nowrap">
-                                        {activeFilter === 'unreviewed' && match ? (match as any).id.substring(0, 8) : '—'}
+                                        {match ? (match as any).id.substring(0, 8) : '—'}
                                       </div>
                                     </TableCell>
                                   )}
