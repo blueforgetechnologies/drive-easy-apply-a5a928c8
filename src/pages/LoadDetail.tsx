@@ -157,6 +157,31 @@ export default function LoadDetail() {
           dispatch_notes: load.dispatch_notes,
           billing_notes: load.billing_notes,
           notes: load.notes,
+          // Pickup/Delivery info
+          pickup_city: load.pickup_city,
+          pickup_state: load.pickup_state,
+          pickup_address: load.pickup_address,
+          pickup_zip: load.pickup_zip,
+          pickup_date: load.pickup_date,
+          pickup_time: load.pickup_time,
+          pickup_notes: load.pickup_notes,
+          delivery_city: load.delivery_city,
+          delivery_state: load.delivery_state,
+          delivery_address: load.delivery_address,
+          delivery_zip: load.delivery_zip,
+          delivery_date: load.delivery_date,
+          delivery_time: load.delivery_time,
+          delivery_notes: load.delivery_notes,
+          // Shipper info
+          shipper_name: load.shipper_name,
+          shipper_address: load.shipper_address,
+          shipper_phone: load.shipper_phone,
+          shipper_email: load.shipper_email,
+          // Receiver info
+          receiver_name: load.receiver_name,
+          receiver_address: load.receiver_address,
+          receiver_phone: load.receiver_phone,
+          receiver_email: load.receiver_email,
         })
         .eq("id", id);
 
@@ -1255,49 +1280,130 @@ export default function LoadDetail() {
             </Card>
           )}
 
+          {/* Email Notes Alert */}
+          {originalEmail?.parsed_data?.notes && (
+            <Card className="border-red-300 bg-red-50">
+              <CardContent className="py-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-700">Email Notes:</p>
+                    <p className="text-red-600">{originalEmail.parsed_data.notes}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Origin and Destination from Load Record */}
           <div className="grid gap-4 md:grid-cols-2">
             {/* Origin Card */}
             <Card className="border-blue-200 bg-blue-50/50">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-blue-500">Origin</Badge>
-                  <span className="text-sm text-muted-foreground">From Load Hunter</span>
+                  <Badge className="bg-blue-500">Origin / Shipper</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div>
-                  <p className="font-semibold text-lg">
-                    {load.pickup_city && load.pickup_state 
-                      ? `${load.pickup_city}, ${load.pickup_state}` 
-                      : 'No origin set'}
-                  </p>
-                  {load.pickup_address && (
-                    <p className="text-sm text-muted-foreground">{load.pickup_address}</p>
-                  )}
-                  {load.pickup_zip && (
-                    <p className="text-sm text-muted-foreground">ZIP: {load.pickup_zip}</p>
-                  )}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">City</Label>
+                    <Input 
+                      value={load.pickup_city || ""} 
+                      onChange={(e) => updateField("pickup_city", e.target.value)}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">State</Label>
+                    <Input 
+                      value={load.pickup_state || ""} 
+                      onChange={(e) => updateField("pickup_state", e.target.value)}
+                      placeholder="State"
+                      maxLength={2}
+                    />
+                  </div>
                 </div>
-                {(load.pickup_date || load.pickup_time) && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Pickup: </span>
-                    {load.pickup_date && format(new Date(load.pickup_date), "MM/dd/yyyy")}
-                    {load.pickup_time && ` @ ${load.pickup_time}`}
+                <div>
+                  <Label className="text-xs">Address</Label>
+                  <Input 
+                    value={load.pickup_address || ""} 
+                    onChange={(e) => updateField("pickup_address", e.target.value)}
+                    placeholder="Address"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">ZIP</Label>
+                  <Input 
+                    value={load.pickup_zip || ""} 
+                    onChange={(e) => updateField("pickup_zip", e.target.value)}
+                    placeholder="ZIP Code"
+                  />
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Pickup Date</Label>
+                    <Input 
+                      type="date"
+                      value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} 
+                      onChange={(e) => updateField("pickup_date", e.target.value)}
+                    />
                   </div>
-                )}
-                {load.pickup_contact && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Contact: </span>
-                    {load.pickup_contact} {load.pickup_phone && `• ${load.pickup_phone}`}
+                  <div>
+                    <Label className="text-xs">Pickup Time</Label>
+                    <Input 
+                      value={load.pickup_time || ""} 
+                      onChange={(e) => updateField("pickup_time", e.target.value)}
+                      placeholder="e.g. 08:00"
+                    />
                   </div>
-                )}
-                {load.pickup_notes && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Notes: </span>
-                    {load.pickup_notes}
+                </div>
+                <Separator />
+                <p className="text-xs font-semibold text-muted-foreground">Shipper Info</p>
+                <div>
+                  <Label className="text-xs">Shipper Name</Label>
+                  <Input 
+                    value={load.shipper_name || ""} 
+                    onChange={(e) => updateField("shipper_name", e.target.value)}
+                    placeholder="Shipper name"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Shipper Address</Label>
+                  <Input 
+                    value={load.shipper_address || ""} 
+                    onChange={(e) => updateField("shipper_address", e.target.value)}
+                    placeholder="Shipper address"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Phone</Label>
+                    <Input 
+                      value={load.shipper_phone || ""} 
+                      onChange={(e) => updateField("shipper_phone", e.target.value)}
+                      placeholder="Phone"
+                    />
                   </div>
-                )}
+                  <div>
+                    <Label className="text-xs">Email</Label>
+                    <Input 
+                      value={load.shipper_email || ""} 
+                      onChange={(e) => updateField("shipper_email", e.target.value)}
+                      placeholder="Email"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Pickup Notes</Label>
+                  <Textarea 
+                    value={load.pickup_notes || ""} 
+                    onChange={(e) => updateField("pickup_notes", e.target.value)}
+                    placeholder="Notes"
+                    rows={2}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -1305,43 +1411,109 @@ export default function LoadDetail() {
             <Card className="border-green-200 bg-green-50/50">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-green-500">Destination</Badge>
-                  <span className="text-sm text-muted-foreground">From Load Hunter</span>
+                  <Badge className="bg-green-500">Destination / Receiver</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div>
-                  <p className="font-semibold text-lg">
-                    {load.delivery_city && load.delivery_state 
-                      ? `${load.delivery_city}, ${load.delivery_state}` 
-                      : 'No destination set'}
-                  </p>
-                  {load.delivery_address && (
-                    <p className="text-sm text-muted-foreground">{load.delivery_address}</p>
-                  )}
-                  {load.delivery_zip && (
-                    <p className="text-sm text-muted-foreground">ZIP: {load.delivery_zip}</p>
-                  )}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">City</Label>
+                    <Input 
+                      value={load.delivery_city || ""} 
+                      onChange={(e) => updateField("delivery_city", e.target.value)}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">State</Label>
+                    <Input 
+                      value={load.delivery_state || ""} 
+                      onChange={(e) => updateField("delivery_state", e.target.value)}
+                      placeholder="State"
+                      maxLength={2}
+                    />
+                  </div>
                 </div>
-                {(load.delivery_date || load.delivery_time) && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Delivery: </span>
-                    {load.delivery_date && format(new Date(load.delivery_date), "MM/dd/yyyy")}
-                    {load.delivery_time && ` @ ${load.delivery_time}`}
+                <div>
+                  <Label className="text-xs">Address</Label>
+                  <Input 
+                    value={load.delivery_address || ""} 
+                    onChange={(e) => updateField("delivery_address", e.target.value)}
+                    placeholder="Address"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">ZIP</Label>
+                  <Input 
+                    value={load.delivery_zip || ""} 
+                    onChange={(e) => updateField("delivery_zip", e.target.value)}
+                    placeholder="ZIP Code"
+                  />
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Delivery Date</Label>
+                    <Input 
+                      type="date"
+                      value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} 
+                      onChange={(e) => updateField("delivery_date", e.target.value)}
+                    />
                   </div>
-                )}
-                {load.delivery_contact && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Contact: </span>
-                    {load.delivery_contact} {load.delivery_phone && `• ${load.delivery_phone}`}
+                  <div>
+                    <Label className="text-xs">Delivery Time</Label>
+                    <Input 
+                      value={load.delivery_time || ""} 
+                      onChange={(e) => updateField("delivery_time", e.target.value)}
+                      placeholder="e.g. 14:00"
+                    />
                   </div>
-                )}
-                {load.delivery_notes && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Notes: </span>
-                    {load.delivery_notes}
+                </div>
+                <Separator />
+                <p className="text-xs font-semibold text-muted-foreground">Receiver Info</p>
+                <div>
+                  <Label className="text-xs">Receiver Name</Label>
+                  <Input 
+                    value={load.receiver_name || ""} 
+                    onChange={(e) => updateField("receiver_name", e.target.value)}
+                    placeholder="Receiver name"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Receiver Address</Label>
+                  <Input 
+                    value={load.receiver_address || ""} 
+                    onChange={(e) => updateField("receiver_address", e.target.value)}
+                    placeholder="Receiver address"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Phone</Label>
+                    <Input 
+                      value={load.receiver_phone || ""} 
+                      onChange={(e) => updateField("receiver_phone", e.target.value)}
+                      placeholder="Phone"
+                    />
                   </div>
-                )}
+                  <div>
+                    <Label className="text-xs">Email</Label>
+                    <Input 
+                      value={load.receiver_email || ""} 
+                      onChange={(e) => updateField("receiver_email", e.target.value)}
+                      placeholder="Email"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Delivery Notes</Label>
+                  <Textarea 
+                    value={load.delivery_notes || ""} 
+                    onChange={(e) => updateField("delivery_notes", e.target.value)}
+                    placeholder="Notes"
+                    rows={2}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
