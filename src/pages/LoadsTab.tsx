@@ -348,6 +348,8 @@ export default function LoadsTab() {
         return { label: "Delivered", color: "bg-transparent border-emerald-500 text-emerald-600" };
       case "completed":
         return { label: "Completed", color: "bg-transparent border-emerald-700 text-emerald-700" };
+      case "ready_for_audit":
+        return { label: "Ready for Audit", color: "bg-transparent border-cyan-600 text-cyan-600" };
       case "cancelled":
         return { label: "Cancelled", color: "bg-transparent border-red-500 text-red-600" };
       case "tonu":
@@ -443,6 +445,7 @@ export default function LoadsTab() {
     at_delivery: loads.filter(l => l.status === 'at_delivery').length,
     delivered: loads.filter(l => l.status === 'delivered').length,
     completed: loads.filter(l => l.status === 'completed').length,
+    ready_for_audit: loads.filter(l => l.status === 'ready_for_audit').length,
     cancelled: loads.filter(l => l.status === 'cancelled').length,
     tonu: loads.filter(l => l.status === 'tonu').length,
   };
@@ -554,6 +557,7 @@ export default function LoadsTab() {
       at_delivery: "bg-teal-500 hover:bg-teal-600",
       delivered: "bg-green-600 hover:bg-green-700",
       completed: "bg-green-800 hover:bg-green-900",
+      ready_for_audit: "bg-cyan-600 hover:bg-cyan-700",
       cancelled: "bg-red-500 hover:bg-red-600",
       tonu: "bg-orange-500 hover:bg-orange-600",
     };
@@ -1080,6 +1084,7 @@ export default function LoadsTab() {
             { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
             { key: "delivered", label: "Delivered", count: statusCounts.delivered, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
             { key: "completed", label: "Completed", count: statusCounts.completed, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+            { key: "ready_for_audit", label: "Ready for Audit", count: statusCounts.ready_for_audit, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
             { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger" },
             { key: "tonu", label: "TONU", count: statusCounts.tonu, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
           ].map((status) => (
@@ -1262,6 +1267,7 @@ export default function LoadsTab() {
                               <SelectItem value="at_delivery">At Delivery</SelectItem>
                               <SelectItem value="delivered">Delivered</SelectItem>
                               <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="ready_for_audit">Ready for Audit</SelectItem>
                               <SelectItem value="cancelled">Cancelled</SelectItem>
                               <SelectItem value="tonu">TONU</SelectItem>
                             </SelectContent>
