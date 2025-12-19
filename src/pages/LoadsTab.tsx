@@ -83,7 +83,22 @@ export default function LoadsTab() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const ROWS_PER_PAGE = 14;
+  
+  // Status priority order matching the tab order
+  const STATUS_ORDER = [
+    'available',
+    'booked', 
+    'dispatched',
+    'at_pickup',
+    'in_transit',
+    'at_delivery',
+    'delivered',
+    'completed',
+    'cancelled',
+    'tonu'
+  ];
   const [formData, setFormData] = useState({
     load_number: `LD${Date.now()}`,
     load_type: "internal",
@@ -388,15 +403,57 @@ export default function LoadsTab() {
     tonu: loads.filter(l => l.status === 'tonu').length,
   };
 
-  const filteredLoads = loads.filter((load) => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      (load.load_number || "").toLowerCase().includes(searchLower) ||
-      (load.pickup_location || "").toLowerCase().includes(searchLower) ||
-      (load.delivery_location || "").toLowerCase().includes(searchLower) ||
-      (load.broker_name || "").toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredLoads = loads
+    .filter((load) => {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = (
+        (load.load_number || "").toLowerCase().includes(searchLower) ||
+        (load.pickup_location || "").toLowerCase().includes(searchLower) ||
+        (load.delivery_location || "").toLowerCase().includes(searchLower) ||
+        (load.broker_name || "").toLowerCase().includes(searchLower)
+      );
+      
+      // Date filtering
+      let matchesDate = true;
+      if (dateFilter.from || dateFilter.to) {
+        const loadDate = load.pickup_date ? new Date(load.pickup_date) : null;
+        if (loadDate) {
+          if (dateFilter.from) {
+            const fromDate = new Date(dateFilter.from);
+            fromDate.setHours(0, 0, 0, 0);
+            if (loadDate < fromDate) matchesDate = false;
+          }
+          if (dateFilter.to) {
+            const toDate = new Date(dateFilter.to);
+            toDate.setHours(23, 59, 59, 999);
+            if (loadDate > toDate) matchesDate = false;
+          }
+        } else {
+          // If no pickup date and date filter is active, exclude
+          matchesDate = false;
+        }
+      }
+      
+      return matchesSearch && matchesDate;
+    })
+    // Sort by status priority order, then by created_at within same status
+    .sort((a, b) => {
+      const statusA = STATUS_ORDER.indexOf(a.status?.toLowerCase() || '');
+      const statusB = STATUS_ORDER.indexOf(b.status?.toLowerCase() || '');
+      
+      // Put unknown statuses at the end
+      const orderA = statusA === -1 ? STATUS_ORDER.length : statusA;
+      const orderB = statusB === -1 ? STATUS_ORDER.length : statusB;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // Within same status, sort by created_at descending (newest first)
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
 
   // Pagination
   const totalPages = Math.ceil(filteredLoads.length / ROWS_PER_PAGE);
@@ -964,14 +1021,46 @@ export default function LoadsTab() {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-56">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search loads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-7 text-xs"
-          />
+        <div className="flex items-center gap-2">
+          {/* Date filters */}
+          <div className="flex items-center gap-1">
+            <Input
+              type="date"
+              value={dateFilter.from}
+              onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
+              className="h-7 text-xs w-32"
+              placeholder="From"
+            />
+            <span className="text-xs text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateFilter.to}
+              onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
+              className="h-7 text-xs w-32"
+              placeholder="To"
+            />
+            {(dateFilter.from || dateFilter.to) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setDateFilter({ from: "", to: "" })}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          
+          {/* Search */}
+          <div className="relative w-full sm:w-56">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search loads..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-7 text-xs"
+            />
+          </div>
         </div>
       </div>
 
