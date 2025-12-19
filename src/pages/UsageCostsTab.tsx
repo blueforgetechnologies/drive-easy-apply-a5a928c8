@@ -642,81 +642,85 @@ const UsageCostsTab = () => {
   });
 
   // Estimate Lovable Cloud usage (database operations, edge functions, storage)
-  // Cloud is billed at ~$0.01 per unit
-  const { data: cloudUsageStats } = useQuery({
+  // Cloud is billed at ~$0.01 per unit - uses PARALLEL queries for speed and reliability
+  const { data: cloudUsageStats, refetch: refetchCloudUsage, isFetching: isCloudFetching } = useQuery({
     queryKey: ["cloud-usage-estimate", currentMonth],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
       
-      // Count database operations (writes are ~1 unit each, reads are fractional)
-      // Estimate based on recent activity in high-volume tables
+      console.log('[Cloud Usage] Fetching operations since:', thirtyDaysAgoISO);
       
-      // Email processing operations
-      const { count: emailOps } = await supabase
-        .from('load_emails')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
+      // Run ALL queries in PARALLEL for speed and to prevent silent failures
+      const [
+        emailResult,
+        matchResult,
+        geocodeResult,
+        mapTrackingResult,
+        directionsResult,
+        aiResult,
+        emailSendResult,
+        auditResult,
+        matchActionResult,
+        emailVolumeResult,
+        archiveResult
+      ] = await Promise.all([
+        // Email processing operations (high volume)
+        supabase.from('load_emails').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        // Hunt match operations
+        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        // Geocode cache operations
+        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        // Map load tracking operations
+        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
+        // Directions API tracking operations
+        supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
+        // AI usage tracking operations
+        supabase.from('ai_usage_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
+        // Email send tracking operations
+        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
+        // Audit log operations
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('timestamp', thirtyDaysAgoISO),
+        // Match action history
+        supabase.from('match_action_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        // Email volume stats
+        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        // Archived emails (also counts toward operations)
+        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }).gte('archived_at', thirtyDaysAgoISO)
+      ]);
       
-      // Hunt match operations (high volume - created/updated frequently)
-      const { count: matchOps } = await supabase
-        .from('load_hunt_matches')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
+      // Extract counts with error handling
+      const emailOps = emailResult.count ?? 0;
+      const matchOps = matchResult.count ?? 0;
+      const geocodeOps = geocodeResult.count ?? 0;
+      const mapTrackingOps = mapTrackingResult.count ?? 0;
+      const directionsOps = directionsResult.count ?? 0;
+      const aiOps = aiResult.count ?? 0;
+      const emailSendOps = emailSendResult.count ?? 0;
+      const auditOps = auditResult.count ?? 0;
+      const matchActionOps = matchActionResult.count ?? 0;
+      const emailVolumeOps = emailVolumeResult.count ?? 0;
+      const archiveOps = archiveResult.count ?? 0;
       
-      // Geocode cache operations
-      const { count: geocodeOps } = await supabase
-        .from('geocode_cache')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
-      
-      // Map load tracking operations
-      const { count: mapTrackingOps } = await supabase
-        .from('map_load_tracking')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_year', currentMonth);
-      
-      // Directions API tracking operations
-      const { count: directionsOps } = await supabase
-        .from('directions_api_tracking')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_year', currentMonth);
-      
-      // AI usage tracking operations
-      const { count: aiOps } = await supabase
-        .from('ai_usage_tracking')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_year', currentMonth);
-      
-      // Email send tracking operations
-      const { count: emailSendOps } = await supabase
-        .from('email_send_tracking')
-        .select('*', { count: 'exact', head: true })
-        .eq('month_year', currentMonth);
-      
-      // Audit log operations
-      const { count: auditOps } = await supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact', head: true })
-        .gte('timestamp', thirtyDaysAgo.toISOString());
-
-      // Match action history
-      const { count: matchActionOps } = await supabase
-        .from('match_action_history')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
-
-      // Email volume stats
-      const { count: emailVolumeOps } = await supabase
-        .from('email_volume_stats')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
+      console.log('[Cloud Usage] Raw counts:', {
+        emails: emailOps,
+        matches: matchOps,
+        geocode: geocodeOps,
+        mapTracking: mapTrackingOps,
+        directions: directionsOps,
+        ai: aiOps,
+        emailSend: emailSendOps,
+        audit: auditOps,
+        matchActions: matchActionOps,
+        emailVolume: emailVolumeOps,
+        archive: archiveOps
+      });
       
       // Calculate total write operations
-      const writeOps = (emailOps || 0) + (matchOps || 0) + (geocodeOps || 0) + 
-                       (mapTrackingOps || 0) + (directionsOps || 0) + (aiOps || 0) + 
-                       (emailSendOps || 0) + (auditOps || 0) + (matchActionOps || 0) + 
-                       (emailVolumeOps || 0);
+      const writeOps = emailOps + matchOps + geocodeOps + mapTrackingOps + 
+                       directionsOps + aiOps + emailSendOps + auditOps + 
+                       matchActionOps + emailVolumeOps + archiveOps;
       
       // Estimate read operations (typically 3-5x write operations for active apps)
       // Load Hunter does many reads for matching, filtering, realtime subscriptions
@@ -725,11 +729,11 @@ const UsageCostsTab = () => {
       
       // Edge function invocations (estimate based on email processing + AI + other functions)
       // Each email triggers ~2-3 edge function calls (webhook, process-queue, etc.)
-      const edgeFunctionCalls = (emailOps || 0) * 2.5 + (aiOps || 0) + (emailSendOps || 0);
+      const edgeFunctionCalls = emailOps * 2.5 + aiOps + emailSendOps;
       
       // Realtime subscriptions add to read operations
       // Estimate ~10 subscription updates per email received
-      const realtimeOps = (emailOps || 0) * 10;
+      const realtimeOps = emailOps * 10;
       
       // Total operations (for informational metrics only - Cloud billing is separate)
       const totalOps = writeOps + Math.round(estimatedReadOps) + Math.round(edgeFunctionCalls) + realtimeOps;
@@ -740,6 +744,8 @@ const UsageCostsTab = () => {
       const COST_PER_WRITE_OP = 0.000134;
       const estimatedCost = writeOps * COST_PER_WRITE_OP;
       
+      console.log('[Cloud Usage] Total:', { writeOps, estimatedCost: estimatedCost.toFixed(2) });
+      
       return {
         writeOps,
         estimatedReadOps,
@@ -748,20 +754,23 @@ const UsageCostsTab = () => {
         totalOps,
         estimatedCost: estimatedCost.toFixed(2),
         breakdown: {
-          emails: emailOps || 0,
-          matches: matchOps || 0,
-          geocode: geocodeOps || 0,
-          mapTracking: mapTrackingOps || 0,
-          directions: directionsOps || 0,
-          ai: aiOps || 0,
-          emailSend: emailSendOps || 0,
-          audit: auditOps || 0,
-          matchActions: matchActionOps || 0,
-          emailVolume: emailVolumeOps || 0
+          emails: emailOps,
+          matches: matchOps,
+          geocode: geocodeOps,
+          mapTracking: mapTrackingOps,
+          directions: directionsOps,
+          ai: aiOps,
+          emailSend: emailSendOps,
+          audit: auditOps,
+          matchActions: matchActionOps,
+          emailVolume: emailVolumeOps,
+          archive: archiveOps
         }
       };
     },
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 30000, // Refresh every 30 seconds for more real-time tracking
+    staleTime: 15000,
+    gcTime: 300000,
   });
 
   // Track if any mapbox query is fetching
@@ -1053,21 +1062,65 @@ const UsageCostsTab = () => {
                 </div>
               </div>
 
-              {/* Lovable Cloud Section - Estimated */}
+              {/* Lovable Cloud Section - Estimated with detailed breakdown */}
               <div className="bg-background/50 rounded-lg p-3 border border-amber-500/30">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <HardDrive className="h-4 w-4 text-amber-600" />
                     <span className="font-medium text-sm">Lovable Cloud</span>
                     <InfoTooltip text="Estimated based on historical rate: $25 actual cost / 186K write ops = $0.000134 per write operation. Compare with Settings → Plans & Credits for actual billing." />
+                    {isCloudFetching && <Loader2 className="h-3 w-3 animate-spin text-amber-600" />}
                   </div>
-                  <span className="font-semibold text-sm text-amber-600">~${costBreakdown.cloud.estimatedCost.toFixed(2)}</span>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 px-2 text-xs"
+                      onClick={() => refetchCloudUsage()}
+                      disabled={isCloudFetching}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${isCloudFetching ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <span className="font-semibold text-sm text-amber-600">~${costBreakdown.cloud.estimatedCost.toFixed(2)}</span>
+                  </div>
                 </div>
                 <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Write Operations:</span>
-                    <span className="font-medium">{costBreakdown.cloud.writeOps.toLocaleString()}</span>
+                  <div className="flex justify-between text-muted-foreground font-medium">
+                    <span>Write Operations (30 days):</span>
+                    <span className="text-foreground">{costBreakdown.cloud.writeOps.toLocaleString()}</span>
                   </div>
+                  
+                  {/* Write operations breakdown */}
+                  {cloudUsageStats?.breakdown && costBreakdown.cloud.writeOps > 0 && (
+                    <div className="grid grid-cols-3 gap-x-2 gap-y-0.5 pt-1 border-t border-border/30 text-[10px]">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Emails:</span>
+                        <span>{(cloudUsageStats.breakdown.emails || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Geocode:</span>
+                        <span>{(cloudUsageStats.breakdown.geocode || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Matches:</span>
+                        <span>{(cloudUsageStats.breakdown.matches || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Map Track:</span>
+                        <span>{(cloudUsageStats.breakdown.mapTracking || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Email Vol:</span>
+                        <span>{(cloudUsageStats.breakdown.emailVolume || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Archive:</span>
+                        <span>{(cloudUsageStats.breakdown.archive || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/50">
                     <div className="flex justify-between text-muted-foreground">
                       <span>DB Reads (est 4x):</span>
