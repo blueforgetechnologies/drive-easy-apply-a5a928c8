@@ -759,15 +759,13 @@ export default function LoadHunterMobile({
 
                     {/* Matched Vehicle (for match-based filters) */}
                     {vehicle && (
-                      <div className="pt-1.5 border-t space-y-1.5">
+                      <div className="pt-1.5 border-t space-y-1">
                         <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-8 bg-blue-500 rounded-full" />
-                          <div>
-                            <p className="text-xs font-semibold">{vehicle.vehicle_number}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {getDriverName(vehicle.driver_1_id) || 'No Driver'}
-                            </p>
-                          </div>
+                          <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
+                          <p className="text-xs">
+                            <span className="font-semibold">{vehicle.vehicle_number}</span>
+                            <span className="text-muted-foreground"> · {getDriverName(vehicle.driver_1_id) || 'No Driver'}</span>
+                          </p>
                         </div>
                         {/* Carrier Name */}
                         {vehicle.carrier && carriersMap[vehicle.carrier] && (
