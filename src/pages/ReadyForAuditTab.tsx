@@ -79,15 +79,12 @@ export default function ReadyForAuditTab() {
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg sm:text-xl font-bold">Loads Ready for Audit</h2>
-          <Badge variant="secondary" className="text-xs">
-            {filteredLoads?.length || 0}
-          </Badge>
-        </div>
-        <div className="relative w-full sm:w-64">
+      {/* Filter Bar */}
+      <div className="flex items-center justify-end gap-2">
+        <Badge variant="secondary" className="text-xs">
+          {filteredLoads?.length || 0} loads
+        </Badge>
+        <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search loads..."
