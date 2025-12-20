@@ -470,6 +470,25 @@ export default function LoadDetail() {
     setLoad((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  const updateCustomerField = async (customerId: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("customers")
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq("id", customerId);
+      
+      if (error) throw error;
+      
+      // Update local customers state
+      setCustomers((prev: any[]) => 
+        prev.map((c) => c.id === customerId ? { ...c, [field]: value } : c)
+      );
+    } catch (error: any) {
+      console.error("Failed to update customer:", error);
+      toast.error("Failed to update customer");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "available": return "bg-gray-500";
@@ -669,37 +688,73 @@ export default function LoadDetail() {
                   {load.customer_id && (() => {
                     const customer = customers.find(c => c.id === load.customer_id);
                     return customer ? (
-                      <div className="text-sm text-muted-foreground space-y-2 border-t pt-3">
+                      <div className="text-sm space-y-2 border-t pt-3">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <Label className="text-xs font-medium text-muted-foreground">Contact</Label>
-                            <p className="text-sm text-foreground">{customer.contact_name || '—'}</p>
+                            <Input 
+                              className="h-8 text-sm mt-1" 
+                              value={customer.contact_name || ""} 
+                              onChange={(e) => updateCustomerField(customer.id, "contact_name", e.target.value)} 
+                              placeholder="Contact Name" 
+                            />
                           </div>
                           <div>
                             <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
-                            <p className="text-sm text-foreground">{customer.phone || '—'}</p>
+                            <Input 
+                              className="h-8 text-sm mt-1" 
+                              value={customer.phone || ""} 
+                              onChange={(e) => updateCustomerField(customer.id, "phone", e.target.value)} 
+                              placeholder="Phone" 
+                            />
                           </div>
                         </div>
                         <div>
                           <Label className="text-xs font-medium text-muted-foreground">Email</Label>
-                          <p className="text-sm text-foreground">{customer.email || '—'}</p>
+                          <Input 
+                            className="h-8 text-sm mt-1" 
+                            value={customer.email || ""} 
+                            onChange={(e) => updateCustomerField(customer.id, "email", e.target.value)} 
+                            placeholder="Email" 
+                          />
                         </div>
                         <div>
                           <Label className="text-xs font-medium text-muted-foreground">Address</Label>
-                          <p className="text-sm text-foreground">{customer.address || '—'}</p>
+                          <Input 
+                            className="h-8 text-sm mt-1" 
+                            value={customer.address || ""} 
+                            onChange={(e) => updateCustomerField(customer.id, "address", e.target.value)} 
+                            placeholder="Street Address" 
+                          />
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
                             <Label className="text-xs font-medium text-muted-foreground">City</Label>
-                            <p className="text-sm text-foreground">{customer.city || '—'}</p>
+                            <Input 
+                              className="h-8 text-sm mt-1" 
+                              value={customer.city || ""} 
+                              onChange={(e) => updateCustomerField(customer.id, "city", e.target.value)} 
+                              placeholder="City" 
+                            />
                           </div>
                           <div>
                             <Label className="text-xs font-medium text-muted-foreground">State</Label>
-                            <p className="text-sm text-foreground">{customer.state || '—'}</p>
+                            <Input 
+                              className="h-8 text-sm mt-1 uppercase" 
+                              value={customer.state || ""} 
+                              onChange={(e) => updateCustomerField(customer.id, "state", e.target.value.toUpperCase())} 
+                              placeholder="ST" 
+                              maxLength={2}
+                            />
                           </div>
                           <div>
                             <Label className="text-xs font-medium text-muted-foreground">ZIP</Label>
-                            <p className="text-sm text-foreground">{customer.zip || '—'}</p>
+                            <Input 
+                              className="h-8 text-sm mt-1" 
+                              value={customer.zip || ""} 
+                              onChange={(e) => updateCustomerField(customer.id, "zip", e.target.value)} 
+                              placeholder="ZIP" 
+                            />
                           </div>
                         </div>
                       </div>
