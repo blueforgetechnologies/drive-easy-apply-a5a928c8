@@ -416,8 +416,24 @@ const UsageCostsTab = () => {
 
   // Fetch Pub/Sub tracking (current month) - Google Cloud costs based on email volume
   // IMPORTANT: Keep this query lightweight (counts + min/max timestamps only)
+  // Fetch GCP baseline data for accurate Gmail API ratio calculation
+  const { data: gcpBaselines } = useQuery({
+    queryKey: ["gcp-baselines"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('gcp_usage_baselines')
+        .select('*')
+        .eq('service_name', 'gmail_api')
+        .order('period_end', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 300000, // Cache for 5 minutes
+  });
+
   const { data: pubsubStats, refetch: refetchPubsub } = useQuery({
-    queryKey: ["usage-pubsub", currentMonth],
+    queryKey: ["usage-pubsub", currentMonth, gcpBaselines],
     queryFn: async () => {
       // Run the minimum required queries in PARALLEL
       const [countRes, firstRes, lastRes] = await Promise.all([
@@ -452,16 +468,28 @@ const UsageCostsTab = () => {
       const totalMB = totalBytes / (1024 * 1024);
       const totalGB = totalMB / 1024;
 
-      // Gmail API calls - CALIBRATED from actual Google Cloud Console data:
-      // Nov 29 - Dec 19, 2025: 2,689,724 API requests over ~21 days
-      // This gives us actual API calls per email ratio from real usage
-      const GMAIL_API_BASELINE_CALLS = 2689724; // Actual from GCP Console
-      const GMAIL_API_BASELINE_DAYS = 21; // Days of data (Nov 29 - Dec 19)
-      const GMAIL_API_CALLS_PER_DAY = GMAIL_API_BASELINE_CALLS / GMAIL_API_BASELINE_DAYS; // ~128,082/day
+      // Gmail API calls - CALIBRATED from gcp_usage_baselines table
+      // Find the api_calls and emails_processed baselines
+      const apiCallsBaseline = gcpBaselines?.find(b => b.metric_name === 'api_calls');
+      const emailsBaseline = gcpBaselines?.find(b => b.metric_name === 'emails_processed');
       
-      // Calculate based on our actual email volume during that period
-      const apiCallsPerDay = GMAIL_API_CALLS_PER_DAY;
-      const totalApiCalls = Math.round(apiCallsPerDay * daysOfData);
+      // Calculate actual API calls per email ratio from GCP Console data
+      // Default fallback: 2,689,724 calls / 206,912 emails = ~13 calls/email
+      let apiCallsPerEmail = 13; // Calibrated default
+      let baselineApiCalls = 2689724;
+      let baselineEmails = 206912;
+      let baselineDays = 21;
+      
+      if (apiCallsBaseline && emailsBaseline) {
+        baselineApiCalls = Number(apiCallsBaseline.metric_value);
+        baselineEmails = Number(emailsBaseline.metric_value);
+        baselineDays = apiCallsBaseline.period_days;
+        apiCallsPerEmail = baselineEmails > 0 ? baselineApiCalls / baselineEmails : 13;
+      }
+      
+      // Calculate based on actual email volume with calibrated ratio
+      const totalApiCalls = Math.round(totalEmails * apiCallsPerEmail);
+      const apiCallsPerDay = Math.round(totalApiCalls / daysOfData);
       const projected30DayApiCalls = Math.round(apiCallsPerDay * 30);
 
       // Project to 30 days
@@ -488,15 +516,17 @@ const UsageCostsTab = () => {
         freeTierGB: FREE_TIER_GB,
         withinFreeTier: projected30DayGB <= FREE_TIER_GB,
         estimatedCost,
-        // API calls tracking - now based on actual GCP Console data
+        // API calls tracking - calibrated from GCP Console data
         totalApiCalls,
-        apiCallsPerDay: Math.round(apiCallsPerDay),
+        apiCallsPerDay,
         projected30DayApiCalls,
         apiCallsInMillions: (totalApiCalls / 1_000_000).toFixed(2),
         projected30DayApiCallsInMillions: (projected30DayApiCalls / 1_000_000).toFixed(2),
-        // Show the baseline info
-        baselineApiCalls: GMAIL_API_BASELINE_CALLS,
-        baselineDays: GMAIL_API_BASELINE_DAYS,
+        // Calibration info
+        apiCallsPerEmail: apiCallsPerEmail.toFixed(1),
+        baselineApiCalls,
+        baselineEmails,
+        baselineDays,
       };
     },
     refetchInterval: pubsubRefreshInterval,
@@ -1741,7 +1771,7 @@ const UsageCostsTab = () => {
                   ? `${pubsubStats.apiCallsInMillions}M` 
                   : (pubsubStats?.totalApiCalls?.toLocaleString() || 0)}
               </p>
-              <p className="text-xs text-muted-foreground">~45 calls/email</p>
+              <p className="text-xs text-muted-foreground">~{pubsubStats?.apiCallsPerEmail || '13'} calls/email</p>
             </div>
             <div className="space-y-0.5">
               <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Data Transfer</p>
@@ -1772,7 +1802,8 @@ const UsageCostsTab = () => {
           </div>
           {!isCompactView && (
             <p className="text-xs text-muted-foreground mt-2">
-              Pub/Sub: 10GB/month free, ~$40/TiB after • Gmail API: FREE (unlimited requests)
+              Pub/Sub: 10GB/month free, ~$40/TiB after • Gmail API: FREE (unlimited requests) • 
+              <span className="text-blue-600"> Calibrated: {pubsubStats?.baselineApiCalls?.toLocaleString() || '2,689,724'} calls / {pubsubStats?.baselineEmails?.toLocaleString() || '206,912'} emails over {pubsubStats?.baselineDays || 21} days</span>
             </p>
           )}
         </CardContent>

@@ -882,6 +882,48 @@ export type Database = {
           },
         ]
       }
+      gcp_usage_baselines: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          metric_name: string
+          metric_value: number
+          notes: string | null
+          period_days: number
+          period_end: string
+          period_start: string
+          service_name: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metric_name: string
+          metric_value: number
+          notes?: string | null
+          period_days: number
+          period_end: string
+          period_start: string
+          service_name: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metric_name?: string
+          metric_value?: number
+          notes?: string | null
+          period_days?: number
+          period_end?: string
+          period_start?: string
+          service_name?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       geocode_cache: {
         Row: {
           city: string | null
