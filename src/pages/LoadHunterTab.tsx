@@ -839,13 +839,32 @@ export default function LoadHunterTab() {
   // Cache for generated sound effects
   const soundCacheRef = useRef<Map<string, string>>(new Map());
   const isGeneratingSoundRef = useRef<Record<string, boolean>>({});
+  const aiSoundsUnavailableRef = useRef(false);
+  const aiSoundsUnavailableToastShownRef = useRef(false);
+
+  const ensureSoundRefs = () => {
+    if (!(soundCacheRef.current instanceof Map)) {
+      (soundCacheRef as any).current = new Map<string, string>();
+    }
+    if (!isGeneratingSoundRef.current || typeof isGeneratingSoundRef.current !== "object") {
+      (isGeneratingSoundRef as any).current = {};
+    }
+  };
 
   // Generic function to play a sound by type (load_receive or bid_sent)
   const playSound = async (soundType: 'load_receive' | 'bid_sent', force = false) => {
     console.log(`🔔 playSound called for ${soundType}, isSoundMuted:`, isSoundMuted, 'force:', force);
-    
+
     if (isSoundMuted && !force) {
       console.log('❌ Sound is muted, skipping');
+      return;
+    }
+
+    ensureSoundRefs();
+
+    // If the provider is blocked (e.g. 401 unusual activity), stop calling it for this session.
+    if (aiSoundsUnavailableRef.current) {
+      playFallbackSound();
       return;
     }
 
@@ -856,7 +875,7 @@ export default function LoadHunterTab() {
 
     // Check if we have a cached sound
     const cachedAudioUrl = soundCacheRef.current.get(cacheKey);
-    
+
     if (cachedAudioUrl) {
       try {
         const audio = new Audio(cachedAudioUrl);
@@ -872,7 +891,7 @@ export default function LoadHunterTab() {
     // Generate new sound if not cached and not already generating
     if (!isGeneratingSoundRef.current[soundId]) {
       isGeneratingSoundRef.current[soundId] = true;
-      
+
       try {
         const prompt = getSoundPrompt(soundId);
         const response = await fetch(
@@ -886,21 +905,31 @@ export default function LoadHunterTab() {
             },
             body: JSON.stringify({
               prompt,
-              duration: 1
+              duration: 1,
             }),
           }
         );
 
         if (!response.ok) {
-          throw new Error(`SFX request failed: ${response.status}`);
+          const errorText = await response.text().catch(() => "");
+
+          if (response.status === 401 || response.status === 403) {
+            aiSoundsUnavailableRef.current = true;
+            if (!aiSoundsUnavailableToastShownRef.current) {
+              aiSoundsUnavailableToastShownRef.current = true;
+              toast.error('AI sound provider blocked — using fallback sounds.');
+            }
+          }
+
+          throw new Error(`SFX request failed: ${response.status} ${errorText}`);
         }
 
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
-        
+
         // Cache the generated sound
         soundCacheRef.current.set(cacheKey, audioUrl);
-        
+
         // Play the sound
         const audio = new Audio(audioUrl);
         audio.volume = volume;
@@ -910,6 +939,8 @@ export default function LoadHunterTab() {
         console.error('Error generating AI sound, using fallback:', error);
         playFallbackSound();
       } finally {
+        // Defensive: avoid ref corruption causing a blank screen
+        ensureSoundRefs();
         isGeneratingSoundRef.current[soundId] = false;
       }
     } else {
