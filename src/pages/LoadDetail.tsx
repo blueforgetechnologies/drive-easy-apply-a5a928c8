@@ -641,14 +641,74 @@ export default function LoadDetail() {
           </div>
 
           {/* Collapsible Accordion Sections */}
-          <Accordion type="multiple" defaultValue={["origin-dest", "assignment", "load-info"]} className="space-y-1">
+          <Accordion type="multiple" defaultValue={["customer-billing", "origin-dest", "load-info", "carrier-truck"]} className="space-y-1">
             
+            {/* Customer & Billing Party Section */}
+            <AccordionItem value="customer-billing" className="border rounded-md bg-card">
+              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-primary" />
+                  <span>Customer & Billing</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3 pt-0">
+                <div className="grid md:grid-cols-2 gap-3">
+                  {/* Customer Card */}
+                  <div className="rounded-lg border-2 border-purple-600/40 bg-purple-950/20 dark:bg-purple-950/30 shadow-sm p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-5 w-5 rounded-full bg-purple-600 flex items-center justify-center">
+                        <Building className="h-3 w-3 text-white" />
+                      </div>
+                      <span className="font-semibold text-xs text-purple-100 uppercase">Customer</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
+                        <SelectTrigger className="h-8 text-xs bg-background/60 border-purple-500/30"><SelectValue placeholder="Select Customer" /></SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
+                      <AddCustomerDialog onCustomerAdded={async (customerId) => { await loadData(); updateField("customer_id", customerId); }} />
+                    </div>
+                    {load.customer_id && (() => {
+                      const customer = customers.find(c => c.id === load.customer_id);
+                      return customer ? (
+                        <div className="mt-2 text-[10px] text-muted-foreground space-y-0.5">
+                          <p>{customer.contact_name}</p>
+                          <p>{customer.phone} • {customer.email}</p>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  {/* Billing Party Card */}
+                  <div className="rounded-lg border-2 border-amber-600/40 bg-amber-950/20 dark:bg-amber-950/30 shadow-sm p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-5 w-5 rounded-full bg-amber-600 flex items-center justify-center">
+                        <DollarSign className="h-3 w-3 text-white" />
+                      </div>
+                      <span className="font-semibold text-xs text-amber-100 uppercase">Billing Party</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Input className="h-8 text-xs bg-background/60 border-amber-500/30" value={load.broker_name || ""} onChange={(e) => updateField("broker_name", e.target.value)} placeholder="Billing Party Name" />
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Input className="h-7 text-xs bg-background/60 border-amber-500/30" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
+                        <Input className="h-7 text-xs bg-background/60 border-amber-500/30" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
+                      </div>
+                      <Input className="h-7 text-xs bg-background/60 border-amber-500/30" value={load.broker_contact || ""} onChange={(e) => updateField("broker_contact", e.target.value)} placeholder="Contact Person" />
+                    </div>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
             {/* Origin & Destination Section */}
             <AccordionItem value="origin-dest" className="border rounded-md bg-card">
               <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline [&[data-state=open]>svg]:rotate-180">
                 <div className="flex items-center gap-2">
                   <MapPinned className="h-4 w-4 text-primary" />
-                  <span>Origin & Destination</span>
+                  <span>Shipper & Receiver</span>
                   <span className="text-xs text-muted-foreground font-normal ml-2">
                     {load.pickup_city}, {load.pickup_state} → {load.delivery_city}, {load.delivery_state}
                   </span>
@@ -656,16 +716,15 @@ export default function LoadDetail() {
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3 pt-0">
                 <div className="grid md:grid-cols-2 gap-3">
-                  {/* Origin Card */}
+                  {/* Shipper Card */}
                   <div className="rounded-lg border-2 border-blue-600/40 bg-blue-950/20 dark:bg-blue-950/30 shadow-sm overflow-hidden">
-                    {/* Always visible header with key info */}
                     <div className="px-2.5 py-2 bg-blue-600/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <div className="h-5 w-5 rounded-full bg-blue-600 flex items-center justify-center">
                             <MapPin className="h-3 w-3 text-white" />
                           </div>
-                          <span className="font-semibold text-xs text-blue-100">ORIGIN</span>
+                          <span className="font-semibold text-xs text-blue-100">SHIPPER (ORIGIN)</span>
                         </div>
                         <span className="text-[10px] text-blue-300">{load.pickup_date ? format(new Date(load.pickup_date), 'MMM d') : '—'} {load.pickup_time || ''}</span>
                       </div>
@@ -674,7 +733,6 @@ export default function LoadDetail() {
                         <p className="text-[10px] text-muted-foreground truncate">{load.pickup_address || ''} {load.pickup_city}, {load.pickup_state} {load.pickup_zip}</p>
                       </div>
                     </div>
-                    {/* Collapsible edit form */}
                     <Collapsible>
                       <CollapsibleTrigger className="w-full px-2.5 py-1 flex items-center justify-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 hover:bg-blue-600/10 transition-colors border-t border-blue-600/20">
                         <span>Edit Details</span>
@@ -703,16 +761,15 @@ export default function LoadDetail() {
                     </Collapsible>
                   </div>
 
-                  {/* Destination Card */}
+                  {/* Receiver Card */}
                   <div className="rounded-lg border-2 border-green-600/40 bg-green-950/20 dark:bg-green-950/30 shadow-sm overflow-hidden">
-                    {/* Always visible header with key info */}
                     <div className="px-2.5 py-2 bg-green-600/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <div className="h-5 w-5 rounded-full bg-green-600 flex items-center justify-center">
                             <MapPin className="h-3 w-3 text-white" />
                           </div>
-                          <span className="font-semibold text-xs text-green-100">DESTINATION</span>
+                          <span className="font-semibold text-xs text-green-100">RECEIVER (DESTINATION)</span>
                         </div>
                         <span className="text-[10px] text-green-300">{load.delivery_date ? format(new Date(load.delivery_date), 'MMM d') : '—'} {load.delivery_time || ''}</span>
                       </div>
@@ -721,7 +778,6 @@ export default function LoadDetail() {
                         <p className="text-[10px] text-muted-foreground truncate">{load.delivery_address || ''} {load.delivery_city}, {load.delivery_state} {load.delivery_zip}</p>
                       </div>
                     </div>
-                    {/* Collapsible edit form */}
                     <Collapsible>
                       <CollapsibleTrigger className="w-full px-2.5 py-1 flex items-center justify-center gap-1 text-[10px] text-green-400 hover:text-green-300 hover:bg-green-600/10 transition-colors border-t border-green-600/20">
                         <span>Edit Details</span>
@@ -753,32 +809,111 @@ export default function LoadDetail() {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Assignment Section */}
-            <AccordionItem value="assignment" className="border rounded-md bg-card">
+            {/* Load Details Section */}
+            <AccordionItem value="load-info" className="border rounded-md bg-card">
               <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-primary" />
-                  <span>Assignments</span>
+                  <Package className="h-4 w-4 text-primary" />
+                  <span>Load Details</span>
+                  <span className="text-xs text-muted-foreground font-normal ml-2">
+                    {load.cargo_pieces || '—'} pcs • {load.cargo_weight || '—'} lbs • {load.equipment_type?.replace('_', ' ') || '—'}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3 pt-0">
+                <div className="grid md:grid-cols-4 gap-3">
+                  {/* Cargo Info */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">Pieces</Label>
+                        <Input className="h-7 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">Weight (lbs)</Label>
+                        <Input className="h-7 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Description</Label>
+                      <Input className="h-7 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Equipment */}
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Truck Type</Label>
+                      <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent className="bg-background">
+                          <SelectItem value="dry_van">Dry Van</SelectItem>
+                          <SelectItem value="reefer">Reefer</SelectItem>
+                          <SelectItem value="flatbed">Flatbed</SelectItem>
+                          <SelectItem value="step_deck">Step Deck</SelectItem>
+                          <SelectItem value="box_truck">Box Truck</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Commodity</Label>
+                      <Input className="h-7 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Temp Required</Label>
+                      <Input className="h-7 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" />
+                    </div>
+                  </div>
+
+                  {/* Miles & Flags */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">Est. Miles</Label>
+                        <Input className="h-7 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">Actual Miles</Label>
+                        <Input className="h-7 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
+                        <input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3 w-3" />
+                        Hazmat
+                      </label>
+                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
+                        <input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3 w-3" />
+                        Team
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Special Instructions */}
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Special Instructions</Label>
+                      <Textarea className="text-xs min-h-[60px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={2} />
+                    </div>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Carrier & Truck Section */}
+            <AccordionItem value="carrier-truck" className="border rounded-md bg-card">
+              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-primary" />
+                  <span>Carrier & Assignments</span>
                   {load.assigned_vehicle_id && <Badge variant="outline" className="text-[10px] ml-2">Assigned</Badge>}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-3 gap-3">
-                  {/* Customer & Carrier */}
+                <div className="grid md:grid-cols-4 gap-3">
+                  {/* Carrier */}
                   <div className="space-y-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Customer</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
-                        <AddCustomerDialog onCustomerAdded={async (customerId) => { await loadData(); updateField("customer_id", customerId); }} />
-                      </div>
-                    </div>
                     <div>
                       <Label className="text-[10px] text-muted-foreground uppercase">Carrier</Label>
                       <div className="flex gap-1">
@@ -802,10 +937,10 @@ export default function LoadDetail() {
                     </div>
                   </div>
 
-                  {/* Vehicle & Driver */}
+                  {/* Vehicle */}
                   <div className="space-y-2">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Vehicle</Label>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Truck ID / Vehicle</Label>
                       <div className="flex gap-1">
                         <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
@@ -817,6 +952,10 @@ export default function LoadDetail() {
                         <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
                       </div>
                     </div>
+                  </div>
+
+                  {/* Driver */}
+                  <div className="space-y-2">
                     <div>
                       <Label className="text-[10px] text-muted-foreground uppercase">Driver</Label>
                       <div className="flex gap-1">
@@ -860,17 +999,16 @@ export default function LoadDetail() {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Load Information Section */}
-            <AccordionItem value="load-info" className="border rounded-md bg-card">
+            {/* Status Section */}
+            <AccordionItem value="status" className="border rounded-md bg-card">
               <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-primary" />
-                  <span>Load Details</span>
+                  <CheckCircle className="h-4 w-4 text-primary" />
+                  <span>Status & References</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3 pt-0">
                 <div className="grid md:grid-cols-4 gap-3">
-                  {/* Status & IDs */}
                   <div className="space-y-2">
                     <div>
                       <Label className="text-[10px] text-muted-foreground uppercase">Load #</Label>
@@ -894,132 +1032,51 @@ export default function LoadDetail() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Financial</Label>
-                        <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="billed">Billed</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Settlement</Label>
-                        <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="unsettled">Unsettled</SelectItem>
-                            <SelectItem value="included">Included</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
                   </div>
-
-                  {/* Equipment & Cargo */}
                   <div className="space-y-2">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Equipment</Label>
-                      <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Financial Status</Label>
+                      <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-background">
-                          <SelectItem value="dry_van">Dry Van</SelectItem>
-                          <SelectItem value="reefer">Reefer</SelectItem>
-                          <SelectItem value="flatbed">Flatbed</SelectItem>
-                          <SelectItem value="step_deck">Step Deck</SelectItem>
-                          <SelectItem value="box_truck">Box Truck</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="billed">Billed</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Commodity</Label>
-                      <Input className="h-7 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Temp Required</Label>
-                      <Input className="h-7 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" />
-                    </div>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Weight (lbs)</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Pieces</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Est. Miles</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Actual Miles</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 pt-1">
-                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
-                        <input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3 w-3" />
-                        Hazmat
-                      </label>
-                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
-                        <input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3 w-3" />
-                        Team
-                      </label>
+                      <Label className="text-[10px] text-muted-foreground uppercase">Settlement</Label>
+                      <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-background">
+                          <SelectItem value="unsettled">Unsettled</SelectItem>
+                          <SelectItem value="included">Included</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Description</Label>
-                      <Input className="h-7 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Special Instructions</Label>
-                      <Textarea className="text-xs min-h-[28px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={1} />
+                  <div className="col-span-2 space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">Dispatch Notes</Label>
+                        <Textarea className="text-xs min-h-[50px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={2} />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">Billing Notes</Label>
+                        <Textarea className="text-xs min-h-[50px]" value={load.billing_notes || ""} onChange={(e) => updateField("billing_notes", e.target.value)} rows={2} />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground uppercase">General Notes</Label>
+                        <Textarea className="text-xs min-h-[50px]" value={load.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={2} />
+                      </div>
                     </div>
                   </div>
                 </div>
               </AccordionContent>
             </AccordionItem>
 
-            {/* Notes Section */}
-            <AccordionItem value="notes" className="border rounded-md bg-card">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span>Notes & Instructions</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">Dispatch Notes</Label>
-                    <Textarea className="text-xs min-h-[60px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={2} />
-                  </div>
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">Billing Notes</Label>
-                    <Textarea className="text-xs min-h-[60px]" value={load.billing_notes || ""} onChange={(e) => updateField("billing_notes", e.target.value)} rows={2} />
-                  </div>
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">General Notes</Label>
-                    <Textarea className="text-xs min-h-[60px]" value={load.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={2} />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
         </TabsContent>
 
