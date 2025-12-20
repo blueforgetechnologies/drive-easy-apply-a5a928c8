@@ -669,9 +669,10 @@ export default function LoadDetail() {
                   {load.customer_id && (() => {
                     const customer = customers.find(c => c.id === load.customer_id);
                     return customer ? (
-                      <div className="text-sm text-muted-foreground space-y-0.5 border-t pt-2">
+                      <div className="text-sm text-muted-foreground space-y-1 border-t pt-2">
                         <p className="font-medium text-foreground">{customer.contact_name}</p>
                         <p>{customer.phone} • {customer.email}</p>
+                        <p className="text-xs">{customer.address}, {customer.city}, {customer.state} {customer.zip}</p>
                       </div>
                     ) : null;
                   })()}
@@ -681,11 +682,34 @@ export default function LoadDetail() {
               {/* Billing Party Card */}
               <Card className="border-2 border-border/60 shadow-md">
                 <CardHeader className="pb-2 pt-3 px-4 bg-muted/30">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                      <DollarSign className="h-4 w-4 text-amber-600" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                        <DollarSign className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <CardTitle className="text-lg font-bold tracking-tight">BILLING PARTY</CardTitle>
                     </div>
-                    <CardTitle className="text-lg font-bold tracking-tight">BILLING PARTY</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        if (load.customer_id) {
+                          const customer = customers.find(c => c.id === load.customer_id);
+                          if (customer) {
+                            updateField("broker_name", customer.name);
+                            updateField("broker_contact", customer.contact_name || "");
+                            updateField("broker_phone", customer.phone || "");
+                            updateField("broker_email", customer.email || "");
+                            toast.success("Copied from customer");
+                          }
+                        } else {
+                          toast.error("Please select a customer first");
+                        }
+                      }}
+                    >
+                      Same as Customer
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3 pb-4 space-y-2">
