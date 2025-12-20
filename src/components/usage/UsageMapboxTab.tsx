@@ -36,22 +36,57 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
     if (savedMultiplier) setCalibratedMultiplier(parseFloat(savedMultiplier));
   }, []);
 
-  // Main Mapbox usage query
+  // Cost rate constants
+  const MAPBOX_GEOCODE_RATE = 0.75 / 1000; // $0.75 per 1000 after free tier
+  const MAPBOX_FREE_TIER = 100000;
+
+  // Main Mapbox usage query - use actual counts from source tables for accuracy
   const { data: mapboxUsage } = useQuery({
     queryKey: ["mapbox-usage-detail", selectedMonth],
     queryFn: async () => {
-      if (isAllTime) {
-        const { data } = await supabase.from('mapbox_monthly_usage').select('*');
-        const totals = data?.reduce((acc, row) => ({
-          geocoding_api_calls: acc.geocoding_api_calls + (row.geocoding_api_calls || 0),
-          map_loads: acc.map_loads + (row.map_loads || 0),
-          directions_api_calls: acc.directions_api_calls + (row.directions_api_calls || 0),
-          total_cost: acc.total_cost + (row.total_cost || 0),
-        }), { geocoding_api_calls: 0, map_loads: 0, directions_api_calls: 0, total_cost: 0 });
-        return totals;
+      // Get actual counts from source tables (the source of truth)
+      let geocodeQuery = supabase.from('geocode_cache').select('*', { count: 'exact', head: true });
+      let mapLoadsQuery = supabase.from('map_load_tracking').select('*', { count: 'exact', head: true });
+      let directionsQuery = supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true });
+      
+      if (!isAllTime) {
+        geocodeQuery = geocodeQuery.gte('created_at', startISO!).lte('created_at', endISO!);
+        mapLoadsQuery = mapLoadsQuery.eq('month_year', selectedMonth);
+        directionsQuery = directionsQuery.eq('month_year', selectedMonth);
       }
-      const { data } = await supabase.from('mapbox_monthly_usage').select('*').eq('month_year', selectedMonth).maybeSingle();
-      return data;
+      
+      const [geocodeResult, mapLoadsResult, directionsResult] = await Promise.all([
+        geocodeQuery,
+        mapLoadsQuery,
+        directionsQuery,
+      ]);
+      
+      const geocodeCalls = geocodeResult.count || 0;
+      const mapLoads = mapLoadsResult.count || 0;
+      const directions = directionsResult.count || 0;
+      
+      // Calculate cost: $0.75 per 1000 geocodes after 100k free tier
+      const overFree = Math.max(0, geocodeCalls - MAPBOX_FREE_TIER);
+      const geocodeCost = overFree * MAPBOX_GEOCODE_RATE;
+      
+      // Map loads: $0.02 per 1000 after 50k free
+      const mapLoadsFree = 50000;
+      const mapLoadsOverFree = Math.max(0, mapLoads - mapLoadsFree);
+      const mapLoadsCost = mapLoadsOverFree * 0.00002;
+      
+      // Directions: $0.50 per 1000 after 100k free
+      const directionsFree = 100000;
+      const directionsOverFree = Math.max(0, directions - directionsFree);
+      const directionsCost = directionsOverFree * 0.0005;
+      
+      const totalCost = geocodeCost + mapLoadsCost + directionsCost;
+      
+      return { 
+        geocoding_api_calls: geocodeCalls, 
+        map_loads: mapLoads, 
+        directions_api_calls: directions,
+        total_cost: totalCost 
+      };
     },
   });
 
