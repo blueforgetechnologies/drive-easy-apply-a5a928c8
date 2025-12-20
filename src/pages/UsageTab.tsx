@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, Map, Mail, Sparkles, Database, Inbox } from "lucide-react";
+import { LayoutDashboard, Map, Mail, Sparkles, Database, Inbox, DollarSign } from "lucide-react";
 import { UsageMonthFilter } from "@/components/UsageMonthFilter";
 import UsageCostsTab from "./UsageCostsTab";
 import LovableCloudAITab from "./LovableCloudAITab";
+import { useCloudCost } from "@/hooks/useCloudCost";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 // Sub-tab components for each cost category
 import { UsageOverviewTab } from "@/components/usage/UsageOverviewTab";
 import { UsageMapboxTab } from "@/components/usage/UsageMapboxTab";
 import { UsageEmailTab } from "@/components/usage/UsageEmailTab";
 import { UsageGmailTab } from "@/components/usage/UsageGmailTab";
+
+const MAPBOX_FREE_TIER = 100000;
 
 const UsageTab = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,6 +25,49 @@ const UsageTab = () => {
   // Default to current month
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
+
+  // Get cloud cost and mapbox calibration for total estimate
+  const { cloudCost } = useCloudCost();
+  const [mapboxCalibratedMultiplier, setMapboxCalibratedMultiplier] = useState<number | null>(null);
+  
+  useEffect(() => {
+    const savedMapboxMultiplier = localStorage.getItem('mapbox_calibrated_multiplier');
+    if (savedMapboxMultiplier) setMapboxCalibratedMultiplier(parseFloat(savedMapboxMultiplier));
+  }, []);
+
+  // Quick query for total cost calculation (all-time)
+  const { data: quickStats } = useQuery({
+    queryKey: ["usage-quick-stats"],
+    queryFn: async () => {
+      const [mapboxBilling, emailSent, aiTokens] = await Promise.all([
+        supabase.from('mapbox_billing_history').select('total_cost'),
+        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('ai_usage_tracking').select('prompt_tokens, completion_tokens, model'),
+      ]);
+      
+      const mapboxCost = mapboxBilling.data?.reduce((sum, r) => sum + Number(r.total_cost || 0), 0) || 0;
+      
+      const sentCount = emailSent.count || 0;
+      const emailCost = Math.max(0, sentCount - 3000) * 0.001;
+      
+      let aiCost = 0;
+      aiTokens.data?.forEach(row => {
+        const isFlash = row.model?.toLowerCase().includes('flash');
+        const inputCostPer1M = isFlash ? 0.075 : 1.25;
+        const outputCostPer1M = isFlash ? 0.30 : 5.00;
+        aiCost += ((row.prompt_tokens || 0) / 1_000_000) * inputCostPer1M;
+        aiCost += ((row.completion_tokens || 0) / 1_000_000) * outputCostPer1M;
+      });
+      
+      return { mapboxCost, emailCost, aiCost };
+    },
+    staleTime: 30000,
+  });
+
+  const mapboxCost = mapboxCalibratedMultiplier 
+    ? (quickStats?.mapboxCost || 0) * mapboxCalibratedMultiplier 
+    : (quickStats?.mapboxCost || 0);
+  const totalEstimatedCost = mapboxCost + (quickStats?.emailCost || 0) + (quickStats?.aiCost || 0) + cloudCost;
 
   useEffect(() => {
     const subtab = searchParams.get("subtab");
@@ -58,11 +107,17 @@ const UsageTab = () => {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Usage & Costs</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monitor your service usage and costs
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Usage & Costs</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Monitor your service usage and costs
+            </p>
+          </div>
+          <Badge variant="outline" className="h-fit px-3 py-1.5 text-lg font-semibold border-primary/30 bg-primary/5">
+            <DollarSign className="h-4 w-4 mr-1" />
+            {totalEstimatedCost.toFixed(2)}
+          </Badge>
         </div>
         
         <UsageMonthFilter
