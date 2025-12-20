@@ -5,13 +5,12 @@ import { Map, Mail, Sparkles, Database, DollarSign, TrendingUp, Activity, Refres
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { useCloudCost } from "@/hooks/useCloudCost";
 
 interface UsageOverviewTabProps {
   selectedMonth: string; // "YYYY-MM" or "all"
 }
 
-// Default cost rate constants
-const DEFAULT_CLOUD_WRITE_RATE = 0.000134; // $0.134 per 1000 writes
 const MAPBOX_GEOCODE_RATE = 0.75 / 1000; // $0.75 per 1000 after free tier
 const MAPBOX_FREE_TIER = 100000;
 
@@ -32,18 +31,16 @@ const getDateRange = (selectedMonth: string) => {
 export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   const { startISO, endISO, isAllTime } = getDateRange(selectedMonth);
   
-  // Load calibrated rates from localStorage (set in Cloud & AI tab)
-  const [cloudCalibratedRate, setCloudCalibratedRate] = useState<number | null>(null);
+  // Get cloud cost from shared hook (same calculation as Cloud tab)
+  const { cloudCost, totalWriteOps, costBreakdown, isFetching: isCloudFetching } = useCloudCost();
+  
+  // Mapbox calibration
   const [mapboxCalibratedMultiplier, setMapboxCalibratedMultiplier] = useState<number | null>(null);
   
   useEffect(() => {
-    const savedCloudRate = localStorage.getItem('cloud_calibrated_rate');
     const savedMapboxMultiplier = localStorage.getItem('mapbox_calibrated_multiplier');
-    if (savedCloudRate) setCloudCalibratedRate(parseFloat(savedCloudRate));
     if (savedMapboxMultiplier) setMapboxCalibratedMultiplier(parseFloat(savedMapboxMultiplier));
   }, []);
-  
-  const effectiveCloudRate = cloudCalibratedRate ?? DEFAULT_CLOUD_WRITE_RATE;
 
   // Mapbox usage query - use actual geocode_cache counts for accuracy
   const { data: mapboxUsage, refetch: refetchMapbox, isFetching: isMapboxFetching } = useQuery({
@@ -169,78 +166,12 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
     refetchInterval: 30000,
   });
 
-  // Cloud operations query
-  const { data: cloudStats, refetch: refetchCloud, isFetching: isCloudFetching } = useQuery({
-    queryKey: ["overview-cloud", selectedMonth],
-    queryFn: async () => {
-      const buildQuery = (table: string, dateColumn: string) => {
-        let q = supabase.from(table as any).select('*', { count: 'exact', head: true });
-        if (!isAllTime) {
-          if (dateColumn === 'month_year') {
-            q = q.eq('month_year', selectedMonth);
-          } else {
-            q = q.gte(dateColumn, startISO!).lte(dateColumn, endISO!);
-          }
-        }
-        return q;
-      };
-      
-      // Match the same 16 tables as Cloud & AI tab for consistency
-      const [
-        emails, geocode, matches, mapTracking, directions, aiUsage, emailSend, 
-        audit, matchAction, vehicleLocation, emailVolume, archive, missedLoads, 
-        pubsub, loads, loadStops
-      ] = await Promise.all([
-        buildQuery('load_emails', 'created_at'),
-        buildQuery('geocode_cache', 'created_at'),
-        buildQuery('load_hunt_matches', 'created_at'),
-        buildQuery('map_load_tracking', 'created_at'),
-        buildQuery('directions_api_tracking', 'created_at'),
-        buildQuery('ai_usage_tracking', 'month_year'),
-        buildQuery('email_send_tracking', 'month_year'),
-        buildQuery('audit_logs', 'timestamp'),
-        buildQuery('match_action_history', 'created_at'),
-        buildQuery('vehicle_location_history', 'captured_at'),
-        buildQuery('email_volume_stats', 'created_at'),
-        buildQuery('load_emails_archive', 'archived_at'),
-        buildQuery('missed_loads_history', 'created_at'),
-        buildQuery('pubsub_tracking', 'created_at'),
-        buildQuery('loads', 'created_at'),
-        buildQuery('load_stops', 'created_at'),
-      ]);
-      
-      const breakdown = {
-        emails: emails.count || 0,
-        geocode: geocode.count || 0,
-        matches: matches.count || 0,
-        mapTracking: mapTracking.count || 0,
-        directions: directions.count || 0,
-        aiUsage: aiUsage.count || 0,
-        emailSend: emailSend.count || 0,
-        audit: audit.count || 0,
-        matchAction: matchAction.count || 0,
-        vehicleLocation: vehicleLocation.count || 0,
-        emailVolume: emailVolume.count || 0,
-        archive: archive.count || 0,
-        missedLoads: missedLoads.count || 0,
-        pubsub: pubsub.count || 0,
-        loads: loads.count || 0,
-        loadStops: loadStops.count || 0,
-      };
-      
-      const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
-      return { ...breakdown, total };
-    },
-    refetchInterval: 30000,
-  });
-
   const isFetching = isMapboxFetching || isEmailFetching || isAIFetching || isCloudFetching;
 
   const refreshAll = () => {
     refetchMapbox();
     refetchEmail();
     refetchAI();
-    refetchCloud();
   };
 
   // Apply calibration multipliers
@@ -248,8 +179,7 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   const mapboxCost = mapboxCalibratedMultiplier ? rawMapboxCost * mapboxCalibratedMultiplier : rawMapboxCost;
   const emailCost = emailStats?.cost || 0;
   const aiCost = aiStats?.cost || 0;
-  // Compute cloud cost using total operations * calibrated rate (same as Cloud & AI tab)
-  const cloudCost = (cloudStats?.total || 0) * effectiveCloudRate;
+  // cloudCost comes from useCloudCost hook (same calculation as Cloud tab)
   const totalCost = mapboxCost + emailCost + aiCost + cloudCost;
 
   const periodLabel = isAllTime ? "all time" : selectedMonth;
@@ -286,15 +216,15 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
       title: "Cloud Ops",
       icon: Database,
       value: cloudCost,
-      usage: `${(cloudStats?.total || 0).toLocaleString()} writes`,
+      usage: `${totalWriteOps.toLocaleString()} writes`,
       color: "bg-orange-500/10 text-orange-500",
       limit: 500000,
-      current: cloudStats?.total || 0,
+      current: totalWriteOps,
     },
   ];
 
   const activeServices = costCards.filter(c => c.current > 0).length;
-  const totalOps = (cloudStats?.total || 0) + (mapboxUsage?.geocoding_api_calls || 0) + (aiStats?.count || 0);
+  const totalOps = totalWriteOps + (mapboxUsage?.geocoding_api_calls || 0) + (aiStats?.count || 0);
 
   return (
     <div className="space-y-6">
@@ -374,7 +304,7 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
         })}
       </div>
 
-      {cloudStats && cloudStats.total > 0 && (
+      {costBreakdown && totalWriteOps > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">Cloud Operations Breakdown</CardTitle>
@@ -384,24 +314,24 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
             <div className="grid grid-cols-5 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Emails</p>
-                <p className="font-bold text-lg">{(cloudStats.emails || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown.categories.emailIngestion.details.emails || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Geocode</p>
-                <p className="font-bold text-lg">{(cloudStats.geocode || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown.categories.emailIngestion.details.geocode || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Matches</p>
-                <p className="font-bold text-lg">{(cloudStats.matches || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown.categories.huntOperations.details.matches || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Map Loads</p>
-                <p className="font-bold text-lg">{(cloudStats.mapTracking || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown.categories.tracking.details.mapTracking || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Other</p>
                 <p className="font-bold text-lg">
-                  {((cloudStats.audit || 0) + (cloudStats.matchAction || 0) + (cloudStats.vehicleLocation || 0)).toLocaleString()}
+                  {(costBreakdown.categories.other.ops || 0).toLocaleString()}
                 </p>
               </div>
             </div>
