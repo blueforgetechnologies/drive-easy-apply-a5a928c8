@@ -55,9 +55,19 @@ export function SearchableEntitySelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredEntities = entities.filter((entity) =>
-    entity.name.toLowerCase().includes(searchValue.toLowerCase())
-  );
+  // Filter entities - prioritize "starts with" matches first, then "includes" matches
+  const searchTerm = searchValue.toLowerCase().trim();
+  const filteredEntities = searchTerm
+    ? entities
+        .filter((entity) => entity.name.toLowerCase().includes(searchTerm))
+        .sort((a, b) => {
+          const aStartsWith = a.name.toLowerCase().startsWith(searchTerm);
+          const bStartsWith = b.name.toLowerCase().startsWith(searchTerm);
+          if (aStartsWith && !bStartsWith) return -1;
+          if (!aStartsWith && bStartsWith) return 1;
+          return a.name.localeCompare(b.name);
+        })
+    : entities.slice(0, 20); // Show first 20 when no search term
 
   const exactMatch = entities.some(
     (entity) => entity.name.toLowerCase() === searchValue.toLowerCase()
@@ -89,12 +99,12 @@ export function SearchableEntitySelect({
 
   return (
     <>
-      <div ref={containerRef} className={cn("relative", className)}>
-        <div className="flex items-center gap-1.5">
+      <div ref={containerRef} className={cn("relative w-full", className)}>
+        <div className="flex items-center gap-1.5 w-full">
           <div className="relative flex-1">
             <Input
               ref={inputRef}
-              className="h-7 text-xs pr-8"
+              className="h-7 text-xs pr-8 w-full"
               value={searchValue}
               onChange={handleInputChange}
               onFocus={() => setIsOpen(true)}
@@ -133,7 +143,7 @@ export function SearchableEntitySelect({
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute top-full left-0 right-8 mt-1 bg-background border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
             {filteredEntities.length > 0 ? (
               filteredEntities.map((entity) => (
                 <button
