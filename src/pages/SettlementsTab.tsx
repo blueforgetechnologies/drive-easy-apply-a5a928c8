@@ -270,9 +270,9 @@ export default function SettlementsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Driver Settlements</h2>
+        <div /> {/* Spacer for alignment */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -404,9 +404,10 @@ export default function SettlementsTab() {
         </Dialog>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex flex-wrap gap-2">
           <Button
+            size="sm"
             variant={filter === "pending" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "pending" });
@@ -417,6 +418,7 @@ export default function SettlementsTab() {
             Pending
           </Button>
           <Button
+            size="sm"
             variant={filter === "approved" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "approved" });
@@ -427,6 +429,7 @@ export default function SettlementsTab() {
             Approved
           </Button>
           <Button
+            size="sm"
             variant={filter === "paid" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "paid" });
@@ -438,42 +441,45 @@ export default function SettlementsTab() {
           </Button>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search settlements..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {filteredSettlements.length} settlements
+          </Badge>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search settlements..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-8"
+            />
+          </div>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {filteredSettlements.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {searchQuery ? "No settlements match your search" : `No ${filter} settlements found`}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Settlement #</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Loads</TableHead>
-                    <TableHead>Miles</TableHead>
-                    <TableHead>Gross Pay</TableHead>
-                    <TableHead>Deductions</TableHead>
-                    <TableHead>Net Pay</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSettlements.map((settlement) => (
-                    <TableRow key={settlement.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewSettlementDetail(settlement.id)}>
+      {filteredSettlements.length === 0 ? (
+        <p className="text-center text-muted-foreground py-8">
+          {searchQuery ? "No settlements match your search" : `No ${filter} settlements found`}
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+                <TableHead className="text-primary font-medium uppercase text-xs">Settlement #</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Period</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Loads</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Miles</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Gross Pay</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Deductions</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Net Pay</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSettlements.map((settlement) => (
+                <TableRow key={settlement.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewSettlementDetail(settlement.id)}>
                       <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                       <TableCell>
                         {format(new Date(settlement.period_start), "MM/dd")} - {format(new Date(settlement.period_end), "MM/dd/yyyy")}
@@ -496,14 +502,12 @@ export default function SettlementsTab() {
                           </Button>
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

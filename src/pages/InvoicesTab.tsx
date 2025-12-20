@@ -206,9 +206,9 @@ export default function InvoicesTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Invoices</h2>
+        <div /> {/* Spacer for alignment */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -277,9 +277,10 @@ export default function InvoicesTab() {
         </Dialog>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex flex-wrap gap-2">
           <Button
+            size="sm"
             variant={filter === "draft" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "draft" });
@@ -290,6 +291,7 @@ export default function InvoicesTab() {
             Draft
           </Button>
           <Button
+            size="sm"
             variant={filter === "sent" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "sent" });
@@ -300,6 +302,7 @@ export default function InvoicesTab() {
             Sent
           </Button>
           <Button
+            size="sm"
             variant={filter === "paid" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "paid" });
@@ -310,6 +313,7 @@ export default function InvoicesTab() {
             Paid
           </Button>
           <Button
+            size="sm"
             variant={filter === "overdue" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "overdue" });
@@ -321,14 +325,19 @@ export default function InvoicesTab() {
           </Button>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search invoices..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {filteredInvoices.length} invoices
+          </Badge>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search invoices..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-8"
+            />
+          </div>
         </div>
       </div>
 
