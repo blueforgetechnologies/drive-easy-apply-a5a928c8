@@ -1538,10 +1538,10 @@ const LoadEmailDetail = ({
             </button>
             <button 
               type="button"
-              className="flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center transition-all duration-200 active:scale-95 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700"
+              className="flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center transition-all duration-200 active:scale-95 bg-gradient-to-b from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700"
               style={{ 
                 textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(59,130,246,0.4)'
               }}
             >
               Mark as: Bid placed
