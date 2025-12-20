@@ -158,8 +158,19 @@ export default function LoadsTab() {
       )}
     </div>
   );
+  
+  // Generate manual load number in ME-YYMMDD-XXX format
+  const generateManualLoadNumber = () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `ME-${year}${month}${day}-${random}`;
+  };
+  
   const [formData, setFormData] = useState({
-    load_number: `LD-${Date.now()}`,
+    load_number: generateManualLoadNumber(),
     load_type: "internal",
     shipper_load_id: "",
     reference_number: "",
@@ -528,7 +539,7 @@ export default function LoadsTab() {
       setDialogOpen(false);
       setRateConfirmationFile(null);
       setFormData({
-        load_number: `LD-${Date.now()}`,
+        load_number: generateManualLoadNumber(),
         load_type: "internal",
         shipper_load_id: "",
         reference_number: "",
