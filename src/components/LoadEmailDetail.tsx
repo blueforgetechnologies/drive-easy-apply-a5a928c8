@@ -934,27 +934,39 @@ const LoadEmailDetail = ({
         </div>
         
         {/* Action Buttons - Compact */}
-        <div className="flex gap-1.5 px-4 pt-3">
+        <div className="flex gap-2 px-4 pt-3">
           <button 
             type="button"
-            className={`flex-1 flex flex-col items-center py-2 h-auto text-white rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex flex-col items-center py-3 h-auto text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-lg active:scale-95 ${
               bidConfirmed 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-emerald-600 hover:bg-emerald-700'
+                ? 'bg-gradient-to-b from-gray-300 to-gray-400 shadow-gray-300/50 cursor-not-allowed' 
+                : 'bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 shadow-emerald-500/40 hover:shadow-emerald-500/60'
             }`}
+            style={{ 
+              textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              boxShadow: bidConfirmed 
+                ? 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(156,163,175,0.4)' 
+                : 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
+            }}
             onClick={() => setBidConfirmed(true)} 
             disabled={bidConfirmed}
           >
             <span className="text-[10px] font-medium opacity-90">Confirm Bid</span>
-            <span className="text-sm font-bold">$ {bidAmount || '0'}</span>
+            <span className="text-base font-bold">$ {bidAmount || '0'}</span>
           </button>
           <button 
             type="button"
-            className={`flex-1 h-auto py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 h-auto py-3 rounded-xl text-sm font-semibold transition-all duration-200 shadow-lg active:scale-95 ${
               bidConfirmed 
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-emerald-500/40 hover:shadow-emerald-500/60' 
+                : 'bg-gradient-to-b from-gray-200 to-gray-300 text-gray-500 shadow-gray-300/50 cursor-not-allowed'
             }`}
+            style={{ 
+              textShadow: bidConfirmed ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
+              boxShadow: bidConfirmed 
+                ? 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)' 
+                : 'inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 12px rgba(156,163,175,0.3)'
+            }}
             disabled={!bidConfirmed || isSending} 
             onClick={handleSendBid}
           >
@@ -962,7 +974,11 @@ const LoadEmailDetail = ({
           </button>
           <button 
             type="button"
-            className="flex-1 h-auto py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-all" 
+            className="flex-1 h-auto py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-b from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 transition-all duration-200 shadow-lg shadow-red-500/40 hover:shadow-red-500/60 active:scale-95" 
+            style={{ 
+              textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(239,68,68,0.4)'
+            }}
             onClick={() => setShowEmailConfirmDialog(false)} 
             disabled={isSending}
           >
