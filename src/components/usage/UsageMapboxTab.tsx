@@ -1,0 +1,249 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Map, Navigation, MapPin, DollarSign, TrendingUp } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+
+interface UsageMapboxTabProps {
+  selectedMonth: string;
+}
+
+export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
+  // Main Mapbox usage query
+  const { data: mapboxUsage, isLoading } = useQuery({
+    queryKey: ["mapbox-usage-detail", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mapbox_monthly_usage')
+        .select('*')
+        .eq('month_year', selectedMonth)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Geocode cache stats
+  const { data: geocodeStats } = useQuery({
+    queryKey: ["mapbox-geocode-stats", selectedMonth],
+    queryFn: async () => {
+      const startDate = new Date(selectedMonth + '-01');
+      const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+      
+      const { count } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+      
+      return { newLocations: count || 0 };
+    },
+  });
+
+  // Map loads for the month
+  const { data: mapLoads } = useQuery({
+    queryKey: ["mapbox-map-loads", selectedMonth],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('map_load_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', selectedMonth);
+      
+      return { count: count || 0 };
+    },
+  });
+
+  // Directions API calls
+  const { data: directionsStats } = useQuery({
+    queryKey: ["mapbox-directions", selectedMonth],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('directions_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('month_year', selectedMonth);
+      
+      return { count: count || 0 };
+    },
+  });
+
+  // Monthly history for chart
+  const { data: monthlyHistory } = useQuery({
+    queryKey: ["mapbox-history"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('mapbox_monthly_usage')
+        .select('month_year, geocoding_api_calls, map_loads, total_cost')
+        .order('month_year', { ascending: true })
+        .limit(6);
+      
+      return data?.map(row => ({
+        month: new Date(row.month_year + '-01').toLocaleDateString('en-US', { month: 'short' }),
+        geocoding: row.geocoding_api_calls || 0,
+        mapLoads: row.map_loads || 0,
+        cost: row.total_cost || 0,
+      })) || [];
+    },
+  });
+
+  const FREE_TIERS = {
+    geocoding: 100000,
+    mapLoads: 50000,
+    directions: 100000,
+  };
+
+  const metrics = [
+    {
+      title: "Geocoding API",
+      icon: MapPin,
+      current: mapboxUsage?.geocoding_api_calls || 0,
+      limit: FREE_TIERS.geocoding,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+    },
+    {
+      title: "Map Loads",
+      icon: Map,
+      current: mapLoads?.count || 0,
+      limit: FREE_TIERS.mapLoads,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+    },
+    {
+      title: "Directions API",
+      icon: Navigation,
+      current: directionsStats?.count || 0,
+      limit: FREE_TIERS.directions,
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10",
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Cost Summary */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Map className="h-5 w-5" />
+                Mapbox Usage
+              </CardTitle>
+              <CardDescription>Geocoding, Maps, and Directions API</CardDescription>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Estimated Cost</p>
+              <p className="text-3xl font-bold">${(mapboxUsage?.total_cost || 0).toFixed(2)}</p>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Metrics Grid */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
+          const percentage = Math.min(100, (metric.current / metric.limit) * 100);
+          const isOverLimit = metric.current > metric.limit;
+          
+          return (
+            <Card key={metric.title}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-lg ${metric.bgColor}`}>
+                    <Icon className={`h-4 w-4 ${metric.color}`} />
+                  </div>
+                  <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-bold">
+                    {(metric.current / 1000).toFixed(1)}k
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    / {(metric.limit / 1000).toFixed(0)}k free
+                  </span>
+                </div>
+                <Progress 
+                  value={percentage} 
+                  className={`h-2 ${isOverLimit ? '[&>div]:bg-destructive' : ''}`}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {isOverLimit ? (
+                    <span className="text-destructive font-medium">
+                      {(metric.current - metric.limit).toLocaleString()} over free tier
+                    </span>
+                  ) : (
+                    `${(metric.limit - metric.current).toLocaleString()} remaining`
+                  )}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Usage History Chart */}
+      {monthlyHistory && monthlyHistory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Usage Trend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyHistory}>
+                  <XAxis dataKey="month" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <Tooltip 
+                    formatter={(value: number) => [value.toLocaleString(), '']}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Line type="monotone" dataKey="geocoding" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="mapLoads" stroke="hsl(142 76% 36%)" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-6 mt-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-blue-500 rounded" />
+                <span className="text-muted-foreground">Geocoding</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-green-500 rounded" />
+                <span className="text-muted-foreground">Map Loads</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cache Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Geocode Cache Performance</CardTitle>
+          <CardDescription>New locations cached this month</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-muted">
+              <TrendingUp className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{(geocodeStats?.newLocations || 0).toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">new locations cached</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
