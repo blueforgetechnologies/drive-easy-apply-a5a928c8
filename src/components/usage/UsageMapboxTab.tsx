@@ -1,13 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Map, Navigation, MapPin, Database, Sparkles, Settings, RefreshCw } from "lucide-react";
+import { Map, Navigation, MapPin, Database, Sparkles, Settings, RefreshCw, Receipt, Calendar, DollarSign } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface UsageMapboxTabProps {
   selectedMonth: string; // "YYYY-MM" or "all"
@@ -365,6 +366,126 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
           </CardContent>
         </Card>
       )}
+
+      <BillingHistorySection />
     </div>
+  );
+}
+
+// Billing History Component - displays permanent billing records
+function BillingHistorySection() {
+  const { data: billingHistory, isLoading, refetch } = useQuery({
+    queryKey: ["mapbox-billing-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mapbox_billing_history')
+        .select('*')
+        .order('billing_start', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Calculate cumulative totals
+  const cumulativeTotals = billingHistory?.reduce((acc, record) => ({
+    geocoding: acc.geocoding + (record.geocoding_requests || 0),
+    mapLoads: acc.mapLoads + (record.map_loads || 0),
+    directions: acc.directions + (record.directions_requests || 0),
+    cost: acc.cost + Number(record.total_cost || 0),
+  }), { geocoding: 0, mapLoads: 0, directions: 0, cost: 0 });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Billing History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8 text-muted-foreground">Loading...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-amber-500/20 bg-amber-500/5">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-amber-600">
+              <Receipt className="h-5 w-5" />
+              Official Billing History
+            </CardTitle>
+            <CardDescription>Permanent record of Mapbox invoices (cannot be deleted)</CardDescription>
+          </div>
+          {cumulativeTotals && (
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">All-Time Total</p>
+              <p className="text-2xl font-bold text-amber-600">${cumulativeTotals.cost.toFixed(2)}</p>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Cumulative totals */}
+        {cumulativeTotals && (
+          <div className="grid grid-cols-3 gap-4 p-4 rounded-lg bg-background/50 border">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Total Geocoding</p>
+              <p className="text-lg font-bold">{cumulativeTotals.geocoding.toLocaleString()}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Total Map Loads</p>
+              <p className="text-lg font-bold">{cumulativeTotals.mapLoads.toLocaleString()}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Total Directions</p>
+              <p className="text-lg font-bold">{cumulativeTotals.directions.toLocaleString()}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Billing records table */}
+        {billingHistory && billingHistory.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Period</TableHead>
+                <TableHead className="text-right">Geocoding</TableHead>
+                <TableHead className="text-right">Map Loads</TableHead>
+                <TableHead className="text-right">Directions</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {billingHistory.map((record) => (
+                <TableRow key={record.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      {new Date(record.billing_start).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">{record.geocoding_requests.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{record.map_loads.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{record.directions_requests.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    <div className="flex items-center justify-end gap-1">
+                      <DollarSign className="h-3 w-3" />
+                      {Number(record.total_cost).toFixed(2)}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No billing records yet
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
