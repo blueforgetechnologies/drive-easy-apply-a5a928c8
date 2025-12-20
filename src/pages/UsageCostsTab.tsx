@@ -48,12 +48,10 @@ const UsageCostsTab = () => {
   const [lastResendRefresh, setLastResendRefresh] = useState<Date>(new Date());
   const [lastAiRefresh, setLastAiRefresh] = useState<Date>(new Date());
   const [isCompactView, setIsCompactView] = useState<boolean>(false);
-  const [showCalibration, setShowCalibration] = useState<boolean>(false);
-  const [actualSpend, setActualSpend] = useState<string>("");
-  const [calibratedRate, setCalibratedRate] = useState<number | null>(null);
   const queryClient = useQueryClient();
   
-  // Load calibrated rate from localStorage
+  // Load calibrated rate from localStorage (shared with Cloud & AI tab)
+  const [calibratedRate, setCalibratedRate] = useState<number | null>(null);
   useEffect(() => {
     const saved = localStorage.getItem('cloud_calibrated_rate');
     if (saved) {
@@ -861,40 +859,7 @@ const UsageCostsTab = () => {
     staleTime: 15000,
   });
   
-  // Handle calibration save
-  const handleCalibrate = () => {
-    const spend = parseFloat(actualSpend);
-    if (isNaN(spend) || spend <= 0) {
-      toast.error('Please enter a valid spend amount');
-      return;
-    }
-    
-    const writeOps = cloudUsageStats?.writeOps || 0;
-    if (writeOps <= 0) {
-      toast.error('No write operations recorded yet');
-      return;
-    }
-    
-    const newRate = spend / writeOps;
-    setCalibratedRate(newRate);
-    localStorage.setItem('cloud_calibrated_rate', newRate.toString());
-    localStorage.setItem('cloud_calibration_date', new Date().toISOString());
-    localStorage.setItem('cloud_calibration_spend', spend.toString());
-    localStorage.setItem('cloud_calibration_ops', writeOps.toString());
-    toast.success(`Calibrated! New rate: $${newRate.toFixed(6)}/write op`);
-    setShowCalibration(false);
-    setActualSpend("");
-  };
-  
-  // Clear calibration
-  const clearCalibration = () => {
-    setCalibratedRate(null);
-    localStorage.removeItem('cloud_calibrated_rate');
-    localStorage.removeItem('cloud_calibration_date');
-    localStorage.removeItem('cloud_calibration_spend');
-    localStorage.removeItem('cloud_calibration_ops');
-    toast.success('Calibration cleared, using default rate');
-  };
+  // Get effective rate (calibrated or default) - calibration is done in Cloud & AI tab
   
   // Get effective rate (calibrated or default)
   const effectiveRate = calibratedRate ?? 0.000134;
@@ -1386,88 +1351,6 @@ const UsageCostsTab = () => {
             </div>
           </div>
         </CardContent>
-      </Card>
-
-      {/* Calibration Panel */}
-      <Card className="border-blue-500/20 bg-blue-500/5">
-        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
-                <Settings className={`text-blue-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
-                {isCompactView ? 'Calibrate' : 'Calibrate Cost Estimates'}
-                <InfoTooltip text="Enter your actual billing to compute a more accurate cost-per-operation rate. This improves future projections." />
-              </CardTitle>
-              {!isCompactView && <CardDescription>Sync estimates with actual Lovable billing for accuracy</CardDescription>}
-            </div>
-            <Button 
-              variant={showCalibration ? "secondary" : "outline"}
-              size="sm" 
-              onClick={() => setShowCalibration(!showCalibration)}
-            >
-              {showCalibration ? 'Hide' : 'Calibrate'}
-            </Button>
-          </div>
-        </CardHeader>
-        {(showCalibration || calibratedRate) && (
-          <CardContent className={isCompactView ? 'pt-0 px-3 pb-3' : ''}>
-            {calibratedRate && (
-              <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="font-medium text-blue-600">Calibrated Rate Active:</span>
-                    <span className="text-muted-foreground ml-1">
-                      ${calibratedRate.toFixed(6)}/write op
-                    </span>
-                    {localStorage.getItem('cloud_calibration_date') && (
-                      <span className="text-muted-foreground ml-2">
-                        (set {new Date(localStorage.getItem('cloud_calibration_date')!).toLocaleDateString()})
-                      </span>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={clearCalibration} className="h-6 text-xs">
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {showCalibration && (
-              <div className="space-y-3">
-                <div className="text-xs text-muted-foreground">
-                  <p>Check your Lovable billing (Settings → Plans & Credits) and enter the actual amount spent on Cloud this billing period:</p>
-                </div>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g., 75.00"
-                      value={actualSpend}
-                      onChange={(e) => setActualSpend(e.target.value)}
-                      className="pl-7"
-                    />
-                  </div>
-                  <Button onClick={handleCalibrate} disabled={!actualSpend}>
-                    Calibrate
-                  </Button>
-                </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>Current tracked write operations: <span className="font-medium">{(cloudUsageStats?.writeOps || 0).toLocaleString()}</span></p>
-                  {actualSpend && parseFloat(actualSpend) > 0 && (cloudUsageStats?.writeOps || 0) > 0 && (
-                    <p>
-                      This would set rate to: <span className="font-medium text-blue-600">
-                        ${(parseFloat(actualSpend) / (cloudUsageStats?.writeOps || 1)).toFixed(6)}/write
-                      </span>
-                      {' '}(vs default $0.000134)
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        )}
       </Card>
 
       {/* Geocode Cache Stats */}
