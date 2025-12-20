@@ -655,64 +655,110 @@ export default function LoadDetail() {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-2 gap-3">
-                  {/* Origin */}
-                  <div className="space-y-2 p-2 rounded-md bg-blue-500/5 border border-blue-500/20">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-blue-500 text-[10px]">ORIGIN</Badge>
-                      <span className="text-xs text-muted-foreground">Pickup</span>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Origin Card */}
+                  <Collapsible defaultOpen>
+                    <div className="rounded-lg border-2 border-blue-600/40 bg-blue-950/20 dark:bg-blue-950/30 shadow-sm overflow-hidden">
+                      <CollapsibleTrigger className="w-full px-3 py-2.5 flex items-center justify-between bg-blue-600/20 hover:bg-blue-600/30 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center">
+                            <MapPin className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <span className="font-semibold text-sm text-blue-100">ORIGIN</span>
+                          <Badge variant="outline" className="text-[10px] border-blue-500/50 text-blue-300 bg-blue-900/30">Pickup</Badge>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-blue-400 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-3 space-y-3">
+                          {/* Shipper Name & Contact */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-blue-300 uppercase tracking-wide">Shipper</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.shipper_name || ""} onChange={(e) => updateField("shipper_name", e.target.value)} placeholder="Company/Name" />
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
+                            </div>
+                            <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} placeholder="Email" />
+                          </div>
+                          
+                          {/* Address */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-blue-300 uppercase tracking-wide">Address</Label>
+                            <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Street Address" />
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500 uppercase" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} placeholder="ZIP" />
+                            </div>
+                          </div>
+                          
+                          {/* Date/Time */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-blue-300 uppercase tracking-wide">Schedule</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
+                              <Input className="h-8 text-xs bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
+                            </div>
+                          </div>
+                          
+                          {/* Notes */}
+                          <Textarea className="text-xs min-h-[40px] bg-background/60 border-blue-500/30 focus:border-blue-500" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={2} placeholder="Pickup notes, instructions..." />
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <Input className="h-7 text-xs" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
-                      <Input className="h-7 text-xs" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value)} placeholder="ST" maxLength={2} />
-                      <Input className="h-7 text-xs" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} placeholder="ZIP" />
-                    </div>
-                    <Input className="h-7 text-xs" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Address" />
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-7 text-xs" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
-                      <Input className="h-7 text-xs" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
-                    </div>
-                    <Separator className="my-1" />
-                    <p className="text-[10px] font-semibold text-muted-foreground">SHIPPER</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-7 text-xs" value={load.shipper_name || ""} onChange={(e) => updateField("shipper_name", e.target.value)} placeholder="Name" />
-                      <Input className="h-7 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-7 text-xs" value={load.shipper_address || ""} onChange={(e) => updateField("shipper_address", e.target.value)} placeholder="Address" />
-                      <Input className="h-7 text-xs" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} placeholder="Email" />
-                    </div>
-                    <Textarea className="text-xs min-h-[28px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Pickup notes..." />
-                  </div>
+                  </Collapsible>
 
-                  {/* Destination */}
-                  <div className="space-y-2 p-2 rounded-md bg-green-500/5 border border-green-500/20">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-green-500 text-[10px]">DESTINATION</Badge>
-                      <span className="text-xs text-muted-foreground">Delivery</span>
+                  {/* Destination Card */}
+                  <Collapsible defaultOpen>
+                    <div className="rounded-lg border-2 border-green-600/40 bg-green-950/20 dark:bg-green-950/30 shadow-sm overflow-hidden">
+                      <CollapsibleTrigger className="w-full px-3 py-2.5 flex items-center justify-between bg-green-600/20 hover:bg-green-600/30 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-green-600 flex items-center justify-center">
+                            <MapPin className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <span className="font-semibold text-sm text-green-100">DESTINATION</span>
+                          <Badge variant="outline" className="text-[10px] border-green-500/50 text-green-300 bg-green-900/30">Delivery</Badge>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-green-400 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-3 space-y-3">
+                          {/* Receiver Name & Contact */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-green-300 uppercase tracking-wide">Receiver</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.receiver_name || ""} onChange={(e) => updateField("receiver_name", e.target.value)} placeholder="Company/Name" />
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
+                            </div>
+                            <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} placeholder="Email" />
+                          </div>
+                          
+                          {/* Address */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-green-300 uppercase tracking-wide">Address</Label>
+                            <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Street Address" />
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500 uppercase" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} placeholder="ZIP" />
+                            </div>
+                          </div>
+                          
+                          {/* Date/Time */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-green-300 uppercase tracking-wide">Schedule</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
+                              <Input className="h-8 text-xs bg-background/60 border-green-500/30 focus:border-green-500" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
+                            </div>
+                          </div>
+                          
+                          {/* Notes */}
+                          <Textarea className="text-xs min-h-[40px] bg-background/60 border-green-500/30 focus:border-green-500" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={2} placeholder="Delivery notes, instructions..." />
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <Input className="h-7 text-xs" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
-                      <Input className="h-7 text-xs" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value)} placeholder="ST" maxLength={2} />
-                      <Input className="h-7 text-xs" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} placeholder="ZIP" />
-                    </div>
-                    <Input className="h-7 text-xs" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Address" />
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-7 text-xs" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
-                      <Input className="h-7 text-xs" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
-                    </div>
-                    <Separator className="my-1" />
-                    <p className="text-[10px] font-semibold text-muted-foreground">RECEIVER</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-7 text-xs" value={load.receiver_name || ""} onChange={(e) => updateField("receiver_name", e.target.value)} placeholder="Name" />
-                      <Input className="h-7 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-7 text-xs" value={load.receiver_address || ""} onChange={(e) => updateField("receiver_address", e.target.value)} placeholder="Address" />
-                      <Input className="h-7 text-xs" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} placeholder="Email" />
-                    </div>
-                    <Textarea className="text-xs min-h-[28px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Delivery notes..." />
-                  </div>
+                  </Collapsible>
                 </div>
               </AccordionContent>
             </AccordionItem>
