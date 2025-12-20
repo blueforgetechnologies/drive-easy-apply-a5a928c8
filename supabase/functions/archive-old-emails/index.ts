@@ -32,7 +32,7 @@ serve(async (req) => {
     }
     
     const archivedCount = data || 0;
-    console.log(`✅ Archived ${archivedCount} emails older than 30 days`);
+    console.log(`✅ Archived ${archivedCount} emails older than 8 days`);
     
     // Get current counts for reporting
     const [mainCount, archiveCount] = await Promise.all([
