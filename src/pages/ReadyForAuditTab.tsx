@@ -104,7 +104,7 @@ export default function ReadyForAuditTab() {
               <p className="text-sm">Loads marked as "Ready for Audit" will appear here</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 border-b-0">
