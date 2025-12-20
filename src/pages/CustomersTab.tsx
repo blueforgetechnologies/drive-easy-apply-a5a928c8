@@ -35,12 +35,16 @@ interface Customer {
   mc_number: string | null;
   dot_number: string | null;
   factoring_approval: string | null;
+  customer_type: string | null;
 }
+
+type CustomerTypeFilter = 'all' | 'broker' | 'shipper' | 'receiver' | 'shipper_receiver';
 
 export default function CustomersTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
+  const typeFilter = (searchParams.get("type") || "all") as CustomerTypeFilter;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,11 +148,12 @@ export default function CustomersTab() {
     mc_number: "",
     dot_number: "",
     factoring_approval: "pending",
+    customer_type: "broker",
   });
 
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, [filter, typeFilter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -171,6 +176,10 @@ export default function CustomersTab() {
       
       if (filter !== "all") {
         query = query.eq("status", filter);
+      }
+      
+      if (typeFilter !== "all") {
+        query = query.eq("customer_type", typeFilter);
       }
 
       const { data, error } = await query;
@@ -259,6 +268,7 @@ export default function CustomersTab() {
       mc_number: customer.mc_number || "",
       dot_number: customer.dot_number || "",
       factoring_approval: customer.factoring_approval || "pending",
+      customer_type: customer.customer_type || "broker",
     });
     setLookupValue(customer.dot_number || "");
     setDialogOpen(true);
@@ -316,7 +326,34 @@ export default function CustomersTab() {
       mc_number: "",
       dot_number: "",
       factoring_approval: "pending",
+      customer_type: "broker",
     });
+  };
+
+  const setTypeFilter = (type: CustomerTypeFilter) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("type", type);
+    setSearchParams(newParams);
+  };
+
+  const getTypeLabel = (type: string | null) => {
+    switch (type) {
+      case 'broker': return 'Broker';
+      case 'shipper': return 'Shipper';
+      case 'receiver': return 'Receiver';
+      case 'shipper_receiver': return 'Shipper/Receiver';
+      default: return 'Broker';
+    }
+  };
+
+  const getTypeColor = (type: string | null) => {
+    switch (type) {
+      case 'broker': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'shipper': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'receiver': return 'bg-green-100 text-green-800 border-green-200';
+      case 'shipper_receiver': return 'bg-amber-100 text-amber-800 border-amber-200';
+      default: return 'bg-purple-100 text-purple-800 border-purple-200';
+    }
   };
 
   const handleLookup = async () => {
@@ -519,6 +556,23 @@ export default function CustomersTab() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="customer_type">Customer Type</Label>
+                  <Select 
+                    value={formData.customer_type} 
+                    onValueChange={(value) => setFormData({ ...formData, customer_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="broker">Broker</SelectItem>
+                      <SelectItem value="shipper">Shipper</SelectItem>
+                      <SelectItem value="receiver">Receiver</SelectItem>
+                      <SelectItem value="shipper_receiver">Shipper/Receiver</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="factoring_approval">Factoring Approval</Label>
                   <Select 
                     value={formData.factoring_approval} 
@@ -683,13 +737,16 @@ export default function CustomersTab() {
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Status Filters */}
         <div className="flex flex-wrap gap-1">
           <Button
             variant={filter === "all" ? "default" : "outline"}
             size="sm"
             className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "all" });
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "all");
+              setSearchParams(newParams);
               setSearchQuery("");
             }}
           >
@@ -700,7 +757,9 @@ export default function CustomersTab() {
             size="sm"
             className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "active" });
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "active");
+              setSearchParams(newParams);
               setSearchQuery("");
             }}
           >
@@ -711,7 +770,9 @@ export default function CustomersTab() {
             size="sm"
             className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "inactive" });
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "inactive");
+              setSearchParams(newParams);
               setSearchQuery("");
             }}
           >
@@ -722,11 +783,57 @@ export default function CustomersTab() {
             size="sm"
             className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
             onClick={() => {
-              setSearchParams({ filter: "pending" });
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "pending");
+              setSearchParams(newParams);
               setSearchQuery("");
             }}
           >
             Pending
+          </Button>
+        </div>
+
+        {/* Type Filters */}
+        <div className="flex flex-wrap gap-1 border-l pl-2 ml-1">
+          <Button
+            variant={typeFilter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "all" ? "bg-slate-600 text-white hover:bg-slate-700" : ""}`}
+            onClick={() => setTypeFilter("all")}
+          >
+            All Types
+          </Button>
+          <Button
+            variant={typeFilter === "broker" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "broker" ? "bg-purple-600 text-white hover:bg-purple-700" : ""}`}
+            onClick={() => setTypeFilter("broker")}
+          >
+            Brokers
+          </Button>
+          <Button
+            variant={typeFilter === "shipper" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "shipper" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => setTypeFilter("shipper")}
+          >
+            Shippers
+          </Button>
+          <Button
+            variant={typeFilter === "receiver" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "receiver" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+            onClick={() => setTypeFilter("receiver")}
+          >
+            Receivers
+          </Button>
+          <Button
+            variant={typeFilter === "shipper_receiver" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "shipper_receiver" ? "bg-amber-600 text-white hover:bg-amber-700" : ""}`}
+            onClick={() => setTypeFilter("shipper_receiver")}
+          >
+            Shipper/Receiver
           </Button>
         </div>
 
@@ -768,7 +875,8 @@ export default function CustomersTab() {
                     <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-40">Company Name</TableHead>
-                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide whitespace-nowrap w-32">Factoring approval<br/>MC Number</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Type</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide whitespace-nowrap w-32">Factoring / MC</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-32">Contact</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Phone</TableHead>
@@ -814,6 +922,11 @@ export default function CustomersTab() {
                           </div>
                         </TableCell>
                         <TableCell className="py-1 px-2 font-medium">{customer.name}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          <Badge variant="outline" className={`text-xs ${getTypeColor(customer.customer_type)}`}>
+                            {getTypeLabel(customer.customer_type)}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="py-1 px-2">
                           <div className="flex flex-col">
                             <span className={`text-xs font-medium ${

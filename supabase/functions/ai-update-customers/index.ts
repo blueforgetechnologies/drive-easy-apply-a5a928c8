@@ -157,7 +157,8 @@ serve(async (req) => {
         city: customerData.city || null,
         state: customerData.state || null,
         zip: customerData.zip || null,
-        status: 'active'
+        status: 'active',
+        customer_type: 'broker'  // Auto-imported from load emails = brokers
       };
 
       if (existingId) {

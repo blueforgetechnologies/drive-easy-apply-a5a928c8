@@ -476,6 +476,7 @@ export type Database = {
           contact_name: string | null
           created_at: string | null
           credit_limit: number | null
+          customer_type: string | null
           dot_number: string | null
           email: string | null
           email_secondary: string | null
@@ -500,6 +501,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          customer_type?: string | null
           dot_number?: string | null
           email?: string | null
           email_secondary?: string | null
@@ -524,6 +526,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          customer_type?: string | null
           dot_number?: string | null
           email?: string | null
           email_secondary?: string | null
