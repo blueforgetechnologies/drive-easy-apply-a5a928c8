@@ -736,110 +736,95 @@ const UsageCostsTab = () => {
     refetchInterval: mapboxRefreshInterval
   });
 
-  // Estimate Lovable Cloud usage (database operations, edge functions, storage)
-  // Cloud is billed at ~$0.01 per unit - uses PARALLEL queries for speed and reliability
+  // Estimate Lovable Cloud usage - ALL TIME to match Lovable billing (same as Cloud & AI tab)
+  // This ensures consistency between Usage and Cloud & AI tabs
   const { data: cloudUsageStats, refetch: refetchCloudUsage, isFetching: isCloudFetching } = useQuery({
-    queryKey: ["cloud-usage-estimate", currentMonth],
+    queryKey: ["cloud-usage-estimate-alltime"],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+      console.log('[Cloud Usage] Fetching ALL-TIME operations to match Lovable billing');
       
-      console.log('[Cloud Usage] Fetching operations since:', thirtyDaysAgoISO);
-      
-      // Run ALL queries in PARALLEL for speed and to prevent silent failures
+      // Fetch ALL write operations (no date filter) to match Lovable's billing - same as Cloud & AI tab
       const [
-        emailResult,
-        matchResult,
-        geocodeResult,
-        mapTrackingResult,
-        directionsResult,
-        aiResult,
-        emailSendResult,
-        auditResult,
-        matchActionResult,
-        emailVolumeResult,
-        archiveResult
+        emailResult, matchResult, geocodeResult, mapTrackingResult,
+        directionsResult, aiResult, emailSendResult, auditResult,
+        matchActionResult, emailVolumeResult, archiveResult,
+        vehicleLocationResult, missedLoadsResult, pubsubResult,
+        loadsResult, loadStopsResult
       ] = await Promise.all([
-        // Email processing operations (high volume)
-        supabase.from('load_emails').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        // Hunt match operations
-        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        // Geocode cache operations
-        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        // Map load tracking operations
-        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        // Directions API tracking operations
-        supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        // AI usage tracking operations
-        supabase.from('ai_usage_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        // Email send tracking operations
-        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        // Audit log operations
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('timestamp', thirtyDaysAgoISO),
-        // Match action history
-        supabase.from('match_action_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        // Email volume stats
-        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        // Archived emails (also counts toward operations)
-        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }).gte('archived_at', thirtyDaysAgoISO)
+        supabase.from('load_emails').select('*', { count: 'exact', head: true }),
+        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }),
+        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }),
+        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('ai_usage_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('match_action_history').select('*', { count: 'exact', head: true }),
+        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }),
+        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }),
+        supabase.from('vehicle_location_history').select('*', { count: 'exact', head: true }),
+        supabase.from('missed_loads_history').select('*', { count: 'exact', head: true }),
+        supabase.from('pubsub_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('loads').select('*', { count: 'exact', head: true }),
+        supabase.from('load_stops').select('*', { count: 'exact', head: true }),
       ]);
       
-      // Extract counts with error handling
-      const emailOps = emailResult.count ?? 0;
-      const matchOps = matchResult.count ?? 0;
-      const geocodeOps = geocodeResult.count ?? 0;
-      const mapTrackingOps = mapTrackingResult.count ?? 0;
-      const directionsOps = directionsResult.count ?? 0;
-      const aiOps = aiResult.count ?? 0;
-      const emailSendOps = emailSendResult.count ?? 0;
-      const auditOps = auditResult.count ?? 0;
-      const matchActionOps = matchActionResult.count ?? 0;
-      const emailVolumeOps = emailVolumeResult.count ?? 0;
-      const archiveOps = archiveResult.count ?? 0;
+      // Categorize by operation type (same structure as Cloud & AI tab)
+      const emailIngestion = {
+        emails: emailResult.count ?? 0,
+        geocode: geocodeResult.count ?? 0,
+        emailVolume: emailVolumeResult.count ?? 0,
+        archive: archiveResult.count ?? 0,
+        pubsub: pubsubResult.count ?? 0,
+      };
       
-      console.log('[Cloud Usage] Raw counts:', {
-        emails: emailOps,
-        matches: matchOps,
-        geocode: geocodeOps,
-        mapTracking: mapTrackingOps,
-        directions: directionsOps,
-        ai: aiOps,
-        emailSend: emailSendOps,
-        audit: auditOps,
-        matchActions: matchActionOps,
-        emailVolume: emailVolumeOps,
-        archive: archiveOps
-      });
+      const huntOperations = {
+        matches: matchResult.count ?? 0,
+        matchActions: matchActionResult.count ?? 0,
+        missedLoads: missedLoadsResult.count ?? 0,
+      };
       
-      // Calculate total write operations
-      const writeOps = emailOps + matchOps + geocodeOps + mapTrackingOps + 
-                       directionsOps + aiOps + emailSendOps + auditOps + 
-                       matchActionOps + emailVolumeOps + archiveOps;
+      const loadManagement = {
+        loads: loadsResult.count ?? 0,
+        loadStops: loadStopsResult.count ?? 0,
+      };
       
-      // Estimate read operations (typically 3-5x write operations for active apps)
-      // Load Hunter does many reads for matching, filtering, realtime subscriptions
-      const estimatedReadMultiplier = 4;
-      const estimatedReadOps = writeOps * estimatedReadMultiplier;
+      const tracking = {
+        mapTracking: mapTrackingResult.count ?? 0,
+        directions: directionsResult.count ?? 0,
+        vehicleLocation: vehicleLocationResult.count ?? 0,
+      };
       
-      // Edge function invocations (estimate based on email processing + AI + other functions)
-      // Each email triggers ~2-3 edge function calls (webhook, process-queue, etc.)
-      const edgeFunctionCalls = emailOps * 2.5 + aiOps + emailSendOps;
+      const other = {
+        ai: aiResult.count ?? 0,
+        emailSend: emailSendResult.count ?? 0,
+        audit: auditResult.count ?? 0,
+      };
       
-      // Realtime subscriptions add to read operations
-      // Estimate ~10 subscription updates per email received
-      const realtimeOps = emailOps * 10;
+      const totalEmailIngestion = Object.values(emailIngestion).reduce((a, b) => a + b, 0);
+      const totalHuntOps = Object.values(huntOperations).reduce((a, b) => a + b, 0);
+      const totalLoadMgmt = Object.values(loadManagement).reduce((a, b) => a + b, 0);
+      const totalTracking = Object.values(tracking).reduce((a, b) => a + b, 0);
+      const totalOther = Object.values(other).reduce((a, b) => a + b, 0);
+      const writeOps = totalEmailIngestion + totalHuntOps + totalLoadMgmt + totalTracking + totalOther;
       
-      // Total operations (for informational metrics only - Cloud billing is separate)
+      // Edge function estimates
+      const edgeFunctionCalls = (emailIngestion.emails * 2.5) + (other.ai) + (other.emailSend) + (tracking.directions);
+      
+      // Realtime estimates
+      const realtimeOps = emailIngestion.emails * 5;
+      
+      // Database reads estimate
+      const estimatedReadOps = writeOps * 4;
+      
+      // Total operations
       const totalOps = writeOps + Math.round(estimatedReadOps) + Math.round(edgeFunctionCalls) + realtimeOps;
       
-      // Estimated cost calculation based on actual historical data:
-      // Known: $25 actual cost for ~186K write operations = $0.000134 per write op
-      // This rate is derived from real Lovable Cloud billing data
+      // Cost rate from actual billing: $25 for ~186K write ops = $0.000134/write
       const COST_PER_WRITE_OP = 0.000134;
       const estimatedCost = writeOps * COST_PER_WRITE_OP;
       
-      console.log('[Cloud Usage] Total:', { writeOps, estimatedCost: estimatedCost.toFixed(2) });
+      console.log('[Cloud Usage] All-time totals:', { writeOps, estimatedCost: estimatedCost.toFixed(2) });
       
       return {
         writeOps,
@@ -849,21 +834,33 @@ const UsageCostsTab = () => {
         totalOps,
         estimatedCost: estimatedCost.toFixed(2),
         breakdown: {
-          emails: emailOps,
-          matches: matchOps,
-          geocode: geocodeOps,
-          mapTracking: mapTrackingOps,
-          directions: directionsOps,
-          ai: aiOps,
-          emailSend: emailSendOps,
-          audit: auditOps,
-          matchActions: matchActionOps,
-          emailVolume: emailVolumeOps,
-          archive: archiveOps
+          emails: emailIngestion.emails,
+          matches: huntOperations.matches,
+          geocode: emailIngestion.geocode,
+          mapTracking: tracking.mapTracking,
+          directions: tracking.directions,
+          ai: other.ai,
+          emailSend: other.emailSend,
+          audit: other.audit,
+          matchActions: huntOperations.matchActions,
+          emailVolume: emailIngestion.emailVolume,
+          archive: emailIngestion.archive,
+          vehicleLocation: tracking.vehicleLocation,
+          missedLoads: huntOperations.missedLoads,
+          pubsub: emailIngestion.pubsub,
+          loads: loadManagement.loads,
+          loadStops: loadManagement.loadStops,
+        },
+        categories: {
+          emailIngestion: { ops: totalEmailIngestion, details: emailIngestion },
+          huntOperations: { ops: totalHuntOps, details: huntOperations },
+          loadManagement: { ops: totalLoadMgmt, details: loadManagement },
+          tracking: { ops: totalTracking, details: tracking },
+          other: { ops: totalOther, details: other },
         }
       };
     },
-    refetchInterval: 30000, // Refresh every 30 seconds for more real-time tracking
+    refetchInterval: 30000,
     staleTime: 15000,
     gcTime: 300000,
   });
@@ -1266,7 +1263,7 @@ const UsageCostsTab = () => {
                 </div>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between text-muted-foreground font-medium">
-                    <span>Write Operations (30 days):</span>
+                    <span>Write Operations (All Time):</span>
                     <span className="text-foreground">{costBreakdown.cloud.writeOps.toLocaleString()}</span>
                   </div>
                   
