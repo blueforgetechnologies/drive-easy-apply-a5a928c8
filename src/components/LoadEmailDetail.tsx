@@ -935,11 +935,11 @@ const LoadEmailDetail = ({
         
         {/* Action Buttons - Compact */}
         <div className="flex gap-1.5 px-4 pt-3">
-          <Button size="sm" className={`flex-1 flex flex-col items-center py-2 h-auto ${bidConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pink-500 hover:bg-pink-600'}`} onClick={() => setBidConfirmed(true)}>
+          <Button size="sm" className={`flex-1 flex flex-col items-center py-2 h-auto ${bidConfirmed ? 'bg-gray-400 hover:bg-gray-500' : 'bg-emerald-600 hover:bg-emerald-700'}`} onClick={() => setBidConfirmed(true)} disabled={bidConfirmed}>
             <span className="text-[10px] font-medium opacity-90">Confirm Bid</span>
             <span className="text-sm font-bold">$ {bidAmount || '0'}</span>
           </Button>
-          <Button size="sm" variant="outline" className="flex-1 h-auto py-2" disabled={!bidConfirmed || isSending} onClick={handleSendBid}>
+          <Button size="sm" className={`flex-1 h-auto py-2 ${bidConfirmed ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-300 text-gray-600 hover:bg-gray-400'}`} disabled={!bidConfirmed || isSending} onClick={handleSendBid}>
             {isSending ? 'Sending...' : 'Send Bid'}
           </Button>
           <Button size="sm" className="flex-1 bg-red-500 hover:bg-red-600 h-auto py-2" onClick={() => setShowEmailConfirmDialog(false)} disabled={isSending}>
