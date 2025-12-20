@@ -332,7 +332,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1">
                         <Button
                           size="icon"
                           variant="ghost"
@@ -345,7 +345,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
                           title="Delete"
                         >
