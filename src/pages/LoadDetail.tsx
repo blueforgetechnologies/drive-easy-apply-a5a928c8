@@ -669,10 +669,39 @@ export default function LoadDetail() {
                   {load.customer_id && (() => {
                     const customer = customers.find(c => c.id === load.customer_id);
                     return customer ? (
-                      <div className="text-sm text-muted-foreground space-y-1 border-t pt-2">
-                        <p className="font-medium text-foreground">{customer.contact_name}</p>
-                        <p>{customer.phone} • {customer.email}</p>
-                        <p className="text-xs">{customer.address}, {customer.city}, {customer.state} {customer.zip}</p>
+                      <div className="text-sm text-muted-foreground space-y-2 border-t pt-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs font-medium text-muted-foreground">Contact</Label>
+                            <p className="text-sm text-foreground">{customer.contact_name || '—'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
+                            <p className="text-sm text-foreground">{customer.phone || '—'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+                          <p className="text-sm text-foreground">{customer.email || '—'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium text-muted-foreground">Address</Label>
+                          <p className="text-sm text-foreground">{customer.address || '—'}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label className="text-xs font-medium text-muted-foreground">City</Label>
+                            <p className="text-sm text-foreground">{customer.city || '—'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs font-medium text-muted-foreground">State</Label>
+                            <p className="text-sm text-foreground">{customer.state || '—'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs font-medium text-muted-foreground">ZIP</Label>
+                            <p className="text-sm text-foreground">{customer.zip || '—'}</p>
+                          </div>
+                        </div>
                       </div>
                     ) : null;
                   })()}
@@ -701,6 +730,10 @@ export default function LoadDetail() {
                             updateField("broker_contact", customer.contact_name || "");
                             updateField("broker_phone", customer.phone || "");
                             updateField("broker_email", customer.email || "");
+                            updateField("broker_address", customer.address || "");
+                            updateField("broker_city", customer.city || "");
+                            updateField("broker_state", customer.state || "");
+                            updateField("broker_zip", customer.zip || "");
                             toast.success("Copied from customer");
                           }
                         } else {
@@ -719,6 +752,24 @@ export default function LoadDetail() {
                     <Input className="h-8 text-sm" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
                   </div>
                   <Input className="h-8 text-sm" value={load.broker_contact || ""} onChange={(e) => updateField("broker_contact", e.target.value)} placeholder="Contact Person" />
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Address</Label>
+                    <Input className="h-8 text-sm mt-1" value={(load as any).broker_address || ""} onChange={(e) => updateField("broker_address", e.target.value)} placeholder="Street Address" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">City</Label>
+                      <Input className="h-8 text-sm mt-1" value={(load as any).broker_city || ""} onChange={(e) => updateField("broker_city", e.target.value)} placeholder="City" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">State</Label>
+                      <Input className="h-8 text-sm mt-1 uppercase" value={(load as any).broker_state || ""} onChange={(e) => updateField("broker_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">ZIP</Label>
+                      <Input className="h-8 text-sm mt-1" value={(load as any).broker_zip || ""} onChange={(e) => updateField("broker_zip", e.target.value)} placeholder="ZIP" />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
