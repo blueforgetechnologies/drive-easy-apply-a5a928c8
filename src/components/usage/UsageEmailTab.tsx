@@ -7,36 +7,45 @@ import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'rec
 import { Button } from "@/components/ui/button";
 
 interface UsageEmailTabProps {
-  selectedMonth: string;
+  selectedMonth: string; // "YYYY-MM" or "all"
 }
 
+const getDateRange = (selectedMonth: string) => {
+  if (selectedMonth === "all") {
+    return { startISO: null, endISO: null, isAllTime: true };
+  }
+  const startDate = new Date(selectedMonth + '-01');
+  const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+  return { startISO: startDate.toISOString(), endISO: endDate.toISOString(), isAllTime: false };
+};
+
 export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
-  // Email volume for the selected month - use created_at
+  const { startISO, endISO, isAllTime } = getDateRange(selectedMonth);
+  const periodLabel = isAllTime ? "all time" : selectedMonth;
+
+  // Email volume for the selected period
   const { data: emailStats, refetch: refetchStats, isFetching: isStatsFetching } = useQuery({
     queryKey: ["email-usage-detail", selectedMonth],
     queryFn: async () => {
-      const startDate = new Date(selectedMonth + '-01');
-      const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+      let received = 0, active = 0, archived = 0;
       
-      // Count from load_emails using created_at
-      const { count: received } = await supabase
-        .from('load_emails')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
+      if (isAllTime) {
+        const { count: activeCount } = await supabase.from('load_emails').select('*', { count: 'exact', head: true });
+        const { count: archivedCount } = await supabase.from('load_emails_archive').select('*', { count: 'exact', head: true });
+        active = activeCount || 0;
+        archived = archivedCount || 0;
+        received = active + archived;
+      } else {
+        const { count: activeCount } = await supabase.from('load_emails').select('*', { count: 'exact', head: true })
+          .gte('created_at', startISO!).lte('created_at', endISO!);
+        const { count: archivedCount } = await supabase.from('load_emails_archive').select('*', { count: 'exact', head: true })
+          .gte('original_created_at', startISO!).lte('original_created_at', endISO!);
+        active = activeCount || 0;
+        archived = archivedCount || 0;
+        received = active + archived;
+      }
       
-      // Also count archived emails for this period
-      const { count: archived } = await supabase
-        .from('load_emails_archive')
-        .select('*', { count: 'exact', head: true })
-        .gte('original_created_at', startDate.toISOString())
-        .lte('original_created_at', endDate.toISOString());
-      
-      return { 
-        received: (received || 0) + (archived || 0),
-        active: received || 0,
-        archived: archived || 0,
-      };
+      return { received, active, archived };
     },
     refetchInterval: 30000,
   });
@@ -45,42 +54,31 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
   const { data: sendStats, refetch: refetchSend, isFetching: isSendFetching } = useQuery({
     queryKey: ["email-send-stats", selectedMonth],
     queryFn: async () => {
-      const { data, count } = await supabase
-        .from('email_send_tracking')
-        .select('email_type, success', { count: 'exact' })
-        .eq('month_year', selectedMonth);
+      let query = supabase.from('email_send_tracking').select('email_type, success', { count: 'exact' });
+      if (!isAllTime) {
+        query = query.eq('month_year', selectedMonth);
+      }
+      const { data, count } = await query;
       
       const successCount = data?.filter(r => r.success).length || 0;
       const byType: Record<string, number> = {};
-      data?.forEach(row => {
-        byType[row.email_type] = (byType[row.email_type] || 0) + 1;
-      });
+      data?.forEach(row => { byType[row.email_type] = (byType[row.email_type] || 0) + 1; });
       
-      return { 
-        total: count || 0, 
-        success: successCount,
-        failed: (count || 0) - successCount,
-        byType,
-      };
+      return { total: count || 0, success: successCount, failed: (count || 0) - successCount, byType };
     },
     refetchInterval: 30000,
   });
 
-  // Email volume history - daily breakdown
+  // Email volume history - daily breakdown (last 14 days for selected period)
   const { data: volumeHistory } = useQuery({
     queryKey: ["email-volume-history-daily", selectedMonth],
     queryFn: async () => {
-      const startDate = new Date(selectedMonth + '-01');
-      const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+      let query = supabase.from('load_emails').select('created_at');
+      if (!isAllTime) {
+        query = query.gte('created_at', startISO!).lte('created_at', endISO!);
+      }
+      const { data: emails } = await query;
       
-      // Get daily counts directly from load_emails
-      const { data: emails } = await supabase
-        .from('load_emails')
-        .select('created_at')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-      
-      // Group by day
       const dailyData: Record<string, number> = {};
       emails?.forEach(email => {
         const day = email.created_at.slice(0, 10);
@@ -110,11 +108,7 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
 
   const isFetching = isStatsFetching || isSendFetching;
 
-  const refreshAll = () => {
-    refetchStats();
-    refetchSend();
-    refetchPending();
-  };
+  const refreshAll = () => { refetchStats(); refetchSend(); refetchPending(); };
 
   const FREE_TIER_RESEND = 3000;
   const resendUsage = sendStats?.total || 0;
@@ -123,16 +117,12 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Cost Summary */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Email Pipeline
-              </CardTitle>
-              <CardDescription>Incoming emails and outgoing notifications</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5" />Email Pipeline</CardTitle>
+              <CardDescription>Incoming emails and outgoing notifications ({periodLabel})</CardDescription>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
@@ -147,29 +137,24 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         </CardHeader>
       </Card>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Inbox className="h-4 w-4 text-blue-500" />
-              </div>
+              <div className="p-2 rounded-lg bg-blue-500/10"><Inbox className="h-4 w-4 text-blue-500" /></div>
               <CardTitle className="text-sm font-medium">Total Received</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{(emailStats?.received || 0).toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">this month</p>
+            <p className="text-xs text-muted-foreground">{periodLabel}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Mail className="h-4 w-4 text-green-500" />
-              </div>
+              <div className="p-2 rounded-lg bg-green-500/10"><Mail className="h-4 w-4 text-green-500" /></div>
               <CardTitle className="text-sm font-medium">Active</CardTitle>
             </div>
           </CardHeader>
@@ -182,9 +167,7 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-gray-500/10">
-                <Archive className="h-4 w-4 text-gray-500" />
-              </div>
+              <div className="p-2 rounded-lg bg-gray-500/10"><Archive className="h-4 w-4 text-gray-500" /></div>
               <CardTitle className="text-sm font-medium">Archived</CardTitle>
             </div>
           </CardHeader>
@@ -197,26 +180,20 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Send className="h-4 w-4 text-purple-500" />
-              </div>
+              <div className="p-2 rounded-lg bg-purple-500/10"><Send className="h-4 w-4 text-purple-500" /></div>
               <CardTitle className="text-sm font-medium">Sent</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{(sendStats?.total || 0).toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">
-              via Resend
-            </p>
+            <p className="text-xs text-muted-foreground">via Resend</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <Clock className="h-4 w-4 text-orange-500" />
-              </div>
+              <div className="p-2 rounded-lg bg-orange-500/10"><Clock className="h-4 w-4 text-orange-500" /></div>
               <CardTitle className="text-sm font-medium">Queue</CardTitle>
             </div>
           </CardHeader>
@@ -227,55 +204,32 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         </Card>
       </div>
 
-      {/* Resend Usage */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">Resend Free Tier Usage</CardTitle>
-          <CardDescription>
-            {resendUsage.toLocaleString()} / {FREE_TIER_RESEND.toLocaleString()} free emails
-          </CardDescription>
+          <CardDescription>{resendUsage.toLocaleString()} / {FREE_TIER_RESEND.toLocaleString()} free emails</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           <Progress value={resendPercentage} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>
-              {resendPercentage < 100 
-                ? `${(FREE_TIER_RESEND - resendUsage).toLocaleString()} remaining`
-                : `${(resendUsage - FREE_TIER_RESEND).toLocaleString()} over free tier`
-              }
-            </span>
+            <span>{resendPercentage < 100 ? `${(FREE_TIER_RESEND - resendUsage).toLocaleString()} remaining` : `${(resendUsage - FREE_TIER_RESEND).toLocaleString()} over free tier`}</span>
             <span>$0.001/email after free tier</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Volume Chart */}
       {volumeHistory && volumeHistory.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Daily Email Volume</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm font-medium">Daily Email Volume</CardTitle></CardHeader>
           <CardContent>
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={volumeHistory}>
                   <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value: number) => [value.toLocaleString(), 'Emails']}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="received" 
-                    stroke="hsl(217 91% 60%)" 
-                    fill="hsl(217 91% 60% / 0.2)" 
-                    strokeWidth={2}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                    formatter={(value: number) => [value.toLocaleString(), 'Emails']} />
+                  <Area type="monotone" dataKey="received" stroke="hsl(217 91% 60%)" fill="hsl(217 91% 60% / 0.2)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -283,12 +237,9 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         </Card>
       )}
 
-      {/* Email Types Breakdown */}
       {sendStats?.byType && Object.keys(sendStats.byType).length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Sent Emails by Type</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm font-medium">Sent Emails by Type</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {Object.entries(sendStats.byType).map(([type, count]) => (
@@ -302,27 +253,18 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         </Card>
       )}
 
-      {/* Delivery Status */}
       {(sendStats?.total || 0) > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Delivery Status</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm font-medium">Delivery Status</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10">
                 <CheckCircle className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="font-medium">{sendStats?.success || 0}</p>
-                  <p className="text-xs text-muted-foreground">Delivered</p>
-                </div>
+                <div><p className="font-medium">{sendStats?.success || 0}</p><p className="text-xs text-muted-foreground">Delivered</p></div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
-                <div>
-                  <p className="font-medium">{sendStats?.failed || 0}</p>
-                  <p className="text-xs text-muted-foreground">Failed</p>
-                </div>
+                <div><p className="font-medium">{sendStats?.failed || 0}</p><p className="text-xs text-muted-foreground">Failed</p></div>
               </div>
             </div>
           </CardContent>

@@ -4,12 +4,14 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface UsageMonthFilterProps {
-  selectedMonth: string; // YYYY-MM format
+  selectedMonth: string; // YYYY-MM format or "all"
   onMonthChange: (month: string) => void;
   className?: string;
 }
 
 const getMonthLabel = (monthStr: string): string => {
+  if (monthStr === "all") return "All Time";
+  
   const [year, month] = monthStr.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1);
   const now = new Date();
@@ -58,6 +60,21 @@ export function UsageMonthFilter({ selectedMonth, onMonthChange, className }: Us
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
+      {/* All Time button - always visible */}
+      <Button
+        variant={selectedMonth === "all" ? "default" : "outline"}
+        size="sm"
+        className={cn(
+          "h-8 px-3 text-xs font-medium whitespace-nowrap transition-all shrink-0",
+          selectedMonth === "all" && "bg-primary text-primary-foreground"
+        )}
+        onClick={() => onMonthChange("all")}
+      >
+        All Time
+      </Button>
+      
+      <div className="w-px h-6 bg-border mx-1" />
+      
       <Button
         variant="ghost"
         size="icon"
