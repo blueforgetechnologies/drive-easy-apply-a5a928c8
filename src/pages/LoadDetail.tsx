@@ -1124,9 +1124,10 @@ export default function LoadDetail() {
                   <div>
                     <Label className="text-[10px] font-medium text-muted-foreground">Driver</Label>
                     <div className="flex gap-1">
-                      <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
+                      <Select value={load.assigned_driver_id || "n/a"} onValueChange={(value) => updateField("assigned_driver_id", value === "n/a" ? null : value)}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent className="bg-background">
+                          <SelectItem value="n/a">N/A</SelectItem>
                           {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
                         </SelectContent>
                       </Select>
