@@ -1838,15 +1838,7 @@ export default function LoadsTab() {
             <>
               {selectedDocument.name.toLowerCase().endsWith('.pdf') ? (
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(selectedDocument.url, '_blank')}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Open in New Tab
-                    </Button>
+                  <div className="flex items-center justify-end gap-2 mb-2">
                     <a
                       href={selectedDocument.url}
                       download={selectedDocument.name}
