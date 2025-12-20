@@ -34,6 +34,7 @@ export default function LoadDetail() {
   const [stops, setStops] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("overview");
   const [drivers, setDrivers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
@@ -617,7 +618,7 @@ export default function LoadDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-1.5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-1.5">
         <TabsList className="grid w-full grid-cols-6 h-8">
           <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
           <TabsTrigger value="stops" className="text-xs">Stops ({stops.length})</TabsTrigger>
@@ -1956,7 +1957,15 @@ export default function LoadDetail() {
           <LoadDocuments 
             loadId={id!} 
             documents={documents} 
-            onDocumentsChange={loadData}
+            onDocumentsChange={async () => {
+              // Only refresh documents, not the entire page
+              const { data } = await supabase
+                .from("load_documents")
+                .select("*")
+                .eq("load_id", id)
+                .order("uploaded_at", { ascending: false });
+              setDocuments(data || []);
+            }}
           />
         </TabsContent>
 
