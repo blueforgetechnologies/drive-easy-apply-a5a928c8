@@ -260,6 +260,7 @@ export default function LoadAnalyticsTab() {
   };
 
   // Core data fetching function with progress tracking - fetches ALL data for range
+  // Queries both load_emails (active) and load_emails_archive (archived) for complete history
   const fetchDataForRange = async (
     dateStart: Date, 
     dateEnd: Date, 
@@ -269,57 +270,82 @@ export default function LoadAnalyticsTab() {
     const dateFilter = dateStart.toISOString();
     const endFilter = dateEnd.toISOString();
 
-    // Get total count for the date range
-    const { count, error: countError } = await supabase
-      .from("load_emails")
-      .select("id", { count: 'exact', head: true })
-      .gte("received_at", dateFilter)
-      .lte("received_at", endFilter);
+    // Get total count from both tables for the date range
+    const [activeCountResult, archiveCountResult] = await Promise.all([
+      supabase
+        .from("load_emails")
+        .select("id", { count: 'exact', head: true })
+        .gte("received_at", dateFilter)
+        .lte("received_at", endFilter),
+      supabase
+        .from("load_emails_archive")
+        .select("id", { count: 'exact', head: true })
+        .gte("received_at", dateFilter)
+        .lte("received_at", endFilter)
+    ]);
 
-    if (countError) throw countError;
+    if (activeCountResult.error) throw activeCountResult.error;
+    // Archive table may not have data yet, don't throw error
     
-    const actualCount = count || 0;
-    const recordsToFetch = actualCount; // Fetch ALL records for the date range
-    const numPages = Math.ceil(recordsToFetch / pageSize);
+    const activeCount = activeCountResult.count || 0;
+    const archiveCount = archiveCountResult.count || 0;
+    const totalCount = activeCount + archiveCount;
     
-    console.log(`fetchDataForRange: fetching all ${recordsToFetch} for range ${dateFilter} to ${endFilter}`);
+    console.log(`fetchDataForRange: fetching ${activeCount} active + ${archiveCount} archived = ${totalCount} total for range ${dateFilter} to ${endFilter}`);
     
-    if (numPages === 0) {
-      return { data: [], count: actualCount };
+    if (totalCount === 0) {
+      return { data: [], count: 0 };
     }
 
-    // Fetch in smaller batches to avoid timeouts (max 3 parallel queries at a time for large datasets)
+    // Fetch from both tables in parallel
     const allData: any[] = [];
     const batchSize = 3;
-    let fetchedPages = 0;
     
-    for (let i = 0; i < numPages; i += batchSize) {
-      const batchQueries = Array.from(
-        { length: Math.min(batchSize, numPages - i) }, 
-        (_, j) => {
-          const page = i + j;
-          return supabase
-            .from("load_emails")
-            .select("id, received_at, created_at, parsed_data, email_source")
-            .order("received_at", { ascending: false })
-            .range(page * pageSize, (page + 1) * pageSize - 1)
-            .gte("received_at", dateFilter)
-            .lte("received_at", endFilter);
-        }
-      );
+    // Helper to fetch paginated data from a table
+    const fetchFromTable = async (tableName: 'load_emails' | 'load_emails_archive', recordCount: number) => {
+      const numPages = Math.ceil(recordCount / pageSize);
+      const tableData: any[] = [];
+      
+      for (let i = 0; i < numPages; i += batchSize) {
+        const batchQueries = Array.from(
+          { length: Math.min(batchSize, numPages - i) }, 
+          (_, j) => {
+            const page = i + j;
+            return supabase
+              .from(tableName)
+              .select("id, received_at, created_at, parsed_data, email_source")
+              .order("received_at", { ascending: false })
+              .range(page * pageSize, (page + 1) * pageSize - 1)
+              .gte("received_at", dateFilter)
+              .lte("received_at", endFilter);
+          }
+        );
 
-      const results = await Promise.all(batchQueries);
-      
-      for (const result of results) {
-        if (result.error) throw result.error;
-        if (result.data) allData.push(...result.data);
+        const results = await Promise.all(batchQueries);
+        
+        for (const result of results) {
+          if (result.error) throw result.error;
+          if (result.data) tableData.push(...result.data);
+        }
       }
       
-      fetchedPages += batchQueries.length;
-      if (onProgress) {
-        onProgress(Math.round((fetchedPages / numPages) * 100));
-      }
+      return tableData;
+    };
+
+    // Fetch from both tables in parallel
+    const [activeData, archiveData] = await Promise.all([
+      activeCount > 0 ? fetchFromTable('load_emails', activeCount) : Promise.resolve([]),
+      archiveCount > 0 ? fetchFromTable('load_emails_archive', archiveCount) : Promise.resolve([])
+    ]);
+    
+    allData.push(...activeData, ...archiveData);
+    
+    if (onProgress) {
+      onProgress(100);
     }
+
+    // Sort combined data by received_at descending
+    allData.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
 
     const typedData = allData.map(item => ({
       ...item,
@@ -327,7 +353,7 @@ export default function LoadAnalyticsTab() {
       parsed_data: item.parsed_data as LoadEmailData['parsed_data']
     }));
     
-    return { data: typedData, count: actualCount };
+    return { data: typedData, count: totalCount };
   };
 
   // Get cached data by finding matching range key
