@@ -9,9 +9,10 @@ import { toast } from "sonner";
 
 interface AddCustomerDialogProps {
   onCustomerAdded?: (customerId: string) => void;
+  children?: React.ReactNode;
 }
 
-export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
+export function AddCustomerDialog({ onCustomerAdded, children }: AddCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -132,9 +133,11 @@ export function AddCustomerDialog({ onCustomerAdded }: AddCustomerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Plus className="h-4 w-4" />
-        </Button>
+        {children || (
+          <Button variant="outline" size="icon">
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>

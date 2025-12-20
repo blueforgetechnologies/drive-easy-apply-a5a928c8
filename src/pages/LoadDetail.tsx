@@ -39,6 +39,7 @@ export default function LoadDetail() {
   const [locations, setLocations] = useState<any[]>([]);
   const [carriers, setCarriers] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
   const [carrierDialogOpen, setCarrierDialogOpen] = useState(false);
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierLookupLoading, setCarrierLookupLoading] = useState(false);
@@ -80,7 +81,7 @@ export default function LoadDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes, carriersRes, customersRes] = await Promise.all([
+      const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes, carriersRes, customersRes, companyProfileRes] = await Promise.all([
         supabase.from("loads").select("*").eq("id", id).single(),
         supabase.from("load_stops").select("*").eq("load_id", id).order("stop_sequence"),
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
@@ -90,7 +91,8 @@ export default function LoadDetail() {
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
-        supabase.from("customers").select("id, name, contact_name, phone, email").eq("status", "active"),
+        supabase.from("customers").select("id, name, contact_name, phone, email, address, city, state, zip").eq("status", "active"),
+        supabase.from("company_profile").select("factoring_company_name, factoring_company_address, factoring_company_city, factoring_company_state, factoring_company_zip, factoring_contact_name, factoring_contact_email").limit(1).single(),
       ]);
 
       if (loadRes.error) throw loadRes.error;
@@ -104,6 +106,7 @@ export default function LoadDetail() {
       setLocations(locationsRes.data || []);
       setCarriers(carriersRes.data || []);
       setCustomers(customersRes.data || []);
+      setCompanyProfile(companyProfileRes.data);
 
       // Fetch original email if load came from Load Hunter
       if (loadRes.data?.load_email_id) {
@@ -801,7 +804,64 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-1.5">
-                  <Input className="h-7 text-xs" value={load.broker_name || ""} onChange={(e) => updateField("broker_name", e.target.value)} placeholder="Billing Party Name" />
+                  {/* Billing Party Dropdown */}
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value=""
+                      onValueChange={(value) => {
+                        if (value === "otr_solutions" && companyProfile) {
+                          updateField("broker_name", companyProfile.factoring_company_name || "");
+                          updateField("broker_contact", companyProfile.factoring_contact_name || "");
+                          updateField("broker_phone", "");
+                          updateField("broker_email", companyProfile.factoring_contact_email || "");
+                          updateField("broker_address", companyProfile.factoring_company_address || "");
+                          updateField("broker_city", companyProfile.factoring_company_city || "");
+                          updateField("broker_state", companyProfile.factoring_company_state || "");
+                          updateField("broker_zip", companyProfile.factoring_company_zip || "");
+                          toast.success("Filled with OTR Solutions info");
+                        } else if (value.startsWith("customer_")) {
+                          const customerId = value.replace("customer_", "");
+                          const customer = customers.find(c => c.id === customerId);
+                          if (customer) {
+                            updateField("broker_name", customer.name);
+                            updateField("broker_contact", customer.contact_name || "");
+                            updateField("broker_phone", customer.phone || "");
+                            updateField("broker_email", customer.email || "");
+                            updateField("broker_address", customer.address || "");
+                            updateField("broker_city", customer.city || "");
+                            updateField("broker_state", customer.state || "");
+                            updateField("broker_zip", customer.zip || "");
+                            toast.success("Filled with customer info");
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue placeholder={load.broker_name || "Select Billing Party..."} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        {companyProfile?.factoring_company_name && (
+                          <SelectItem value="otr_solutions" className="text-xs">
+                            {companyProfile.factoring_company_name}
+                          </SelectItem>
+                        )}
+                        {customers.length > 0 && (
+                          <>
+                            {customers.map((customer) => (
+                              <SelectItem key={customer.id} value={`customer_${customer.id}`} className="text-xs">
+                                {customer.name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <AddCustomerDialog onCustomerAdded={loadData}>
+                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 shrink-0">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </AddCustomerDialog>
+                  </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     <Input className="h-7 text-xs" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
                     <Input className="h-7 text-xs" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
