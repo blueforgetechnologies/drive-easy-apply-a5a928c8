@@ -1413,6 +1413,10 @@ export default function LoadDetail() {
                       <Input className="h-7 text-xs" value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
                     </div>
                     <div>
+                      <Label className="text-[10px] font-medium text-muted-foreground">Customer Load ID</Label>
+                      <Input className="h-7 text-xs" value={load.reference_number || ""} onChange={(e) => updateField("reference_number", e.target.value)} placeholder="Customer's reference #" />
+                    </div>
+                    <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Status</Label>
                       <Select value={load.status || "available"} onValueChange={(value) => updateField("status", value)}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
