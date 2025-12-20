@@ -844,9 +844,23 @@ export default function LoadDetail() {
                         <p className="text-[10px] text-muted-foreground">Shipper / Pickup</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-foreground">{load.pickup_date ? format(new Date(load.pickup_date), 'MMM d, yyyy') : '—'}</p>
-                      <p className="text-[10px] text-muted-foreground">{load.pickup_time || 'No time set'}</p>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 text-[10px] px-2 bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+                        onClick={() => {
+                          setNewStop({ ...newStop, stop_type: 'pickup' });
+                          setStopDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Pickup
+                      </Button>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-foreground">{load.pickup_date ? format(new Date(load.pickup_date), 'MMM d, yyyy') : '—'}</p>
+                        <p className="text-[10px] text-muted-foreground">{load.pickup_time || 'No time set'}</p>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -913,9 +927,23 @@ export default function LoadDetail() {
                         <p className="text-[10px] text-muted-foreground">Receiver / Delivery</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-foreground">{load.delivery_date ? format(new Date(load.delivery_date), 'MMM d, yyyy') : '—'}</p>
-                      <p className="text-[10px] text-muted-foreground">{load.delivery_time || 'No time set'}</p>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 text-[10px] px-2 bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                        onClick={() => {
+                          setNewStop({ ...newStop, stop_type: 'delivery' });
+                          setStopDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Delivery
+                      </Button>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-foreground">{load.delivery_date ? format(new Date(load.delivery_date), 'MMM d, yyyy') : '—'}</p>
+                        <p className="text-[10px] text-muted-foreground">{load.delivery_time || 'No time set'}</p>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
