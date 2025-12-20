@@ -162,6 +162,7 @@ export default function LoadsTab() {
     load_number: `LD-${Date.now()}`,
     load_type: "internal",
     shipper_load_id: "",
+    reference_number: "",
     broker_name: "",
     broker_contact: "",
     broker_phone: "",
@@ -530,6 +531,7 @@ export default function LoadsTab() {
         load_number: `LD-${Date.now()}`,
         load_type: "internal",
         shipper_load_id: "",
+        reference_number: "",
         broker_name: "",
         broker_contact: "",
         broker_phone: "",
@@ -769,11 +771,12 @@ export default function LoadsTab() {
               <RateConfirmationUploader
                 onDataExtracted={(data) => {
                   // Map extracted data to form fields
-                  // Customer's load ID goes to shipper_load_id, we keep our own LD- load_number
+                  // Customer's load ID goes to reference_number (shown in CUSTOMER LOAD column), we keep our own LD- load_number
                   setFormData(prev => ({
                     ...prev,
-                    // Customer/broker info
+                    // Customer/broker info - customer_load_id maps to reference_number for display
                     shipper_load_id: data.customer_load_id || prev.shipper_load_id,
+                    reference_number: data.customer_load_id || data.reference_number || prev.reference_number,
                     broker_name: data.customer_name || prev.broker_name,
                     broker_contact: data.customer_contact || prev.broker_contact,
                     broker_phone: data.customer_phone || prev.broker_phone,
