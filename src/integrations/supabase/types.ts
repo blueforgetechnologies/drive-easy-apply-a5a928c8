@@ -1931,6 +1931,7 @@ export type Database = {
           total_cost: number | null
           total_revenue: number | null
           updated_at: string | null
+          vehicle_size: string | null
         }
         Insert: {
           accessorial_charges?: number | null
@@ -2042,6 +2043,7 @@ export type Database = {
           total_cost?: number | null
           total_revenue?: number | null
           updated_at?: string | null
+          vehicle_size?: string | null
         }
         Update: {
           accessorial_charges?: number | null
@@ -2153,6 +2155,7 @@ export type Database = {
           total_cost?: number | null
           total_revenue?: number | null
           updated_at?: string | null
+          vehicle_size?: string | null
         }
         Relationships: [
           {
