@@ -37,21 +37,29 @@ Important extraction guidelines:
 - Extract rates/amounts as numbers without currency symbols
 - For addresses, extract each component separately (street, city, state, zip)
 - If a field is not found, leave it as null
-- Look for load/reference numbers, PO numbers, BOL numbers
-- Extract broker/customer company name and contact info
-- Look for commodity/cargo descriptions, weight, and dimensions`;
+- Look for the customer/broker's load ID - this may be called Pro#, Order#, Load#, Reference#, Confirmation#, Trip#, or similar
+- Extract the customer/broker company name, address, and MC number if available
+- Look for commodity/cargo descriptions, weight, pieces/pallets, and dimensions
+- Extract total miles for the trip`;
 
     const userPrompt = `Extract all load information from this rate confirmation document. The document is named "${fileName}".
 
+IMPORTANT: The customer's load ID is critical - look for any identifier they use like Pro#, Order#, Load#, Reference#, Confirmation#, Trip#, Shipment#, etc.
+
 Return the extracted data in the following JSON structure:
 {
-  "load_number": "reference or load number",
+  "customer_load_id": "the customer/broker's load ID (Pro#, Order#, Reference#, Confirmation#, etc.)",
   "rate": numeric rate amount,
-  "broker_name": "broker/customer company name",
-  "broker_email": "broker contact email",
-  "broker_phone": "broker contact phone",
-  "broker_contact": "broker contact person name",
-  "reference_number": "PO or reference number",
+  "customer_name": "customer/broker company name who is paying for this load",
+  "customer_address": "customer/broker street address",
+  "customer_city": "customer/broker city",
+  "customer_state": "customer/broker state abbreviation",
+  "customer_zip": "customer/broker zip code",
+  "customer_mc_number": "customer/broker MC# or DOT# if available",
+  "customer_email": "customer/broker contact email",
+  "customer_phone": "customer/broker contact phone",
+  "customer_contact": "customer/broker contact person name",
+  "reference_number": "PO number or secondary reference",
   "shipper_name": "shipper/pickup company name",
   "shipper_address": "pickup street address",
   "shipper_city": "pickup city",
@@ -74,9 +82,9 @@ Return the extracted data in the following JSON structure:
   "delivery_time": "HH:MM",
   "cargo_description": "commodity or cargo description",
   "cargo_weight": numeric weight in pounds,
-  "cargo_pieces": numeric piece count,
+  "cargo_pieces": numeric piece/pallet count,
   "equipment_type": "trailer type (e.g., Van, Reefer, Flatbed)",
-  "estimated_miles": numeric miles,
+  "estimated_miles": numeric total trip miles,
   "special_instructions": "any special instructions or notes"
 }`;
 
@@ -131,13 +139,18 @@ Return the extracted data in the following JSON structure:
               parameters: {
                 type: 'object',
                 properties: {
-                  load_number: { type: 'string', description: 'Load or reference number' },
+                  customer_load_id: { type: 'string', description: 'Customer/broker load ID (Pro#, Order#, Reference#, etc.)' },
                   rate: { type: 'number', description: 'Rate amount in dollars' },
-                  broker_name: { type: 'string', description: 'Broker/customer company name' },
-                  broker_email: { type: 'string', description: 'Broker contact email' },
-                  broker_phone: { type: 'string', description: 'Broker contact phone' },
-                  broker_contact: { type: 'string', description: 'Broker contact person name' },
-                  reference_number: { type: 'string', description: 'PO or reference number' },
+                  customer_name: { type: 'string', description: 'Customer/broker company name' },
+                  customer_address: { type: 'string', description: 'Customer/broker street address' },
+                  customer_city: { type: 'string', description: 'Customer/broker city' },
+                  customer_state: { type: 'string', description: 'Customer/broker state' },
+                  customer_zip: { type: 'string', description: 'Customer/broker zip code' },
+                  customer_mc_number: { type: 'string', description: 'Customer/broker MC# or DOT#' },
+                  customer_email: { type: 'string', description: 'Customer contact email' },
+                  customer_phone: { type: 'string', description: 'Customer contact phone' },
+                  customer_contact: { type: 'string', description: 'Customer contact person name' },
+                  reference_number: { type: 'string', description: 'PO number or secondary reference' },
                   shipper_name: { type: 'string', description: 'Shipper company name' },
                   shipper_address: { type: 'string', description: 'Pickup street address' },
                   shipper_city: { type: 'string', description: 'Pickup city' },
@@ -160,9 +173,9 @@ Return the extracted data in the following JSON structure:
                   delivery_time: { type: 'string', description: 'Delivery time in HH:MM format' },
                   cargo_description: { type: 'string', description: 'Cargo/commodity description' },
                   cargo_weight: { type: 'number', description: 'Weight in pounds' },
-                  cargo_pieces: { type: 'number', description: 'Number of pieces' },
+                  cargo_pieces: { type: 'number', description: 'Number of pieces/pallets' },
                   equipment_type: { type: 'string', description: 'Trailer/equipment type' },
-                  estimated_miles: { type: 'number', description: 'Trip miles' },
+                  estimated_miles: { type: 'number', description: 'Total trip miles' },
                   special_instructions: { type: 'string', description: 'Special instructions or notes' }
                 },
                 required: []

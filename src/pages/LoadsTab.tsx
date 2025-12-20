@@ -144,8 +144,13 @@ export default function LoadsTab() {
     </div>
   );
   const [formData, setFormData] = useState({
-    load_number: `LD${Date.now()}`,
+    load_number: `LD-${Date.now()}`,
     load_type: "internal",
+    shipper_load_id: "",
+    broker_name: "",
+    broker_contact: "",
+    broker_phone: "",
+    broker_email: "",
     shipper_name: "",
     shipper_address: "",
     shipper_city: "",
@@ -172,6 +177,7 @@ export default function LoadsTab() {
     delivery_date: "",
     cargo_description: "",
     cargo_weight: "",
+    cargo_pieces: "",
     estimated_miles: "",
     rate: "",
     customer_id: "",
@@ -373,6 +379,7 @@ export default function LoadsTab() {
           ...formData,
           status: "available",
           cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
+          cargo_pieces: formData.cargo_pieces ? parseInt(formData.cargo_pieces, 10) : null,
           estimated_miles: formData.estimated_miles ? parseFloat(formData.estimated_miles) : null,
           rate: formData.rate ? parseFloat(formData.rate) : null,
           customer_id: formData.customer_id || null,
@@ -382,8 +389,13 @@ export default function LoadsTab() {
       toast.success("Load created successfully");
       setDialogOpen(false);
       setFormData({
-        load_number: `LD${Date.now()}`,
+        load_number: `LD-${Date.now()}`,
         load_type: "internal",
+        shipper_load_id: "",
+        broker_name: "",
+        broker_contact: "",
+        broker_phone: "",
+        broker_email: "",
         shipper_name: "",
         shipper_address: "",
         shipper_city: "",
@@ -410,6 +422,7 @@ export default function LoadsTab() {
         delivery_date: "",
         cargo_description: "",
         cargo_weight: "",
+        cargo_pieces: "",
         estimated_miles: "",
         rate: "",
         customer_id: "",
@@ -607,9 +620,16 @@ export default function LoadsTab() {
               <RateConfirmationUploader
                 onDataExtracted={(data) => {
                   // Map extracted data to form fields
+                  // Customer's load ID goes to shipper_load_id, we keep our own LD- load_number
                   setFormData(prev => ({
                     ...prev,
-                    load_number: data.load_number || prev.load_number,
+                    // Customer/broker info
+                    shipper_load_id: data.customer_load_id || prev.shipper_load_id,
+                    broker_name: data.customer_name || prev.broker_name,
+                    broker_contact: data.customer_contact || prev.broker_contact,
+                    broker_phone: data.customer_phone || prev.broker_phone,
+                    broker_email: data.customer_email || prev.broker_email,
+                    // Shipper info
                     shipper_name: data.shipper_name || prev.shipper_name,
                     shipper_address: data.shipper_address || prev.shipper_address,
                     shipper_city: data.shipper_city || prev.shipper_city,
@@ -626,6 +646,7 @@ export default function LoadsTab() {
                       : data.pickup_date 
                         ? `${data.pickup_date}T08:00` 
                         : prev.pickup_date,
+                    // Receiver info
                     receiver_name: data.receiver_name || prev.receiver_name,
                     receiver_address: data.receiver_address || prev.receiver_address,
                     receiver_city: data.receiver_city || prev.receiver_city,
@@ -642,8 +663,10 @@ export default function LoadsTab() {
                       : data.delivery_date 
                         ? `${data.delivery_date}T08:00` 
                         : prev.delivery_date,
+                    // Cargo info
                     cargo_description: data.cargo_description || prev.cargo_description,
                     cargo_weight: data.cargo_weight?.toString() || prev.cargo_weight,
+                    cargo_pieces: data.cargo_pieces?.toString() || prev.cargo_pieces,
                     estimated_miles: data.estimated_miles?.toString() || prev.estimated_miles,
                     rate: data.rate?.toString() || prev.rate,
                   }));
@@ -654,12 +677,21 @@ export default function LoadsTab() {
             <form onSubmit={handleAddLoad} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="load_number">Load Number</Label>
+                  <Label htmlFor="load_number">Our Load Number</Label>
                   <Input
                     id="load_number"
                     value={formData.load_number}
                     onChange={(e) => setFormData({ ...formData, load_number: e.target.value })}
                     required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="shipper_load_id">Customer Load ID</Label>
+                  <Input
+                    id="shipper_load_id"
+                    value={formData.shipper_load_id}
+                    onChange={(e) => setFormData({ ...formData, shipper_load_id: e.target.value })}
+                    placeholder="Pro#, Order#, Ref#..."
                   />
                 </div>
                 <div>
@@ -674,6 +706,50 @@ export default function LoadsTab() {
                       <SelectItem value="load_board">Load Board</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Customer/Broker Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="broker_name">Company Name</Label>
+                    <Input
+                      id="broker_name"
+                      value={formData.broker_name}
+                      onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
+                      placeholder="Broker/customer company name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="broker_contact">Contact Name</Label>
+                    <Input
+                      id="broker_contact"
+                      value={formData.broker_contact}
+                      onChange={(e) => setFormData({ ...formData, broker_contact: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="broker_phone">Phone</Label>
+                    <Input
+                      id="broker_phone"
+                      type="tel"
+                      value={formData.broker_phone}
+                      onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="broker_email">Email</Label>
+                    <Input
+                      id="broker_email"
+                      type="email"
+                      value={formData.broker_email}
+                      onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -952,7 +1028,16 @@ export default function LoadsTab() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="estimated_miles">Estimated Miles</Label>
+                    <Label htmlFor="cargo_pieces">Pieces/Pallets</Label>
+                    <Input
+                      id="cargo_pieces"
+                      type="number"
+                      value={formData.cargo_pieces}
+                      onChange={(e) => setFormData({ ...formData, cargo_pieces: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="estimated_miles">Loaded Miles</Label>
                     <Input
                       id="estimated_miles"
                       type="number"
