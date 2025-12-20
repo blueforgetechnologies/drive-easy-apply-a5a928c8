@@ -2346,6 +2346,51 @@ export type Database = {
         }
         Relationships: []
       }
+      mapbox_billing_history: {
+        Row: {
+          billing_end: string
+          billing_period: string
+          billing_start: string
+          created_at: string
+          directions_requests: number
+          geocoding_requests: number
+          id: string
+          invoice_date: string | null
+          map_loads: number
+          notes: string | null
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          billing_end: string
+          billing_period: string
+          billing_start: string
+          created_at?: string
+          directions_requests?: number
+          geocoding_requests?: number
+          id?: string
+          invoice_date?: string | null
+          map_loads?: number
+          notes?: string | null
+          total_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_end?: string
+          billing_period?: string
+          billing_start?: string
+          created_at?: string
+          directions_requests?: number
+          geocoding_requests?: number
+          id?: string
+          invoice_date?: string | null
+          map_loads?: number
+          notes?: string | null
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mapbox_monthly_usage: {
         Row: {
           created_at: string
