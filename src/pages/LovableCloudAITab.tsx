@@ -475,6 +475,23 @@ const LovableCloudAITab = () => {
   const totalEstimatedCost = totalCloudCost + aiCostNumber;
   const budgetUsagePercent = (projectedMonthlyCost / monthlyBudget) * 100;
 
+  // Check spend alerts when cost data changes
+  useEffect(() => {
+    const checkSpendAlerts = async () => {
+      if (totalCloudCost > 0) {
+        try {
+          await supabase.functions.invoke('send-spend-alert', {
+            body: { estimated_spend: totalCloudCost }
+          });
+        } catch (error) {
+          console.log('Spend alert check failed:', error);
+        }
+      }
+    };
+    
+    checkSpendAlerts();
+  }, [totalCloudCost]);
+
   return (
     <TooltipProvider>
       <div className="space-y-6">
