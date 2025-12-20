@@ -16,6 +16,7 @@ import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Che
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
+import { PDFImageViewer } from "@/components/PDFImageViewer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1837,23 +1838,7 @@ export default function LoadsTab() {
           {selectedDocument?.url && (
             <>
               {selectedDocument.name.toLowerCase().endsWith('.pdf') ? (
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-end gap-2 mb-2">
-                    <a
-                      href={selectedDocument.url}
-                      download={selectedDocument.name}
-                      className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download
-                    </a>
-                  </div>
-                  <iframe
-                    src={`${selectedDocument.url}#toolbar=1&navpanes=0`}
-                    className="w-full flex-1 min-h-[55vh] border rounded bg-muted"
-                    title={selectedDocument.name}
-                  />
-                </div>
+                <PDFImageViewer url={selectedDocument.url} fileName={selectedDocument.name} />
               ) : (
                 <img
                   src={selectedDocument.url}
