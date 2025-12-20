@@ -34,8 +34,14 @@ Extract ALL available information from the document. Be thorough and extract eve
 IMPORTANT FIELD MAPPINGS:
 - "Shipper" = Origin/Pickup location  
 - "Receiver" or "Consignee" = Destination/Delivery location
-- Customer load ID may appear as: Pro#, Order#, Reference#, Load#, Confirmation#, BOL#, PO#, Trip#, Shipment#
 - Look for MC# or DOT# to identify the customer/broker
+
+CRITICAL - CUSTOMER LOAD ID EXTRACTION:
+- The customer_load_id is the MOST IMPORTANT identifier - look for it PROMINENTLY at the top of the document
+- Common labels: "PRO #", "Pro#", "Order #", "Order#", "Reference #", "Ref#", "Load #", "Confirmation #", "BOL #", "PO #", "Trip #", "Shipment #"
+- Often appears in a header/title area, sometimes in large/bold text
+- May appear multiple times - use the one that looks like the primary document identifier
+- Example: "PRO # 1134288" → customer_load_id = "1134288"
 - Miles may appear as: loaded miles, estimated miles, trip miles, total miles
 - Pieces may appear as: pieces, pallets, skids, units, qty
 
