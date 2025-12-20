@@ -1522,7 +1522,7 @@ export default function LoadHunterTab() {
           .eq('match_status', 'skipped')
           .gte('updated_at', midnightETIso);
 
-        // Fetch bid matches (match_status = 'bid', today only - clears at midnight) - include email data
+        // Fetch bid matches (match_status = 'bid', today only - clears at midnight) - include email data and bid status
         const { data: bidData, error: bidError } = await supabase
           .from("load_hunt_matches")
           .select(`
@@ -1530,6 +1530,9 @@ export default function LoadHunterTab() {
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
+            ),
+            load_bids (
+              id, status, bid_amount, created_at
             )
           `)
           .eq('match_status', 'bid')
@@ -4983,17 +4986,29 @@ export default function LoadHunterTab() {
                                   if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
+                                    // Check if this is a duplicate bid (for mybids tab)
+                                    const bidStatus = activeFilter === 'mybids' && (match as any).load_bids 
+                                      ? ((match as any).load_bids[0]?.status || 'sent')
+                                      : null;
+                                    const isDuplicateBid = bidStatus === 'duplicate';
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                       return (
-                                        <div>
-                                          <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
-                                            {vehicle.vehicle_number || "N/A"} - {driverName}
+                                        <div className="flex items-center gap-2">
+                                          <div>
+                                            <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
+                                              {vehicle.vehicle_number || "N/A"} - {driverName}
+                                            </div>
+                                            <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                              {carrierName}
+                                            </div>
                                           </div>
-                                          <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                            {carrierName}
-                                          </div>
+                                          {isDuplicateBid && (
+                                            <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-orange-400 text-orange-600 bg-orange-50">
+                                              Duplicate
+                                            </Badge>
+                                          )}
                                         </div>
                                       );
                                     }
