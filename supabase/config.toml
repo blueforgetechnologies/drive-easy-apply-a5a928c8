@@ -101,3 +101,6 @@ verify_jwt = true
 
 [functions.archive-old-emails]
 verify_jwt = true
+
+[functions.send-spend-alert]
+verify_jwt = false
