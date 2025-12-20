@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -200,10 +201,37 @@ Reference #: ${data.reference_id}
 
     if (!response.ok) {
       console.error("Resend API error:", result);
+      // Track failed send
+      try {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        await supabase.from("email_send_tracking").insert({
+          email_type: "bid_sent",
+          recipient_email: data.to,
+          success: false,
+          month_year: new Date().toISOString().slice(0, 7),
+        });
+      } catch (e) { console.error("Failed to track email:", e); }
       throw new Error(result.message || "Failed to send email");
     }
 
     console.log("Email sent successfully:", result);
+
+    // Track successful send
+    try {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      await supabase.from("email_send_tracking").insert({
+        email_type: "bid_sent",
+        recipient_email: data.to,
+        success: true,
+        month_year: new Date().toISOString().slice(0, 7),
+      });
+    } catch (e) { console.error("Failed to track email:", e); }
 
     return new Response(JSON.stringify(result), {
       status: 200,
