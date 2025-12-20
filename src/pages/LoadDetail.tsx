@@ -679,49 +679,53 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-2">
-                  <div className="flex gap-1.5">
-                    <SearchableEntitySelect
-                      value={(() => {
-                        const customer = customers.find(c => c.id === load.customer_id);
-                        return customer?.name || "";
-                      })()}
-                      onSelect={(entity) => {
-                        updateField("customer_id", entity.id);
-                      }}
-                      entities={customers.map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        subtitle: [c.city, c.state].filter(Boolean).join(", ") || undefined
-                      }))}
-                      placeholder="Search or add customer..."
-                      onAddNew={async (name, data) => {
-                        const { data: newCustomer, error } = await supabase
-                          .from("customers")
-                          .insert([{
-                            name,
-                            contact_name: data.contact_name || null,
-                            phone: data.phone || null,
-                            email: data.email || null,
-                            address: data.address || null,
-                            city: data.city || null,
-                            state: data.state || null,
-                            zip: data.zip || null,
-                            status: "active",
-                          }])
-                          .select()
-                          .single();
-                        
-                        if (error) {
-                          toast.error("Failed to add customer");
-                          throw error;
-                        }
-                        
-                        updateField("customer_id", newCustomer.id);
-                        loadData();
-                        toast.success("Customer added and selected");
-                      }}
-                      entityType="customer"
-                    />
+                  {/* Customer Searchable Dropdown */}
+                  <div className="flex gap-1.5 items-center">
+                    <div className="flex-1">
+                      <SearchableEntitySelect
+                        value={(() => {
+                          const customer = customers.find(c => c.id === load.customer_id);
+                          return customer?.name || "";
+                        })()}
+                        onSelect={(entity) => {
+                          updateField("customer_id", entity.id);
+                        }}
+                        entities={customers.map(c => ({
+                          id: c.id,
+                          name: c.name,
+                          city: c.city,
+                          state: c.state,
+                        }))}
+                        placeholder="Search or add customer..."
+                        onAddNew={async (name, data) => {
+                          const { data: newCustomer, error } = await supabase
+                            .from("customers")
+                            .insert([{
+                              name,
+                              contact_name: data.contact_name || null,
+                              phone: data.phone || null,
+                              email: data.email || null,
+                              address: data.address || null,
+                              city: data.city || null,
+                              state: data.state || null,
+                              zip: data.zip || null,
+                              status: "active",
+                            }])
+                            .select()
+                            .single();
+                          
+                          if (error) {
+                            toast.error("Failed to add customer");
+                            throw error;
+                          }
+                          
+                          updateField("customer_id", newCustomer.id);
+                          loadData();
+                          toast.success("Customer added and selected");
+                        }}
+                        entityType="customer"
+                      />
+                    </div>
                     {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
                   </div>
                   {load.customer_id && (() => {
