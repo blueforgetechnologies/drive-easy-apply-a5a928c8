@@ -248,7 +248,8 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   const mapboxCost = mapboxCalibratedMultiplier ? rawMapboxCost * mapboxCalibratedMultiplier : rawMapboxCost;
   const emailCost = emailStats?.cost || 0;
   const aiCost = aiStats?.cost || 0;
-  const cloudCost = cloudStats?.cost || 0;
+  // Compute cloud cost using total operations * calibrated rate (same as Cloud & AI tab)
+  const cloudCost = (cloudStats?.total || 0) * effectiveCloudRate;
   const totalCost = mapboxCost + emailCost + aiCost + cloudCost;
 
   const periodLabel = isAllTime ? "all time" : selectedMonth;
