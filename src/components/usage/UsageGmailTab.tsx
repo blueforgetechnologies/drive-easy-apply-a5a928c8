@@ -460,8 +460,8 @@ export function UsageGmailTab({ selectedMonth }: UsageGmailTabProps) {
           </ul>
           <p className="pt-2">
             Your {(emailProcessingStats?.totalEmails || 0).toLocaleString()} emails used approximately{' '}
-            <strong>{((emailProcessingStats?.estimatedApiCalls || 0) * 5).toLocaleString()}</strong> quota units
-            (estimating 5 units per call × 3 calls per email).
+            <strong>{(calibratedRequests * 5).toLocaleString()}</strong> quota units
+            (estimating 5 units per call × {calibration ? `${calibration.multiplier.toFixed(1)} calibrated` : '3'} calls per email).
           </p>
         </CardContent>
       </Card>
