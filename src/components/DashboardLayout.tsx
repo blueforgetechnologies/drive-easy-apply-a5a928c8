@@ -305,7 +305,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
       navigate(`/dashboard/${value}?subtab=users`);
-    } else if (value === 'map' || value === 'load-hunter' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'screenshare' || value === 'tools' || value === 'analytics' || value === 'usage') {
+    } else if (value === 'map' || value === 'load-hunter' || value === 'loads' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'screenshare' || value === 'tools' || value === 'analytics' || value === 'usage') {
       navigate(`/dashboard/${value}`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
