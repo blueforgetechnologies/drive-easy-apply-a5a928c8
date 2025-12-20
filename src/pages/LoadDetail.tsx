@@ -665,8 +665,8 @@ export default function LoadDetail() {
             {/* Customer & Billing Party Row */}
             <div className="grid md:grid-cols-2 gap-2">
               {/* Customer Card */}
-              <Card className="border border-border/60 shadow-sm">
-                <CardHeader className="pb-1 pt-2 px-3 bg-muted/30">
+              <Card className="border border-primary/50 shadow-sm bg-gradient-to-b from-primary/5 to-transparent">
+                <CardHeader className="pb-1 pt-2 px-3 bg-primary/10 border-b border-primary/20">
                   <div className="flex items-center gap-2">
                     <div className="h-6 w-6 rounded-md bg-primary/20 flex items-center justify-center">
                       <Building className="h-3.5 w-3.5 text-primary" />
@@ -764,8 +764,8 @@ export default function LoadDetail() {
               </Card>
 
               {/* Billing Party Card */}
-              <Card className="border border-border/60 shadow-sm">
-                <CardHeader className="pb-1 pt-2 px-3 bg-muted/30">
+              <Card className="border border-amber-500/50 shadow-sm bg-gradient-to-b from-amber-500/5 to-transparent">
+                <CardHeader className="pb-1 pt-2 px-3 bg-amber-500/10 border-b border-amber-500/20">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 rounded-md bg-amber-500/20 flex items-center justify-center">
@@ -971,8 +971,8 @@ export default function LoadDetail() {
             </div>
 
             {/* Load Details Card */}
-            <Card className="border border-border/60 shadow-sm">
-              <CardHeader className="pb-1 pt-2 px-3 bg-muted/30">
+            <Card className="border border-orange-500/50 shadow-sm bg-gradient-to-b from-orange-500/5 to-transparent">
+              <CardHeader className="pb-1 pt-2 px-3 bg-orange-500/10 border-b border-orange-500/20">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-md bg-orange-500/20 flex items-center justify-center">
                     <Package className="h-3.5 w-3.5 text-orange-600" />
@@ -1063,8 +1063,8 @@ export default function LoadDetail() {
             </Card>
 
             {/* Carrier & Assignments Card */}
-            <Card className="border border-border/60 shadow-sm">
-              <CardHeader className="pb-1 pt-2 px-3 bg-muted/30">
+            <Card className="border border-violet-500/50 shadow-sm bg-gradient-to-b from-violet-500/5 to-transparent">
+              <CardHeader className="pb-1 pt-2 px-3 bg-violet-500/10 border-b border-violet-500/20">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-md bg-violet-500/20 flex items-center justify-center">
                     <Truck className="h-3.5 w-3.5 text-violet-600" />
@@ -1167,8 +1167,8 @@ export default function LoadDetail() {
             </Card>
 
             {/* Status & Notes Card */}
-            <Card className="border border-border/60 shadow-sm">
-              <CardHeader className="pb-1 pt-2 px-3 bg-muted/30">
+            <Card className="border border-emerald-500/50 shadow-sm bg-gradient-to-b from-emerald-500/5 to-transparent">
+              <CardHeader className="pb-1 pt-2 px-3 bg-emerald-500/10 border-b border-emerald-500/20">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-md bg-emerald-500/20 flex items-center justify-center">
                     <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
