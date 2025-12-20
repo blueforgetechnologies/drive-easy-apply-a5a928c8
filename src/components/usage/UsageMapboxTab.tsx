@@ -41,6 +41,30 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
   const MAPBOX_GEOCODE_RATE = 0.75 / 1000; // $0.75 per 1000 after free tier
   const MAPBOX_FREE_TIER = 100000;
 
+  // Query official billing history first (source of truth for costs)
+  const { data: officialBilling } = useQuery({
+    queryKey: ["mapbox-official-billing", selectedMonth],
+    queryFn: async () => {
+      if (isAllTime) {
+        // Sum all billing history
+        const { data } = await supabase.from('mapbox_billing_history')
+          .select('geocoding_requests, map_loads, directions_requests, total_cost');
+        if (!data || data.length === 0) return null;
+        return {
+          geocoding_requests: data.reduce((sum, r) => sum + (r.geocoding_requests || 0), 0),
+          map_loads: data.reduce((sum, r) => sum + (r.map_loads || 0), 0),
+          directions_requests: data.reduce((sum, r) => sum + (r.directions_requests || 0), 0),
+          total_cost: data.reduce((sum, r) => sum + Number(r.total_cost || 0), 0),
+        };
+      }
+      const { data } = await supabase.from('mapbox_billing_history')
+        .select('geocoding_requests, map_loads, directions_requests, total_cost')
+        .eq('billing_period', selectedMonth)
+        .single();
+      return data;
+    },
+  });
+
   // Main Mapbox usage query - use actual counts from source tables for accuracy
   const { data: mapboxUsage } = useQuery({
     queryKey: ["mapbox-usage-detail", selectedMonth],
@@ -160,13 +184,17 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
   const FREE_TIERS = { geocoding: 100000, mapLoads: 50000, directions: 100000 };
   const periodLabel = isAllTime ? "all time" : selectedMonth;
   
+  // Use official billing data when available, otherwise fall back to calculated estimates
+  const hasOfficialBilling = officialBilling && officialBilling.total_cost > 0;
+  const displayCost = hasOfficialBilling ? Number(officialBilling.total_cost) : (mapboxUsage?.total_cost || 0);
+  
   // Calculate raw estimated cost based on usage
   const rawEstimatedCost = mapboxUsage?.total_cost || 0;
   
-  // Apply calibration multiplier if set
-  const calibratedCost = calibratedMultiplier 
+  // Apply calibration multiplier if set (only for estimated costs)
+  const calibratedCost = calibratedMultiplier && !hasOfficialBilling
     ? rawEstimatedCost * calibratedMultiplier 
-    : rawEstimatedCost;
+    : displayCost;
 
   const handleCalibrate = () => {
     const actualBill = parseFloat(actualMapboxBill);
@@ -190,10 +218,32 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
     toast.success("Calibration cleared, using default estimates");
   };
 
+  // Use official billing data for metrics when available
   const metrics = [
-    { title: "Geocoding API", icon: MapPin, current: mapboxUsage?.geocoding_api_calls || 0, limit: FREE_TIERS.geocoding, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-    { title: "Map Loads", icon: Map, current: mapLoads?.count || 0, limit: FREE_TIERS.mapLoads, color: "text-green-500", bgColor: "bg-green-500/10" },
-    { title: "Directions API", icon: Navigation, current: directionsStats?.count || 0, limit: FREE_TIERS.directions, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+    { 
+      title: "Geocoding API", 
+      icon: MapPin, 
+      current: hasOfficialBilling ? officialBilling.geocoding_requests : (mapboxUsage?.geocoding_api_calls || 0), 
+      limit: FREE_TIERS.geocoding, 
+      color: "text-blue-500", 
+      bgColor: "bg-blue-500/10" 
+    },
+    { 
+      title: "Map Loads", 
+      icon: Map, 
+      current: hasOfficialBilling ? officialBilling.map_loads : (mapLoads?.count || 0), 
+      limit: FREE_TIERS.mapLoads, 
+      color: "text-green-500", 
+      bgColor: "bg-green-500/10" 
+    },
+    { 
+      title: "Directions API", 
+      icon: Navigation, 
+      current: hasOfficialBilling ? officialBilling.directions_requests : (directionsStats?.count || 0), 
+      limit: FREE_TIERS.directions, 
+      color: "text-orange-500", 
+      bgColor: "bg-orange-500/10" 
+    },
   ];
 
   return (
@@ -216,10 +266,15 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
               </Button>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">
-                  {calibratedMultiplier ? "Calibrated Cost" : "Estimated Cost"}
+                  {hasOfficialBilling ? "Official Cost" : (calibratedMultiplier ? "Calibrated Cost" : "Estimated Cost")}
                 </p>
-                <p className="text-3xl font-bold">${calibratedCost.toFixed(2)}</p>
-                {calibratedMultiplier && (
+                <p className="text-3xl font-bold text-primary">${calibratedCost.toFixed(2)}</p>
+                {hasOfficialBilling && (
+                  <p className="text-xs text-green-600">
+                    From billing history
+                  </p>
+                )}
+                {calibratedMultiplier && !hasOfficialBilling && (
                   <p className="text-xs text-muted-foreground">
                     ({calibratedMultiplier.toFixed(2)}x multiplier)
                   </p>
