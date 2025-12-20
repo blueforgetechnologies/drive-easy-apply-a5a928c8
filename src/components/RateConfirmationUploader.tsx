@@ -6,12 +6,17 @@ import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle } from "lucide-
 import { cn } from "@/lib/utils";
 
 interface ExtractedLoadData {
-  load_number?: string;
+  customer_load_id?: string;
   rate?: number;
-  broker_name?: string;
-  broker_email?: string;
-  broker_phone?: string;
-  broker_contact?: string;
+  customer_name?: string;
+  customer_address?: string;
+  customer_city?: string;
+  customer_state?: string;
+  customer_zip?: string;
+  customer_mc_number?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  customer_contact?: string;
   reference_number?: string;
   shipper_name?: string;
   shipper_address?: string;
