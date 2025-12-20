@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -316,11 +316,11 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
   return (
     <div className="space-y-2 mt-2">
-      {/* Close button row */}
-      <div className="flex justify-end">
+      {/* Back button */}
+      <div className="flex justify-start">
         <Button variant="ghost" size="sm" onClick={onClose} className="gap-1 h-7 text-xs">
-          <X className="h-3.5 w-3.5" />
-          Close Audit
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
         </Button>
       </div>
 
