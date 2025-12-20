@@ -1,20 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useUserCostSettings } from "./useUserCostSettings";
 
 // Default cost rate constants
 const DEFAULT_CLOUD_WRITE_RATE = 0.000134; // $0.134 per 1000 writes
 
 export function useCloudCost() {
-  // Load calibrated rate from localStorage
-  const [calibratedRate, setCalibratedRate] = useState<number | null>(null);
+  // Use synced settings from database
+  const { cloudCalibratedRate, updateCloudRate, isLoading: isSettingsLoading } = useUserCostSettings();
   
-  useEffect(() => {
-    const savedRate = localStorage.getItem('cloud_calibrated_rate');
-    if (savedRate) setCalibratedRate(parseFloat(savedRate));
-  }, []);
-  
-  const effectiveRate = calibratedRate ?? DEFAULT_CLOUD_WRITE_RATE;
+  const effectiveRate = cloudCalibratedRate ?? DEFAULT_CLOUD_WRITE_RATE;
 
   // All-time cost breakdown query - matches Cloud tab exactly
   const { data: costBreakdown, isFetching } = useQuery({
@@ -131,9 +126,9 @@ export function useCloudCost() {
     cloudCost: totalCloudCost,
     totalWriteOps,
     effectiveRate,
-    calibratedRate,
-    setCalibratedRate,
+    calibratedRate: cloudCalibratedRate,
+    setCalibratedRate: updateCloudRate,
     costBreakdown,
-    isFetching,
+    isFetching: isFetching || isSettingsLoading,
   };
 }
