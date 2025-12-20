@@ -104,3 +104,6 @@ verify_jwt = true
 
 [functions.send-spend-alert]
 verify_jwt = false
+
+[functions.parse-rate-confirmation]
+verify_jwt = true

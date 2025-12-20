@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
+import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -596,6 +597,60 @@ export default function LoadsTab() {
             <DialogHeader>
               <DialogTitle>Create New Load</DialogTitle>
             </DialogHeader>
+            
+            {/* Rate Confirmation Upload */}
+            <div className="border-b pb-4">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4" />
+                Quick Fill from Rate Confirmation
+              </h3>
+              <RateConfirmationUploader
+                onDataExtracted={(data) => {
+                  // Map extracted data to form fields
+                  setFormData(prev => ({
+                    ...prev,
+                    load_number: data.load_number || prev.load_number,
+                    shipper_name: data.shipper_name || prev.shipper_name,
+                    shipper_address: data.shipper_address || prev.shipper_address,
+                    shipper_city: data.shipper_city || prev.shipper_city,
+                    shipper_state: data.shipper_state || prev.shipper_state,
+                    shipper_zip: data.shipper_zip || prev.shipper_zip,
+                    shipper_contact: data.shipper_contact || prev.shipper_contact,
+                    shipper_phone: data.shipper_phone || prev.shipper_phone,
+                    shipper_email: data.shipper_email || prev.shipper_email,
+                    pickup_location: data.shipper_name || prev.pickup_location,
+                    pickup_city: data.shipper_city || prev.pickup_city,
+                    pickup_state: data.shipper_state || prev.pickup_state,
+                    pickup_date: data.pickup_date && data.pickup_time 
+                      ? `${data.pickup_date}T${data.pickup_time}` 
+                      : data.pickup_date 
+                        ? `${data.pickup_date}T08:00` 
+                        : prev.pickup_date,
+                    receiver_name: data.receiver_name || prev.receiver_name,
+                    receiver_address: data.receiver_address || prev.receiver_address,
+                    receiver_city: data.receiver_city || prev.receiver_city,
+                    receiver_state: data.receiver_state || prev.receiver_state,
+                    receiver_zip: data.receiver_zip || prev.receiver_zip,
+                    receiver_contact: data.receiver_contact || prev.receiver_contact,
+                    receiver_phone: data.receiver_phone || prev.receiver_phone,
+                    receiver_email: data.receiver_email || prev.receiver_email,
+                    delivery_location: data.receiver_name || prev.delivery_location,
+                    delivery_city: data.receiver_city || prev.delivery_city,
+                    delivery_state: data.receiver_state || prev.delivery_state,
+                    delivery_date: data.delivery_date && data.delivery_time 
+                      ? `${data.delivery_date}T${data.delivery_time}` 
+                      : data.delivery_date 
+                        ? `${data.delivery_date}T08:00` 
+                        : prev.delivery_date,
+                    cargo_description: data.cargo_description || prev.cargo_description,
+                    cargo_weight: data.cargo_weight?.toString() || prev.cargo_weight,
+                    estimated_miles: data.estimated_miles?.toString() || prev.estimated_miles,
+                    rate: data.rate?.toString() || prev.rate,
+                  }));
+                }}
+              />
+            </div>
+            
             <form onSubmit={handleAddLoad} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
