@@ -122,7 +122,7 @@ export default function DispatcherDashboard() {
       const { data: loadsData, error: loadsError } = await supabase
         .from("loads")
         .select("*")
-        .eq("assigned_dispatcher_id", dispatcher.id)
+        .eq("load_owner_id", dispatcher.id)
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString())
         .order("created_at", { ascending: false });
