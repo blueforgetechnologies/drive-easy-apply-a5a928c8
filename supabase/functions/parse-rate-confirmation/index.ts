@@ -31,68 +31,51 @@ serve(async (req) => {
 
 Extract ALL available information from the document. Be thorough and extract every field you can find.
 
-Important extraction guidelines:
+IMPORTANT FIELD MAPPINGS:
+- "Shipper" = Origin/Pickup location  
+- "Receiver" or "Consignee" = Destination/Delivery location
+- Customer load ID may appear as: Pro#, Order#, Reference#, Load#, Confirmation#, BOL#, PO#, Trip#, Shipment#
+- Look for MC# or DOT# to identify the customer/broker
+- Miles may appear as: loaded miles, estimated miles, trip miles, total miles
+- Pieces may appear as: pieces, pallets, skids, units, qty
+
+MULTI-STOP HANDLING:
+- Look for multiple pickup locations (origins, shippers) - may be numbered stops like Stop 1, Stop 2
+- Look for multiple delivery locations (destinations, receivers, consignees)
+- Each stop should capture: name, address, city, state, zip, contact info, date, time, reference numbers
+
+VEHICLE REQUIREMENTS:
+- Extract equipment/vehicle type: dry van, reefer, flatbed, step deck, box truck, sprinter, conestoga, lowboy, etc.
+- Extract vehicle size if mentioned: 53', 48', 26', or dimensions like length/height requirements
+- Note any special requirements: team required, hazmat, temperature control, tarps, chains, etc.
+
+Extraction format guidelines:
 - Extract dates in YYYY-MM-DD format
 - Extract times in HH:MM format (24-hour)
 - Extract rates/amounts as numbers without currency symbols
 - For addresses, extract each component separately (street, city, state, zip)
-- If a field is not found, leave it as null
-- Look for the customer/broker's load ID - this may be called Pro#, Order#, Load#, Reference#, Confirmation#, Trip#, or similar
-- Extract the customer/broker company name, address, and MC number if available
-- Look for commodity/cargo descriptions, weight, pieces/pallets, and dimensions
-- Extract total miles for the trip`;
+- If a field is not found, leave it as null`;
 
     const userPrompt = `Extract all load information from this rate confirmation document. The document is named "${fileName}".
 
-IMPORTANT: The customer's load ID is critical - look for any identifier they use like Pro#, Order#, Load#, Reference#, Confirmation#, Trip#, Shipment#, etc.
+Include:
+1. Customer/broker company name, address, MC#, DOT#, contact info
+2. Load identification numbers (their reference #, Pro#, Order#, etc.)
+3. Rate and any additional charges
+4. Miles (loaded miles)
+5. Pieces/pallets count  
+6. ALL pickup stops (origins/shippers) with full address, contact, dates/times
+7. ALL delivery stops (destinations/receivers/consignees) with full address, contact, dates/times
+8. Vehicle/equipment type and size requirements
+9. Cargo description, weight, dimensions
+10. Any special instructions or notes
 
-Return the extracted data in the following JSON structure:
-{
-  "customer_load_id": "the customer/broker's load ID (Pro#, Order#, Reference#, Confirmation#, etc.)",
-  "rate": numeric rate amount,
-  "customer_name": "customer/broker company name who is paying for this load",
-  "customer_address": "customer/broker street address",
-  "customer_city": "customer/broker city",
-  "customer_state": "customer/broker state abbreviation",
-  "customer_zip": "customer/broker zip code",
-  "customer_mc_number": "customer/broker MC# or DOT# if available",
-  "customer_email": "customer/broker contact email",
-  "customer_phone": "customer/broker contact phone",
-  "customer_contact": "customer/broker contact person name",
-  "reference_number": "PO number or secondary reference",
-  "shipper_name": "shipper/pickup company name",
-  "shipper_address": "pickup street address",
-  "shipper_city": "pickup city",
-  "shipper_state": "pickup state abbreviation",
-  "shipper_zip": "pickup zip code",
-  "shipper_contact": "pickup contact name",
-  "shipper_phone": "pickup phone",
-  "shipper_email": "pickup email",
-  "pickup_date": "YYYY-MM-DD",
-  "pickup_time": "HH:MM",
-  "receiver_name": "delivery/receiver company name",
-  "receiver_address": "delivery street address",
-  "receiver_city": "delivery city",
-  "receiver_state": "delivery state abbreviation",
-  "receiver_zip": "delivery zip code",
-  "receiver_contact": "delivery contact name",
-  "receiver_phone": "delivery phone",
-  "receiver_email": "delivery email",
-  "delivery_date": "YYYY-MM-DD",
-  "delivery_time": "HH:MM",
-  "cargo_description": "commodity or cargo description",
-  "cargo_weight": numeric weight in pounds,
-  "cargo_pieces": numeric piece/pallet count,
-  "equipment_type": "trailer type (e.g., Van, Reefer, Flatbed)",
-  "estimated_miles": numeric total trip miles,
-  "special_instructions": "any special instructions or notes"
-}`;
+CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separate stop in the stops array.`;
 
     // Build the message content based on mime type
     let messageContent: any[];
     
     if (mimeType.startsWith('image/')) {
-      // For images, use vision capabilities
       messageContent = [
         { type: 'text', text: userPrompt },
         { 
@@ -103,8 +86,6 @@ Return the extracted data in the following JSON structure:
         }
       ];
     } else if (mimeType === 'application/pdf') {
-      // For PDFs, we'll need to inform the user we can parse images
-      // The frontend should convert PDF pages to images
       messageContent = [
         { type: 'text', text: userPrompt },
         { 
@@ -139,6 +120,7 @@ Return the extracted data in the following JSON structure:
               parameters: {
                 type: 'object',
                 properties: {
+                  // Customer/Broker info
                   customer_load_id: { type: 'string', description: 'Customer/broker load ID (Pro#, Order#, Reference#, etc.)' },
                   rate: { type: 'number', description: 'Rate amount in dollars' },
                   customer_name: { type: 'string', description: 'Customer/broker company name' },
@@ -146,36 +128,75 @@ Return the extracted data in the following JSON structure:
                   customer_city: { type: 'string', description: 'Customer/broker city' },
                   customer_state: { type: 'string', description: 'Customer/broker state' },
                   customer_zip: { type: 'string', description: 'Customer/broker zip code' },
-                  customer_mc_number: { type: 'string', description: 'Customer/broker MC# or DOT#' },
+                  customer_mc_number: { type: 'string', description: 'Customer/broker MC#' },
+                  customer_dot_number: { type: 'string', description: 'Customer/broker DOT#' },
                   customer_email: { type: 'string', description: 'Customer contact email' },
                   customer_phone: { type: 'string', description: 'Customer contact phone' },
                   customer_contact: { type: 'string', description: 'Customer contact person name' },
                   reference_number: { type: 'string', description: 'PO number or secondary reference' },
-                  shipper_name: { type: 'string', description: 'Shipper company name' },
-                  shipper_address: { type: 'string', description: 'Pickup street address' },
-                  shipper_city: { type: 'string', description: 'Pickup city' },
-                  shipper_state: { type: 'string', description: 'Pickup state' },
-                  shipper_zip: { type: 'string', description: 'Pickup zip code' },
-                  shipper_contact: { type: 'string', description: 'Pickup contact name' },
-                  shipper_phone: { type: 'string', description: 'Pickup phone' },
-                  shipper_email: { type: 'string', description: 'Pickup email' },
-                  pickup_date: { type: 'string', description: 'Pickup date in YYYY-MM-DD format' },
-                  pickup_time: { type: 'string', description: 'Pickup time in HH:MM format' },
-                  receiver_name: { type: 'string', description: 'Receiver company name' },
-                  receiver_address: { type: 'string', description: 'Delivery street address' },
-                  receiver_city: { type: 'string', description: 'Delivery city' },
-                  receiver_state: { type: 'string', description: 'Delivery state' },
-                  receiver_zip: { type: 'string', description: 'Delivery zip code' },
-                  receiver_contact: { type: 'string', description: 'Delivery contact name' },
-                  receiver_phone: { type: 'string', description: 'Delivery phone' },
-                  receiver_email: { type: 'string', description: 'Delivery email' },
-                  delivery_date: { type: 'string', description: 'Delivery date in YYYY-MM-DD format' },
-                  delivery_time: { type: 'string', description: 'Delivery time in HH:MM format' },
+                  
+                  // Cargo info
                   cargo_description: { type: 'string', description: 'Cargo/commodity description' },
                   cargo_weight: { type: 'number', description: 'Weight in pounds' },
                   cargo_pieces: { type: 'number', description: 'Number of pieces/pallets' },
-                  equipment_type: { type: 'string', description: 'Trailer/equipment type' },
+                  cargo_dimensions: { type: 'string', description: 'Cargo dimensions (L x W x H)' },
                   estimated_miles: { type: 'number', description: 'Total trip miles' },
+                  
+                  // Vehicle requirements
+                  equipment_type: { type: 'string', description: 'Equipment type: dry_van, reefer, flatbed, step_deck, box_truck, sprinter, etc.' },
+                  vehicle_size: { type: 'string', description: 'Vehicle size: 53ft, 48ft, 26ft, etc.' },
+                  temperature_required: { type: 'string', description: 'Required temperature if reefer load' },
+                  team_required: { type: 'boolean', description: 'Whether team drivers are required' },
+                  hazmat: { type: 'boolean', description: 'Whether this is a hazmat load' },
+                  
+                  // Multi-stop array
+                  stops: {
+                    type: 'array',
+                    description: 'Array of all pickup and delivery stops in order',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        stop_type: { type: 'string', enum: ['pickup', 'delivery'], description: 'Whether this is a pickup or delivery stop' },
+                        stop_sequence: { type: 'number', description: 'Order of this stop (1, 2, 3...)' },
+                        location_name: { type: 'string', description: 'Company/facility name at this stop' },
+                        location_address: { type: 'string', description: 'Street address' },
+                        location_city: { type: 'string', description: 'City' },
+                        location_state: { type: 'string', description: 'State (2-letter)' },
+                        location_zip: { type: 'string', description: 'ZIP code' },
+                        contact_name: { type: 'string', description: 'Contact person at this stop' },
+                        contact_phone: { type: 'string', description: 'Contact phone number' },
+                        contact_email: { type: 'string', description: 'Contact email' },
+                        scheduled_date: { type: 'string', description: 'Scheduled date (YYYY-MM-DD format)' },
+                        scheduled_time: { type: 'string', description: 'Scheduled time or time window' },
+                        reference_numbers: { type: 'string', description: 'Reference/PO numbers for this stop' },
+                        notes: { type: 'string', description: 'Special instructions for this stop' }
+                      },
+                      required: ['stop_type', 'stop_sequence']
+                    }
+                  },
+                  
+                  // Legacy single stop fields (backwards compatibility)
+                  shipper_name: { type: 'string', description: 'Primary shipper company name' },
+                  shipper_address: { type: 'string', description: 'Primary pickup street address' },
+                  shipper_city: { type: 'string', description: 'Primary pickup city' },
+                  shipper_state: { type: 'string', description: 'Primary pickup state' },
+                  shipper_zip: { type: 'string', description: 'Primary pickup zip code' },
+                  shipper_contact: { type: 'string', description: 'Primary pickup contact name' },
+                  shipper_phone: { type: 'string', description: 'Primary pickup phone' },
+                  shipper_email: { type: 'string', description: 'Primary pickup email' },
+                  pickup_date: { type: 'string', description: 'Primary pickup date in YYYY-MM-DD format' },
+                  pickup_time: { type: 'string', description: 'Primary pickup time in HH:MM format' },
+                  receiver_name: { type: 'string', description: 'Primary receiver company name' },
+                  receiver_address: { type: 'string', description: 'Primary delivery street address' },
+                  receiver_city: { type: 'string', description: 'Primary delivery city' },
+                  receiver_state: { type: 'string', description: 'Primary delivery state' },
+                  receiver_zip: { type: 'string', description: 'Primary delivery zip code' },
+                  receiver_contact: { type: 'string', description: 'Primary delivery contact name' },
+                  receiver_phone: { type: 'string', description: 'Primary delivery phone' },
+                  receiver_email: { type: 'string', description: 'Primary delivery email' },
+                  delivery_date: { type: 'string', description: 'Primary delivery date in YYYY-MM-DD format' },
+                  delivery_time: { type: 'string', description: 'Primary delivery time in HH:MM format' },
+                  
                   special_instructions: { type: 'string', description: 'Special instructions or notes' }
                 },
                 required: []
@@ -217,7 +238,57 @@ Return the extracted data in the following JSON structure:
     }
 
     const extractedData = JSON.parse(toolCall.function.arguments);
-    console.log('Extracted data:', extractedData);
+    
+    // Ensure stops array exists and populate from legacy fields if needed
+    if (!extractedData.stops || extractedData.stops.length === 0) {
+      extractedData.stops = [];
+      
+      // Create pickup stop from legacy shipper fields
+      if (extractedData.shipper_name || extractedData.shipper_city) {
+        extractedData.stops.push({
+          stop_type: 'pickup',
+          stop_sequence: 1,
+          location_name: extractedData.shipper_name,
+          location_address: extractedData.shipper_address,
+          location_city: extractedData.shipper_city,
+          location_state: extractedData.shipper_state,
+          location_zip: extractedData.shipper_zip,
+          contact_name: extractedData.shipper_contact,
+          contact_phone: extractedData.shipper_phone,
+          contact_email: extractedData.shipper_email,
+          scheduled_date: extractedData.pickup_date,
+          scheduled_time: extractedData.pickup_time
+        });
+      }
+      
+      // Create delivery stop from legacy receiver fields
+      if (extractedData.receiver_name || extractedData.receiver_city) {
+        extractedData.stops.push({
+          stop_type: 'delivery',
+          stop_sequence: 2,
+          location_name: extractedData.receiver_name,
+          location_address: extractedData.receiver_address,
+          location_city: extractedData.receiver_city,
+          location_state: extractedData.receiver_state,
+          location_zip: extractedData.receiver_zip,
+          contact_name: extractedData.receiver_contact,
+          contact_phone: extractedData.receiver_phone,
+          contact_email: extractedData.receiver_email,
+          scheduled_date: extractedData.delivery_date,
+          scheduled_time: extractedData.delivery_time
+        });
+      }
+    }
+
+    // Sort stops by sequence and assign sequences if missing
+    if (extractedData.stops && extractedData.stops.length > 0) {
+      extractedData.stops.sort((a: any, b: any) => (a.stop_sequence || 0) - (b.stop_sequence || 0));
+      extractedData.stops.forEach((stop: any, index: number) => {
+        if (!stop.stop_sequence) stop.stop_sequence = index + 1;
+      });
+    }
+
+    console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
 
     return new Response(
       JSON.stringify({ success: true, data: extractedData }),

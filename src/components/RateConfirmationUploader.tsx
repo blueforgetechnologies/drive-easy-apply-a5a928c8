@@ -5,7 +5,24 @@ import { toast } from "sonner";
 import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface ExtractedLoadData {
+export interface ExtractedStop {
+  stop_type: 'pickup' | 'delivery';
+  stop_sequence: number;
+  location_name?: string;
+  location_address?: string;
+  location_city?: string;
+  location_state?: string;
+  location_zip?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  reference_numbers?: string;
+  notes?: string;
+}
+
+export interface ExtractedLoadData {
   customer_load_id?: string;
   rate?: number;
   customer_name?: string;
@@ -14,10 +31,30 @@ interface ExtractedLoadData {
   customer_state?: string;
   customer_zip?: string;
   customer_mc_number?: string;
+  customer_dot_number?: string;
   customer_email?: string;
   customer_phone?: string;
   customer_contact?: string;
   reference_number?: string;
+  
+  // Cargo info
+  cargo_description?: string;
+  cargo_weight?: number;
+  cargo_pieces?: number;
+  cargo_dimensions?: string;
+  estimated_miles?: number;
+  
+  // Vehicle requirements
+  equipment_type?: string;
+  vehicle_size?: string;
+  temperature_required?: string;
+  team_required?: boolean;
+  hazmat?: boolean;
+  
+  // Multi-stop array
+  stops?: ExtractedStop[];
+  
+  // Legacy single stop fields (backwards compatibility)
   shipper_name?: string;
   shipper_address?: string;
   shipper_city?: string;
@@ -38,11 +75,7 @@ interface ExtractedLoadData {
   receiver_email?: string;
   delivery_date?: string;
   delivery_time?: string;
-  cargo_description?: string;
-  cargo_weight?: number;
-  cargo_pieces?: number;
-  equipment_type?: string;
-  estimated_miles?: number;
+  
   special_instructions?: string;
 }
 
@@ -146,7 +179,17 @@ export function RateConfirmationUploader({ onDataExtracted, onFileSelected }: Ra
 
       setParsed(true);
       onDataExtracted(data.data);
-      toast.success('Rate confirmation parsed successfully! Review the extracted data below.');
+      
+      // Count stops for informative message
+      const stops = data.data.stops || [];
+      const pickups = stops.filter((s: ExtractedStop) => s.stop_type === 'pickup').length;
+      const deliveries = stops.filter((s: ExtractedStop) => s.stop_type === 'delivery').length;
+      
+      let message = 'Rate confirmation parsed successfully!';
+      if (pickups > 1 || deliveries > 1) {
+        message = `Parsed! Found ${pickups} pickup(s) and ${deliveries} delivery(s).`;
+      }
+      toast.success(message);
     } catch (err: any) {
       console.error('Parse error:', err);
       const errorMessage = err.message || 'Failed to parse document';
