@@ -164,6 +164,7 @@ export default function LoadDetail() {
           dispatch_notes: load.dispatch_notes,
           billing_notes: load.billing_notes,
           notes: load.notes,
+          reference_number: load.reference_number,
           // Pickup/Delivery info
           pickup_city: load.pickup_city,
           pickup_state: load.pickup_state,
@@ -726,7 +727,17 @@ export default function LoadDetail() {
                         entityType="customer"
                       />
                     </div>
-                    {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
+                  {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
+                  </div>
+                  {/* Customer Load ID */}
+                  <div>
+                    <Label className="text-[10px] font-medium text-muted-foreground">Customer Load ID</Label>
+                    <Input 
+                      className="h-7 text-xs" 
+                      value={load.reference_number || ""} 
+                      onChange={(e) => updateField("reference_number", e.target.value)} 
+                      placeholder="Customer's reference number" 
+                    />
                   </div>
                   {load.customer_id && (() => {
                     const customer = customers.find(c => c.id === load.customer_id);
