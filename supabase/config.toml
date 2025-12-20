@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.parse-rate-confirmation]
 verify_jwt = true
+
+[functions.elevenlabs-sfx]
+verify_jwt = true
