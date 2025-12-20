@@ -2,9 +2,9 @@ import { useState, useRef, DragEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, FileText, Trash2, Download, Eye, Plus, X } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Plus, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { PDFImageViewer } from "./PDFImageViewer";
 
@@ -35,10 +35,22 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
   const [uploading, setUploading] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [viewingDoc, setViewingDoc] = useState<{ url: string; name: string; isPdf: boolean } | null>(null);
+  const [replaceConfirm, setReplaceConfirm] = useState<{ files: FileList; existingDoc: LoadDocument } | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
-  const handleFileSelect = async (docType: string, files: FileList | null) => {
+  const getDocsByType = (type: string) => documents.filter(d => d.document_type === type);
+
+  const handleFileSelect = async (docType: string, files: FileList | null, skipReplaceCheck = false) => {
     if (!files || files.length === 0) return;
+
+    // Check if trying to upload rate confirmation when one already exists
+    const isRateConfirmation = docType === 'rate_confirmation';
+    const existingRateCon = getDocsByType('rate_confirmation')[0];
+    
+    if (isRateConfirmation && existingRateCon && !skipReplaceCheck) {
+      setReplaceConfirm({ files, existingDoc: existingRateCon });
+      return;
+    }
 
     setUploading(docType);
     
@@ -127,6 +139,31 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
     }
   };
 
+  const handleReplaceRateConfirmation = async () => {
+    if (!replaceConfirm) return;
+    
+    const { files, existingDoc } = replaceConfirm;
+    setReplaceConfirm(null);
+    
+    try {
+      // Delete existing rate confirmation from storage
+      await supabase.storage
+        .from('load-documents')
+        .remove([existingDoc.file_url]);
+      
+      // Delete from database
+      await supabase
+        .from('load_documents')
+        .delete()
+        .eq('id', existingDoc.id);
+      
+      // Now upload the new one
+      await handleFileSelect('rate_confirmation', files, true);
+    } catch (error: any) {
+      toast.error('Failed to replace rate confirmation: ' + error.message);
+    }
+  };
+
   const handleView = async (doc: LoadDocument) => {
     try {
       const { data, error } = await supabase.storage
@@ -170,7 +207,6 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const getDocsByType = (type: string) => documents.filter(d => d.document_type === type);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, docType: string) => {
     e.preventDefault();
@@ -219,12 +255,39 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Replace Rate Confirmation Dialog */}
+      <Dialog open={!!replaceConfirm} onOpenChange={() => setReplaceConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Replace Rate Confirmation?
+            </DialogTitle>
+            <DialogDescription>
+              Only one Rate Confirmation is allowed per load. Would you like to replace the existing Rate Confirmation with the new one?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground">
+              Current: <span className="font-medium text-foreground">{replaceConfirm?.existingDoc.file_name}</span>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplaceConfirm(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleReplaceRateConfirmation}>
+              Replace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="space-y-6">
         {DOCUMENT_TYPES.map(docType => {
         const typeDocs = getDocsByType(docType.value);
         const isRateConfirmation = docType.value === 'rate_confirmation';
-        const canUploadMore = !isRateConfirmation || typeDocs.length === 0;
 
         return (
           <Card key={docType.value}>
@@ -239,36 +302,34 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                     </span>
                   )}
                 </CardTitle>
-                {canUploadMore && (
-                  <>
-                    <input
-                      ref={el => fileInputRefs.current[docType.value] = el}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp"
-                      multiple={!isRateConfirmation}
-                      className="hidden"
-                      onChange={e => handleFileSelect(docType.value, e.target.files)}
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => fileInputRefs.current[docType.value]?.click()}
-                      disabled={uploading === docType.value}
-                    >
-                      {uploading === docType.value ? (
-                        <>
-                          <span className="animate-spin mr-2">⏳</span>
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-1" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
-                  </>
-                )}
+                <>
+                  <input
+                    ref={el => fileInputRefs.current[docType.value] = el}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    multiple={!isRateConfirmation}
+                    className="hidden"
+                    onChange={e => handleFileSelect(docType.value, e.target.files)}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRefs.current[docType.value]?.click()}
+                    disabled={uploading === docType.value}
+                  >
+                    {uploading === docType.value ? (
+                      <>
+                        <span className="animate-spin mr-2">⏳</span>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-1" />
+                        {isRateConfirmation && typeDocs.length > 0 ? 'Replace' : 'Upload'}
+                      </>
+                    )}
+                  </Button>
+                </>
               </div>
             </CardHeader>
             <CardContent>
@@ -282,7 +343,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                   onDragOver={(e) => handleDragOver(e, docType.value)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, docType.value)}
-                  onClick={() => canUploadMore && fileInputRefs.current[docType.value]?.click()}
+                  onClick={() => fileInputRefs.current[docType.value]?.click()}
                 >
                   <Upload className={`h-8 w-8 mx-auto mb-2 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
                   <p className="text-sm">
