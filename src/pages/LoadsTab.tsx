@@ -596,6 +596,7 @@ export default function LoadsTab() {
   const statusCounts = {
     all: loads.length,
     action_needed: loads.filter(l => l.status === 'action_needed').length,
+    pending_dispatch: loads.filter(l => l.status === 'pending_dispatch').length,
     available: loads.filter(l => l.status === 'available').length,
     booked: loads.filter(l => l.status === 'booked').length,
     dispatched: loads.filter(l => l.status === 'dispatched').length,
@@ -1458,6 +1459,8 @@ export default function LoadsTab() {
         <div className="flex items-center gap-0 overflow-x-auto pb-1">
           {[
             { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset" },
+            { key: "action_needed", label: "Action Needed", count: statusCounts.action_needed, activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger" },
+            { key: "pending_dispatch", label: "Pending", count: statusCounts.pending_dispatch, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
             { key: "available", label: "Available", count: statusCounts.available, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
             { key: "booked", label: "Booked", count: statusCounts.booked, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
             { key: "dispatched", label: "Dispatched", count: statusCounts.dispatched, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },

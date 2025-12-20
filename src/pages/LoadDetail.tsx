@@ -1185,17 +1185,20 @@ export default function LoadDetail() {
                     </div>
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Status</Label>
-                      <Select value={load.status || "pending_dispatch"} onValueChange={(value) => updateField("status", value)}>
+                      <Select value={load.status || "available"} onValueChange={(value) => updateField("status", value)}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-background">
-                          <SelectItem value="available">Available</SelectItem>
+                          <SelectItem value="action_needed">Action Needed</SelectItem>
                           <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
+                          <SelectItem value="available">Available</SelectItem>
                           <SelectItem value="booked">Booked</SelectItem>
                           <SelectItem value="dispatched">Dispatched</SelectItem>
                           <SelectItem value="at_pickup">At Pickup</SelectItem>
                           <SelectItem value="in_transit">In Transit</SelectItem>
                           <SelectItem value="at_delivery">At Delivery</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="ready_for_audit">Ready for Audit</SelectItem>
                           <SelectItem value="tonu">TONU</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
