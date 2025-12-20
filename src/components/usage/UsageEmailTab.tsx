@@ -37,9 +37,9 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         received = active + archived;
       } else {
         const { count: activeCount } = await supabase.from('load_emails').select('*', { count: 'exact', head: true })
-          .gte('created_at', startISO!).lte('created_at', endISO!);
+          .gte('received_at', startISO!).lte('received_at', endISO!);
         const { count: archivedCount } = await supabase.from('load_emails_archive').select('*', { count: 'exact', head: true })
-          .gte('original_created_at', startISO!).lte('original_created_at', endISO!);
+          .gte('received_at', startISO!).lte('received_at', endISO!);
         active = activeCount || 0;
         archived = archivedCount || 0;
         received = active + archived;
@@ -73,15 +73,15 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
   const { data: volumeHistory } = useQuery({
     queryKey: ["email-volume-history-daily", selectedMonth],
     queryFn: async () => {
-      let query = supabase.from('load_emails').select('created_at');
+      let query = supabase.from('load_emails').select('received_at');
       if (!isAllTime) {
-        query = query.gte('created_at', startISO!).lte('created_at', endISO!);
+        query = query.gte('received_at', startISO!).lte('received_at', endISO!);
       }
       const { data: emails } = await query;
       
       const dailyData: Record<string, number> = {};
       emails?.forEach(email => {
-        const day = email.created_at.slice(0, 10);
+        const day = email.received_at.slice(0, 10);
         dailyData[day] = (dailyData[day] || 0) + 1;
       });
       
