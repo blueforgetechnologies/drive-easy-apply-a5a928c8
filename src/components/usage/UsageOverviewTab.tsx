@@ -229,9 +229,7 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
       };
       
       const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
-      const cost = total * effectiveCloudRate;
-      
-      return { ...breakdown, total, cost };
+      return { ...breakdown, total };
     },
     refetchInterval: 30000,
   });
