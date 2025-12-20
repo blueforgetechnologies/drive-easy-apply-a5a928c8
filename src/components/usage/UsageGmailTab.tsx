@@ -1,12 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Activity, AlertTriangle, Clock, RefreshCw, TrendingUp, Settings } from "lucide-react";
+import { Mail, Activity, AlertTriangle, Clock, RefreshCw, TrendingUp, Settings, Target } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface UsageGmailTabProps {
   selectedMonth: string; // "YYYY-MM" or "all"
@@ -42,10 +50,24 @@ export function UsageGmailTab({ selectedMonth }: UsageGmailTabProps) {
     lastUpdated: string;
   } | null>(null);
 
+  // Calibration state
+  const [showCalibrate, setShowCalibrate] = useState(false);
+  const [calibrateRequests, setCalibrateRequests] = useState("");
+  const [calibration, setCalibration] = useState<{
+    actualRequests: number;
+    emailsAtCalibration: number;
+    multiplier: number;
+    calibratedAt: string;
+  } | null>(null);
+
   useEffect(() => {
     const saved = localStorage.getItem('gmail_api_stats');
     if (saved) {
       setSavedStats(JSON.parse(saved));
+    }
+    const savedCalibration = localStorage.getItem('gmail_api_calibration');
+    if (savedCalibration) {
+      setCalibration(JSON.parse(savedCalibration));
     }
   }, []);
 
@@ -137,8 +159,49 @@ export function UsageGmailTab({ selectedMonth }: UsageGmailTabProps) {
     toast.success("Manual stats cleared");
   };
 
-  // Use manual stats if available, otherwise use estimates
-  const displayRequests = savedStats?.requests || emailProcessingStats?.estimatedApiCalls || 0;
+  const handleCalibrate = () => {
+    const actualRequests = parseInt(calibrateRequests) || 0;
+    const currentEmails = emailProcessingStats?.totalEmails || 0;
+    
+    if (actualRequests <= 0 || currentEmails <= 0) {
+      toast.error("Need valid requests count and email data");
+      return;
+    }
+    
+    const multiplier = actualRequests / currentEmails;
+    
+    const cal = {
+      actualRequests,
+      emailsAtCalibration: currentEmails,
+      multiplier,
+      calibratedAt: new Date().toISOString(),
+    };
+    
+    localStorage.setItem('gmail_api_calibration', JSON.stringify(cal));
+    setCalibration(cal);
+    setShowCalibrate(false);
+    setCalibrateRequests("");
+    toast.success(`Calibrated: ${multiplier.toFixed(2)} requests per email`);
+  };
+
+  const clearCalibration = () => {
+    localStorage.removeItem('gmail_api_calibration');
+    setCalibration(null);
+    toast.success("Calibration cleared");
+  };
+
+  // Calculate calibrated estimate
+  const getCalibratedEstimate = () => {
+    if (!emailProcessingStats) return 0;
+    if (calibration) {
+      return Math.round(emailProcessingStats.totalEmails * calibration.multiplier);
+    }
+    return emailProcessingStats.estimatedApiCalls;
+  };
+
+  // Use manual stats if available, otherwise use calibrated/default estimates
+  const calibratedRequests = getCalibratedEstimate();
+  const displayRequests = savedStats?.requests || calibratedRequests;
   const displayErrors = savedStats?.errors || queueStats?.failed || 0;
   const errorRate = savedStats?.errorRate || (displayRequests > 0 ? (displayErrors / displayRequests) * 100 : 0);
 
@@ -147,7 +210,7 @@ export function UsageGmailTab({ selectedMonth }: UsageGmailTabProps) {
       title: "Total Requests",
       icon: Activity,
       value: displayRequests.toLocaleString(),
-      subtext: savedStats ? "from GCP Console" : "estimated",
+      subtext: savedStats ? "from GCP Console" : calibration ? `calibrated (${calibration.multiplier.toFixed(1)}x)` : "estimated (3x)",
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
     },
@@ -191,7 +254,66 @@ export function UsageGmailTab({ selectedMonth }: UsageGmailTabProps) {
                 API requests and quota consumption ({periodLabel})
               </CardDescription>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Dialog open={showCalibrate} onOpenChange={setShowCalibrate}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Target className="h-4 w-4 mr-2" />
+                    Calibrate
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Calibrate API Estimates</DialogTitle>
+                    <DialogDescription>
+                      Enter the actual request count from GCP Console to improve estimate accuracy.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        Actual Total Requests (from GCP)
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 2689724"
+                        value={calibrateRequests}
+                        onChange={(e) => setCalibrateRequests(e.target.value)}
+                      />
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted text-sm">
+                      <p className="font-medium">Current Data:</p>
+                      <p className="text-muted-foreground">
+                        {(emailProcessingStats?.totalEmails || 0).toLocaleString()} emails processed
+                      </p>
+                      <p className="text-muted-foreground">
+                        Default estimate: {(emailProcessingStats?.estimatedApiCalls || 0).toLocaleString()} requests (3x)
+                      </p>
+                      {calibrateRequests && (
+                        <p className="text-primary mt-2">
+                          New multiplier: {((parseInt(calibrateRequests) || 0) / (emailProcessingStats?.totalEmails || 1)).toFixed(2)}x per email
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleCalibrate} className="flex-1">
+                        Save Calibration
+                      </Button>
+                      {calibration && (
+                        <Button variant="outline" onClick={clearCalibration}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    {calibration && (
+                      <p className="text-xs text-muted-foreground">
+                        Last calibrated: {new Date(calibration.calibratedAt).toLocaleDateString()} 
+                        ({calibration.multiplier.toFixed(2)}x multiplier)
+                      </p>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Button
                 variant="outline"
                 size="sm"
