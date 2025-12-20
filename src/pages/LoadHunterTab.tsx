@@ -834,29 +834,91 @@ export default function LoadHunterTab() {
     return () => clearTimeout(timer);
   }, [matchSearchQuery]);
 
-  // Function to play alert sound
-  const playAlertSound = (force = false) => {
+  // Cache for generated sound effects
+  const soundCacheRef = useRef<Map<string, string>>(new Map());
+  const isGeneratingSoundRef = useRef(false);
+
+  // Function to play AI-generated sound effect
+  const playAlertSound = async (force = false) => {
     console.log('🔔 playAlertSound called, isSoundMuted:', isSoundMuted, 'force:', force);
     
     if (isSoundMuted && !force) {
       console.log('❌ Sound is muted, skipping');
       return;
     }
+
+    // Prevent multiple simultaneous generations
+    if (isGeneratingSoundRef.current) {
+      console.log('⏳ Sound generation already in progress, skipping');
+      return;
+    }
+    
+    const soundPrompt = "Short upbeat notification chime for a trucking dispatch app, bright and professional";
     
     try {
-      // Create or reuse audio context
+      // Check cache first
+      const cachedUrl = soundCacheRef.current.get(soundPrompt);
+      if (cachedUrl) {
+        console.log('🎵 Playing cached sound effect');
+        const audio = new Audio(cachedUrl);
+        await audio.play();
+        console.log('✅ Cached sound played successfully');
+        return;
+      }
+
+      isGeneratingSoundRef.current = true;
+      console.log('🎵 Generating AI sound effect via ElevenLabs...');
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-sfx`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ 
+            prompt: soundPrompt,
+            duration: 2 
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `SFX request failed: ${response.status}`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Cache the generated sound
+      soundCacheRef.current.set(soundPrompt, audioUrl);
+      
+      const audio = new Audio(audioUrl);
+      await audio.play();
+      
+      console.log('✅ AI sound effect played successfully');
+    } catch (error) {
+      console.error('❌ Error playing AI sound effect:', error);
+      // Fallback to simple oscillator sound
+      playFallbackSound();
+    } finally {
+      isGeneratingSoundRef.current = false;
+    }
+  };
+
+  // Fallback sound using Web Audio API
+  const playFallbackSound = () => {
+    try {
       let ctx = audioContext;
       if (!ctx) {
-        console.log('🎵 Creating new AudioContext');
         ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         setAudioContext(ctx);
       }
       
-      console.log('🎵 AudioContext state:', ctx.state);
-      
-      // Resume context if suspended (required by some browsers)
       if (ctx.state === 'suspended') {
-        console.log('🔓 Resuming suspended AudioContext');
         ctx.resume();
       }
       
@@ -866,7 +928,6 @@ export default function LoadHunterTab() {
       oscillator.connect(gainNode);
       gainNode.connect(ctx.destination);
       
-      // Create a pleasant notification sound (two-tone)
       oscillator.frequency.setValueAtTime(800, ctx.currentTime);
       oscillator.frequency.setValueAtTime(600, ctx.currentTime + 0.1);
       oscillator.type = 'sine';
@@ -877,9 +938,9 @@ export default function LoadHunterTab() {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.4);
       
-      console.log('✅ Sound notification played successfully');
+      console.log('✅ Fallback sound played');
     } catch (error) {
-      console.error('❌ Error playing sound:', error);
+      console.error('❌ Error playing fallback sound:', error);
     }
   };
   // Request notification permission
