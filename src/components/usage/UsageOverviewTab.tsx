@@ -185,7 +185,12 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
         return q;
       };
       
-      const [emails, geocode, matches, mapTracking, directions, aiUsage, emailSend, audit, matchAction, vehicleLocation] = await Promise.all([
+      // Match the same 16 tables as Cloud & AI tab for consistency
+      const [
+        emails, geocode, matches, mapTracking, directions, aiUsage, emailSend, 
+        audit, matchAction, vehicleLocation, emailVolume, archive, missedLoads, 
+        pubsub, loads, loadStops
+      ] = await Promise.all([
         buildQuery('load_emails', 'created_at'),
         buildQuery('geocode_cache', 'created_at'),
         buildQuery('load_hunt_matches', 'created_at'),
@@ -196,6 +201,12 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
         buildQuery('audit_logs', 'timestamp'),
         buildQuery('match_action_history', 'created_at'),
         buildQuery('vehicle_location_history', 'captured_at'),
+        buildQuery('email_volume_stats', 'created_at'),
+        buildQuery('load_emails_archive', 'archived_at'),
+        buildQuery('missed_loads_history', 'created_at'),
+        buildQuery('pubsub_tracking', 'created_at'),
+        buildQuery('loads', 'created_at'),
+        buildQuery('load_stops', 'created_at'),
       ]);
       
       const breakdown = {
@@ -209,6 +220,12 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
         audit: audit.count || 0,
         matchAction: matchAction.count || 0,
         vehicleLocation: vehicleLocation.count || 0,
+        emailVolume: emailVolume.count || 0,
+        archive: archive.count || 0,
+        missedLoads: missedLoads.count || 0,
+        pubsub: pubsub.count || 0,
+        loads: loads.count || 0,
+        loadStops: loadStops.count || 0,
       };
       
       const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
