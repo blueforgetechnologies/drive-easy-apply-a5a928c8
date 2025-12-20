@@ -128,6 +128,47 @@ const LoadEmailDetail = ({
   const [templateTexts, setTemplateTexts] = useState<Record<string, string>>(DEFAULT_TEMPLATES);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
 
+  // Diesel truck acceleration sound effect
+  const playTruckSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create multiple oscillators to simulate diesel engine rumble
+      const createEngineSound = (startFreq: number, endFreq: number, startTime: number, duration: number, volume: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(startFreq, ctx.currentTime + startTime);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + startTime + duration);
+        
+        gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+        gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
+        
+        osc.start(ctx.currentTime + startTime);
+        osc.stop(ctx.currentTime + startTime + duration);
+      };
+
+      // Low rumble base
+      createEngineSound(35, 80, 0, 0.8, 0.15);
+      createEngineSound(40, 90, 0.1, 0.7, 0.12);
+      
+      // Mid frequency growl
+      createEngineSound(80, 200, 0, 0.8, 0.08);
+      createEngineSound(100, 250, 0.1, 0.6, 0.06);
+      
+      // High rev acceleration
+      createEngineSound(150, 400, 0.2, 0.6, 0.04);
+      
+      console.log('🚛 Diesel truck sound played!');
+    } catch (error) {
+      console.error('Error playing truck sound:', error);
+    }
+  };
+
   // Load dispatcher's custom templates when dispatcher is identified
   useEffect(() => {
     if (currentDispatcher?.email) {
@@ -1010,6 +1051,9 @@ const LoadEmailDetail = ({
           return;
         }
       }
+      
+      // Play diesel truck acceleration sound
+      playTruckSound();
       
       // Show success to dispatcher (they don't need to know if it was a duplicate)
       toast.success('Bid email sent successfully!');
