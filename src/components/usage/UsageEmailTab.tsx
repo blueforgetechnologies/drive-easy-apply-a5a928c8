@@ -14,9 +14,11 @@ const getDateRange = (selectedMonth: string) => {
   if (selectedMonth === "all") {
     return { startISO: null, endISO: null, isAllTime: true };
   }
-  const startDate = new Date(selectedMonth + '-01');
-  const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-  return { startISO: startDate.toISOString(), endISO: endDate.toISOString(), isAllTime: false };
+
+  const [y, m] = selectedMonth.split('-').map(Number);
+  const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+  const endExclusive = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0));
+  return { startISO: start.toISOString(), endISO: endExclusive.toISOString(), isAllTime: false };
 };
 
 export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
@@ -37,9 +39,9 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
         received = active + archived;
       } else {
         const { count: activeCount } = await supabase.from('load_emails').select('*', { count: 'exact', head: true })
-          .gte('received_at', startISO!).lte('received_at', endISO!);
+          .gte('received_at', startISO!).lt('received_at', endISO!);
         const { count: archivedCount } = await supabase.from('load_emails_archive').select('*', { count: 'exact', head: true })
-          .gte('received_at', startISO!).lte('received_at', endISO!);
+          .gte('received_at', startISO!).lt('received_at', endISO!);
         active = activeCount || 0;
         archived = archivedCount || 0;
         received = active + archived;
@@ -75,7 +77,7 @@ export function UsageEmailTab({ selectedMonth }: UsageEmailTabProps) {
     queryFn: async () => {
       let query = supabase.from('load_emails').select('received_at');
       if (!isAllTime) {
-        query = query.gte('received_at', startISO!).lte('received_at', endISO!);
+        query = query.gte('received_at', startISO!).lt('received_at', endISO!);
       }
       const { data: emails } = await query;
       

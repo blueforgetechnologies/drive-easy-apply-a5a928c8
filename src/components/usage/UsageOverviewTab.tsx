@@ -19,12 +19,14 @@ const getDateRange = (selectedMonth: string) => {
   if (selectedMonth === "all") {
     return { startISO: null, endISO: null, isAllTime: true };
   }
-  const startDate = new Date(selectedMonth + '-01');
-  const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-  return { 
-    startISO: startDate.toISOString(), 
-    endISO: endDate.toISOString(), 
-    isAllTime: false 
+
+  const [y, m] = selectedMonth.split('-').map(Number);
+  const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+  const endExclusive = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0));
+  return {
+    startISO: start.toISOString(),
+    endISO: endExclusive.toISOString(),
+    isAllTime: false,
   };
 };
 
@@ -136,8 +138,8 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
         const { count: recvCount } = await supabase
           .from('load_emails')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', startISO!)
-          .lte('created_at', endISO!);
+          .gte('received_at', startISO!)
+          .lt('received_at', endISO!);
         
         const { count: sentCount } = await supabase
           .from('email_send_tracking')
