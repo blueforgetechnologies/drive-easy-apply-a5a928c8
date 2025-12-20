@@ -116,7 +116,7 @@ export default function ReadyForAuditTab() {
                     <TableHead className="text-primary font-medium">Load Owner</TableHead>
                     <TableHead className="text-primary font-medium">Truck ID</TableHead>
                   </TableRow>
-                  <TableRow className="bg-muted/50">
+                  <TableRow className="bg-muted/50 border-b-0">
                     <TableHead className="text-primary font-medium pt-0">Customer Load</TableHead>
                     <TableHead className="text-primary font-medium pt-0">Customer</TableHead>
                     <TableHead className="text-primary font-medium pt-0">Destination</TableHead>
