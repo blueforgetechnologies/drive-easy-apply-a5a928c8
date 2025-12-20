@@ -1,14 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileText, Download, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PDFImageViewer } from "@/components/PDFImageViewer";
 
 interface ChecklistItem {
   id: string;
@@ -191,36 +190,47 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
   const renderDocumentViewer = (doc: any) => {
     if (!doc?.file_url) return null;
-    const isPdf = doc.file_name?.toLowerCase().endsWith('.pdf');
+    const fileName = doc.file_name?.toLowerCase() || '';
+    const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif') || fileName.endsWith('.webp');
     
-    if (isPdf) {
-      return (
-        <div className="h-[500px]">
-          <PDFImageViewer url={doc.file_url} fileName={doc.file_name || 'document.pdf'} />
-        </div>
-      );
-    }
-    
-    // For images
     return (
-      <div className="flex flex-col h-[500px]">
-        <div className="flex justify-end mb-2">
+      <div className="flex flex-col h-[550px]">
+        <div className="flex justify-end gap-2 mb-2">
           <a
             href={doc.file_url}
-            download={doc.file_name}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
+            <ExternalLink className="h-4 w-4" />
+            Open in New Tab
+          </a>
+          <a
+            href={doc.file_url}
+            download={doc.file_name}
+            className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          >
+            <Download className="h-4 w-4" />
             Download
           </a>
         </div>
-        <div className="flex-1 overflow-auto border rounded bg-muted p-4">
-          <img
-            src={doc.file_url}
-            alt={doc.file_name || 'Document'}
-            className="max-w-full h-auto mx-auto shadow-lg"
-          />
+        <div className="flex-1 border rounded bg-muted overflow-hidden">
+          {isImage ? (
+            <div className="h-full overflow-auto p-4 flex items-start justify-center">
+              <img
+                src={doc.file_url}
+                alt={doc.file_name || 'Document'}
+                className="max-w-full h-auto shadow-lg"
+              />
+            </div>
+          ) : (
+            <iframe
+              src={doc.file_url}
+              title={doc.file_name || 'Document'}
+              className="w-full h-full"
+              style={{ border: 'none' }}
+            />
+          )}
         </div>
       </div>
     );
