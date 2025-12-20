@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, DragEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ const DOCUMENT_TYPES = [
 
 export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocumentsProps) {
   const [uploading, setUploading] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const handleFileSelect = async (docType: string, files: FileList | null) => {
@@ -166,6 +167,29 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
 
   const getDocsByType = (type: string) => documents.filter(d => d.document_type === type);
 
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, docType: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(docType);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(null);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, docType: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(null);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFileSelect(docType, files);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {DOCUMENT_TYPES.map(docType => {
@@ -220,12 +244,24 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
             </CardHeader>
             <CardContent>
               {typeDocs.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
-                  <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <div 
+                  className={`text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+                    dragOver === docType.value 
+                      ? 'border-primary bg-primary/5' 
+                      : 'hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                  onDragOver={(e) => handleDragOver(e, docType.value)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, docType.value)}
+                  onClick={() => canUploadMore && fileInputRefs.current[docType.value]?.click()}
+                >
+                  <Upload className={`h-8 w-8 mx-auto mb-2 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
                   <p className="text-sm">
-                    {isRateConfirmation 
-                      ? 'No rate confirmation uploaded' 
-                      : 'No bills of lading uploaded'}
+                    {dragOver === docType.value 
+                      ? 'Drop files here' 
+                      : isRateConfirmation 
+                        ? 'No rate confirmation uploaded' 
+                        : 'No bills of lading uploaded'}
                   </p>
                   <p className="text-xs mt-1">PDF or images accepted (max 10MB)</p>
                 </div>
