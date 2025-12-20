@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Building2, Upload, X, Image } from "lucide-react";
+import { Building2, Upload, X, Image, Landmark } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Configure PDF.js worker for v3.x
@@ -54,6 +54,14 @@ export default function CompanyProfileTab() {
           default_timezone: "America/New_York",
           billing_terms: "",
           remittance_info: "",
+          factoring_company_name: "",
+          factoring_company_address: "",
+          factoring_company_city: "",
+          factoring_company_state: "",
+          factoring_company_zip: "",
+          factoring_contact_name: "",
+          factoring_contact_email: "",
+          factoring_contact_phone: "",
         });
       }
     } catch (error: any) {
@@ -379,6 +387,88 @@ export default function CompanyProfileTab() {
               <Input
                 value={profile?.zip || ""}
                 onChange={(e) => updateField("zip", e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Factoring Company Section */}
+      <Card className="border-amber-200 dark:border-amber-800">
+        <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
+          <CardTitle className="flex items-center gap-2">
+            <Landmark className="h-5 w-5 text-amber-600" />
+            Factoring Company (Billing Party)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label>Company Name</Label>
+              <Input
+                value={profile?.factoring_company_name || ""}
+                onChange={(e) => updateField("factoring_company_name", e.target.value)}
+                placeholder="OTR Capital, LLC"
+              />
+            </div>
+            <div>
+              <Label>Contact Name</Label>
+              <Input
+                value={profile?.factoring_contact_name || ""}
+                onChange={(e) => updateField("factoring_contact_name", e.target.value)}
+                placeholder="John Smith"
+              />
+            </div>
+            <div>
+              <Label>Contact Email</Label>
+              <Input
+                type="email"
+                value={profile?.factoring_contact_email || ""}
+                onChange={(e) => updateField("factoring_contact_email", e.target.value)}
+                placeholder="contact@factoring.com"
+              />
+            </div>
+            <div>
+              <Label>Contact Phone</Label>
+              <Input
+                value={profile?.factoring_contact_phone || ""}
+                onChange={(e) => updateField("factoring_contact_phone", e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Address</Label>
+            <Input
+              value={profile?.factoring_company_address || ""}
+              onChange={(e) => updateField("factoring_company_address", e.target.value)}
+              placeholder="Dept. #390, P.O. Box 1000"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label>City</Label>
+              <Input
+                value={profile?.factoring_company_city || ""}
+                onChange={(e) => updateField("factoring_company_city", e.target.value)}
+                placeholder="Memphis"
+              />
+            </div>
+            <div>
+              <Label>State</Label>
+              <Input
+                value={profile?.factoring_company_state || ""}
+                onChange={(e) => updateField("factoring_company_state", e.target.value)}
+                maxLength={2}
+                placeholder="TN"
+              />
+            </div>
+            <div>
+              <Label>ZIP</Label>
+              <Input
+                value={profile?.factoring_company_zip || ""}
+                onChange={(e) => updateField("factoring_company_zip", e.target.value)}
+                placeholder="38148-0390"
               />
             </div>
           </div>
