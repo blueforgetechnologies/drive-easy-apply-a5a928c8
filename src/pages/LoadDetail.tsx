@@ -86,7 +86,7 @@ export default function LoadDetail() {
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
         supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles").select("id, vehicle_number, make, model").eq("status", "active"),
+        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
@@ -1102,7 +1102,14 @@ export default function LoadDetail() {
                   <div>
                     <Label className="text-[10px] font-medium text-muted-foreground">Truck ID / Vehicle</Label>
                     <div className="flex gap-1">
-                      <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
+                      <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
+                        updateField("assigned_vehicle_id", value);
+                        // Auto-select driver assigned to this vehicle
+                        const selectedVehicle = vehicles.find((v) => v.id === value);
+                        if (selectedVehicle?.driver_1_id) {
+                          updateField("assigned_driver_id", selectedVehicle.driver_1_id);
+                        }
+                      }}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent className="bg-background">
                           {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
