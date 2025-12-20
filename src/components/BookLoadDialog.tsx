@@ -63,9 +63,9 @@ export function BookLoadDialog({
 
     setIsBooking(true);
     try {
-      // Generate load number (format: LD-YYMMDD-XXX)
+      // Generate load number (format: LH-YYMMDD-XXX for Load Hunter/email sourced loads)
       const today = new Date();
-      const datePrefix = `LD-${today.getFullYear().toString().slice(2)}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
+      const datePrefix = `LH-${today.getFullYear().toString().slice(2)}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
       
       // Get the next sequence number for today
       const { count } = await supabase
