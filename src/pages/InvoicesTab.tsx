@@ -332,64 +332,60 @@ export default function InvoicesTab() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {filteredInvoices.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {searchQuery ? "No invoices match your search" : `No ${filter} invoices found`}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Invoice Date</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Paid</TableHead>
-                    <TableHead>Balance</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredInvoices.map((invoice) => (
-                    <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
-                      <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                      <TableCell>{invoice.customer_name}</TableCell>
-                      <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MM/dd/yyyy") : "—"}</TableCell>
-                      <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MM/dd/yyyy") : "—"}</TableCell>
-                      <TableCell>${invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
-                      <TableCell className="text-green-600">${invoice.amount_paid?.toFixed(2) || "0.00"}</TableCell>
-                      <TableCell className="font-semibold">${invoice.balance_due?.toFixed(2) || "0.00"}</TableCell>
-                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          {invoice.status === "draft" && (
-                            <Button size="sm" variant="outline" onClick={() => handleSendInvoice(invoice.id)}>
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {invoice.status === "sent" && (
-                            <Button size="sm" variant="outline" onClick={() => handleMarkPaid(invoice.id)}>
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => viewInvoiceDetail(invoice.id)}>
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="overflow-x-auto">
+        {filteredInvoices.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            {searchQuery ? "No invoices match your search" : `No ${filter} invoices found`}
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Date</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Due Date</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Total</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Paid</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInvoices.map((invoice) => (
+                <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
+                  <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                  <TableCell>{invoice.customer_name}</TableCell>
+                  <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MM/dd/yyyy") : "—"}</TableCell>
+                  <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MM/dd/yyyy") : "—"}</TableCell>
+                  <TableCell>${invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
+                  <TableCell className="text-green-600">${invoice.amount_paid?.toFixed(2) || "0.00"}</TableCell>
+                  <TableCell className="font-semibold">${invoice.balance_due?.toFixed(2) || "0.00"}</TableCell>
+                  <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      {invoice.status === "draft" && (
+                        <Button size="sm" variant="outline" onClick={() => handleSendInvoice(invoice.id)}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {invoice.status === "sent" && (
+                        <Button size="sm" variant="outline" onClick={() => handleMarkPaid(invoice.id)}>
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => viewInvoiceDetail(invoice.id)}>
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }
