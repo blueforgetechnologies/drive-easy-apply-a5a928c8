@@ -23,6 +23,7 @@ import { AddDispatcherDialog } from "@/components/AddDispatcherDialog";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { EditEntityDialog } from "@/components/EditEntityDialog";
 import { LoadDocuments } from "@/components/LoadDocuments";
+import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 
 export default function LoadDetail() {
   const { id } = useParams();
@@ -804,64 +805,72 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-1.5">
-                  {/* Billing Party Dropdown */}
-                  <div className="flex items-center gap-1.5">
-                    <Select
-                      value=""
-                      onValueChange={(value) => {
-                        if (value === "otr_solutions" && companyProfile) {
-                          updateField("broker_name", companyProfile.factoring_company_name || "");
-                          updateField("broker_contact", companyProfile.factoring_contact_name || "");
-                          updateField("broker_phone", "");
-                          updateField("broker_email", companyProfile.factoring_contact_email || "");
-                          updateField("broker_address", companyProfile.factoring_company_address || "");
-                          updateField("broker_city", companyProfile.factoring_company_city || "");
-                          updateField("broker_state", companyProfile.factoring_company_state || "");
-                          updateField("broker_zip", companyProfile.factoring_company_zip || "");
-                          toast.success("Filled with OTR Solutions info");
-                        } else if (value.startsWith("customer_")) {
-                          const customerId = value.replace("customer_", "");
-                          const customer = customers.find(c => c.id === customerId);
-                          if (customer) {
-                            updateField("broker_name", customer.name);
-                            updateField("broker_contact", customer.contact_name || "");
-                            updateField("broker_phone", customer.phone || "");
-                            updateField("broker_email", customer.email || "");
-                            updateField("broker_address", customer.address || "");
-                            updateField("broker_city", customer.city || "");
-                            updateField("broker_state", customer.state || "");
-                            updateField("broker_zip", customer.zip || "");
-                            toast.success("Filled with customer info");
-                          }
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs flex-1">
-                        <SelectValue placeholder={load.broker_name || "Select Billing Party..."} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border shadow-lg z-50">
-                        {companyProfile?.factoring_company_name && (
-                          <SelectItem value="otr_solutions" className="text-xs">
-                            {companyProfile.factoring_company_name}
-                          </SelectItem>
-                        )}
-                        {customers.length > 0 && (
-                          <>
-                            {customers.map((customer) => (
-                              <SelectItem key={customer.id} value={`customer_${customer.id}`} className="text-xs">
-                                {customer.name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <AddCustomerDialog onCustomerAdded={loadData}>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 shrink-0">
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </AddCustomerDialog>
-                  </div>
+                  {/* Billing Party Searchable Dropdown */}
+                  <SearchableEntitySelect
+                    entities={[
+                      ...(companyProfile?.factoring_company_name ? [{
+                        id: "otr_solutions",
+                        name: companyProfile.factoring_company_name,
+                        contact_name: companyProfile.factoring_contact_name,
+                        email: companyProfile.factoring_contact_email,
+                        address: companyProfile.factoring_company_address,
+                        city: companyProfile.factoring_company_city,
+                        state: companyProfile.factoring_company_state,
+                        zip: companyProfile.factoring_company_zip,
+                      }] : []),
+                      ...customers,
+                    ]}
+                    value={load.broker_name || ""}
+                    placeholder="Search billing party..."
+                    entityType="customer"
+                    onSelect={(entity) => {
+                      updateField("broker_name", entity.name);
+                      updateField("broker_contact", entity.contact_name || "");
+                      updateField("broker_phone", entity.phone || "");
+                      updateField("broker_email", entity.email || "");
+                      updateField("broker_address", entity.address || "");
+                      updateField("broker_city", entity.city || "");
+                      updateField("broker_state", entity.state || "");
+                      updateField("broker_zip", entity.zip || "");
+                      toast.success("Filled billing party info");
+                    }}
+                    onAddNew={async (name, data) => {
+                      const { data: newCustomer, error } = await supabase
+                        .from("customers")
+                        .insert([{
+                          name,
+                          contact_name: data.contact_name || null,
+                          phone: data.phone || null,
+                          email: data.email || null,
+                          address: data.address || null,
+                          city: data.city || null,
+                          state: data.state || null,
+                          zip: data.zip || null,
+                          status: "active",
+                        }])
+                        .select()
+                        .single();
+                      
+                      if (error) {
+                        toast.error("Failed to add customer");
+                        throw error;
+                      }
+                      
+                      // Update load with new customer info
+                      updateField("broker_name", name);
+                      updateField("broker_contact", data.contact_name || "");
+                      updateField("broker_phone", data.phone || "");
+                      updateField("broker_email", data.email || "");
+                      updateField("broker_address", data.address || "");
+                      updateField("broker_city", data.city || "");
+                      updateField("broker_state", data.state || "");
+                      updateField("broker_zip", data.zip || "");
+                      
+                      // Reload data to include new customer
+                      loadData();
+                      toast.success("Customer added and selected");
+                    }}
+                  />
                   <div className="grid grid-cols-2 gap-1.5">
                     <Input className="h-7 text-xs" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
                     <Input className="h-7 text-xs" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
@@ -925,42 +934,51 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-1.5">
-                  {/* Location Dropdown */}
-                  <div className="flex items-center gap-1.5">
-                    <Select
-                      value=""
-                      onValueChange={(value) => {
-                        const location = locations.find(l => l.id === value);
-                        if (location) {
-                          updateField("shipper_name", location.name);
-                          updateField("pickup_address", location.address || "");
-                          updateField("pickup_city", location.city || "");
-                          updateField("pickup_state", location.state || "");
-                          updateField("pickup_zip", location.zip || "");
-                          toast.success("Filled with location info");
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs flex-1">
-                        <SelectValue placeholder={load.shipper_name || "Select Location..."} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border shadow-lg z-50">
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id} className="text-xs">
-                            {location.name} {location.city && location.state ? `- ${location.city}, ${location.state}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-7 w-7 p-0 shrink-0"
-                      onClick={() => navigate("/dashboard/locations")}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {/* Origin Location Searchable Dropdown */}
+                  <SearchableEntitySelect
+                    entities={locations}
+                    value={load.shipper_name || ""}
+                    placeholder="Search shipper/location..."
+                    entityType="location"
+                    onSelect={(entity) => {
+                      updateField("shipper_name", entity.name);
+                      updateField("pickup_address", entity.address || "");
+                      updateField("pickup_city", entity.city || "");
+                      updateField("pickup_state", entity.state || "");
+                      updateField("pickup_zip", entity.zip || "");
+                      toast.success("Filled shipper info");
+                    }}
+                    onAddNew={async (name, data) => {
+                      const { data: newLocation, error } = await supabase
+                        .from("locations")
+                        .insert([{
+                          name,
+                          address: data.address || null,
+                          city: data.city || null,
+                          state: data.state || null,
+                          zip: data.zip || null,
+                          status: "active",
+                        }])
+                        .select()
+                        .single();
+                      
+                      if (error) {
+                        toast.error("Failed to add location");
+                        throw error;
+                      }
+                      
+                      // Update load with new location info
+                      updateField("shipper_name", name);
+                      updateField("pickup_address", data.address || "");
+                      updateField("pickup_city", data.city || "");
+                      updateField("pickup_state", data.state || "");
+                      updateField("pickup_zip", data.zip || "");
+                      
+                      // Reload data to include new location
+                      loadData();
+                      toast.success("Location added and selected");
+                    }}
+                  />
                   <div className="grid grid-cols-2 gap-1.5">
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
@@ -1040,42 +1058,51 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-1.5">
-                  {/* Location Dropdown */}
-                  <div className="flex items-center gap-1.5">
-                    <Select
-                      value=""
-                      onValueChange={(value) => {
-                        const location = locations.find(l => l.id === value);
-                        if (location) {
-                          updateField("receiver_name", location.name);
-                          updateField("delivery_address", location.address || "");
-                          updateField("delivery_city", location.city || "");
-                          updateField("delivery_state", location.state || "");
-                          updateField("delivery_zip", location.zip || "");
-                          toast.success("Filled with location info");
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs flex-1">
-                        <SelectValue placeholder={load.receiver_name || "Select Location..."} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border shadow-lg z-50">
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id} className="text-xs">
-                            {location.name} {location.city && location.state ? `- ${location.city}, ${location.state}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-7 w-7 p-0 shrink-0"
-                      onClick={() => navigate("/dashboard/locations")}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {/* Destination Location Searchable Dropdown */}
+                  <SearchableEntitySelect
+                    entities={locations}
+                    value={load.receiver_name || ""}
+                    placeholder="Search receiver/location..."
+                    entityType="location"
+                    onSelect={(entity) => {
+                      updateField("receiver_name", entity.name);
+                      updateField("delivery_address", entity.address || "");
+                      updateField("delivery_city", entity.city || "");
+                      updateField("delivery_state", entity.state || "");
+                      updateField("delivery_zip", entity.zip || "");
+                      toast.success("Filled receiver info");
+                    }}
+                    onAddNew={async (name, data) => {
+                      const { data: newLocation, error } = await supabase
+                        .from("locations")
+                        .insert([{
+                          name,
+                          address: data.address || null,
+                          city: data.city || null,
+                          state: data.state || null,
+                          zip: data.zip || null,
+                          status: "active",
+                        }])
+                        .select()
+                        .single();
+                      
+                      if (error) {
+                        toast.error("Failed to add location");
+                        throw error;
+                      }
+                      
+                      // Update load with new location info
+                      updateField("receiver_name", name);
+                      updateField("delivery_address", data.address || "");
+                      updateField("delivery_city", data.city || "");
+                      updateField("delivery_state", data.state || "");
+                      updateField("delivery_zip", data.zip || "");
+                      
+                      // Reload data to include new location
+                      loadData();
+                      toast.success("Location added and selected");
+                    }}
+                  />
                   <div className="grid grid-cols-2 gap-1.5">
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
