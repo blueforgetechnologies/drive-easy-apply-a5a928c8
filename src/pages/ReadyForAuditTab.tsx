@@ -78,12 +78,12 @@ export default function ReadyForAuditTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
-          <FileCheck className="h-5 w-5 text-cyan-600" />
-          <h3 className="text-lg font-semibold">Loads Ready for Audit</h3>
-          <Badge variant="secondary" className="bg-cyan-100 text-cyan-700">
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg sm:text-xl font-bold">Loads Ready for Audit</h2>
+          <Badge variant="secondary" className="text-xs">
             {filteredLoads?.length || 0}
           </Badge>
         </div>
@@ -93,7 +93,7 @@ export default function ReadyForAuditTab() {
             placeholder="Search loads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-8"
           />
         </div>
       </div>
