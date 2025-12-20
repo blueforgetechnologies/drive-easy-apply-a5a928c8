@@ -1807,11 +1807,15 @@ export type Database = {
           bid_placed_by: string | null
           billing_notes: string | null
           bol_number: string | null
+          broker_address: string | null
+          broker_city: string | null
           broker_contact: string | null
           broker_email: string | null
           broker_fee: number | null
           broker_name: string | null
           broker_phone: string | null
+          broker_state: string | null
+          broker_zip: string | null
           cancelled_at: string | null
           cargo_description: string | null
           cargo_dimensions: string | null
@@ -1914,11 +1918,15 @@ export type Database = {
           bid_placed_by?: string | null
           billing_notes?: string | null
           bol_number?: string | null
+          broker_address?: string | null
+          broker_city?: string | null
           broker_contact?: string | null
           broker_email?: string | null
           broker_fee?: number | null
           broker_name?: string | null
           broker_phone?: string | null
+          broker_state?: string | null
+          broker_zip?: string | null
           cancelled_at?: string | null
           cargo_description?: string | null
           cargo_dimensions?: string | null
@@ -2021,11 +2029,15 @@ export type Database = {
           bid_placed_by?: string | null
           billing_notes?: string | null
           bol_number?: string | null
+          broker_address?: string | null
+          broker_city?: string | null
           broker_contact?: string | null
           broker_email?: string | null
           broker_fee?: number | null
           broker_name?: string | null
           broker_phone?: string | null
+          broker_state?: string | null
+          broker_zip?: string | null
           cancelled_at?: string | null
           cargo_description?: string | null
           cargo_dimensions?: string | null
