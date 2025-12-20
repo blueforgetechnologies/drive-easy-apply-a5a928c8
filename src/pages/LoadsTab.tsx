@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
@@ -1833,21 +1833,43 @@ export default function LoadsTab() {
         <DialogHeader>
           <DialogTitle>{selectedDocument?.type}: {selectedDocument?.name}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {selectedDocument?.url && (
-            selectedDocument.name.toLowerCase().endsWith('.pdf') ? (
-              <iframe
-                src={selectedDocument.url}
-                className="w-full h-full min-h-[60vh] border-0 rounded"
-                title={selectedDocument.name}
-              />
-            ) : (
-              <img
-                src={selectedDocument.url}
-                alt={selectedDocument.name}
-                className="max-w-full max-h-[60vh] object-contain mx-auto"
-              />
-            )
+            <>
+              {selectedDocument.name.toLowerCase().endsWith('.pdf') ? (
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(selectedDocument.url, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Open in New Tab
+                    </Button>
+                    <a
+                      href={selectedDocument.url}
+                      download={selectedDocument.name}
+                      className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </a>
+                  </div>
+                  <iframe
+                    src={`${selectedDocument.url}#toolbar=1&navpanes=0`}
+                    className="w-full flex-1 min-h-[55vh] border rounded bg-muted"
+                    title={selectedDocument.name}
+                  />
+                </div>
+              ) : (
+                <img
+                  src={selectedDocument.url}
+                  alt={selectedDocument.name}
+                  className="max-w-full max-h-[60vh] object-contain mx-auto"
+                />
+              )}
+            </>
           )}
         </div>
       </DialogContent>
