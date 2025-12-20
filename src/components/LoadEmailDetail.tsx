@@ -1524,21 +1524,38 @@ const LoadEmailDetail = ({
           
           {/* Action Buttons - Sticky Footer */}
           <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
-            <Button 
-              size="sm" 
-              variant={isDoNotReplyEmail ? "secondary" : "default"}
-              className="flex-1 h-10 font-semibold shadow-sm"
+            <button 
+              type="button"
+              className="flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700"
+              style={{ 
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
+              }}
               onClick={() => setShowEmailConfirmDialog(true)}
             >
-              <Mail className="w-4 h-4 mr-2" />
+              <Mail className="w-4 h-4" />
               Email Bid
-            </Button>
-            <Button size="sm" className="flex-1 bg-amber-500 hover:bg-amber-600 h-10 font-semibold shadow-sm">
-              Mark as Bid
-            </Button>
-            <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-10 font-semibold shadow-sm">
+            </button>
+            <button 
+              type="button"
+              className="flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center transition-all duration-200 active:scale-95 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700"
+              style={{ 
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
+              }}
+            >
+              Mark as: Bid placed
+            </button>
+            <button 
+              type="button"
+              className="flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center transition-all duration-200 active:scale-95 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700"
+              style={{ 
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
+              }}
+            >
               Book Load
-            </Button>
+            </button>
             {portalBidUrl && (
               <Button 
                 size="sm" 
