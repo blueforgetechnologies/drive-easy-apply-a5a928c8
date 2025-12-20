@@ -337,6 +337,14 @@ export type Database = {
           default_timezone: string | null
           dot_number: string | null
           email: string | null
+          factoring_company_address: string | null
+          factoring_company_city: string | null
+          factoring_company_name: string | null
+          factoring_company_state: string | null
+          factoring_company_zip: string | null
+          factoring_contact_email: string | null
+          factoring_contact_name: string | null
+          factoring_contact_phone: string | null
           id: string
           legal_name: string | null
           logo_url: string | null
@@ -360,6 +368,14 @@ export type Database = {
           default_timezone?: string | null
           dot_number?: string | null
           email?: string | null
+          factoring_company_address?: string | null
+          factoring_company_city?: string | null
+          factoring_company_name?: string | null
+          factoring_company_state?: string | null
+          factoring_company_zip?: string | null
+          factoring_contact_email?: string | null
+          factoring_contact_name?: string | null
+          factoring_contact_phone?: string | null
           id?: string
           legal_name?: string | null
           logo_url?: string | null
@@ -383,6 +399,14 @@ export type Database = {
           default_timezone?: string | null
           dot_number?: string | null
           email?: string | null
+          factoring_company_address?: string | null
+          factoring_company_city?: string | null
+          factoring_company_name?: string | null
+          factoring_company_state?: string | null
+          factoring_company_zip?: string | null
+          factoring_contact_email?: string | null
+          factoring_contact_name?: string | null
+          factoring_contact_phone?: string | null
           id?: string
           legal_name?: string | null
           logo_url?: string | null
