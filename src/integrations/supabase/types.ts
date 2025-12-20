@@ -993,6 +993,33 @@ export type Database = {
         }
         Relationships: []
       }
+      geocoding_api_tracking: {
+        Row: {
+          created_at: string
+          id: string
+          location_query: string | null
+          month_year: string | null
+          user_id: string | null
+          was_cache_hit: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_query?: string | null
+          month_year?: string | null
+          user_id?: string | null
+          was_cache_hit?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_query?: string | null
+          month_year?: string | null
+          user_id?: string | null
+          was_cache_hit?: boolean | null
+        }
+        Relationships: []
+      }
       gmail_tokens: {
         Row: {
           access_token: string
@@ -2348,6 +2375,7 @@ export type Database = {
       }
       mapbox_billing_history: {
         Row: {
+          baseline_set_at: string | null
           billing_end: string
           billing_period: string
           billing_start: string
@@ -2356,12 +2384,14 @@ export type Database = {
           geocoding_requests: number
           id: string
           invoice_date: string | null
+          is_baseline: boolean | null
           map_loads: number
           notes: string | null
           total_cost: number
           updated_at: string
         }
         Insert: {
+          baseline_set_at?: string | null
           billing_end: string
           billing_period: string
           billing_start: string
@@ -2370,12 +2400,14 @@ export type Database = {
           geocoding_requests?: number
           id?: string
           invoice_date?: string | null
+          is_baseline?: boolean | null
           map_loads?: number
           notes?: string | null
           total_cost?: number
           updated_at?: string
         }
         Update: {
+          baseline_set_at?: string | null
           billing_end?: string
           billing_period?: string
           billing_start?: string
@@ -2384,6 +2416,7 @@ export type Database = {
           geocoding_requests?: number
           id?: string
           invoice_date?: string | null
+          is_baseline?: boolean | null
           map_loads?: number
           notes?: string | null
           total_cost?: number
