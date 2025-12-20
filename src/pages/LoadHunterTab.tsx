@@ -9,6 +9,7 @@ import { DispatcherMetricsView } from "@/components/DispatcherMetricsView";
 import { UserActivityTracker } from "@/components/UserActivityTracker";
 import LoadHunterMobile from "@/components/LoadHunterMobile";
 import { BookLoadDialog } from "@/components/BookLoadDialog";
+import { SoundSettingsDialog, getSoundPrompt, loadSoundSettings, SoundSettings } from "@/components/SoundSettingsDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -157,6 +158,7 @@ export default function LoadHunterTab() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [vehicleNotes, setVehicleNotes] = useState("");
   const [isSoundMuted, setIsSoundMuted] = useState(false);
+  const [soundSettings, setSoundSettings] = useState<SoundSettings>(loadSoundSettings());
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
@@ -836,27 +838,31 @@ export default function LoadHunterTab() {
 
   // Cache for generated sound effects
   const soundCacheRef = useRef<Map<string, string>>(new Map());
-  const isGeneratingSoundRef = useRef(false);
+  const isGeneratingSoundRef = useRef<Record<string, boolean>>({});
 
-  // Function to play alert sound using ElevenLabs AI-generated sound effects
-  const playAlertSound = async (force = false) => {
-    console.log('🔔 playAlertSound called, isSoundMuted:', isSoundMuted, 'force:', force);
+  // Generic function to play a sound by type (load_receive or bid_sent)
+  const playSound = async (soundType: 'load_receive' | 'bid_sent', force = false) => {
+    console.log(`🔔 playSound called for ${soundType}, isSoundMuted:`, isSoundMuted, 'force:', force);
     
     if (isSoundMuted && !force) {
       console.log('❌ Sound is muted, skipping');
       return;
     }
 
+    const currentSettings = loadSoundSettings();
+    const soundId = soundType === 'load_receive' ? currentSettings.loadReceiveSound : currentSettings.bidSentSound;
+    const volume = currentSettings.volume / 100;
+    const cacheKey = soundId;
+
     // Check if we have a cached sound
-    const cacheKey = 'load_alert';
     const cachedAudioUrl = soundCacheRef.current.get(cacheKey);
     
     if (cachedAudioUrl) {
       try {
         const audio = new Audio(cachedAudioUrl);
-        audio.volume = 0.5;
+        audio.volume = volume;
         await audio.play();
-        console.log('✅ Played cached AI sound');
+        console.log(`✅ Played cached AI sound: ${soundId}`);
         return;
       } catch (error) {
         console.error('Error playing cached sound:', error);
@@ -864,10 +870,11 @@ export default function LoadHunterTab() {
     }
 
     // Generate new sound if not cached and not already generating
-    if (!isGeneratingSoundRef.current) {
-      isGeneratingSoundRef.current = true;
+    if (!isGeneratingSoundRef.current[soundId]) {
+      isGeneratingSoundRef.current[soundId] = true;
       
       try {
+        const prompt = getSoundPrompt(soundId);
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-sfx`,
           {
@@ -878,7 +885,7 @@ export default function LoadHunterTab() {
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
             body: JSON.stringify({
-              prompt: 'Short digital notification chime, two ascending tones, clean and modern alert sound',
+              prompt,
               duration: 1
             }),
           }
@@ -896,19 +903,29 @@ export default function LoadHunterTab() {
         
         // Play the sound
         const audio = new Audio(audioUrl);
-        audio.volume = 0.5;
+        audio.volume = volume;
         await audio.play();
-        console.log('✅ AI sound generated and played');
+        console.log(`✅ AI sound generated and played: ${soundId}`);
       } catch (error) {
         console.error('Error generating AI sound, using fallback:', error);
         playFallbackSound();
       } finally {
-        isGeneratingSoundRef.current = false;
+        isGeneratingSoundRef.current[soundId] = false;
       }
     } else {
       // If already generating, use fallback
       playFallbackSound();
     }
+  };
+
+  // Wrapper for backward compatibility
+  const playAlertSound = async (force = false) => {
+    await playSound('load_receive', force);
+  };
+
+  // Play bid sent sound
+  const playBidSentSound = async () => {
+    await playSound('bid_sent', false);
   };
 
   // Fallback sound using Web Audio API
@@ -2136,6 +2153,7 @@ export default function LoadHunterTab() {
       setActiveFilter('unreviewed');
       
       toast.success('Bid placed - moved to My Bids');
+      playBidSentSound();
     } catch (error) {
       console.error('Error placing bid:', error);
       toast.error('Failed to update match status');
@@ -3134,12 +3152,26 @@ export default function LoadHunterTab() {
               <Button 
                 variant="ghost"
                 size="sm" 
-                className="h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-700"
+                className="h-7 w-7 p-0 !rounded-none border-0 btn-glossy text-gray-700"
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
                 {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
               </Button>
+              
+              <SoundSettingsDialog 
+                onSettingsChange={setSoundSettings}
+                trigger={
+                  <Button 
+                    variant="ghost"
+                    size="sm" 
+                    className="h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-700"
+                    title="Sound settings"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                }
+              />
             </div>
             
             <Button
