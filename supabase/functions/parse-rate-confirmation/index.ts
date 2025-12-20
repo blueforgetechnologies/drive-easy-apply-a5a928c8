@@ -286,6 +286,37 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
       extractedData.stops.forEach((stop: any, index: number) => {
         if (!stop.stop_sequence) stop.stop_sequence = index + 1;
       });
+      
+      // IMPORTANT: Populate legacy shipper/receiver fields from stops array for backwards compatibility
+      // This ensures the form mapping in LoadsTab works correctly
+      const firstPickup = extractedData.stops.find((s: any) => s.stop_type === 'pickup');
+      const lastDelivery = [...extractedData.stops].reverse().find((s: any) => s.stop_type === 'delivery');
+      
+      if (firstPickup) {
+        extractedData.shipper_name = extractedData.shipper_name || firstPickup.location_name;
+        extractedData.shipper_address = extractedData.shipper_address || firstPickup.location_address;
+        extractedData.shipper_city = extractedData.shipper_city || firstPickup.location_city;
+        extractedData.shipper_state = extractedData.shipper_state || firstPickup.location_state;
+        extractedData.shipper_zip = extractedData.shipper_zip || firstPickup.location_zip;
+        extractedData.shipper_contact = extractedData.shipper_contact || firstPickup.contact_name;
+        extractedData.shipper_phone = extractedData.shipper_phone || firstPickup.contact_phone;
+        extractedData.shipper_email = extractedData.shipper_email || firstPickup.contact_email;
+        extractedData.pickup_date = extractedData.pickup_date || firstPickup.scheduled_date;
+        extractedData.pickup_time = extractedData.pickup_time || firstPickup.scheduled_time;
+      }
+      
+      if (lastDelivery) {
+        extractedData.receiver_name = extractedData.receiver_name || lastDelivery.location_name;
+        extractedData.receiver_address = extractedData.receiver_address || lastDelivery.location_address;
+        extractedData.receiver_city = extractedData.receiver_city || lastDelivery.location_city;
+        extractedData.receiver_state = extractedData.receiver_state || lastDelivery.location_state;
+        extractedData.receiver_zip = extractedData.receiver_zip || lastDelivery.location_zip;
+        extractedData.receiver_contact = extractedData.receiver_contact || lastDelivery.contact_name;
+        extractedData.receiver_phone = extractedData.receiver_phone || lastDelivery.contact_phone;
+        extractedData.receiver_email = extractedData.receiver_email || lastDelivery.contact_email;
+        extractedData.delivery_date = extractedData.delivery_date || lastDelivery.scheduled_date;
+        extractedData.delivery_time = extractedData.delivery_time || lastDelivery.scheduled_time;
+      }
     }
 
     console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
