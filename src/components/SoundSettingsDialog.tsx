@@ -44,6 +44,48 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
   const [settings, setSettings] = useState<SoundSettings>(DEFAULT_SETTINGS);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const soundCacheRef = useRef<Map<string, string>>(new Map());
+  const aiSoundsUnavailableRef = useRef(false);
+  const aiSoundsUnavailableToastShownRef = useRef(false);
+  const previewAudioContextRef = useRef<AudioContext | null>(null);
+
+  const ensureCacheRef = () => {
+    if (!(soundCacheRef.current instanceof Map)) {
+      (soundCacheRef as any).current = new Map<string, string>();
+    }
+  };
+
+  const playFallbackPreview = () => {
+    try {
+      let ctx = previewAudioContextRef.current;
+      if (!ctx) {
+        ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        previewAudioContextRef.current = ctx;
+      }
+
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
+
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      oscillator.frequency.setValueAtTime(900, ctx.currentTime);
+      oscillator.frequency.setValueAtTime(700, ctx.currentTime + 0.08);
+      oscillator.type = 'sine';
+
+      const vol = Math.max(0, Math.min(1, settings.volume / 100));
+      gainNode.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.25);
+    } catch (e) {
+      console.error('Fallback preview sound failed:', e);
+    }
+  };
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -81,6 +123,13 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
     const option = SOUND_OPTIONS.find(o => o.id === soundId);
     if (!option) return;
 
+    ensureCacheRef();
+
+    if (aiSoundsUnavailableRef.current) {
+      playFallbackPreview();
+      return;
+    }
+
     // Check cache first
     const cachedUrl = soundCacheRef.current.get(soundId);
     if (cachedUrl) {
@@ -103,27 +152,37 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
           },
           body: JSON.stringify({
             prompt: option.prompt,
-            duration: 1
+            duration: 1,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to generate sound: ${response.status}`);
+        const errorText = await response.text().catch(() => "");
+
+        if (response.status === 401 || response.status === 403) {
+          aiSoundsUnavailableRef.current = true;
+          if (!aiSoundsUnavailableToastShownRef.current) {
+            aiSoundsUnavailableToastShownRef.current = true;
+            toast.error('AI sound provider blocked — preview will use a fallback beep.');
+          }
+        }
+
+        throw new Error(`Failed to generate sound: ${response.status} ${errorText}`);
       }
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
-      
+
       // Cache it
       soundCacheRef.current.set(soundId, audioUrl);
-      
+
       const audio = new Audio(audioUrl);
       audio.volume = settings.volume / 100;
       await audio.play();
     } catch (error) {
       console.error('Error previewing sound:', error);
-      toast.error('Failed to generate sound preview');
+      playFallbackPreview();
     } finally {
       setIsGenerating(null);
     }
