@@ -706,15 +706,15 @@ const LovableCloudAITab = () => {
               <div className="grid grid-cols-4 gap-2 text-xs">
                 <div className="p-2 rounded bg-muted">
                   <p className="text-muted-foreground">Emails</p>
-                  <p className="font-semibold text-lg">{(costBreakdown?.raw.emails || 0).toLocaleString()}</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.raw?.emails || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 rounded bg-muted">
                   <p className="text-muted-foreground">Geocode</p>
-                  <p className="font-semibold text-lg">{(costBreakdown?.raw.geocode || 0).toLocaleString()}</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.raw?.geocode || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 rounded bg-muted">
                   <p className="text-muted-foreground">Matches</p>
-                  <p className="font-semibold text-lg">{(costBreakdown?.raw.matches || 0).toLocaleString()}</p>
+                  <p className="font-semibold text-lg">{(costBreakdown?.raw?.matches || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 rounded bg-muted">
                   <p className="text-muted-foreground">Edge Calls</p>
