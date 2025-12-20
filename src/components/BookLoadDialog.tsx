@@ -119,6 +119,7 @@ export function BookLoadDialog({
           assigned_vehicle_id: vehicleId,
           assigned_driver_id: driverFromVehicle,
           assigned_dispatcher_id: dispatcherId || null,
+          load_owner_id: dispatcherId || null, // Default load owner to dispatcher
           carrier_id: (vehicle?.carrier as any) || null,
           customer_id: customerId,
           
