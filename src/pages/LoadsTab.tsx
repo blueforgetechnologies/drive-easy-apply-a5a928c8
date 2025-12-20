@@ -88,6 +88,7 @@ export default function LoadsTab() {
   const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [pendingCustomerData, setPendingCustomerData] = useState<any>(null);
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
+  const [rateConfirmationFile, setRateConfirmationFile] = useState<File | null>(null);
   const ROWS_PER_PAGE = 14;
   
   // Status priority order matching the tab order - action_needed first!
@@ -415,8 +416,8 @@ export default function LoadsTab() {
   const handleAddLoad = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase
-        .from("loads" as any)
+      const { data: insertedLoad, error } = await (supabase
+        .from("loads") as any)
         .insert({
           ...formData,
           status: "available",
@@ -425,11 +426,50 @@ export default function LoadsTab() {
           estimated_miles: formData.estimated_miles ? parseFloat(formData.estimated_miles) : null,
           rate: formData.rate ? parseFloat(formData.rate) : null,
           customer_id: formData.customer_id || null,
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+      
+      const loadId = (insertedLoad as any)?.id as string | undefined;
+
+      // Upload rate confirmation file if present
+      if (rateConfirmationFile && loadId) {
+        try {
+          const fileExt = rateConfirmationFile.name.split('.').pop();
+          const fileName = `${loadId}/rate_confirmation/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+          // Upload to storage
+          const { error: uploadError } = await supabase.storage
+            .from('load-documents')
+            .upload(fileName, rateConfirmationFile);
+
+          if (uploadError) throw uploadError;
+
+          // Save document record
+          const { error: dbError } = await supabase
+            .from('load_documents')
+            .insert({
+              load_id: loadId,
+              document_type: 'rate_confirmation',
+              file_name: rateConfirmationFile.name,
+              file_url: fileName,
+              file_size: rateConfirmationFile.size,
+            });
+
+          if (dbError) throw dbError;
+          
+          toast.success("Rate confirmation saved to documents");
+        } catch (uploadErr: any) {
+          console.error("Failed to save rate confirmation:", uploadErr);
+          toast.error("Load created but failed to save rate confirmation");
+        }
+      }
+
       toast.success("Load created successfully");
       setDialogOpen(false);
+      setRateConfirmationFile(null);
       setFormData({
         load_number: `LD-${Date.now()}`,
         load_type: "internal",
@@ -756,6 +796,7 @@ export default function LoadsTab() {
                     }
                   }
                 }}
+                onFileSelected={(file) => setRateConfirmationFile(file)}
               />
 
               {/* Show matched customer badge */}
