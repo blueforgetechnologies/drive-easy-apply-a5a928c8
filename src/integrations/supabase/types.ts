@@ -1302,6 +1302,94 @@ export type Database = {
         }
         Relationships: []
       }
+      load_bids: {
+        Row: {
+          bid_amount: number
+          carrier_id: string | null
+          created_at: string
+          dispatcher_id: string | null
+          id: string
+          load_email_id: string | null
+          load_id: string
+          match_id: string | null
+          status: string | null
+          to_email: string | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          bid_amount: number
+          carrier_id?: string | null
+          created_at?: string
+          dispatcher_id?: string | null
+          id?: string
+          load_email_id?: string | null
+          load_id: string
+          match_id?: string | null
+          status?: string | null
+          to_email?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          bid_amount?: number
+          carrier_id?: string | null
+          created_at?: string
+          dispatcher_id?: string | null
+          id?: string
+          load_email_id?: string | null
+          load_id?: string
+          match_id?: string | null
+          status?: string | null
+          to_email?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_bids_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_bids_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_bids_load_email_id_fkey"
+            columns: ["load_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_bids_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "load_hunt_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_bids_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "unreviewed_matches"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "load_bids_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       load_documents: {
         Row: {
           document_type: string | null
