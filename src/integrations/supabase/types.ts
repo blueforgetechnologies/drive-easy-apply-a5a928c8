@@ -2950,6 +2950,42 @@ export type Database = {
         }
         Relationships: []
       }
+      spend_alerts: {
+        Row: {
+          alert_threshold: number
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_alerted_amount: number | null
+          last_alerted_at: string | null
+          total_spent: number | null
+          updated_at: string
+          user_email: string
+        }
+        Insert: {
+          alert_threshold?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_alerted_amount?: number | null
+          last_alerted_at?: string | null
+          total_spent?: number | null
+          updated_at?: string
+          user_email: string
+        }
+        Update: {
+          alert_threshold?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_alerted_amount?: number | null
+          last_alerted_at?: string | null
+          total_spent?: number | null
+          updated_at?: string
+          user_email?: string
+        }
+        Relationships: []
+      }
       sylectus_type_config: {
         Row: {
           created_at: string
