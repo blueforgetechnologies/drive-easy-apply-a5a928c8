@@ -92,15 +92,13 @@ const LovableCloudAITab = () => {
     }
   });
 
-  // Comprehensive cost breakdown query
+  // Comprehensive cost breakdown query - ALL TIME to match Lovable billing
   const { data: costBreakdown, refetch: refetchCostBreakdown, isFetching: isCostFetching } = useQuery({
-    queryKey: ["comprehensive-cost-breakdown", currentMonth],
+    queryKey: ["comprehensive-cost-breakdown-alltime"],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+      console.log('[Cloud Usage] Fetching ALL-TIME operations to match Lovable billing');
       
-      // Fetch all write operations
+      // Fetch ALL write operations (no date filter) to match Lovable's billing
       const [
         emailResult, matchResult, geocodeResult, mapTrackingResult,
         directionsResult, aiResult, emailSendResult, auditResult,
@@ -108,22 +106,22 @@ const LovableCloudAITab = () => {
         vehicleLocationResult, missedLoadsResult, pubsubResult,
         loadsResult, loadStopsResult
       ] = await Promise.all([
-        supabase.from('load_emails').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        supabase.from('ai_usage_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('timestamp', thirtyDaysAgoISO),
-        supabase.from('match_action_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }).gte('archived_at', thirtyDaysAgoISO),
-        supabase.from('vehicle_location_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('missed_loads_history').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('pubsub_tracking').select('*', { count: 'exact', head: true }).eq('month_year', currentMonth),
-        supabase.from('loads').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
-        supabase.from('load_stops').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgoISO),
+        supabase.from('load_emails').select('*', { count: 'exact', head: true }),
+        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }),
+        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }),
+        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('ai_usage_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('match_action_history').select('*', { count: 'exact', head: true }),
+        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }),
+        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }),
+        supabase.from('vehicle_location_history').select('*', { count: 'exact', head: true }),
+        supabase.from('missed_loads_history').select('*', { count: 'exact', head: true }),
+        supabase.from('pubsub_tracking').select('*', { count: 'exact', head: true }),
+        supabase.from('loads').select('*', { count: 'exact', head: true }),
+        supabase.from('load_stops').select('*', { count: 'exact', head: true }),
       ]);
       
       // Categorize costs
@@ -173,6 +171,12 @@ const LovableCloudAITab = () => {
       
       // Database reads estimate
       const estimatedReads = totalWriteOps * 4;
+
+      console.log('[Cloud Usage] All-time totals:', {
+        writeOps: totalWriteOps,
+        emails: emailIngestion.emails,
+        geocode: emailIngestion.geocode,
+      });
       
       return {
         categories: {
@@ -532,7 +536,22 @@ const LovableCloudAITab = () => {
         )}
 
         {/* Summary Cards Row */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
+          {/* All-Time Total - matches Lovable billing */}
+          <Card className="border-green-500/30 bg-green-500/5">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <DollarSign className="h-4 w-4 text-green-500" />
+                All-Time Total
+                <InfoTooltip text="Estimated total spend since project started. Calibrate with your actual Lovable billing for accuracy." />
+              </div>
+              <div className="text-2xl font-bold mt-1 text-green-600">${totalCloudCost.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">
+                {totalWriteOps.toLocaleString()} operations
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Today's Cost */}
           <Card className="border-primary/20">
             <CardContent className="pt-4">
