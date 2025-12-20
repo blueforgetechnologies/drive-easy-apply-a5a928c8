@@ -26,6 +26,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface LoadDocument {
+  id: string;
+  load_id: string;
+  document_type: string;
+  file_name: string;
+  file_url: string;
+}
+
 interface Load {
   id: string;
   load_number: string;
@@ -89,6 +97,9 @@ export default function LoadsTab() {
   const [pendingCustomerData, setPendingCustomerData] = useState<any>(null);
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
   const [rateConfirmationFile, setRateConfirmationFile] = useState<File | null>(null);
+  const [loadDocuments, setLoadDocuments] = useState<Record<string, LoadDocument[]>>({});
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<{ url: string; name: string; type: string } | null>(null);
   const ROWS_PER_PAGE = 14;
   
   // Status priority order matching the tab order - action_needed first!
@@ -274,9 +285,54 @@ export default function LoadsTab() {
         return;
       }
       setLoads((data as any) || []);
+      
+      // Fetch documents for all loads
+      if (data && data.length > 0) {
+        const loadIds = data.map((l: any) => l.id);
+        const { data: docsData } = await supabase
+          .from("load_documents")
+          .select("id, load_id, document_type, file_name, file_url")
+          .in("load_id", loadIds);
+        
+        if (docsData) {
+          const docsMap: Record<string, LoadDocument[]> = {};
+          docsData.forEach((doc: any) => {
+            if (!docsMap[doc.load_id]) {
+              docsMap[doc.load_id] = [];
+            }
+            docsMap[doc.load_id].push(doc);
+          });
+          setLoadDocuments(docsMap);
+        }
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenDocument = async (doc: LoadDocument, docType: string) => {
+    try {
+      const { data } = await supabase.storage
+        .from('load-documents')
+        .createSignedUrl(doc.file_url, 3600); // 1 hour expiry
+      
+      if (data?.signedUrl) {
+        setSelectedDocument({
+          url: data.signedUrl,
+          name: doc.file_name,
+          type: docType
+        });
+        setDocumentDialogOpen(true);
+      }
+    } catch (error) {
+      console.error("Error getting document URL:", error);
+      toast.error("Failed to load document");
+    }
+  };
+
+  const getDocumentByType = (loadId: string, docType: string): LoadDocument | undefined => {
+    const docs = loadDocuments[loadId] || [];
+    return docs.find(d => d.document_type === docType);
   };
 
   const handleStatusChange = async (loadId: string, newStatus: string) => {
@@ -679,6 +735,7 @@ export default function LoadsTab() {
   }
 
   return (
+    <>
     <div className="flex flex-col flex-1 min-h-0 px-3 md:px-0 gap-4">
       {/* Header - Mobile optimized */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1669,8 +1726,42 @@ export default function LoadsTab() {
                                   : "-"}
                               </div>
                             </TableCell>
-                            <TableCell className={`text-xs py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>N/A</TableCell>
-                            <TableCell className={`text-xs py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>N/A</TableCell>
+                            <TableCell 
+                              className={`text-xs py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {(() => {
+                                const rcDoc = getDocumentByType(load.id, 'rate_confirmation');
+                                return rcDoc ? (
+                                  <button
+                                    onClick={() => handleOpenDocument(rcDoc, 'Rate Confirmation')}
+                                    className="text-xs font-medium text-primary hover:underline cursor-pointer"
+                                  >
+                                    RC
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">N/A</span>
+                                );
+                              })()}
+                            </TableCell>
+                            <TableCell 
+                              className={`text-xs py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {(() => {
+                                const bolDoc = getDocumentByType(load.id, 'bol');
+                                return bolDoc ? (
+                                  <button
+                                    onClick={() => handleOpenDocument(bolDoc, 'Bill of Lading')}
+                                    className="text-xs font-medium text-primary hover:underline cursor-pointer"
+                                  >
+                                    BOL
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">N/A</span>
+                                );
+                              })()}
+                            </TableCell>
                           </TableRow>
                           {/* Red separator line after last action_needed load */}
                           {isLastActionNeeded && (
@@ -1718,5 +1809,32 @@ export default function LoadsTab() {
         </CardContent>
       </Card>
     </div>
+    
+    {/* Document Preview Dialog */}
+    <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
+      <DialogContent className="max-w-4xl h-[80vh]">
+        <DialogHeader>
+          <DialogTitle>{selectedDocument?.type}: {selectedDocument?.name}</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-hidden">
+          {selectedDocument?.url && (
+            selectedDocument.name.toLowerCase().endsWith('.pdf') ? (
+              <iframe
+                src={selectedDocument.url}
+                className="w-full h-full min-h-[60vh] border-0 rounded"
+                title={selectedDocument.name}
+              />
+            ) : (
+              <img
+                src={selectedDocument.url}
+                alt={selectedDocument.name}
+                className="max-w-full max-h-[60vh] object-contain mx-auto"
+              />
+            )
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
