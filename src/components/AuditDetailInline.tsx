@@ -263,25 +263,6 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     
     return (
       <div className="flex flex-col h-[380px]">
-        <div className="flex justify-end gap-1.5 mb-1.5">
-          <a
-            href={signedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-1 h-6 px-2 text-xs rounded border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Open in New Tab
-          </a>
-          <a
-            href={signedUrl}
-            download={doc.file_name}
-            className="inline-flex items-center justify-center gap-1 h-6 px-2 text-xs rounded border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-          >
-            <Download className="h-3 w-3" />
-            Download
-          </a>
-        </div>
         <div className="flex-1 border rounded bg-muted overflow-hidden">
           {isPdf ? (
             <PDFImageViewer url={signedUrl} fileName={doc.file_name || 'Document.pdf'} />
