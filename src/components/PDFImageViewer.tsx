@@ -32,7 +32,8 @@ export function PDFImageViewer({ url, fileName }: PDFImageViewerProps) {
         
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
-          const scale = 2; // Higher scale for better quality
+          // Use scale 1.5 for balance between quality and fit
+          const scale = 1.5;
           const viewport = page.getViewport({ scale });
           
           const canvas = document.createElement("canvas");
@@ -125,12 +126,12 @@ export function PDFImageViewer({ url, fileName }: PDFImageViewerProps) {
           Download
         </a>
       </div>
-      <div className="flex-1 overflow-auto border rounded bg-muted flex items-center justify-center p-4">
+      <div className="flex-1 overflow-auto border rounded bg-muted p-4">
         {pages[currentPage] && (
           <img
             src={pages[currentPage]}
             alt={`Page ${currentPage + 1}`}
-            className="max-w-full max-h-full object-contain shadow-lg"
+            className="w-full h-auto object-contain shadow-lg mx-auto"
           />
         )}
       </div>
