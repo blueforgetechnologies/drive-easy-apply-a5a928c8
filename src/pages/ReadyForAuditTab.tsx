@@ -107,23 +107,23 @@ export default function ReadyForAuditTab() {
             <div className="overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50 border-b-0">
-                    <TableHead className="text-primary font-medium">Our Load ID</TableHead>
-                    <TableHead className="text-primary font-medium">Carrier</TableHead>
-                    <TableHead className="text-primary font-medium">Origin</TableHead>
-                    <TableHead className="text-primary font-medium">Pick Up</TableHead>
-                    <TableHead className="text-primary font-medium">Rate</TableHead>
-                    <TableHead className="text-primary font-medium">Load Owner</TableHead>
-                    <TableHead className="text-primary font-medium">Truck ID</TableHead>
+                  <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+                    <TableHead className="text-primary font-medium uppercase text-xs">Our Load ID</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs">Carrier</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs">Origin</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs">Pick Up</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs">Rate</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs">Load Owner</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs">Truck ID</TableHead>
                   </TableRow>
-                  <TableRow className="bg-muted/50 border-b-0">
-                    <TableHead className="text-primary font-medium pt-0">Customer Load</TableHead>
-                    <TableHead className="text-primary font-medium pt-0">Customer</TableHead>
-                    <TableHead className="text-primary font-medium pt-0">Destination</TableHead>
-                    <TableHead className="text-primary font-medium pt-0">Drop Off Date</TableHead>
+                  <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+                    <TableHead className="text-primary font-medium uppercase text-xs pt-0">Customer Load</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs pt-0">Customer</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs pt-0">Destination</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs pt-0">Drop Off Date</TableHead>
                     <TableHead></TableHead>
-                    <TableHead className="text-primary font-medium pt-0">Dispatcher</TableHead>
-                    <TableHead className="text-primary font-medium pt-0">Driver</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs pt-0">Dispatcher</TableHead>
+                    <TableHead className="text-primary font-medium uppercase text-xs pt-0">Driver</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
