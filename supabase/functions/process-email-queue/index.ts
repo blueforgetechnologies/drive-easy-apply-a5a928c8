@@ -1152,7 +1152,7 @@ serve(async (req) => {
     const matchLoadToHunts = async (loadEmailId: string, loadId: string, parsedData: any) => {
       const { data: enabledHunts } = await supabase
         .from('hunt_plans')
-        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id')
+        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity')
         .eq('enabled', true);
 
       if (!enabledHunts?.length) return;
@@ -1203,6 +1203,15 @@ serve(async (req) => {
               (loadTypeNormalized.includes('straight') && huntNormalized.includes('straight'));
           });
           if (!vehicleMatches) continue;
+        }
+
+        // Check payload/weight capacity - skip if load exceeds hunt's max capacity
+        if (hunt.load_capacity) {
+          const maxCapacity = parseFloat(hunt.load_capacity);
+          const loadWeight = parseFloat(parsedData.weight || '0');
+          if (!isNaN(maxCapacity) && !isNaN(loadWeight) && loadWeight > 0 && loadWeight > maxCapacity) {
+            continue; // Load too heavy for this truck
+          }
         }
 
         const { count: existingMatch } = await supabase
