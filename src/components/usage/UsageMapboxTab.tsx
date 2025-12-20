@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Map, Navigation, MapPin, DollarSign, TrendingUp } from "lucide-react";
+import { Map, Navigation, MapPin, Database, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -11,7 +11,7 @@ interface UsageMapboxTabProps {
 
 export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
   // Main Mapbox usage query
-  const { data: mapboxUsage, isLoading } = useQuery({
+  const { data: mapboxUsage } = useQuery({
     queryKey: ["mapbox-usage-detail", selectedMonth],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -25,9 +25,31 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
     },
   });
 
-  // Geocode cache stats
-  const { data: geocodeStats } = useQuery({
-    queryKey: ["mapbox-geocode-stats", selectedMonth],
+  // Geocode cache stats - total stats
+  const { data: cacheStats } = useQuery({
+    queryKey: ["geocode-cache-total"],
+    queryFn: async () => {
+      const { count: totalLocations } = await supabase
+        .from('geocode_cache')
+        .select('*', { count: 'exact', head: true });
+      
+      const { data: hitData } = await supabase
+        .from('geocode_cache')
+        .select('hit_count');
+      
+      const totalHits = hitData?.reduce((sum, row) => sum + (row.hit_count || 0), 0) || 0;
+      
+      return { 
+        totalLocations: totalLocations || 0,
+        totalHits,
+        estimatedSavings: totalHits * 0.005
+      };
+    },
+  });
+
+  // New locations cached this month
+  const { data: monthlyCache } = useQuery({
+    queryKey: ["geocode-cache-monthly", selectedMonth],
     queryFn: async () => {
       const startDate = new Date(selectedMonth + '-01');
       const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
@@ -186,6 +208,42 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
         })}
       </div>
 
+      {/* Geocode Cache Stats */}
+      <Card className="border-green-500/20 bg-green-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-600">
+            <Database className="h-5 w-5" />
+            Geocode Cache Performance
+          </CardTitle>
+          <CardDescription>Smart caching reduces API calls and saves money</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Cached Locations</p>
+              <p className="text-2xl font-bold">{(cacheStats?.totalLocations || 0).toLocaleString()}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Cache Hits (All Time)</p>
+              <p className="text-2xl font-bold">{(cacheStats?.totalHits || 0).toLocaleString()}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">New This Month</p>
+              <p className="text-2xl font-bold">{(monthlyCache?.newLocations || 0).toLocaleString()}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-green-500" />
+                Estimated Savings
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                ${(cacheStats?.estimatedSavings || 0).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Usage History Chart */}
       {monthlyHistory && monthlyHistory.length > 0 && (
         <Card>
@@ -225,25 +283,6 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
           </CardContent>
         </Card>
       )}
-
-      {/* Cache Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Geocode Cache Performance</CardTitle>
-          <CardDescription>New locations cached this month</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-muted">
-              <TrendingUp className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{(geocodeStats?.newLocations || 0).toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">new locations cached</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
