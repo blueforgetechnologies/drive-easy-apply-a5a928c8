@@ -239,11 +239,11 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
     if (loading) {
       return (
-        <div className="flex flex-col h-[550px]">
+        <div className="flex flex-col h-[380px]">
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Loading document...</p>
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Loading document...</p>
             </div>
           </div>
         </div>
@@ -252,33 +252,33 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
     if (error || !signedUrl) {
       return (
-        <div className="flex flex-col h-[550px]">
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <FileText className="h-12 w-12 text-muted-foreground opacity-50" />
-            <p className="text-sm text-destructive">{error || 'Failed to load document'}</p>
+        <div className="flex flex-col h-[380px]">
+          <div className="flex-1 flex flex-col items-center justify-center gap-2">
+            <FileText className="h-8 w-8 text-muted-foreground opacity-50" />
+            <p className="text-xs text-destructive">{error || 'Failed to load document'}</p>
           </div>
         </div>
       );
     }
     
     return (
-      <div className="flex flex-col h-[550px]">
-        <div className="flex justify-end gap-2 mb-2">
+      <div className="flex flex-col h-[380px]">
+        <div className="flex justify-end gap-1.5 mb-1.5">
           <a
             href={signedUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex items-center justify-center gap-1 h-6 px-2 text-xs rounded border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
-            <ExternalLink className="h-4 w-4" />
+            <ExternalLink className="h-3 w-3" />
             Open in New Tab
           </a>
           <a
             href={signedUrl}
             download={doc.file_name}
-            className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex items-center justify-center gap-1 h-6 px-2 text-xs rounded border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-3 w-3" />
             Download
           </a>
         </div>
@@ -286,7 +286,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           {isPdf ? (
             <PDFImageViewer url={signedUrl} fileName={doc.file_name || 'Document.pdf'} />
           ) : isImage ? (
-            <div className="h-full overflow-auto p-4 flex items-start justify-center">
+            <div className="h-full overflow-auto p-2 flex items-start justify-center">
               <img
                 src={signedUrl}
                 alt={doc.file_name || 'Document'}
@@ -307,10 +307,10 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   };
 
   const renderNoDocument = (type: string) => (
-    <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
-      <FileText className="h-12 w-12 mb-4 opacity-50" />
-      <p className="text-lg font-medium">No {type} uploaded</p>
-      <p className="text-sm">Upload documents from the load detail page</p>
+    <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground">
+      <FileText className="h-8 w-8 mb-2 opacity-50" />
+      <p className="text-sm font-medium">No {type} uploaded</p>
+      <p className="text-xs">Upload documents from the load detail page</p>
     </div>
   );
 
