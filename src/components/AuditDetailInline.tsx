@@ -315,68 +315,68 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   );
 
   return (
-    <div className="space-y-4 mt-4">
+    <div className="space-y-2 mt-2">
       {/* Close button row */}
       <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={onClose} className="gap-1">
-          <X className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={onClose} className="gap-1 h-7 text-xs">
+          <X className="h-3.5 w-3.5" />
           Close Audit
         </Button>
       </div>
 
       {/* Header */}
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="border rounded overflow-hidden">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b">
-              <th className="text-left p-3 text-primary font-medium text-sm">Our Load ID</th>
-              <th className="text-left p-3 text-primary font-medium text-sm">Carrier</th>
-              <th className="text-left p-3 text-primary font-medium text-sm">Origin</th>
-              <th className="text-left p-3 text-primary font-medium text-sm">Pick Up</th>
-              <th className="text-left p-3 text-primary font-medium text-sm">Rate</th>
-              <th className="text-left p-3 text-primary font-medium text-sm">Load Owner</th>
-              <th className="text-left p-3 text-primary font-medium text-sm">Truck ID</th>
+            <tr className="border-b border-l-4 border-l-primary">
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Our Load ID</th>
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Carrier</th>
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Origin</th>
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Pick Up</th>
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Rate</th>
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Load Owner</th>
+              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Truck ID</th>
             </tr>
-            <tr className="bg-muted/30">
-              <th className="text-left p-3 text-primary font-medium text-sm pt-0">Customer Load</th>
-              <th className="text-left p-3 text-primary font-medium text-sm pt-0">Customer</th>
-              <th className="text-left p-3 text-primary font-medium text-sm pt-0">Destination</th>
-              <th className="text-left p-3 text-primary font-medium text-sm pt-0">Drop Off Date</th>
-              <th className="text-left p-3"></th>
-              <th className="text-left p-3 text-primary font-medium text-sm pt-0">Dispatcher</th>
-              <th className="text-left p-3 text-primary font-medium text-sm pt-0">Driver</th>
+            <tr className="border-l-4 border-l-primary">
+              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Customer Load</th>
+              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Customer</th>
+              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Destination</th>
+              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Drop Off Date</th>
+              <th className="px-2 pb-1"></th>
+              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Dispatcher</th>
+              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Driver</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="p-3 align-top">
-                <div className="font-medium">{load.load_number}</div>
-                <div className="text-muted-foreground text-sm">{load.reference_number || ""}</div>
+            <tr className="border-t">
+              <td className="px-2 py-1.5 align-top">
+                <div className="font-medium text-sm">{load.load_number}</div>
+                <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
               </td>
-              <td className="p-3 align-top">
-                <div className="font-semibold">{carrier?.name || ""}</div>
-                <div className="text-muted-foreground text-sm">{customer?.name || ""}</div>
+              <td className="px-2 py-1.5 align-top">
+                <div className="font-semibold text-sm">{carrier?.name || ""}</div>
+                <div className="text-muted-foreground text-xs">{customer?.name || ""}</div>
               </td>
-              <td className="p-3 align-top">
-                <div>{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}` : ""}</div>
-                <div className="text-muted-foreground text-sm">
+              <td className="px-2 py-1.5 align-top">
+                <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}` : ""}</div>
+                <div className="text-muted-foreground text-xs">
                   {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}` : ""}
                 </div>
               </td>
-              <td className="p-3 align-top">
-                <div>{formatDate(load.pickup_date)}</div>
-                <div className="text-muted-foreground text-sm">{formatDate(load.delivery_date)}</div>
+              <td className="px-2 py-1.5 align-top">
+                <div className="text-sm">{formatDate(load.pickup_date)}</div>
+                <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
               </td>
-              <td className="p-3 align-top">
-                <div className="font-medium">{formatCurrency(load.rate)}</div>
+              <td className="px-2 py-1.5 align-top">
+                <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
               </td>
-              <td className="p-3 align-top">
-                <div className="font-medium">{loadOwnerName}</div>
-                <div className="text-muted-foreground text-sm">{dispatcherName}</div>
+              <td className="px-2 py-1.5 align-top">
+                <div className="font-medium text-sm">{loadOwnerName}</div>
+                <div className="text-muted-foreground text-xs">{dispatcherName}</div>
               </td>
-              <td className="p-3 align-top">
-                <div className="font-medium">{vehicle?.vehicle_number || ""}</div>
-                <div className="text-muted-foreground text-sm">{getDriverName(load.driver)}</div>
+              <td className="px-2 py-1.5 align-top">
+                <div className="font-medium text-sm">{vehicle?.vehicle_number || ""}</div>
+                <div className="text-muted-foreground text-xs">{getDriverName(load.driver)}</div>
               </td>
             </tr>
           </tbody>
@@ -384,50 +384,50 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       </div>
 
       {/* Main Content */}
-      <div className="flex gap-6">
+      <div className="flex gap-4">
         {/* Left Sidebar */}
-        <div className="w-80 flex-shrink-0 space-y-6">
+        <div className="w-72 flex-shrink-0 space-y-3">
           {/* Navigation */}
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-1 text-primary">
             <button 
               onClick={() => navigateToLoad(0)} 
               disabled={currentIndex <= 0}
-              className="hover:bg-muted p-1 rounded disabled:opacity-30"
+              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
             >
-              <ChevronsLeft className="h-4 w-4" />
+              <ChevronsLeft className="h-3.5 w-3.5" />
             </button>
             <button 
               onClick={() => navigateToLoad(currentIndex - 1)} 
               disabled={currentIndex <= 0}
-              className="hover:bg-muted p-1 rounded disabled:opacity-30"
+              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="text-lg">
+            <span className="text-sm">
               {currentIndex + 1}/{totalLoads}
             </span>
             <button 
               onClick={() => navigateToLoad(currentIndex + 1)} 
               disabled={currentIndex >= totalLoads - 1}
-              className="hover:bg-muted p-1 rounded disabled:opacity-30"
+              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
             <button 
               onClick={() => navigateToLoad(totalLoads - 1)} 
               disabled={currentIndex >= totalLoads - 1}
-              className="hover:bg-muted p-1 rounded disabled:opacity-30"
+              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
             >
-              <ChevronsRight className="h-4 w-4" />
+              <ChevronsRight className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {/* Rate Confirmation Checklist */}
-          <div className="space-y-2">
-            <h3 className="text-primary font-semibold">Rate Confirmation</h3>
+          <div className="space-y-1">
+            <h3 className="text-primary font-semibold text-sm">Rate Confirmation</h3>
             {rateConfirmation.map((item) => (
-              <div key={item.id} className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{item.label}</span>
+              <div key={item.id} className="flex items-center justify-between py-0.5">
+                <span className="text-xs text-muted-foreground">{item.label}</span>
                 <div className="flex gap-1">
                   <ChecklistButton
                     status={item.status}
@@ -445,11 +445,11 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           </div>
 
           {/* Bill of Lading Checklist */}
-          <div className="space-y-2">
-            <h3 className="text-primary font-semibold">Bill of lading</h3>
+          <div className="space-y-1">
+            <h3 className="text-primary font-semibold text-sm">Bill of lading</h3>
             {billOfLading.map((item) => (
-              <div key={item.id} className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{item.label}</span>
+              <div key={item.id} className="flex items-center justify-between py-0.5">
+                <span className="text-xs text-muted-foreground">{item.label}</span>
                 <div className="flex gap-1">
                   <ChecklistButton
                     status={item.status}

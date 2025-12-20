@@ -23,39 +23,37 @@ export default function AccountingTab() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="mobile-page-header">
-        <div>
-          <h2 className="mobile-page-title">Accounting</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Manage invoices, settlements, and audit logs
-          </p>
-        </div>
+    <div className="space-y-2">
+      <div>
+        <h2 className="text-xl font-bold">Accounting</h2>
+        <p className="text-xs text-muted-foreground">
+          Manage invoices, settlements, and audit logs
+        </p>
       </div>
 
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange} defaultValue="ready_for_audit">
         <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-          <TabsList className="w-max sm:w-auto">
-            <TabsTrigger value="ready_for_audit" className="text-xs sm:text-sm">Ready for Audit</TabsTrigger>
-            <TabsTrigger value="invoices" className="text-xs sm:text-sm">Invoices</TabsTrigger>
-            <TabsTrigger value="settlements" className="text-xs sm:text-sm">Settlements</TabsTrigger>
-            <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit Logs</TabsTrigger>
+          <TabsList className="w-max sm:w-auto h-8">
+            <TabsTrigger value="ready_for_audit" className="text-xs h-7 px-3">Ready for Audit</TabsTrigger>
+            <TabsTrigger value="invoices" className="text-xs h-7 px-3">Invoices</TabsTrigger>
+            <TabsTrigger value="settlements" className="text-xs h-7 px-3">Settlements</TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs h-7 px-3">Audit Logs</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="ready_for_audit" className="mt-4">
+        <TabsContent value="ready_for_audit" className="mt-2">
           <ReadyForAuditTab />
         </TabsContent>
 
-        <TabsContent value="invoices" className="mt-4">
+        <TabsContent value="invoices" className="mt-2">
           <InvoicesTab />
         </TabsContent>
 
-        <TabsContent value="settlements" className="mt-4">
+        <TabsContent value="settlements" className="mt-2">
           <SettlementsTab />
         </TabsContent>
 
-        <TabsContent value="audit" className="mt-4">
+        <TabsContent value="audit" className="mt-2">
           <AuditLogsTab />
         </TabsContent>
       </Tabs>
