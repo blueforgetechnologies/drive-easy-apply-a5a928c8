@@ -55,6 +55,7 @@ serve(async (req) => {
             email: data?.broker_email || null,
             phone: data?.broker_phone || null,
             status: 'active',
+            customer_type: 'broker',  // Auto-imported from load emails = brokers
             notes: 'Auto-imported from load emails'
           });
         } else {
