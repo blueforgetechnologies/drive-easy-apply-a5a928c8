@@ -293,7 +293,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
           <Card key={docType.value} className="overflow-hidden">
             <CardHeader className="py-2 px-4 bg-gradient-to-r from-primary/10 to-transparent border-b">
               <div className="flex items-center justify-between">
-                <CardTitle className={`text-base font-medium flex items-center gap-2 ${isRateConfirmation ? 'text-amber-600' : 'text-blue-600'}`}>
+                <CardTitle className={`text-base font-medium flex items-center gap-2 ${isRateConfirmation ? 'text-emerald-600' : 'text-blue-600'}`}>
                   <FileText className="h-4 w-4" />
                   {docType.label}
                   {typeDocs.length > 0 && (
