@@ -2068,6 +2068,10 @@ export default function LoadHunterTab() {
 
       await loadHuntMatches();
       await loadUnreviewedMatches();
+      
+      // Navigate back to unreviewed tab
+      setActiveFilter('unreviewed');
+      
       toast.success('Bid placed - moved to My Bids');
     } catch (error) {
       console.error('Error placing bid:', error);
