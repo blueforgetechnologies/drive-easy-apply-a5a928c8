@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { RefreshControl } from "@/components/RefreshControl";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, AreaChart, Area, BarChart, Bar } from 'recharts';
+import { useUserCostSettings } from "@/hooks/useUserCostSettings";
 
 // Info tooltip component
 const InfoTooltip = ({ text }: { text: string }) => (
@@ -55,23 +56,27 @@ const CostCategory = ({
 const LovableCloudAITab = () => {
   const [showCalibration, setShowCalibration] = useState<boolean>(false);
   const [actualSpend, setActualSpend] = useState<string>("");
-  const [calibratedRate, setCalibratedRate] = useState<number | null>(null);
   const [aiTestResult, setAiTestResult] = useState<string>("");
   const [lastAiRefresh, setLastAiRefresh] = useState<Date>(new Date());
   const [aiRefreshInterval, setAiRefreshInterval] = useState<number>(60000);
-  const [monthlyBudget, setMonthlyBudget] = useState<number>(100);
+  const [localBudget, setLocalBudget] = useState<string>("100");
   const [showBudgetSettings, setShowBudgetSettings] = useState<boolean>(false);
   const queryClient = useQueryClient();
   
+  // Use synced settings from database
+  const { 
+    cloudCalibratedRate: calibratedRate, 
+    updateCloudRate: setCalibratedRate,
+    monthlyBudget,
+    updateMonthlyBudget,
+  } = useUserCostSettings();
+  
   const currentMonth = new Date().toISOString().slice(0, 7);
   
-  // Load settings from localStorage
+  // Sync local budget input when settings load
   useEffect(() => {
-    const savedRate = localStorage.getItem('cloud_calibrated_rate');
-    const savedBudget = localStorage.getItem('cloud_monthly_budget');
-    if (savedRate) setCalibratedRate(parseFloat(savedRate));
-    if (savedBudget) setMonthlyBudget(parseFloat(savedBudget));
-  }, []);
+    setLocalBudget(monthlyBudget.toString());
+  }, [monthlyBudget]);
 
   // Test AI mutation
   const testAiMutation = useMutation({
@@ -452,9 +457,7 @@ const LovableCloudAITab = () => {
     if (spend > 0 && writeOps > 0) {
       const rate = spend / writeOps;
       setCalibratedRate(rate);
-      localStorage.setItem('cloud_calibrated_rate', rate.toString());
-      localStorage.setItem('cloud_calibration_date', new Date().toISOString());
-      toast.success(`Calibrated rate set to $${rate.toFixed(6)} per write operation`);
+      toast.success(`Calibrated rate set to $${rate.toFixed(6)} per write operation (synced across devices)`);
       setActualSpend("");
       setShowCalibration(false);
     }
@@ -462,14 +465,13 @@ const LovableCloudAITab = () => {
 
   const clearCalibration = () => {
     setCalibratedRate(null);
-    localStorage.removeItem('cloud_calibrated_rate');
-    localStorage.removeItem('cloud_calibration_date');
     toast.success("Calibration cleared, using default rate");
   };
 
   const saveBudget = () => {
-    localStorage.setItem('cloud_monthly_budget', monthlyBudget.toString());
-    toast.success(`Budget set to $${monthlyBudget}/month`);
+    const budgetValue = parseFloat(localBudget) || 100;
+    updateMonthlyBudget(budgetValue);
+    toast.success(`Budget set to $${budgetValue}/month (synced across devices)`);
     setShowBudgetSettings(false);
   };
 
@@ -625,8 +627,8 @@ const LovableCloudAITab = () => {
                   <div className="flex gap-2 mt-1">
                     <Input
                       type="number"
-                      value={monthlyBudget}
-                      onChange={(e) => setMonthlyBudget(parseFloat(e.target.value) || 0)}
+                      value={localBudget}
+                      onChange={(e) => setLocalBudget(e.target.value)}
                       className="w-32"
                     />
                     <Button onClick={saveBudget}>Save</Button>

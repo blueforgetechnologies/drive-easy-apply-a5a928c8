@@ -6,6 +6,7 @@ import { UsageMonthFilter } from "@/components/UsageMonthFilter";
 import UsageCostsTab from "./UsageCostsTab";
 import LovableCloudAITab from "./LovableCloudAITab";
 import { useCloudCost } from "@/hooks/useCloudCost";
+import { useUserCostSettings } from "@/hooks/useUserCostSettings";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -26,14 +27,9 @@ const UsageTab = () => {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
 
-  // Get cloud cost and mapbox calibration for total estimate
+  // Get cloud cost and synced calibration settings from database
   const { cloudCost } = useCloudCost();
-  const [mapboxCalibratedMultiplier, setMapboxCalibratedMultiplier] = useState<number | null>(null);
-  
-  useEffect(() => {
-    const savedMapboxMultiplier = localStorage.getItem('mapbox_calibrated_multiplier');
-    if (savedMapboxMultiplier) setMapboxCalibratedMultiplier(parseFloat(savedMapboxMultiplier));
-  }, []);
+  const { mapboxCalibratedMultiplier } = useUserCostSettings();
 
   // Quick query for total cost calculation (all-time)
   const { data: quickStats } = useQuery({

@@ -3133,6 +3133,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_cost_settings: {
+        Row: {
+          cloud_calibrated_rate: number | null
+          created_at: string
+          id: string
+          mapbox_calibrated_multiplier: number | null
+          monthly_budget: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cloud_calibrated_rate?: number | null
+          created_at?: string
+          id?: string
+          mapbox_calibrated_multiplier?: number | null
+          monthly_budget?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cloud_calibrated_rate?: number | null
+          created_at?: string
+          id?: string
+          mapbox_calibrated_multiplier?: number | null
+          monthly_budget?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_custom_roles: {
         Row: {
           assigned_at: string | null
