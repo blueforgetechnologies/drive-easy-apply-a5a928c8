@@ -39,6 +39,13 @@ IMPORTANT FIELD MAPPINGS:
 - Miles may appear as: loaded miles, estimated miles, trip miles, total miles
 - Pieces may appear as: pieces, pallets, skids, units, qty
 
+CRITICAL - BROKER/CUSTOMER vs CARRIER DISTINCTION:
+- "Arranged by" or "Broker Contact" = This is the CUSTOMER/BROKER contact person - extract as customer_contact
+- Look for email addresses near "Arranged by" or "E-Mail" labels - extract as customer_email
+- "Carrier" section = This is YOUR company (the trucking company), NOT the customer - do NOT use carrier info for customer fields
+- The customer/broker is the company HIRING you to haul freight - they appear at the top of the document usually
+- The carrier is the company DOING the hauling (your company)
+
 MULTI-STOP HANDLING:
 - Look for multiple pickup locations (origins, shippers) - may be numbered stops like Stop 1, Stop 2
 - Look for multiple delivery locations (destinations, receivers, consignees)
