@@ -331,7 +331,7 @@ const LoadEmailDetail = ({
     }
   }, [match?.id, currentDispatcher?.id]);
 
-  // Check for existing bid on this load_id to prevent double bidding
+  // Check for existing SENT bid on this load_id to prevent double bidding
   useEffect(() => {
     const checkExistingBid = async () => {
       const loadId = email?.load_id;
@@ -339,16 +339,21 @@ const LoadEmailDetail = ({
 
       setCheckingExistingBid(true);
       try {
+        // Only look for bids with status='sent' (the first real bid)
         const { data: bid, error } = await supabase
           .from('load_bids')
           .select(`
             id,
             bid_amount,
             created_at,
+            status,
             dispatcher:dispatchers(first_name, last_name),
             vehicle:vehicles(vehicle_number)
           `)
           .eq('load_id', loadId)
+          .eq('status', 'sent')
+          .order('created_at', { ascending: true })
+          .limit(1)
           .maybeSingle();
 
         if (error) {
@@ -928,69 +933,90 @@ const LoadEmailDetail = ({
       return;
     }
     setIsSending(true);
+    
+    const bidRateNum = bidAmount ? parseFloat(bidAmount.replace(/[^0-9.]/g, '')) : 0;
+    
     try {
-      const {
-        data: result,
-        error
-      } = await supabase.functions.invoke('send-bid-email', {
-        body: {
-          to: toEmail,
-          cc: ccEmail || undefined,
-          from_email: dispatcherEmailAddr,
-          from_name: dispatcherName,
-          subject: emailSubject,
-          bid_amount: bidAmount,
-          mc_number: mcNumber,
-          dot_number: dotNumber,
-          order_number: data.order_number || 'N/A',
-          origin_city: originCity,
-          origin_state: originState,
-          dest_city: destCity,
-          dest_state: destState,
-          vehicle_size: displaySize,
-          vehicle_type: displayType,
-          vehicle_description: editableVehicleDesc,
-          equipment_details: equipmentDetails,
-          truck_dimensions: truckDimensions,
-          door_dimensions: doorDimensions,
-          truck_features: vehicleFeatures,
-          dispatcher_name: dispatcherName,
-          company_name: companyName,
-          company_address: companyAddress,
-          company_phone: companyPhone,
-          company_logo_url: bidAsCarrier?.logo_url || undefined,
-          reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
-          selected_templates: getSelectedTemplateTexts(),
-          contact_first_name: (() => {
-            if (data.broker_name) return (data.broker_name || '').split(' ')[0];
-            if (data.broker_email) {
-              const emailPrefix = (data.broker_email || '').split('@')[0];
-              const namePart = emailPrefix.split(/[._-]/)[0];
-              if (namePart && namePart.length > 1) {
-                return namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
-              }
-            }
-            return undefined;
-          })(),
-          // Editable body lines
-          greeting_line: editableGreeting,
-          blank_line: editableBlankLine,
-          vehicle_line: editableVehicleDesc,
-          help_line: editableHelpLine,
-          order_line: editableOrderLine
-        }
-      });
-      if (error) {
-        console.error('Error sending bid email:', error);
-        toast.error(`Failed to send bid email: ${error.message}`);
-        return;
+      // Check if a bid already exists for this load_id (first-bid-wins logic)
+      let isDuplicate = false;
+      if (email?.load_id) {
+        const { data: existingBidCheck } = await supabase
+          .from('load_bids')
+          .select('id')
+          .eq('load_id', email.load_id)
+          .eq('status', 'sent')
+          .limit(1)
+          .maybeSingle();
+        
+        isDuplicate = !!existingBidCheck;
       }
+
+      // Only send email if this is NOT a duplicate
+      if (!isDuplicate) {
+        const {
+          data: result,
+          error
+        } = await supabase.functions.invoke('send-bid-email', {
+          body: {
+            to: toEmail,
+            cc: ccEmail || undefined,
+            from_email: dispatcherEmailAddr,
+            from_name: dispatcherName,
+            subject: emailSubject,
+            bid_amount: bidAmount,
+            mc_number: mcNumber,
+            dot_number: dotNumber,
+            order_number: data.order_number || 'N/A',
+            origin_city: originCity,
+            origin_state: originState,
+            dest_city: destCity,
+            dest_state: destState,
+            vehicle_size: displaySize,
+            vehicle_type: displayType,
+            vehicle_description: editableVehicleDesc,
+            equipment_details: equipmentDetails,
+            truck_dimensions: truckDimensions,
+            door_dimensions: doorDimensions,
+            truck_features: vehicleFeatures,
+            dispatcher_name: dispatcherName,
+            company_name: companyName,
+            company_address: companyAddress,
+            company_phone: companyPhone,
+            company_logo_url: bidAsCarrier?.logo_url || undefined,
+            reference_id: `${email.load_id || email.id?.slice(0, 8) || 'N/A'}-${match?.id ? match.id.slice(0, 8) : 'N/A'}-${vehicle?.vehicle_number || match?.vehicle_id?.slice(0, 8) || 'N/A'}`,
+            selected_templates: getSelectedTemplateTexts(),
+            contact_first_name: (() => {
+              if (data.broker_name) return (data.broker_name || '').split(' ')[0];
+              if (data.broker_email) {
+                const emailPrefix = (data.broker_email || '').split('@')[0];
+                const namePart = emailPrefix.split(/[._-]/)[0];
+                if (namePart && namePart.length > 1) {
+                  return namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+                }
+              }
+              return undefined;
+            })(),
+            // Editable body lines
+            greeting_line: editableGreeting,
+            blank_line: editableBlankLine,
+            vehicle_line: editableVehicleDesc,
+            help_line: editableHelpLine,
+            order_line: editableOrderLine
+          }
+        });
+        if (error) {
+          console.error('Error sending bid email:', error);
+          toast.error(`Failed to send bid email: ${error.message}`);
+          return;
+        }
+      }
+      
+      // Show success to dispatcher (they don't need to know if it was a duplicate)
       toast.success('Bid email sent successfully!');
       setShowEmailConfirmDialog(false);
       setBidConfirmed(false);
 
-      // Insert into load_bids to prevent double bidding
-      const bidRateNum = bidAmount ? parseFloat(bidAmount.replace(/[^0-9.]/g, '')) : 0;
+      // Insert into load_bids - with appropriate status
       if (email?.load_id) {
         const { error: bidError } = await supabase
           .from('load_bids')
@@ -1003,18 +1029,13 @@ const LoadEmailDetail = ({
             carrier_id: bidAsCarrier?.id,
             bid_amount: bidRateNum,
             to_email: toEmail,
-            status: 'sent'
+            status: isDuplicate ? 'duplicate' : 'sent'
           });
         
         if (bidError) {
-          // If it's a unique constraint violation, another bid was just placed
-          if (bidError.code === '23505') {
-            console.warn('Bid already exists for this load - another dispatcher beat us');
-          } else {
-            console.error('Error recording bid:', bidError);
-          }
+          console.error('Error recording bid:', bidError);
         } else {
-          // Update local state to show the bid was recorded
+          // Update local state
           setExistingBid({
             id: 'just-placed',
             bid_amount: bidRateNum,
@@ -1028,7 +1049,8 @@ const LoadEmailDetail = ({
       // Record the bid action
       await recordMatchAction('bid', {
         bid_amount: bidAmount,
-        to_email: toEmail
+        to_email: toEmail,
+        was_duplicate: isDuplicate
       });
 
       // Notify parent that bid was placed - move to MY BIDS and skip siblings
