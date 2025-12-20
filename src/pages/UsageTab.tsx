@@ -26,7 +26,7 @@ const UsageTab = () => {
     }
     
     const month = searchParams.get("month");
-    if (month && /^\d{4}-\d{2}$/.test(month)) {
+    if (month && (month === "all" || /^\d{4}-\d{2}$/.test(month))) {
       setSelectedMonth(month);
     }
   }, [searchParams]);
