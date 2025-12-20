@@ -184,6 +184,8 @@ export default function LoadsTab() {
     estimated_miles: "",
     rate: "",
     customer_id: "",
+    equipment_type: "",
+    vehicle_size: "",
   });
 
   useEffect(() => {
@@ -466,6 +468,8 @@ export default function LoadsTab() {
         estimated_miles: "",
         rate: "",
         customer_id: "",
+        equipment_type: "",
+        vehicle_size: "",
       });
       loadData();
     } catch (error: any) {
@@ -716,6 +720,9 @@ export default function LoadsTab() {
                     cargo_pieces: data.cargo_pieces?.toString() || prev.cargo_pieces,
                     estimated_miles: data.estimated_miles?.toString() || prev.estimated_miles,
                     rate: data.rate?.toString() || prev.rate,
+                    // Vehicle requirements
+                    equipment_type: data.equipment_type || prev.equipment_type,
+                    vehicle_size: data.vehicle_size || prev.vehicle_size,
                   }));
 
                   // Cross-reference customer with existing database
@@ -1111,9 +1118,36 @@ export default function LoadsTab() {
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <Truck className="h-4 w-4" />
-                  Cargo Details
+                  Equipment & Cargo
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="equipment_type">Equipment Type</Label>
+                    <Select value={formData.equipment_type} onValueChange={(value) => setFormData({ ...formData, equipment_type: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        <SelectItem value="dry_van">Dry Van</SelectItem>
+                        <SelectItem value="reefer">Reefer</SelectItem>
+                        <SelectItem value="flatbed">Flatbed</SelectItem>
+                        <SelectItem value="step_deck">Step Deck</SelectItem>
+                        <SelectItem value="box_truck">Box Truck</SelectItem>
+                        <SelectItem value="sprinter">Sprinter</SelectItem>
+                        <SelectItem value="conestoga">Conestoga</SelectItem>
+                        <SelectItem value="lowboy">Lowboy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="vehicle_size">Vehicle Size</Label>
+                    <Input
+                      id="vehicle_size"
+                      value={formData.vehicle_size}
+                      onChange={(e) => setFormData({ ...formData, vehicle_size: e.target.value })}
+                      placeholder="e.g., 53ft, 48ft, 26ft"
+                    />
+                  </div>
                   <div className="col-span-2">
                     <Label htmlFor="cargo_description">Cargo Description</Label>
                     <Textarea
