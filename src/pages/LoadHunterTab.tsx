@@ -1531,7 +1531,7 @@ export default function LoadHunterTab() {
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
             ),
-            load_bids (
+            load_bids!load_bids_match_id_fkey (
               id, status, bid_amount, created_at
             )
           `)
@@ -4986,11 +4986,9 @@ export default function LoadHunterTab() {
                                   if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
-                                    // Check if this is a duplicate bid (for mybids tab)
-                                    const bidStatus = activeFilter === 'mybids' && (match as any).load_bids 
-                                      ? ((match as any).load_bids[0]?.status || 'sent')
-                                      : null;
-                                    const isDuplicateBid = bidStatus === 'duplicate';
+                                    // Check if any bid for this match is a duplicate (for mybids tab)
+                                    const bids = (match as any).load_bids || [];
+                                    const hasDuplicateBid = activeFilter === 'mybids' && bids.some((b: any) => b.status === 'duplicate');
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
@@ -5004,7 +5002,7 @@ export default function LoadHunterTab() {
                                               {carrierName}
                                             </div>
                                           </div>
-                                          {isDuplicateBid && (
+                                          {hasDuplicateBid && (
                                             <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-orange-400 text-orange-600 bg-orange-50">
                                               Duplicate
                                             </Badge>
