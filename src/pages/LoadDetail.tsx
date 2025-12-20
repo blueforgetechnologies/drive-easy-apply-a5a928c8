@@ -473,7 +473,19 @@ export default function LoadDetail() {
   };
 
   const updateField = (field: string, value: any) => {
-    setLoad((prev: any) => ({ ...prev, [field]: value }));
+    setLoad((prev: any) => {
+      const updates: any = { [field]: value };
+      
+      // When dispatcher is assigned/changed, also set load_owner_id if not already set
+      if (field === "assigned_dispatcher_id" && value) {
+        // Only auto-set load_owner if it's empty or matches the old dispatcher
+        if (!prev.load_owner_id || prev.load_owner_id === prev.assigned_dispatcher_id) {
+          updates.load_owner_id = value;
+        }
+      }
+      
+      return { ...prev, ...updates };
+    });
   };
 
   const updateCustomerField = async (customerId: string, field: string, value: string) => {
