@@ -1,9 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Sparkles, Loader2, Clock, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info, Archive, Settings, Zap, AlertTriangle } from "lucide-react";
+import { Activity, Database, Mail, Map, TrendingUp, DollarSign, Loader2, BarChart3, RefreshCw, HardDrive, LayoutGrid, List, Info, Archive } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +28,6 @@ const STORAGE_LIMITS = {
 };
 
 const UsageCostsTab = () => {
-  const [aiTestResult, setAiTestResult] = useState<string>("");
   const [emailSource, setEmailSource] = useState<string>("sylectus");
   const [mapboxRefreshInterval, setMapboxRefreshInterval] = useState<number>(20000); // 20 seconds default
   const [geocodeCacheRefreshInterval, setGeocodeCacheRefreshInterval] = useState<number>(30000); // 30 seconds default
@@ -38,7 +36,6 @@ const UsageCostsTab = () => {
   const [activityRefreshInterval, setActivityRefreshInterval] = useState<number>(30000); // 30 seconds default
   const [pubsubRefreshInterval, setPubsubRefreshInterval] = useState<number>(60000); // 1 minute default
   const [resendRefreshInterval, setResendRefreshInterval] = useState<number>(60000); // 1 minute default
-  const [aiRefreshInterval, setAiRefreshInterval] = useState<number>(60000); // 1 minute default
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [lastGeocodeRefresh, setLastGeocodeRefresh] = useState<Date>(new Date());
   const [lastEmailRefresh, setLastEmailRefresh] = useState<Date>(new Date());
@@ -46,37 +43,8 @@ const UsageCostsTab = () => {
   const [lastActivityRefresh, setLastActivityRefresh] = useState<Date>(new Date());
   const [lastPubsubRefresh, setLastPubsubRefresh] = useState<Date>(new Date());
   const [lastResendRefresh, setLastResendRefresh] = useState<Date>(new Date());
-  const [lastAiRefresh, setLastAiRefresh] = useState<Date>(new Date());
   const [isCompactView, setIsCompactView] = useState<boolean>(false);
   const queryClient = useQueryClient();
-  
-  // Load calibrated rate from localStorage (shared with Cloud & AI tab)
-  const [calibratedRate, setCalibratedRate] = useState<number | null>(null);
-  useEffect(() => {
-    const saved = localStorage.getItem('cloud_calibrated_rate');
-    if (saved) {
-      setCalibratedRate(parseFloat(saved));
-    }
-  }, []);
-
-  // Test AI mutation
-  const testAiMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('test-ai', {
-        body: { prompt: "Say hello and confirm you're working!" }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      setAiTestResult(data.response);
-      toast.success("AI test successful!");
-    },
-    onError: (error: any) => {
-      console.error("AI test error:", error);
-      toast.error(error.message || "AI test failed");
-    }
-  });
 
   // Archive old emails mutation (moves emails >30 days to archive table)
   const archiveEmailsMutation = useMutation({
@@ -612,114 +580,6 @@ const UsageCostsTab = () => {
     refetchIntervalInBackground: true,
   });
 
-  // Fetch Lovable AI tracking (current month) - comprehensive stats with feature breakdown
-  const { data: aiStats, refetch: refetchAi } = useQuery({
-    queryKey: ["usage-ai", currentMonth],
-    queryFn: async () => {
-      const { data, error, count } = await supabase
-        .from('ai_usage_tracking')
-        .select('model, feature, prompt_tokens, completion_tokens, total_tokens, created_at', { count: 'exact' })
-        .eq('month_year', currentMonth)
-        .order('created_at', { ascending: true });
-      
-      if (error) throw error;
-      
-      const totalPromptTokens = data?.reduce((sum, row) => sum + (row.prompt_tokens || 0), 0) || 0;
-      const totalCompletionTokens = data?.reduce((sum, row) => sum + (row.completion_tokens || 0), 0) || 0;
-      const totalTokens = data?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
-      
-      // Model breakdown
-      const modelBreakdown: Record<string, { count: number; tokens: number; promptTokens: number; completionTokens: number }> = {};
-      data?.forEach(row => {
-        const model = row.model || 'unknown';
-        if (!modelBreakdown[model]) {
-          modelBreakdown[model] = { count: 0, tokens: 0, promptTokens: 0, completionTokens: 0 };
-        }
-        modelBreakdown[model].count++;
-        modelBreakdown[model].tokens += row.total_tokens || 0;
-        modelBreakdown[model].promptTokens += row.prompt_tokens || 0;
-        modelBreakdown[model].completionTokens += row.completion_tokens || 0;
-      });
-
-      // Feature breakdown - shows where AI is being used
-      const featureBreakdown: Record<string, { count: number; tokens: number; label: string }> = {};
-      const featureLabels: Record<string, string> = {
-        'freight_calculator_text': 'Freight Calculator (Text)',
-        'freight_calculator_image': 'Freight Calculator (Image)',
-        'load_email_parsing': 'Load Email Parsing',
-        'ai_update_customers': 'Customer AI Update',
-        'test_ai': 'AI Test',
-        'unknown': 'Unknown',
-      };
-      
-      data?.forEach(row => {
-        const feature = row.feature || 'unknown';
-        if (!featureBreakdown[feature]) {
-          featureBreakdown[feature] = { 
-            count: 0, 
-            tokens: 0, 
-            label: featureLabels[feature] || feature.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-          };
-        }
-        featureBreakdown[feature].count++;
-        featureBreakdown[feature].tokens += row.total_tokens || 0;
-      });
-      
-      // Calculate days of data for projections
-      let daysOfData = 1;
-      if (data && data.length >= 2) {
-        const firstRequest = new Date(data[0].created_at);
-        const lastRequest = new Date(data[data.length - 1].created_at);
-        daysOfData = Math.max(1, (lastRequest.getTime() - firstRequest.getTime()) / (1000 * 60 * 60 * 24));
-      }
-      
-      // Daily averages and projections
-      const requestCount = count || 0;
-      const requestsPerDay = requestCount / daysOfData;
-      const tokensPerDay = totalTokens / daysOfData;
-      const projected30DayRequests = Math.round(requestsPerDay * 30);
-      const projected30DayTokens = Math.round(tokensPerDay * 30);
-      
-      // Average tokens per request
-      const avgTokensPerRequest = requestCount > 0 ? Math.round(totalTokens / requestCount) : 0;
-      const avgPromptTokens = requestCount > 0 ? Math.round(totalPromptTokens / requestCount) : 0;
-      const avgCompletionTokens = requestCount > 0 ? Math.round(totalCompletionTokens / requestCount) : 0;
-      
-      // Estimated cost calculation (approximate based on typical Lovable AI pricing)
-      // Gemini Flash: ~$0.075 per 1M input, ~$0.30 per 1M output
-      // Gemini Pro: ~$1.25 per 1M input, ~$5.00 per 1M output
-      let estimatedCost = 0;
-      Object.entries(modelBreakdown).forEach(([model, stats]) => {
-        const isFlash = model.toLowerCase().includes('flash');
-        const inputCostPer1M = isFlash ? 0.075 : 1.25;
-        const outputCostPer1M = isFlash ? 0.30 : 5.00;
-        estimatedCost += (stats.promptTokens / 1_000_000) * inputCostPer1M;
-        estimatedCost += (stats.completionTokens / 1_000_000) * outputCostPer1M;
-      });
-      
-      setLastAiRefresh(new Date());
-      return { 
-        count: requestCount,
-        totalPromptTokens,
-        totalCompletionTokens,
-        totalTokens,
-        modelBreakdown,
-        featureBreakdown,
-        daysOfData: daysOfData.toFixed(1),
-        requestsPerDay: Math.round(requestsPerDay),
-        tokensPerDay: Math.round(tokensPerDay),
-        projected30DayRequests,
-        projected30DayTokens,
-        avgTokensPerRequest,
-        avgPromptTokens,
-        avgCompletionTokens,
-        estimatedCost: estimatedCost > 0 ? `$${estimatedCost.toFixed(4)}` : 'Free tier'
-      };
-    },
-    refetchInterval: aiRefreshInterval,
-    refetchIntervalInBackground: true,
-  });
-
   // Fetch historical monthly usage
   const { data: monthlyHistory } = useQuery({
     queryKey: ["mapbox-monthly-history"],
@@ -734,135 +594,6 @@ const UsageCostsTab = () => {
       return data || [];
     },
     refetchInterval: mapboxRefreshInterval
-  });
-
-  // Estimate Lovable Cloud usage - ALL TIME to match Lovable billing (same as Cloud & AI tab)
-  // This ensures consistency between Usage and Cloud & AI tabs
-  const { data: cloudUsageStats, refetch: refetchCloudUsage, isFetching: isCloudFetching } = useQuery({
-    queryKey: ["cloud-usage-estimate-alltime"],
-    queryFn: async () => {
-      console.log('[Cloud Usage] Fetching ALL-TIME operations to match Lovable billing');
-      
-      // Fetch ALL write operations (no date filter) to match Lovable's billing - same as Cloud & AI tab
-      const [
-        emailResult, matchResult, geocodeResult, mapTrackingResult,
-        directionsResult, aiResult, emailSendResult, auditResult,
-        matchActionResult, emailVolumeResult, archiveResult,
-        vehicleLocationResult, missedLoadsResult, pubsubResult,
-        loadsResult, loadStopsResult
-      ] = await Promise.all([
-        supabase.from('load_emails').select('*', { count: 'exact', head: true }),
-        supabase.from('load_hunt_matches').select('*', { count: 'exact', head: true }),
-        supabase.from('geocode_cache').select('*', { count: 'exact', head: true }),
-        supabase.from('map_load_tracking').select('*', { count: 'exact', head: true }),
-        supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true }),
-        supabase.from('ai_usage_tracking').select('*', { count: 'exact', head: true }),
-        supabase.from('email_send_tracking').select('*', { count: 'exact', head: true }),
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('match_action_history').select('*', { count: 'exact', head: true }),
-        supabase.from('email_volume_stats').select('*', { count: 'exact', head: true }),
-        supabase.from('load_emails_archive').select('*', { count: 'exact', head: true }),
-        supabase.from('vehicle_location_history').select('*', { count: 'exact', head: true }),
-        supabase.from('missed_loads_history').select('*', { count: 'exact', head: true }),
-        supabase.from('pubsub_tracking').select('*', { count: 'exact', head: true }),
-        supabase.from('loads').select('*', { count: 'exact', head: true }),
-        supabase.from('load_stops').select('*', { count: 'exact', head: true }),
-      ]);
-      
-      // Categorize by operation type (same structure as Cloud & AI tab)
-      const emailIngestion = {
-        emails: emailResult.count ?? 0,
-        geocode: geocodeResult.count ?? 0,
-        emailVolume: emailVolumeResult.count ?? 0,
-        archive: archiveResult.count ?? 0,
-        pubsub: pubsubResult.count ?? 0,
-      };
-      
-      const huntOperations = {
-        matches: matchResult.count ?? 0,
-        matchActions: matchActionResult.count ?? 0,
-        missedLoads: missedLoadsResult.count ?? 0,
-      };
-      
-      const loadManagement = {
-        loads: loadsResult.count ?? 0,
-        loadStops: loadStopsResult.count ?? 0,
-      };
-      
-      const tracking = {
-        mapTracking: mapTrackingResult.count ?? 0,
-        directions: directionsResult.count ?? 0,
-        vehicleLocation: vehicleLocationResult.count ?? 0,
-      };
-      
-      const other = {
-        ai: aiResult.count ?? 0,
-        emailSend: emailSendResult.count ?? 0,
-        audit: auditResult.count ?? 0,
-      };
-      
-      const totalEmailIngestion = Object.values(emailIngestion).reduce((a, b) => a + b, 0);
-      const totalHuntOps = Object.values(huntOperations).reduce((a, b) => a + b, 0);
-      const totalLoadMgmt = Object.values(loadManagement).reduce((a, b) => a + b, 0);
-      const totalTracking = Object.values(tracking).reduce((a, b) => a + b, 0);
-      const totalOther = Object.values(other).reduce((a, b) => a + b, 0);
-      const writeOps = totalEmailIngestion + totalHuntOps + totalLoadMgmt + totalTracking + totalOther;
-      
-      // Edge function estimates
-      const edgeFunctionCalls = (emailIngestion.emails * 2.5) + (other.ai) + (other.emailSend) + (tracking.directions);
-      
-      // Realtime estimates
-      const realtimeOps = emailIngestion.emails * 5;
-      
-      // Database reads estimate
-      const estimatedReadOps = writeOps * 4;
-      
-      // Total operations
-      const totalOps = writeOps + Math.round(estimatedReadOps) + Math.round(edgeFunctionCalls) + realtimeOps;
-      
-      // Cost rate from actual billing: $25 for ~186K write ops = $0.000134/write
-      const COST_PER_WRITE_OP = 0.000134;
-      const estimatedCost = writeOps * COST_PER_WRITE_OP;
-      
-      console.log('[Cloud Usage] All-time totals:', { writeOps, estimatedCost: estimatedCost.toFixed(2) });
-      
-      return {
-        writeOps,
-        estimatedReadOps,
-        edgeFunctionCalls: Math.round(edgeFunctionCalls),
-        realtimeOps,
-        totalOps,
-        estimatedCost: estimatedCost.toFixed(2),
-        breakdown: {
-          emails: emailIngestion.emails,
-          matches: huntOperations.matches,
-          geocode: emailIngestion.geocode,
-          mapTracking: tracking.mapTracking,
-          directions: tracking.directions,
-          ai: other.ai,
-          emailSend: other.emailSend,
-          audit: other.audit,
-          matchActions: huntOperations.matchActions,
-          emailVolume: emailIngestion.emailVolume,
-          archive: emailIngestion.archive,
-          vehicleLocation: tracking.vehicleLocation,
-          missedLoads: huntOperations.missedLoads,
-          pubsub: emailIngestion.pubsub,
-          loads: loadManagement.loads,
-          loadStops: loadManagement.loadStops,
-        },
-        categories: {
-          emailIngestion: { ops: totalEmailIngestion, details: emailIngestion },
-          huntOperations: { ops: totalHuntOps, details: huntOperations },
-          loadManagement: { ops: totalLoadMgmt, details: loadManagement },
-          tracking: { ops: totalTracking, details: tracking },
-          other: { ops: totalOther, details: other },
-        }
-      };
-    },
-    refetchInterval: 30000,
-    staleTime: 15000,
-    gcTime: 300000,
   });
 
   // Query for real-time cost drivers (1h and 24h breakdown)
@@ -940,11 +671,6 @@ const UsageCostsTab = () => {
     refetchInterval: 30000,
     staleTime: 15000,
   });
-  
-  // Get effective rate (calibrated or default) - calibration is done in Cloud & AI tab
-  
-  // Get effective rate (calibrated or default)
-  const effectiveRate = calibratedRate ?? 0.000134;
 
   // Track if any mapbox query is fetching
   const isRefreshing = isUsageFetching;
@@ -1074,15 +800,7 @@ const UsageCostsTab = () => {
     }
   };
 
-  // Parse AI cost to number (remove $ and 'Free tier' handling)
-  const aiCostNumber = aiStats?.estimatedCost && aiStats.estimatedCost !== 'Free tier' 
-    ? parseFloat(aiStats.estimatedCost.replace('$', '')) 
-    : 0;
-
-  // Cloud usage cost - uses calibrated rate if available
-  const cloudCostNumber = (cloudUsageStats?.writeOps || 0) * effectiveRate;
-
-  // Cost breakdown object for detailed display
+  // Cost breakdown object for detailed display (Mapbox + Email only - Cloud/AI tracked in Cloud & AI tab)
   const costBreakdown = {
     mapbox: {
       geocoding: geocodingCost,
@@ -1090,30 +808,17 @@ const UsageCostsTab = () => {
       directions: directionsCost,
       total: geocodingCost + mapLoadsCost + directionsCost
     },
-    ai: {
-      total: aiCostNumber
-    },
     email: {
       resend: parseFloat(resendStats?.estimatedCost || '0'),
       pubsub: parseFloat(pubsubStats?.estimatedCost || '0'),
       total: parseFloat(resendStats?.estimatedCost || '0') + parseFloat(pubsubStats?.estimatedCost || '0')
-    },
-    cloud: {
-      totalOps: cloudUsageStats?.totalOps || 0,
-      writeOps: cloudUsageStats?.writeOps || 0,
-      readOps: cloudUsageStats?.estimatedReadOps || 0,
-      edgeFunctions: cloudUsageStats?.edgeFunctionCalls || 0,
-      realtime: cloudUsageStats?.realtimeOps || 0,
-      estimatedCost: cloudCostNumber
     }
   };
 
-  // Total estimated monthly cost (includes Cloud estimate based on historical rate)
+  // Total estimated monthly cost (Mapbox + Email only - Cloud/AI costs shown in Cloud & AI tab)
   const totalEstimatedMonthlyCost = (
     costBreakdown.mapbox.total +
-    costBreakdown.ai.total +
-    costBreakdown.email.total +
-    costBreakdown.cloud.estimatedCost
+    costBreakdown.email.total
   ).toFixed(2);
 
   return (
@@ -1152,11 +857,8 @@ const UsageCostsTab = () => {
           <div className="flex items-center justify-between">
             <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
               <DollarSign className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
-              {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Last 30 Days)'}
-              <InfoTooltip text={calibratedRate 
-                ? `Sum of all estimated service costs using your calibrated rate ($${calibratedRate.toFixed(6)}/write op). Check Settings → Plans & Credits for actual billing.` 
-                : "Sum of all estimated service costs: Mapbox APIs, Lovable AI usage, email services, and Lovable Cloud. Calibrate with actual billing for better accuracy."
-              } />
+              {isCompactView ? 'Est. Monthly Cost' : 'Estimated Monthly Cost (Mapbox + Email)'}
+              <InfoTooltip text="Sum of Mapbox API costs and email service costs. For Cloud & AI costs, see the Cloud & AI tab." />
             </CardTitle>
             <div className={`font-bold text-primary ${isCompactView ? 'text-xl' : 'text-4xl'}`}>
               ${totalEstimatedMonthlyCost}
@@ -1198,25 +900,6 @@ const UsageCostsTab = () => {
                 </div>
               </div>
 
-              {/* AI Section */}
-              <div className="bg-background/50 rounded-lg p-3 border">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                    <span className="font-medium text-sm">Lovable AI</span>
-                  </div>
-                  <span className="font-semibold text-sm">
-                    {aiCostNumber > 0 ? `$${aiCostNumber.toFixed(4)}` : 'Free tier'}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Requests: {aiStats?.count || 0}</span>
-                    <span>Tokens: {(aiStats?.totalTokens || 0).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Email Services Section */}
               <div className="bg-background/50 rounded-lg p-3 border">
                 <div className="flex items-center justify-between mb-2">
@@ -1237,199 +920,6 @@ const UsageCostsTab = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Lovable Cloud Section - Estimated with detailed breakdown */}
-              <div className="bg-background/50 rounded-lg p-3 border border-amber-500/30">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-sm">Lovable Cloud</span>
-                    <InfoTooltip text="Estimated based on historical rate: $25 actual cost / 186K write ops = $0.000134 per write operation. Compare with Settings → Plans & Credits for actual billing." />
-                    {isCloudFetching && <Loader2 className="h-3 w-3 animate-spin text-amber-600" />}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 px-2 text-xs"
-                      onClick={() => refetchCloudUsage()}
-                      disabled={isCloudFetching}
-                    >
-                      <RefreshCw className={`h-3 w-3 mr-1 ${isCloudFetching ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                    <span className="font-semibold text-sm text-amber-600">~${costBreakdown.cloud.estimatedCost.toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-muted-foreground font-medium">
-                    <span>Write Operations (All Time):</span>
-                    <span className="text-foreground">{costBreakdown.cloud.writeOps.toLocaleString()}</span>
-                  </div>
-                  
-                  {/* Write operations breakdown */}
-                  {cloudUsageStats?.breakdown && costBreakdown.cloud.writeOps > 0 && (
-                    <div className="grid grid-cols-3 gap-x-2 gap-y-0.5 pt-1 border-t border-border/30 text-[10px]">
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Emails:</span>
-                        <span>{(cloudUsageStats.breakdown.emails || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Geocode:</span>
-                        <span>{(cloudUsageStats.breakdown.geocode || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Matches:</span>
-                        <span>{(cloudUsageStats.breakdown.matches || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Map Track:</span>
-                        <span>{(cloudUsageStats.breakdown.mapTracking || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Email Vol:</span>
-                        <span>{(cloudUsageStats.breakdown.emailVolume || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Archive:</span>
-                        <span>{(cloudUsageStats.breakdown.archive || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/50">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>DB Reads (est 4x):</span>
-                      <span>{costBreakdown.cloud.readOps.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Edge Functions:</span>
-                      <span>{costBreakdown.cloud.edgeFunctions.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Realtime (est):</span>
-                      <span>{costBreakdown.cloud.realtime.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Rate{calibratedRate ? ' (calibrated)' : ''}:</span>
-                      <span className={calibratedRate ? 'text-amber-600 font-medium' : ''}>${effectiveRate.toFixed(6)}/write</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Cost Drivers Panel - Real-time activity */}
-      <Card className="border-orange-500/20 bg-orange-500/5">
-        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
-                <Zap className={`text-orange-500 ${isCompactView ? 'h-4 w-4' : 'h-5 w-5'}`} />
-                {isCompactView ? 'Cost Drivers' : 'Real-Time Cost Drivers'}
-                <InfoTooltip text="Shows what's actually consuming resources right now. High numbers here indicate where costs are coming from." />
-              </CardTitle>
-              {!isCompactView && <CardDescription>Activity breakdown for last 1 hour and 24 hours</CardDescription>}
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => refetchCostDrivers()}
-              disabled={isCostDriversFetching}
-            >
-              <RefreshCw className={`h-4 w-4 mr-1 ${isCostDriversFetching ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className={isCompactView ? 'pt-0 px-3 pb-3' : ''}>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Last 1 Hour */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="h-4 w-4 text-orange-500" />
-                Last 1 Hour
-              </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Emails Processed</span>
-                  <span className={`font-medium ${(costDrivers?.oneHour.emails || 0) > 500 ? 'text-red-500' : ''}`}>
-                    {(costDrivers?.oneHour.emails || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Geocode Calls</span>
-                  <span className="font-medium">{(costDrivers?.oneHour.geocode || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Match Operations</span>
-                  <span className="font-medium">{(costDrivers?.oneHour.matches || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Edge Functions (est)</span>
-                  <span className="font-medium">{(costDrivers?.edgeFunctions1h || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Last 24 Hours */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <BarChart3 className="h-4 w-4 text-orange-500" />
-                Last 24 Hours
-                {costDrivers?.hourlyRate && (
-                  <span className="text-xs text-muted-foreground">
-                    (~{Math.round(costDrivers.hourlyRate)}/hr avg)
-                  </span>
-                )}
-              </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Emails Processed</span>
-                  <span className={`font-medium ${(costDrivers?.twentyFourHours.emails || 0) > 10000 ? 'text-red-500' : ''}`}>
-                    {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Geocode Calls</span>
-                  <span className="font-medium">{(costDrivers?.twentyFourHours.geocode || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Match Operations</span>
-                  <span className="font-medium">{(costDrivers?.twentyFourHours.matches || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-background/50">
-                  <span className="text-muted-foreground">Edge Functions (est)</span>
-                  <span className="font-medium">{(costDrivers?.edgeFunctions24h || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Warning if high volume */}
-          {(costDrivers?.twentyFourHours.emails || 0) > 10000 && (
-            <div className="mt-3 p-2 rounded bg-red-500/10 border border-red-500/20 flex items-start gap-2 text-xs">
-              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-medium text-red-600">High Volume Alert:</span>
-                <span className="text-muted-foreground ml-1">
-                  {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()} emails in 24h. 
-                  Est. ~${((costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5).toFixed(2)}/day in Cloud costs.
-                </span>
-              </div>
-            </div>
-          )}
-          
-          {/* Projection */}
-          <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
-            <div className="flex justify-between">
-              <span>Projected 30-day cost (at current rate):</span>
-              <span className="font-medium text-foreground">
-                ~${((costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5 * 30).toFixed(2)}
-              </span>
             </div>
           </div>
         </CardContent>
@@ -1641,142 +1131,6 @@ const UsageCostsTab = () => {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Lovable AI Usage */}
-      <Card className={isCompactView ? 'py-0' : ''}>
-        <CardHeader className={isCompactView ? 'py-2 px-3' : ''}>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <CardTitle className={`flex items-center gap-2 ${isCompactView ? 'text-sm' : ''}`}>
-                <Sparkles className={isCompactView ? 'h-4 w-4' : 'h-5 w-5'} />
-                Lovable AI Usage
-              </CardTitle>
-              {!isCompactView && <CardDescription>AI model requests and costs</CardDescription>}
-            </div>
-            <RefreshControl
-              lastRefresh={lastAiRefresh}
-              refreshInterval={aiRefreshInterval}
-              onIntervalChange={setAiRefreshInterval}
-              onRefresh={() => refetchAi()}
-            />
-          </div>
-        </CardHeader>
-        <CardContent className={isCompactView ? 'pt-0 px-3 pb-2 space-y-2' : 'space-y-4'}>
-          <div className={`flex ${isCompactView ? 'items-center gap-4' : 'flex-col space-y-2'}`}>
-            <div className={isCompactView ? 'flex items-center gap-2' : 'space-y-2'}>
-              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>Model:</p>
-              <p className={`font-medium ${isCompactView ? 'text-sm' : 'text-lg'}`}>google/gemini-2.5-flash</p>
-            </div>
-            <Button 
-              onClick={() => testAiMutation.mutate()}
-              disabled={testAiMutation.isPending}
-              size={isCompactView ? 'sm' : 'default'}
-              className={isCompactView ? 'h-7 text-xs' : 'w-full'}
-            >
-              {testAiMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  Testing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  Test AI
-                </>
-              )}
-            </Button>
-          </div>
-          {aiTestResult && (
-            <div className={`bg-muted rounded-md ${isCompactView ? 'p-2' : 'mt-3 p-3'}`}>
-              <p className={`font-medium ${isCompactView ? 'text-xs mb-0.5' : 'text-sm mb-1'}`}>Response:</p>
-              <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-sm'}`}>{aiTestResult}</p>
-            </div>
-          )}
-          {!isCompactView && (
-            <div className="pt-2 border-t text-xs text-muted-foreground">
-              <p>• Usage-based pricing per AI request</p>
-              <p>• Check credit balance in Lovable workspace settings</p>
-              <p>• Free monthly usage included, then pay-as-you-go</p>
-            </div>
-          )}
-          {/* AI Usage Stats from tracking */}
-          <div className={`${isCompactView ? 'pt-1 border-t' : 'pt-3 border-t'}`}>
-            <p className={`font-medium ${isCompactView ? 'text-xs mb-1' : 'text-sm mb-2'}`}>This Month's Usage ({aiStats?.daysOfData || 0} days)</p>
-            
-            {/* Main stats grid */}
-            <div className={`grid ${isCompactView ? 'grid-cols-4 gap-2' : 'grid-cols-4 gap-4'}`}>
-              <div className="space-y-0.5">
-                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Requests</p>
-                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats?.count || 0}</p>
-                <p className="text-xs text-muted-foreground">~{aiStats?.requestsPerDay || 0}/day</p>
-              </div>
-              <div className="space-y-0.5">
-                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Total Tokens</p>
-                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{(aiStats?.totalTokens || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">~{aiStats?.avgTokensPerRequest || 0}/req</p>
-              </div>
-              <div className="space-y-0.5">
-                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>30-Day Projection</p>
-                <p className={`font-semibold ${isCompactView ? 'text-sm' : 'text-lg'}`}>{(aiStats?.projected30DayTokens || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">~{aiStats?.projected30DayRequests || 0} requests</p>
-              </div>
-              <div className="space-y-0.5">
-                <p className={`text-muted-foreground ${isCompactView ? 'text-xs' : 'text-xs'}`}>Est. Cost</p>
-                <p className={`font-semibold text-green-600 ${isCompactView ? 'text-sm' : 'text-lg'}`}>{aiStats?.estimatedCost || 'Free tier'}</p>
-                <p className="text-xs text-muted-foreground">This month</p>
-              </div>
-            </div>
-              
-            {/* Token breakdown */}
-            {!isCompactView && (
-              <div className="mt-3 grid grid-cols-2 gap-4">
-                <div className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">Input Tokens (Prompt)</p>
-                  <p className="font-semibold text-sm">{(aiStats?.totalPromptTokens || 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">~{aiStats?.avgPromptTokens || 0} avg/request</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">Output Tokens (Completion)</p>
-                  <p className="font-semibold text-sm">{(aiStats?.totalCompletionTokens || 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">~{aiStats?.avgCompletionTokens || 0} avg/request</p>
-                </div>
-              </div>
-            )}
-            
-            {/* Feature breakdown - shows WHERE AI is being used */}
-            {!isCompactView && aiStats?.featureBreakdown && Object.keys(aiStats.featureBreakdown).length > 0 && (
-              <div className="mt-3 pt-2 border-t">
-                <p className="text-xs font-medium mb-2">Usage by Feature</p>
-                <div className="space-y-1">
-                  {Object.entries(aiStats.featureBreakdown)
-                    .sort((a, b) => b[1].count - a[1].count)
-                    .map(([feature, stats]) => (
-                    <div key={feature} className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground truncate max-w-[180px]">{stats.label}</span>
-                      <span className="font-medium">{stats.count} requests • {stats.tokens.toLocaleString()} tokens</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Model breakdown */}
-            {!isCompactView && aiStats?.modelBreakdown && Object.keys(aiStats.modelBreakdown).length > 0 && (
-              <div className="mt-3 pt-2 border-t">
-                <p className="text-xs font-medium mb-2">Usage by Model</p>
-                <div className="space-y-1">
-                  {Object.entries(aiStats.modelBreakdown).map(([model, stats]) => (
-                    <div key={model} className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground truncate max-w-[180px]">{model}</span>
-                      <span className="font-medium">{stats.count} requests • {stats.tokens.toLocaleString()} tokens</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
