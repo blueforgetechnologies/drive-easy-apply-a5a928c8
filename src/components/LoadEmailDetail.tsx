@@ -55,6 +55,7 @@ const LoadEmailDetail = ({
   const isMobile = useIsMobile();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
+  const [bidError, setBidError] = useState<string | null>(null);
   const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
   const [toEmail, setToEmail] = useState<string | null>(null);
   const [ccEmail, setCcEmail] = useState("");
@@ -1134,21 +1135,31 @@ const LoadEmailDetail = ({
               <Card className="p-4">
                 <div className="text-xs text-muted-foreground mb-3">Your Bid</div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center gap-1 bg-blue-500 text-white rounded-full h-12 px-4 flex-1">
+                  <div className={`flex items-center gap-1 ${bidError ? 'bg-destructive' : 'bg-blue-500'} text-white rounded-full h-12 px-4 flex-1`}>
                     <span className="text-xl font-bold">$</span>
                     <input type="text" value={bidAmount} onChange={e => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  setBidAmount(val);
-                }} placeholder={data.rate?.toString() || "3000"} className="bg-transparent border-none outline-none text-xl font-bold text-white w-full placeholder:text-blue-200" />
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setBidAmount(val);
+                      if (bidError) setBidError(null);
+                    }} placeholder={data.rate?.toString() || "0"} className="bg-transparent border-none outline-none text-xl font-bold text-white w-full placeholder:text-white/60" />
                   </div>
                 </div>
                 <Button onClick={() => {
-              const finalBid = bidAmount || data.rate?.toString() || "3000";
-              setBidAmount(finalBid);
-              setShowBidCardOnMap(true);
-            }} className="w-full bg-green-600 hover:bg-green-700 h-11 font-semibold">
+                  const finalBid = bidAmount || "";
+                  const bidValue = parseFloat(finalBid.replace(/[^0-9.]/g, '')) || 0;
+                  if (bidValue <= 0) {
+                    setBidError("Bid Rate must be more than $0");
+                    return;
+                  }
+                  setBidError(null);
+                  setBidAmount(finalBid);
+                  setShowBidCardOnMap(true);
+                }} className="w-full bg-green-600 hover:bg-green-700 h-11 font-semibold">
                   Set Bid
                 </Button>
+                {bidError && (
+                  <p className="text-xs text-destructive mt-2">{bidError}</p>
+                )}
               </Card>
 
               {/* Stats */}
@@ -1791,23 +1802,33 @@ const LoadEmailDetail = ({
                   </div>
 
                   {/* Bid Input and Button */}
-                  <div className="flex items-center gap-1 mb-2 pb-2 border-b">
-                    <div className="flex items-center flex-1 border rounded-full overflow-hidden bg-background">
-                      <div className="flex items-center justify-center w-7 h-7 bg-blue-500 rounded-full m-0.5">
+                  <div className="flex flex-col gap-1 mb-2 pb-2 border-b">
+                    <div className={`flex items-center flex-1 border rounded-full overflow-hidden bg-background ${bidError ? 'border-destructive border-2' : ''}`}>
+                      <div className={`flex items-center justify-center w-7 h-7 ${bidError ? 'bg-destructive' : 'bg-blue-500'} rounded-full m-0.5`}>
                         <span className="text-sm font-bold text-white">$</span>
                       </div>
                       <input type="text" value={bidAmount} onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, '');
                         setBidAmount(val);
-                      }} placeholder={data.rate?.toString() || "3000"} className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-foreground px-2 placeholder:text-muted-foreground" />
+                        if (bidError) setBidError(null);
+                      }} placeholder={data.rate?.toString() || "0"} className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-foreground px-2 placeholder:text-muted-foreground" />
                       <Button onClick={() => {
-                        const finalBid = bidAmount || data.rate?.toString() || "3000";
+                        const finalBid = bidAmount || "";
+                        const bidValue = parseFloat(finalBid.replace(/[^0-9.]/g, '')) || 0;
+                        if (bidValue <= 0) {
+                          setBidError("Bid Rate must be more than $0");
+                          return;
+                        }
+                        setBidError(null);
                         setBidAmount(finalBid);
                         setShowBidCardOnMap(true);
                       }} className="bg-green-500 hover:bg-green-600 h-6 px-3 text-xs font-semibold rounded-full m-0.5">
                         Set Bid
                       </Button>
                     </div>
+                    {bidError && (
+                      <p className="text-xs text-destructive pl-2">{bidError}</p>
+                    )}
                   </div>
                 </div>
 
