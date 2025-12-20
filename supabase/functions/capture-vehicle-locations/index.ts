@@ -151,14 +151,14 @@ serve(async (req) => {
       }
     }
 
-    // Clean up old data (keep 30 days by default)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Clean up old data (keep 8 days to reduce costs)
+    const eightDaysAgo = new Date();
+    eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
     
     const { error: cleanupError } = await supabase
       .from('vehicle_location_history')
       .delete()
-      .lt('recorded_at', thirtyDaysAgo.toISOString());
+      .lt('recorded_at', eightDaysAgo.toISOString());
 
     if (cleanupError) {
       console.warn('Error cleaning up old locations:', cleanupError);
