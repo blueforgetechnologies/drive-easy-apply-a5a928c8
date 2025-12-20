@@ -304,7 +304,7 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
         })}
       </div>
 
-      {costBreakdown && totalWriteOps > 0 && (
+      {costBreakdown?.categories && totalWriteOps > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">Cloud Operations Breakdown</CardTitle>
@@ -314,24 +314,24 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
             <div className="grid grid-cols-5 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Emails</p>
-                <p className="font-bold text-lg">{(costBreakdown.categories.emailIngestion.details.emails || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown?.categories?.emailIngestion?.details?.emails || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Geocode</p>
-                <p className="font-bold text-lg">{(costBreakdown.categories.emailIngestion.details.geocode || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown?.categories?.emailIngestion?.details?.geocode || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Matches</p>
-                <p className="font-bold text-lg">{(costBreakdown.categories.huntOperations.details.matches || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown?.categories?.huntOperations?.details?.matches || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Map Loads</p>
-                <p className="font-bold text-lg">{(costBreakdown.categories.tracking.details.mapTracking || 0).toLocaleString()}</p>
+                <p className="font-bold text-lg">{(costBreakdown?.categories?.tracking?.details?.mapTracking || 0).toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted text-center">
                 <p className="text-muted-foreground text-xs">Other</p>
                 <p className="font-bold text-lg">
-                  {(costBreakdown.categories.other.ops || 0).toLocaleString()}
+                  {(costBreakdown?.categories?.other?.ops || 0).toLocaleString()}
                 </p>
               </div>
             </div>
