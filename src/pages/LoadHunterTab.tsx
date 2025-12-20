@@ -838,8 +838,8 @@ export default function LoadHunterTab() {
   const soundCacheRef = useRef<Map<string, string>>(new Map());
   const isGeneratingSoundRef = useRef(false);
 
-  // Function to play AI-generated sound effect
-  const playAlertSound = async (force = false) => {
+  // Function to play alert sound (uses simple oscillator - AI sound disabled due to ElevenLabs account limits)
+  const playAlertSound = (force = false) => {
     console.log('🔔 playAlertSound called, isSoundMuted:', isSoundMuted, 'force:', force);
     
     if (isSoundMuted && !force) {
@@ -847,66 +847,8 @@ export default function LoadHunterTab() {
       return;
     }
 
-    // Prevent multiple simultaneous generations
-    if (isGeneratingSoundRef.current) {
-      console.log('⏳ Sound generation already in progress, skipping');
-      return;
-    }
-    
-    const soundPrompt = "Short upbeat notification chime for a trucking dispatch app, bright and professional";
-    
-    try {
-      // Check cache first
-      const cachedUrl = soundCacheRef.current.get(soundPrompt);
-      if (cachedUrl) {
-        console.log('🎵 Playing cached sound effect');
-        const audio = new Audio(cachedUrl);
-        await audio.play();
-        console.log('✅ Cached sound played successfully');
-        return;
-      }
-
-      isGeneratingSoundRef.current = true;
-      console.log('🎵 Generating AI sound effect via ElevenLabs...');
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-sfx`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ 
-            prompt: soundPrompt,
-            duration: 2 
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `SFX request failed: ${response.status}`);
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      // Cache the generated sound
-      soundCacheRef.current.set(soundPrompt, audioUrl);
-      
-      const audio = new Audio(audioUrl);
-      await audio.play();
-      
-      console.log('✅ AI sound effect played successfully');
-    } catch (error) {
-      console.error('❌ Error playing AI sound effect:', error);
-      // Fallback to simple oscillator sound
-      playFallbackSound();
-    } finally {
-      isGeneratingSoundRef.current = false;
-    }
+    // Use simple oscillator sound (ElevenLabs AI sound can be re-enabled with paid API key)
+    playFallbackSound();
   };
 
   // Fallback sound using Web Audio API
