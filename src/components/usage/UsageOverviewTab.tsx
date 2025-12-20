@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Map, Mail, Sparkles, Database, DollarSign, TrendingUp, Activity, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 interface UsageOverviewTabProps {
   selectedMonth: string; // "YYYY-MM" or "all"
 }
 
-// Cost rate constants
-const CLOUD_WRITE_RATE = 0.000134; // $0.134 per 1000 writes
+// Default cost rate constants
+const DEFAULT_CLOUD_WRITE_RATE = 0.000134; // $0.134 per 1000 writes
 const MAPBOX_GEOCODE_RATE = 0.75 / 1000; // $0.75 per 1000 after free tier
 const MAPBOX_FREE_TIER = 100000;
 
@@ -30,6 +31,19 @@ const getDateRange = (selectedMonth: string) => {
 
 export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   const { startISO, endISO, isAllTime } = getDateRange(selectedMonth);
+  
+  // Load calibrated rates from localStorage (set in Cloud & AI tab)
+  const [cloudCalibratedRate, setCloudCalibratedRate] = useState<number | null>(null);
+  const [mapboxCalibratedMultiplier, setMapboxCalibratedMultiplier] = useState<number | null>(null);
+  
+  useEffect(() => {
+    const savedCloudRate = localStorage.getItem('cloud_calibrated_rate');
+    const savedMapboxMultiplier = localStorage.getItem('mapbox_calibrated_multiplier');
+    if (savedCloudRate) setCloudCalibratedRate(parseFloat(savedCloudRate));
+    if (savedMapboxMultiplier) setMapboxCalibratedMultiplier(parseFloat(savedMapboxMultiplier));
+  }, []);
+  
+  const effectiveCloudRate = cloudCalibratedRate ?? DEFAULT_CLOUD_WRITE_RATE;
 
   // Mapbox usage query - use actual geocode_cache counts for accuracy
   const { data: mapboxUsage, refetch: refetchMapbox, isFetching: isMapboxFetching } = useQuery({
@@ -198,7 +212,7 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
       };
       
       const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
-      const cost = total * CLOUD_WRITE_RATE;
+      const cost = total * effectiveCloudRate;
       
       return { ...breakdown, total, cost };
     },
@@ -214,7 +228,9 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
     refetchCloud();
   };
 
-  const mapboxCost = mapboxUsage?.total_cost || 0;
+  // Apply calibration multipliers
+  const rawMapboxCost = mapboxUsage?.total_cost || 0;
+  const mapboxCost = mapboxCalibratedMultiplier ? rawMapboxCost * mapboxCalibratedMultiplier : rawMapboxCost;
   const emailCost = emailStats?.cost || 0;
   const aiCost = aiStats?.cost || 0;
   const cloudCost = cloudStats?.cost || 0;
