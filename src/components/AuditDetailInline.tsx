@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileText, Download, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PDFImageViewer } from "@/components/PDFImageViewer";
 
 interface ChecklistItem {
   id: string;
@@ -188,29 +189,83 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   const rateConfirmationDocs = documents.filter((doc: any) => doc.document_type === 'rate_confirmation');
   const bolDocs = documents.filter((doc: any) => doc.document_type === 'bill_of_lading');
 
-  // Get full public URL for a document
-  const getDocumentUrl = (doc: any): string => {
-    if (!doc?.file_url) return '';
-    // If it's already a full URL, return it
-    if (doc.file_url.startsWith('http://') || doc.file_url.startsWith('https://')) {
-      return doc.file_url;
-    }
-    // Otherwise, get the public URL from storage
-    const { data } = supabase.storage.from('load-documents').getPublicUrl(doc.file_url);
-    return data.publicUrl;
-  };
+  // Document Viewer Component that handles signed URLs
+  const DocumentViewer = ({ doc }: { doc: any }) => {
+    const [signedUrl, setSignedUrl] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-  const renderDocumentViewer = (doc: any) => {
+    useEffect(() => {
+      const getSignedUrl = async () => {
+        if (!doc?.file_url) {
+          setLoading(false);
+          return;
+        }
+        
+        try {
+          setLoading(true);
+          setError(null);
+          
+          // If it's already a full URL, use it directly
+          if (doc.file_url.startsWith('http://') || doc.file_url.startsWith('https://')) {
+            setSignedUrl(doc.file_url);
+            setLoading(false);
+            return;
+          }
+          
+          // Get signed URL from storage (1 hour expiry)
+          const { data, error: urlError } = await supabase.storage
+            .from('load-documents')
+            .createSignedUrl(doc.file_url, 3600);
+          
+          if (urlError) throw urlError;
+          setSignedUrl(data.signedUrl);
+        } catch (err: any) {
+          console.error('Error getting signed URL:', err);
+          setError(err.message || 'Failed to load document');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      getSignedUrl();
+    }, [doc?.file_url]);
+
     if (!doc?.file_url) return null;
+    
     const fileName = doc.file_name?.toLowerCase() || '';
     const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif') || fileName.endsWith('.webp');
-    const fullUrl = getDocumentUrl(doc);
+    const isPdf = fileName.endsWith('.pdf');
+
+    if (loading) {
+      return (
+        <div className="flex flex-col h-[550px]">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading document...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (error || !signedUrl) {
+      return (
+        <div className="flex flex-col h-[550px]">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <FileText className="h-12 w-12 text-muted-foreground opacity-50" />
+            <p className="text-sm text-destructive">{error || 'Failed to load document'}</p>
+          </div>
+        </div>
+      );
+    }
     
     return (
       <div className="flex flex-col h-[550px]">
         <div className="flex justify-end gap-2 mb-2">
           <a
-            href={fullUrl}
+            href={signedUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
@@ -219,7 +274,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             Open in New Tab
           </a>
           <a
-            href={fullUrl}
+            href={signedUrl}
             download={doc.file_name}
             className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
@@ -228,17 +283,19 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           </a>
         </div>
         <div className="flex-1 border rounded bg-muted overflow-hidden">
-          {isImage ? (
+          {isPdf ? (
+            <PDFImageViewer url={signedUrl} fileName={doc.file_name || 'Document.pdf'} />
+          ) : isImage ? (
             <div className="h-full overflow-auto p-4 flex items-start justify-center">
               <img
-                src={fullUrl}
+                src={signedUrl}
                 alt={doc.file_name || 'Document'}
                 className="max-w-full h-auto shadow-lg"
               />
             </div>
           ) : (
             <iframe
-              src={fullUrl}
+              src={signedUrl}
               title={doc.file_name || 'Document'}
               className="w-full h-full"
               style={{ border: 'none' }}
@@ -469,13 +526,13 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             </TabsList>
             <TabsContent value="rate_confirmation" className="p-4 flex-1 overflow-auto">
               {rateConfirmationDocs.length > 0 
-                ? renderDocumentViewer(rateConfirmationDocs[0])
+                ? <DocumentViewer doc={rateConfirmationDocs[0]} />
                 : renderNoDocument('Rate Confirmation')
               }
             </TabsContent>
             {bolDocs.map((doc, index) => (
               <TabsContent key={doc.id} value={`bol_${index}`} className="p-4 flex-1 overflow-auto">
-                {renderDocumentViewer(doc)}
+                <DocumentViewer doc={doc} />
               </TabsContent>
             ))}
             {bolDocs.length === 0 && (
