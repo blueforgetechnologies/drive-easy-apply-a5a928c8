@@ -188,16 +188,29 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   const rateConfirmationDocs = documents.filter((doc: any) => doc.document_type === 'rate_confirmation');
   const bolDocs = documents.filter((doc: any) => doc.document_type === 'bill_of_lading');
 
+  // Get full public URL for a document
+  const getDocumentUrl = (doc: any): string => {
+    if (!doc?.file_url) return '';
+    // If it's already a full URL, return it
+    if (doc.file_url.startsWith('http://') || doc.file_url.startsWith('https://')) {
+      return doc.file_url;
+    }
+    // Otherwise, get the public URL from storage
+    const { data } = supabase.storage.from('load-documents').getPublicUrl(doc.file_url);
+    return data.publicUrl;
+  };
+
   const renderDocumentViewer = (doc: any) => {
     if (!doc?.file_url) return null;
     const fileName = doc.file_name?.toLowerCase() || '';
     const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif') || fileName.endsWith('.webp');
+    const fullUrl = getDocumentUrl(doc);
     
     return (
       <div className="flex flex-col h-[550px]">
         <div className="flex justify-end gap-2 mb-2">
           <a
-            href={doc.file_url}
+            href={fullUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
@@ -206,7 +219,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             Open in New Tab
           </a>
           <a
-            href={doc.file_url}
+            href={fullUrl}
             download={doc.file_name}
             className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
@@ -218,14 +231,14 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           {isImage ? (
             <div className="h-full overflow-auto p-4 flex items-start justify-center">
               <img
-                src={doc.file_url}
+                src={fullUrl}
                 alt={doc.file_name || 'Document'}
                 className="max-w-full h-auto shadow-lg"
               />
             </div>
           ) : (
             <iframe
-              src={doc.file_url}
+              src={fullUrl}
               title={doc.file_name || 'Document'}
               className="w-full h-full"
               style={{ border: 'none' }}
