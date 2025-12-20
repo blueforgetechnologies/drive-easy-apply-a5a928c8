@@ -640,212 +640,245 @@ export default function LoadDetail() {
             </div>
           </div>
 
-          {/* Collapsible Accordion Sections */}
-          <Accordion type="multiple" defaultValue={["customer-billing", "origin-dest", "load-info", "carrier-truck"]} className="space-y-1">
+          {/* All Sections as Cards */}
+          <div className="space-y-3">
             
-            {/* Customer & Billing Party Section */}
-            <AccordionItem value="customer-billing" className="border rounded-md bg-card">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+            {/* Customer & Billing Party Row */}
+            <div className="grid md:grid-cols-2 gap-3">
+              {/* Customer Card */}
+              <Card className="border-2 border-border/60 shadow-md">
+                <CardHeader className="pb-2 pt-3 px-4 bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <Building className="h-4 w-4 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold tracking-tight">CUSTOMER</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-3 pb-4 space-y-3">
+                  <div className="flex gap-2">
+                    <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
+                      <SelectTrigger className="h-9 text-sm bg-background"><SelectValue placeholder="Select Customer" /></SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
+                    <AddCustomerDialog onCustomerAdded={async (customerId) => { await loadData(); updateField("customer_id", customerId); }} />
+                  </div>
+                  {load.customer_id && (() => {
+                    const customer = customers.find(c => c.id === load.customer_id);
+                    return customer ? (
+                      <div className="text-sm text-muted-foreground space-y-0.5 border-t pt-2">
+                        <p className="font-medium text-foreground">{customer.contact_name}</p>
+                        <p>{customer.phone} • {customer.email}</p>
+                      </div>
+                    ) : null;
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Billing Party Card */}
+              <Card className="border-2 border-border/60 shadow-md">
+                <CardHeader className="pb-2 pt-3 px-4 bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <CardTitle className="text-lg font-bold tracking-tight">BILLING PARTY</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-3 pb-4 space-y-2">
+                  <Input className="h-9 text-sm" value={load.broker_name || ""} onChange={(e) => updateField("broker_name", e.target.value)} placeholder="Billing Party Name" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input className="h-8 text-sm" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
+                    <Input className="h-8 text-sm" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
+                  </div>
+                  <Input className="h-8 text-sm" value={load.broker_contact || ""} onChange={(e) => updateField("broker_contact", e.target.value)} placeholder="Contact Person" />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Origin & Destination Row */}
+            <div className="grid md:grid-cols-2 gap-3">
+              {/* Origin (Shipper) Card */}
+              <Card className="border-2 border-blue-500/50 shadow-md bg-gradient-to-b from-blue-500/5 to-transparent">
+                <CardHeader className="pb-2 pt-3 px-4 bg-blue-500/10 border-b border-blue-500/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg">
+                        <MapPin className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-black tracking-tight text-blue-700 dark:text-blue-400">ORIGIN</CardTitle>
+                        <p className="text-xs text-muted-foreground">Shipper / Pickup</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">{load.pickup_date ? format(new Date(load.pickup_date), 'MMM d, yyyy') : '—'}</p>
+                      <p className="text-xs text-muted-foreground">{load.pickup_time || 'No time set'}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-3 pb-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Shipper Name</Label>
+                      <Input className="h-9 text-sm mt-1" value={load.shipper_name || ""} onChange={(e) => updateField("shipper_name", e.target.value)} placeholder="Shipper Name" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
+                      <Input className="h-9 text-sm mt-1" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+                    <Input className="h-8 text-sm mt-1" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} placeholder="Email" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Address</Label>
+                    <Input className="h-8 text-sm mt-1" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Street Address" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">City</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">State</Label>
+                      <Input className="h-8 text-sm mt-1 uppercase" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">ZIP</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} placeholder="ZIP" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Date</Label>
+                      <Input className="h-8 text-sm mt-1" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Time</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
+                    <Textarea className="text-sm mt-1 min-h-[40px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Pickup notes..." />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Destination (Receiver) Card */}
+              <Card className="border-2 border-green-500/50 shadow-md bg-gradient-to-b from-green-500/5 to-transparent">
+                <CardHeader className="pb-2 pt-3 px-4 bg-green-500/10 border-b border-green-500/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-green-600 flex items-center justify-center shadow-lg">
+                        <MapPin className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-black tracking-tight text-green-700 dark:text-green-400">DESTINATION</CardTitle>
+                        <p className="text-xs text-muted-foreground">Receiver / Delivery</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">{load.delivery_date ? format(new Date(load.delivery_date), 'MMM d, yyyy') : '—'}</p>
+                      <p className="text-xs text-muted-foreground">{load.delivery_time || 'No time set'}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-3 pb-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Receiver Name</Label>
+                      <Input className="h-9 text-sm mt-1" value={load.receiver_name || ""} onChange={(e) => updateField("receiver_name", e.target.value)} placeholder="Receiver Name" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
+                      <Input className="h-9 text-sm mt-1" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+                    <Input className="h-8 text-sm mt-1" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} placeholder="Email" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Address</Label>
+                    <Input className="h-8 text-sm mt-1" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Street Address" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">City</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">State</Label>
+                      <Input className="h-8 text-sm mt-1 uppercase" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">ZIP</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} placeholder="ZIP" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Date</Label>
+                      <Input className="h-8 text-sm mt-1" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Time</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
+                    <Textarea className="text-sm mt-1 min-h-[40px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Delivery notes..." />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Load Details Card */}
+            <Card className="border-2 border-border/60 shadow-md">
+              <CardHeader className="pb-2 pt-3 px-4 bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-primary" />
-                  <span>Customer & Billing</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-2 gap-3">
-                  {/* Customer Card */}
-                  <div className="rounded-lg border-2 border-purple-600/40 bg-purple-950/20 dark:bg-purple-950/30 shadow-sm p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="h-5 w-5 rounded-full bg-purple-600 flex items-center justify-center">
-                        <Building className="h-3 w-3 text-white" />
-                      </div>
-                      <span className="font-semibold text-xs text-purple-100 uppercase">Customer</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Select value={load.customer_id || ""} onValueChange={(value) => updateField("customer_id", value)}>
-                        <SelectTrigger className="h-8 text-xs bg-background/60 border-purple-500/30"><SelectValue placeholder="Select Customer" /></SelectTrigger>
-                        <SelectContent className="bg-background z-50">
-                          {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
-                      <AddCustomerDialog onCustomerAdded={async (customerId) => { await loadData(); updateField("customer_id", customerId); }} />
-                    </div>
-                    {load.customer_id && (() => {
-                      const customer = customers.find(c => c.id === load.customer_id);
-                      return customer ? (
-                        <div className="mt-2 text-[10px] text-muted-foreground space-y-0.5">
-                          <p>{customer.contact_name}</p>
-                          <p>{customer.phone} • {customer.email}</p>
-                        </div>
-                      ) : null;
-                    })()}
+                  <div className="h-8 w-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                    <Package className="h-4 w-4 text-orange-600" />
                   </div>
-
-                  {/* Billing Party Card */}
-                  <div className="rounded-lg border-2 border-amber-600/40 bg-amber-950/20 dark:bg-amber-950/30 shadow-sm p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="h-5 w-5 rounded-full bg-amber-600 flex items-center justify-center">
-                        <DollarSign className="h-3 w-3 text-white" />
-                      </div>
-                      <span className="font-semibold text-xs text-amber-100 uppercase">Billing Party</span>
-                    </div>
-                    <div className="space-y-2">
-                      <Input className="h-8 text-xs bg-background/60 border-amber-500/30" value={load.broker_name || ""} onChange={(e) => updateField("broker_name", e.target.value)} placeholder="Billing Party Name" />
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <Input className="h-7 text-xs bg-background/60 border-amber-500/30" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
-                        <Input className="h-7 text-xs bg-background/60 border-amber-500/30" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
-                      </div>
-                      <Input className="h-7 text-xs bg-background/60 border-amber-500/30" value={load.broker_contact || ""} onChange={(e) => updateField("broker_contact", e.target.value)} placeholder="Contact Person" />
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Origin & Destination Section */}
-            <AccordionItem value="origin-dest" className="border rounded-md bg-card">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                <div className="flex items-center gap-2">
-                  <MapPinned className="h-4 w-4 text-primary" />
-                  <span>Shipper & Receiver</span>
-                  <span className="text-xs text-muted-foreground font-normal ml-2">
-                    {load.pickup_city}, {load.pickup_state} → {load.delivery_city}, {load.delivery_state}
-                  </span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-2 gap-3">
-                  {/* Shipper Card */}
-                  <div className="rounded-lg border-2 border-blue-600/40 bg-blue-950/20 dark:bg-blue-950/30 shadow-sm overflow-hidden">
-                    <div className="px-2.5 py-2 bg-blue-600/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-5 w-5 rounded-full bg-blue-600 flex items-center justify-center">
-                            <MapPin className="h-3 w-3 text-white" />
-                          </div>
-                          <span className="font-semibold text-xs text-blue-100">SHIPPER (ORIGIN)</span>
-                        </div>
-                        <span className="text-[10px] text-blue-300">{load.pickup_date ? format(new Date(load.pickup_date), 'MMM d') : '—'} {load.pickup_time || ''}</span>
-                      </div>
-                      <div className="mt-1.5 space-y-0.5">
-                        <p className="text-xs font-medium text-foreground truncate">{load.shipper_name || 'No shipper'}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{load.pickup_address || ''} {load.pickup_city}, {load.pickup_state} {load.pickup_zip}</p>
-                      </div>
-                    </div>
-                    <Collapsible>
-                      <CollapsibleTrigger className="w-full px-2.5 py-1 flex items-center justify-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 hover:bg-blue-600/10 transition-colors border-t border-blue-600/20">
-                        <span>Edit Details</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="p-2 pt-1 space-y-2 border-t border-blue-600/20">
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.shipper_name || ""} onChange={(e) => updateField("shipper_name", e.target.value)} placeholder="Shipper Name" />
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
-                          </div>
-                          <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} placeholder="Email" />
-                          <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Street Address" />
-                          <div className="grid grid-cols-3 gap-1.5">
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30 uppercase" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} placeholder="ZIP" />
-                          </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
-                            <Input className="h-7 text-xs bg-background/60 border-blue-500/30" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
-                          </div>
-                          <Textarea className="text-xs min-h-[32px] bg-background/60 border-blue-500/30" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Notes..." />
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  {/* Receiver Card */}
-                  <div className="rounded-lg border-2 border-green-600/40 bg-green-950/20 dark:bg-green-950/30 shadow-sm overflow-hidden">
-                    <div className="px-2.5 py-2 bg-green-600/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-5 w-5 rounded-full bg-green-600 flex items-center justify-center">
-                            <MapPin className="h-3 w-3 text-white" />
-                          </div>
-                          <span className="font-semibold text-xs text-green-100">RECEIVER (DESTINATION)</span>
-                        </div>
-                        <span className="text-[10px] text-green-300">{load.delivery_date ? format(new Date(load.delivery_date), 'MMM d') : '—'} {load.delivery_time || ''}</span>
-                      </div>
-                      <div className="mt-1.5 space-y-0.5">
-                        <p className="text-xs font-medium text-foreground truncate">{load.receiver_name || 'No receiver'}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{load.delivery_address || ''} {load.delivery_city}, {load.delivery_state} {load.delivery_zip}</p>
-                      </div>
-                    </div>
-                    <Collapsible>
-                      <CollapsibleTrigger className="w-full px-2.5 py-1 flex items-center justify-center gap-1 text-[10px] text-green-400 hover:text-green-300 hover:bg-green-600/10 transition-colors border-t border-green-600/20">
-                        <span>Edit Details</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="p-2 pt-1 space-y-2 border-t border-green-600/20">
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.receiver_name || ""} onChange={(e) => updateField("receiver_name", e.target.value)} placeholder="Receiver Name" />
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
-                          </div>
-                          <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} placeholder="Email" />
-                          <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Street Address" />
-                          <div className="grid grid-cols-3 gap-1.5">
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30 uppercase" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} placeholder="ZIP" />
-                          </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
-                            <Input className="h-7 text-xs bg-background/60 border-green-500/30" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
-                          </div>
-                          <Textarea className="text-xs min-h-[32px] bg-background/60 border-green-500/30" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Notes..." />
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Load Details Section */}
-            <AccordionItem value="load-info" className="border rounded-md bg-card">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-primary" />
-                  <span>Load Details</span>
-                  <span className="text-xs text-muted-foreground font-normal ml-2">
+                  <CardTitle className="text-lg font-bold tracking-tight">LOAD DETAILS</CardTitle>
+                  <span className="text-sm text-muted-foreground ml-2">
                     {load.cargo_pieces || '—'} pcs • {load.cargo_weight || '—'} lbs • {load.equipment_type?.replace('_', ' ') || '—'}
                   </span>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-4 gap-3">
+              </CardHeader>
+              <CardContent className="pt-3 pb-4">
+                <div className="grid md:grid-cols-4 gap-4">
                   {/* Cargo Info */}
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-1.5">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Pieces</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
+                        <Label className="text-xs font-medium text-muted-foreground">Pieces</Label>
+                        <Input className="h-8 text-sm mt-1" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Weight (lbs)</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
+                        <Label className="text-xs font-medium text-muted-foreground">Weight (lbs)</Label>
+                        <Input className="h-8 text-sm mt-1" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
                       </div>
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Description</Label>
-                      <Input className="h-7 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
+                      <Label className="text-xs font-medium text-muted-foreground">Description</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
                     </div>
                   </div>
 
                   {/* Equipment */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Truck Type</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Truck Type</Label>
                       <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent className="bg-background">
                           <SelectItem value="dry_van">Dry Van</SelectItem>
                           <SelectItem value="reefer">Reefer</SelectItem>
@@ -857,127 +890,121 @@ export default function LoadDetail() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Commodity</Label>
-                      <Input className="h-7 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
+                      <Label className="text-xs font-medium text-muted-foreground">Commodity</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Temp Required</Label>
-                      <Input className="h-7 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" />
+                      <Label className="text-xs font-medium text-muted-foreground">Temp Required</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" />
                     </div>
                   </div>
 
                   {/* Miles & Flags */}
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-1.5">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Est. Miles</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
+                        <Label className="text-xs font-medium text-muted-foreground">Est. Miles</Label>
+                        <Input className="h-8 text-sm mt-1" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Actual Miles</Label>
-                        <Input className="h-7 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
+                        <Label className="text-xs font-medium text-muted-foreground">Actual Miles</Label>
+                        <Input className="h-8 text-sm mt-1" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 pt-1">
-                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
-                        <input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3 w-3" />
+                    <div className="flex items-center gap-4 pt-2">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-4 w-4" />
                         Hazmat
                       </label>
-                      <label className="flex items-center gap-1 text-[10px] cursor-pointer">
-                        <input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3 w-3" />
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-4 w-4" />
                         Team
                       </label>
                     </div>
                   </div>
 
                   {/* Special Instructions */}
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Special Instructions</Label>
-                      <Textarea className="text-xs min-h-[60px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={2} />
-                    </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Special Instructions</Label>
+                    <Textarea className="text-sm mt-1 min-h-[80px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={3} />
                   </div>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+              </CardContent>
+            </Card>
 
-            {/* Carrier & Truck Section */}
-            <AccordionItem value="carrier-truck" className="border rounded-md bg-card">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+            {/* Carrier & Assignments Card */}
+            <Card className="border-2 border-border/60 shadow-md">
+              <CardHeader className="pb-2 pt-3 px-4 bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary" />
-                  <span>Carrier & Assignments</span>
-                  {load.assigned_vehicle_id && <Badge variant="outline" className="text-[10px] ml-2">Assigned</Badge>}
+                  <div className="h-8 w-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                    <Truck className="h-4 w-4 text-violet-600" />
+                  </div>
+                  <CardTitle className="text-lg font-bold tracking-tight">CARRIER & ASSIGNMENTS</CardTitle>
+                  {load.assigned_vehicle_id && <Badge variant="outline" className="text-xs ml-2">Assigned</Badge>}
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-4 gap-3">
+              </CardHeader>
+              <CardContent className="pt-3 pb-4">
+                <div className="grid md:grid-cols-4 gap-4">
                   {/* Carrier */}
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Carrier</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.carrier_id || ""} onValueChange={(value) => updateField("carrier_id", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
-                      </div>
-                      {load.carrier_id && (() => {
-                        const carrier = carriers.find(c => c.id === load.carrier_id);
-                        return carrier ? (
-                          <div className="flex gap-2 mt-1 text-[10px]">
-                            <span className={carrier.safer_status?.includes('NOT') ? 'text-red-500' : 'text-green-600'}>{carrier.safer_status || 'Auth'}</span>
-                            <span className="text-muted-foreground">| {carrier.safety_rating || 'No Rating'}</span>
-                          </div>
-                        ) : null;
-                      })()}
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Carrier</Label>
+                    <div className="flex gap-1 mt-1">
+                      <Select value={load.carrier_id || ""} onValueChange={(value) => updateField("carrier_id", value)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
                     </div>
+                    {load.carrier_id && (() => {
+                      const carrier = carriers.find(c => c.id === load.carrier_id);
+                      return carrier ? (
+                        <div className="flex gap-2 mt-2 text-xs">
+                          <span className={carrier.safer_status?.includes('NOT') ? 'text-red-500' : 'text-green-600'}>{carrier.safer_status || 'Auth'}</span>
+                          <span className="text-muted-foreground">| {carrier.safety_rating || 'No Rating'}</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
 
                   {/* Vehicle */}
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Truck ID / Vehicle</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background">
-                            {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
-                        <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
-                      </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Truck ID / Vehicle</Label>
+                    <div className="flex gap-1 mt-1">
+                      <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => updateField("assigned_vehicle_id", value)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent className="bg-background">
+                          {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
+                      <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
                     </div>
                   </div>
 
                   {/* Driver */}
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Driver</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background">
-                            {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        {load.assigned_driver_id && <EditEntityDialog entityId={load.assigned_driver_id} entityType="driver" onEntityUpdated={loadData} />}
-                        <AddDriverDialog onDriverAdded={async (driverId) => { await loadData(); updateField("assigned_driver_id", driverId); }} />
-                      </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Driver</Label>
+                    <div className="flex gap-1 mt-1">
+                      <Select value={load.assigned_driver_id || ""} onValueChange={(value) => updateField("assigned_driver_id", value)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent className="bg-background">
+                          {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {load.assigned_driver_id && <EditEntityDialog entityId={load.assigned_driver_id} entityType="driver" onEntityUpdated={loadData} />}
+                      <AddDriverDialog onDriverAdded={async (driverId) => { await loadData(); updateField("assigned_driver_id", driverId); }} />
                     </div>
                   </div>
 
                   {/* Dispatchers */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Dispatcher</Label>
-                      <div className="flex gap-1">
+                      <Label className="text-xs font-medium text-muted-foreground">Dispatcher</Label>
+                      <div className="flex gap-1 mt-1">
                         <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
                           <SelectContent className="bg-background z-50">
                             {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
                           </SelectContent>
@@ -986,9 +1013,9 @@ export default function LoadDetail() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Load Owner</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Load Owner</Label>
                       <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent className="bg-background z-50">
                           {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
                         </SelectContent>
@@ -996,28 +1023,30 @@ export default function LoadDetail() {
                     </div>
                   </div>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+              </CardContent>
+            </Card>
 
-            {/* Status Section */}
-            <AccordionItem value="status" className="border rounded-md bg-card">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+            {/* Status & Notes Card */}
+            <Card className="border-2 border-border/60 shadow-md">
+              <CardHeader className="pb-2 pt-3 px-4 bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-primary" />
-                  <span>Status & References</span>
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-lg font-bold tracking-tight">STATUS & NOTES</CardTitle>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid md:grid-cols-4 gap-3">
-                  <div className="space-y-2">
+              </CardHeader>
+              <CardContent className="pt-3 pb-4">
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="space-y-3">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Load #</Label>
-                      <Input className="h-7 text-xs" value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
+                      <Label className="text-xs font-medium text-muted-foreground">Load #</Label>
+                      <Input className="h-8 text-sm mt-1" value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Status</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Status</Label>
                       <Select value={load.status || "pending_dispatch"} onValueChange={(value) => updateField("status", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-background">
                           <SelectItem value="available">Available</SelectItem>
                           <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
@@ -1033,11 +1062,11 @@ export default function LoadDetail() {
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Financial Status</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Financial Status</Label>
                       <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-background">
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="billed">Billed</SelectItem>
@@ -1046,9 +1075,9 @@ export default function LoadDetail() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase">Settlement</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Settlement</Label>
                       <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-background">
                           <SelectItem value="unsettled">Unsettled</SelectItem>
                           <SelectItem value="included">Included</SelectItem>
@@ -1057,27 +1086,19 @@ export default function LoadDetail() {
                       </Select>
                     </div>
                   </div>
-                  <div className="col-span-2 space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Dispatch Notes</Label>
-                        <Textarea className="text-xs min-h-[50px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={2} />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">Billing Notes</Label>
-                        <Textarea className="text-xs min-h-[50px]" value={load.billing_notes || ""} onChange={(e) => updateField("billing_notes", e.target.value)} rows={2} />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground uppercase">General Notes</Label>
-                        <Textarea className="text-xs min-h-[50px]" value={load.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={2} />
-                      </div>
-                    </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Dispatch Notes</Label>
+                    <Textarea className="text-sm mt-1 min-h-[70px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={2} />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">General Notes</Label>
+                    <Textarea className="text-sm mt-1 min-h-[70px]" value={load.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={2} />
                   </div>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+              </CardContent>
+            </Card>
 
-          </Accordion>
+          </div>
         </TabsContent>
 
         <TabsContent value="stops" className="space-y-2">
