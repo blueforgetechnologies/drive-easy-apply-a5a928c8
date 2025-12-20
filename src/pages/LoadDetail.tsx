@@ -22,6 +22,7 @@ import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { AddDispatcherDialog } from "@/components/AddDispatcherDialog";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { EditEntityDialog } from "@/components/EditEntityDialog";
+import { LoadDocuments } from "@/components/LoadDocuments";
 
 export default function LoadDetail() {
   const { id } = useParams();
@@ -1462,9 +1463,11 @@ export default function LoadDetail() {
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4">
-          <div className="text-center py-12 text-muted-foreground">
-            Document upload feature coming soon
-          </div>
+          <LoadDocuments 
+            loadId={id!} 
+            documents={documents} 
+            onDocumentsChange={loadData}
+          />
         </TabsContent>
 
         <TabsContent value="financials" className="space-y-6">
