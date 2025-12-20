@@ -37,11 +37,16 @@ IMPORTANT FIELD MAPPINGS:
 - Look for MC# or DOT# to identify the customer/broker
 
 CRITICAL - CUSTOMER LOAD ID EXTRACTION:
-- The customer_load_id is the MOST IMPORTANT identifier - look for it PROMINENTLY at the top of the document
-- Common labels: "PRO #", "Pro#", "Order #", "Order#", "Reference #", "Ref#", "Load #", "Confirmation #", "BOL #", "PO #", "Trip #", "Shipment #"
-- Often appears in a header/title area, sometimes in large/bold text
-- May appear multiple times - use the one that looks like the primary document identifier
-- Example: "PRO # 1134288" → customer_load_id = "1134288"
+- The customer_load_id is the MOST IMPORTANT identifier - look for it PROMINENTLY in the document
+- IT OFTEN APPEARS IN THE DOCUMENT TITLE like "Carrier Confirmation C539792" or "Rate Confirmation #12345"
+- The number right after the title IS the customer_load_id (e.g., "C539792" from "Carrier Confirmation C539792")
+- Other common labels: "PRO #", "Pro#", "Order #", "Order#", "Reference #", "Ref#", "Load #", "Confirmation #", "BOL #", "PO #", "Trip #", "Shipment #", "PROBILL #"
+- May appear multiple times - prioritize the one in the document title/header
+- Examples: 
+  - "Carrier Confirmation C539792" → customer_load_id = "C539792"
+  - "PRO # 1134288" → customer_load_id = "1134288"
+  - "Rate Confirmation #RC-45678" → customer_load_id = "RC-45678"
+- PROBILL # is often a secondary reference number - capture as reference_number if different from customer_load_id
 - Miles may appear as: loaded miles, estimated miles, trip miles, total miles
 - Pieces may appear as: pieces, pallets, skids, units, qty
 
