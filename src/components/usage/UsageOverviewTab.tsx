@@ -42,52 +42,73 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
     if (savedMapboxMultiplier) setMapboxCalibratedMultiplier(parseFloat(savedMapboxMultiplier));
   }, []);
 
-  // Mapbox usage query - use actual geocode_cache counts for accuracy
+  // Mapbox usage query - use cumulative cost from billing history + new API calls
   const { data: mapboxUsage, refetch: refetchMapbox, isFetching: isMapboxFetching } = useQuery({
     queryKey: ["overview-mapbox", selectedMonth],
     queryFn: async () => {
-      // Get actual geocode count from geocode_cache (the source of truth)
-      let geocodeQuery = supabase.from('geocode_cache').select('*', { count: 'exact', head: true });
-      let mapLoadsQuery = supabase.from('map_load_tracking').select('*', { count: 'exact', head: true });
-      let directionsQuery = supabase.from('directions_api_tracking').select('*', { count: 'exact', head: true });
-      
-      if (!isAllTime) {
-        geocodeQuery = geocodeQuery.gte('created_at', startISO!).lte('created_at', endISO!);
-        mapLoadsQuery = mapLoadsQuery.eq('month_year', selectedMonth);
-        directionsQuery = directionsQuery.eq('month_year', selectedMonth);
+      // First get official billing history (baseline)
+      let billingQuery;
+      if (isAllTime) {
+        const { data } = await supabase.from('mapbox_billing_history')
+          .select('geocoding_requests, map_loads, directions_requests, total_cost, baseline_set_at');
+        if (data && data.length > 0) {
+          billingQuery = {
+            geocoding_requests: data.reduce((sum, r) => sum + (r.geocoding_requests || 0), 0),
+            map_loads: data.reduce((sum, r) => sum + (r.map_loads || 0), 0),
+            directions_requests: data.reduce((sum, r) => sum + (r.directions_requests || 0), 0),
+            total_cost: data.reduce((sum, r) => sum + Number(r.total_cost || 0), 0),
+            baseline_set_at: data[data.length - 1]?.baseline_set_at || new Date().toISOString(),
+          };
+        }
+      } else {
+        const { data } = await supabase.from('mapbox_billing_history')
+          .select('geocoding_requests, map_loads, directions_requests, total_cost, baseline_set_at')
+          .eq('billing_period', selectedMonth)
+          .single();
+        billingQuery = data;
       }
       
-      const [geocodeResult, mapLoadsResult, directionsResult] = await Promise.all([
-        geocodeQuery,
-        mapLoadsQuery,
-        directionsQuery,
-      ]);
+      const hasOfficialBilling = billingQuery && billingQuery.total_cost > 0;
+      const baselineDate = billingQuery?.baseline_set_at || new Date().toISOString();
       
-      const geocodeCalls = geocodeResult.count || 0;
-      const mapLoads = mapLoadsResult.count || 0;
-      const directions = directionsResult.count || 0;
+      // Get new API calls since baseline (cache misses only = billable)
+      const { count: newGeocoding } = await supabase
+        .from('geocoding_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('was_cache_hit', false)
+        .gte('created_at', baselineDate);
       
-      // Calculate cost: $0.75 per 1000 geocodes after 100k free tier
-      const overFree = Math.max(0, geocodeCalls - MAPBOX_FREE_TIER);
-      const geocodeCost = overFree * MAPBOX_GEOCODE_RATE;
+      const { count: newMapLoads } = await supabase
+        .from('map_load_tracking')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', baselineDate);
       
-      // Map loads: $0.02 per 1000 after 50k free
-      const mapLoadsFree = 50000;
-      const mapLoadsOverFree = Math.max(0, mapLoads - mapLoadsFree);
-      const mapLoadsCost = mapLoadsOverFree * 0.00002;
+      const { count: newDirections } = await supabase
+        .from('directions_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', baselineDate);
       
-      // Directions: $0.50 per 1000 after 100k free
-      const directionsFree = 100000;
-      const directionsOverFree = Math.max(0, directions - directionsFree);
-      const directionsCost = directionsOverFree * 0.0005;
+      // Calculate cumulative totals
+      const cumulativeGeocoding = (billingQuery?.geocoding_requests || 0) + (newGeocoding || 0);
+      const cumulativeMapLoads = (billingQuery?.map_loads || 0) + (newMapLoads || 0);
+      const cumulativeDirections = (billingQuery?.directions_requests || 0) + (newDirections || 0);
       
-      const totalCost = geocodeCost + mapLoadsCost + directionsCost;
+      // Calculate cumulative cost based on Mapbox pricing
+      const geocodingOverFree = Math.max(0, cumulativeGeocoding - MAPBOX_FREE_TIER);
+      const mapLoadsOverFree = Math.max(0, cumulativeMapLoads - 50000);
+      const directionsOverFree = Math.max(0, cumulativeDirections - 100000);
+      
+      const geocodingCost = geocodingOverFree * 0.00075; // $0.75 per 1000
+      const mapLoadsCost = mapLoadsOverFree * 0.00002; // $0.02 per 1000
+      const directionsCost = directionsOverFree * 0.0005; // $0.50 per 1000
+      
+      const cumulativeCost = geocodingCost + mapLoadsCost + directionsCost;
       
       return { 
-        geocoding_api_calls: geocodeCalls, 
-        map_loads: mapLoads, 
-        directions_api_calls: directions,
-        total_cost: totalCost 
+        geocoding_api_calls: cumulativeGeocoding, 
+        map_loads: cumulativeMapLoads, 
+        directions_api_calls: cumulativeDirections,
+        total_cost: hasOfficialBilling ? cumulativeCost : 0 
       };
     },
     refetchInterval: 30000,
