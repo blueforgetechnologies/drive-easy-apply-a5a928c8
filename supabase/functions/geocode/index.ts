@@ -89,6 +89,13 @@ serve(async (req) => {
     if (cached) {
       console.log(`✅ Cache HIT: ${normalizedKey}`);
       
+      // Track this as a cache hit for usage counting
+      supabase.from('geocoding_api_tracking').insert({
+        location_query: normalizedKey,
+        was_cache_hit: true,
+        month_year: new Date().toISOString().slice(0, 7)
+      }).then(() => {});
+      
       // Increment hit count (fire and forget)
       supabase
         .from('geocode_cache')
@@ -174,8 +181,16 @@ serve(async (req) => {
       }
     }
 
-    // Save to cache
     const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // Track this as an actual Mapbox API call (cache miss = billable)
+    await supabase.from('geocoding_api_tracking').insert({
+      location_query: normalizedKey,
+      was_cache_hit: false,
+      month_year: currentMonth
+    });
+
+    // Save to cache
     await supabase.from('geocode_cache').upsert({
       location_key: normalizedKey,
       latitude: lat,
@@ -186,7 +201,7 @@ serve(async (req) => {
       hit_count: 1
     }, { onConflict: 'location_key' });
 
-    console.log(`💾 Cached new location: ${normalizedKey} (${lat}, ${lng})`);
+    console.log(`💾 Cached new location: ${normalizedKey} (${lat}, ${lng}) - API call tracked`);
 
     return new Response(
       JSON.stringify({

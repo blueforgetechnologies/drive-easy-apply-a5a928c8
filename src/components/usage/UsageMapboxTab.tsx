@@ -41,28 +41,63 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
   const MAPBOX_GEOCODE_RATE = 0.75 / 1000; // $0.75 per 1000 after free tier
   const MAPBOX_FREE_TIER = 100000;
 
-  // Query official billing history first (source of truth for costs)
+  // Query official billing history first (source of truth for baseline)
   const { data: officialBilling } = useQuery({
     queryKey: ["mapbox-official-billing", selectedMonth],
     queryFn: async () => {
       if (isAllTime) {
         // Sum all billing history
         const { data } = await supabase.from('mapbox_billing_history')
-          .select('geocoding_requests, map_loads, directions_requests, total_cost');
+          .select('geocoding_requests, map_loads, directions_requests, total_cost, baseline_set_at');
         if (!data || data.length === 0) return null;
         return {
           geocoding_requests: data.reduce((sum, r) => sum + (r.geocoding_requests || 0), 0),
           map_loads: data.reduce((sum, r) => sum + (r.map_loads || 0), 0),
           directions_requests: data.reduce((sum, r) => sum + (r.directions_requests || 0), 0),
           total_cost: data.reduce((sum, r) => sum + Number(r.total_cost || 0), 0),
+          baseline_set_at: data[data.length - 1]?.baseline_set_at || new Date().toISOString(),
         };
       }
       const { data } = await supabase.from('mapbox_billing_history')
-        .select('geocoding_requests, map_loads, directions_requests, total_cost')
+        .select('geocoding_requests, map_loads, directions_requests, total_cost, baseline_set_at')
         .eq('billing_period', selectedMonth)
         .single();
       return data;
     },
+  });
+
+  // Query new API calls tracked since baseline was set
+  const { data: newApiCalls } = useQuery({
+    queryKey: ["mapbox-new-api-calls", selectedMonth, officialBilling?.baseline_set_at],
+    queryFn: async () => {
+      const baselineDate = officialBilling?.baseline_set_at || new Date().toISOString();
+      
+      // Count new geocoding API calls (cache misses only = billable) since baseline
+      const { count: newGeocoding } = await supabase
+        .from('geocoding_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('was_cache_hit', false)
+        .gte('created_at', baselineDate);
+      
+      // Count new map loads since baseline
+      const { count: newMapLoads } = await supabase
+        .from('map_load_tracking')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', baselineDate);
+      
+      // Count new directions since baseline
+      const { count: newDirections } = await supabase
+        .from('directions_api_tracking')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', baselineDate);
+      
+      return {
+        geocoding: newGeocoding || 0,
+        mapLoads: newMapLoads || 0,
+        directions: newDirections || 0,
+      };
+    },
+    enabled: !!officialBilling,
   });
 
   // Main Mapbox usage query - use actual counts from source tables for accuracy
@@ -184,9 +219,26 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
   const FREE_TIERS = { geocoding: 100000, mapLoads: 50000, directions: 100000 };
   const periodLabel = isAllTime ? "all time" : selectedMonth;
   
-  // Use official billing data when available, otherwise fall back to calculated estimates
+  // Calculate cumulative totals: baseline + new tracked calls
   const hasOfficialBilling = officialBilling && officialBilling.total_cost > 0;
-  const displayCost = hasOfficialBilling ? Number(officialBilling.total_cost) : (mapboxUsage?.total_cost || 0);
+  
+  const cumulativeGeocoding = (officialBilling?.geocoding_requests || 0) + (newApiCalls?.geocoding || 0);
+  const cumulativeMapLoads = (officialBilling?.map_loads || 0) + (newApiCalls?.mapLoads || 0);
+  const cumulativeDirections = (officialBilling?.directions_requests || 0) + (newApiCalls?.directions || 0);
+  
+  // Calculate cumulative cost based on Mapbox pricing
+  const geocodingOverFree = Math.max(0, cumulativeGeocoding - FREE_TIERS.geocoding);
+  const mapLoadsOverFree = Math.max(0, cumulativeMapLoads - FREE_TIERS.mapLoads);
+  const directionsOverFree = Math.max(0, cumulativeDirections - FREE_TIERS.directions);
+  
+  const geocodingCost = geocodingOverFree * 0.00075; // $0.75 per 1000
+  const mapLoadsCost = mapLoadsOverFree * 0.00002; // $0.02 per 1000
+  const directionsCost = directionsOverFree * 0.0005; // $0.50 per 1000
+  
+  const cumulativeCost = geocodingCost + mapLoadsCost + directionsCost;
+  
+  // Use cumulative cost if we have billing data, otherwise estimate
+  const displayCost = hasOfficialBilling ? cumulativeCost : (mapboxUsage?.total_cost || 0);
   
   // Calculate raw estimated cost based on usage
   const rawEstimatedCost = mapboxUsage?.total_cost || 0;
@@ -218,12 +270,13 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
     toast.success("Calibration cleared, using default estimates");
   };
 
-  // Use official billing data for metrics when available
+  // Use cumulative totals for metrics (baseline + new calls)
   const metrics = [
     { 
       title: "Geocoding API", 
       icon: MapPin, 
-      current: hasOfficialBilling ? officialBilling.geocoding_requests : (mapboxUsage?.geocoding_api_calls || 0), 
+      current: hasOfficialBilling ? cumulativeGeocoding : (mapboxUsage?.geocoding_api_calls || 0),
+      newCalls: newApiCalls?.geocoding || 0,
       limit: FREE_TIERS.geocoding, 
       color: "text-blue-500", 
       bgColor: "bg-blue-500/10" 
@@ -231,7 +284,8 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
     { 
       title: "Map Loads", 
       icon: Map, 
-      current: hasOfficialBilling ? officialBilling.map_loads : (mapLoads?.count || 0), 
+      current: hasOfficialBilling ? cumulativeMapLoads : (mapLoads?.count || 0),
+      newCalls: newApiCalls?.mapLoads || 0,
       limit: FREE_TIERS.mapLoads, 
       color: "text-green-500", 
       bgColor: "bg-green-500/10" 
@@ -239,7 +293,8 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
     { 
       title: "Directions API", 
       icon: Navigation, 
-      current: hasOfficialBilling ? officialBilling.directions_requests : (directionsStats?.count || 0), 
+      current: hasOfficialBilling ? cumulativeDirections : (directionsStats?.count || 0),
+      newCalls: newApiCalls?.directions || 0,
       limit: FREE_TIERS.directions, 
       color: "text-orange-500", 
       bgColor: "bg-orange-500/10" 
@@ -359,11 +414,14 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
                   <span className="text-sm text-muted-foreground">/ {(metric.limit / 1000).toFixed(0)}k free</span>
                 </div>
                 <Progress value={percentage} className={`h-2 ${isOverLimit ? '[&>div]:bg-destructive' : ''}`} />
-                <p className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {hasOfficialBilling && metric.newCalls > 0 && (
+                    <p className="text-green-600 font-medium">+{metric.newCalls.toLocaleString()} since baseline</p>
+                  )}
                   {isAllTime ? "All time usage" : isOverLimit ? (
                     <span className="text-destructive font-medium">{(metric.current - metric.limit).toLocaleString()} over free tier</span>
                   ) : `${(metric.limit - metric.current).toLocaleString()} remaining`}
-                </p>
+                </div>
               </CardContent>
             </Card>
           );
