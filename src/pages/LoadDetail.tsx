@@ -925,19 +925,51 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-1.5">
+                  {/* Location Dropdown */}
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value=""
+                      onValueChange={(value) => {
+                        const location = locations.find(l => l.id === value);
+                        if (location) {
+                          updateField("shipper_name", location.name);
+                          updateField("pickup_address", location.address || "");
+                          updateField("pickup_city", location.city || "");
+                          updateField("pickup_state", location.state || "");
+                          updateField("pickup_zip", location.zip || "");
+                          toast.success("Filled with location info");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue placeholder={load.shipper_name || "Select Location..."} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        {locations.map((location) => (
+                          <SelectItem key={location.id} value={location.id} className="text-xs">
+                            {location.name} {location.city && location.state ? `- ${location.city}, ${location.state}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 w-7 p-0 shrink-0"
+                      onClick={() => navigate("/dashboard/locations")}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Shipper Name</Label>
-                      <Input className="h-7 text-xs" value={load.shipper_name || ""} onChange={(e) => updateField("shipper_name", e.target.value)} placeholder="Shipper Name" />
-                    </div>
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
                       <Input className="h-7 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
                     </div>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Email</Label>
-                    <Input className="h-7 text-xs" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} placeholder="Email" />
+                    <div>
+                      <Label className="text-[10px] font-medium text-muted-foreground">Email</Label>
+                      <Input className="h-7 text-xs" value={load.shipper_email || ""} onChange={(e) => updateField("shipper_email", e.target.value)} placeholder="Email" />
+                    </div>
                   </div>
                   <div>
                     <Label className="text-[10px] font-medium text-muted-foreground">Address</Label>
@@ -1008,19 +1040,51 @@ export default function LoadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 pb-2.5 px-3 space-y-1.5">
+                  {/* Location Dropdown */}
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value=""
+                      onValueChange={(value) => {
+                        const location = locations.find(l => l.id === value);
+                        if (location) {
+                          updateField("receiver_name", location.name);
+                          updateField("delivery_address", location.address || "");
+                          updateField("delivery_city", location.city || "");
+                          updateField("delivery_state", location.state || "");
+                          updateField("delivery_zip", location.zip || "");
+                          toast.success("Filled with location info");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue placeholder={load.receiver_name || "Select Location..."} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        {locations.map((location) => (
+                          <SelectItem key={location.id} value={location.id} className="text-xs">
+                            {location.name} {location.city && location.state ? `- ${location.city}, ${location.state}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 w-7 p-0 shrink-0"
+                      onClick={() => navigate("/dashboard/locations")}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Receiver Name</Label>
-                      <Input className="h-7 text-xs" value={load.receiver_name || ""} onChange={(e) => updateField("receiver_name", e.target.value)} placeholder="Receiver Name" />
-                    </div>
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
                       <Input className="h-7 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
                     </div>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Email</Label>
-                    <Input className="h-7 text-xs" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} placeholder="Email" />
+                    <div>
+                      <Label className="text-[10px] font-medium text-muted-foreground">Email</Label>
+                      <Input className="h-7 text-xs" value={load.receiver_email || ""} onChange={(e) => updateField("receiver_email", e.target.value)} placeholder="Email" />
+                    </div>
                   </div>
                   <div>
                     <Label className="text-[10px] font-medium text-muted-foreground">Address</Label>
