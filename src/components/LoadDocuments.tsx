@@ -2,9 +2,11 @@ import { useState, useRef, DragEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, FileText, Trash2, Download, Eye, Plus } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Eye, Plus, X } from "lucide-react";
 import { format } from "date-fns";
+import { PDFImageViewer } from "./PDFImageViewer";
 
 interface LoadDocument {
   id: string;
@@ -32,6 +34,7 @@ const DOCUMENT_TYPES = [
 export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocumentsProps) {
   const [uploading, setUploading] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ url: string; name: string; isPdf: boolean } | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const handleFileSelect = async (docType: string, files: FileList | null) => {
@@ -131,7 +134,9 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
         .createSignedUrl(doc.file_url, 3600); // 1 hour expiry
 
       if (error) throw error;
-      window.open(data.signedUrl, '_blank');
+      
+      const isPdf = doc.file_name.toLowerCase().endsWith('.pdf');
+      setViewingDoc({ url: data.signedUrl, name: doc.file_name, isPdf });
     } catch (error: any) {
       toast.error('Failed to open document: ' + error.message);
     }
@@ -191,8 +196,32 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
   };
 
   return (
-    <div className="space-y-6">
-      {DOCUMENT_TYPES.map(docType => {
+    <>
+      <Dialog open={!!viewingDoc} onOpenChange={() => setViewingDoc(null)}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between pr-8">
+              <span className="truncate">{viewingDoc?.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {viewingDoc?.isPdf ? (
+              <PDFImageViewer url={viewingDoc.url} fileName={viewingDoc.name} />
+            ) : viewingDoc ? (
+              <div className="h-full overflow-auto flex items-center justify-center bg-muted rounded p-4">
+                <img 
+                  src={viewingDoc.url} 
+                  alt={viewingDoc.name} 
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <div className="space-y-6">
+        {DOCUMENT_TYPES.map(docType => {
         const typeDocs = getDocsByType(docType.value);
         const isRateConfirmation = docType.value === 'rate_confirmation';
         const canUploadMore = !isRateConfirmation || typeDocs.length === 0;
@@ -270,7 +299,8 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                   {typeDocs.map(doc => (
                     <div 
                       key={doc.id} 
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group"
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => handleView(doc)}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -288,16 +318,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8"
-                          onClick={() => handleView(doc)}
-                          title="View"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => handleDownload(doc)}
+                          onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}
                           title="Download"
                         >
                           <Download className="h-4 w-4" />
@@ -306,7 +327,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(doc)}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
                           title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -320,6 +341,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
           </Card>
         );
       })}
-    </div>
+      </div>
+    </>
   );
 }
