@@ -1104,10 +1104,12 @@ export default function LoadDetail() {
                     <div className="flex gap-1">
                       <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
                         updateField("assigned_vehicle_id", value);
-                        // Auto-select driver assigned to this vehicle
+                        // Auto-select driver assigned to this vehicle, or N/A if none
                         const selectedVehicle = vehicles.find((v) => v.id === value);
                         if (selectedVehicle?.driver_1_id) {
                           updateField("assigned_driver_id", selectedVehicle.driver_1_id);
+                        } else {
+                          updateField("assigned_driver_id", null);
                         }
                       }}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
