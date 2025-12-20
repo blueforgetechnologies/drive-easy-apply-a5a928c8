@@ -443,7 +443,7 @@ const LovableCloudAITab = () => {
   const totalWriteOps = costBreakdown?.totals.writeOps || 0;
 
   // Calculate daily cost from 24h data
-  const dailyCost = (costDrivers?.twentyFourHours.emails || 0) * effectiveRate * 2.5;
+  const dailyCost = (costDrivers?.twentyFourHours?.emails || 0) * effectiveRate * 2.5;
   const projectedMonthlyCost = dailyCost * 30;
 
   const handleCalibrate = () => {
@@ -561,7 +561,7 @@ const LovableCloudAITab = () => {
               </div>
               <div className="text-2xl font-bold mt-1">${dailyCost.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground">
-                {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()} emails
+                {(costDrivers?.twentyFourHours?.emails || 0).toLocaleString()} emails
               </div>
             </CardContent>
           </Card>
@@ -590,10 +590,10 @@ const LovableCloudAITab = () => {
                 Current Rate
               </div>
               <div className="text-2xl font-bold mt-1">
-                {(costDrivers?.oneHour.emails || 0).toLocaleString()}/hr
+                {(costDrivers?.oneHour?.emails || 0).toLocaleString()}/hr
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1">
-                {(costDrivers?.oneHour.emails || 0) > (costDrivers?.hourlyRate || 0) 
+                {(costDrivers?.oneHour?.emails || 0) > (costDrivers?.hourlyRate || 0) 
                   ? <><ArrowUpRight className="h-3 w-3 text-red-500" /> Above avg</>
                   : <><ArrowDownRight className="h-3 w-3 text-green-500" /> Below avg</>
                 }
@@ -881,17 +881,17 @@ const LovableCloudAITab = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Emails</span>
-                    <span className={`font-medium ${(costDrivers?.oneHour.emails || 0) > 500 ? 'text-red-500' : ''}`}>
-                      {(costDrivers?.oneHour.emails || 0).toLocaleString()}
+                    <span className={`font-medium ${(costDrivers?.oneHour?.emails || 0) > 500 ? 'text-red-500' : ''}`}>
+                      {(costDrivers?.oneHour?.emails || 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Geocode</span>
-                    <span className="font-medium">{(costDrivers?.oneHour.geocode || 0).toLocaleString()}</span>
+                    <span className="font-medium">{(costDrivers?.oneHour?.geocode || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Matches</span>
-                    <span className="font-medium">{(costDrivers?.oneHour.matches || 0).toLocaleString()}</span>
+                    <span className="font-medium">{(costDrivers?.oneHour?.matches || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Edge Functions</span>
@@ -912,17 +912,17 @@ const LovableCloudAITab = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Emails</span>
-                    <span className={`font-medium ${(costDrivers?.twentyFourHours.emails || 0) > 10000 ? 'text-red-500' : ''}`}>
-                      {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()}
+                    <span className={`font-medium ${(costDrivers?.twentyFourHours?.emails || 0) > 10000 ? 'text-red-500' : ''}`}>
+                      {(costDrivers?.twentyFourHours?.emails || 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Geocode</span>
-                    <span className="font-medium">{(costDrivers?.twentyFourHours.geocode || 0).toLocaleString()}</span>
+                    <span className="font-medium">{(costDrivers?.twentyFourHours?.geocode || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Matches</span>
-                    <span className="font-medium">{(costDrivers?.twentyFourHours.matches || 0).toLocaleString()}</span>
+                    <span className="font-medium">{(costDrivers?.twentyFourHours?.matches || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-background/50">
                     <span className="text-muted-foreground">Edge Functions</span>
@@ -933,13 +933,13 @@ const LovableCloudAITab = () => {
             </div>
             
             {/* High volume alert */}
-            {(costDrivers?.twentyFourHours.emails || 0) > 10000 && (
+            {(costDrivers?.twentyFourHours?.emails || 0) > 10000 && (
               <div className="mt-4 p-3 rounded bg-red-500/10 border border-red-500/20 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <span className="font-medium text-red-600">High Volume:</span>
                   <span className="text-muted-foreground ml-1">
-                    {(costDrivers?.twentyFourHours.emails || 0).toLocaleString()} emails/24h. 
+                    {(costDrivers?.twentyFourHours?.emails || 0).toLocaleString()} emails/24h. 
                     Est. ~${dailyCost.toFixed(2)}/day.
                   </span>
                 </div>
