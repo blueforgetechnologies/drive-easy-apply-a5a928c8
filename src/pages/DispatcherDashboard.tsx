@@ -213,6 +213,7 @@ export default function DispatcherDashboard() {
   const getStatusBadge = (status: string | null) => {
     const statusLower = (status || "unknown").toLowerCase();
     const styles: Record<string, { bg: string; text: string }> = {
+      action_needed: { bg: "#dc2626", text: "#fff" },
       pending_dispatch: { bg: "#eab308", text: "#000" },
       available: { bg: "#0ea5e9", text: "#fff" },
       booked: { bg: "#6366f1", text: "#fff" },
@@ -228,6 +229,7 @@ export default function DispatcherDashboard() {
     };
     
     const labels: Record<string, string> = {
+      action_needed: "Action Needed",
       pending_dispatch: "Pending",
       available: "Available",
       booked: "Booked",
