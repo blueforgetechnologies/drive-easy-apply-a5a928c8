@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Map, Mail, Sparkles, Database, DollarSign, TrendingUp, Activity, RefreshCw } from "lucide-react";
+import { Map, Mail, Sparkles, Database, DollarSign, TrendingUp, Activity, RefreshCw, Inbox } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -39,9 +39,19 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   // Mapbox calibration
   const [mapboxCalibratedMultiplier, setMapboxCalibratedMultiplier] = useState<number | null>(null);
   
+  // Gmail API calibration (same as Gmail API tab)
+  const [gmailCalibration, setGmailCalibration] = useState<{
+    multiplier: number;
+  } | null>(null);
+  
   useEffect(() => {
     const savedMapboxMultiplier = localStorage.getItem('mapbox_calibrated_multiplier');
     if (savedMapboxMultiplier) setMapboxCalibratedMultiplier(parseFloat(savedMapboxMultiplier));
+    
+    const savedGmailCalibration = localStorage.getItem('gmail_api_calibration');
+    if (savedGmailCalibration) {
+      setGmailCalibration(JSON.parse(savedGmailCalibration));
+    }
   }, []);
 
   // Mapbox usage query - use cumulative cost from billing history + new API calls
@@ -205,6 +215,10 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   // cloudCost comes from useCloudCost hook (same calculation as Cloud tab)
   const totalCost = mapboxCost + emailCost + aiCost + cloudCost;
 
+  // Gmail API - calculate calibrated requests (same logic as Gmail API tab)
+  const gmailMultiplier = gmailCalibration?.multiplier || 3; // default 3x
+  const gmailCalibratedRequests = (emailStats?.received || 0) * gmailMultiplier;
+
   const periodLabel = isAllTime ? "all time" : selectedMonth;
 
   const costCards = [
@@ -227,6 +241,16 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
       current: emailStats?.received || 0,
     },
     {
+      title: "Gmail API",
+      icon: Inbox,
+      value: 0, // Gmail API is free
+      usage: `${gmailCalibratedRequests.toLocaleString()} requests`,
+      subtext: gmailCalibration ? `calibrated (${gmailCalibration.multiplier.toFixed(1)}x)` : "estimated (3x)",
+      color: "bg-cyan-500/10 text-cyan-500",
+      limit: 1000000000, // 1B quota units
+      current: gmailCalibratedRequests,
+    },
+    {
       title: "AI Usage",
       icon: Sparkles,
       value: aiCost,
@@ -247,7 +271,7 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
   ];
 
   const activeServices = costCards.filter(c => c.current > 0).length;
-  const totalOps = totalWriteOps + (mapboxUsage?.geocoding_api_calls || 0) + (aiStats?.count || 0);
+  const totalOps = totalWriteOps + (mapboxUsage?.geocoding_api_calls || 0) + (aiStats?.count || 0) + gmailCalibratedRequests;
 
   return (
     <div className="space-y-6">
@@ -317,9 +341,12 @@ export function UsageOverviewTab({ selectedMonth }: UsageOverviewTabProps) {
                   <span className="font-medium">{card.title}</span>
                   <span className="text-muted-foreground">{card.usage}</span>
                 </div>
+                {'subtext' in card && card.subtext && (
+                  <p className="text-xs text-muted-foreground">{card.subtext}</p>
+                )}
                 <Progress value={percentage} className="h-1.5" />
                 <p className="text-xs text-muted-foreground">
-                  {isAllTime ? "All time usage" : `${percentage.toFixed(0)}% of free tier`}
+                  {card.title === "Gmail API" ? "Free (quota-based)" : isAllTime ? "All time usage" : `${percentage.toFixed(0)}% of free tier`}
                 </p>
               </CardContent>
             </Card>
