@@ -651,7 +651,7 @@ const LovableCloudAITab = () => {
                   Cost Breakdown by Category
                   <InfoTooltip text="Detailed breakdown of what's consuming your cloud budget" />
                 </CardTitle>
-                <CardDescription>Last 30 days of operations</CardDescription>
+                <CardDescription>All-time database operations</CardDescription>
               </div>
               <div className="text-2xl font-bold">${totalCloudCost.toFixed(2)}</div>
             </div>
