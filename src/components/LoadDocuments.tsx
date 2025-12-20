@@ -284,20 +284,20 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
         </DialogContent>
       </Dialog>
       
-      <div className="space-y-6">
+      <div className="space-y-3">
         {DOCUMENT_TYPES.map(docType => {
         const typeDocs = getDocsByType(docType.value);
         const isRateConfirmation = docType.value === 'rate_confirmation';
 
         return (
-          <Card key={docType.value}>
-            <CardHeader className="pb-3">
+          <Card key={docType.value} className="overflow-hidden">
+            <CardHeader className="py-2 px-4 bg-gradient-to-r from-primary/10 to-transparent border-b">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
+                <CardTitle className={`text-base font-medium flex items-center gap-2 ${isRateConfirmation ? 'text-amber-600' : 'text-blue-600'}`}>
+                  <FileText className="h-4 w-4" />
                   {docType.label}
                   {typeDocs.length > 0 && (
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-background px-2 py-0.5 rounded-full text-muted-foreground">
                       {typeDocs.length}
                     </span>
                   )}
@@ -332,10 +332,10 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                 </>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               {typeDocs.length === 0 ? (
                 <div 
-                  className={`text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+                  className={`text-center py-5 text-muted-foreground border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
                     dragOver === docType.value 
                       ? 'border-primary bg-primary/5' 
                       : 'hover:border-primary/50 hover:bg-muted/50'
@@ -345,7 +345,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                   onDrop={(e) => handleDrop(e, docType.value)}
                   onClick={() => fileInputRefs.current[docType.value]?.click()}
                 >
-                  <Upload className={`h-8 w-8 mx-auto mb-2 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
+                  <Upload className={`h-6 w-6 mx-auto mb-1 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
                   <p className="text-sm">
                     {dragOver === docType.value 
                       ? 'Drop files here' 
@@ -353,13 +353,13 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                         ? 'No rate confirmation uploaded' 
                         : 'No bills of lading uploaded'}
                   </p>
-                  <p className="text-xs mt-1">PDF or images accepted (max 10MB)</p>
+                  <p className="text-xs mt-1">PDF or images accepted</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {/* Show drag-drop area for adding/replacing documents */}
                   <div 
-                    className={`text-center py-4 text-muted-foreground border-2 border-dashed rounded-lg transition-colors cursor-pointer mb-3 ${
+                    className={`text-center py-2.5 text-muted-foreground border-2 border-dashed rounded transition-colors cursor-pointer ${
                       dragOver === docType.value 
                         ? 'border-primary bg-primary/5' 
                         : 'hover:border-primary/50 hover:bg-muted/50'
@@ -369,24 +369,24 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                     onDrop={(e) => handleDrop(e, docType.value)}
                     onClick={() => fileInputRefs.current[docType.value]?.click()}
                   >
-                    <Upload className={`h-6 w-6 mx-auto mb-1 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
+                    <Upload className={`h-4 w-4 mx-auto mb-0.5 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
                     <p className="text-xs">
                       {dragOver === docType.value 
                         ? 'Drop files here' 
                         : isRateConfirmation 
-                          ? 'Drag & drop or click to replace' 
-                          : 'Drag & drop or click to add more'}
+                          ? 'Drag & drop to replace' 
+                          : 'Drag & drop to add more'}
                     </p>
                   </div>
                   {typeDocs.map(doc => (
                     <div 
                       key={doc.id} 
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group hover:bg-muted cursor-pointer transition-colors"
+                      className="flex items-center justify-between p-2 bg-muted/50 rounded group hover:bg-muted cursor-pointer transition-colors"
                       onClick={() => handleView(doc)}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <FileText className="h-5 w-5 text-primary" />
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <FileText className="h-4 w-4 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{doc.file_name}</p>
