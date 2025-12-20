@@ -104,6 +104,37 @@ const UsageCostsTab = () => {
   // 2. Incremental counts from tracking tables SINCE last_synced_at are added on top
   // 3. This preserves user's baseline data while showing real-time updates
   
+  // Fetch Mapbox baselines from gcp_usage_baselines as authoritative source
+  const { data: mapboxBaselines } = useQuery({
+    queryKey: ["mapbox-baselines-gcp"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('gcp_usage_baselines')
+        .select('*')
+        .in('service_name', ['mapbox_geocoding', 'mapbox_map_loads', 'mapbox_directions', 'mapbox_billing'])
+        .order('period_end', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Get most recent baselines by service
+      const latest: Record<string, any> = {};
+      data?.forEach(row => {
+        if (!latest[row.service_name] || new Date(row.period_end) > new Date(latest[row.service_name].period_end)) {
+          latest[row.service_name] = row;
+        }
+      });
+      
+      return {
+        geocoding: latest['mapbox_geocoding']?.metric_value || 0,
+        mapLoads: latest['mapbox_map_loads']?.metric_value || 0,
+        directions: latest['mapbox_directions']?.metric_value || 0,
+        billingCost: latest['mapbox_billing']?.metric_value || 0,
+        lastUpdated: latest['mapbox_billing']?.period_end || null,
+      };
+    },
+    staleTime: 300000,
+  });
+
   const { data: baselineUsage, isFetching: isUsageFetching, refetch: refetchBaseline } = useQuery({
     queryKey: ["mapbox-baseline", currentMonth],
     queryFn: async () => {
@@ -118,12 +149,27 @@ const UsageCostsTab = () => {
         console.error('[Mapbox] Baseline fetch error:', error);
         throw error;
       }
+      
+      // If baseline has $0 cost but we have baselines data, use that as fallback
+      if (data && data.total_cost === 0 && mapboxBaselines?.billingCost > 0) {
+        console.log('[Mapbox] Using gcp_usage_baselines as fallback:', mapboxBaselines);
+        return {
+          ...data,
+          geocoding_api_calls: mapboxBaselines.geocoding,
+          map_loads: mapboxBaselines.mapLoads,
+          directions_api_calls: mapboxBaselines.directions,
+          geocoding_cost: mapboxBaselines.billingCost,
+          total_cost: mapboxBaselines.billingCost,
+        };
+      }
+      
       console.log('[Mapbox] Baseline data:', data);
       return data;
     },
+    enabled: mapboxBaselines !== undefined, // Wait for baselines to load first
     refetchInterval: mapboxRefreshInterval,
     refetchIntervalInBackground: true,
-    staleTime: 10000, // Show cached data for 10s while refreshing in background
+    staleTime: 10000,
     gcTime: 300000,
   });
 
