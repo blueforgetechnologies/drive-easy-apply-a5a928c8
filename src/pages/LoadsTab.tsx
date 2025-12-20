@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2 } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
+import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +86,8 @@ export default function LoadsTab() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
+  const [pendingCustomerData, setPendingCustomerData] = useState<any>(null);
+  const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
   const ROWS_PER_PAGE = 14;
   
   // Status priority order matching the tab order - action_needed first!
@@ -193,7 +196,7 @@ export default function LoadsTab() {
       const [driversResult, vehiclesResult, customersResult] = await Promise.all([
         supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
         supabase.from("vehicles" as any).select("id, vehicle_number").eq("status", "active"),
-        supabase.from("customers" as any).select("id, name, contact_name").eq("status", "active"),
+        supabase.from("customers" as any).select("id, name, contact_name, mc_number, email, phone").eq("status", "active"),
       ]);
       
       if (driversResult.data) setDrivers(driversResult.data);
@@ -203,6 +206,43 @@ export default function LoadsTab() {
       console.error("Error loading drivers/vehicles/customers:", error);
     }
   };
+
+  // Function to find matching customer from extracted data
+  const findMatchingCustomer = useCallback((customerName: string | undefined, mcNumber: string | undefined, email: string | undefined) => {
+    if (!customerName && !mcNumber && !email) return null;
+    
+    // Normalize for comparison
+    const normalizedName = customerName?.toLowerCase().trim();
+    const normalizedMc = mcNumber?.replace(/[^0-9]/g, '');
+    const normalizedEmail = email?.toLowerCase().trim();
+    
+    for (const customer of customers) {
+      // Check MC number match first (most reliable)
+      if (normalizedMc && customer.mc_number) {
+        const customerMc = customer.mc_number.replace(/[^0-9]/g, '');
+        if (customerMc === normalizedMc) {
+          return customer;
+        }
+      }
+      
+      // Check email match
+      if (normalizedEmail && customer.email?.toLowerCase().trim() === normalizedEmail) {
+        return customer;
+      }
+      
+      // Check name similarity (exact or contains)
+      if (normalizedName && customer.name) {
+        const customerNameLower = customer.name.toLowerCase().trim();
+        if (customerNameLower === normalizedName || 
+            customerNameLower.includes(normalizedName) || 
+            normalizedName.includes(customerNameLower)) {
+          return customer;
+        }
+      }
+    }
+    
+    return null;
+  }, [customers]);
 
   const loadData = async () => {
     setLoading(true);
@@ -599,7 +639,14 @@ export default function LoadsTab() {
       {/* Header - Mobile optimized */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-xl sm:text-2xl font-bold">Booked Loads</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            // Reset customer matching state when dialog closes
+            setPendingCustomerData(null);
+            setMatchedCustomerId(null);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="gap-2 w-full sm:w-auto h-11 sm:h-10 rounded-xl">
               <Plus className="h-4 w-4" />
@@ -612,8 +659,8 @@ export default function LoadsTab() {
             </DialogHeader>
             
             {/* Rate Confirmation Upload */}
-            <div className="border-b pb-4">
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
+            <div className="space-y-3 border-b pb-4">
+              <h3 className="font-semibold flex items-center gap-2 text-sm">
                 <FileText className="h-4 w-4" />
                 Quick Fill from Rate Confirmation
               </h3>
@@ -670,8 +717,66 @@ export default function LoadsTab() {
                     estimated_miles: data.estimated_miles?.toString() || prev.estimated_miles,
                     rate: data.rate?.toString() || prev.rate,
                   }));
+
+                  // Cross-reference customer with existing database
+                  if (data.customer_name) {
+                    const matchedCustomer = findMatchingCustomer(
+                      data.customer_name,
+                      data.customer_mc_number,
+                      data.customer_email
+                    );
+
+                    if (matchedCustomer) {
+                      // Customer found - auto-select it
+                      setFormData(prev => ({ ...prev, customer_id: matchedCustomer.id }));
+                      setMatchedCustomerId(matchedCustomer.id);
+                      setPendingCustomerData(null);
+                      toast.success(`Matched existing customer: ${matchedCustomer.name}`);
+                    } else {
+                      // New customer - show prompt to add
+                      setMatchedCustomerId(null);
+                      setPendingCustomerData({
+                        customer_name: data.customer_name,
+                        customer_address: data.customer_address,
+                        customer_city: data.customer_city,
+                        customer_state: data.customer_state,
+                        customer_zip: data.customer_zip,
+                        customer_mc_number: data.customer_mc_number,
+                        customer_email: data.customer_email,
+                        customer_phone: data.customer_phone,
+                        customer_contact: data.customer_contact,
+                      });
+                    }
+                  }
                 }}
               />
+
+              {/* Show matched customer badge */}
+              {matchedCustomerId && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-green-600 font-medium">
+                    Customer matched: {customers.find(c => c.id === matchedCustomerId)?.name}
+                  </span>
+                </div>
+              )}
+
+              {/* Show new customer prompt */}
+              {pendingCustomerData && (
+                <NewCustomerPrompt
+                  extractedData={pendingCustomerData}
+                  onCustomerAdded={async (customerId) => {
+                    // Refresh customers list and select the new customer
+                    await loadDriversAndVehicles();
+                    setFormData(prev => ({ ...prev, customer_id: customerId }));
+                    setMatchedCustomerId(customerId);
+                    setPendingCustomerData(null);
+                  }}
+                  onDismiss={() => {
+                    setPendingCustomerData(null);
+                  }}
+                />
+              )}
             </div>
             
             <form onSubmit={handleAddLoad} className="space-y-6">
