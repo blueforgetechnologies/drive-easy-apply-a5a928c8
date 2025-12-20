@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PDFImageViewer } from "@/components/PDFImageViewer";
 
 interface ChecklistItem {
   id: string;
@@ -182,6 +183,56 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   const carrier = load.carriers as any;
   const customer = load.customers as any;
   const vehicle = load.vehicles as any;
+
+  // Organize documents by type
+  const documents = load.load_documents as any[] || [];
+  const rateConfirmationDocs = documents.filter((doc: any) => doc.document_type === 'rate_confirmation');
+  const bolDocs = documents.filter((doc: any) => doc.document_type === 'bill_of_lading');
+
+  const renderDocumentViewer = (doc: any) => {
+    if (!doc?.file_url) return null;
+    const isPdf = doc.file_name?.toLowerCase().endsWith('.pdf');
+    
+    if (isPdf) {
+      return (
+        <div className="h-[500px]">
+          <PDFImageViewer url={doc.file_url} fileName={doc.file_name || 'document.pdf'} />
+        </div>
+      );
+    }
+    
+    // For images
+    return (
+      <div className="flex flex-col h-[500px]">
+        <div className="flex justify-end mb-2">
+          <a
+            href={doc.file_url}
+            download={doc.file_name}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          >
+            Download
+          </a>
+        </div>
+        <div className="flex-1 overflow-auto border rounded bg-muted p-4">
+          <img
+            src={doc.file_url}
+            alt={doc.file_name || 'Document'}
+            className="max-w-full h-auto mx-auto shadow-lg"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderNoDocument = (type: string) => (
+    <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
+      <FileText className="h-12 w-12 mb-4 opacity-50" />
+      <p className="text-lg font-medium">No {type} uploaded</p>
+      <p className="text-sm">Upload documents from the load detail page</p>
+    </div>
+  );
 
   return (
     <div className="space-y-4 mt-4">
@@ -366,37 +417,49 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         </div>
 
         {/* Right Content - Document Tabs */}
-        <div className="flex-1 border rounded-lg">
-          <Tabs defaultValue="rate_confirmation" className="w-full">
-            <TabsList className="w-full justify-start rounded-none border-b bg-muted/30 h-auto p-0">
+        <div className="flex-1 border rounded-lg overflow-hidden">
+          <Tabs defaultValue="rate_confirmation" className="w-full h-full flex flex-col">
+            <TabsList className="w-full justify-start rounded-none border-b bg-muted/30 h-auto p-0 flex-shrink-0">
               <TabsTrigger 
                 value="rate_confirmation" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-white px-6 py-3"
               >
-                Rate Confirmation
+                Rate Confirmation {rateConfirmationDocs.length > 0 && `(${rateConfirmationDocs.length})`}
               </TabsTrigger>
-              <TabsTrigger 
-                value="bol_1" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-white px-6 py-3"
-              >
-                Bill of Landing 1
-              </TabsTrigger>
-              <TabsTrigger 
-                value="bol_2" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-white px-6 py-3"
-              >
-                Bill of Landing 2
-              </TabsTrigger>
+              {bolDocs.map((doc, index) => (
+                <TabsTrigger 
+                  key={doc.id}
+                  value={`bol_${index}`}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-white px-6 py-3"
+                >
+                  Bill of Lading {index + 1}
+                </TabsTrigger>
+              ))}
+              {bolDocs.length === 0 && (
+                <TabsTrigger 
+                  value="bol_empty"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-white px-6 py-3"
+                >
+                  Bill of Lading
+                </TabsTrigger>
+              )}
             </TabsList>
-            <TabsContent value="rate_confirmation" className="p-4 min-h-[400px]">
-              <p className="text-muted-foreground">Rate Confirmation</p>
+            <TabsContent value="rate_confirmation" className="p-4 flex-1 overflow-auto">
+              {rateConfirmationDocs.length > 0 
+                ? renderDocumentViewer(rateConfirmationDocs[0])
+                : renderNoDocument('Rate Confirmation')
+              }
             </TabsContent>
-            <TabsContent value="bol_1" className="p-4 min-h-[400px]">
-              <p className="text-muted-foreground">Bill of Landing 1</p>
-            </TabsContent>
-            <TabsContent value="bol_2" className="p-4 min-h-[400px]">
-              <p className="text-muted-foreground">Bill of Landing 2</p>
-            </TabsContent>
+            {bolDocs.map((doc, index) => (
+              <TabsContent key={doc.id} value={`bol_${index}`} className="p-4 flex-1 overflow-auto">
+                {renderDocumentViewer(doc)}
+              </TabsContent>
+            ))}
+            {bolDocs.length === 0 && (
+              <TabsContent value="bol_empty" className="p-4 flex-1 overflow-auto">
+                {renderNoDocument('Bill of Lading')}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
