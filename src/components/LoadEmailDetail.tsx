@@ -77,6 +77,16 @@ const LoadEmailDetail = ({
   const [averageLaneBid, setAverageLaneBid] = useState<number | null>(null);
   const [loadingAverageBid, setLoadingAverageBid] = useState(false);
 
+  // Existing bid check - prevent double bidding
+  const [existingBid, setExistingBid] = useState<{
+    id: string;
+    bid_amount: number;
+    dispatcher_name?: string;
+    vehicle_number?: string;
+    created_at: string;
+  } | null>(null);
+  const [checkingExistingBid, setCheckingExistingBid] = useState(false);
+
   // Presence tracking - who else is viewing this match
   const [otherViewers, setOtherViewers] = useState<{name: string, email: string}[]>([]);
   const channelRef = useRef<any>(null);
@@ -320,6 +330,81 @@ const LoadEmailDetail = ({
       recordMatchAction('viewed');
     }
   }, [match?.id, currentDispatcher?.id]);
+
+  // Check for existing bid on this load_id to prevent double bidding
+  useEffect(() => {
+    const checkExistingBid = async () => {
+      const loadId = email?.load_id;
+      if (!loadId) return;
+
+      setCheckingExistingBid(true);
+      try {
+        const { data: bid, error } = await supabase
+          .from('load_bids')
+          .select(`
+            id,
+            bid_amount,
+            created_at,
+            dispatcher:dispatchers(first_name, last_name),
+            vehicle:vehicles(vehicle_number)
+          `)
+          .eq('load_id', loadId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking existing bid:', error);
+          return;
+        }
+
+        if (bid) {
+          const dispatcherData = bid.dispatcher as any;
+          const vehicleData = bid.vehicle as any;
+          setExistingBid({
+            id: bid.id,
+            bid_amount: bid.bid_amount,
+            dispatcher_name: dispatcherData 
+              ? `${dispatcherData.first_name} ${dispatcherData.last_name}` 
+              : undefined,
+            vehicle_number: vehicleData?.vehicle_number,
+            created_at: bid.created_at
+          });
+        } else {
+          setExistingBid(null);
+        }
+      } catch (e) {
+        console.error('Error checking existing bid:', e);
+      } finally {
+        setCheckingExistingBid(false);
+      }
+    };
+
+    checkExistingBid();
+
+    // Subscribe to realtime updates for this load_id
+    const loadId = email?.load_id;
+    if (loadId) {
+      const channel = supabase
+        .channel(`load_bid_${loadId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'load_bids',
+            filter: `load_id=eq.${loadId}`
+          },
+          (payload) => {
+            console.log('🔔 Load bid changed:', payload);
+            checkExistingBid();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [email?.load_id]);
 
   // Presence tracking - track who is viewing this load email in real-time
   // Uses load_email_id so all matches for the same load share presence
@@ -904,6 +989,42 @@ const LoadEmailDetail = ({
       setShowEmailConfirmDialog(false);
       setBidConfirmed(false);
 
+      // Insert into load_bids to prevent double bidding
+      const bidRateNum = bidAmount ? parseFloat(bidAmount.replace(/[^0-9.]/g, '')) : 0;
+      if (email?.load_id) {
+        const { error: bidError } = await supabase
+          .from('load_bids')
+          .insert({
+            load_id: email.load_id,
+            load_email_id: email.id,
+            match_id: match?.id,
+            vehicle_id: match?.vehicle_id || vehicle?.id,
+            dispatcher_id: currentDispatcher?.id,
+            carrier_id: bidAsCarrier?.id,
+            bid_amount: bidRateNum,
+            to_email: toEmail,
+            status: 'sent'
+          });
+        
+        if (bidError) {
+          // If it's a unique constraint violation, another bid was just placed
+          if (bidError.code === '23505') {
+            console.warn('Bid already exists for this load - another dispatcher beat us');
+          } else {
+            console.error('Error recording bid:', bidError);
+          }
+        } else {
+          // Update local state to show the bid was recorded
+          setExistingBid({
+            id: 'just-placed',
+            bid_amount: bidRateNum,
+            dispatcher_name: currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : undefined,
+            vehicle_number: vehicle?.vehicle_number,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
       // Record the bid action
       await recordMatchAction('bid', {
         bid_amount: bidAmount,
@@ -912,7 +1033,6 @@ const LoadEmailDetail = ({
 
       // Notify parent that bid was placed - move to MY BIDS and skip siblings
       if (onBidPlaced && match?.id && email?.id) {
-        const bidRateNum = bidAmount ? parseFloat(bidAmount.replace(/[^0-9.]/g, '')) : undefined;
         onBidPlaced(match.id, email.id, bidRateNum);
       }
     } catch (err: any) {
@@ -932,6 +1052,27 @@ const LoadEmailDetail = ({
         <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-3">
           <DialogTitle className="text-base font-semibold">Confirm Before Sending Bid!</DialogTitle>
         </div>
+        
+        {/* Existing Bid Warning Banner */}
+        {existingBid && (
+          <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-600 text-lg">⚠️</span>
+              <div className="flex-1">
+                <p className="text-amber-800 font-semibold text-sm">Bid Already Placed on This Load!</p>
+                <p className="text-amber-700 text-xs mt-1">
+                  <strong>{existingBid.dispatcher_name || 'A dispatcher'}</strong> already bid{' '}
+                  <strong>${existingBid.bid_amount}</strong>
+                  {existingBid.vehicle_number && <> for truck <strong>{existingBid.vehicle_number}</strong></>}
+                  {' '}on {new Date(existingBid.created_at).toLocaleString()}
+                </p>
+                <p className="text-amber-600 text-xs mt-1 italic">
+                  Sending another bid may cause internal competition.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Action Buttons - Compact */}
         <div className="flex gap-2 px-4 pt-3">
@@ -1522,19 +1663,38 @@ const LoadEmailDetail = ({
             </div>
           </div>
           
+          {/* Existing Bid Warning Banner */}
+          {existingBid && (
+            <div className="mx-4 mt-2 p-2 bg-amber-50 border border-amber-300 rounded-lg">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-amber-600">⚠️</span>
+                <span className="text-amber-800">
+                  <strong>{existingBid.dispatcher_name || 'Someone'}</strong> already bid <strong>${existingBid.bid_amount}</strong>
+                  {existingBid.vehicle_number && <> for <strong>{existingBid.vehicle_number}</strong></>}
+                </span>
+              </div>
+            </div>
+          )}
+          
           {/* Action Buttons - Sticky Footer */}
           <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
             <button 
               type="button"
-              className="flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700"
+              className={`flex-1 h-11 px-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 ${
+                existingBid 
+                  ? 'bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700' 
+                  : 'bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700'
+              }`}
               style={{ 
                 textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
+                boxShadow: existingBid 
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(245,158,11,0.4)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(16,185,129,0.4)'
               }}
               onClick={() => setShowEmailConfirmDialog(true)}
             >
               <Mail className="w-4 h-4" />
-              Email Bid
+              {existingBid ? '⚠️ Email Bid' : 'Email Bid'}
             </button>
             <button 
               type="button"
