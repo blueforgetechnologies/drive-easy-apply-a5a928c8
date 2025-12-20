@@ -296,6 +296,25 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {/* Show drag-drop area for Bill of Lading even when documents exist */}
+                  {!isRateConfirmation && (
+                    <div 
+                      className={`text-center py-4 text-muted-foreground border-2 border-dashed rounded-lg transition-colors cursor-pointer mb-3 ${
+                        dragOver === docType.value 
+                          ? 'border-primary bg-primary/5' 
+                          : 'hover:border-primary/50 hover:bg-muted/50'
+                      }`}
+                      onDragOver={(e) => handleDragOver(e, docType.value)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, docType.value)}
+                      onClick={() => fileInputRefs.current[docType.value]?.click()}
+                    >
+                      <Upload className={`h-6 w-6 mx-auto mb-1 ${dragOver === docType.value ? 'text-primary' : 'opacity-50'}`} />
+                      <p className="text-xs">
+                        {dragOver === docType.value ? 'Drop files here' : 'Drag & drop or click to add more'}
+                      </p>
+                    </div>
+                  )}
                   {typeDocs.map(doc => (
                     <div 
                       key={doc.id} 
