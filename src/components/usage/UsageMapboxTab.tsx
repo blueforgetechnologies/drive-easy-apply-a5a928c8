@@ -1,9 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Map, Navigation, MapPin, Database, Sparkles } from "lucide-react";
+import { Map, Navigation, MapPin, Database, Sparkles, Settings, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 interface UsageMapboxTabProps {
   selectedMonth: string; // "YYYY-MM" or "all"
@@ -20,6 +24,17 @@ const getDateRange = (selectedMonth: string) => {
 
 export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
   const { startISO, endISO, isAllTime } = getDateRange(selectedMonth);
+  
+  // Calibration state
+  const [showCalibration, setShowCalibration] = useState(false);
+  const [actualMapboxBill, setActualMapboxBill] = useState<string>("");
+  const [calibratedMultiplier, setCalibratedMultiplier] = useState<number | null>(null);
+  
+  // Load calibration from localStorage
+  useEffect(() => {
+    const savedMultiplier = localStorage.getItem('mapbox_calibrated_multiplier');
+    if (savedMultiplier) setCalibratedMultiplier(parseFloat(savedMultiplier));
+  }, []);
 
   // Main Mapbox usage query
   const { data: mapboxUsage } = useQuery({
@@ -108,6 +123,36 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
 
   const FREE_TIERS = { geocoding: 100000, mapLoads: 50000, directions: 100000 };
   const periodLabel = isAllTime ? "all time" : selectedMonth;
+  
+  // Calculate raw estimated cost based on usage
+  const rawEstimatedCost = mapboxUsage?.total_cost || 0;
+  
+  // Apply calibration multiplier if set
+  const calibratedCost = calibratedMultiplier 
+    ? rawEstimatedCost * calibratedMultiplier 
+    : rawEstimatedCost;
+
+  const handleCalibrate = () => {
+    const actualBill = parseFloat(actualMapboxBill);
+    if (actualBill > 0 && rawEstimatedCost > 0) {
+      const multiplier = actualBill / rawEstimatedCost;
+      setCalibratedMultiplier(multiplier);
+      localStorage.setItem('mapbox_calibrated_multiplier', multiplier.toString());
+      localStorage.setItem('mapbox_calibration_date', new Date().toISOString());
+      toast.success(`Calibration multiplier set to ${multiplier.toFixed(2)}x`);
+      setActualMapboxBill("");
+      setShowCalibration(false);
+    } else {
+      toast.error("Please enter a valid bill amount");
+    }
+  };
+
+  const clearCalibration = () => {
+    setCalibratedMultiplier(null);
+    localStorage.removeItem('mapbox_calibrated_multiplier');
+    localStorage.removeItem('mapbox_calibration_date');
+    toast.success("Calibration cleared, using default estimates");
+  };
 
   const metrics = [
     { title: "Geocoding API", icon: MapPin, current: mapboxUsage?.geocoding_api_calls || 0, limit: FREE_TIERS.geocoding, color: "text-blue-500", bgColor: "bg-blue-500/10" },
@@ -124,13 +169,84 @@ export function UsageMapboxTab({ selectedMonth }: UsageMapboxTabProps) {
               <CardTitle className="flex items-center gap-2"><Map className="h-5 w-5" />Mapbox Usage</CardTitle>
               <CardDescription>Geocoding, Maps, and Directions API ({periodLabel})</CardDescription>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Estimated Cost</p>
-              <p className="text-3xl font-bold">${(mapboxUsage?.total_cost || 0).toFixed(2)}</p>
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowCalibration(!showCalibration)}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Calibrate
+              </Button>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">
+                  {calibratedMultiplier ? "Calibrated Cost" : "Estimated Cost"}
+                </p>
+                <p className="text-3xl font-bold">${calibratedCost.toFixed(2)}</p>
+                {calibratedMultiplier && (
+                  <p className="text-xs text-muted-foreground">
+                    ({calibratedMultiplier.toFixed(2)}x multiplier)
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
       </Card>
+
+      {/* Calibration Panel */}
+      {showCalibration && (
+        <Card className="border-blue-500/20 bg-blue-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Cost Calibration
+            </CardTitle>
+            <CardDescription>
+              Enter your actual Mapbox bill to calibrate cost estimates
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-end gap-3">
+              <div className="flex-1 max-w-xs">
+                <label className="text-sm font-medium mb-1.5 block">Actual Mapbox Bill</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g., 15.50"
+                    value={actualMapboxBill}
+                    onChange={(e) => setActualMapboxBill(e.target.value)}
+                    className="w-32"
+                  />
+                  <Button onClick={handleCalibrate}>
+                    Calibrate
+                  </Button>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Current estimate: ${rawEstimatedCost.toFixed(2)}</p>
+                {calibratedMultiplier && (
+                  <p className="text-xs">Current multiplier: {calibratedMultiplier.toFixed(2)}x</p>
+                )}
+              </div>
+            </div>
+            {calibratedMultiplier && (
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Button variant="ghost" size="sm" onClick={clearCalibration}>
+                  Clear Calibration
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Calibrated on {new Date(localStorage.getItem('mapbox_calibration_date') || '').toLocaleDateString()}
+                </span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Tip: Enter the total from your Mapbox dashboard to align estimates with actual billing.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         {metrics.map((metric) => {
