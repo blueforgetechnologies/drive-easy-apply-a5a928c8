@@ -913,7 +913,14 @@ export default function LoadHunterTab() {
         if (!response.ok) {
           const errorText = await response.text().catch(() => "");
 
-          if (response.status === 401 || response.status === 403) {
+          const providerBlocked =
+            response.status === 401 ||
+            response.status === 403 ||
+            (response.status === 500 &&
+              (errorText.includes('ElevenLabs API error: 401') ||
+                errorText.includes('detected_unusual_activity')));
+
+          if (providerBlocked) {
             aiSoundsUnavailableRef.current = true;
             if (!aiSoundsUnavailableToastShownRef.current) {
               aiSoundsUnavailableToastShownRef.current = true;
