@@ -4986,27 +4986,17 @@ export default function LoadHunterTab() {
                                   if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
-                                    // Check if any bid for this match is a duplicate (for mybids tab)
-                                    const bids = (match as any).load_bids || [];
-                                    const hasDuplicateBid = activeFilter === 'mybids' && bids.some((b: any) => b.status === 'duplicate');
                                     if (vehicle) {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                       return (
-                                        <div className="flex items-center gap-2">
-                                          <div>
-                                            <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
-                                              {vehicle.vehicle_number || "N/A"} - {driverName}
-                                            </div>
-                                            <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                              {carrierName}
-                                            </div>
+                                        <div>
+                                          <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
+                                            {vehicle.vehicle_number || "N/A"} - {driverName}
                                           </div>
-                                          {hasDuplicateBid && (
-                                            <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-orange-400 text-orange-600 bg-orange-50">
-                                              Duplicate
-                                            </Badge>
-                                          )}
+                                          <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                            {carrierName}
+                                          </div>
                                         </div>
                                       );
                                     }
@@ -5288,6 +5278,19 @@ export default function LoadHunterTab() {
                                         return '—';
                                       })()}
                                     </div>
+                                    {/* Show duplicate badge if any bid for this match is duplicate */}
+                                    {(() => {
+                                      const bids = (item as any).load_bids || [];
+                                      const hasDuplicateBid = bids.some((b: any) => b.status === 'duplicate');
+                                      if (hasDuplicateBid) {
+                                        return (
+                                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-orange-400 text-orange-600 bg-orange-50 mt-0.5">
+                                            Duplicate
+                                          </Badge>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                   </TableCell>
                                 </>
                               )}
