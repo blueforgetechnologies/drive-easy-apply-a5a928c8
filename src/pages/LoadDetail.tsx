@@ -89,7 +89,7 @@ export default function LoadDetail() {
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
         supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type").eq("status", "active"),
+        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
@@ -1425,9 +1425,11 @@ export default function LoadDetail() {
                         } else {
                           updateField("assigned_driver_id", null);
                         }
-                        // Auto-populate equipment type from vehicle if blank
-                        if (!load.equipment_type && selectedVehicle?.asset_type) {
-                          updateField("equipment_type", selectedVehicle.asset_type);
+                        // Auto-populate equipment type from vehicle if blank (e.g. "24' Large Straight")
+                        if (!load.equipment_type && selectedVehicle) {
+                          const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
+                          const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
+                          updateField("equipment_type", `${sizePrefix}${vehicleType}`);
                         }
                       }}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
