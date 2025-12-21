@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -88,6 +89,7 @@ export default function FleetFinancialsTab() {
     return format(now, "yyyy-MM");
   });
   const [showColumnLines, setShowColumnLines] = useState(false);
+  const [carrierSearch, setCarrierSearch] = useState("");
 
   // Load all data
   useEffect(() => {
@@ -329,50 +331,54 @@ export default function FleetFinancialsTab() {
     <div className="flex h-[calc(100vh-80px)]">
       {/* Left Sidebar - Carrier Filter */}
       <div className="w-64 border-r bg-card flex-shrink-0">
-        <div className="p-4 border-b">
-          <p className="text-sm text-muted-foreground mb-2">Selected Carrier</p>
-          <Select 
-            value={selectedCarrier || "all"} 
-            onValueChange={(v) => setSelectedCarrier(v === "all" ? null : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All Carriers" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Carriers</SelectItem>
-              {vehicleCarrierIds.map(carrierId => (
-                <SelectItem key={carrierId} value={carrierId}>
-                  {getCarrierName(carrierId) || carrierId}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="p-3 border-b">
+          <p className="text-sm text-muted-foreground mb-2">Search Carriers</p>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Type to search..."
+              value={carrierSearch}
+              onChange={(e) => setCarrierSearch(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
         </div>
-        <div className="p-4">
+        <div className="p-3">
           <Button 
             variant={!selectedCarrier ? "default" : "outline"} 
-            className="w-full mb-4"
-            onClick={() => setSelectedCarrier(null)}
+            className="w-full mb-3"
+            onClick={() => {
+              setSelectedCarrier(null);
+              setCarrierSearch("");
+            }}
           >
             All Carriers
           </Button>
-          <ScrollArea className="h-[calc(100vh-280px)]">
-            <div className="space-y-2">
-              {carriers.map(carrier => (
-                <button
-                  key={carrier.id}
-                  onClick={() => setSelectedCarrier(carrier.id)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                    selectedCarrier === carrier.id
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  <div className="font-medium">{carrier.name}</div>
-                  <div className="text-xs opacity-70">Carrier Symbol:</div>
-                </button>
-              ))}
+          <ScrollArea className="h-[calc(100vh-260px)]">
+            <div className="space-y-1">
+              {carriers
+                .filter(carrier => 
+                  carrierSearch === "" || 
+                  carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase())
+                )
+                .map(carrier => (
+                  <button
+                    key={carrier.id}
+                    onClick={() => {
+                      setSelectedCarrier(carrier.id);
+                      setCarrierSearch("");
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                      selectedCarrier === carrier.id
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <div className="font-medium">{carrier.name}</div>
+                    <div className="text-xs opacity-70">Carrier Symbol:</div>
+                  </button>
+                ))}
             </div>
           </ScrollArea>
         </div>
