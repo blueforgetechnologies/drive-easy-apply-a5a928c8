@@ -5,8 +5,11 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -398,16 +401,68 @@ export default function FleetFinancialsTab() {
         </div>
 
         {/* Period Selector */}
-        <div className="p-4 flex items-center gap-4 border-b bg-card">
-          <span className="text-sm font-medium">Period</span>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border rounded-md px-3 py-2 text-sm bg-background"
-          />
+        <div className="p-4 flex items-center gap-2 border-b bg-card flex-wrap">
+          <span className="text-sm font-medium mr-2">Period</span>
+          {/* Quick month buttons */}
+          {(() => {
+            const now = new Date();
+            const months = [
+              { label: "This Month", date: now },
+              { label: format(subMonths(now, 1), "MMM"), date: subMonths(now, 1) },
+              { label: format(subMonths(now, 2), "MMM"), date: subMonths(now, 2) },
+              { label: format(subMonths(now, 3), "MMM"), date: subMonths(now, 3) },
+              { label: format(subMonths(now, 4), "MMM"), date: subMonths(now, 4) },
+              { label: format(subMonths(now, 5), "MMM"), date: subMonths(now, 5) },
+            ];
+            return months.map((m, idx) => {
+              const monthValue = format(m.date, "yyyy-MM");
+              const isActive = selectedMonth === monthValue;
+              return (
+                <Button
+                  key={idx}
+                  variant={isActive ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => setSelectedMonth(monthValue)}
+                >
+                  {m.label}
+                </Button>
+              );
+            });
+          })()}
+          {/* Custom month picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={!["This Month", ...Array.from({length: 5}, (_, i) => format(subMonths(new Date(), i + 1), "MMM"))].some((_, idx) => {
+                  const now = new Date();
+                  const monthsToCheck = [now, ...Array.from({length: 5}, (_, i) => subMonths(now, i + 1))];
+                  return format(monthsToCheck[idx] || now, "yyyy-MM") === selectedMonth;
+                }) ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-3 text-xs gap-1"
+              >
+                <CalendarIcon className="h-3 w-3" />
+                Custom
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={new Date(selectedMonth + "-01")}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedMonth(format(date, "yyyy-MM"));
+                  }
+                }}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          
           {selectedVehicle && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground ml-4">
               Vehicle: {selectedVehicle.vehicle_number} | Carrier: {selectedVehicle.carrierName || "N/A"}
             </span>
           )}
