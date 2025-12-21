@@ -182,68 +182,68 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
   }
 
   return (
-    <Card className="mt-2 mb-4 overflow-hidden border-2 border-primary/20 shadow-lg">
+    <Card className="mt-2 mb-3 overflow-hidden border border-primary/20 shadow-md text-[11px]">
       {/* Header with close button */}
-      <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-3 flex justify-between items-center border-b">
-        <span className="font-semibold text-primary">Invoice Preview</span>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-1" />
+      <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-2 flex justify-between items-center border-b">
+        <span className="font-semibold text-primary text-xs">Invoice Preview</span>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handlePrint}>
+            <Printer className="h-3 w-3 mr-1" />
             Print
           </Button>
-          <Button variant="ghost" size="sm" className="h-8" onClick={handleDownloadPdf} disabled={generatingPdf}>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDownloadPdf} disabled={generatingPdf}>
             {generatingPdf ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
             ) : (
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="h-3 w-3 mr-1" />
             )}
             PDF
           </Button>
-          <Button variant="ghost" size="sm" className="h-8">
-            <Send className="h-4 w-4 mr-1" />
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]">
+            <Send className="h-3 w-3 mr-1" />
             Send
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+            <X className="h-3 w-3" />
           </Button>
         </div>
       </div>
 
       {/* Invoice Content */}
-      <div ref={invoiceRef} className="p-8 bg-white">
+      <div ref={invoiceRef} className="p-4 bg-white">
         {/* Company Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div className="flex items-start gap-4">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-start gap-2">
             {company?.logo_url ? (
               <img 
                 src={company.logo_url} 
                 alt={company.company_name} 
-                className="h-16 w-auto object-contain"
+                className="h-10 w-auto object-contain"
               />
             ) : (
-              <div className="h-16 w-16 bg-primary/10 rounded-lg flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">
+              <div className="h-10 w-10 bg-primary/10 rounded flex items-center justify-center">
+                <span className="text-base font-bold text-primary">
                   {company?.company_name?.charAt(0) || "T"}
                 </span>
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-sm font-bold text-foreground">
                 {company?.company_name || "Company Name"}
               </h1>
               {company?.legal_name && company.legal_name !== company.company_name && (
-                <p className="text-sm text-muted-foreground">{company.legal_name}</p>
+                <p className="text-[9px] text-muted-foreground">{company.legal_name}</p>
               )}
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-[9px] text-muted-foreground">
                 {company?.address && <span>{company.address}<br /></span>}
                 {company?.city && company?.state && (
                   <span>{company.city}, {company.state} {company?.zip}</span>
                 )}
               </p>
               {company?.phone && (
-                <p className="text-sm text-muted-foreground">{company.phone}</p>
+                <p className="text-[9px] text-muted-foreground">{company.phone}</p>
               )}
-              <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+              <div className="flex gap-2 text-[8px] text-muted-foreground">
                 {company?.mc_number && <span>MC# {company.mc_number}</span>}
                 {company?.dot_number && <span>DOT# {company.dot_number}</span>}
               </div>
@@ -251,67 +251,67 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
           </div>
 
           <div className="text-right">
-            <h2 className="text-4xl font-bold text-primary mb-2">INVOICE</h2>
-            <div className="space-y-1">
-              <p className="text-lg font-semibold">
+            <h2 className="text-2xl font-bold text-primary mb-1">INVOICE</h2>
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold">
                 #{load?.invoice_number || load?.load_number}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[9px] text-muted-foreground">
                 Date: {format(new Date(invoiceDate), "MMMM d, yyyy")}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[9px] text-muted-foreground">
                 Due: {format(dueDate, "MMMM d, yyyy")}
               </p>
             </div>
           </div>
         </div>
 
-        <Separator className="my-6" />
+        <Separator className="my-3" />
 
         {/* Bill To / Remit To */}
-        <div className="grid grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <h3 className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               Bill To
             </h3>
-            <div className="bg-muted/30 rounded-lg p-4">
-              <p className="font-semibold text-foreground">
+            <div className="bg-muted/30 rounded p-2">
+              <p className="font-semibold text-foreground text-[10px]">
                 {load?.broker_name || load?.customers?.name || "—"}
               </p>
               {load?.broker_contact && (
-                <p className="text-sm text-muted-foreground">Attn: {load.broker_contact}</p>
+                <p className="text-[9px] text-muted-foreground">Attn: {load.broker_contact}</p>
               )}
               {load?.broker_address && (
-                <p className="text-sm text-muted-foreground">{load.broker_address}</p>
+                <p className="text-[9px] text-muted-foreground">{load.broker_address}</p>
               )}
               {(load?.broker_city || load?.broker_state) && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-[9px] text-muted-foreground">
                   {load.broker_city}{load.broker_city && load.broker_state && ", "}
                   {load.broker_state} {load?.broker_zip}
                 </p>
               )}
               {load?.broker_phone && (
-                <p className="text-sm text-muted-foreground">{load.broker_phone}</p>
+                <p className="text-[9px] text-muted-foreground">{load.broker_phone}</p>
               )}
               {load?.broker_email && (
-                <p className="text-sm text-muted-foreground">{load.broker_email}</p>
+                <p className="text-[9px] text-muted-foreground">{load.broker_email}</p>
               )}
             </div>
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <h3 className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               Remit Payment To
             </h3>
-            <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+            <div className="bg-primary/5 rounded p-2 border border-primary/20">
               {company?.factoring_company_name ? (
                 <>
-                  <p className="font-semibold text-foreground">{company.factoring_company_name}</p>
+                  <p className="font-semibold text-foreground text-[10px]">{company.factoring_company_name}</p>
                   {company.factoring_company_address && (
-                    <p className="text-sm text-muted-foreground">{company.factoring_company_address}</p>
+                    <p className="text-[9px] text-muted-foreground">{company.factoring_company_address}</p>
                   )}
                   {(company.factoring_company_city || company.factoring_company_state) && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-[9px] text-muted-foreground">
                       {company.factoring_company_city}{company.factoring_company_city && company.factoring_company_state && ", "}
                       {company.factoring_company_state} {company.factoring_company_zip}
                     </p>
@@ -319,12 +319,12 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
                 </>
               ) : (
                 <>
-                  <p className="font-semibold text-foreground">{company?.company_name}</p>
+                  <p className="font-semibold text-foreground text-[10px]">{company?.company_name}</p>
                   {company?.address && (
-                    <p className="text-sm text-muted-foreground">{company.address}</p>
+                    <p className="text-[9px] text-muted-foreground">{company.address}</p>
                   )}
                   {(company?.city || company?.state) && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-[9px] text-muted-foreground">
                       {company.city}{company.city && company.state && ", "}
                       {company.state} {company?.zip}
                     </p>
@@ -336,58 +336,58 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
         </div>
 
         {/* Load Details Table */}
-        <div className="mb-8">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+        <div className="mb-4">
+          <h3 className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
             Service Details
           </h3>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded overflow-hidden">
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Description</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Reference</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Route</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Date</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Amount</th>
+                  <th className="text-left px-2 py-1.5 text-[8px] font-semibold uppercase text-muted-foreground">Description</th>
+                  <th className="text-left px-2 py-1.5 text-[8px] font-semibold uppercase text-muted-foreground">Reference</th>
+                  <th className="text-left px-2 py-1.5 text-[8px] font-semibold uppercase text-muted-foreground">Route</th>
+                  <th className="text-left px-2 py-1.5 text-[8px] font-semibold uppercase text-muted-foreground">Date</th>
+                  <th className="text-right px-2 py-1.5 text-[8px] font-semibold uppercase text-muted-foreground">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-t">
-                  <td className="px-4 py-4">
-                    <p className="font-medium">Freight Transportation</p>
-                    <p className="text-sm text-muted-foreground">
+                  <td className="px-2 py-2">
+                    <p className="font-medium text-[10px]">Freight Transportation</p>
+                    <p className="text-[9px] text-muted-foreground">
                       {load?.cargo_description || "General Freight"}
                       {load?.cargo_weight && ` • ${load.cargo_weight} lbs`}
                       {load?.cargo_pieces && ` • ${load.cargo_pieces} pc(s)`}
                     </p>
                     {load?.estimated_miles && (
-                      <p className="text-sm text-muted-foreground">{load.estimated_miles} miles</p>
+                      <p className="text-[9px] text-muted-foreground">{load.estimated_miles} miles</p>
                     )}
                   </td>
-                  <td className="px-4 py-4">
-                    <p className="font-medium">{load?.reference_number || "—"}</p>
-                    <p className="text-xs text-muted-foreground">Load: {load?.load_number}</p>
+                  <td className="px-2 py-2">
+                    <p className="font-medium text-[10px]">{load?.reference_number || "—"}</p>
+                    <p className="text-[8px] text-muted-foreground">Load: {load?.load_number}</p>
                   </td>
-                  <td className="px-4 py-4">
-                    <p className="text-sm">
+                  <td className="px-2 py-2">
+                    <p className="text-[9px]">
                       {load?.pickup_city}, {load?.pickup_state}
                     </p>
-                    <p className="text-xs text-muted-foreground">to</p>
-                    <p className="text-sm">
+                    <p className="text-[8px] text-muted-foreground">to</p>
+                    <p className="text-[9px]">
                       {load?.delivery_city}, {load?.delivery_state}
                     </p>
                   </td>
-                  <td className="px-4 py-4">
-                    <p className="text-sm">
+                  <td className="px-2 py-2">
+                    <p className="text-[9px]">
                       {load?.pickup_date ? format(new Date(load.pickup_date), "M/d/yy") : "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">to</p>
-                    <p className="text-sm">
+                    <p className="text-[8px] text-muted-foreground">to</p>
+                    <p className="text-[9px]">
                       {load?.delivery_date ? format(new Date(load.delivery_date), "M/d/yy") : "—"}
                     </p>
                   </td>
-                  <td className="px-4 py-4 text-right">
-                    <p className="font-semibold text-lg">{formatCurrency(load?.rate)}</p>
+                  <td className="px-2 py-2 text-right">
+                    <p className="font-semibold text-sm">{formatCurrency(load?.rate)}</p>
                   </td>
                 </tr>
               </tbody>
@@ -397,35 +397,35 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
 
         {/* Totals */}
         <div className="flex justify-end">
-          <div className="w-72">
-            <div className="space-y-2">
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{formatCurrency(load?.rate)}</span>
+          <div className="w-48">
+            <div className="space-y-1">
+              <div className="flex justify-between py-1">
+                <span className="text-muted-foreground text-[10px]">Subtotal</span>
+                <span className="font-medium text-[10px]">{formatCurrency(load?.rate)}</span>
               </div>
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Fuel Surcharge</span>
-                <span className="font-medium">$0.00</span>
+              <div className="flex justify-between py-1">
+                <span className="text-muted-foreground text-[10px]">Fuel Surcharge</span>
+                <span className="font-medium text-[10px]">$0.00</span>
               </div>
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Advance Issued</span>
-                <span className="font-medium text-destructive">-$0.00</span>
+              <div className="flex justify-between py-1">
+                <span className="text-muted-foreground text-[10px]">Advance Issued</span>
+                <span className="font-medium text-destructive text-[10px]">-$0.00</span>
               </div>
               <Separator />
-              <div className="flex justify-between py-3">
-                <span className="text-lg font-bold">Total Due</span>
-                <span className="text-lg font-bold text-primary">{formatCurrency(load?.rate)}</span>
+              <div className="flex justify-between py-1.5">
+                <span className="text-xs font-bold">Total Due</span>
+                <span className="text-xs font-bold text-primary">{formatCurrency(load?.rate)}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t">
-          <div className="text-center text-sm text-muted-foreground">
-            <p className="font-medium mb-1">Thank you for your business!</p>
+        <div className="mt-4 pt-3 border-t">
+          <div className="text-center text-[9px] text-muted-foreground">
+            <p className="font-medium mb-0.5">Thank you for your business!</p>
             <p>Payment Terms: Net 30 • Please include invoice number with payment</p>
-            {company?.email && <p className="mt-2">Questions? Contact us at {company.email}</p>}
+            {company?.email && <p className="mt-1">Questions? Contact us at {company.email}</p>}
           </div>
         </div>
       </div>
