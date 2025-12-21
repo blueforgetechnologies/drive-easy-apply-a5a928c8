@@ -391,18 +391,28 @@ export default function FleetFinancialsTab() {
         {/* Vehicle Tabs */}
         <div className="border-b bg-card px-3 py-1.5">
           <ScrollArea className="w-full">
-            <div className="flex gap-1.5">
-              {filteredVehicles.map(vehicle => (
-                <Button
-                  key={vehicle.id}
-                  variant={selectedVehicleId === vehicle.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedVehicleId(vehicle.id)}
-                  className="whitespace-nowrap"
-                >
-                  {vehicle.vehicle_number}
-                </Button>
-              ))}
+            <div className="flex">
+              {filteredVehicles.map((vehicle, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === filteredVehicles.length - 1;
+                const isActive = selectedVehicleId === vehicle.id;
+                return (
+                  <Button
+                    key={vehicle.id}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedVehicleId(vehicle.id)}
+                    className={cn(
+                      "whitespace-nowrap !rounded-none border-0",
+                      isFirst && "!rounded-l-full",
+                      isLast && "!rounded-r-full",
+                      isActive ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                    )}
+                  >
+                    {vehicle.vehicle_number}
+                  </Button>
+                );
+              })}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
@@ -411,63 +421,77 @@ export default function FleetFinancialsTab() {
         {/* Period Selector */}
         <div className="px-3 py-1.5 flex items-center gap-1.5 border-b bg-card flex-wrap">
           <span className="text-sm font-medium mr-2">Period</span>
-          {/* Quick month buttons */}
-          {(() => {
-            const now = new Date();
-            const months = [
-              { label: "This Month", date: now },
-              { label: format(subMonths(now, 1), "MMM"), date: subMonths(now, 1) },
-              { label: format(subMonths(now, 2), "MMM"), date: subMonths(now, 2) },
-              { label: format(subMonths(now, 3), "MMM"), date: subMonths(now, 3) },
-              { label: format(subMonths(now, 4), "MMM"), date: subMonths(now, 4) },
-              { label: format(subMonths(now, 5), "MMM"), date: subMonths(now, 5) },
-            ];
-            return months.map((m, idx) => {
-              const monthValue = format(m.date, "yyyy-MM");
-              const isActive = selectedMonth === monthValue;
-              return (
+          <div className="flex">
+            {/* Quick month buttons */}
+            {(() => {
+              const now = new Date();
+              const months = [
+                { label: "This Month", date: now },
+                { label: format(subMonths(now, 1), "MMM"), date: subMonths(now, 1) },
+                { label: format(subMonths(now, 2), "MMM"), date: subMonths(now, 2) },
+                { label: format(subMonths(now, 3), "MMM"), date: subMonths(now, 3) },
+                { label: format(subMonths(now, 4), "MMM"), date: subMonths(now, 4) },
+                { label: format(subMonths(now, 5), "MMM"), date: subMonths(now, 5) },
+              ];
+              return months.map((m, idx) => {
+                const monthValue = format(m.date, "yyyy-MM");
+                const isActive = selectedMonth === monthValue;
+                const isFirst = idx === 0;
+                return (
+                  <Button
+                    key={idx}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-7 px-3 text-xs !rounded-none border-0",
+                      isFirst && "!rounded-l-full",
+                      isActive ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                    )}
+                    onClick={() => setSelectedMonth(monthValue)}
+                  >
+                    {m.label}
+                  </Button>
+                );
+              });
+            })()}
+            {/* Custom month picker */}
+            <Popover>
+              <PopoverTrigger asChild>
                 <Button
-                  key={idx}
-                  variant={isActive ? "default" : "outline"}
+                  variant={!["This Month", ...Array.from({length: 5}, (_, i) => format(subMonths(new Date(), i + 1), "MMM"))].some((_, idx) => {
+                    const now = new Date();
+                    const monthsToCheck = [now, ...Array.from({length: 5}, (_, i) => subMonths(now, i + 1))];
+                    return format(monthsToCheck[idx] || now, "yyyy-MM") === selectedMonth;
+                  }) ? "default" : "outline"}
                   size="sm"
-                  className="h-7 px-3 text-xs"
-                  onClick={() => setSelectedMonth(monthValue)}
+                  className={cn(
+                    "h-7 px-3 text-xs gap-1 !rounded-none !rounded-r-full border-0",
+                    !["This Month", ...Array.from({length: 5}, (_, i) => format(subMonths(new Date(), i + 1), "MMM"))].some((_, idx) => {
+                      const now = new Date();
+                      const monthsToCheck = [now, ...Array.from({length: 5}, (_, i) => subMonths(now, i + 1))];
+                      return format(monthsToCheck[idx] || now, "yyyy-MM") === selectedMonth;
+                    }) ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                  )}
                 >
-                  {m.label}
+                  <CalendarIcon className="h-3 w-3" />
+                  Custom
                 </Button>
-              );
-            });
-          })()}
-          {/* Custom month picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={!["This Month", ...Array.from({length: 5}, (_, i) => format(subMonths(new Date(), i + 1), "MMM"))].some((_, idx) => {
-                  const now = new Date();
-                  const monthsToCheck = [now, ...Array.from({length: 5}, (_, i) => subMonths(now, i + 1))];
-                  return format(monthsToCheck[idx] || now, "yyyy-MM") === selectedMonth;
-                }) ? "default" : "outline"}
-                size="sm"
-                className="h-7 px-3 text-xs gap-1"
-              >
-                <CalendarIcon className="h-3 w-3" />
-                Custom
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={new Date(selectedMonth + "-01")}
-                onSelect={(date) => {
-                  if (date) {
-                    setSelectedMonth(format(date, "yyyy-MM"));
-                  }
-                }}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={new Date(selectedMonth + "-01")}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedMonth(format(date, "yyyy-MM"));
+                    }
+                  }}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           
           {selectedVehicle && (
             <span className="text-sm text-muted-foreground ml-4">
@@ -478,6 +502,10 @@ export default function FleetFinancialsTab() {
             <Button
               variant={showColumnLines ? "default" : "outline"}
               size="sm"
+              className={cn(
+                "rounded-full border-0",
+                showColumnLines ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+              )}
               onClick={() => setShowColumnLines(!showColumnLines)}
             >
               {showColumnLines ? "Hide Lines" : "Show Lines"}
