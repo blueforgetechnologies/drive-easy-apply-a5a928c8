@@ -376,21 +376,29 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-2 pt-2">
+            {/* Action Buttons - Connected Group */}
+            <div className="flex pt-2">
               <Button
                 size="sm"
                 onClick={() => updateStatusMutation.mutate("completed")}
                 disabled={updateStatusMutation.isPending}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 h-8 text-xs"
+                className="flex-1 h-9 text-xs font-semibold rounded-r-none border-r-0 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-md shadow-emerald-500/25"
               >
                 Approve
               </Button>
               <Button
                 size="sm"
+                onClick={() => updateStatusMutation.mutate("set_aside")}
+                disabled={updateStatusMutation.isPending}
+                className="flex-1 h-9 text-xs font-semibold rounded-none border-x border-white/20 bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-white shadow-md shadow-amber-500/25"
+              >
+                Set Aside
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => updateStatusMutation.mutate("action_needed")}
                 disabled={updateStatusMutation.isPending}
-                className="bg-rose-500 hover:bg-rose-600 text-white flex-1 h-8 text-xs"
+                className="flex-1 h-9 text-xs font-semibold rounded-l-none border-l-0 bg-gradient-to-b from-rose-400 to-rose-600 hover:from-rose-500 hover:to-rose-700 text-white shadow-md shadow-rose-500/25"
               >
                 Fail
               </Button>
