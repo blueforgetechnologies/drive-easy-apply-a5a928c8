@@ -43,7 +43,8 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,svg}"],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+        // Invoice/PDF tooling can create a larger JS bundle; allow precaching up to 10MB.
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
