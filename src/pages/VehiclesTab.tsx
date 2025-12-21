@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, Download } from "lucide-react";
 interface Vehicle {
   id: string;
   vehicle_number: string | null;
@@ -367,6 +367,155 @@ export default function VehiclesTab() {
     }
   };
 
+  const handleExportExcel = () => {
+    // Get all vehicles data for export (use filtered or all)
+    const dataToExport = filteredVehicles;
+    
+    if (dataToExport.length === 0) {
+      toast.error("No assets to export");
+      return;
+    }
+
+    // Define all columns for export
+    const headers = [
+      "Status", "Unit ID", "Carrier", "Payee", "Driver 1", "Driver 2", "Dispatcher",
+      "Asset Type", "Asset Subtype", "Make", "Model", "Year", "VIN", "License Plate",
+      "Vehicle Size", "Dimensions (LxWxH)", "Payload", "Air Ride", "Suspension",
+      "Lift Gate", "Lift Gate Capacity", "Lift Gate Dims", "Pallet Jack", "Pallet Jack Capacity",
+      "Blankets", "Straps Count", "Load Bars (E-Track)", "Load Bars (Non E-Track)",
+      "Horizontal E-Tracks", "Vertical E-Track Rows", "Door Type", "Door Dims (WxH)",
+      "Has Side Door", "Door Sensors", "Temp Control", "Team", "Clearance", "Axles",
+      "Fuel Type", "Fuel Tank Capacity", "Fuel Efficiency (MPG)", "Fuel Per Gallon",
+      "Odometer", "Mileage", "Oil Change Due", "Oil Change Remaining",
+      "Last Service Date", "Next Service Date", "Registration Exp", "Registration Status",
+      "Insurance Expiry", "Cargo Coverage Exp", "Cargo Coverage Status",
+      "Liability Coverage Exp", "Liability Coverage Status", "Physical Coverage Exp", "Physical Coverage Status",
+      "Insurance Cost/Month", "Asset Ownership", "Bid As", "Provider", "Provider ID", "Provider Status",
+      "Reg Plate", "Reg State", "Last Location", "Formatted Address", "Speed", "Stopped Status",
+      "ELD Device SN", "Dash Cam SN", "Toll Device SN", "Tracking Device IMEI",
+      "Trailer Tracking", "Panic Button", "Camera Image URL",
+      "Pickup Date", "Pickup Odometer", "Return Date", "Return Odometer",
+      "Notes", "Created At", "Updated At", "Last Updated"
+    ];
+
+    // Map data to rows
+    const rows = dataToExport.map((v: any) => [
+      v.status || "",
+      v.vehicle_number || "",
+      carriersMap[v.carrier] || v.carrier || "",
+      payeesMap[v.payee] || v.payee || "",
+      driversMap[v.driver_1_id] || "",
+      driversMap[v.driver_2_id] || "",
+      dispatchersMap[v.primary_dispatcher_id] || "",
+      v.asset_type || "",
+      v.asset_subtype || "",
+      v.make || "",
+      v.model || "",
+      v.year || "",
+      v.vin || "",
+      v.license_plate || "",
+      v.vehicle_size || "",
+      v.dimensions_length && v.dimensions_width && v.dimensions_height 
+        ? `${v.dimensions_length}x${v.dimensions_width}x${v.dimensions_height}` 
+        : "",
+      v.payload || "",
+      v.air_ride ? "Yes" : "No",
+      v.suspension || "",
+      v.lift_gate ? "Yes" : "No",
+      v.lift_gate_capacity || "",
+      v.lift_gate_dims || "",
+      v.pallet_jack ? "Yes" : "No",
+      v.pallet_jack_capacity || "",
+      v.blankets || "",
+      v.straps_count || "",
+      v.load_bars_etrack || "",
+      v.load_bars_non_etrack || "",
+      v.horizontal_etracks || "",
+      v.vertical_etrack_rows || "",
+      v.door_type || "",
+      v.door_dims_width && v.door_dims_height ? `${v.door_dims_width}x${v.door_dims_height}` : "",
+      v.has_side_door ? "Yes" : "No",
+      v.door_sensors ? "Yes" : "No",
+      v.temp_control ? "Yes" : "No",
+      v.team ? "Yes" : "No",
+      v.clearance || "",
+      v.axles || "",
+      v.fuel_type || "",
+      v.fuel_tank_capacity || "",
+      v.fuel_efficiency_mpg || "",
+      v.fuel_per_gallon || "",
+      v.odometer || "",
+      v.mileage || "",
+      v.oil_change_due || "",
+      v.oil_change_remaining || "",
+      v.last_service_date || "",
+      v.next_service_date || "",
+      v.registration_exp_date || "",
+      v.registration_status || "",
+      v.insurance_expiry || "",
+      v.cargo_coverage_exp_date || "",
+      v.cargo_coverage_status || "",
+      v.liability_coverage_exp_date || "",
+      v.liability_coverage_status || "",
+      v.physical_coverage_exp_date || "",
+      v.physical_coverage_status || "",
+      v.insurance_cost_per_month || "",
+      v.asset_ownership || "",
+      v.bid_as || "",
+      v.provider || "",
+      v.provider_id || "",
+      v.provider_status || "",
+      v.reg_plate || "",
+      v.reg_state || "",
+      v.last_location || "",
+      v.formatted_address || "",
+      v.speed || "",
+      v.stopped_status || "",
+      v.eld_device_sn || "",
+      v.dash_cam_sn || "",
+      v.toll_device_sn || "",
+      v.tracking_device_imei || "",
+      v.trailer_tracking ? "Yes" : "No",
+      v.panic_button ? "Yes" : "No",
+      v.camera_image_url || "",
+      v.pickup_date || "",
+      v.pickup_odometer || "",
+      v.return_date || "",
+      v.return_odometer || "",
+      v.notes || "",
+      v.created_at || "",
+      v.updated_at || "",
+      v.last_updated || ""
+    ]);
+
+    // Create CSV content
+    const escapeCSV = (value: any) => {
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = [
+      headers.map(escapeCSV).join(","),
+      ...rows.map(row => row.map(escapeCSV).join(","))
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `assets_export_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`Exported ${dataToExport.length} assets to Excel`);
+  };
+
   const filteredVehicles = vehicles.filter((vehicle) => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -416,6 +565,15 @@ export default function VehiclesTab() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg sm:text-xl font-bold">Asset Management</h2>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="gap-1.5 h-8" 
+            onClick={handleExportExcel}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
           <Button 
             variant="outline" 
             size="sm"
