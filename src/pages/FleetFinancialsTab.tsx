@@ -426,28 +426,28 @@ export default function FleetFinancialsTab() {
         <ScrollArea className="flex-1 overflow-auto">
           <div className="min-w-[1580px]">
             <Table className={cn("table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
+              <TableHeader className="sticky top-0 z-20 bg-muted">
                 <TableRow>
-                  <TableHead className="w-[88px] px-2 whitespace-nowrap">P/U Date</TableHead>
-                  <TableHead className="w-[140px] px-2">Customer</TableHead>
-                  <TableHead className="w-[65px] px-2">Route</TableHead>
-                  <TableHead className="w-[78px] px-2 text-right">Payload</TableHead>
-                  <TableHead className="w-[60px] px-2 text-right">Empty</TableHead>
-                  <TableHead className="w-[62px] px-2 text-right">Loaded</TableHead>
-                  <TableHead className="w-[55px] px-2 text-right">Total</TableHead>
-                  <TableHead className="w-[52px] px-2 text-right">$/Mi</TableHead>
-                  <TableHead className="w-[68px] px-2 text-right">Factor</TableHead>
-                  <TableHead className="w-[75px] px-2 text-right">Disp Pay</TableHead>
-                  <TableHead className="w-[70px] px-2 text-right">Drv Pay</TableHead>
-                  <TableHead className="w-[62px] px-2 text-right">WComp</TableHead>
-                  <TableHead className="w-[55px] px-2 text-right">Fuel</TableHead>
-                  <TableHead className="w-[55px] px-2 text-right">Tolls</TableHead>
-                  <TableHead className="w-[58px] px-2 text-right">Rental</TableHead>
-                  <TableHead className="w-[62px] px-2 text-right">Insur</TableHead>
-                  <TableHead className="w-[58px] px-2 text-right">Other</TableHead>
-                  <TableHead className="w-[78px] px-2 text-right">Carr Pay</TableHead>
-                  <TableHead className="w-[52px] px-2 text-right">$/Mi</TableHead>
-                  <TableHead className="w-[80px] px-2 text-right">Net</TableHead>
+                  <TableHead className="w-[88px] px-2 whitespace-nowrap sticky top-0 bg-muted">P/U Date</TableHead>
+                  <TableHead className="w-[140px] px-2 sticky top-0 bg-muted">Customer</TableHead>
+                  <TableHead className="w-[65px] px-2 sticky top-0 bg-muted">Route</TableHead>
+                  <TableHead className="w-[78px] px-2 text-right sticky top-0 bg-muted">Payload</TableHead>
+                  <TableHead className="w-[60px] px-2 text-right sticky top-0 bg-muted">Empty</TableHead>
+                  <TableHead className="w-[62px] px-2 text-right sticky top-0 bg-muted">Loaded</TableHead>
+                  <TableHead className="w-[55px] px-2 text-right sticky top-0 bg-muted">Total</TableHead>
+                  <TableHead className="w-[52px] px-2 text-right sticky top-0 bg-muted">$/Mi</TableHead>
+                  <TableHead className="w-[68px] px-2 text-right sticky top-0 bg-muted">Factor</TableHead>
+                  <TableHead className="w-[75px] px-2 text-right sticky top-0 bg-muted">Disp Pay</TableHead>
+                  <TableHead className="w-[70px] px-2 text-right sticky top-0 bg-muted">Drv Pay</TableHead>
+                  <TableHead className="w-[62px] px-2 text-right sticky top-0 bg-muted">WComp</TableHead>
+                  <TableHead className="w-[55px] px-2 text-right sticky top-0 bg-muted">Fuel</TableHead>
+                  <TableHead className="w-[55px] px-2 text-right sticky top-0 bg-muted">Tolls</TableHead>
+                  <TableHead className="w-[58px] px-2 text-right sticky top-0 bg-muted">Rental</TableHead>
+                  <TableHead className="w-[62px] px-2 text-right sticky top-0 bg-muted">Insur</TableHead>
+                  <TableHead className="w-[58px] px-2 text-right sticky top-0 bg-muted">Other</TableHead>
+                  <TableHead className="w-[78px] px-2 text-right sticky top-0 bg-muted">Carr Pay</TableHead>
+                  <TableHead className="w-[52px] px-2 text-right sticky top-0 bg-muted">$/Mi</TableHead>
+                  <TableHead className="w-[80px] px-2 text-right sticky top-0 bg-muted">Net</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
