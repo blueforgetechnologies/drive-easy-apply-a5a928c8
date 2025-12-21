@@ -472,32 +472,32 @@ export default function FleetFinancialsTab() {
 
                           return (
                             <TableRow key={load.id} className="hover:bg-muted/30 h-7">
-                              <TableCell className="font-medium text-muted-foreground px-2 py-0.5 whitespace-nowrap">
+                              <TableCell className="font-medium text-muted-foreground !px-2 !py-0.5 whitespace-nowrap">
                                 {loadIndex === 0 && `${dayName} ${dateStr}`}
                               </TableCell>
-                              <TableCell className="truncate max-w-[140px] px-2 py-0.5" title={getCustomerName(load.customer_id)}>
+                              <TableCell className="truncate max-w-[140px] !px-2 !py-0.5" title={getCustomerName(load.customer_id)}>
                                 {getCustomerName(load.customer_id)}
                               </TableCell>
-                              <TableCell className="text-xs px-2 py-0.5">
+                              <TableCell className="text-xs !px-2 !py-0.5">
                                 {load.pickup_state}→{load.delivery_state}
                               </TableCell>
-                              <TableCell className="text-right font-semibold px-2 py-0.5">{formatCurrency(rate)}</TableCell>
-                              <TableCell className="text-right px-2 py-0.5">{formatNumber(emptyM, 0)}</TableCell>
-                              <TableCell className="text-right px-2 py-0.5">{formatNumber(loadedM, 0)}</TableCell>
-                              <TableCell className="text-right font-medium px-2 py-0.5">{formatNumber(totalM, 0)}</TableCell>
-                              <TableCell className="text-right px-2 py-0.5">${formatNumber(dollarPerMile, 2)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">{formatCurrency(factoring)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">{formatCurrency(dispPay)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-2 py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                              <TableCell className="text-right px-2 py-0.5">{formatCurrency(rate)}</TableCell>
-                              <TableCell className="text-right px-2 py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
-                              <TableCell className={cn("text-right font-bold px-2 py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
+                              <TableCell className="text-right font-semibold !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">{formatNumber(emptyM, 0)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">{formatNumber(loadedM, 0)}</TableCell>
+                              <TableCell className="text-right font-medium !px-2 !py-0.5">{formatNumber(totalM, 0)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">${formatNumber(dollarPerMile, 2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(factoring)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dispPay)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
+                              <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
                                 {formatCurrency(carrierNet)}
                               </TableCell>
                             </TableRow>
@@ -505,26 +505,26 @@ export default function FleetFinancialsTab() {
                         })
                       ) : (
                         <TableRow key={day.date.toISOString()} className="text-muted-foreground h-7">
-                          <TableCell className="font-medium px-2 py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="text-right px-2 py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                          <TableCell className="text-right px-2 py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="px-2 py-0.5"></TableCell>
-                          <TableCell className="text-right font-bold text-destructive px-2 py-0.5">
+                          <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="text-right !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                          <TableCell className="text-right !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
                             {formatCurrency(-(DAILY_INSURANCE_RATE + DAILY_OTHER_COST))}
                           </TableCell>
                         </TableRow>
