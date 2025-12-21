@@ -424,11 +424,11 @@ export default function FleetFinancialsTab() {
 
         {/* Data Table */}
         <ScrollArea className="flex-1 overflow-auto">
-          <div className="min-w-[1550px]">
+          <div className="min-w-[1580px]">
             <Table className={cn("table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 <TableRow>
-                  <TableHead className="w-[78px] px-2">P/U Date</TableHead>
+                  <TableHead className="w-[88px] px-2 whitespace-nowrap">P/U Date</TableHead>
                   <TableHead className="w-[140px] px-2">Customer</TableHead>
                   <TableHead className="w-[65px] px-2">Route</TableHead>
                   <TableHead className="w-[78px] px-2 text-right">Payload</TableHead>
@@ -472,7 +472,7 @@ export default function FleetFinancialsTab() {
 
                           return (
                             <TableRow key={load.id} className="hover:bg-muted/30">
-                              <TableCell className="font-medium text-muted-foreground px-2 py-1.5">
+                              <TableCell className="font-medium text-muted-foreground px-2 py-1.5 whitespace-nowrap">
                                 {loadIndex === 0 && `${dayName} ${dateStr}`}
                               </TableCell>
                               <TableCell className="truncate max-w-[140px] px-2 py-1.5" title={getCustomerName(load.customer_id)}>
@@ -505,7 +505,7 @@ export default function FleetFinancialsTab() {
                         })
                       ) : (
                         <TableRow key={day.date.toISOString()} className="text-muted-foreground">
-                          <TableCell className="font-medium px-2 py-1.5">{`${dayName} ${dateStr}`}</TableCell>
+                          <TableCell className="font-medium px-2 py-1.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
                           <TableCell className="px-2 py-1.5"></TableCell>
                           <TableCell className="px-2 py-1.5"></TableCell>
                           <TableCell className="px-2 py-1.5"></TableCell>
@@ -546,9 +546,9 @@ export default function FleetFinancialsTab() {
             </Table>
 
             {/* Monthly Totals Footer - inside scrollable area */}
-            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1550px]">
-              <div className="grid grid-cols-[78px_140px_65px_78px_60px_62px_55px_52px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
-                <div className="text-center px-2">
+            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1580px]">
+              <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
+                <div className="text-center px-2 whitespace-nowrap">
                   <div className="text-[10px] text-muted-foreground">P/U Date</div>
                   <div className="font-bold">-</div>
                 </div>
