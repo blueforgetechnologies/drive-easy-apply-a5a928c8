@@ -16,6 +16,7 @@ import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Che
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
+import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { PDFImageViewer } from "@/components/PDFImageViewer";
 import {
   DropdownMenu,
@@ -690,6 +691,46 @@ export default function LoadsTab() {
     }
   };
 
+  const handleAddNewCustomer = async (name: string, additionalData: Record<string, string>) => {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert({
+          name,
+          contact_name: additionalData.contact_name || null,
+          phone: additionalData.phone || null,
+          email: additionalData.email || null,
+          address: additionalData.address || null,
+          city: additionalData.city || null,
+          state: additionalData.state || null,
+          zip: additionalData.zip || null,
+          status: "active",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local customers list
+      setCustomers(prev => [...prev, data]);
+      
+      // Set the newly created customer in the form
+      setFormData(prev => ({
+        ...prev,
+        broker_name: name,
+        customer_id: data.id,
+        broker_contact: additionalData.contact_name || prev.broker_contact,
+        broker_phone: additionalData.phone || prev.broker_phone,
+        broker_email: additionalData.email || prev.broker_email,
+      }));
+
+      toast.success(`Customer "${name}" created successfully`);
+    } catch (error: any) {
+      toast.error("Failed to create customer: " + error.message);
+      throw error;
+    }
+  };
+
   const handleDeleteLoad = async (id: string) => {
     try {
       const { error } = await supabase
@@ -1052,11 +1093,23 @@ export default function LoadsTab() {
                   <div className="grid grid-cols-4 gap-3">
                     <div className="col-span-2 space-y-1">
                       <Label htmlFor="broker_name" className="text-xs font-medium text-muted-foreground">Company Name</Label>
-                      <Input
-                        id="broker_name"
+                      <SearchableEntitySelect
+                        entities={customers.map(c => ({ id: c.id, name: c.name, city: c.city, state: c.state }))}
                         value={formData.broker_name}
-                        onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
-                        placeholder="Broker/customer company name"
+                        placeholder="Search customers..."
+                        onSelect={(entity) => {
+                          const customer = customers.find(c => c.id === entity.id);
+                          setFormData(prev => ({
+                            ...prev,
+                            broker_name: entity.name,
+                            customer_id: entity.id,
+                            broker_contact: customer?.contact_name || prev.broker_contact,
+                            broker_phone: customer?.phone || prev.broker_phone,
+                            broker_email: customer?.email || prev.broker_email,
+                          }));
+                        }}
+                        onAddNew={handleAddNewCustomer}
+                        entityType="customer"
                         className="h-9"
                       />
                     </div>
