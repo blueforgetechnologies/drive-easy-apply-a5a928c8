@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,7 @@ interface AuditDetailInlineProps {
 
 export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavigate }: AuditDetailInlineProps) {
   const queryClient = useQueryClient();
+  const [, setSearchParams] = useSearchParams();
 
   const [notes, setNotes] = useState("");
   const [rateConfirmation, setRateConfirmation] = useState<ChecklistItem[]>([
@@ -69,12 +71,19 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
+      const updateData: any = { 
+        status: newStatus,
+        billing_notes: notes || load?.billing_notes 
+      };
+      
+      // When approved, also set financial_status to pending_invoice
+      if (newStatus === "completed") {
+        updateData.financial_status = "pending_invoice";
+      }
+      
       const { error } = await supabase
         .from("loads")
-        .update({ 
-          status: newStatus,
-          billing_notes: notes || load?.billing_notes 
-        })
+        .update(updateData)
         .eq("id", loadId);
       if (error) throw error;
     },
@@ -82,11 +91,17 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads"] });
       queryClient.invalidateQueries({ queryKey: ["loads"] });
       if (newStatus === "completed") {
-        toast.success("Audit approved!");
+        toast.success("Audit approved! Load moved to Invoices.");
+        onClose();
+        // Navigate to invoices tab
+        setSearchParams({ subtab: "invoices" });
+      } else if (newStatus === "set_aside") {
+        toast.info("Load set aside for later review");
+        onClose();
       } else {
         toast.error("Audit failed - Load requires action");
+        onClose();
       }
-      onClose();
     },
     onError: () => {
       toast.error("Failed to update load status");
