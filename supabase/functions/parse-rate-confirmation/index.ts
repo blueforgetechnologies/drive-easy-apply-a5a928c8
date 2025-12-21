@@ -36,6 +36,13 @@ IMPORTANT FIELD MAPPINGS:
 - "Receiver" or "Consignee" = Destination/Delivery location
 - Look for MC# or DOT# to identify the customer/broker
 
+CRITICAL - BILLING PARTY EXTRACTION:
+- Look for a separate "Bill To", "Billing Party", "Invoice To", "Remit To", or "Payment" section
+- This is who should receive the invoice - may be different from the broker/customer
+- If no explicit billing party is found, the billing party fields should be left null (the system will default to using broker info)
+- Common labels: "Bill To:", "Invoice To:", "Billing Address:", "Payment Address:", "Remit To:"
+- The billing party may have different address/contact than the broker
+
 CRITICAL - CUSTOMER LOAD ID EXTRACTION:
 - The customer_load_id is the MOST IMPORTANT identifier - look for it PROMINENTLY in the document
 - IT OFTEN APPEARS IN THE DOCUMENT TITLE like "Carrier Confirmation C539792" or "Rate Confirmation #12345"
@@ -152,6 +159,16 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
                   customer_phone: { type: 'string', description: 'Customer contact phone' },
                   customer_contact: { type: 'string', description: 'Customer contact person name' },
                   reference_number: { type: 'string', description: 'PO number or secondary reference' },
+                  
+                  // Billing Party info (who to invoice - may be different from broker)
+                  billing_party_name: { type: 'string', description: 'Billing party company name (from Bill To or Invoice To section)' },
+                  billing_party_address: { type: 'string', description: 'Billing party street address' },
+                  billing_party_city: { type: 'string', description: 'Billing party city' },
+                  billing_party_state: { type: 'string', description: 'Billing party state' },
+                  billing_party_zip: { type: 'string', description: 'Billing party zip code' },
+                  billing_party_contact: { type: 'string', description: 'Billing party contact person name' },
+                  billing_party_phone: { type: 'string', description: 'Billing party phone' },
+                  billing_party_email: { type: 'string', description: 'Billing party email' },
                   
                   // Cargo info
                   cargo_description: { type: 'string', description: 'Cargo/commodity description' },
@@ -335,6 +352,18 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
         extractedData.delivery_date = extractedData.delivery_date || lastDelivery.scheduled_date;
         extractedData.delivery_time = extractedData.delivery_time || lastDelivery.scheduled_time;
       }
+    }
+
+    // BILLING PARTY FALLBACK: If no billing party found, default to broker/customer info
+    if (!extractedData.billing_party_name) {
+      extractedData.billing_party_name = extractedData.customer_name;
+      extractedData.billing_party_address = extractedData.customer_address;
+      extractedData.billing_party_city = extractedData.customer_city;
+      extractedData.billing_party_state = extractedData.customer_state;
+      extractedData.billing_party_zip = extractedData.customer_zip;
+      extractedData.billing_party_contact = extractedData.customer_contact;
+      extractedData.billing_party_phone = extractedData.customer_phone;
+      extractedData.billing_party_email = extractedData.customer_email;
     }
 
     console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
