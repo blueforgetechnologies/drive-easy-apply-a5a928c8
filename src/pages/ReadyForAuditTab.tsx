@@ -104,26 +104,37 @@ export default function ReadyForAuditTab() {
               <p className="text-sm">Loads marked as "Ready for Audit" will appear here</p>
             </div>
           ) : (
-            <div className="overflow-hidden">
+            <div className="rounded-lg border overflow-hidden shadow-lg">
               <Table className="text-sm">
                 <TableHeader>
-                  <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Our Load ID</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Carrier</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Origin</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Pick Up</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Rate</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Load Owner</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-1.5 h-auto">Truck ID</TableHead>
-                  </TableRow>
-                  <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-0 h-auto pb-1.5">Customer Load</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-0 h-auto pb-1.5">Customer</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-0 h-auto pb-1.5">Destination</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-0 h-auto pb-1.5">Drop Off Date</TableHead>
-                    <TableHead className="py-0 h-auto"></TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-0 h-auto pb-1.5">Dispatcher</TableHead>
-                    <TableHead className="text-primary font-medium uppercase text-[11px] py-0 h-auto pb-1.5">Driver</TableHead>
+                  <TableRow className="bg-muted/50 backdrop-blur-sm border-b-0">
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Our Load ID</div>
+                      <div className="text-muted-foreground font-normal">Customer Load</div>
+                    </TableHead>
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Carrier</div>
+                      <div className="text-muted-foreground font-normal">Customer</div>
+                    </TableHead>
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Origin</div>
+                      <div className="text-muted-foreground font-normal">Destination</div>
+                    </TableHead>
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Pick Up</div>
+                      <div className="text-muted-foreground font-normal">Drop Off Date</div>
+                    </TableHead>
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Rate</div>
+                    </TableHead>
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Load Owner</div>
+                      <div className="text-muted-foreground font-normal">Dispatcher</div>
+                    </TableHead>
+                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                      <div>Truck ID</div>
+                      <div className="text-muted-foreground font-normal">Driver</div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -137,53 +148,52 @@ export default function ReadyForAuditTab() {
                       ? `${dispatcher.first_name || ""} ${dispatcher.last_name || ""}`.trim()
                       : "";
                     const driverName = getDriverName(load.driver);
+                    const isSetAside = load.status === "set_aside";
 
-                      const isSetAside = load.status === "set_aside";
-
-                      return (
-                        <TableRow 
-                          key={load.id} 
-                          className={`cursor-pointer hover:bg-muted/50 border-t ${isSetAside ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : ""}`}
-                          onClick={() => setSelectedLoadId(load.id)}
-                        >
-                          <TableCell className="align-top py-2">
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-sm">{load.load_number}</div>
-                              {isSetAside && (
-                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500 text-white">
-                                  Set Aside
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
-                          </TableCell>
-                          <TableCell className="align-top py-2">
-                            <div className="font-semibold text-sm">{load.carriers?.name || ""}</div>
-                            <div className="text-muted-foreground text-xs">{load.customers?.name || ""}</div>
-                          </TableCell>
-                          <TableCell className="align-top py-2">
-                            <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}`.trim() : ""}</div>
-                            <div className="text-muted-foreground text-xs">
-                              {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}`.trim() : ""}
-                            </div>
-                          </TableCell>
-                          <TableCell className="align-top py-2">
-                            <div className="text-sm">{formatDate(load.pickup_date)}</div>
-                            <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
-                          </TableCell>
-                          <TableCell className="align-top py-2">
-                            <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
-                          </TableCell>
-                          <TableCell className="align-top py-2">
-                            <div className="font-medium text-sm">{loadOwnerName}</div>
-                            <div className="text-muted-foreground text-xs">{dispatcherName}</div>
-                          </TableCell>
-                          <TableCell className="align-top py-2">
-                            <div className="font-medium text-sm">{load.vehicles?.vehicle_number || ""}</div>
-                            <div className="text-muted-foreground text-xs">{driverName}</div>
-                          </TableCell>
-                        </TableRow>
-                      );
+                    return (
+                      <TableRow 
+                        key={load.id} 
+                        className={`cursor-pointer hover:bg-muted/50 transition-colors ${isSetAside ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : "border-l-4 border-l-primary"}`}
+                        onClick={() => setSelectedLoadId(load.id)}
+                      >
+                        <TableCell className="py-2 px-3">
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium text-sm">{load.load_number}</div>
+                            {isSetAside && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-sm">
+                                Set Aside
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                          <div className="font-semibold text-sm">{load.carriers?.name || ""}</div>
+                          <div className="text-muted-foreground text-xs">{load.customers?.name || ""}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                          <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}`.trim() : ""}</div>
+                          <div className="text-muted-foreground text-xs">
+                            {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}`.trim() : ""}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                          <div className="text-sm">{formatDate(load.pickup_date)}</div>
+                          <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                          <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                          <div className="font-medium text-sm">{loadOwnerName}</div>
+                          <div className="text-muted-foreground text-xs">{dispatcherName}</div>
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                          <div className="font-medium text-sm">{load.vehicles?.vehicle_number || ""}</div>
+                          <div className="text-muted-foreground text-xs">{driverName}</div>
+                        </TableCell>
+                      </TableRow>
+                    );
                   })}
                 </TableBody>
               </Table>
