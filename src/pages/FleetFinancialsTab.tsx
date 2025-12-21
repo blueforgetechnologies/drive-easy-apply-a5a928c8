@@ -389,7 +389,7 @@ export default function FleetFinancialsTab() {
                   onClick={() => setSelectedVehicleId(vehicle.id)}
                   className="whitespace-nowrap"
                 >
-                  {getCarrierAbbr(vehicle.carrier)}{getCarrierAbbr(vehicle.carrier) ? "-" : ""}{vehicle.vehicle_number}
+                  {vehicle.vehicle_number}
                 </Button>
               ))}
             </div>
