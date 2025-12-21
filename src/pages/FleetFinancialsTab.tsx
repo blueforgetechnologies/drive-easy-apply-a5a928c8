@@ -84,6 +84,7 @@ export default function FleetFinancialsTab() {
     const now = new Date();
     return format(now, "yyyy-MM");
   });
+  const [showColumnLines, setShowColumnLines] = useState(false);
 
   // Load all data
   useEffect(() => {
@@ -410,12 +411,21 @@ export default function FleetFinancialsTab() {
               Vehicle: {selectedVehicle.vehicle_number} | Carrier: {selectedVehicle.carrierName || "N/A"}
             </span>
           )}
+          <div className="ml-auto">
+            <Button
+              variant={showColumnLines ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowColumnLines(!showColumnLines)}
+            >
+              {showColumnLines ? "Hide Lines" : "Show Lines"}
+            </Button>
+          </div>
         </div>
 
         {/* Data Table */}
         <ScrollArea className="flex-1 overflow-auto">
           <div className="min-w-[1800px]">
-            <Table>
+            <Table className={showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : ""}>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 <TableRow>
                   <TableHead className="w-[100px]">P/U Date</TableHead>
