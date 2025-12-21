@@ -782,6 +782,21 @@ export default function LoadsTab() {
               </h3>
               <RateConfirmationUploader
                 onDataExtracted={(data) => {
+                  // Helper to extract HH:MM from time string (handles ranges like "12:00-17:00")
+                  const extractTime = (timeStr: string | undefined): string | null => {
+                    if (!timeStr) return null;
+                    // If it's a range like "12:00-17:00", take the first time
+                    const rangeMatch = timeStr.match(/^(\d{1,2}:\d{2})/);
+                    if (rangeMatch) return rangeMatch[1].padStart(5, '0');
+                    // If it's a simple time like "08:00" or "8:00"
+                    const simpleMatch = timeStr.match(/^(\d{1,2}):(\d{2})/);
+                    if (simpleMatch) return `${simpleMatch[1].padStart(2, '0')}:${simpleMatch[2]}`;
+                    return null;
+                  };
+
+                  const pickupTime = extractTime(data.pickup_time);
+                  const deliveryTime = extractTime(data.delivery_time);
+
                   // Map extracted data to form fields
                   // Customer's load ID goes to reference_number (shown in CUSTOMER LOAD column), we keep our own LD- load_number
                   setFormData(prev => ({
@@ -793,20 +808,20 @@ export default function LoadsTab() {
                     broker_contact: data.customer_contact || prev.broker_contact,
                     broker_phone: data.customer_phone || prev.broker_phone,
                     broker_email: data.customer_email || prev.broker_email,
-                    // Shipper info
+                    // Shipper info - also try to get phone from stops if not directly available
                     shipper_name: data.shipper_name || prev.shipper_name,
                     shipper_address: data.shipper_address || prev.shipper_address,
                     shipper_city: data.shipper_city || prev.shipper_city,
                     shipper_state: data.shipper_state || prev.shipper_state,
                     shipper_zip: data.shipper_zip || prev.shipper_zip,
                     shipper_contact: data.shipper_contact || prev.shipper_contact,
-                    shipper_phone: data.shipper_phone || prev.shipper_phone,
+                    shipper_phone: data.shipper_phone || data.stops?.[0]?.contact_phone || prev.shipper_phone,
                     shipper_email: data.shipper_email || prev.shipper_email,
                     pickup_location: data.shipper_name || prev.pickup_location,
                     pickup_city: data.shipper_city || prev.pickup_city,
                     pickup_state: data.shipper_state || prev.pickup_state,
-                    pickup_date: data.pickup_date && data.pickup_time 
-                      ? `${data.pickup_date}T${data.pickup_time}` 
+                    pickup_date: data.pickup_date && pickupTime 
+                      ? `${data.pickup_date}T${pickupTime}` 
                       : data.pickup_date 
                         ? `${data.pickup_date}T08:00` 
                         : prev.pickup_date,
@@ -817,13 +832,13 @@ export default function LoadsTab() {
                     receiver_state: data.receiver_state || prev.receiver_state,
                     receiver_zip: data.receiver_zip || prev.receiver_zip,
                     receiver_contact: data.receiver_contact || prev.receiver_contact,
-                    receiver_phone: data.receiver_phone || prev.receiver_phone,
+                    receiver_phone: data.receiver_phone || data.stops?.[1]?.contact_phone || prev.receiver_phone,
                     receiver_email: data.receiver_email || prev.receiver_email,
                     delivery_location: data.receiver_name || prev.delivery_location,
                     delivery_city: data.receiver_city || prev.delivery_city,
                     delivery_state: data.receiver_state || prev.delivery_state,
-                    delivery_date: data.delivery_date && data.delivery_time 
-                      ? `${data.delivery_date}T${data.delivery_time}` 
+                    delivery_date: data.delivery_date && deliveryTime 
+                      ? `${data.delivery_date}T${deliveryTime}` 
                       : data.delivery_date 
                         ? `${data.delivery_date}T08:00` 
                         : prev.delivery_date,
