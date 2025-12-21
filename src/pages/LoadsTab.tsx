@@ -121,6 +121,7 @@ export default function LoadsTab() {
     'at_delivery',
     'delivered',
     'completed',
+    'closed',
     'cancelled',
     'tonu'
   ];
@@ -523,6 +524,8 @@ export default function LoadsTab() {
         return { label: "Delivered", color: "bg-transparent border-emerald-500 text-emerald-600" };
       case "completed":
         return { label: "Completed", color: "bg-transparent border-emerald-700 text-emerald-700" };
+      case "closed":
+        return { label: "CLOSED", color: "bg-transparent border-black text-black dark:border-white dark:text-white" };
       case "ready_for_audit":
         return { label: "Ready for Audit", color: "bg-transparent border-cyan-600 text-cyan-600" };
       case "cancelled":
@@ -794,6 +797,7 @@ export default function LoadsTab() {
     at_delivery: loads.filter(l => l.status === 'at_delivery').length,
     delivered: loads.filter(l => l.status === 'delivered').length,
     completed: loads.filter(l => l.status === 'completed').length,
+    closed: loads.filter(l => l.status === 'closed').length,
     ready_for_audit: loads.filter(l => l.status === 'ready_for_audit').length,
     cancelled: loads.filter(l => l.status === 'cancelled').length,
     tonu: loads.filter(l => l.status === 'tonu').length,
@@ -906,6 +910,7 @@ export default function LoadsTab() {
       at_delivery: "bg-teal-500 hover:bg-teal-600",
       delivered: "bg-green-600 hover:bg-green-700",
       completed: "bg-green-800 hover:bg-green-900",
+      closed: "bg-black hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-200",
       ready_for_audit: "bg-cyan-600 hover:bg-cyan-700",
       cancelled: "bg-red-500 hover:bg-red-600",
       tonu: "bg-orange-500 hover:bg-orange-600",
@@ -1630,6 +1635,7 @@ export default function LoadsTab() {
           { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
           { key: "delivered", label: "Delivered", count: statusCounts.delivered, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
           { key: "completed", label: "Completed", count: statusCounts.completed, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success" },
+          { key: "closed", label: "CLOSED", count: statusCounts.closed, activeClass: "bg-black text-white dark:bg-white dark:text-black", badgeClass: "bg-white/20 text-white dark:bg-black/20 dark:text-black" },
           { key: "ready_for_audit", label: "Ready for Audit", count: statusCounts.ready_for_audit, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary" },
           { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger" },
           { key: "tonu", label: "TONU", count: statusCounts.tonu, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning" },
