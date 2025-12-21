@@ -381,9 +381,9 @@ export default function FleetFinancialsTab() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Vehicle Tabs */}
-        <div className="border-b bg-card p-4">
+        <div className="border-b bg-card px-3 py-1.5">
           <ScrollArea className="w-full">
-            <div className="flex gap-2 pb-2">
+            <div className="flex gap-1.5">
               {filteredVehicles.map(vehicle => (
                 <Button
                   key={vehicle.id}
@@ -401,7 +401,7 @@ export default function FleetFinancialsTab() {
         </div>
 
         {/* Period Selector */}
-        <div className="p-4 flex items-center gap-2 border-b bg-card flex-wrap">
+        <div className="px-3 py-1.5 flex items-center gap-1.5 border-b bg-card flex-wrap">
           <span className="text-sm font-medium mr-2">Period</span>
           {/* Quick month buttons */}
           {(() => {
