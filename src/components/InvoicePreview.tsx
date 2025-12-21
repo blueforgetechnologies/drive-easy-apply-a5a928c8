@@ -182,7 +182,7 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
   }
 
   return (
-    <Card className="mt-2 mb-3 overflow-hidden border border-primary/20 shadow-md text-[11px]">
+    <Card className="mt-2 mb-3 overflow-hidden border border-primary/20 shadow-md text-[11px] max-w-3xl mx-auto">
       {/* Header with close button */}
       <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-2 flex justify-between items-center border-b">
         <span className="font-semibold text-primary text-xs">Invoice Preview</span>
