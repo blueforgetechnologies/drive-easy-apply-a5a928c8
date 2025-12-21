@@ -76,14 +76,12 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch company profile
       const { data: companyData } = await supabase
         .from("company_profile")
         .select("*")
         .limit(1)
         .single();
 
-      // Fetch load details
       const { data: loadData } = await supabase
         .from("loads")
         .select(`
@@ -182,7 +180,6 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
 
   return (
     <Card className="mt-2 mb-4 overflow-hidden border-2 border-primary/20 shadow-lg">
-      {/* Header with close button */}
       <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-3 flex justify-between items-center border-b">
         <span className="font-semibold text-primary">Invoice Preview</span>
         <div className="flex gap-2">
@@ -208,9 +205,7 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
         </div>
       </div>
 
-      {/* Invoice Content */}
       <div ref={invoiceRef} className="p-8 bg-white">
-        {/* Company Header */}
         <div className="flex justify-between items-start mb-8">
           <div className="flex items-start gap-4">
             {company?.logo_url ? (
@@ -267,7 +262,6 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
 
         <Separator className="my-6" />
 
-        {/* Bill To / Remit To */}
         <div className="grid grid-cols-2 gap-8 mb-8">
           <div>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -334,7 +328,6 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
           </div>
         </div>
 
-        {/* Load Details Table */}
         <div className="mb-8">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Service Details
@@ -394,7 +387,6 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
           </div>
         </div>
 
-        {/* Totals */}
         <div className="flex justify-end">
           <div className="w-72">
             <div className="space-y-2">
@@ -419,7 +411,6 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
           </div>
         </div>
 
-        {/* Footer */}
         <div className="mt-8 pt-6 border-t">
           <div className="text-center text-sm text-muted-foreground">
             <p className="font-medium mb-1">Thank you for your business!</p>
