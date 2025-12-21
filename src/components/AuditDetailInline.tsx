@@ -377,53 +377,50 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       {/* Main Content */}
       <div className="flex gap-4">
         {/* Left Sidebar - Glass Card */}
-        <div className="w-72 flex-shrink-0">
-          <div className="bg-card/80 backdrop-blur-xl border rounded-xl shadow-lg p-4 space-y-4">
+        <div className="w-64 flex-shrink-0">
+          <div className="bg-card/80 backdrop-blur-xl border rounded-xl shadow-lg p-3 space-y-0 divide-y divide-border">
             {/* Navigation */}
-            <div className="flex items-center justify-center gap-2 pb-3 border-b">
+            <div className="flex items-center justify-center gap-1 pb-2">
               <button 
                 onClick={() => navigateToLoad(0)} 
                 disabled={currentIndex <= 0}
-                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronsLeft className="h-4 w-4 text-primary" />
+                <ChevronsLeft className="h-3.5 w-3.5 text-primary" />
               </button>
               <button 
                 onClick={() => navigateToLoad(currentIndex - 1)} 
                 disabled={currentIndex <= 0}
-                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronLeft className="h-4 w-4 text-primary" />
+                <ChevronLeft className="h-3.5 w-3.5 text-primary" />
               </button>
-              <span className="text-sm font-medium px-3 py-1 bg-muted rounded-full">
+              <span className="text-xs font-medium px-2 py-0.5 bg-muted rounded-full">
                 {currentIndex + 1} / {totalLoads}
               </span>
               <button 
                 onClick={() => navigateToLoad(currentIndex + 1)} 
                 disabled={currentIndex >= totalLoads - 1}
-                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronRight className="h-4 w-4 text-primary" />
+                <ChevronRight className="h-3.5 w-3.5 text-primary" />
               </button>
               <button 
                 onClick={() => navigateToLoad(totalLoads - 1)} 
                 disabled={currentIndex >= totalLoads - 1}
-                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronsRight className="h-4 w-4 text-primary" />
+                <ChevronsRight className="h-3.5 w-3.5 text-primary" />
               </button>
             </div>
 
             {/* Rate Confirmation Checklist */}
-            <div className="space-y-2">
-              <h3 className="text-primary font-semibold text-sm flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Rate Confirmation
-              </h3>
-              <div className="space-y-1 bg-muted/30 rounded-lg p-2">
+            <div className="py-2">
+              <h3 className="text-primary font-semibold text-xs mb-1.5">Rate Confirmation</h3>
+              <div className="divide-y divide-border/50">
                 {rateConfirmation.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between py-1.5 px-2 hover:bg-background/50 rounded-md transition-colors">
-                    <span className="text-xs font-medium">{item.label}</span>
+                  <div key={item.id} className="flex items-center justify-between py-1 hover:bg-muted/30 transition-colors">
+                    <span className="text-[11px]">{item.label}</span>
                     <div className="flex gap-1">
                       <ChecklistButton
                         status={item.status}
@@ -442,15 +439,12 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             </div>
 
             {/* Bill of Lading Checklist */}
-            <div className="space-y-2">
-              <h3 className="text-primary font-semibold text-sm flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Bill of Lading
-              </h3>
-              <div className="space-y-1 bg-muted/30 rounded-lg p-2">
+            <div className="py-2">
+              <h3 className="text-primary font-semibold text-xs mb-1.5">Bill of Lading</h3>
+              <div className="divide-y divide-border/50">
                 {billOfLading.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between py-1.5 px-2 hover:bg-background/50 rounded-md transition-colors">
-                    <span className="text-xs font-medium">{item.label}</span>
+                  <div key={item.id} className="flex items-center justify-between py-1 hover:bg-muted/30 transition-colors">
+                    <span className="text-[11px]">{item.label}</span>
                     <div className="flex gap-1">
                       <ChecklistButton
                         status={item.status}
@@ -469,29 +463,31 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             </div>
 
             {/* Notes */}
-            <div className="space-y-2">
-              <h3 className="text-primary font-semibold text-sm">Notes</h3>
+            <div className="py-2">
+              <h3 className="text-primary font-semibold text-xs mb-1.5">Notes</h3>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add audit notes..."
-                className="min-h-[100px] resize-none bg-muted/30 border-muted-foreground/20 focus:border-primary/50"
+                className="min-h-[80px] resize-none text-xs bg-muted/30 border-muted-foreground/20 focus:border-primary/50"
               />
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-2 pt-2">
               <Button
+                size="sm"
                 onClick={() => updateStatusMutation.mutate("completed")}
                 disabled={updateStatusMutation.isPending}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 shadow-lg shadow-emerald-500/20"
+                className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 h-8 text-xs"
               >
                 Approve
               </Button>
               <Button
+                size="sm"
                 onClick={() => updateStatusMutation.mutate("action_needed")}
                 disabled={updateStatusMutation.isPending}
-                className="bg-rose-500 hover:bg-rose-600 text-white flex-1 shadow-lg shadow-rose-500/20"
+                className="bg-rose-500 hover:bg-rose-600 text-white flex-1 h-8 text-xs"
               >
                 Fail
               </Button>
