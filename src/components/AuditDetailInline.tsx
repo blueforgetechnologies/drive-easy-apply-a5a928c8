@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -305,50 +306,72 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         </Button>
       </div>
 
-      {/* Header - Single row with stacked labels/values */}
-      <div className="border-l-4 border-l-primary pl-3 py-2">
-        <div className="grid grid-cols-7 gap-4">
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Our Load ID</div>
-            <div className="font-medium text-sm">{load.load_number}</div>
-            <div className="text-primary font-medium text-[11px] uppercase mt-1">Customer Load</div>
-            <div className="text-muted-foreground text-xs">{load.reference_number || "-"}</div>
-          </div>
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Carrier</div>
-            <div className="font-semibold text-sm">{carrier?.name || "-"}</div>
-            <div className="text-primary font-medium text-[11px] uppercase mt-1">Customer</div>
-            <div className="text-muted-foreground text-xs">{customer?.name || "-"}</div>
-          </div>
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Origin</div>
-            <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}` : "-"}</div>
-            <div className="text-primary font-medium text-[11px] uppercase mt-1">Destination</div>
-            <div className="text-muted-foreground text-xs">{load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}` : "-"}</div>
-          </div>
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Pick Up</div>
-            <div className="text-sm">{formatDate(load.pickup_date)}</div>
-            <div className="text-primary font-medium text-[11px] uppercase mt-1">Drop Off Date</div>
-            <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
-          </div>
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Rate</div>
-            <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
-          </div>
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Load Owner</div>
-            <div className="font-medium text-sm">{loadOwnerName || "-"}</div>
-            <div className="text-primary font-medium text-[11px] uppercase mt-1">Dispatcher</div>
-            <div className="text-muted-foreground text-xs">{dispatcherName || "-"}</div>
-          </div>
-          <div>
-            <div className="text-primary font-medium text-[11px] uppercase">Truck ID</div>
-            <div className="font-medium text-sm">{vehicle?.vehicle_number || "-"}</div>
-            <div className="text-primary font-medium text-[11px] uppercase mt-1">Driver</div>
-            <div className="text-muted-foreground text-xs">{getDriverName(load.driver) || "-"}</div>
-          </div>
-        </div>
+      {/* Header Table - Glass effect with separate header and data rows */}
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 backdrop-blur-sm">
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Our Load ID</div>
+                <div className="text-muted-foreground">Customer Load</div>
+              </TableHead>
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Carrier</div>
+                <div className="text-muted-foreground">Customer</div>
+              </TableHead>
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Origin</div>
+                <div className="text-muted-foreground">Destination</div>
+              </TableHead>
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Pick Up</div>
+                <div className="text-muted-foreground">Drop Off Date</div>
+              </TableHead>
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Rate</div>
+              </TableHead>
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Load Owner</div>
+                <div className="text-muted-foreground">Dispatcher</div>
+              </TableHead>
+              <TableHead className="text-primary text-xs py-2 px-3">
+                <div>Truck ID</div>
+                <div className="text-muted-foreground">Driver</div>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow className="border-l-4 border-l-primary">
+              <TableCell className="py-2 px-3">
+                <div className="font-medium text-sm">{load.load_number}</div>
+                <div className="text-muted-foreground text-xs">{load.reference_number || "-"}</div>
+              </TableCell>
+              <TableCell className="py-2 px-3">
+                <div className="font-semibold text-sm">{carrier?.name || "-"}</div>
+                <div className="text-muted-foreground text-xs">{customer?.name || "-"}</div>
+              </TableCell>
+              <TableCell className="py-2 px-3">
+                <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}` : "-"}</div>
+                <div className="text-muted-foreground text-xs">{load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}` : "-"}</div>
+              </TableCell>
+              <TableCell className="py-2 px-3">
+                <div className="text-sm">{formatDate(load.pickup_date)}</div>
+                <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
+              </TableCell>
+              <TableCell className="py-2 px-3">
+                <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
+              </TableCell>
+              <TableCell className="py-2 px-3">
+                <div className="font-medium text-sm">{loadOwnerName || "-"}</div>
+                <div className="text-muted-foreground text-xs">{dispatcherName || "-"}</div>
+              </TableCell>
+              <TableCell className="py-2 px-3">
+                <div className="font-medium text-sm">{vehicle?.vehicle_number || "-"}</div>
+                <div className="text-muted-foreground text-xs">{getDriverName(load.driver) || "-"}</div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Main Content */}
