@@ -233,6 +233,7 @@ export default function LoadDetail() {
           other_charges: load.other_charges,
           estimated_miles: load.estimated_miles,
           actual_miles: load.actual_miles,
+          empty_miles: load.empty_miles,
           special_instructions: load.special_instructions,
           dispatch_notes: load.dispatch_notes,
           billing_notes: load.billing_notes,
