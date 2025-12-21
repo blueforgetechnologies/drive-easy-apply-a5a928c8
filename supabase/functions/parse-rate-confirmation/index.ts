@@ -31,31 +31,33 @@ serve(async (req) => {
 
 Extract ALL available information from the document. Be thorough and extract every field you can find.
 
+CRITICAL - UNDERSTANDING BROKER vs BILLING PARTY:
+1. BROKER/CUSTOMER (customer_* fields): The company that arranged/brokered the load. This is typically:
+   - The company whose letterhead/logo appears on the rate confirmation
+   - The company with MC#/DOT# at the top of the document
+   - The company listed as "Broker" or whose name appears prominently in header
+   - Example: "Saturn Freight Systems" if they issued the rate confirmation
+
+2. BILLING PARTY (billing_party_* fields): The company to whom we send invoices/bills for payment. This may be:
+   - Explicitly labeled as "Bill To", "Billing Party", "Remit To", "Payment Contact"
+   - Sometimes the same as the broker if not separately specified
+   - A third-party factoring company or payment processor
+   - Example: "Allstates WorldCargo" if they are listed as billing party
+
+EXTRACTION RULES:
+- ALWAYS extract the broker info into customer_* fields (the company that issued/arranged the load)
+- Look for explicit "Bill To" or "Billing Party" section for billing_party_* fields
+- If NO separate billing party is specified, leave billing_party_* fields null (the frontend will default to customer)
+
 IMPORTANT FIELD MAPPINGS:
 - "Shipper" = Origin/Pickup location  
 - "Receiver" or "Consignee" = Destination/Delivery location
-- Look for MC# or DOT# to identify the customer/broker
 
 CRITICAL - CUSTOMER LOAD ID EXTRACTION:
 - The customer_load_id is the MOST IMPORTANT identifier - look for it PROMINENTLY in the document
 - IT OFTEN APPEARS IN THE DOCUMENT TITLE like "Carrier Confirmation C539792" or "Rate Confirmation #12345"
 - The number right after the title IS the customer_load_id (e.g., "C539792" from "Carrier Confirmation C539792")
 - Other common labels: "PRO #", "Pro#", "Order #", "Order#", "Reference #", "Ref#", "Load #", "Confirmation #", "BOL #", "PO #", "Trip #", "Shipment #", "PROBILL #"
-- May appear multiple times - prioritize the one in the document title/header
-- Examples: 
-  - "Carrier Confirmation C539792" → customer_load_id = "C539792"
-  - "PRO # 1134288" → customer_load_id = "1134288"
-  - "Rate Confirmation #RC-45678" → customer_load_id = "RC-45678"
-- PROBILL # is often a secondary reference number - capture as reference_number if different from customer_load_id
-- Miles may appear as: loaded miles, estimated miles, trip miles, total miles
-- Pieces may appear as: pieces, pallets, skids, units, qty
-
-CRITICAL - BROKER/CUSTOMER vs CARRIER DISTINCTION:
-- "Arranged by" or "Broker Contact" = This is the CUSTOMER/BROKER contact person - extract as customer_contact
-- Look for email addresses near "Arranged by" or "E-Mail" labels - extract as customer_email
-- "Carrier" section = This is YOUR company (the trucking company), NOT the customer - do NOT use carrier info for customer fields
-- The customer/broker is the company HIRING you to haul freight - they appear at the top of the document usually
-- The carrier is the company DOING the hauling (your company)
 
 MULTI-STOP HANDLING:
 - Look for multiple pickup locations (origins, shippers) - may be numbered stops like Stop 1, Stop 2
@@ -76,34 +78,28 @@ Extraction format guidelines:
 
     const userPrompt = `Extract all load information from this rate confirmation document. The document is named "${fileName}".
 
+CRITICAL DISTINCTION - Read carefully:
+1. BROKER/CUSTOMER: The company that ISSUED this rate confirmation (their letterhead, MC#, logo at top). Extract into customer_* fields.
+2. BILLING PARTY: Look for explicit "Bill To", "Billing Party", "Remit To" section. If found, extract into billing_party_* fields. If NOT found, leave billing_party_* fields empty.
+
 Include:
-1. Customer/broker company name, address, MC#, DOT#, contact info
-2. Load identification numbers (their reference #, Pro#, Order#, etc.)
-3. Rate and any additional charges
-4. Miles (loaded miles)
-5. Pieces/pallets count  
-6. ALL pickup stops (origins/shippers) with full address, contact, dates/times
-7. ALL delivery stops (destinations/receivers/consignees) with full address, contact, dates/times
-8. Vehicle/equipment type and size requirements
-9. Cargo description, weight, dimensions
-10. Any special instructions or notes
+1. Broker/Customer company info (who issued this document) → customer_* fields
+2. Billing party info (if explicitly specified as separate from broker) → billing_party_* fields
+3. Load identification numbers (their reference #, Pro#, Order#, etc.)
+4. Rate and any additional charges
+5. Miles (loaded miles)
+6. Pieces/pallets count  
+7. ALL pickup stops (origins/shippers) with full address, contact, dates/times
+8. ALL delivery stops (destinations/receivers/consignees) with full address, contact, dates/times
+9. Vehicle/equipment type and size requirements
+10. Cargo description, weight, dimensions
+11. Any special instructions or notes
 
 CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separate stop in the stops array.`;
 
-    // Build the message content based on mime type
     let messageContent: any[];
     
-    if (mimeType.startsWith('image/')) {
-      messageContent = [
-        { type: 'text', text: userPrompt },
-        { 
-          type: 'image_url', 
-          image_url: { 
-            url: `data:${mimeType};base64,${documentBase64}` 
-          } 
-        }
-      ];
-    } else if (mimeType === 'application/pdf') {
+    if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
       messageContent = [
         { type: 'text', text: userPrompt },
         { 
@@ -138,20 +134,30 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
               parameters: {
                 type: 'object',
                 properties: {
-                  // Customer/Broker info
+                  // Customer/Broker info (the company that issued the rate confirmation)
                   customer_load_id: { type: 'string', description: 'Customer/broker load ID (Pro#, Order#, Reference#, etc.)' },
                   rate: { type: 'number', description: 'Rate amount in dollars' },
-                  customer_name: { type: 'string', description: 'Customer/broker company name' },
-                  customer_address: { type: 'string', description: 'Customer/broker street address' },
-                  customer_city: { type: 'string', description: 'Customer/broker city' },
-                  customer_state: { type: 'string', description: 'Customer/broker state' },
-                  customer_zip: { type: 'string', description: 'Customer/broker zip code' },
-                  customer_mc_number: { type: 'string', description: 'Customer/broker MC#' },
-                  customer_dot_number: { type: 'string', description: 'Customer/broker DOT#' },
-                  customer_email: { type: 'string', description: 'Customer contact email' },
-                  customer_phone: { type: 'string', description: 'Customer contact phone' },
-                  customer_contact: { type: 'string', description: 'Customer contact person name' },
+                  customer_name: { type: 'string', description: 'Broker company name (who issued this rate confirmation)' },
+                  customer_address: { type: 'string', description: 'Broker street address' },
+                  customer_city: { type: 'string', description: 'Broker city' },
+                  customer_state: { type: 'string', description: 'Broker state' },
+                  customer_zip: { type: 'string', description: 'Broker zip code' },
+                  customer_mc_number: { type: 'string', description: 'Broker MC#' },
+                  customer_dot_number: { type: 'string', description: 'Broker DOT#' },
+                  customer_email: { type: 'string', description: 'Broker contact email' },
+                  customer_phone: { type: 'string', description: 'Broker contact phone' },
+                  customer_contact: { type: 'string', description: 'Broker contact person name' },
                   reference_number: { type: 'string', description: 'PO number or secondary reference' },
+                  
+                  // Billing Party info (who we bill/invoice - may be different from broker)
+                  billing_party_name: { type: 'string', description: 'Billing party company name (if explicitly specified as "Bill To" or "Billing Party")' },
+                  billing_party_address: { type: 'string', description: 'Billing party street address' },
+                  billing_party_city: { type: 'string', description: 'Billing party city' },
+                  billing_party_state: { type: 'string', description: 'Billing party state' },
+                  billing_party_zip: { type: 'string', description: 'Billing party zip code' },
+                  billing_party_contact: { type: 'string', description: 'Billing party contact person' },
+                  billing_party_phone: { type: 'string', description: 'Billing party phone' },
+                  billing_party_email: { type: 'string', description: 'Billing party email' },
                   
                   // Cargo info
                   cargo_description: { type: 'string', description: 'Cargo/commodity description' },
@@ -249,7 +255,6 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
     const data = await response.json();
     console.log('AI response received');
 
-    // Extract the tool call result
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== 'extract_load_data') {
       throw new Error('No valid extraction result from AI');
@@ -261,7 +266,6 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
     if (!extractedData.stops || extractedData.stops.length === 0) {
       extractedData.stops = [];
       
-      // Create pickup stop from legacy shipper fields
       if (extractedData.shipper_name || extractedData.shipper_city) {
         extractedData.stops.push({
           stop_type: 'pickup',
@@ -279,7 +283,6 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
         });
       }
       
-      // Create delivery stop from legacy receiver fields
       if (extractedData.receiver_name || extractedData.receiver_city) {
         extractedData.stops.push({
           stop_type: 'delivery',
@@ -305,8 +308,7 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
         if (!stop.stop_sequence) stop.stop_sequence = index + 1;
       });
       
-      // IMPORTANT: Populate legacy shipper/receiver fields from stops array for backwards compatibility
-      // This ensures the form mapping in LoadsTab works correctly
+      // Populate legacy shipper/receiver fields from stops array for backwards compatibility
       const firstPickup = extractedData.stops.find((s: any) => s.stop_type === 'pickup');
       const lastDelivery = [...extractedData.stops].reverse().find((s: any) => s.stop_type === 'delivery');
       
