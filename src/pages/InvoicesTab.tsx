@@ -154,8 +154,25 @@ export default function InvoicesTab() {
         return;
       }
 
+      // Get the highest invoice number and increment
+      const { data: lastInvoice } = await supabase
+        .from("invoices" as any)
+        .select("invoice_number")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      let nextNumber = 1000001; // Start from 1000001
+      const invoiceRecord = lastInvoice as { invoice_number?: string } | null;
+      if (invoiceRecord?.invoice_number) {
+        const lastNum = parseInt(invoiceRecord.invoice_number, 10);
+        if (!isNaN(lastNum)) {
+          nextNumber = lastNum + 1;
+        }
+      }
+
       const invoiceData = {
-        invoice_number: `INV${Date.now()}`,
+        invoice_number: String(nextNumber),
         customer_name: customer.name,
         customer_email: customer.email,
         customer_address: customer.address,
