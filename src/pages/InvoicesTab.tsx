@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2 } from "lucide-react";
+import InvoicePreview from "@/components/InvoicePreview";
 
 interface Invoice {
   id: string;
@@ -71,6 +72,7 @@ export default function InvoicesTab() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [expandedLoadId, setExpandedLoadId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -509,41 +511,61 @@ export default function InvoicesTab() {
                   const expectedDeposit = invoiceAmount - advanceIssued;
                   const balance = invoiceAmount;
 
+                  const isExpanded = expandedLoadId === load.id;
+
                   return (
-                    <TableRow
-                      key={load.id}
-                      className="cursor-pointer hover:bg-muted/50 border-l-4 border-l-amber-500"
-                      onClick={() => navigate(`/dashboard/load/${load.id}`)}
-                    >
-                      <TableCell className="font-medium text-primary">{load.invoice_number || load.load_number}</TableCell>
-                      <TableCell>{load.customers?.name || "—"}</TableCell>
-                      <TableCell>{load.broker_name || "—"}</TableCell>
-                      <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
-                      <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
-                        {daysSinceBilling}
-                      </TableCell>
-                      <TableCell>{formatCurrency(load.rate)}</TableCell>
-                      <TableCell>{formatCurrency(0)}</TableCell>
-                      <TableCell>{formatCurrency(expectedDeposit)}</TableCell>
-                      <TableCell>{formatCurrency(balance)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Pending</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={load.notes || ""}>
-                        {load.notes || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => sendBackToAudit(load.id, e)}
-                          className="text-muted-foreground hover:text-primary"
+                    <Fragment key={load.id}>
+                      <TableRow
+                        className={`hover:bg-muted/50 border-l-4 border-l-amber-500 ${isExpanded ? 'bg-muted/30' : ''}`}
+                      >
+                        <TableCell 
+                          className="font-medium text-primary cursor-pointer hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedLoadId(isExpanded ? null : load.id);
+                          }}
                         >
-                          <Undo2 className="h-4 w-4 mr-1" />
-                          Back to Audit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                          {load.invoice_number || load.load_number}
+                        </TableCell>
+                        <TableCell>{load.customers?.name || "—"}</TableCell>
+                        <TableCell>{load.broker_name || "—"}</TableCell>
+                        <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
+                        <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
+                          {daysSinceBilling}
+                        </TableCell>
+                        <TableCell>{formatCurrency(load.rate)}</TableCell>
+                        <TableCell>{formatCurrency(0)}</TableCell>
+                        <TableCell>{formatCurrency(expectedDeposit)}</TableCell>
+                        <TableCell>{formatCurrency(balance)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">Pending</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={load.notes || ""}>
+                          {load.notes || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => sendBackToAudit(load.id, e)}
+                            className="text-muted-foreground hover:text-primary"
+                          >
+                            <Undo2 className="h-4 w-4 mr-1" />
+                            Back to Audit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={12} className="p-0">
+                            <InvoicePreview 
+                              loadId={load.id} 
+                              onClose={() => setExpandedLoadId(null)} 
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </TableBody>
