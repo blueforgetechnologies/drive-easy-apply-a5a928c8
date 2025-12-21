@@ -376,114 +376,126 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
       {/* Main Content */}
       <div className="flex gap-4">
-        {/* Left Sidebar */}
-        <div className="w-72 flex-shrink-0 space-y-3">
-          {/* Navigation */}
-          <div className="flex items-center gap-1 text-primary">
-            <button 
-              onClick={() => navigateToLoad(0)} 
-              disabled={currentIndex <= 0}
-              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
-            >
-              <ChevronsLeft className="h-3.5 w-3.5" />
-            </button>
-            <button 
-              onClick={() => navigateToLoad(currentIndex - 1)} 
-              disabled={currentIndex <= 0}
-              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <span className="text-sm">
-              {currentIndex + 1}/{totalLoads}
-            </span>
-            <button 
-              onClick={() => navigateToLoad(currentIndex + 1)} 
-              disabled={currentIndex >= totalLoads - 1}
-              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-            <button 
-              onClick={() => navigateToLoad(totalLoads - 1)} 
-              disabled={currentIndex >= totalLoads - 1}
-              className="hover:bg-muted p-0.5 rounded disabled:opacity-30"
-            >
-              <ChevronsRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
+        {/* Left Sidebar - Glass Card */}
+        <div className="w-72 flex-shrink-0">
+          <div className="bg-card/80 backdrop-blur-xl border rounded-xl shadow-lg p-4 space-y-4">
+            {/* Navigation */}
+            <div className="flex items-center justify-center gap-2 pb-3 border-b">
+              <button 
+                onClick={() => navigateToLoad(0)} 
+                disabled={currentIndex <= 0}
+                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+              >
+                <ChevronsLeft className="h-4 w-4 text-primary" />
+              </button>
+              <button 
+                onClick={() => navigateToLoad(currentIndex - 1)} 
+                disabled={currentIndex <= 0}
+                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 text-primary" />
+              </button>
+              <span className="text-sm font-medium px-3 py-1 bg-muted rounded-full">
+                {currentIndex + 1} / {totalLoads}
+              </span>
+              <button 
+                onClick={() => navigateToLoad(currentIndex + 1)} 
+                disabled={currentIndex >= totalLoads - 1}
+                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 text-primary" />
+              </button>
+              <button 
+                onClick={() => navigateToLoad(totalLoads - 1)} 
+                disabled={currentIndex >= totalLoads - 1}
+                className="hover:bg-primary/10 p-1.5 rounded-lg disabled:opacity-30 transition-colors"
+              >
+                <ChevronsRight className="h-4 w-4 text-primary" />
+              </button>
+            </div>
 
-          {/* Rate Confirmation Checklist */}
-          <div className="space-y-1">
-            <h3 className="text-primary font-semibold text-sm">Rate Confirmation</h3>
-            {rateConfirmation.map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-0.5">
-                <span className="text-xs text-muted-foreground">{item.label}</span>
-                <div className="flex gap-1">
-                  <ChecklistButton
-                    status={item.status}
-                    type="match"
-                    onClick={() => updateChecklistItem(rateConfirmation, setRateConfirmation, item.id, "match")}
-                  />
-                  <ChecklistButton
-                    status={item.status}
-                    type="fail"
-                    onClick={() => updateChecklistItem(rateConfirmation, setRateConfirmation, item.id, "fail")}
-                  />
-                </div>
+            {/* Rate Confirmation Checklist */}
+            <div className="space-y-2">
+              <h3 className="text-primary font-semibold text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Rate Confirmation
+              </h3>
+              <div className="space-y-1 bg-muted/30 rounded-lg p-2">
+                {rateConfirmation.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between py-1.5 px-2 hover:bg-background/50 rounded-md transition-colors">
+                    <span className="text-xs font-medium">{item.label}</span>
+                    <div className="flex gap-1">
+                      <ChecklistButton
+                        status={item.status}
+                        type="match"
+                        onClick={() => updateChecklistItem(rateConfirmation, setRateConfirmation, item.id, "match")}
+                      />
+                      <ChecklistButton
+                        status={item.status}
+                        type="fail"
+                        onClick={() => updateChecklistItem(rateConfirmation, setRateConfirmation, item.id, "fail")}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Bill of Lading Checklist */}
-          <div className="space-y-1">
-            <h3 className="text-primary font-semibold text-sm">Bill of lading</h3>
-            {billOfLading.map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-0.5">
-                <span className="text-xs text-muted-foreground">{item.label}</span>
-                <div className="flex gap-1">
-                  <ChecklistButton
-                    status={item.status}
-                    type="match"
-                    onClick={() => updateChecklistItem(billOfLading, setBillOfLading, item.id, "match")}
-                  />
-                  <ChecklistButton
-                    status={item.status}
-                    type="fail"
-                    onClick={() => updateChecklistItem(billOfLading, setBillOfLading, item.id, "fail")}
-                  />
-                </div>
+            {/* Bill of Lading Checklist */}
+            <div className="space-y-2">
+              <h3 className="text-primary font-semibold text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Bill of Lading
+              </h3>
+              <div className="space-y-1 bg-muted/30 rounded-lg p-2">
+                {billOfLading.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between py-1.5 px-2 hover:bg-background/50 rounded-md transition-colors">
+                    <span className="text-xs font-medium">{item.label}</span>
+                    <div className="flex gap-1">
+                      <ChecklistButton
+                        status={item.status}
+                        type="match"
+                        onClick={() => updateChecklistItem(billOfLading, setBillOfLading, item.id, "match")}
+                      />
+                      <ChecklistButton
+                        status={item.status}
+                        type="fail"
+                        onClick={() => updateChecklistItem(billOfLading, setBillOfLading, item.id, "fail")}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <h3 className="text-primary font-semibold">Notes</h3>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add audit notes..."
-              className="min-h-[100px] resize-none"
-            />
-          </div>
+            {/* Notes */}
+            <div className="space-y-2">
+              <h3 className="text-primary font-semibold text-sm">Notes</h3>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add audit notes..."
+                className="min-h-[100px] resize-none bg-muted/30 border-muted-foreground/20 focus:border-primary/50"
+              />
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={() => updateStatusMutation.mutate("completed")}
-              disabled={updateStatusMutation.isPending}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1"
-            >
-              Approve Audit
-            </Button>
-            <Button
-              onClick={() => updateStatusMutation.mutate("action_needed")}
-              disabled={updateStatusMutation.isPending}
-              className="bg-rose-400 hover:bg-rose-500 text-white flex-1"
-            >
-              Fail Audit
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={() => updateStatusMutation.mutate("completed")}
+                disabled={updateStatusMutation.isPending}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 shadow-lg shadow-emerald-500/20"
+              >
+                Approve
+              </Button>
+              <Button
+                onClick={() => updateStatusMutation.mutate("action_needed")}
+                disabled={updateStatusMutation.isPending}
+                className="bg-rose-500 hover:bg-rose-600 text-white flex-1 shadow-lg shadow-rose-500/20"
+              >
+                Fail
+              </Button>
+            </div>
           </div>
         </div>
 
