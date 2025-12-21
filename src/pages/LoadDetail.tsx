@@ -127,6 +127,78 @@ export default function LoadDetail() {
     }
   };
 
+  // Calculate distance between pickup and delivery when miles are blank
+  const calculateDistance = async (loadData: any) => {
+    if (!loadData.pickup_city || !loadData.pickup_state || !loadData.delivery_city || !loadData.delivery_state) {
+      return null;
+    }
+
+    try {
+      // Geocode pickup location
+      const pickupQuery = `${loadData.pickup_city}, ${loadData.pickup_state}`;
+      const { data: pickupData, error: pickupError } = await supabase.functions.invoke('geocode', {
+        body: { query: pickupQuery }
+      });
+      
+      if (pickupError || !pickupData?.lat || !pickupData?.lng) {
+        console.error('Failed to geocode pickup:', pickupError);
+        return null;
+      }
+
+      // Geocode delivery location
+      const deliveryQuery = `${loadData.delivery_city}, ${loadData.delivery_state}`;
+      const { data: deliveryData, error: deliveryError } = await supabase.functions.invoke('geocode', {
+        body: { query: deliveryQuery }
+      });
+
+      if (deliveryError || !deliveryData?.lat || !deliveryData?.lng) {
+        console.error('Failed to geocode delivery:', deliveryError);
+        return null;
+      }
+
+      // Calculate distance using Haversine formula
+      const R = 3959; // Earth's radius in miles
+      const dLat = (deliveryData.lat - pickupData.lat) * Math.PI / 180;
+      const dLon = (deliveryData.lng - pickupData.lng) * Math.PI / 180;
+      const lat1 = pickupData.lat * Math.PI / 180;
+      const lat2 = deliveryData.lat * Math.PI / 180;
+
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const directDistance = R * c;
+
+      // Apply road distance multiplier (typically 1.2-1.4 for driving vs straight line)
+      return Math.round(directDistance * 1.25);
+    } catch (error) {
+      console.error('Error calculating distance:', error);
+      return null;
+    }
+  };
+
+  // Auto-calculate miles when load is loaded and miles field is blank
+  useEffect(() => {
+    const autoCalculateMiles = async () => {
+      if (load && !load.estimated_miles && load.pickup_city && load.pickup_state && load.delivery_city && load.delivery_state) {
+        const calculatedMiles = await calculateDistance(load);
+        if (calculatedMiles && calculatedMiles > 0) {
+          // Update local state
+          setLoad((prev: any) => ({ ...prev, estimated_miles: calculatedMiles }));
+          
+          // Save to database
+          await supabase
+            .from("loads")
+            .update({ estimated_miles: calculatedMiles })
+            .eq("id", id);
+            
+          toast.success(`Distance calculated: ${calculatedMiles} miles`);
+        }
+      }
+    };
+
+    autoCalculateMiles();
+  }, [load?.id, load?.pickup_city, load?.pickup_state, load?.delivery_city, load?.delivery_state]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
