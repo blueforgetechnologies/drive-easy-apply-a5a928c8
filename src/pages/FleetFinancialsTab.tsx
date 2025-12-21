@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 interface Vehicle {
@@ -423,10 +423,10 @@ export default function FleetFinancialsTab() {
         </div>
 
         {/* Data Table */}
-        <ScrollArea className="flex-1 overflow-auto">
+        <ScrollArea className="flex-1">
           <div className="min-w-[1580px]">
-            <Table className={cn("table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
-              <TableHeader className="sticky top-0 z-20 bg-muted">
+            <table className={cn("table-glossy w-full caption-bottom text-sm table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
+              <TableHeader className="sr-only">
                 <TableRow>
                   <TableHead className="w-[88px] px-2 whitespace-nowrap sticky top-0 bg-muted">P/U Date</TableHead>
                   <TableHead className="w-[140px] px-2 sticky top-0 bg-muted">Customer</TableHead>
@@ -543,7 +543,7 @@ export default function FleetFinancialsTab() {
                   );
                 })}
               </TableBody>
-            </Table>
+            </table>
 
             {/* Monthly Totals Footer - inside scrollable area */}
             <div className="border-t bg-muted/50 py-3 px-2 min-w-[1580px]">
