@@ -471,7 +471,7 @@ export default function FleetFinancialsTab() {
                           const carrierPerMile = totalM > 0 ? rate / totalM : 0;
 
                           return (
-                            <TableRow key={load.id} className="hover:bg-muted/30">
+                            <TableRow key={load.id} className="hover:bg-muted/30 h-7">
                               <TableCell className="font-medium text-muted-foreground px-2 py-0.5 whitespace-nowrap">
                                 {loadIndex === 0 && `${dayName} ${dateStr}`}
                               </TableCell>
@@ -504,7 +504,7 @@ export default function FleetFinancialsTab() {
                           );
                         })
                       ) : (
-                        <TableRow key={day.date.toISOString()} className="text-muted-foreground">
+                        <TableRow key={day.date.toISOString()} className="text-muted-foreground h-7">
                           <TableCell className="font-medium px-2 py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
                           <TableCell className="px-2 py-0.5"></TableCell>
                           <TableCell className="px-2 py-0.5"></TableCell>
