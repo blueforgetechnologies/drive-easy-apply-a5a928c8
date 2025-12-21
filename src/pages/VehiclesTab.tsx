@@ -667,7 +667,18 @@ export default function VehiclesTab() {
       </div>
 
       {/* Filters Row - Mobile Optimized */}
-      <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search field - now on the left */}
+        <div className="relative w-48">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search assets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-7 text-sm"
+          />
+        </div>
+
         {/* Filter buttons - scrollable on mobile */}
         <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <div className="flex gap-1 w-max sm:w-auto">
@@ -726,17 +737,8 @@ export default function VehiclesTab() {
           </div>
         </div>
 
-        {/* Search and sort */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search assets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-sm"
-            />
-          </div>
+        {/* Sort button */}
+        <div className="ml-auto">
           <Button
             variant="outline"
             size="sm"
