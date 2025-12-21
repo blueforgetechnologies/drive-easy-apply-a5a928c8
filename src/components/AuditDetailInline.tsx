@@ -141,6 +141,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     onClick: () => void;
   }) => (
     <button
+      type="button"
       onClick={onClick}
       className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
         status === type
