@@ -1941,14 +1941,6 @@ export type Database = {
           bid_placed_at: string | null
           bid_placed_by: string | null
           billing_notes: string | null
-          billing_party_address: string | null
-          billing_party_city: string | null
-          billing_party_contact: string | null
-          billing_party_email: string | null
-          billing_party_name: string | null
-          billing_party_phone: string | null
-          billing_party_state: string | null
-          billing_party_zip: string | null
           bol_number: string | null
           broker_address: string | null
           broker_city: string | null
@@ -2062,14 +2054,6 @@ export type Database = {
           bid_placed_at?: string | null
           bid_placed_by?: string | null
           billing_notes?: string | null
-          billing_party_address?: string | null
-          billing_party_city?: string | null
-          billing_party_contact?: string | null
-          billing_party_email?: string | null
-          billing_party_name?: string | null
-          billing_party_phone?: string | null
-          billing_party_state?: string | null
-          billing_party_zip?: string | null
           bol_number?: string | null
           broker_address?: string | null
           broker_city?: string | null
@@ -2183,14 +2167,6 @@ export type Database = {
           bid_placed_at?: string | null
           bid_placed_by?: string | null
           billing_notes?: string | null
-          billing_party_address?: string | null
-          billing_party_city?: string | null
-          billing_party_contact?: string | null
-          billing_party_email?: string | null
-          billing_party_name?: string | null
-          billing_party_phone?: string | null
-          billing_party_state?: string | null
-          billing_party_zip?: string | null
           bol_number?: string | null
           broker_address?: string | null
           broker_city?: string | null

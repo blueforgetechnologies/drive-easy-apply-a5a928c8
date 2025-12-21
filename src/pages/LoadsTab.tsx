@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -178,8 +177,7 @@ export default function LoadsTab() {
     return `ME-${year}${month}${day}-${random}`;
   };
   
-  // NOTE: keep this state loosely typed to avoid excessive type inference work in the TS incremental builder.
-  const [formData, setFormData] = useState<any>(() => ({
+  const [formData, setFormData] = useState({
     load_number: generateManualLoadNumber(),
     load_type: "internal",
     shipper_load_id: "",
@@ -188,14 +186,6 @@ export default function LoadsTab() {
     broker_contact: "",
     broker_phone: "",
     broker_email: "",
-    billing_party_name: "",
-    billing_party_address: "",
-    billing_party_city: "",
-    billing_party_state: "",
-    billing_party_zip: "",
-    billing_party_contact: "",
-    billing_party_phone: "",
-    billing_party_email: "",
     shipper_name: "",
     shipper_address: "",
     shipper_city: "",
@@ -229,7 +219,7 @@ export default function LoadsTab() {
     equipment_type: "",
     vehicle_size: "",
     carrier_id: "",
-  }));
+  });
   const [defaultCarrierId, setDefaultCarrierId] = useState<string | null>(null);
   const [currentUserDispatcherId, setCurrentUserDispatcherId] = useState<string | null>(null);
 
@@ -695,14 +685,6 @@ export default function LoadsTab() {
         broker_contact: "",
         broker_phone: "",
         broker_email: "",
-        billing_party_name: "",
-        billing_party_address: "",
-        billing_party_city: "",
-        billing_party_state: "",
-        billing_party_zip: "",
-        billing_party_contact: "",
-        billing_party_phone: "",
-        billing_party_email: "",
         shipper_name: "",
         shipper_address: "",
         shipper_city: "",
@@ -999,21 +981,10 @@ export default function LoadsTab() {
                       ...prev,
                       shipper_load_id: data.customer_load_id || prev.shipper_load_id,
                       reference_number: data.customer_load_id || data.reference_number || prev.reference_number,
-                      // Customer/Broker fields (who issued the rate confirmation)
                       broker_name: data.customer_name || prev.broker_name,
                       broker_contact: data.customer_contact || prev.broker_contact,
                       broker_phone: data.customer_phone || prev.broker_phone,
                       broker_email: data.customer_email || prev.broker_email,
-                      // Billing Party fields - if specified, use it; otherwise default to customer/broker
-                      billing_party_name: data.billing_party_name || data.customer_name || prev.billing_party_name,
-                      billing_party_address: data.billing_party_address || data.customer_address || prev.billing_party_address,
-                      billing_party_city: data.billing_party_city || data.customer_city || prev.billing_party_city,
-                      billing_party_state: data.billing_party_state || data.customer_state || prev.billing_party_state,
-                      billing_party_zip: data.billing_party_zip || data.customer_zip || prev.billing_party_zip,
-                      billing_party_contact: data.billing_party_contact || data.customer_contact || prev.billing_party_contact,
-                      billing_party_phone: data.billing_party_phone || data.customer_phone || prev.billing_party_phone,
-                      billing_party_email: data.billing_party_email || data.customer_email || prev.billing_party_email,
-                      // Shipper/Pickup fields
                       shipper_name: data.shipper_name || prev.shipper_name,
                       shipper_address: data.shipper_address || prev.shipper_address,
                       shipper_city: data.shipper_city || prev.shipper_city,
@@ -1030,7 +1001,6 @@ export default function LoadsTab() {
                         : data.pickup_date 
                           ? `${data.pickup_date}T08:00` 
                           : prev.pickup_date,
-                      // Receiver/Delivery fields
                       receiver_name: data.receiver_name || prev.receiver_name,
                       receiver_address: data.receiver_address || prev.receiver_address,
                       receiver_city: data.receiver_city || prev.receiver_city,
@@ -1047,7 +1017,6 @@ export default function LoadsTab() {
                         : data.delivery_date 
                           ? `${data.delivery_date}T08:00` 
                           : prev.delivery_date,
-                      // Cargo and load details
                       cargo_description: data.cargo_description || prev.cargo_description,
                       cargo_weight: data.cargo_weight?.toString() || prev.cargo_weight,
                       cargo_pieces: data.cargo_pieces?.toString() || prev.cargo_pieces,
@@ -1206,57 +1175,6 @@ export default function LoadsTab() {
                         type="email"
                         value={formData.broker_email}
                         onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })}
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Billing Party Information */}
-                <div className="rounded-lg border border-purple-200 dark:border-purple-800/60 bg-gradient-to-br from-purple-100/80 to-purple-50/40 dark:from-purple-950/40 dark:to-purple-900/20 p-3 space-y-3">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-purple-300/60 dark:border-purple-700/60">
-                    <div className="p-1 rounded-md bg-purple-500/20">
-                      <DollarSign className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-purple-700 dark:text-purple-400">Billing Party (Invoice To)</h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="col-span-2 space-y-1">
-                      <Label htmlFor="billing_party_name" className="text-xs font-medium text-muted-foreground">Company Name</Label>
-                      <Input
-                        id="billing_party_name"
-                        value={formData.billing_party_name}
-                        onChange={(e) => setFormData({ ...formData, billing_party_name: e.target.value })}
-                        placeholder="Defaults to customer if empty"
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="billing_party_contact" className="text-xs font-medium text-muted-foreground">Contact</Label>
-                      <Input
-                        id="billing_party_contact"
-                        value={formData.billing_party_contact}
-                        onChange={(e) => setFormData({ ...formData, billing_party_contact: e.target.value })}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="billing_party_phone" className="text-xs font-medium text-muted-foreground">Phone</Label>
-                      <Input
-                        id="billing_party_phone"
-                        type="tel"
-                        value={formData.billing_party_phone}
-                        onChange={(e) => setFormData({ ...formData, billing_party_phone: e.target.value })}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <Label htmlFor="billing_party_email" className="text-xs font-medium text-muted-foreground">Email</Label>
-                      <Input
-                        id="billing_party_email"
-                        type="email"
-                        value={formData.billing_party_email}
-                        onChange={(e) => setFormData({ ...formData, billing_party_email: e.target.value })}
                         className="h-9"
                       />
                     </div>
