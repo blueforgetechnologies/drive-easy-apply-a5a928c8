@@ -9,10 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMerge } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMerge, X, ChevronDown } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { useRef } from "react";
 
 interface Customer {
   id: string;
@@ -48,6 +49,8 @@ export default function CustomersTab() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [lookupValue, setLookupValue] = useState("");
@@ -57,6 +60,17 @@ export default function CustomersTab() {
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [totalCustomerCount, setTotalCustomerCount] = useState(0);
   const ROWS_PER_PAGE = 50;
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Function to normalize names for duplicate detection
   const normalizeName = (name: string): string => {
@@ -837,26 +851,113 @@ export default function CustomersTab() {
           </Button>
         </div>
 
-        <div className="relative w-64 ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, contact, email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-8 h-8 text-sm bg-background border-input focus:ring-2 focus:ring-primary/20"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span className="sr-only">Clear search</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+        <div ref={searchContainerRef} className="relative w-72 ml-auto">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search name, contact, email..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              className="pl-9 pr-16 h-8 text-sm bg-background border-input focus:ring-2 focus:ring-primary/20"
+            />
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setIsSearchOpen(false);
+                  }}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isSearchOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+          
+          {/* Search Dropdown */}
+          {isSearchOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-50 max-h-72 overflow-hidden">
+              {/* Alphabet quick jump */}
+              <div className="flex flex-wrap gap-0.5 p-2 border-b bg-muted/30">
+                {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => {
+                  const hasCustomers = customers.some(c => c.name.toUpperCase().startsWith(letter));
+                  return (
+                    <button
+                      key={letter}
+                      type="button"
+                      disabled={!hasCustomers}
+                      onClick={() => {
+                        setSearchQuery(letter);
+                        setCurrentPage(1);
+                      }}
+                      className={`w-5 h-5 text-[10px] font-semibold rounded transition-colors ${
+                        hasCustomers
+                          ? 'hover:bg-primary hover:text-primary-foreground text-foreground'
+                          : 'text-muted-foreground/40 cursor-not-allowed'
+                      } ${searchQuery.toUpperCase() === letter ? 'bg-primary text-primary-foreground' : ''}`}
+                    >
+                      {letter}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Customer list */}
+              <div className="max-h-52 overflow-y-auto">
+                {filteredCustomers.length > 0 ? (
+                  filteredCustomers.slice(0, 15).map((customer) => (
+                    <button
+                      key={customer.id}
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between gap-2"
+                      onClick={() => {
+                        navigate(`/dashboard/customer/${customer.id}`);
+                        setIsSearchOpen(false);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium block truncate">{customer.name}</span>
+                        {(customer.city || customer.state) && (
+                          <span className="text-xs text-muted-foreground">
+                            {[customer.city, customer.state].filter(Boolean).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] shrink-0 ${getTypeColor(customer.customer_type)}`}>
+                        {getTypeLabel(customer.customer_type)}
+                      </Badge>
+                    </button>
+                  ))
+                ) : searchQuery ? (
+                  <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    No customers match "{searchQuery}"
+                  </p>
+                ) : (
+                  <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    Type to search or click a letter above
+                  </p>
+                )}
+                
+                {filteredCustomers.length > 15 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground border-t bg-muted/20 text-center">
+                    Showing 15 of {filteredCustomers.length} results
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
