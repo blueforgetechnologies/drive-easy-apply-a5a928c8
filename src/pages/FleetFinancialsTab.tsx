@@ -424,30 +424,30 @@ export default function FleetFinancialsTab() {
 
         {/* Data Table */}
         <ScrollArea className="flex-1 overflow-auto">
-          <div className="min-w-[1400px]">
+          <div className="min-w-[1550px]">
             <Table className={cn("table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 <TableRow>
-                  <TableHead className="w-[72px] px-2">P/U Date</TableHead>
-                  <TableHead className="w-[130px] px-2">Customer</TableHead>
-                  <TableHead className="w-[60px] px-2">Route</TableHead>
-                  <TableHead className="w-[72px] px-2 text-right">Payload</TableHead>
-                  <TableHead className="w-[55px] px-1 text-right">Empty</TableHead>
-                  <TableHead className="w-[55px] px-1 text-right">Loaded</TableHead>
-                  <TableHead className="w-[50px] px-1 text-right">Total</TableHead>
-                  <TableHead className="w-[50px] px-1 text-right">$/Mi</TableHead>
-                  <TableHead className="w-[62px] px-1 text-right">Factor</TableHead>
-                  <TableHead className="w-[68px] px-1 text-right">Disp Pay</TableHead>
-                  <TableHead className="w-[62px] px-1 text-right">Drv Pay</TableHead>
-                  <TableHead className="w-[55px] px-1 text-right">WComp</TableHead>
-                  <TableHead className="w-[50px] px-1 text-right">Fuel</TableHead>
-                  <TableHead className="w-[50px] px-1 text-right">Tolls</TableHead>
-                  <TableHead className="w-[55px] px-1 text-right">Rental</TableHead>
-                  <TableHead className="w-[58px] px-1 text-right">Insur</TableHead>
-                  <TableHead className="w-[55px] px-1 text-right">Other</TableHead>
-                  <TableHead className="w-[72px] px-1 text-right">Carr Pay</TableHead>
-                  <TableHead className="w-[50px] px-1 text-right">$/Mi</TableHead>
-                  <TableHead className="w-[75px] px-2 text-right">Net</TableHead>
+                  <TableHead className="w-[78px] px-2">P/U Date</TableHead>
+                  <TableHead className="w-[140px] px-2">Customer</TableHead>
+                  <TableHead className="w-[65px] px-2">Route</TableHead>
+                  <TableHead className="w-[78px] px-2 text-right">Payload</TableHead>
+                  <TableHead className="w-[60px] px-2 text-right">Empty</TableHead>
+                  <TableHead className="w-[62px] px-2 text-right">Loaded</TableHead>
+                  <TableHead className="w-[55px] px-2 text-right">Total</TableHead>
+                  <TableHead className="w-[52px] px-2 text-right">$/Mi</TableHead>
+                  <TableHead className="w-[68px] px-2 text-right">Factor</TableHead>
+                  <TableHead className="w-[75px] px-2 text-right">Disp Pay</TableHead>
+                  <TableHead className="w-[70px] px-2 text-right">Drv Pay</TableHead>
+                  <TableHead className="w-[62px] px-2 text-right">WComp</TableHead>
+                  <TableHead className="w-[55px] px-2 text-right">Fuel</TableHead>
+                  <TableHead className="w-[55px] px-2 text-right">Tolls</TableHead>
+                  <TableHead className="w-[58px] px-2 text-right">Rental</TableHead>
+                  <TableHead className="w-[62px] px-2 text-right">Insur</TableHead>
+                  <TableHead className="w-[58px] px-2 text-right">Other</TableHead>
+                  <TableHead className="w-[78px] px-2 text-right">Carr Pay</TableHead>
+                  <TableHead className="w-[52px] px-2 text-right">$/Mi</TableHead>
+                  <TableHead className="w-[80px] px-2 text-right">Net</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -472,32 +472,32 @@ export default function FleetFinancialsTab() {
 
                           return (
                             <TableRow key={load.id} className="hover:bg-muted/30">
-                              <TableCell className="font-medium text-muted-foreground px-2 py-1">
+                              <TableCell className="font-medium text-muted-foreground px-2 py-1.5">
                                 {loadIndex === 0 && `${dayName} ${dateStr}`}
                               </TableCell>
-                              <TableCell className="truncate max-w-[130px] px-2 py-1" title={getCustomerName(load.customer_id)}>
+                              <TableCell className="truncate max-w-[140px] px-2 py-1.5" title={getCustomerName(load.customer_id)}>
                                 {getCustomerName(load.customer_id)}
                               </TableCell>
-                              <TableCell className="text-xs px-2 py-1">
+                              <TableCell className="text-xs px-2 py-1.5">
                                 {load.pickup_state}→{load.delivery_state}
                               </TableCell>
-                              <TableCell className="text-right font-semibold px-2 py-1">{formatCurrency(rate)}</TableCell>
-                              <TableCell className="text-right px-1 py-1">{formatNumber(emptyM, 0)}</TableCell>
-                              <TableCell className="text-right px-1 py-1">{formatNumber(loadedM, 0)}</TableCell>
-                              <TableCell className="text-right font-medium px-1 py-1">{formatNumber(totalM, 0)}</TableCell>
-                              <TableCell className="text-right px-1 py-1">${formatNumber(dollarPerMile, 2)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">{formatCurrency(factoring)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">{formatCurrency(dispPay)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground px-1 py-1">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                              <TableCell className="text-right px-1 py-1">{formatCurrency(rate)}</TableCell>
-                              <TableCell className="text-right px-1 py-1">${formatNumber(carrierPerMile, 2)}</TableCell>
-                              <TableCell className={cn("text-right font-bold px-2 py-1", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
+                              <TableCell className="text-right font-semibold px-2 py-1.5">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right px-2 py-1.5">{formatNumber(emptyM, 0)}</TableCell>
+                              <TableCell className="text-right px-2 py-1.5">{formatNumber(loadedM, 0)}</TableCell>
+                              <TableCell className="text-right font-medium px-2 py-1.5">{formatNumber(totalM, 0)}</TableCell>
+                              <TableCell className="text-right px-2 py-1.5">${formatNumber(dollarPerMile, 2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">{formatCurrency(factoring)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">{formatCurrency(dispPay)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground px-2 py-1.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                              <TableCell className="text-right px-2 py-1.5">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right px-2 py-1.5">${formatNumber(carrierPerMile, 2)}</TableCell>
+                              <TableCell className={cn("text-right font-bold px-2 py-1.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
                                 {formatCurrency(carrierNet)}
                               </TableCell>
                             </TableRow>
@@ -505,26 +505,26 @@ export default function FleetFinancialsTab() {
                         })
                       ) : (
                         <TableRow key={day.date.toISOString()} className="text-muted-foreground">
-                          <TableCell className="font-medium px-2 py-1">{`${dayName} ${dateStr}`}</TableCell>
-                          <TableCell className="px-2 py-1"></TableCell>
-                          <TableCell className="px-2 py-1"></TableCell>
-                          <TableCell className="px-2 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="text-right px-1 py-1">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                          <TableCell className="text-right px-1 py-1">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="px-1 py-1"></TableCell>
-                          <TableCell className="text-right font-bold text-destructive px-2 py-1">
+                          <TableCell className="font-medium px-2 py-1.5">{`${dayName} ${dateStr}`}</TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="text-right px-2 py-1.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                          <TableCell className="text-right px-2 py-1.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="px-2 py-1.5"></TableCell>
+                          <TableCell className="text-right font-bold text-destructive px-2 py-1.5">
                             {formatCurrency(-(DAILY_INSURANCE_RATE + DAILY_OTHER_COST))}
                           </TableCell>
                         </TableRow>
@@ -546,85 +546,85 @@ export default function FleetFinancialsTab() {
             </Table>
 
             {/* Monthly Totals Footer - inside scrollable area */}
-            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1400px]">
-              <div className="grid grid-cols-[72px_130px_60px_72px_55px_55px_50px_50px_62px_68px_62px_55px_50px_50px_55px_58px_55px_72px_50px_75px] gap-0 text-sm">
-                <div className="text-center px-1">
+            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1550px]">
+              <div className="grid grid-cols-[78px_140px_65px_78px_60px_62px_55px_52px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">P/U Date</div>
                   <div className="font-bold">-</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Customer</div>
                   <div className="font-bold">-</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Route</div>
                   <div className="font-bold">-</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Payload</div>
                   <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Empty</div>
                   <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Loaded</div>
                   <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Total</div>
                   <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">$/Mi</div>
                   <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Factor</div>
                   <div className="font-bold">{formatCurrency(totals.factoring)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Disp Pay</div>
                   <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Drv Pay</div>
                   <div className="font-bold">{formatCurrency(totals.driverPay)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">WComp</div>
                   <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Fuel</div>
                   <div className="font-bold">{formatCurrency(totals.fuel)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Tolls</div>
                   <div className="font-bold">{formatCurrency(totals.tolls)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Rental</div>
                   <div className="font-bold">{formatNumber(totals.rentalMiles, 0)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Insur</div>
                   <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Other</div>
                   <div className="font-bold">{formatCurrency(totals.other)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Carr Pay</div>
                   <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">$/Mi</div>
                   <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
                 </div>
-                <div className="text-center px-1">
+                <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Net</div>
                   <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
                     {formatCurrency(totals.netProfit)}
