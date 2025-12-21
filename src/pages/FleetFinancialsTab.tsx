@@ -334,7 +334,10 @@ export default function FleetFinancialsTab() {
         <div className="p-3 border-b space-y-2">
           <Button 
             variant={!selectedCarrier ? "default" : "outline"} 
-            className="w-full"
+            className={cn(
+              "w-full",
+              selectedCarrier && "border-orange-500 bg-orange-500 text-white hover:bg-orange-600 hover:border-orange-600"
+            )}
             onClick={() => {
               setSelectedCarrier(null);
               setCarrierSearch("");
