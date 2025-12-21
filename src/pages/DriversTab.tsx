@@ -257,6 +257,15 @@ export default function DriversTab() {
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-48">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-7 text-sm"
+          />
+        </div>
         <div className="flex flex-wrap gap-1">
           <Button
             variant={filter === "all" ? "default" : "outline"}
@@ -313,16 +322,6 @@ export default function DriversTab() {
           >
             Invitations
           </Button>
-        </div>
-
-        <div className="relative w-48 ml-auto">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-7 text-sm"
-          />
         </div>
       </div>
 

@@ -751,107 +751,8 @@ export default function CustomersTab() {
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Status Filters */}
-        <div className="flex flex-wrap gap-1">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "all");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "active");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            Active
-          </Button>
-          <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "inactive");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            Inactive
-          </Button>
-          <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "pending");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            Pending
-          </Button>
-        </div>
-
-        {/* Type Filters */}
-        <div className="flex flex-wrap gap-1 border-l pl-2 ml-1">
-          <Button
-            variant={typeFilter === "all" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "all" ? "bg-slate-600 text-white hover:bg-slate-700" : ""}`}
-            onClick={() => setTypeFilter("all")}
-          >
-            All Types
-          </Button>
-          <Button
-            variant={typeFilter === "broker" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "broker" ? "bg-purple-600 text-white hover:bg-purple-700" : ""}`}
-            onClick={() => setTypeFilter("broker")}
-          >
-            Brokers
-          </Button>
-          <Button
-            variant={typeFilter === "shipper" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "shipper" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
-            onClick={() => setTypeFilter("shipper")}
-          >
-            Shippers
-          </Button>
-          <Button
-            variant={typeFilter === "receiver" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "receiver" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-            onClick={() => setTypeFilter("receiver")}
-          >
-            Receivers
-          </Button>
-          <Button
-            variant={typeFilter === "shipper_receiver" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "shipper_receiver" ? "bg-amber-600 text-white hover:bg-amber-700" : ""}`}
-            onClick={() => setTypeFilter("shipper_receiver")}
-          >
-            Shipper/Receiver
-          </Button>
-        </div>
-
-        <div ref={searchContainerRef} className="relative w-72 ml-auto">
+        {/* Search field - now on the left */}
+        <div ref={searchContainerRef} className="relative w-72">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
@@ -959,6 +860,106 @@ export default function CustomersTab() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Status Filters */}
+        <div className="flex flex-wrap gap-1">
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "all");
+              setSearchParams(newParams);
+              setSearchQuery("");
+            }}
+          >
+            All
+          </Button>
+          <Button
+            variant={filter === "active" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+            onClick={() => {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "active");
+              setSearchParams(newParams);
+              setSearchQuery("");
+            }}
+          >
+            Active
+          </Button>
+          <Button
+            variant={filter === "inactive" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
+            onClick={() => {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "inactive");
+              setSearchParams(newParams);
+              setSearchQuery("");
+            }}
+          >
+            Inactive
+          </Button>
+          <Button
+            variant={filter === "pending" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
+            onClick={() => {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("filter", "pending");
+              setSearchParams(newParams);
+              setSearchQuery("");
+            }}
+          >
+            Pending
+          </Button>
+        </div>
+
+        {/* Type Filters */}
+        <div className="flex flex-wrap gap-1 border-l pl-2 ml-1">
+          <Button
+            variant={typeFilter === "all" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "all" ? "bg-slate-600 text-white hover:bg-slate-700" : ""}`}
+            onClick={() => setTypeFilter("all")}
+          >
+            All Types
+          </Button>
+          <Button
+            variant={typeFilter === "broker" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "broker" ? "bg-purple-600 text-white hover:bg-purple-700" : ""}`}
+            onClick={() => setTypeFilter("broker")}
+          >
+            Brokers
+          </Button>
+          <Button
+            variant={typeFilter === "shipper" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "shipper" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => setTypeFilter("shipper")}
+          >
+            Shippers
+          </Button>
+          <Button
+            variant={typeFilter === "receiver" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "receiver" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+            onClick={() => setTypeFilter("receiver")}
+          >
+            Receivers
+          </Button>
+          <Button
+            variant={typeFilter === "shipper_receiver" ? "default" : "outline"}
+            size="sm"
+            className={`h-7 px-2.5 ${typeFilter === "shipper_receiver" ? "bg-amber-600 text-white hover:bg-amber-700" : ""}`}
+            onClick={() => setTypeFilter("shipper_receiver")}
+          >
+            Shipper/Receiver
+          </Button>
         </div>
       </div>
 
