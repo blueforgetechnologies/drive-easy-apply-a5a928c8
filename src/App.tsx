@@ -31,6 +31,7 @@ import LoadHunterTab from "./pages/LoadHunterTab";
 import DevelopmentTab from "./pages/DevelopmentTab";
 import FlowDiagramTab from "./pages/FlowDiagramTab";
 import UsageTab from "./pages/UsageTab";
+import FleetFinancialsTab from "./pages/FleetFinancialsTab";
 
 import DuplicateCustomersTab from "./pages/DuplicateCustomersTab";
 
@@ -74,6 +75,7 @@ const App = () => (
           <Route path="/dashboard/analytics" element={<DashboardLayout><LoadAnalyticsTab /></DashboardLayout>} />
           <Route path="/dashboard/development" element={<DashboardLayout><DevelopmentTab /></DashboardLayout>} />
           <Route path="/dashboard/usage" element={<DashboardLayout><UsageTab /></DashboardLayout>} />
+          <Route path="/dashboard/fleet-financials" element={<DashboardLayout><FleetFinancialsTab /></DashboardLayout>} />
           <Route path="/dashboard/flow" element={<DashboardLayout><FlowDiagramTab /></DashboardLayout>} />
           <Route path="/dashboard/application/:id" element={<DashboardLayout><ApplicationDetail /></DashboardLayout>} />
           <Route path="/dashboard/vehicle/:id" element={<DashboardLayout><VehicleDetail /></DashboardLayout>} />
