@@ -133,7 +133,7 @@ export function PDFImageViewer({ url, fileName }: PDFImageViewerProps) {
           <img
             src={pages[currentPage]}
             alt={`Page ${currentPage + 1}`}
-            className="max-w-full h-auto object-contain shadow-lg mx-auto"
+            className="max-w-full h-auto object-contain shadow-lg ml-0 mr-auto"
             style={{ maxHeight: '100%' }}
           />
         )}
