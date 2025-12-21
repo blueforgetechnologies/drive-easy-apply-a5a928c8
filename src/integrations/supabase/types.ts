@@ -333,6 +333,7 @@ export type Database = {
           company_name: string
           country: string | null
           created_at: string | null
+          default_carrier_id: string | null
           default_currency: string | null
           default_timezone: string | null
           dot_number: string | null
@@ -364,6 +365,7 @@ export type Database = {
           company_name: string
           country?: string | null
           created_at?: string | null
+          default_carrier_id?: string | null
           default_currency?: string | null
           default_timezone?: string | null
           dot_number?: string | null
@@ -395,6 +397,7 @@ export type Database = {
           company_name?: string
           country?: string | null
           created_at?: string | null
+          default_carrier_id?: string | null
           default_currency?: string | null
           default_timezone?: string | null
           dot_number?: string | null
@@ -419,7 +422,15 @@ export type Database = {
           website?: string | null
           zip?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "company_profile_default_carrier_id_fkey"
+            columns: ["default_carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contacts: {
         Row: {

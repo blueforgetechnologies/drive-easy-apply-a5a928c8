@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Building2, Upload, X, Image, Landmark } from "lucide-react";
+import { Building2, Upload, X, Image, Landmark, Truck } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Configure PDF.js worker for v3.x
@@ -17,12 +18,27 @@ export default function CompanyProfileTab() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [carriers, setCarriers] = useState<{ id: string; name: string; dot_number: string | null }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCompanyProfile();
+    loadCarriers();
   }, []);
 
+  const loadCarriers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("carriers")
+        .select("id, name, dot_number")
+        .eq("status", "active")
+        .order("name");
+      if (error) throw error;
+      setCarriers(data || []);
+    } catch (error) {
+      console.error("Failed to load carriers:", error);
+    }
+  };
   const loadCompanyProfile = async () => {
     try {
       const { data, error } = await supabase
@@ -52,6 +68,7 @@ export default function CompanyProfileTab() {
           tax_id: "",
           default_currency: "USD",
           default_timezone: "America/New_York",
+          default_carrier_id: null,
           billing_terms: "",
           remittance_info: "",
           factoring_company_name: "",
@@ -504,9 +521,35 @@ export default function CompanyProfileTab() {
 
         <Card>
           <CardHeader>
-            <CardTitle>System Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              System Settings
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label>Default Carrier (for new loads)</Label>
+              <Select 
+                value={profile?.default_carrier_id || ""} 
+                onValueChange={(value) => updateField("default_carrier_id", value || null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select default carrier" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  <SelectItem value="">None</SelectItem>
+                  {carriers.map((carrier) => (
+                    <SelectItem key={carrier.id} value={carrier.id}>
+                      {carrier.name} {carrier.dot_number ? `(${carrier.dot_number})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                This carrier will be automatically assigned when creating new loads manually
+              </p>
+            </div>
+
             <div>
               <Label>Default Currency</Label>
               <Input
