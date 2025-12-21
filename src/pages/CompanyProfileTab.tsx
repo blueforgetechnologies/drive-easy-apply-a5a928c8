@@ -530,14 +530,14 @@ export default function CompanyProfileTab() {
             <div>
               <Label>Default Carrier (for new loads)</Label>
               <Select 
-                value={profile?.default_carrier_id || ""} 
-                onValueChange={(value) => updateField("default_carrier_id", value || null)}
+                value={profile?.default_carrier_id || "none"} 
+                onValueChange={(value) => updateField("default_carrier_id", value === "none" ? null : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select default carrier" />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {carriers.map((carrier) => (
                     <SelectItem key={carrier.id} value={carrier.id}>
                       {carrier.name} {carrier.dot_number ? `(${carrier.dot_number})` : ""}
