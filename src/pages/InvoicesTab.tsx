@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, FileText, Send, CheckCircle, Clock } from "lucide-react";
+import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2 } from "lucide-react";
 
 interface Invoice {
   id: string;
@@ -129,6 +129,28 @@ export default function InvoicesTab() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendBackToAudit = async (loadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from("loads")
+        .update({ 
+          status: "ready_for_audit",
+          financial_status: null,
+          invoice_number: null
+        })
+        .eq("id", loadId);
+
+      if (error) throw error;
+      
+      toast.success("Load sent back to audit");
+      loadData();
+    } catch (error) {
+      console.error("Error sending back to audit:", error);
+      toast.error("Failed to send back to audit");
     }
   };
 
@@ -470,6 +492,7 @@ export default function InvoicesTab() {
                   <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -506,6 +529,17 @@ export default function InvoicesTab() {
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate" title={load.notes || ""}>
                         {load.notes || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => sendBackToAudit(load.id, e)}
+                          className="text-muted-foreground hover:text-primary"
+                        >
+                          <Undo2 className="h-4 w-4 mr-1" />
+                          Back to Audit
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
