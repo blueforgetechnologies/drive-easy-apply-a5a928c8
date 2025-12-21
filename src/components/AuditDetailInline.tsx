@@ -239,7 +239,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
     if (loading) {
       return (
-        <div className="flex flex-col h-[300px]">
+        <div className="flex flex-col h-[500px]">
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -252,7 +252,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
     if (error || !signedUrl) {
       return (
-        <div className="flex flex-col h-[300px]">
+        <div className="flex flex-col h-[500px]">
           <div className="flex-1 flex flex-col items-center justify-center gap-2">
             <FileText className="h-8 w-8 text-muted-foreground opacity-50" />
             <p className="text-xs text-destructive">{error || 'Failed to load document'}</p>
@@ -262,7 +262,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     }
     
     return (
-      <div className="flex flex-col h-[300px]">
+      <div className="flex flex-col h-[500px]">
         <div className="flex-1 border rounded bg-muted overflow-hidden">
           {isPdf ? (
             <PDFImageViewer url={signedUrl} fileName={doc.file_name || 'Document.pdf'} />
@@ -288,7 +288,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   };
 
   const renderNoDocument = (type: string) => (
-    <div className="flex flex-col items-center justify-center h-[220px] text-muted-foreground">
+    <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
       <FileText className="h-8 w-8 mb-2 opacity-50" />
       <p className="text-sm font-medium">No {type} uploaded</p>
       <p className="text-xs">Upload documents from the load detail page</p>

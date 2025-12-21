@@ -32,8 +32,8 @@ export function PDFImageViewer({ url, fileName }: PDFImageViewerProps) {
         
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
-          // Use scale 1.5 for balance between quality and fit
-          const scale = 1.5;
+          // Use scale 1.0 for smaller document rendering to fit more content
+          const scale = 1.0;
           const viewport = page.getViewport({ scale });
           
           const canvas = document.createElement("canvas");
@@ -95,43 +95,46 @@ export function PDFImageViewer({ url, fileName }: PDFImageViewerProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 px-2 py-1">
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
+            className="h-6 w-6 p-0"
             onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
             disabled={currentPage === 0}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3 w-3" />
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             Page {currentPage + 1} of {totalPages}
           </span>
           <Button
             variant="outline"
             size="sm"
+            className="h-6 w-6 p-0"
             onClick={() => setCurrentPage((p) => Math.min(pages.length - 1, p + 1))}
             disabled={currentPage === pages.length - 1}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3 w-3" />
           </Button>
         </div>
         <a
           href={url}
           download={fileName}
-          className="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          className="inline-flex items-center justify-center gap-1 h-6 px-2 text-xs rounded border border-input bg-background hover:bg-accent hover:text-accent-foreground"
         >
-          <Download className="h-4 w-4" />
+          <Download className="h-3 w-3" />
           Download
         </a>
       </div>
-      <div className="flex-1 overflow-auto border rounded bg-muted p-4">
+      <div className="flex-1 overflow-auto bg-muted p-2">
         {pages[currentPage] && (
           <img
             src={pages[currentPage]}
             alt={`Page ${currentPage + 1}`}
-            className="w-full h-auto object-contain shadow-lg mx-auto"
+            className="max-w-full h-auto object-contain shadow-lg mx-auto"
+            style={{ maxHeight: '100%' }}
           />
         )}
       </div>
