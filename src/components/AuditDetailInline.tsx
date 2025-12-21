@@ -305,63 +305,50 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         </Button>
       </div>
 
-      {/* Header */}
-      <div className="border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-l-4 border-l-primary">
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Our Load ID</th>
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Carrier</th>
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Origin</th>
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Pick Up</th>
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Rate</th>
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Load Owner</th>
-              <th className="text-left px-2 py-1 text-primary font-medium text-[11px] uppercase">Truck ID</th>
-            </tr>
-            <tr className="border-l-4 border-l-primary">
-              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Customer Load</th>
-              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Customer</th>
-              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Destination</th>
-              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Drop Off Date</th>
-              <th className="px-2 pb-1"></th>
-              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Dispatcher</th>
-              <th className="text-left px-2 pb-1 text-primary font-medium text-[11px] uppercase">Driver</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-t">
-              <td className="px-2 py-1.5 align-top">
-                <div className="font-medium text-sm">{load.load_number}</div>
-                <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
-              </td>
-              <td className="px-2 py-1.5 align-top">
-                <div className="font-semibold text-sm">{carrier?.name || ""}</div>
-                <div className="text-muted-foreground text-xs">{customer?.name || ""}</div>
-              </td>
-              <td className="px-2 py-1.5 align-top">
-                <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}` : ""}</div>
-                <div className="text-muted-foreground text-xs">
-                  {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}` : ""}
-                </div>
-              </td>
-              <td className="px-2 py-1.5 align-top">
-                <div className="text-sm">{formatDate(load.pickup_date)}</div>
-                <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
-              </td>
-              <td className="px-2 py-1.5 align-top">
-                <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
-              </td>
-              <td className="px-2 py-1.5 align-top">
-                <div className="font-medium text-sm">{loadOwnerName}</div>
-                <div className="text-muted-foreground text-xs">{dispatcherName}</div>
-              </td>
-              <td className="px-2 py-1.5 align-top">
-                <div className="font-medium text-sm">{vehicle?.vehicle_number || ""}</div>
-                <div className="text-muted-foreground text-xs">{getDriverName(load.driver)}</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      {/* Header - Single row with stacked labels/values */}
+      <div className="border-l-4 border-l-primary pl-3 py-2">
+        <div className="grid grid-cols-7 gap-4">
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Our Load ID</div>
+            <div className="font-medium text-sm">{load.load_number}</div>
+            <div className="text-primary font-medium text-[11px] uppercase mt-1">Customer Load</div>
+            <div className="text-muted-foreground text-xs">{load.reference_number || "-"}</div>
+          </div>
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Carrier</div>
+            <div className="font-semibold text-sm">{carrier?.name || "-"}</div>
+            <div className="text-primary font-medium text-[11px] uppercase mt-1">Customer</div>
+            <div className="text-muted-foreground text-xs">{customer?.name || "-"}</div>
+          </div>
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Origin</div>
+            <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}` : "-"}</div>
+            <div className="text-primary font-medium text-[11px] uppercase mt-1">Destination</div>
+            <div className="text-muted-foreground text-xs">{load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}` : "-"}</div>
+          </div>
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Pick Up</div>
+            <div className="text-sm">{formatDate(load.pickup_date)}</div>
+            <div className="text-primary font-medium text-[11px] uppercase mt-1">Drop Off Date</div>
+            <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
+          </div>
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Rate</div>
+            <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
+          </div>
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Load Owner</div>
+            <div className="font-medium text-sm">{loadOwnerName || "-"}</div>
+            <div className="text-primary font-medium text-[11px] uppercase mt-1">Dispatcher</div>
+            <div className="text-muted-foreground text-xs">{dispatcherName || "-"}</div>
+          </div>
+          <div>
+            <div className="text-primary font-medium text-[11px] uppercase">Truck ID</div>
+            <div className="font-medium text-sm">{vehicle?.vehicle_number || "-"}</div>
+            <div className="text-primary font-medium text-[11px] uppercase mt-1">Driver</div>
+            <div className="text-muted-foreground text-xs">{getDriverName(load.driver) || "-"}</div>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
