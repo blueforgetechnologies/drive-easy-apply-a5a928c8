@@ -404,7 +404,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             <TabsList className="w-full justify-start rounded-none border-b bg-background h-auto p-0 flex-shrink-0">
               <TabsTrigger 
                 value="rate_confirmation" 
-                className="rounded-t-lg rounded-b-none px-6 py-3 font-medium transition-all border border-b-0 border-transparent hover:bg-muted/50 hover:border-border/50 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border/30 data-[state=inactive]:bg-muted/20 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-b data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+                className="rounded-t-lg rounded-b-none px-6 py-3 font-medium transition-all border border-b-0 hover:bg-primary/20 data-[state=inactive]:text-primary/70 data-[state=inactive]:border-primary/20 data-[state=inactive]:bg-primary/5 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-b data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
               >
                 Rate Confirmation {rateConfirmationDocs.length > 0 && `(${rateConfirmationDocs.length})`}
               </TabsTrigger>
@@ -412,7 +412,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
                 <TabsTrigger 
                   key={doc.id}
                   value={`bol_${index}`}
-                  className="rounded-t-lg rounded-b-none px-6 py-3 font-medium transition-all border border-b-0 border-transparent hover:bg-muted/50 hover:border-border/50 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border/30 data-[state=inactive]:bg-muted/20 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-b data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+                  className="rounded-t-lg rounded-b-none px-6 py-3 font-medium transition-all border border-b-0 hover:bg-primary/20 data-[state=inactive]:text-primary/70 data-[state=inactive]:border-primary/20 data-[state=inactive]:bg-primary/5 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-b data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
                 >
                   Bill of Lading {index + 1}
                 </TabsTrigger>
@@ -420,7 +420,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
               {bolDocs.length === 0 && (
                 <TabsTrigger 
                   value="bol_empty"
-                  className="rounded-t-lg rounded-b-none px-6 py-3 font-medium transition-all border border-b-0 border-transparent hover:bg-muted/50 hover:border-border/50 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border/30 data-[state=inactive]:bg-muted/20 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-b data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+                  className="rounded-t-lg rounded-b-none px-6 py-3 font-medium transition-all border border-b-0 hover:bg-primary/20 data-[state=inactive]:text-primary/70 data-[state=inactive]:border-primary/20 data-[state=inactive]:bg-primary/5 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-b data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
                 >
                   Bill of Lading
                 </TabsTrigger>
