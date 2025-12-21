@@ -144,12 +144,12 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+      className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 backdrop-blur-sm border shadow-sm ${
         status === type
           ? type === "match"
-            ? "bg-emerald-500 text-white"
-            : "bg-destructive text-destructive-foreground"
-          : "bg-muted/60 text-muted-foreground hover:bg-muted"
+            ? "bg-gradient-to-b from-emerald-400 to-emerald-600 text-white border-emerald-400/50 shadow-emerald-500/30 shadow-md"
+            : "bg-gradient-to-b from-rose-400 to-rose-600 text-white border-rose-400/50 shadow-rose-500/30 shadow-md"
+          : "bg-gradient-to-b from-white/80 to-muted/60 text-muted-foreground border-border/50 hover:from-white hover:to-muted/80 hover:shadow-md hover:border-border"
       }`}
     >
       {type === "match" ? "Match" : "Fail"}
