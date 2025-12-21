@@ -52,6 +52,7 @@ interface Load {
   assigned_driver_id: string | null;
   assigned_vehicle_id: string | null;
   assigned_dispatcher_id: string | null;
+  load_owner_id: string | null;
   carrier_id: string | null;
   rate: number | null;
   total_revenue: number | null;
@@ -77,6 +78,10 @@ interface Load {
     name: string | null;
   };
   dispatcher?: {
+    first_name: string | null;
+    last_name: string | null;
+  };
+  load_owner?: {
     first_name: string | null;
     last_name: string | null;
   };
@@ -328,7 +333,8 @@ export default function LoadsTab() {
           driver:applications!assigned_driver_id(personal_info),
           carrier:carriers!carrier_id(name),
           customer:customers!customer_id(name),
-          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
+          dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name),
+          load_owner:dispatchers!load_owner_id(first_name, last_name)
         `);
       
       // Only filter by status if not "all"
@@ -1818,7 +1824,11 @@ export default function LoadsTab() {
                               </div>
                             </TableCell>
                             <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
-                              <div className="text-xs">-</div>
+                              <div className="text-xs">
+                                {load.load_owner?.first_name && load.load_owner?.last_name
+                                  ? `${load.load_owner.first_name} ${load.load_owner.last_name}`
+                                  : "-"}
+                              </div>
                               <div className="text-xs text-muted-foreground mt-0.5">
                                 {load.dispatcher?.first_name && load.dispatcher?.last_name
                                   ? `${load.dispatcher.first_name} ${load.dispatcher.last_name}`
