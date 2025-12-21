@@ -1042,9 +1042,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Customer/Broker Information */}
-                <div className="rounded-lg border bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20 dark:to-transparent p-3 space-y-3">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-amber-200/50 dark:border-amber-800/50">
-                    <div className="p-1 rounded-md bg-amber-500/10">
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-100/80 to-amber-50/40 dark:from-amber-950/40 dark:to-amber-900/20 p-3 space-y-3">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-amber-300/60 dark:border-amber-700/60">
+                    <div className="p-1 rounded-md bg-amber-500/20">
                       <DollarSign className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-amber-700 dark:text-amber-400">Customer/Broker Information</h3>
@@ -1093,9 +1093,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Shipper Information */}
-                <div className="rounded-lg border bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20 dark:to-transparent p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-emerald-200/50 dark:border-emerald-800/50">
-                    <div className="p-1 rounded-md bg-emerald-500/10">
+                <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-100/80 to-emerald-50/40 dark:from-emerald-950/40 dark:to-emerald-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-emerald-300/60 dark:border-emerald-700/60">
+                    <div className="p-1 rounded-md bg-emerald-500/20">
                       <MapPin className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-emerald-700 dark:text-emerald-400">Shipper Information</h3>
@@ -1137,9 +1137,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Pickup Information */}
-                <div className="rounded-lg border bg-gradient-to-br from-sky-50/50 to-transparent dark:from-sky-950/20 dark:to-transparent p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-sky-200/50 dark:border-sky-800/50">
-                    <div className="p-1 rounded-md bg-sky-500/10">
+                <div className="rounded-lg border border-sky-200 dark:border-sky-800/60 bg-gradient-to-br from-sky-100/80 to-sky-50/40 dark:from-sky-950/40 dark:to-sky-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-sky-300/60 dark:border-sky-700/60">
+                    <div className="p-1 rounded-md bg-sky-500/20">
                       <MapPin className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-sky-700 dark:text-sky-400">Pickup Information</h3>
@@ -1165,9 +1165,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Delivery Information */}
-                <div className="rounded-lg border bg-gradient-to-br from-violet-50/50 to-transparent dark:from-violet-950/20 dark:to-transparent p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-violet-200/50 dark:border-violet-800/50">
-                    <div className="p-1 rounded-md bg-violet-500/10">
+                <div className="rounded-lg border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-100/80 to-violet-50/40 dark:from-violet-950/40 dark:to-violet-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-violet-300/60 dark:border-violet-700/60">
+                    <div className="p-1 rounded-md bg-violet-500/20">
                       <MapPin className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-violet-700 dark:text-violet-400">Delivery Information</h3>
@@ -1193,9 +1193,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Receiver Information */}
-                <div className="rounded-lg border bg-gradient-to-br from-rose-50/50 to-transparent dark:from-rose-950/20 dark:to-transparent p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-rose-200/50 dark:border-rose-800/50">
-                    <div className="p-1 rounded-md bg-rose-500/10">
+                <div className="rounded-lg border border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-100/80 to-rose-50/40 dark:from-rose-950/40 dark:to-rose-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-rose-300/60 dark:border-rose-700/60">
+                    <div className="p-1 rounded-md bg-rose-500/20">
                       <MapPin className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-rose-700 dark:text-rose-400">Receiver Information</h3>
@@ -1237,9 +1237,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Equipment & Cargo */}
-                <div className="rounded-lg border bg-gradient-to-br from-slate-50/50 to-transparent dark:from-slate-900/30 dark:to-transparent p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-slate-200/50 dark:border-slate-700/50">
-                    <div className="p-1 rounded-md bg-slate-500/10">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700/60 bg-gradient-to-br from-slate-100/80 to-slate-50/40 dark:from-slate-900/50 dark:to-slate-800/30 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-slate-300/60 dark:border-slate-600/60">
+                    <div className="p-1 rounded-md bg-slate-500/20">
                       <Truck className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-400">Equipment & Cargo</h3>
@@ -1287,9 +1287,9 @@ export default function LoadsTab() {
                 </div>
 
                 {/* Financial */}
-                <div className="rounded-lg border bg-gradient-to-br from-green-50/50 to-transparent dark:from-green-950/20 dark:to-transparent p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-green-200/50 dark:border-green-800/50">
-                    <div className="p-1 rounded-md bg-green-500/10">
+                <div className="rounded-lg border border-green-200 dark:border-green-800/60 bg-gradient-to-br from-green-100/80 to-green-50/40 dark:from-green-950/40 dark:to-green-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-green-300/60 dark:border-green-700/60">
+                    <div className="p-1 rounded-md bg-green-500/20">
                       <DollarSign className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                     </div>
                     <h3 className="font-semibold text-sm text-green-700 dark:text-green-400">Financial</h3>
