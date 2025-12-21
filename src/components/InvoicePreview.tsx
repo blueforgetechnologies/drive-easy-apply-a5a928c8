@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { Printer, Download, Send, X } from "lucide-react";
+import { Printer, Download, Send, X, Loader2 } from "lucide-react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { toast } from "sonner";
 
 interface CompanyProfile {
   company_name: string;
@@ -64,6 +67,8 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [load, setLoad] = useState<LoadData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -130,6 +135,41 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
     }).format(amount);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!invoiceRef.current) return;
+    
+    setGeneratingPdf(true);
+    try {
+      const element = invoiceRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`Invoice-${load?.invoice_number || load?.load_number || 'preview'}.pdf`);
+      toast.success("PDF downloaded successfully");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const invoiceDate = load?.completed_at || load?.delivery_date || new Date().toISOString();
   const dueDate = new Date(new Date(invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -147,12 +187,16 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
       <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-3 flex justify-between items-center border-b">
         <span className="font-semibold text-primary">Invoice Preview</span>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-8">
+          <Button variant="ghost" size="sm" className="h-8" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-1" />
             Print
           </Button>
-          <Button variant="ghost" size="sm" className="h-8">
-            <Download className="h-4 w-4 mr-1" />
+          <Button variant="ghost" size="sm" className="h-8" onClick={handleDownloadPdf} disabled={generatingPdf}>
+            {generatingPdf ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-1" />
+            )}
             PDF
           </Button>
           <Button variant="ghost" size="sm" className="h-8">
@@ -166,7 +210,7 @@ export default function InvoicePreview({ loadId, onClose }: InvoicePreviewProps)
       </div>
 
       {/* Invoice Content */}
-      <div className="p-8 bg-background">
+      <div ref={invoiceRef} className="p-8 bg-white">
         {/* Company Header */}
         <div className="flex justify-between items-start mb-8">
           <div className="flex items-start gap-4">
