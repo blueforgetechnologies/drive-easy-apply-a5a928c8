@@ -32,8 +32,8 @@ export function PDFImageViewer({ url, fileName }: PDFImageViewerProps) {
         
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
-          // Use scale 1.0 for smaller document rendering to fit more content
-          const scale = 1.0;
+          // Use scale 1.5 for larger document rendering
+          const scale = 1.5;
           const viewport = page.getViewport({ scale });
           
           const canvas = document.createElement("canvas");
