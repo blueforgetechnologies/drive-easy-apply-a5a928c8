@@ -346,6 +346,7 @@ export type Database = {
           factoring_contact_email: string | null
           factoring_contact_name: string | null
           factoring_contact_phone: string | null
+          factoring_percentage: number | null
           id: string
           legal_name: string | null
           logo_url: string | null
@@ -378,6 +379,7 @@ export type Database = {
           factoring_contact_email?: string | null
           factoring_contact_name?: string | null
           factoring_contact_phone?: string | null
+          factoring_percentage?: number | null
           id?: string
           legal_name?: string | null
           logo_url?: string | null
@@ -410,6 +412,7 @@ export type Database = {
           factoring_contact_email?: string | null
           factoring_contact_name?: string | null
           factoring_contact_phone?: string | null
+          factoring_percentage?: number | null
           id?: string
           legal_name?: string | null
           logo_url?: string | null
