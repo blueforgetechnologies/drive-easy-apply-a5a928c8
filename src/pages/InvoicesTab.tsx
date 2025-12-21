@@ -17,12 +17,16 @@ interface Invoice {
   id: string;
   invoice_number: string;
   customer_name: string;
+  billing_party: string | null;
   invoice_date: string;
   due_date: string;
   total_amount: number;
   amount_paid: number;
   balance_due: number;
+  advance_issued: number | null;
+  expected_deposit: number | null;
   status: string;
+  notes: string | null;
   created_at: string;
 }
 
@@ -230,13 +234,13 @@ export default function InvoicesTab() {
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string }> = {
       draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
-      sent: { label: "Sent", className: "bg-blue-500 hover:bg-blue-600" },
-      paid: { label: "Paid", className: "bg-green-600 hover:bg-green-700" },
+      sent: { label: "Billed", className: "bg-amber-500 hover:bg-amber-600" },
+      paid: { label: "Paid", className: "bg-green-500 hover:bg-green-600" },
       overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
       cancelled: { label: "Cancelled", className: "bg-gray-700 hover:bg-gray-800" },
     };
     const config = configs[status] || configs.draft;
-    return <Badge className={config.className}>{config.label}</Badge>;
+    return <Badge className={`${config.className} text-white`}>{config.label}</Badge>;
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -494,47 +498,48 @@ export default function InvoicesTab() {
             <Table>
               <TableHeader>
                 <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Date</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Due Date</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Total</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Paid</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
-                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                    <TableCell>{invoice.customer_name}</TableCell>
-                    <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MM/dd/yyyy") : "—"}</TableCell>
-                    <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MM/dd/yyyy") : "—"}</TableCell>
-                    <TableCell>${invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
-                    <TableCell className="text-green-600">${invoice.amount_paid?.toFixed(2) || "0.00"}</TableCell>
-                    <TableCell className="font-semibold">${invoice.balance_due?.toFixed(2) || "0.00"}</TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        {invoice.status === "draft" && (
-                          <Button size="sm" variant="outline" onClick={() => handleSendInvoice(invoice.id)}>
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {invoice.status === "sent" && (
-                          <Button size="sm" variant="outline" onClick={() => handleMarkPaid(invoice.id)}>
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => viewInvoiceDetail(invoice.id)}>
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredInvoices.map((invoice) => {
+                  const daysSinceBilling = invoice.invoice_date 
+                    ? Math.floor((Date.now() - new Date(invoice.invoice_date).getTime()) / (1000 * 60 * 60 * 24))
+                    : 0;
+                  const advanceIssued = invoice.advance_issued || 0;
+                  
+                  return (
+                    <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
+                      <TableCell className="font-medium text-primary">{invoice.invoice_number}</TableCell>
+                      <TableCell>{invoice.customer_name || "—"}</TableCell>
+                      <TableCell>{invoice.billing_party || "—"}</TableCell>
+                      <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "M/d/yyyy") : "—"}</TableCell>
+                      <TableCell className={daysSinceBilling > 30 ? "text-orange-500 font-medium" : ""}>
+                        {daysSinceBilling}
+                      </TableCell>
+                      <TableCell>{formatCurrency(invoice.total_amount)}</TableCell>
+                      <TableCell className={advanceIssued > 0 ? "text-orange-500" : ""}>
+                        {advanceIssued > 0 ? `(${formatCurrency(advanceIssued)})` : formatCurrency(0)}
+                      </TableCell>
+                      <TableCell>{formatCurrency(invoice.expected_deposit)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.balance_due)}</TableCell>
+                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={invoice.notes || ""}>
+                        {invoice.notes || "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )

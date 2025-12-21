@@ -1237,14 +1237,17 @@ export type Database = {
       }
       invoices: {
         Row: {
+          advance_issued: number | null
           amount_paid: number | null
           balance_due: number | null
+          billing_party: string | null
           created_at: string | null
           customer_address: string | null
           customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
           due_date: string | null
+          expected_deposit: number | null
           id: string
           invoice_date: string | null
           invoice_number: string
@@ -1262,14 +1265,17 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          advance_issued?: number | null
           amount_paid?: number | null
           balance_due?: number | null
+          billing_party?: string | null
           created_at?: string | null
           customer_address?: string | null
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           due_date?: string | null
+          expected_deposit?: number | null
           id?: string
           invoice_date?: string | null
           invoice_number: string
@@ -1287,14 +1293,17 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          advance_issued?: number | null
           amount_paid?: number | null
           balance_due?: number | null
+          billing_party?: string | null
           created_at?: string | null
           customer_address?: string | null
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           due_date?: string | null
+          expected_deposit?: number | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string
