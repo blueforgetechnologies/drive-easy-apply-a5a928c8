@@ -27,7 +27,7 @@ export default function ReadyForAuditTab() {
           load_owner:load_owner_id(first_name, last_name),
           driver:assigned_driver_id(personal_info)
         `)
-        .eq("status", "ready_for_audit")
+        .in("status", ["ready_for_audit", "set_aside"])
         .order("completed_at", { ascending: false });
 
       if (error) throw error;
@@ -138,14 +138,23 @@ export default function ReadyForAuditTab() {
                       : "";
                     const driverName = getDriverName(load.driver);
 
+                      const isSetAside = load.status === "set_aside";
+
                       return (
                         <TableRow 
                           key={load.id} 
-                          className="cursor-pointer hover:bg-muted/50 border-t"
+                          className={`cursor-pointer hover:bg-muted/50 border-t ${isSetAside ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : ""}`}
                           onClick={() => setSelectedLoadId(load.id)}
                         >
                           <TableCell className="align-top py-2">
-                            <div className="font-medium text-sm">{load.load_number}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium text-sm">{load.load_number}</div>
+                              {isSetAside && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500 text-white">
+                                  Set Aside
+                                </span>
+                              )}
+                            </div>
                             <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
                           </TableCell>
                           <TableCell className="align-top py-2">
