@@ -56,6 +56,7 @@ interface PendingLoad {
   delivery_state: string | null;
   completed_at: string | null;
   notes: string | null;
+  broker_name: string | null;
   customers: { name: string } | null;
   carriers: { name: string } | null;
 }
@@ -103,6 +104,7 @@ export default function InvoicesTab() {
             delivery_state,
             completed_at,
             notes,
+            broker_name,
             customers(name),
             carriers(name)
           `)
@@ -515,7 +517,7 @@ export default function InvoicesTab() {
                     >
                       <TableCell className="font-medium text-primary">{load.invoice_number || load.load_number}</TableCell>
                       <TableCell>{load.customers?.name || "—"}</TableCell>
-                      <TableCell>{load.carriers?.name || "—"}</TableCell>
+                      <TableCell>{load.broker_name || "—"}</TableCell>
                       <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
                       <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
                         {daysSinceBilling}
