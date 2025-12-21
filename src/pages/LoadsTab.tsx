@@ -506,9 +506,64 @@ export default function LoadsTab() {
     }
   };
 
+  // Helper function to calculate distance between two locations
+  const calculateDistance = async (
+    pickupCity: string, 
+    pickupState: string, 
+    deliveryCity: string, 
+    deliveryState: string
+  ): Promise<number | null> => {
+    try {
+      // Geocode pickup location
+      const pickupQuery = `${pickupCity}, ${pickupState}`;
+      const { data: pickupData, error: pickupError } = await supabase.functions.invoke('geocode', {
+        body: { query: pickupQuery }
+      });
+      
+      if (pickupError || !pickupData?.lat || !pickupData?.lng) {
+        console.error('Failed to geocode pickup:', pickupError);
+        return null;
+      }
+
+      // Geocode delivery location
+      const deliveryQuery = `${deliveryCity}, ${deliveryState}`;
+      const { data: deliveryData, error: deliveryError } = await supabase.functions.invoke('geocode', {
+        body: { query: deliveryQuery }
+      });
+
+      if (deliveryError || !deliveryData?.lat || !deliveryData?.lng) {
+        console.error('Failed to geocode delivery:', deliveryError);
+        return null;
+      }
+
+      // Calculate distance using Haversine formula (approximation)
+      const R = 3959; // Earth's radius in miles
+      const dLat = (deliveryData.lat - pickupData.lat) * Math.PI / 180;
+      const dLon = (deliveryData.lng - pickupData.lng) * Math.PI / 180;
+      const lat1 = pickupData.lat * Math.PI / 180;
+      const lat2 = deliveryData.lat * Math.PI / 180;
+
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const directDistance = R * c;
+
+      // Apply road distance multiplier (typically 1.2-1.4 for driving vs straight line)
+      const estimatedRoadDistance = Math.round(directDistance * 1.25);
+
+      console.log(`Calculated distance: ${pickupQuery} -> ${deliveryQuery} = ${estimatedRoadDistance} miles`);
+      return estimatedRoadDistance;
+    } catch (error) {
+      console.error('Error calculating distance:', error);
+      return null;
+    }
+  };
+
   const handleAddLoad = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const estimatedMiles = formData.estimated_miles ? parseFloat(formData.estimated_miles) : null;
+      
       const { data: insertedLoad, error } = await (supabase
         .from("loads") as any)
         .insert({
@@ -516,7 +571,7 @@ export default function LoadsTab() {
           status: "available",
           cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
           cargo_pieces: formData.cargo_pieces ? parseInt(formData.cargo_pieces, 10) : null,
-          estimated_miles: formData.estimated_miles ? parseFloat(formData.estimated_miles) : null,
+          estimated_miles: estimatedMiles,
           rate: formData.rate ? parseFloat(formData.rate) : null,
           customer_id: formData.customer_id || null,
         })
@@ -526,6 +581,30 @@ export default function LoadsTab() {
       if (error) throw error;
       
       const loadId = (insertedLoad as any)?.id as string | undefined;
+
+      // If no miles were provided, calculate distance from pickup/delivery cities
+      if (!estimatedMiles && loadId && formData.pickup_city && formData.pickup_state && formData.delivery_city && formData.delivery_state) {
+        const calculatedMiles = await calculateDistance(
+          formData.pickup_city,
+          formData.pickup_state,
+          formData.delivery_city,
+          formData.delivery_state
+        );
+
+        if (calculatedMiles && calculatedMiles > 0) {
+          // Update the load with calculated miles
+          const { error: updateError } = await supabase
+            .from("loads" as any)
+            .update({ estimated_miles: calculatedMiles })
+            .eq('id', loadId);
+
+          if (updateError) {
+            console.error('Failed to update load with calculated miles:', updateError);
+          } else {
+            toast.success(`Distance calculated: ${calculatedMiles} miles`);
+          }
+        }
+      }
 
       // Upload rate confirmation file if present
       if (rateConfirmationFile && loadId) {
