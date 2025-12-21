@@ -235,6 +235,7 @@ export default function LoadsTab() {
   };
 
   // Function to find matching customer from extracted data
+  // Priority: 1) MC number, 2) Exact name, 3) Similar name, 4) Email (lowest - billing emails often differ from customer)
   const findMatchingCustomer = useCallback((customerName: string | undefined, mcNumber: string | undefined, email: string | undefined) => {
     if (!customerName && !mcNumber && !email) return null;
     
@@ -243,26 +244,49 @@ export default function LoadsTab() {
     const normalizedMc = mcNumber?.replace(/[^0-9]/g, '');
     const normalizedEmail = email?.toLowerCase().trim();
     
-    for (const customer of customers) {
-      // Check MC number match first (most reliable)
-      if (normalizedMc && customer.mc_number) {
-        const customerMc = customer.mc_number.replace(/[^0-9]/g, '');
-        if (customerMc === normalizedMc) {
-          return customer;
+    // First pass: Check MC number match (most reliable identifier)
+    if (normalizedMc) {
+      for (const customer of customers) {
+        if (customer.mc_number) {
+          const customerMc = customer.mc_number.replace(/[^0-9]/g, '');
+          if (customerMc === normalizedMc) {
+            return customer;
+          }
         }
       }
-      
-      // Check email match
-      if (normalizedEmail && customer.email?.toLowerCase().trim() === normalizedEmail) {
-        return customer;
+    }
+    
+    // Second pass: Check exact name match (prioritize company name over email)
+    if (normalizedName) {
+      for (const customer of customers) {
+        if (customer.name) {
+          const customerNameLower = customer.name.toLowerCase().trim();
+          if (customerNameLower === normalizedName) {
+            return customer;
+          }
+        }
       }
-      
-      // Check name similarity (exact or contains)
-      if (normalizedName && customer.name) {
-        const customerNameLower = customer.name.toLowerCase().trim();
-        if (customerNameLower === normalizedName || 
-            customerNameLower.includes(normalizedName) || 
-            normalizedName.includes(customerNameLower)) {
+    }
+    
+    // Third pass: Check name similarity (contains match)
+    if (normalizedName) {
+      for (const customer of customers) {
+        if (customer.name) {
+          const customerNameLower = customer.name.toLowerCase().trim();
+          if (customerNameLower.includes(normalizedName) || 
+              normalizedName.includes(customerNameLower)) {
+            return customer;
+          }
+        }
+      }
+    }
+    
+    // Fourth pass: Check full email match (only if name didn't match)
+    // Note: Email matching is lowest priority because billing emails like AP@xyz.com 
+    // may not represent the actual customer company name
+    if (normalizedEmail) {
+      for (const customer of customers) {
+        if (customer.email?.toLowerCase().trim() === normalizedEmail) {
           return customer;
         }
       }
