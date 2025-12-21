@@ -254,6 +254,15 @@ export default function LoadDetail() {
           delivery_date: load.delivery_date,
           delivery_time: load.delivery_time,
           delivery_notes: load.delivery_notes,
+          // Billing party / broker info
+          broker_name: load.broker_name,
+          broker_contact: load.broker_contact,
+          broker_phone: load.broker_phone,
+          broker_email: load.broker_email,
+          broker_address: load.broker_address,
+          broker_city: load.broker_city,
+          broker_state: load.broker_state,
+          broker_zip: load.broker_zip,
           // Shipper info
           shipper_name: load.shipper_name,
           shipper_address: load.shipper_address,
