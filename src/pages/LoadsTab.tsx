@@ -1350,24 +1350,20 @@ export default function LoadsTab() {
                   <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-3 space-y-1">
                       <Label htmlFor="customer_id" className="text-xs font-medium text-muted-foreground">Customer (Who Pays)</Label>
-                      <div className="flex gap-2">
-                        <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Select customer" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {customers.map((customer) => (
-                              <SelectItem key={customer.id} value={customer.id}>
-                                {customer.name} {customer.contact_name ? `(${customer.contact_name})` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <AddCustomerDialog onCustomerAdded={async (customerId) => {
-                          await loadDriversAndVehicles();
-                          setFormData({ ...formData, customer_id: customerId });
-                        }} />
-                      </div>
+                      <SearchableEntitySelect
+                        entities={customers.map(c => ({ id: c.id, name: c.name, city: c.city, state: c.state }))}
+                        value={customers.find(c => c.id === formData.customer_id)?.name || ""}
+                        placeholder="Search customers..."
+                        onSelect={(entity) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            customer_id: entity.id,
+                          }));
+                        }}
+                        onAddNew={handleAddNewCustomer}
+                        entityType="customer"
+                        className="h-8"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="rate" className="text-xs font-medium text-muted-foreground">Rate ($)</Label>
