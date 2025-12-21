@@ -54,6 +54,7 @@ interface PendingLoad {
   delivery_city: string | null;
   delivery_state: string | null;
   completed_at: string | null;
+  notes: string | null;
   customers: { name: string } | null;
   carriers: { name: string } | null;
 }
@@ -99,6 +100,7 @@ export default function InvoicesTab() {
             delivery_city,
             delivery_state,
             completed_at,
+            notes,
             customers(name),
             carriers(name)
           `)
@@ -438,53 +440,57 @@ export default function InvoicesTab() {
             <Table>
               <TableHeader>
                 <TableRow className="border-l-4 border-l-amber-500 border-b-0 bg-background">
-                  <TableHead className="text-primary font-medium uppercase text-xs">Load #</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Customer Ref</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Origin</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Destination</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Pickup Date</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Delivery Date</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Rate</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPendingLoads.map((load) => (
-                  <TableRow 
-                    key={load.id} 
-                    className="cursor-pointer hover:bg-muted/50 border-l-4 border-l-amber-500"
-                    onClick={() => navigate(`/dashboard/load/${load.id}`)}
-                  >
-                    <TableCell className="font-medium">{load.load_number}</TableCell>
-                    <TableCell>{load.reference_number || "—"}</TableCell>
-                    <TableCell>{load.customers?.name || "—"}</TableCell>
-                    <TableCell>
-                      {load.pickup_city && load.pickup_state 
-                        ? `${load.pickup_city}, ${load.pickup_state}` 
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {load.delivery_city && load.delivery_state 
-                        ? `${load.delivery_city}, ${load.delivery_state}` 
-                        : "—"}
-                    </TableCell>
-                    <TableCell>{formatDate(load.pickup_date)}</TableCell>
-                    <TableCell>{formatDate(load.delivery_date)}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(load.rate)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => navigate(`/dashboard/load/${load.id}`)}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredPendingLoads.map((load) => {
+                  const billingDate = load.completed_at || load.delivery_date || load.pickup_date;
+                  const daysSinceBilling = billingDate
+                    ? Math.floor((Date.now() - new Date(billingDate).getTime()) / (1000 * 60 * 60 * 24))
+                    : 0;
+
+                  const invoiceAmount = load.rate || 0;
+                  const advanceIssued = 0;
+                  const expectedDeposit = invoiceAmount - advanceIssued;
+                  const balance = invoiceAmount;
+
+                  return (
+                    <TableRow
+                      key={load.id}
+                      className="cursor-pointer hover:bg-muted/50 border-l-4 border-l-amber-500"
+                      onClick={() => navigate(`/dashboard/load/${load.id}`)}
+                    >
+                      <TableCell className="font-medium text-primary">{load.load_number}</TableCell>
+                      <TableCell>{load.customers?.name || "—"}</TableCell>
+                      <TableCell>{load.carriers?.name || "—"}</TableCell>
+                      <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
+                      <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
+                        {daysSinceBilling}
+                      </TableCell>
+                      <TableCell>{formatCurrency(load.rate)}</TableCell>
+                      <TableCell>{formatCurrency(0)}</TableCell>
+                      <TableCell>{formatCurrency(expectedDeposit)}</TableCell>
+                      <TableCell>{formatCurrency(balance)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">Pending</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={load.notes || ""}>
+                        {load.notes || "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )
@@ -524,11 +530,11 @@ export default function InvoicesTab() {
                       <TableCell>{invoice.customer_name || "—"}</TableCell>
                       <TableCell>{invoice.billing_party || "—"}</TableCell>
                       <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "M/d/yyyy") : "—"}</TableCell>
-                      <TableCell className={daysSinceBilling > 30 ? "text-orange-500 font-medium" : ""}>
+                      <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
                         {daysSinceBilling}
                       </TableCell>
                       <TableCell>{formatCurrency(invoice.total_amount)}</TableCell>
-                      <TableCell className={advanceIssued > 0 ? "text-orange-500" : ""}>
+                      <TableCell className={advanceIssued > 0 ? "text-destructive" : ""}>
                         {advanceIssued > 0 ? `(${formatCurrency(advanceIssued)})` : formatCurrency(0)}
                       </TableCell>
                       <TableCell>{formatCurrency(invoice.expected_deposit)}</TableCell>
