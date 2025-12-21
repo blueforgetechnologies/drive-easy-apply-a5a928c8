@@ -1413,32 +1413,44 @@ export default function LoadDetail() {
                   </div>
 
                   {/* Vehicle */}
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Truck ID / Vehicle</Label>
-                    <div className="flex gap-1">
-                      <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
-                        updateField("assigned_vehicle_id", value);
-                        // Auto-select driver assigned to this vehicle, or N/A if none
-                        const selectedVehicle = vehicles.find((v) => v.id === value);
-                        if (selectedVehicle?.driver_1_id) {
-                          updateField("assigned_driver_id", selectedVehicle.driver_1_id);
-                        } else {
-                          updateField("assigned_driver_id", null);
-                        }
-                        // Auto-populate equipment type from vehicle if blank (e.g. "24' Large Straight")
-                        if (!load.equipment_type && selectedVehicle) {
-                          const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
-                          const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
-                          updateField("equipment_type", `${sizePrefix}${vehicleType}`);
-                        }
-                      }}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent className="bg-background">
-                          {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
-                      <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
+                  <div className="space-y-1.5">
+                    <div>
+                      <Label className="text-[10px] font-medium text-muted-foreground">Truck ID / Vehicle</Label>
+                      <div className="flex gap-1">
+                        <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
+                          updateField("assigned_vehicle_id", value);
+                          // Auto-select driver assigned to this vehicle, or N/A if none
+                          const selectedVehicle = vehicles.find((v) => v.id === value);
+                          if (selectedVehicle?.driver_1_id) {
+                            updateField("assigned_driver_id", selectedVehicle.driver_1_id);
+                          } else {
+                            updateField("assigned_driver_id", null);
+                          }
+                          // Auto-populate equipment type from vehicle if blank (e.g. "24' Large Straight")
+                          if (!load.equipment_type && selectedVehicle) {
+                            const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
+                            const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
+                            updateField("equipment_type", `${sizePrefix}${vehicleType}`);
+                          }
+                        }}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background">
+                            {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
+                        <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-medium text-muted-foreground">DH Miles</Label>
+                      <Input
+                        type="number"
+                        value={load.empty_miles ?? ""}
+                        onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)}
+                        placeholder="Enter DH miles"
+                        className={`h-7 text-xs ${!load.empty_miles ? 'border-red-500 text-red-500 placeholder:text-red-400' : ''}`}
+                      />
                     </div>
                   </div>
 
