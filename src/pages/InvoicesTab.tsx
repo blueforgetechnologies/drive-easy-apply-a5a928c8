@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, FileText, Send, CheckCircle } from "lucide-react";
+import { Search, Plus, FileText, Send, CheckCircle, Clock } from "lucide-react";
 
 interface Invoice {
   id: string;
@@ -38,11 +38,28 @@ interface Customer {
   payment_terms: string;
 }
 
+interface PendingLoad {
+  id: string;
+  load_number: string;
+  reference_number: string | null;
+  rate: number | null;
+  pickup_date: string | null;
+  delivery_date: string | null;
+  pickup_city: string | null;
+  pickup_state: string | null;
+  delivery_city: string | null;
+  delivery_state: string | null;
+  completed_at: string | null;
+  customers: { name: string } | null;
+  carriers: { name: string } | null;
+}
+
 export default function InvoicesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const filter = searchParams.get("filter") || "draft";
+  const filter = searchParams.get("filter") || "pending";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [pendingLoads, setPendingLoads] = useState<PendingLoad[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,16 +79,45 @@ export default function InvoicesTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("invoices" as any)
-        .select("*")
-        .eq("status", filter)
-        .order("created_at", { ascending: false });
+      if (filter === "pending") {
+        // Load pending invoices from loads table
+        const { data, error } = await supabase
+          .from("loads")
+          .select(`
+            id,
+            load_number,
+            reference_number,
+            rate,
+            pickup_date,
+            delivery_date,
+            pickup_city,
+            pickup_state,
+            delivery_city,
+            delivery_state,
+            completed_at,
+            customers(name),
+            carriers(name)
+          `)
+          .eq("financial_status", "pending_invoice")
+          .order("completed_at", { ascending: false });
 
-      if (error) throw error;
-      setInvoices((data as any) || []);
+        if (error) throw error;
+        setPendingLoads((data as PendingLoad[]) || []);
+        setInvoices([]);
+      } else {
+        // Load regular invoices
+        const { data, error } = await supabase
+          .from("invoices" as any)
+          .select("*")
+          .eq("status", filter)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setInvoices((data as any) || []);
+        setPendingLoads([]);
+      }
     } catch (error) {
-      toast.error("Error loading invoices");
+      toast.error("Error loading data");
       console.error(error);
     } finally {
       setLoading(false);
@@ -201,6 +247,28 @@ export default function InvoicesTab() {
     );
   });
 
+  const filteredPendingLoads = pendingLoads.filter((load) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      load.load_number?.toLowerCase().includes(searchLower) ||
+      load.reference_number?.toLowerCase().includes(searchLower) ||
+      (load.customers?.name || "").toLowerCase().includes(searchLower)
+    );
+  });
+
+  const formatDate = (date: string | null) => {
+    if (!date) return "—";
+    return format(new Date(date), "MMM d, yyyy");
+  };
+
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return "$0.00";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -281,6 +349,18 @@ export default function InvoicesTab() {
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
+            variant={filter === "pending" ? "default" : "outline"}
+            onClick={() => {
+              setSearchParams({ filter: "pending" });
+              setSearchQuery("");
+            }}
+            className={filter === "pending" ? "bg-amber-500 text-white hover:bg-amber-600" : ""}
+          >
+            <Clock className="h-3.5 w-3.5 mr-1" />
+            Pending
+          </Button>
+          <Button
+            size="sm"
             variant={filter === "draft" ? "default" : "outline"}
             onClick={() => {
               setSearchParams({ filter: "draft" });
@@ -327,12 +407,12 @@ export default function InvoicesTab() {
 
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            {filteredInvoices.length} invoices
+            {filter === "pending" ? filteredPendingLoads.length : filteredInvoices.length} {filter === "pending" ? "loads" : "invoices"}
           </Badge>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search invoices..."
+              placeholder={filter === "pending" ? "Search loads..." : "Search invoices..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-8"
@@ -342,57 +422,122 @@ export default function InvoicesTab() {
       </div>
 
       <div className="overflow-x-auto">
-        {filteredInvoices.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            {searchQuery ? "No invoices match your search" : `No ${filter} invoices found`}
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Date</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Due Date</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Total</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Paid</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvoices.map((invoice) => (
-                <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
-                  <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                  <TableCell>{invoice.customer_name}</TableCell>
-                  <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MM/dd/yyyy") : "—"}</TableCell>
-                  <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MM/dd/yyyy") : "—"}</TableCell>
-                  <TableCell>${invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
-                  <TableCell className="text-green-600">${invoice.amount_paid?.toFixed(2) || "0.00"}</TableCell>
-                  <TableCell className="font-semibold">${invoice.balance_due?.toFixed(2) || "0.00"}</TableCell>
-                  <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      {invoice.status === "draft" && (
-                        <Button size="sm" variant="outline" onClick={() => handleSendInvoice(invoice.id)}>
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {invoice.status === "sent" && (
-                        <Button size="sm" variant="outline" onClick={() => handleMarkPaid(invoice.id)}>
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" onClick={() => viewInvoiceDetail(invoice.id)}>
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        {filter === "pending" ? (
+          // Pending loads table
+          filteredPendingLoads.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Clock className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">No pending loads</p>
+              <p className="text-sm">Approved loads awaiting invoice creation will appear here</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-l-4 border-l-amber-500 border-b-0 bg-background">
+                  <TableHead className="text-primary font-medium uppercase text-xs">Load #</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Customer Ref</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Origin</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Destination</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Pickup Date</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Delivery Date</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Rate</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredPendingLoads.map((load) => (
+                  <TableRow 
+                    key={load.id} 
+                    className="cursor-pointer hover:bg-muted/50 border-l-4 border-l-amber-500"
+                    onClick={() => navigate(`/dashboard/load/${load.id}`)}
+                  >
+                    <TableCell className="font-medium">{load.load_number}</TableCell>
+                    <TableCell>{load.reference_number || "—"}</TableCell>
+                    <TableCell>{load.customers?.name || "—"}</TableCell>
+                    <TableCell>
+                      {load.pickup_city && load.pickup_state 
+                        ? `${load.pickup_city}, ${load.pickup_state}` 
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {load.delivery_city && load.delivery_state 
+                        ? `${load.delivery_city}, ${load.delivery_state}` 
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{formatDate(load.pickup_date)}</TableCell>
+                    <TableCell>{formatDate(load.delivery_date)}</TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(load.rate)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => navigate(`/dashboard/load/${load.id}`)}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )
+        ) : (
+          // Regular invoices table
+          filteredInvoices.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {searchQuery ? "No invoices match your search" : `No ${filter} invoices found`}
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Date</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Due Date</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Total</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Paid</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices.map((invoice) => (
+                  <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
+                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell>{invoice.customer_name}</TableCell>
+                    <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "MM/dd/yyyy") : "—"}</TableCell>
+                    <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MM/dd/yyyy") : "—"}</TableCell>
+                    <TableCell>${invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
+                    <TableCell className="text-green-600">${invoice.amount_paid?.toFixed(2) || "0.00"}</TableCell>
+                    <TableCell className="font-semibold">${invoice.balance_due?.toFixed(2) || "0.00"}</TableCell>
+                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        {invoice.status === "draft" && (
+                          <Button size="sm" variant="outline" onClick={() => handleSendInvoice(invoice.id)}>
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {invoice.status === "sent" && (
+                          <Button size="sm" variant="outline" onClick={() => handleMarkPaid(invoice.id)}>
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => viewInvoiceDetail(invoice.id)}>
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )
         )}
       </div>
     </div>
