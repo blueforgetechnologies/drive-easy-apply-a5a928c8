@@ -186,6 +186,14 @@ export default function LoadsTab() {
     broker_contact: "",
     broker_phone: "",
     broker_email: "",
+    billing_party_name: "",
+    billing_party_address: "",
+    billing_party_city: "",
+    billing_party_state: "",
+    billing_party_zip: "",
+    billing_party_contact: "",
+    billing_party_phone: "",
+    billing_party_email: "",
     shipper_name: "",
     shipper_address: "",
     shipper_city: "",
@@ -685,6 +693,14 @@ export default function LoadsTab() {
         broker_contact: "",
         broker_phone: "",
         broker_email: "",
+        billing_party_name: "",
+        billing_party_address: "",
+        billing_party_city: "",
+        billing_party_state: "",
+        billing_party_zip: "",
+        billing_party_contact: "",
+        billing_party_phone: "",
+        billing_party_email: "",
         shipper_name: "",
         shipper_address: "",
         shipper_city: "",
@@ -985,6 +1001,15 @@ export default function LoadsTab() {
                       broker_contact: data.customer_contact || prev.broker_contact,
                       broker_phone: data.customer_phone || prev.broker_phone,
                       broker_email: data.customer_email || prev.broker_email,
+                      // Billing party - AI extracts or falls back to broker in the edge function
+                      billing_party_name: data.billing_party_name || prev.billing_party_name,
+                      billing_party_address: data.billing_party_address || prev.billing_party_address,
+                      billing_party_city: data.billing_party_city || prev.billing_party_city,
+                      billing_party_state: data.billing_party_state || prev.billing_party_state,
+                      billing_party_zip: data.billing_party_zip || prev.billing_party_zip,
+                      billing_party_contact: data.billing_party_contact || prev.billing_party_contact,
+                      billing_party_phone: data.billing_party_phone || prev.billing_party_phone,
+                      billing_party_email: data.billing_party_email || prev.billing_party_email,
                       shipper_name: data.shipper_name || prev.shipper_name,
                       shipper_address: data.shipper_address || prev.shipper_address,
                       shipper_city: data.shipper_city || prev.shipper_city,
@@ -1177,6 +1202,56 @@ export default function LoadsTab() {
                         onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })}
                         className="h-9"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing Party Information */}
+                <div className="rounded-lg border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-100/80 to-violet-50/40 dark:from-violet-950/40 dark:to-violet-900/20 p-3 space-y-3">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-violet-300/60 dark:border-violet-700/60">
+                    <div className="p-1 rounded-md bg-violet-500/20">
+                      <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <h3 className="font-semibold text-sm text-violet-700 dark:text-violet-400">Billing Party (Invoice To)</h3>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="col-span-2 space-y-1">
+                      <Label htmlFor="billing_party_name" className="text-xs font-medium text-muted-foreground">Company Name</Label>
+                      <Input 
+                        id="billing_party_name" 
+                        value={formData.billing_party_name} 
+                        onChange={(e) => setFormData({ ...formData, billing_party_name: e.target.value })} 
+                        placeholder="Defaults to Customer/Broker if empty" 
+                        className="h-8" 
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label htmlFor="billing_party_address" className="text-xs font-medium text-muted-foreground">Address</Label>
+                      <Input id="billing_party_address" value={formData.billing_party_address} onChange={(e) => setFormData({ ...formData, billing_party_address: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="billing_party_city" className="text-xs font-medium text-muted-foreground">City</Label>
+                      <Input id="billing_party_city" value={formData.billing_party_city} onChange={(e) => setFormData({ ...formData, billing_party_city: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="billing_party_state" className="text-xs font-medium text-muted-foreground">State</Label>
+                      <Input id="billing_party_state" value={formData.billing_party_state} onChange={(e) => setFormData({ ...formData, billing_party_state: e.target.value })} placeholder="CA" className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="billing_party_zip" className="text-xs font-medium text-muted-foreground">ZIP</Label>
+                      <Input id="billing_party_zip" value={formData.billing_party_zip} onChange={(e) => setFormData({ ...formData, billing_party_zip: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="billing_party_contact" className="text-xs font-medium text-muted-foreground">Contact</Label>
+                      <Input id="billing_party_contact" value={formData.billing_party_contact} onChange={(e) => setFormData({ ...formData, billing_party_contact: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label htmlFor="billing_party_phone" className="text-xs font-medium text-muted-foreground">Phone</Label>
+                      <Input id="billing_party_phone" type="tel" value={formData.billing_party_phone} onChange={(e) => setFormData({ ...formData, billing_party_phone: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label htmlFor="billing_party_email" className="text-xs font-medium text-muted-foreground">Email</Label>
+                      <Input id="billing_party_email" type="email" value={formData.billing_party_email} onChange={(e) => setFormData({ ...formData, billing_party_email: e.target.value })} className="h-8" />
                     </div>
                   </div>
                 </div>

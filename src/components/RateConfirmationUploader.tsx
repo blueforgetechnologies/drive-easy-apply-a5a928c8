@@ -37,6 +37,16 @@ export interface ExtractedLoadData {
   customer_contact?: string;
   reference_number?: string;
   
+  // Billing party info (who to invoice)
+  billing_party_name?: string;
+  billing_party_address?: string;
+  billing_party_city?: string;
+  billing_party_state?: string;
+  billing_party_zip?: string;
+  billing_party_contact?: string;
+  billing_party_phone?: string;
+  billing_party_email?: string;
+  
   // Cargo info
   cargo_description?: string;
   cargo_weight?: number;
