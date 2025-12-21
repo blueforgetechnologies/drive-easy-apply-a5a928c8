@@ -1649,6 +1649,7 @@ export default function LoadsTab() {
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">RC</TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">BOL</TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2 w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1800,11 +1801,28 @@ export default function LoadsTab() {
                                 );
                               })()}
                             </TableCell>
+                            <TableCell 
+                              className="py-2 px-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => {
+                                  if (confirm(`Delete load ${load.load_number}?`)) {
+                                    handleDeleteLoad(load.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                           {/* Red separator line after last action_needed load */}
                           {isLastActionNeeded && (
                             <TableRow className="h-1 bg-transparent border-0 p-0">
-                              <TableCell colSpan={13} className="p-0 border-0">
+                              <TableCell colSpan={14} className="p-0 border-0">
                                 <div className="h-1 bg-red-500 dark:bg-red-600 shadow-md shadow-red-500/50" />
                               </TableCell>
                             </TableRow>
