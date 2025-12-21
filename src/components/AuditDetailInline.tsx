@@ -76,9 +76,28 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         billing_notes: notes || load?.billing_notes 
       };
       
-      // When approved, also set financial_status to pending_invoice
+      // When approved, also set financial_status to pending_invoice and generate invoice number
       if (newStatus === "completed") {
         updateData.financial_status = "pending_invoice";
+        
+        // Generate sequential invoice number
+        const { data: lastLoad } = await supabase
+          .from("loads")
+          .select("invoice_number")
+          .not("invoice_number", "is", null)
+          .order("invoice_number", { ascending: false })
+          .limit(1)
+          .single();
+
+        let nextNumber = 1000001;
+        const lastRecord = lastLoad as { invoice_number?: string } | null;
+        if (lastRecord?.invoice_number) {
+          const lastNum = parseInt(lastRecord.invoice_number, 10);
+          if (!isNaN(lastNum)) {
+            nextNumber = lastNum + 1;
+          }
+        }
+        updateData.invoice_number = String(nextNumber);
       }
       
       const { error } = await supabase

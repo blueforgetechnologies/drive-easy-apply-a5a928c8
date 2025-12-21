@@ -1988,6 +1988,7 @@ export type Database = {
           fuel_surcharge: number | null
           hazmat: boolean | null
           id: string
+          invoice_number: string | null
           last_updated_location: string | null
           layover_charges: number | null
           load_email_id: string | null
@@ -2100,6 +2101,7 @@ export type Database = {
           fuel_surcharge?: number | null
           hazmat?: boolean | null
           id?: string
+          invoice_number?: string | null
           last_updated_location?: string | null
           layover_charges?: number | null
           load_email_id?: string | null
@@ -2212,6 +2214,7 @@ export type Database = {
           fuel_surcharge?: number | null
           hazmat?: boolean | null
           id?: string
+          invoice_number?: string | null
           last_updated_location?: string | null
           layover_charges?: number | null
           load_email_id?: string | null
