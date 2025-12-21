@@ -413,126 +413,129 @@ export default function FleetFinancialsTab() {
         </div>
 
         {/* Data Table */}
-        <ScrollArea className="flex-1">
-          <Table className="min-w-[1800px]">
-            <TableHeader className="sticky top-0 z-10 bg-muted">
-              <TableRow>
-                <TableHead className="w-[100px]">P/U Date</TableHead>
-                <TableHead className="w-[160px]">Customer</TableHead>
-                <TableHead className="w-[90px]">Route</TableHead>
-                <TableHead className="w-[90px] text-right">Payload</TableHead>
-                <TableHead className="w-[80px] text-right">Empty Mi</TableHead>
-                <TableHead className="w-[80px] text-right">Loaded Mi</TableHead>
-                <TableHead className="w-[80px] text-right">Total Mi</TableHead>
-                <TableHead className="w-[70px] text-right">$/Mile</TableHead>
-                <TableHead className="w-[85px] text-right">Factoring</TableHead>
-                <TableHead className="w-[95px] text-right">Dispatch Pay</TableHead>
-                <TableHead className="w-[85px] text-right">Driver Pay</TableHead>
-                <TableHead className="w-[85px] text-right">Work Comp</TableHead>
-                <TableHead className="w-[70px] text-right">Fuel</TableHead>
-                <TableHead className="w-[70px] text-right">Tolls</TableHead>
-                <TableHead className="w-[80px] text-right">Rental Mi</TableHead>
-                <TableHead className="w-[85px] text-right">Insurance</TableHead>
-                <TableHead className="w-[85px] text-right">Other</TableHead>
-                <TableHead className="w-[90px] text-right">Carrier Pay</TableHead>
-                <TableHead className="w-[80px] text-right">Carr $/Mi</TableHead>
-                <TableHead className="w-[100px] text-right">Carrier Net</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dailyData.map((day, index) => {
-                const dayName = format(day.date, "EEE");
-                const dateStr = format(day.date, "MM/dd");
-                const hasLoads = day.loads.length > 0;
+        <ScrollArea className="flex-1 overflow-auto">
+          <div className="min-w-[1800px]">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-muted">
+                <TableRow>
+                  <TableHead className="w-[100px]">P/U Date</TableHead>
+                  <TableHead className="w-[160px]">Customer</TableHead>
+                  <TableHead className="w-[90px]">Route</TableHead>
+                  <TableHead className="w-[90px] text-right">Payload</TableHead>
+                  <TableHead className="w-[80px] text-right">Empty Mi</TableHead>
+                  <TableHead className="w-[80px] text-right">Loaded Mi</TableHead>
+                  <TableHead className="w-[80px] text-right">Total Mi</TableHead>
+                  <TableHead className="w-[70px] text-right">$/Mile</TableHead>
+                  <TableHead className="w-[85px] text-right">Factoring</TableHead>
+                  <TableHead className="w-[95px] text-right">Dispatch Pay</TableHead>
+                  <TableHead className="w-[85px] text-right">Driver Pay</TableHead>
+                  <TableHead className="w-[85px] text-right">Work Comp</TableHead>
+                  <TableHead className="w-[70px] text-right">Fuel</TableHead>
+                  <TableHead className="w-[70px] text-right">Tolls</TableHead>
+                  <TableHead className="w-[80px] text-right">Rental Mi</TableHead>
+                  <TableHead className="w-[85px] text-right">Insurance</TableHead>
+                  <TableHead className="w-[85px] text-right">Other</TableHead>
+                  <TableHead className="w-[90px] text-right">Carrier Pay</TableHead>
+                  <TableHead className="w-[80px] text-right">Carr $/Mi</TableHead>
+                  <TableHead className="w-[100px] text-right">Carrier Net</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dailyData.map((day, index) => {
+                  const dayName = format(day.date, "EEE");
+                  const dateStr = format(day.date, "MM/dd");
+                  const hasLoads = day.loads.length > 0;
 
-                return (
-                  <>
-                    {hasLoads ? (
-                      day.loads.map((load, loadIndex) => {
-                        const rate = load.rate || 0;
-                        const emptyM = load.empty_miles || 0;
-                        const loadedM = load.estimated_miles || 0;
-                        const totalM = emptyM + loadedM;
-                        const dollarPerMile = totalM > 0 ? rate / totalM : 0;
-                        const factoring = rate * FACTORING_RATE;
-                        const dispPay = getDispatcherPay(load);
-                        const carrierNet = rate - factoring - dispPay - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
-                        const carrierPerMile = totalM > 0 ? rate / totalM : 0;
+                  return (
+                    <>
+                      {hasLoads ? (
+                        day.loads.map((load, loadIndex) => {
+                          const rate = load.rate || 0;
+                          const emptyM = load.empty_miles || 0;
+                          const loadedM = load.estimated_miles || 0;
+                          const totalM = emptyM + loadedM;
+                          const dollarPerMile = totalM > 0 ? rate / totalM : 0;
+                          const factoring = rate * FACTORING_RATE;
+                          const dispPay = getDispatcherPay(load);
+                          const carrierNet = rate - factoring - dispPay - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
+                          const carrierPerMile = totalM > 0 ? rate / totalM : 0;
 
-                        return (
-                          <TableRow key={load.id} className="hover:bg-muted/30">
-                            <TableCell className="font-medium text-muted-foreground">
-                              {loadIndex === 0 && `${dayName} ${dateStr}`}
-                            </TableCell>
-                            <TableCell className="truncate max-w-[160px]" title={getCustomerName(load.customer_id)}>
-                              {getCustomerName(load.customer_id)}
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {load.pickup_state}→{load.delivery_state}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency(rate)}</TableCell>
-                            <TableCell className="text-right">{formatNumber(emptyM, 0)}</TableCell>
-                            <TableCell className="text-right">{formatNumber(loadedM, 0)}</TableCell>
-                            <TableCell className="text-right font-medium">{formatNumber(totalM, 0)}</TableCell>
-                            <TableCell className="text-right">${formatNumber(dollarPerMile, 2)}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">{formatCurrency(factoring)}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">{formatCurrency(dispPay)}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
-                            <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
-                            <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
-                            <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
-                            <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
-                            <TableCell className="text-right text-muted-foreground">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(rate)}</TableCell>
-                            <TableCell className="text-right">${formatNumber(carrierPerMile, 2)}</TableCell>
-                            <TableCell className={cn("text-right font-bold", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
-                              {formatCurrency(carrierNet)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow key={day.date.toISOString()} className="text-muted-foreground">
-                        <TableCell className="font-medium">{`${dayName} ${dateStr}`}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-right">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-right font-bold text-destructive">
-                          {formatCurrency(-(DAILY_INSURANCE_RATE + DAILY_OTHER_COST))}
-                        </TableCell>
-                      </TableRow>
-                    )}
+                          return (
+                            <TableRow key={load.id} className="hover:bg-muted/30">
+                              <TableCell className="font-medium text-muted-foreground">
+                                {loadIndex === 0 && `${dayName} ${dateStr}`}
+                              </TableCell>
+                              <TableCell className="truncate max-w-[160px]" title={getCustomerName(load.customer_id)}>
+                                {getCustomerName(load.customer_id)}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {load.pickup_state}→{load.delivery_state}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right">{formatNumber(emptyM, 0)}</TableCell>
+                              <TableCell className="text-right">{formatNumber(loadedM, 0)}</TableCell>
+                              <TableCell className="text-right font-medium">{formatNumber(totalM, 0)}</TableCell>
+                              <TableCell className="text-right">${formatNumber(dollarPerMile, 2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{formatCurrency(factoring)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{formatCurrency(dispPay)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right">${formatNumber(carrierPerMile, 2)}</TableCell>
+                              <TableCell className={cn("text-right font-bold", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
+                                {formatCurrency(carrierNet)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow key={day.date.toISOString()} className="text-muted-foreground">
+                          <TableCell className="font-medium">{`${dayName} ${dateStr}`}</TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell className="text-right">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell className="text-right font-bold text-destructive">
+                            {formatCurrency(-(DAILY_INSURANCE_RATE + DAILY_OTHER_COST))}
+                          </TableCell>
+                        </TableRow>
+                      )}
 
-                    {/* Weekly Summary Row */}
-                    {day.isWeekEnd && (
-                      <TableRow key={`week-${day.date.toISOString()}`} className="bg-muted/50 border-t-2">
-                        <TableCell colSpan={19} className="text-right font-semibold">Weekly Total:</TableCell>
-                        <TableCell className={cn("text-right font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                          {formatCurrency(getWeeklyTotal(index))}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      {/* Weekly Summary Row */}
+                      {day.isWeekEnd && (
+                        <TableRow key={`week-${day.date.toISOString()}`} className="bg-muted/50 border-t-2">
+                          <TableCell colSpan={19} className="text-right font-semibold">Weekly Total:</TableCell>
+                          <TableCell className={cn("text-right font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                            {formatCurrency(getWeeklyTotal(index))}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         {/* Monthly Totals Footer */}
