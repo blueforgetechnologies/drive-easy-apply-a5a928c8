@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PDFImageViewer } from "@/components/PDFImageViewer";
+import { AuditDocumentViewer } from "@/components/audit/AuditDocumentViewer";
+
 
 interface ChecklistItem {
   id: string;
@@ -147,8 +148,8 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         status === type
           ? type === "match"
             ? "bg-emerald-500 text-white"
-            : "bg-rose-500 text-white"
-          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            : "bg-destructive text-destructive-foreground"
+          : "bg-muted/60 text-muted-foreground hover:bg-muted"
       }`}
     >
       {type === "match" ? "Match" : "Fail"}
@@ -185,107 +186,10 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   const vehicle = load.vehicles as any;
 
   // Organize documents by type
-  const documents = load.load_documents as any[] || [];
-  const rateConfirmationDocs = documents.filter((doc: any) => doc.document_type === 'rate_confirmation');
-  const bolDocs = documents.filter((doc: any) => doc.document_type === 'bill_of_lading');
+  const documents = (load.load_documents as any[]) || [];
+  const rateConfirmationDocs = documents.filter((doc: any) => doc.document_type === "rate_confirmation");
+  const bolDocs = documents.filter((doc: any) => doc.document_type === "bill_of_lading");
 
-  // Document Viewer Component that handles signed URLs
-  const DocumentViewer = ({ doc }: { doc: any }) => {
-    const [signedUrl, setSignedUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-      const getSignedUrl = async () => {
-        if (!doc?.file_url) {
-          setLoading(false);
-          return;
-        }
-        
-        try {
-          setLoading(true);
-          setError(null);
-          
-          // If it's already a full URL, use it directly
-          if (doc.file_url.startsWith('http://') || doc.file_url.startsWith('https://')) {
-            setSignedUrl(doc.file_url);
-            setLoading(false);
-            return;
-          }
-          
-          // Get signed URL from storage (1 hour expiry)
-          const { data, error: urlError } = await supabase.storage
-            .from('load-documents')
-            .createSignedUrl(doc.file_url, 3600);
-          
-          if (urlError) throw urlError;
-          setSignedUrl(data.signedUrl);
-        } catch (err: any) {
-          console.error('Error getting signed URL:', err);
-          setError(err.message || 'Failed to load document');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      getSignedUrl();
-    }, [doc?.file_url]);
-
-    if (!doc?.file_url) return null;
-    
-    const fileName = doc.file_name?.toLowerCase() || '';
-    const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif') || fileName.endsWith('.webp');
-    const isPdf = fileName.endsWith('.pdf');
-
-    if (loading) {
-      return (
-        <div className="flex flex-col h-[2925px]">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Loading document...</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (error || !signedUrl) {
-      return (
-        <div className="flex flex-col h-[2925px]">
-          <div className="flex-1 flex flex-col items-center justify-center gap-2">
-            <FileText className="h-8 w-8 text-muted-foreground opacity-50" />
-            <p className="text-xs text-destructive">{error || 'Failed to load document'}</p>
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="flex flex-col h-[2925px]">
-        <div className="flex-1 border rounded bg-muted overflow-hidden">
-          {isPdf ? (
-            <PDFImageViewer url={signedUrl} fileName={doc.file_name || 'Document.pdf'} />
-          ) : isImage ? (
-            <div className="h-full overflow-auto p-2 flex items-start justify-center">
-              <img
-                src={signedUrl}
-                alt={doc.file_name || 'Document'}
-                className="max-w-full h-auto shadow-lg"
-              />
-            </div>
-          ) : (
-            <iframe
-              src={signedUrl}
-              title={doc.file_name || 'Document'}
-              className="w-full h-full"
-              style={{ border: 'none' }}
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const renderNoDocument = (type: string) => (
     <div className="flex flex-col items-center justify-center h-[2340px] text-muted-foreground">
@@ -376,7 +280,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       {/* Main Content */}
       <div className="flex gap-4">
         {/* Left Sidebar - Glass Card */}
-        <div className="w-68 flex-shrink-0">
+        <div className="w-64 flex-shrink-0">
           <div className="bg-card/80 backdrop-blur-xl border rounded-xl shadow-lg p-3 space-y-0 divide-y divide-border">
             {/* Navigation */}
             <div className="flex items-center justify-center gap-1 pb-2">
@@ -524,13 +428,13 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             </TabsList>
             <TabsContent value="rate_confirmation" className="p-4 flex-1 overflow-auto">
               {rateConfirmationDocs.length > 0 
-                ? <DocumentViewer doc={rateConfirmationDocs[0]} />
-                : renderNoDocument('Rate Confirmation')
+                ? <AuditDocumentViewer doc={rateConfirmationDocs[0]} />
+                : renderNoDocument("Rate Confirmation")
               }
             </TabsContent>
             {bolDocs.map((doc, index) => (
               <TabsContent key={doc.id} value={`bol_${index}`} className="p-4 flex-1 overflow-auto">
-                <DocumentViewer doc={doc} />
+                <AuditDocumentViewer doc={doc} />
               </TabsContent>
             ))}
             {bolDocs.length === 0 && (
