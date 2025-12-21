@@ -722,10 +722,14 @@ export default function LoadDetail() {
           )}
 
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-6 gap-1.5">
+          <div className="grid grid-cols-7 gap-1.5">
             <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Rate</p>
               <p className="text-sm font-bold text-green-600">${load.rate || 0}</p>
+            </div>
+            <div className={`rounded-md px-2 py-1.5 text-center ${!load.empty_miles ? 'bg-red-100 dark:bg-red-900/30' : 'bg-muted/50'}`}>
+              <p className={`text-[10px] uppercase tracking-wide ${!load.empty_miles ? 'text-red-500' : 'text-muted-foreground'}`}>DH Miles</p>
+              <p className={`text-sm font-bold ${!load.empty_miles ? 'text-red-500' : ''}`}>{load.empty_miles || '—'}</p>
             </div>
             <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Miles</p>
