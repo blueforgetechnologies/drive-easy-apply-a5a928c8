@@ -212,24 +212,36 @@ export default function LoadsTab() {
     customer_id: "",
     equipment_type: "",
     vehicle_size: "",
+    carrier_id: "",
   });
+  const [defaultCarrierId, setDefaultCarrierId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
     loadDriversAndVehicles();
   }, [filter]);
 
+  // Set default carrier in form when loaded
+  useEffect(() => {
+    if (defaultCarrierId) {
+      setFormData(prev => ({ ...prev, carrier_id: defaultCarrierId }));
+    }
+  }, [defaultCarrierId]);
   const loadDriversAndVehicles = async () => {
     try {
-      const [driversResult, vehiclesResult, customersResult] = await Promise.all([
+      const [driversResult, vehiclesResult, customersResult, companyProfileResult] = await Promise.all([
         supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
         supabase.from("vehicles" as any).select("id, vehicle_number").eq("status", "active"),
         supabase.from("customers" as any).select("id, name, contact_name, mc_number, email, phone").eq("status", "active"),
+        supabase.from("company_profile").select("default_carrier_id").limit(1).maybeSingle(),
       ]);
       
       if (driversResult.data) setDrivers(driversResult.data);
       if (vehiclesResult.data) setVehicles(vehiclesResult.data);
       if (customersResult.data) setCustomers(customersResult.data);
+      if (companyProfileResult.data?.default_carrier_id) {
+        setDefaultCarrierId(companyProfileResult.data.default_carrier_id);
+      }
     } catch (error) {
       console.error("Error loading drivers/vehicles/customers:", error);
     }
@@ -575,6 +587,7 @@ export default function LoadsTab() {
           estimated_miles: estimatedMiles,
           rate: formData.rate ? parseFloat(formData.rate) : null,
           customer_id: formData.customer_id || null,
+          carrier_id: formData.carrier_id || null,
         })
         .select('id')
         .single();
@@ -684,6 +697,7 @@ export default function LoadsTab() {
         customer_id: "",
         equipment_type: "",
         vehicle_size: "",
+        carrier_id: defaultCarrierId || "",
       });
       loadData();
     } catch (error: any) {
