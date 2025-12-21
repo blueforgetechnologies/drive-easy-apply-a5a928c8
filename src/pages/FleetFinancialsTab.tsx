@@ -336,7 +336,7 @@ export default function FleetFinancialsTab() {
             variant={!selectedCarrier ? "default" : "outline"} 
             className={cn(
               "w-full",
-              selectedCarrier && "border-orange-500 bg-gradient-to-b from-orange-400 to-orange-600 text-white shadow-md hover:from-orange-500 hover:to-orange-700"
+              selectedCarrier && "border-orange-500 bg-orange-500 text-white hover:bg-orange-600 hover:border-orange-600"
             )}
             onClick={() => {
               setSelectedCarrier(null);
