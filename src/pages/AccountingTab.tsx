@@ -14,8 +14,10 @@ export default function AccountingTab() {
     const subTab = searchParams.get("subtab");
     if (subTab && ["ready_for_audit", "invoices", "settlements", "audit"].includes(subTab)) {
       setActiveSubTab(subTab);
+    } else if (!subTab) {
+      setSearchParams({ subtab: "ready_for_audit" }, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
