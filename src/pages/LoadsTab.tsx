@@ -1485,8 +1485,22 @@ export default function LoadsTab() {
         </Card>
       )}
 
-      {/* Top row: Date filters and Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      {/* Top row: Search and Date filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        {/* Search - left side */}
+        <div className="relative w-full sm:w-56">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search loads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-7 text-xs"
+          />
+        </div>
+
+        {/* Spacer */}
+        <div className="hidden sm:block w-8" />
+
         <div className="flex items-center gap-2 flex-wrap">
           {/* Date filters */}
           <div className="flex items-center gap-1">
@@ -1532,17 +1546,6 @@ export default function LoadsTab() {
               Reset Sort
             </Button>
           )}
-        </div>
-        
-        {/* Search */}
-        <div className="relative w-full sm:w-56">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search loads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-7 text-xs"
-          />
         </div>
       </div>
 
