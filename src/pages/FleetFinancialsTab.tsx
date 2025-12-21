@@ -540,21 +540,33 @@ export default function FleetFinancialsTab() {
 
         {/* Monthly Totals Footer */}
         <div className="border-t bg-muted/50 p-4">
-          <div className="grid grid-cols-[repeat(15,1fr)] gap-4 text-sm">
+          <div className="grid grid-cols-[100px_160px_90px_90px_80px_80px_80px_70px_85px_95px_85px_85px_70px_70px_80px_85px_85px_90px_80px_100px] gap-1 text-sm">
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Payload</div>
-              <div className="font-bold">{formatCurrency(totals.payload)}</div>
+              <div className="text-xs text-muted-foreground mb-1">P/U Date</div>
+              <div className="font-bold">-</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Empty Miles</div>
+              <div className="text-xs text-muted-foreground mb-1">Customer</div>
+              <div className="font-bold">-</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-muted-foreground mb-1">Route</div>
+              <div className="font-bold">-</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-muted-foreground mb-1">Payload</div>
+              <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-muted-foreground mb-1">Empty Mi</div>
               <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Loaded Miles</div>
+              <div className="text-xs text-muted-foreground mb-1">Loaded Mi</div>
               <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Total Miles</div>
+              <div className="text-xs text-muted-foreground mb-1">Total Mi</div>
               <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
             </div>
             <div className="text-center">
@@ -566,7 +578,7 @@ export default function FleetFinancialsTab() {
               <div className="font-bold">{formatCurrency(totals.factoring)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Dispatcher Pay</div>
+              <div className="text-xs text-muted-foreground mb-1">Dispatch Pay</div>
               <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
             </div>
             <div className="text-center">
@@ -574,7 +586,7 @@ export default function FleetFinancialsTab() {
               <div className="font-bold">{formatCurrency(totals.driverPay)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Workman Comp</div>
+              <div className="text-xs text-muted-foreground mb-1">Work Comp</div>
               <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
             </div>
             <div className="text-center">
@@ -582,12 +594,16 @@ export default function FleetFinancialsTab() {
               <div className="font-bold">{formatCurrency(totals.fuel)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Insurance Cost</div>
-              <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
+              <div className="text-xs text-muted-foreground mb-1">Tolls</div>
+              <div className="font-bold">{formatCurrency(totals.tolls)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Vehicle Cost</div>
-              <div className="font-bold">{formatCurrency(totals.vehicleCost)}</div>
+              <div className="text-xs text-muted-foreground mb-1">Rental Mi</div>
+              <div className="font-bold">{formatNumber(totals.rentalMiles, 0)}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-muted-foreground mb-1">Insurance</div>
+              <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-muted-foreground mb-1">Other</div>
@@ -598,7 +614,11 @@ export default function FleetFinancialsTab() {
               <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-1">Net Profit</div>
+              <div className="text-xs text-muted-foreground mb-1">Carr $/Mi</div>
+              <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-muted-foreground mb-1">Carrier Net</div>
               <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
                 {formatCurrency(totals.netProfit)}
               </div>
