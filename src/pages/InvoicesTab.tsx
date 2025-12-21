@@ -45,6 +45,7 @@ interface Customer {
 interface PendingLoad {
   id: string;
   load_number: string;
+  invoice_number: string | null;
   reference_number: string | null;
   rate: number | null;
   pickup_date: string | null;
@@ -91,6 +92,7 @@ export default function InvoicesTab() {
           .select(`
             id,
             load_number,
+            invoice_number,
             reference_number,
             rate,
             pickup_date,
@@ -488,7 +490,7 @@ export default function InvoicesTab() {
                       className="cursor-pointer hover:bg-muted/50 border-l-4 border-l-amber-500"
                       onClick={() => navigate(`/dashboard/load/${load.id}`)}
                     >
-                      <TableCell className="font-medium text-primary">{load.load_number}</TableCell>
+                      <TableCell className="font-medium text-primary">{load.invoice_number || load.load_number}</TableCell>
                       <TableCell>{load.customers?.name || "—"}</TableCell>
                       <TableCell>{load.carriers?.name || "—"}</TableCell>
                       <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
