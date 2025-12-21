@@ -437,6 +437,18 @@ export default function CompanyProfileTab() {
               />
             </div>
             <div>
+              <Label>Factoring Fee (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={profile?.factoring_percentage ?? 2}
+                onChange={(e) => updateField("factoring_percentage", parseFloat(e.target.value) || 0)}
+                placeholder="2"
+              />
+            </div>
+            <div>
               <Label>Contact Email</Label>
               <Input
                 type="email"
