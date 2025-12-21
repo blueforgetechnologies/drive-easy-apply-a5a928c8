@@ -11,8 +11,12 @@ import { cn } from "@/lib/utils";
 interface Vehicle {
   id: string;
   vehicle_number: string;
-  carrier: string | null;
+  carrier: string | null; // This is actually carrier_id (UUID)
   insurance_cost_per_month: number | null;
+}
+
+interface VehicleWithCarrierName extends Vehicle {
+  carrierName: string | null;
 }
 
 interface Carrier {
@@ -139,14 +143,38 @@ export default function FleetFinancialsTab() {
     if (error) console.error("Error loading loads:", error);
   };
 
-  // Filter vehicles by selected carrier
-  const filteredVehicles = useMemo(() => {
-    if (!selectedCarrier) return vehicles;
-    return vehicles.filter(v => v.carrier === selectedCarrier);
-  }, [vehicles, selectedCarrier]);
+  // Helper to get carrier name by ID
+  const getCarrierName = (carrierId: string | null): string | null => {
+    if (!carrierId) return null;
+    const carrier = carriers.find(c => c.id === carrierId);
+    return carrier?.name || null;
+  };
 
-  // Get unique carrier names from vehicles
-  const vehicleCarriers = useMemo(() => {
+  // Helper to get carrier abbreviation (first 3 letters of name)
+  const getCarrierAbbr = (carrierId: string | null): string => {
+    const name = getCarrierName(carrierId);
+    if (!name) return "";
+    // Take first word and get first 3 chars, or first 3 chars of whole name
+    const firstWord = name.split(' ')[0];
+    return firstWord.substring(0, 3).toUpperCase();
+  };
+
+  // Vehicles with carrier names for display
+  const vehiclesWithNames = useMemo((): VehicleWithCarrierName[] => {
+    return vehicles.map(v => ({
+      ...v,
+      carrierName: getCarrierName(v.carrier)
+    }));
+  }, [vehicles, carriers]);
+
+  // Filter vehicles by selected carrier (carrier ID)
+  const filteredVehicles = useMemo(() => {
+    if (!selectedCarrier) return vehiclesWithNames;
+    return vehiclesWithNames.filter(v => v.carrier === selectedCarrier);
+  }, [vehiclesWithNames, selectedCarrier]);
+
+  // Get unique carrier IDs from vehicles that have carriers
+  const vehicleCarrierIds = useMemo(() => {
     const carrierSet = new Set(vehicles.map(v => v.carrier).filter(Boolean));
     return Array.from(carrierSet) as string[];
   }, [vehicles]);
@@ -257,7 +285,7 @@ export default function FleetFinancialsTab() {
     return load.rate * (dispatcher.pay_percentage / 100);
   };
 
-  const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
+  const selectedVehicle = vehiclesWithNames.find(v => v.id === selectedVehicleId);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
@@ -309,8 +337,10 @@ export default function FleetFinancialsTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Carriers</SelectItem>
-              {vehicleCarriers.map(carrier => (
-                <SelectItem key={carrier} value={carrier}>{carrier}</SelectItem>
+              {vehicleCarrierIds.map(carrierId => (
+                <SelectItem key={carrierId} value={carrierId}>
+                  {getCarrierName(carrierId) || carrierId}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -328,10 +358,10 @@ export default function FleetFinancialsTab() {
               {carriers.map(carrier => (
                 <button
                   key={carrier.id}
-                  onClick={() => setSelectedCarrier(carrier.name)}
+                  onClick={() => setSelectedCarrier(carrier.id)}
                   className={cn(
                     "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                    selectedCarrier === carrier.name
+                    selectedCarrier === carrier.id
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted"
                   )}
@@ -359,8 +389,7 @@ export default function FleetFinancialsTab() {
                   onClick={() => setSelectedVehicleId(vehicle.id)}
                   className="whitespace-nowrap"
                 >
-                  {vehicle.carrier ? `${vehicle.carrier.substring(0, 3).toUpperCase()}-` : ""}
-                  {vehicle.vehicle_number}
+                  {getCarrierAbbr(vehicle.carrier)}{getCarrierAbbr(vehicle.carrier) ? "-" : ""}{vehicle.vehicle_number}
                 </Button>
               ))}
             </div>
@@ -379,7 +408,7 @@ export default function FleetFinancialsTab() {
           />
           {selectedVehicle && (
             <span className="text-sm text-muted-foreground">
-              Vehicle: {selectedVehicle.vehicle_number} | Carrier: {selectedVehicle.carrier || "N/A"}
+              Vehicle: {selectedVehicle.vehicle_number} | Carrier: {selectedVehicle.carrierName || "N/A"}
             </span>
           )}
         </div>
