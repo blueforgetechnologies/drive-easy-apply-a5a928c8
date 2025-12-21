@@ -331,8 +331,17 @@ export default function FleetFinancialsTab() {
     <div className="flex h-[calc(100vh-80px)]">
       {/* Left Sidebar - Carrier Filter */}
       <div className="w-64 border-r bg-card flex-shrink-0">
-        <div className="p-3 border-b">
-          <p className="text-sm text-muted-foreground mb-2">Search Carriers</p>
+        <div className="p-3 border-b space-y-2">
+          <Button 
+            variant={!selectedCarrier ? "default" : "outline"} 
+            className="w-full"
+            onClick={() => {
+              setSelectedCarrier(null);
+              setCarrierSearch("");
+            }}
+          >
+            All Carriers
+          </Button>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -344,16 +353,6 @@ export default function FleetFinancialsTab() {
           </div>
         </div>
         <div className="p-3">
-          <Button 
-            variant={!selectedCarrier ? "default" : "outline"} 
-            className="w-full mb-3"
-            onClick={() => {
-              setSelectedCarrier(null);
-              setCarrierSearch("");
-            }}
-          >
-            All Carriers
-          </Button>
           <ScrollArea className="h-[calc(100vh-260px)]">
             <div className="space-y-1">
               {carriers
