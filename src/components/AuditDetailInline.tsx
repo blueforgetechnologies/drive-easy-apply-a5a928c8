@@ -142,7 +142,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   }) => (
     <button
       onClick={onClick}
-      className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+      className={`px-3.5 py-1.5 text-sm font-medium rounded transition-colors ${
         status === type
           ? type === "match"
             ? "bg-emerald-500 text-white"
@@ -377,51 +377,51 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       {/* Main Content */}
       <div className="flex gap-4">
         {/* Left Sidebar - Glass Card */}
-        <div className="w-64 flex-shrink-0">
-          <div className="bg-card/80 backdrop-blur-xl border rounded-xl shadow-lg p-3 space-y-0 divide-y divide-border">
+        <div className="w-72 flex-shrink-0">
+          <div className="bg-card/80 backdrop-blur-xl border rounded-xl shadow-lg p-4 space-y-0 divide-y divide-border">
             {/* Navigation */}
-            <div className="flex items-center justify-center gap-1 pb-2">
+            <div className="flex items-center justify-center gap-1.5 pb-3">
               <button 
                 onClick={() => navigateToLoad(0)} 
                 disabled={currentIndex <= 0}
-                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1.5 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronsLeft className="h-3.5 w-3.5 text-primary" />
+                <ChevronsLeft className="h-4 w-4 text-primary" />
               </button>
               <button 
                 onClick={() => navigateToLoad(currentIndex - 1)} 
                 disabled={currentIndex <= 0}
-                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1.5 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronLeft className="h-3.5 w-3.5 text-primary" />
+                <ChevronLeft className="h-4 w-4 text-primary" />
               </button>
-              <span className="text-xs font-medium px-2 py-0.5 bg-muted rounded-full">
+              <span className="text-sm font-medium px-3 py-1 bg-muted rounded-full">
                 {currentIndex + 1} / {totalLoads}
               </span>
               <button 
                 onClick={() => navigateToLoad(currentIndex + 1)} 
                 disabled={currentIndex >= totalLoads - 1}
-                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1.5 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronRight className="h-3.5 w-3.5 text-primary" />
+                <ChevronRight className="h-4 w-4 text-primary" />
               </button>
               <button 
                 onClick={() => navigateToLoad(totalLoads - 1)} 
                 disabled={currentIndex >= totalLoads - 1}
-                className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
+                className="hover:bg-primary/10 p-1.5 rounded disabled:opacity-30 transition-colors"
               >
-                <ChevronsRight className="h-3.5 w-3.5 text-primary" />
+                <ChevronsRight className="h-4 w-4 text-primary" />
               </button>
             </div>
 
             {/* Rate Confirmation Checklist */}
-            <div className="py-2">
-              <h3 className="text-primary font-semibold text-xs mb-1.5">Rate Confirmation</h3>
+            <div className="py-3">
+              <h3 className="text-primary font-semibold text-sm mb-2">Rate Confirmation</h3>
               <div className="divide-y divide-border/50">
                 {rateConfirmation.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between py-1 hover:bg-muted/30 transition-colors">
-                    <span className="text-[11px]">{item.label}</span>
-                    <div className="flex gap-1">
+                  <div key={item.id} className="flex items-center justify-between py-1.5 hover:bg-muted/30 transition-colors">
+                    <span className="text-sm">{item.label}</span>
+                    <div className="flex gap-1.5">
                       <ChecklistButton
                         status={item.status}
                         type="match"
@@ -439,13 +439,13 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             </div>
 
             {/* Bill of Lading Checklist */}
-            <div className="py-2">
-              <h3 className="text-primary font-semibold text-xs mb-1.5">Bill of Lading</h3>
+            <div className="py-3">
+              <h3 className="text-primary font-semibold text-sm mb-2">Bill of Lading</h3>
               <div className="divide-y divide-border/50">
                 {billOfLading.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between py-1 hover:bg-muted/30 transition-colors">
-                    <span className="text-[11px]">{item.label}</span>
-                    <div className="flex gap-1">
+                  <div key={item.id} className="flex items-center justify-between py-1.5 hover:bg-muted/30 transition-colors">
+                    <span className="text-sm">{item.label}</span>
+                    <div className="flex gap-1.5">
                       <ChecklistButton
                         status={item.status}
                         type="match"
@@ -463,23 +463,23 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             </div>
 
             {/* Notes */}
-            <div className="py-2">
-              <h3 className="text-primary font-semibold text-xs mb-1.5">Notes</h3>
+            <div className="py-3">
+              <h3 className="text-primary font-semibold text-sm mb-2">Notes</h3>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add audit notes..."
-                className="min-h-[80px] resize-none text-xs bg-muted/30 border-muted-foreground/20 focus:border-primary/50"
+                className="min-h-[80px] resize-none text-sm bg-muted/30 border-muted-foreground/20 focus:border-primary/50"
               />
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-3">
               <Button
                 size="sm"
                 onClick={() => updateStatusMutation.mutate("completed")}
                 disabled={updateStatusMutation.isPending}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 h-8 text-xs"
+                className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 h-9 text-sm"
               >
                 Approve
               </Button>
@@ -487,7 +487,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
                 size="sm"
                 onClick={() => updateStatusMutation.mutate("action_needed")}
                 disabled={updateStatusMutation.isPending}
-                className="bg-rose-500 hover:bg-rose-600 text-white flex-1 h-8 text-xs"
+                className="bg-rose-500 hover:bg-rose-600 text-white flex-1 h-9 text-sm"
               >
                 Fail
               </Button>
