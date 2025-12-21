@@ -77,7 +77,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       };
       
       // When approved, also set financial_status to pending_invoice and generate invoice number
-      if (newStatus === "completed") {
+      if (newStatus === "closed") {
         updateData.financial_status = "pending_invoice";
         
         // Generate sequential invoice number
@@ -109,7 +109,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     onSuccess: (_, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads"] });
       queryClient.invalidateQueries({ queryKey: ["loads"] });
-      if (newStatus === "completed") {
+      if (newStatus === "closed") {
         toast.success("Audit approved! Load moved to Invoices.");
         onClose();
         // Navigate to invoices tab
@@ -414,7 +414,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             <div className="flex pt-2">
               <button
                 type="button"
-                onClick={() => updateStatusMutation.mutate("completed")}
+                onClick={() => updateStatusMutation.mutate("closed")}
                 disabled={updateStatusMutation.isPending}
                 className="flex-1 h-9 text-xs font-semibold rounded-l-lg rounded-r-none bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-md shadow-emerald-500/25 disabled:opacity-50 transition-all"
               >
