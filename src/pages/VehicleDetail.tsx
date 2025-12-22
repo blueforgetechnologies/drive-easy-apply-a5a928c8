@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Save, X, RefreshCw, Pencil, Truck, Settings, Shield, Wrench, Users, FileText, MapPin, Gauge } from "lucide-react";
+import { ArrowLeft, Save, X, RefreshCw, Pencil, Truck, Settings, Shield, Wrench, Users, FileText, MapPin, Gauge, DollarSign } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, formatDistanceToNow } from "date-fns";
 import MaintenanceReminderDialog from "@/components/MaintenanceReminderDialog";
@@ -311,6 +312,10 @@ export default function VehicleDetail() {
             <TabsTrigger value="maintenance" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white">
               <Wrench className="w-4 h-4 mr-2" />
               Maintenance
+            </TabsTrigger>
+            <TabsTrigger value="financial" className="data-[state=active]:bg-rose-500 data-[state=active]:text-white">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Financial
             </TabsTrigger>
           </TabsList>
 
@@ -1134,6 +1139,47 @@ export default function VehicleDetail() {
                   {!formData.oil_change_due && !formData.next_service_date && (
                     <div className="text-center py-6 text-muted-foreground">
                       No maintenance reminders set
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Financial Tab */}
+          <TabsContent value="financial" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Load Approval Settings */}
+              <Card className="border-l-4 border-l-rose-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-rose-600">
+                    <DollarSign className="w-5 h-5" />
+                    Carrier Visibility Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium">Require Load Approval</Label>
+                      <p className="text-xs text-muted-foreground">
+                        When enabled, loads assigned to this vehicle will not appear in the Carrier's Dashboard
+                        until they are approved from the Load Approval screen. This allows you to adjust the
+                        carrier rate before making the load visible.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.requires_load_approval || false}
+                      onCheckedChange={(checked) => updateField('requires_load_approval', checked)}
+                    />
+                  </div>
+                  
+                  {formData.requires_load_approval && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-xs text-amber-800 dark:text-amber-200">
+                        <strong>Note:</strong> Loads assigned to this vehicle will require manual approval before
+                        they become visible to the carrier. Use the Load Approval screen to set the carrier rate
+                        and approve each load.
+                      </p>
                     </div>
                   )}
                 </CardContent>

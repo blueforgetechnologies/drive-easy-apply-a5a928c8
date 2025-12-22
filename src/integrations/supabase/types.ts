@@ -2036,7 +2036,9 @@ export type Database = {
           cargo_pieces: number | null
           cargo_weight: number | null
           cargo_width: string | null
+          carrier_approved: boolean | null
           carrier_id: string | null
+          carrier_rate: number | null
           commodity_type: string | null
           completed_at: string | null
           created_at: string | null
@@ -2157,7 +2159,9 @@ export type Database = {
           cargo_pieces?: number | null
           cargo_weight?: number | null
           cargo_width?: string | null
+          carrier_approved?: boolean | null
           carrier_id?: string | null
+          carrier_rate?: number | null
           commodity_type?: string | null
           completed_at?: string | null
           created_at?: string | null
@@ -2278,7 +2282,9 @@ export type Database = {
           cargo_pieces?: number | null
           cargo_weight?: number | null
           cargo_width?: string | null
+          carrier_approved?: boolean | null
           carrier_id?: string | null
+          carrier_rate?: number | null
           commodity_type?: string | null
           completed_at?: string | null
           created_at?: string | null
@@ -3580,6 +3586,7 @@ export type Database = {
           registration_exp_date: string | null
           registration_expiry: string | null
           registration_status: string | null
+          requires_load_approval: boolean | null
           return_date: string | null
           return_odometer: number | null
           speed: number | null
@@ -3676,6 +3683,7 @@ export type Database = {
           registration_exp_date?: string | null
           registration_expiry?: string | null
           registration_status?: string | null
+          requires_load_approval?: boolean | null
           return_date?: string | null
           return_odometer?: number | null
           speed?: number | null
@@ -3772,6 +3780,7 @@ export type Database = {
           registration_exp_date?: string | null
           registration_expiry?: string | null
           registration_status?: string | null
+          requires_load_approval?: boolean | null
           return_date?: string | null
           return_odometer?: number | null
           speed?: number | null
