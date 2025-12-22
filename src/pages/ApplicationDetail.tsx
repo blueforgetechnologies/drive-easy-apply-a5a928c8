@@ -600,17 +600,17 @@ export default function ApplicationDetail() {
           </TabsContent>
 
           {/* Financial Tab */}
-          <TabsContent value="financial" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <TabsContent value="financial" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {/* Banking Information */}
               <Card className="border-l-4 border-l-violet-500 shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="flex items-center gap-2 text-violet-600">
-                    <Building2 className="w-5 h-5" />
+                    <Building2 className="w-4 h-4" />
                     Banking Information
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 px-4 pb-4">
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bank Name</Label>
                     <Input 
@@ -627,7 +627,7 @@ export default function ApplicationDetail() {
                       className="border-slate-200 focus:border-violet-500"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Routing #</Label>
                       <Input 
@@ -668,10 +668,10 @@ export default function ApplicationDetail() {
 
               {/* Primary Compensation */}
               <Card className={`border-l-4 shadow-sm ${formData.pay_method_active ? 'border-l-amber-500' : 'border-l-slate-300'}`}>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="flex items-center justify-between">
                     <span className={`flex items-center gap-2 ${formData.pay_method_active ? 'text-amber-600' : 'text-slate-400'}`}>
-                      <DollarSign className="w-5 h-5" />
+                      <DollarSign className="w-4 h-4" />
                       Primary Compensation
                     </span>
                     <div className="flex items-center gap-2">
@@ -692,7 +692,7 @@ export default function ApplicationDetail() {
                     </p>
                   )}
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 px-4 pb-4">
                   <div className="space-y-3">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Type</Label>
                     <Select 
@@ -858,13 +858,13 @@ export default function ApplicationDetail() {
 
               {/* Overtime & Premium Pay */}
               <Card className="border-l-4 border-l-orange-500 shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="flex items-center gap-2 text-orange-600">
-                    <Clock className="w-5 h-5" />
+                    <Clock className="w-4 h-4" />
                     Overtime & Premium Pay
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 px-4 pb-4">
                   <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
                     <div>
                       <Label className="text-sm font-medium">Overtime Eligible</Label>
@@ -932,13 +932,13 @@ export default function ApplicationDetail() {
 
               {/* Bonuses & Incentives */}
               <Card className="border-l-4 border-l-emerald-500 shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="flex items-center gap-2 text-emerald-600">
-                    <TrendingUp className="w-5 h-5" />
+                    <TrendingUp className="w-4 h-4" />
                     Bonuses & Incentives
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 px-4 pb-4">
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Sign-On Bonus</Label>
                     <div className="relative">
@@ -999,13 +999,13 @@ export default function ApplicationDetail() {
 
               {/* Allowances */}
               <Card className="border-l-4 border-l-sky-500 shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="flex items-center gap-2 text-sky-600">
-                    <Wallet className="w-5 h-5" />
+                    <Wallet className="w-4 h-4" />
                     Allowances & Per Diem
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 px-4 pb-4">
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Per Diem (Daily)</Label>
                     <div className="relative">
@@ -1069,13 +1069,13 @@ export default function ApplicationDetail() {
 
               {/* Deductions */}
               <Card className="border-l-4 border-l-rose-500 shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="flex items-center gap-2 text-rose-600">
-                    <MinusCircle className="w-5 h-5" />
+                    <MinusCircle className="w-4 h-4" />
                     Standard Deductions
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 px-4 pb-4">
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Deduction</Label>
                     <div className="relative">
