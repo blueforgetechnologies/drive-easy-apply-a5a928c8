@@ -5,7 +5,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, Search, Fuel, Save } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,6 +20,7 @@ interface Vehicle {
   vehicle_number: string;
   carrier: string | null; // This is actually carrier_id (UUID)
   insurance_cost_per_month: number | null;
+  monthly_payment: number | null;
 }
 
 interface VehicleWithCarrierName extends Vehicle {
@@ -120,7 +121,7 @@ export default function FleetFinancialsTab() {
     setLoading(true);
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month").eq("status", "active").order("vehicle_number"),
+        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
@@ -255,6 +256,8 @@ export default function FleetFinancialsTab() {
     });
   }, [selectedMonth, loads]);
 
+  const selectedVehicle = vehiclesWithNames.find(v => v.id === selectedVehicleId);
+
   // Calculate totals
   const totals = useMemo(() => {
     let payload = 0;
@@ -266,7 +269,7 @@ export default function FleetFinancialsTab() {
     let workmanComp = 0;
     let fuel = 0;
     let tolls = 0;
-    let rentalMiles = 0;
+    let rental = 0;
     let insuranceCost = 0;
     let vehicleCost = 0;
     let other = 0;
@@ -287,7 +290,21 @@ export default function FleetFinancialsTab() {
 
     // Calculate daily costs for days in month
     const [year, month] = selectedMonth.split("-").map(Number);
+    const startDate = startOfMonth(new Date(year, month - 1));
+    const endDate = endOfMonth(startDate);
     const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Calculate business days in the month (Mon-Fri)
+    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+    const businessDaysInMonth = allDays.filter(day => !isWeekend(day)).length;
+    
+    // Calculate daily rental rate from vehicle's monthly payment
+    const vehicleMonthlyPayment = selectedVehicle?.monthly_payment || 0;
+    const dailyRentalRate = businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0;
+    
+    // Total rental for the month
+    rental = vehicleMonthlyPayment;
+    
     insuranceCost = DAILY_INSURANCE_RATE * daysInMonth;
     other = DAILY_OTHER_COST * daysInMonth;
 
@@ -302,7 +319,7 @@ export default function FleetFinancialsTab() {
     const dollarPerMile = totalMiles > 0 ? payload / totalMiles : 0;
     const carrierPay = payload;
     const carrierPerMile = totalMiles > 0 ? payload / totalMiles : 0;
-    const netProfit = payload - factoring - dispatcherPay - driverPay - workmanComp - fuel - tolls - insuranceCost - vehicleCost - other;
+    const netProfit = payload - factoring - dispatcherPay - driverPay - workmanComp - fuel - tolls - rental - insuranceCost - vehicleCost - other;
 
     return {
       payload,
@@ -316,7 +333,9 @@ export default function FleetFinancialsTab() {
       workmanComp,
       fuel,
       tolls,
-      rentalMiles,
+      rental,
+      dailyRentalRate,
+      businessDaysInMonth,
       insuranceCost,
       vehicleCost,
       other,
@@ -324,7 +343,7 @@ export default function FleetFinancialsTab() {
       carrierPerMile,
       netProfit,
     };
-  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon]);
+  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon, selectedVehicle]);
 
   const getCustomerName = (customerId: string | null) => {
     if (!customerId) return "-";
@@ -338,7 +357,7 @@ export default function FleetFinancialsTab() {
     return load.rate * (dispatcher.pay_percentage / 100);
   };
 
-  const selectedVehicle = vehiclesWithNames.find(v => v.id === selectedVehicleId);
+  
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
@@ -351,16 +370,21 @@ export default function FleetFinancialsTab() {
   // Calculate weekly totals
   const getWeeklyTotal = (endIndex: number) => {
     let weekTotal = 0;
+    const dailyRental = totals.dailyRentalRate;
     for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
+      const dayDate = dailyData[i].date;
+      const isBusinessDay = !isWeekend(dayDate);
+      const dayRentalCost = isBusinessDay ? dailyRental : 0;
+      
       dailyData[i].loads.forEach(load => {
         const rate = load.rate || 0;
         const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
-        weekTotal += rate - factoring - dispPay - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
+        weekTotal += rate - factoring - dispPay - dayRentalCost - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
       });
       // Add empty day costs
       if (dailyData[i].loads.length === 0) {
-        weekTotal -= DAILY_INSURANCE_RATE + DAILY_OTHER_COST;
+        weekTotal -= dayRentalCost + DAILY_INSURANCE_RATE + DAILY_OTHER_COST;
       }
     }
     return weekTotal;
@@ -703,7 +727,9 @@ export default function FleetFinancialsTab() {
                           const factoring = rate * (factoringPercentage / 100);
                           const dispPay = getDispatcherPay(load);
                           const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
-                          const carrierNet = rate - factoring - dispPay - fuelCost - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
+                          const isBusinessDay = !isWeekend(day.date);
+                          const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
+                          const carrierNet = rate - factoring - dispPay - fuelCost - dailyRental - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
                           const carrierPerMile = totalM > 0 ? rate / totalM : 0;
 
                           return (
@@ -729,7 +755,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(fuelCost)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyRental)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
@@ -741,31 +767,38 @@ export default function FleetFinancialsTab() {
                           );
                         })
                       ) : (
-                        <TableRow key={day.date.toISOString()} className="text-muted-foreground h-[25px]">
-                          <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="text-right !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
-                          <TableCell className="text-right !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="!px-2 !py-0.5"></TableCell>
-                          <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
-                            {formatCurrency(-(DAILY_INSURANCE_RATE + DAILY_OTHER_COST))}
-                          </TableCell>
-                        </TableRow>
+                        (() => {
+                          const isBusinessDay = !isWeekend(day.date);
+                          const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
+                          const emptyDayNet = -(dailyRental + DAILY_INSURANCE_RATE + DAILY_OTHER_COST);
+                          return (
+                            <TableRow key={day.date.toISOString()} className="text-muted-foreground h-[25px]">
+                              <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">{isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="!px-2 !py-0.5"></TableCell>
+                              <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
+                                {formatCurrency(emptyDayNet)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })()
                       )}
 
                       {/* Weekly Summary Row */}
@@ -848,7 +881,7 @@ export default function FleetFinancialsTab() {
                 </div>
                 <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Rental</div>
-                  <div className="font-bold">{formatNumber(totals.rentalMiles, 0)}</div>
+                  <div className="font-bold">{formatCurrency(totals.rental)}</div>
                 </div>
                 <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Insur</div>
