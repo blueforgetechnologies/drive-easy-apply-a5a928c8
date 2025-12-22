@@ -89,7 +89,7 @@ interface DailyData {
 
 // Constants for cost calculations (these could come from settings later)
 const DAILY_INSURANCE_RATE = 78.46;
-const DAILY_OTHER_COST = 119.91;
+const DAILY_OTHER_COST = 0; // blank for manual entry
 const WORKMAN_COMP_RATE = 0; // can be configured
 const DRIVER_PAY_RATE = 0; // per load or percentage
 
@@ -841,7 +841,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyRental)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
                               <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
@@ -875,7 +875,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">{isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
