@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, Download, ShieldCheck } from "lucide-react";
 interface Vehicle {
   id: string;
   vehicle_number: string | null;
@@ -38,6 +38,7 @@ interface Vehicle {
   vin: string | null;
   license_plate: string | null;
   created_at: string;
+  requires_load_approval: boolean | null;
 }
 
 export default function VehiclesTab() {
@@ -786,6 +787,16 @@ export default function VehiclesTab() {
                         >
                           {vehicle.status}
                         </Badge>
+                        {vehicle.requires_load_approval && (
+                          <Badge 
+                            variant="outline" 
+                            className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700 border-amber-300"
+                            title="Load Approval Required"
+                          >
+                            <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
+                            LA
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {vehicle.carrier ? carriersMap[vehicle.carrier] || "No Carrier" : "No Carrier"}
@@ -909,7 +920,19 @@ export default function VehiclesTab() {
                         </div>
                       </TableCell>
                       <TableCell className="py-1 px-2 font-medium text-sm">
-                        <div>{vehicle.vehicle_number || "N/A"}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span>{vehicle.vehicle_number || "N/A"}</span>
+                          {vehicle.requires_load_approval && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-[9px] px-1 py-0 h-4 bg-amber-50 text-amber-700 border-amber-300"
+                              title="Load Approval Required"
+                            >
+                              <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
+                              LA
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">0</div>
                       </TableCell>
                       <TableCell className="py-1 px-2 text-sm">
