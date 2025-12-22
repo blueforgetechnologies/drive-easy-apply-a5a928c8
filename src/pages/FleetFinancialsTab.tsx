@@ -402,27 +402,35 @@ export default function FleetFinancialsTab() {
         <div className="border-b bg-card px-3 py-1.5">
           <ScrollArea className="w-full">
             <div className="flex">
-              {filteredVehicles.map((vehicle, idx) => {
-                const isFirst = idx === 0;
-                const isLast = idx === filteredVehicles.length - 1;
-                const isActive = selectedVehicleId === vehicle.id;
-                return (
-                  <Button
-                    key={vehicle.id}
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedVehicleId(vehicle.id)}
-                    className={cn(
-                      "whitespace-nowrap !rounded-none border-0",
-                      isFirst && "!rounded-l-full",
-                      isLast && "!rounded-r-full",
-                      isActive ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
-                    )}
-                  >
-                    {vehicle.vehicle_number}
-                  </Button>
-                );
-              })}
+              {filteredVehicles
+                .slice()
+                .sort((a, b) => {
+                  const numA = parseInt(a.vehicle_number, 10);
+                  const numB = parseInt(b.vehicle_number, 10);
+                  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                  return a.vehicle_number.localeCompare(b.vehicle_number);
+                })
+                .map((vehicle, idx, arr) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  const isActive = selectedVehicleId === vehicle.id;
+                  return (
+                    <Button
+                      key={vehicle.id}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedVehicleId(vehicle.id)}
+                      className={cn(
+                        "whitespace-nowrap !rounded-none border-0",
+                        isFirst && "!rounded-l-full",
+                        isLast && "!rounded-r-full",
+                        isActive ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                      )}
+                    >
+                      {vehicle.vehicle_number}
+                    </Button>
+                  );
+                })}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
