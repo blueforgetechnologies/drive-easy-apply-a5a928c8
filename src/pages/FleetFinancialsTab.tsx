@@ -367,8 +367,8 @@ export default function FleetFinancialsTab() {
                   : [...prev, "active"]
               )}
               className={cn(
-                "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0 !bg-none !backdrop-blur-none !shadow-none border border-input",
-                carrierStatusFilter.includes("active") ? "!bg-blue-500 text-white hover:!bg-blue-600" : "!bg-background text-muted-foreground hover:!bg-muted"
+                "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0",
+                carrierStatusFilter.includes("active") ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-background text-muted-foreground"
               )}
             >
               Active
@@ -381,8 +381,8 @@ export default function FleetFinancialsTab() {
                   : [...prev, "inactive"]
               )}
               className={cn(
-                "flex-1 h-8 text-sm font-medium rounded-l-none !bg-none !backdrop-blur-none !shadow-none border border-input",
-                carrierStatusFilter.includes("inactive") ? "!bg-blue-500 text-white hover:!bg-blue-600" : "!bg-background text-muted-foreground hover:!bg-muted"
+                "flex-1 h-8 text-sm font-medium rounded-l-none",
+                carrierStatusFilter.includes("inactive") ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-background text-muted-foreground"
               )}
             >
               Inactive
