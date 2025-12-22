@@ -373,7 +373,7 @@ export default function FleetFinancialsTab() {
                       setCarrierSearch("");
                     }}
                     className={cn(
-                      "w-full text-left px-3 py-2 text-xs font-medium transition-all rounded-md border",
+                      "w-[90%] text-left px-3 py-2 text-xs font-medium transition-all rounded-md border",
                       selectedCarrier === carrier.id
                         ? "btn-glossy-primary text-white border-primary/30"
                         : "btn-glossy text-gray-700 border-gray-300/50"
