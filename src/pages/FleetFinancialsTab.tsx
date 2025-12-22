@@ -71,7 +71,6 @@ interface DailyData {
 // Constants for cost calculations (these could come from settings later)
 const DAILY_INSURANCE_RATE = 78.46;
 const DAILY_OTHER_COST = 119.91;
-const FACTORING_RATE = 0.03; // 3%
 const WORKMAN_COMP_RATE = 0; // can be configured
 const DRIVER_PAY_RATE = 0; // per load or percentage
 
@@ -82,6 +81,7 @@ export default function FleetFinancialsTab() {
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [factoringPercentage, setFactoringPercentage] = useState<number>(2); // Default 2%
   
   const [selectedCarrier, setSelectedCarrier] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -109,17 +109,21 @@ export default function FleetFinancialsTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [vehiclesRes, carriersRes, dispatchersRes, customersRes] = await Promise.all([
+      const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
         supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
+        supabase.from("company_profile").select("factoring_percentage").limit(1).single(),
       ]);
 
       if (vehiclesRes.data) setVehicles(vehiclesRes.data);
       if (carriersRes.data) setCarriers(carriersRes.data);
       if (dispatchersRes.data) setDispatchers(dispatchersRes.data);
       if (customersRes.data) setCustomers(customersRes.data);
+      if (companyRes.data?.factoring_percentage != null) {
+        setFactoringPercentage(companyRes.data.factoring_percentage);
+      }
 
       // Select first vehicle by default
       if (vehiclesRes.data && vehiclesRes.data.length > 0) {
@@ -263,7 +267,7 @@ export default function FleetFinancialsTab() {
       payload += rate;
       emptyMiles += load.empty_miles || 0;
       loadedMiles += load.estimated_miles || 0;
-      factoring += rate * FACTORING_RATE;
+      factoring += rate * (factoringPercentage / 100);
     });
 
     totalMiles = emptyMiles + loadedMiles;
@@ -337,7 +341,7 @@ export default function FleetFinancialsTab() {
     for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
       dailyData[i].loads.forEach(load => {
         const rate = load.rate || 0;
-        const factoring = rate * FACTORING_RATE;
+        const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
         weekTotal += rate - factoring - dispPay - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
       });
@@ -662,7 +666,7 @@ export default function FleetFinancialsTab() {
                           const loadedM = load.estimated_miles || 0;
                           const totalM = emptyM + loadedM;
                           const dollarPerMile = totalM > 0 ? rate / totalM : 0;
-                          const factoring = rate * FACTORING_RATE;
+                          const factoring = rate * (factoringPercentage / 100);
                           const dispPay = getDispatcherPay(load);
                           const carrierNet = rate - factoring - dispPay - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
                           const carrierPerMile = totalM > 0 ? rate / totalM : 0;
