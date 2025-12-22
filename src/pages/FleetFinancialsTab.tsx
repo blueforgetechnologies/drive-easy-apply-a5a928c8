@@ -354,45 +354,7 @@ export default function FleetFinancialsTab() {
       {/* Left Sidebar - Carrier Filter */}
       <div className="w-[190px] border-r bg-card flex-shrink-0">
         <div className="pl-3 pr-4 py-3 border-b space-y-2">
-          <button 
-            className={cn(
-              "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
-              !selectedCarrier 
-                ? "btn-glossy-primary text-white" 
-                : "btn-glossy text-gray-700"
-            )}
-            onClick={() => {
-              setCarrierSearch("");
-              // Select first carrier in the filtered list
-              const filteredCarriers = carriers
-                .filter(carrier => 
-                  (carrierStatusFilter.length === 0 || carrierStatusFilter.includes(carrier.status || ""))
-                )
-                .sort((a, b) => a.name.localeCompare(b.name));
-              
-              if (filteredCarriers.length > 0) {
-                const firstCarrier = filteredCarriers[0];
-                setSelectedCarrier(firstCarrier.id);
-                
-                // Auto-select first vehicle for this carrier
-                const carrierVehicles = vehiclesWithNames
-                  .filter(v => v.carrier === firstCarrier.id)
-                  .sort((a, b) => {
-                    const numA = parseInt(a.vehicle_number, 10);
-                    const numB = parseInt(b.vehicle_number, 10);
-                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                    return a.vehicle_number.localeCompare(b.vehicle_number);
-                  });
-                if (carrierVehicles.length > 0) {
-                  setSelectedVehicleId(carrierVehicles[0].id);
-                } else {
-                  setSelectedVehicleId(null);
-                }
-              }
-            }}
-          >
-            All Carriers
-          </button>
+          <h3 className="text-sm font-bold text-primary">Carriers</h3>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
