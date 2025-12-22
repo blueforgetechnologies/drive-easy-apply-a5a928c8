@@ -452,6 +452,48 @@ export default function VehicleDetail() {
                   </RadioGroup>
                 </div>
 
+                {/* Conditional payment fields based on ownership */}
+                {(formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Monthly Payment</Label>
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      value={formData.monthly_payment || ''} 
+                      onChange={(e) => updateField('monthly_payment', e.target.value)} 
+                      placeholder="0.00"
+                      className="h-7 text-xs" 
+                    />
+                  </div>
+                )}
+
+                {formData.asset_ownership === 'leased' && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Weekly Payment</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={formData.weekly_payment || ''} 
+                        onChange={(e) => updateField('weekly_payment', e.target.value)} 
+                        placeholder="0.00"
+                        className="h-7 text-xs" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Cents per Mile</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={formData.cents_per_mile || ''} 
+                        onChange={(e) => updateField('cents_per_mile', e.target.value)} 
+                        placeholder="0.00"
+                        className="h-7 text-xs" 
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <Label className="text-[10px]">Pickup Date & Odometer</Label>
