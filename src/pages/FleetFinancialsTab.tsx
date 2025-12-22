@@ -359,29 +359,36 @@ export default function FleetFinancialsTab() {
         </div>
         <div className="pl-3 pr-4 py-3">
           <ScrollArea className="h-[calc(100vh-260px)] overflow-visible">
-            <div className="space-y-1.5">
+            <div className="flex flex-col w-[70%]">
               {carriers
                 .filter(carrier => 
                   carrierSearch === "" || 
                   carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase())
                 )
-                .map(carrier => (
-                  <button
-                    key={carrier.id}
-                    onClick={() => {
-                      setSelectedCarrier(carrier.id);
-                      setCarrierSearch("");
-                    }}
-                    className={cn(
-                      "w-[70%] h-7 text-left px-3 text-xs font-medium transition-all rounded-md border",
-                      selectedCarrier === carrier.id
-                        ? "btn-glossy-primary text-white border-primary/30"
-                        : "btn-glossy text-gray-700 border-gray-300/50"
-                    )}
-                  >
-                    <div className="truncate">{carrier.name}</div>
-                  </button>
-                ))}
+                .map((carrier, idx, arr) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <button
+                      key={carrier.id}
+                      onClick={() => {
+                        setSelectedCarrier(carrier.id);
+                        setCarrierSearch("");
+                      }}
+                      className={cn(
+                        "w-full h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                        isLast && "border-b",
+                        isFirst && "rounded-t-md",
+                        isLast && "rounded-b-md",
+                        selectedCarrier === carrier.id
+                          ? "btn-glossy-primary text-white border-primary/30"
+                          : "btn-glossy text-gray-700 border-gray-300/50"
+                      )}
+                    >
+                      <div className="truncate">{carrier.name}</div>
+                    </button>
+                  );
+                })}
             </div>
           </ScrollArea>
         </div>
