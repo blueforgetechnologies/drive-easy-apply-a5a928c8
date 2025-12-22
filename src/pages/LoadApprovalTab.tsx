@@ -153,14 +153,13 @@ export default function LoadApprovalTab() {
       
       const { data: loadData } = await loadQuery.order("pickup_date", { ascending: false });
       
-      // Filter loads: show those that are ready for approval (delivered/completed/closed)
-      // OR those from vehicles requiring approval that haven't been approved yet
+      // Filter loads: ONLY show loads from vehicles that have requires_load_approval enabled
+      // and that haven't been approved yet
       const filteredLoads = (loadData || []).filter((load: any) => {
-        const isDeliveredStatus = ["delivered", "completed", "closed"].includes(load.status?.toLowerCase() || "");
-        const needsCarrierApproval = vehiclesRequiringApproval.includes(load.assigned_vehicle_id) && 
-          load.carrier_approved !== true;
+        const isFromApprovalRequiredVehicle = vehiclesRequiringApproval.includes(load.assigned_vehicle_id);
+        const needsCarrierApproval = load.carrier_approved !== true;
         
-        return isDeliveredStatus || needsCarrierApproval;
+        return isFromApprovalRequiredVehicle && needsCarrierApproval;
       });
       
       setLoads(filteredLoads as ApprovalLoad[]);
