@@ -502,6 +502,20 @@ export default function VehicleDetail() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Truck Type</Label>
+                    <RadioGroup value={formData.truck_type || 'my_truck'} onValueChange={(value) => updateField('truck_type', value)} className="flex gap-6">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="my_truck" id="my-truck" />
+                        <Label htmlFor="my-truck">My Truck</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="contractor_truck" id="contractor-truck" />
+                        <Label htmlFor="contractor-truck">Contractor's Truck</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Asset Ownership</Label>
                     <RadioGroup value={formData.asset_ownership || 'owned'} onValueChange={(value) => updateField('asset_ownership', value)} className="flex gap-4">
                       <div className="flex items-center space-x-2">
