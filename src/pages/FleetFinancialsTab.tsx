@@ -25,6 +25,7 @@ interface VehicleWithCarrierName extends Vehicle {
 interface Carrier {
   id: string;
   name: string;
+  status: string | null;
 }
 
 interface Dispatcher {
@@ -90,6 +91,7 @@ export default function FleetFinancialsTab() {
   });
   const [showColumnLines, setShowColumnLines] = useState(false);
   const [carrierSearch, setCarrierSearch] = useState("");
+  const [carrierStatusFilter, setCarrierStatusFilter] = useState<"active" | "inactive">("active");
 
   // Load all data
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function FleetFinancialsTab() {
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes] = await Promise.all([
         supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month").eq("status", "active").order("vehicle_number"),
-        supabase.from("carriers").select("id, name").eq("status", "active").order("name"),
+        supabase.from("carriers").select("id, name, status").order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
       ]);
@@ -359,18 +361,20 @@ export default function FleetFinancialsTab() {
           <div className="flex w-full mt-2">
             <Button
               variant="outline"
+              onClick={() => setCarrierStatusFilter("active")}
               className={cn(
                 "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0",
-                true ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+                carrierStatusFilter === "active" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
               )}
             >
               Active
             </Button>
             <Button
               variant="outline"
+              onClick={() => setCarrierStatusFilter("inactive")}
               className={cn(
                 "flex-1 h-8 text-sm font-medium rounded-l-none",
-                false ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+                carrierStatusFilter === "inactive" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
               )}
             >
               Inactive
@@ -384,8 +388,8 @@ export default function FleetFinancialsTab() {
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .filter(carrier => 
-                  carrierSearch === "" || 
-                  carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase())
+                  (carrier.status === carrierStatusFilter) &&
+                  (carrierSearch === "" || carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase()))
                 )
                 .map((carrier, idx, arr) => {
                   const isFirst = idx === 0;
