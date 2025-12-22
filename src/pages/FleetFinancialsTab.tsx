@@ -357,9 +357,9 @@ export default function FleetFinancialsTab() {
             />
           </div>
         </div>
-        <div className="px-2 py-3">
-          <ScrollArea className="h-[calc(100vh-260px)]">
-            <div className="space-y-1.5 pr-3 pl-1 py-1">
+        <div className="p-3">
+          <ScrollArea className="h-[calc(100vh-260px)] overflow-visible">
+            <div className="space-y-1.5">
               {carriers
                 .filter(carrier => 
                   carrierSearch === "" || 
