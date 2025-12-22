@@ -180,6 +180,26 @@ export default function FleetFinancialsTab() {
     return vehiclesWithNames.filter(v => v.carrier === selectedCarrier);
   }, [vehiclesWithNames, selectedCarrier]);
 
+  // Auto-select first vehicle when carrier changes or current selection is invalid
+  useEffect(() => {
+    if (filteredVehicles.length > 0) {
+      const currentVehicleInList = filteredVehicles.some(v => v.id === selectedVehicleId);
+      if (!currentVehicleInList || !selectedVehicleId) {
+        // Sort and select first vehicle
+        const sorted = [...filteredVehicles].sort((a, b) => {
+          const numA = parseInt(a.vehicle_number, 10);
+          const numB = parseInt(b.vehicle_number, 10);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.vehicle_number.localeCompare(b.vehicle_number);
+        });
+        setSelectedVehicleId(sorted[0].id);
+      }
+    } else if (selectedCarrier !== null) {
+      // Carrier has no vehicles, clear selection
+      setSelectedVehicleId(null);
+    }
+  }, [selectedCarrier, filteredVehicles, selectedVehicleId]);
+
   // Get unique carrier IDs from vehicles that have carriers
   const vehicleCarrierIds = useMemo(() => {
     const carrierSet = new Set(vehicles.map(v => v.carrier).filter(Boolean));
