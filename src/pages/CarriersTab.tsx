@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 
@@ -673,15 +673,16 @@ export default function CarriersTab() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1.5 text-xs"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/dashboard/carrier/${carrier.id}`);
+                            navigate(`/dashboard/carrier-dashboard?carrier=${carrier.id}`);
                           }}
                         >
-                          <FileText className="h-3.5 w-3.5" />
+                          <LayoutDashboard className="h-3.5 w-3.5" />
+                          Dashboard
                         </Button>
                       </TableCell>
                     </TableRow>
