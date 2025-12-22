@@ -264,6 +264,7 @@ export type Database = {
           phone: string | null
           safer_status: string | null
           safety_rating: string | null
+          show_in_fleet_financials: boolean
           status: string | null
           updated_at: string | null
         }
@@ -292,6 +293,7 @@ export type Database = {
           phone?: string | null
           safer_status?: string | null
           safety_rating?: string | null
+          show_in_fleet_financials?: boolean
           status?: string | null
           updated_at?: string | null
         }
@@ -320,6 +322,7 @@ export type Database = {
           phone?: string | null
           safer_status?: string | null
           safety_rating?: string | null
+          show_in_fleet_financials?: boolean
           status?: string | null
           updated_at?: string | null
         }

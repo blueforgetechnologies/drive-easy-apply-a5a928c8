@@ -110,7 +110,7 @@ export default function FleetFinancialsTab() {
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes] = await Promise.all([
         supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month").eq("status", "active").order("vehicle_number"),
-        supabase.from("carriers").select("id, name, status").order("name"),
+        supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
       ]);

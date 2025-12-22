@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 interface Carrier {
   id: string;
@@ -26,6 +27,7 @@ interface Carrier {
   safer_status: string | null;
   safety_rating: string | null;
   created_at: string;
+  show_in_fleet_financials: boolean;
 }
 
 export default function CarriersTab() {
@@ -172,6 +174,21 @@ export default function CarriersTab() {
       loadData();
     } catch (error: any) {
       toast.error("Failed to update status: " + error.message);
+    }
+  };
+
+  const handleFleetFinancialsToggle = async (id: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("carriers" as any)
+        .update({ show_in_fleet_financials: !currentValue })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success(currentValue ? "Hidden from Fleet$" : "Visible in Fleet$");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update: " + error.message);
     }
   };
 
@@ -554,6 +571,7 @@ export default function CarriersTab() {
                       <div>Authority</div>
                       <div className="text-xs font-normal text-muted-foreground">Safety Rating</div>
                     </TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[70px] text-center">Fleet$</TableHead>
                     <TableHead className="py-2 px-2 w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -646,6 +664,12 @@ export default function CarriersTab() {
                             <span>{carrier.safety_rating || "None"}</span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()} className="text-center">
+                        <Switch
+                          checked={carrier.show_in_fleet_financials}
+                          onCheckedChange={() => handleFleetFinancialsToggle(carrier.id, carrier.show_in_fleet_financials)}
+                        />
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
