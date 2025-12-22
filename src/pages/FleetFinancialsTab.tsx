@@ -330,7 +330,7 @@ export default function FleetFinancialsTab() {
   return (
     <div className="flex h-[calc(100vh-80px)]">
       {/* Left Sidebar - Carrier Filter */}
-      <div className="w-[200px] border-r bg-card flex-shrink-0">
+      <div className="w-[170px] border-r bg-card flex-shrink-0">
         <div className="pl-3 pr-4 py-3 border-b space-y-2">
           <Button 
             variant="outline"
