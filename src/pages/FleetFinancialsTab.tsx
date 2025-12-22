@@ -745,7 +745,7 @@ export default function FleetFinancialsTab() {
                             <TableRow key={load.id} className="hover:bg-muted/30 h-[25px]">
                               <TableCell 
                                 className="font-medium text-muted-foreground !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline"
-                                onClick={() => navigate(`/dashboard/loads/${load.id}`)}
+                                onClick={() => navigate(`/dashboard/load/${load.id}`)}
                               >
                                 {loadIndex === 0 && `${dayName} ${dateStr}`}
                               </TableCell>
