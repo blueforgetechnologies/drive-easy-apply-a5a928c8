@@ -404,7 +404,8 @@ export default function FleetFinancialsTab() {
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .filter(carrier => 
-                  (carrierStatusFilter.length === 0 || carrierStatusFilter.includes(carrier.status || "")) &&
+                  carrierStatusFilter.length > 0 && 
+                  carrierStatusFilter.includes(carrier.status || "") &&
                   (carrierSearch === "" || carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase()))
                 )
                 .map((carrier, idx, arr) => {
