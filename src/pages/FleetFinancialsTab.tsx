@@ -85,6 +85,7 @@ export default function FleetFinancialsTab() {
   
   const [selectedCarrier, setSelectedCarrier] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [allTruckIdsMode, setAllTruckIdsMode] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return format(now, "yyyy-MM");
@@ -174,11 +175,19 @@ export default function FleetFinancialsTab() {
     }));
   }, [vehicles, carriers]);
 
-  // Filter vehicles by selected carrier (carrier ID)
+  // Filter vehicles by selected carrier (carrier ID) or show all in allTruckIdsMode
   const filteredVehicles = useMemo(() => {
+    if (allTruckIdsMode) return vehiclesWithNames;
     if (!selectedCarrier) return vehiclesWithNames;
     return vehiclesWithNames.filter(v => v.carrier === selectedCarrier);
-  }, [vehiclesWithNames, selectedCarrier]);
+  }, [vehiclesWithNames, selectedCarrier, allTruckIdsMode]);
+
+  // Get carrier of currently selected vehicle (for highlighting in allTruckIdsMode)
+  const selectedVehicleCarrier = useMemo(() => {
+    if (!selectedVehicleId) return null;
+    const vehicle = vehiclesWithNames.find(v => v.id === selectedVehicleId);
+    return vehicle?.carrier || null;
+  }, [selectedVehicleId, vehiclesWithNames]);
 
   // Auto-select first vehicle when carrier changes or current selection is invalid
   useEffect(() => {
@@ -354,7 +363,30 @@ export default function FleetFinancialsTab() {
       {/* Left Sidebar - Carrier Filter */}
       <div className="w-[190px] border-r bg-card flex-shrink-0">
         <div className="pl-3 pr-4 py-3 border-b space-y-2">
-          <h3 className="text-sm font-bold text-primary">Carriers</h3>
+          <button
+            onClick={() => {
+              setAllTruckIdsMode(true);
+              setSelectedCarrier(null);
+              // Select first vehicle from all vehicles
+              const sorted = [...vehiclesWithNames].sort((a, b) => {
+                const numA = parseInt(a.vehicle_number, 10);
+                const numB = parseInt(b.vehicle_number, 10);
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                return a.vehicle_number.localeCompare(b.vehicle_number);
+              });
+              if (sorted.length > 0) {
+                setSelectedVehicleId(sorted[0].id);
+              }
+            }}
+            className={cn(
+              "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
+              allTruckIdsMode
+                ? "btn-glossy-primary text-white"
+                : "btn-glossy text-muted-foreground"
+            )}
+          >
+            All Truck IDs
+          </button>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -415,6 +447,7 @@ export default function FleetFinancialsTab() {
                     <button
                       key={carrier.id}
                       onClick={() => {
+                        setAllTruckIdsMode(false);
                         setSelectedCarrier(carrier.id);
                         setCarrierSearch("");
                         // Auto-select first vehicle for this carrier
@@ -437,7 +470,7 @@ export default function FleetFinancialsTab() {
                         isLast && "border-b",
                         isFirst && "rounded-t-md",
                         isLast && "rounded-b-md",
-                        selectedCarrier === carrier.id
+                        (selectedCarrier === carrier.id || (allTruckIdsMode && selectedVehicleCarrier === carrier.id))
                           ? "btn-glossy-primary text-white border-primary/30"
                           : "btn-glossy text-gray-700 border-gray-300/50"
                       )}
