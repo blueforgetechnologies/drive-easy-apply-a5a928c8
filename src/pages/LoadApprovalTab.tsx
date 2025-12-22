@@ -263,114 +263,146 @@ export default function LoadApprovalTab() {
   };
 
   return (
-    <div className="flex flex-1 min-h-0 gap-4">
-      {/* Left Sidebar - Carrier Navigation */}
-      <div className="w-64 flex-shrink-0 flex flex-col gap-3 border-r pr-4">
-        <Button 
-          variant="ghost" 
-          className="justify-start gap-2 text-muted-foreground"
-          onClick={() => navigate("/dashboard/loads")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Loads
-        </Button>
-
-        <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-lg">Carriers</h3>
-        </div>
-
-        <Button
-          variant={selectedCarrier === "all" ? "default" : "ghost"}
-          className="justify-start w-full"
-          onClick={() => handleCarrierSelect("all")}
-        >
-          All Carriers
-        </Button>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search carriers..."
-            value={carrierSearch}
-            onChange={(e) => setCarrierSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant={carrierStatusFilter.includes("active") ? "default" : "outline"}
-            size="sm"
-            className="flex-1 h-7 text-xs"
-            onClick={() => toggleCarrierStatus("active")}
-          >
-            Active
-          </Button>
-          <Button
-            variant={carrierStatusFilter.includes("inactive") ? "default" : "outline"}
-            size="sm"
-            className="flex-1 h-7 text-xs"
-            onClick={() => toggleCarrierStatus("inactive")}
-          >
-            Inactive
-          </Button>
-        </div>
-
-        <ScrollArea className="flex-1">
-          <div className="space-y-1 pr-2">
-            {filteredCarriers.map(carrier => (
-              <Button
-                key={carrier.id}
-                variant={selectedCarrier === carrier.id ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start text-left h-auto py-2 px-3",
-                  selectedCarrier === carrier.id && "bg-primary/10 border-l-2 border-primary"
-                )}
-                onClick={() => handleCarrierSelect(carrier.id)}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="font-medium text-sm truncate w-full">{carrier.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize">{carrier.status}</span>
-                </div>
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
-
-        {/* Vehicle filter when carrier selected */}
-        {selectedCarrier !== "all" && vehicles.length > 0 && (
-          <div className="border-t pt-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Trucks</span>
-            </div>
-            <Button
-              variant={selectedVehicle === "all" ? "default" : "ghost"}
+    <div className="h-[calc(100vh-80px)] flex flex-col">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Carrier Navigation */}
+        <div className="w-[190px] border-r bg-card flex-shrink-0 flex flex-col">
+          <div className="pl-3 pr-4 py-3 border-b space-y-2">
+            <Button 
+              variant="ghost" 
               size="sm"
-              className="w-full justify-start"
-              onClick={() => setSelectedVehicle("all")}
+              className="w-full justify-start gap-2 text-muted-foreground h-8"
+              onClick={() => navigate("/dashboard/loads")}
             >
-              All Trucks
+              <ArrowLeft className="h-4 w-4" />
+              Back to Loads
             </Button>
-            <ScrollArea className="max-h-32">
-              <div className="space-y-1">
-                {vehicles.map(v => (
-                  <Button
-                    key={v.id}
-                    variant={selectedVehicle === v.id ? "secondary" : "ghost"}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => setSelectedVehicle(v.id)}
-                  >
-                    {v.vehicle_number}
-                  </Button>
-                ))}
+            
+            <button
+              onClick={() => handleCarrierSelect("all")}
+              className={cn(
+                "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
+                selectedCarrier === "all"
+                  ? "btn-glossy-primary text-white"
+                  : "btn-glossy text-muted-foreground"
+              )}
+            >
+              All Carriers
+            </button>
+            
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Type to search..."
+                value={carrierSearch}
+                onChange={(e) => setCarrierSearch(e.target.value)}
+                className="pl-8 h-9"
+              />
+            </div>
+            
+            <div className="flex w-full mt-2">
+              <button
+                onClick={() => toggleCarrierStatus("active")}
+                className={cn(
+                  "flex-1 h-8 text-sm font-medium rounded-l-md transition-all duration-200",
+                  carrierStatusFilter.includes("active") 
+                    ? "btn-glossy-primary text-white" 
+                    : "btn-glossy text-muted-foreground"
+                )}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => toggleCarrierStatus("inactive")}
+                className={cn(
+                  "flex-1 h-8 text-sm font-medium rounded-r-md transition-all duration-200",
+                  carrierStatusFilter.includes("inactive") 
+                    ? "btn-glossy-primary text-white" 
+                    : "btn-glossy text-muted-foreground"
+                )}
+              >
+                Inactive
+              </button>
+            </div>
+          </div>
+          
+          <div className="pl-3 pr-4 py-3 flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="flex flex-col w-[70%]">
+                {filteredCarriers.map((carrier, idx, arr) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <button
+                      key={carrier.id}
+                      onClick={() => handleCarrierSelect(carrier.id)}
+                      className={cn(
+                        "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                        isLast && "border-b",
+                        isFirst && "rounded-t-md",
+                        isLast && "rounded-b-md",
+                        selectedCarrier === carrier.id
+                          ? "btn-glossy-primary text-white border-primary/30"
+                          : "btn-glossy text-gray-700 border-gray-300/50"
+                      )}
+                    >
+                      <div className="truncate">{carrier.name}</div>
+                    </button>
+                  );
+                })}
+                {filteredCarriers.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">No carriers found</p>
+                )}
               </div>
             </ScrollArea>
           </div>
-        )}
-      </div>
+
+          {/* Vehicle filter when carrier selected */}
+          {selectedCarrier !== "all" && vehicles.length > 0 && (
+            <div className="border-t pl-3 pr-4 py-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Trucks</span>
+              </div>
+              <button
+                onClick={() => setSelectedVehicle("all")}
+                className={cn(
+                  "w-full h-8 text-sm font-bold rounded-md transition-all duration-200",
+                  selectedVehicle === "all"
+                    ? "btn-glossy-primary text-white"
+                    : "btn-glossy text-muted-foreground"
+                )}
+              >
+                All Trucks
+              </button>
+              <ScrollArea className="max-h-32">
+                <div className="flex flex-col">
+                  {vehicles.map((v, idx, arr) => {
+                    const isFirst = idx === 0;
+                    const isLast = idx === arr.length - 1;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => setSelectedVehicle(v.id)}
+                        className={cn(
+                          "w-full h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                          isLast && "border-b",
+                          isFirst && "rounded-t-md",
+                          isLast && "rounded-b-md",
+                          selectedVehicle === v.id
+                            ? "btn-glossy-primary text-white border-primary/30"
+                            : "btn-glossy text-gray-700 border-gray-300/50"
+                        )}
+                      >
+                        {v.vehicle_number}
+                      </button>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4 min-h-0">
@@ -647,6 +679,7 @@ export default function LoadApprovalTab() {
             </ScrollArea>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
