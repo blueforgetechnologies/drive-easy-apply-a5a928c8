@@ -345,6 +345,18 @@ export default function FleetFinancialsTab() {
             onClick={() => {
               setSelectedCarrier(null);
               setCarrierSearch("");
+              // Auto-select first vehicle from all vehicles
+              const sortedVehicles = vehiclesWithNames
+                .slice()
+                .sort((a, b) => {
+                  const numA = parseInt(a.vehicle_number, 10);
+                  const numB = parseInt(b.vehicle_number, 10);
+                  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                  return a.vehicle_number.localeCompare(b.vehicle_number);
+                });
+              if (sortedVehicles.length > 0) {
+                setSelectedVehicleId(sortedVehicles[0].id);
+              }
             }}
           >
             All Carriers
@@ -408,6 +420,20 @@ export default function FleetFinancialsTab() {
                       onClick={() => {
                         setSelectedCarrier(carrier.id);
                         setCarrierSearch("");
+                        // Auto-select first vehicle for this carrier
+                        const carrierVehicles = vehiclesWithNames
+                          .filter(v => v.carrier === carrier.id)
+                          .sort((a, b) => {
+                            const numA = parseInt(a.vehicle_number, 10);
+                            const numB = parseInt(b.vehicle_number, 10);
+                            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                            return a.vehicle_number.localeCompare(b.vehicle_number);
+                          });
+                        if (carrierVehicles.length > 0) {
+                          setSelectedVehicleId(carrierVehicles[0].id);
+                        } else {
+                          setSelectedVehicleId(null);
+                        }
                       }}
                       className={cn(
                         "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
