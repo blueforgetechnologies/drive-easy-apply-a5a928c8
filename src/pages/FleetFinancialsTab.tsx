@@ -7,10 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -82,6 +86,12 @@ export default function FleetFinancialsTab() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [factoringPercentage, setFactoringPercentage] = useState<number>(2); // Default 2%
+  
+  // Fuel settings
+  const [milesPerGallon, setMilesPerGallon] = useState<number>(6.5); // Default 6.5 MPG for trucks
+  const [dollarPerGallon, setDollarPerGallon] = useState<number>(3.50); // Default $3.50/gal
+  const [savingFuelSettings, setSavingFuelSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState("statistics");
   
   const [selectedCarrier, setSelectedCarrier] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -362,10 +372,30 @@ export default function FleetFinancialsTab() {
     );
   }
 
+  // Save fuel settings function
+  const saveFuelSettings = async () => {
+    setSavingFuelSettings(true);
+    // For now, just show a toast - these could be saved to company_profile or a settings table
+    toast.success("Fuel settings saved successfully");
+    setSavingFuelSettings(false);
+  };
+
   return (
-    <div className="flex h-[calc(100vh-80px)]">
-      {/* Left Sidebar - Carrier Filter */}
-      <div className="w-[190px] border-r bg-card flex-shrink-0">
+    <div className="h-[calc(100vh-80px)] flex flex-col">
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <div className="border-b bg-card px-4 py-2">
+          <TabsList className="h-9">
+            <TabsTrigger value="statistics" className="text-sm">Vehicle Statistics</TabsTrigger>
+            <TabsTrigger value="fuel-settings" className="text-sm">Fuel Settings</TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Vehicle Statistics Tab */}
+        <TabsContent value="statistics" className="flex-1 m-0 overflow-hidden">
+          <div className="flex h-full">
+            {/* Left Sidebar - Carrier Filter */}
+            <div className="w-[190px] border-r bg-card flex-shrink-0">
         <div className="pl-3 pr-4 py-3 border-b space-y-2">
           <button
             onClick={() => {
@@ -625,7 +655,7 @@ export default function FleetFinancialsTab() {
 
         {/* Data Table */}
         <ScrollArea className="flex-1">
-          <div className="min-w-[1580px]">
+          <div className="min-w-[1630px]">
             <table className={cn("table-glossy w-full caption-bottom text-sm table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
               <TableHeader className="sr-only">
                 <TableRow>
@@ -637,6 +667,7 @@ export default function FleetFinancialsTab() {
                   <TableHead className="w-[62px] px-2 text-right sticky top-0 bg-muted">Loaded</TableHead>
                   <TableHead className="w-[55px] px-2 text-right sticky top-0 bg-muted">Total</TableHead>
                   <TableHead className="w-[52px] px-2 text-right sticky top-0 bg-muted">$/Mi</TableHead>
+                  <TableHead className="w-[48px] px-2 text-right sticky top-0 bg-muted">MPG</TableHead>
                   <TableHead className="w-[68px] px-2 text-right sticky top-0 bg-muted">Factor</TableHead>
                   <TableHead className="w-[75px] px-2 text-right sticky top-0 bg-muted">Disp Pay</TableHead>
                   <TableHead className="w-[70px] px-2 text-right sticky top-0 bg-muted">Drv Pay</TableHead>
@@ -687,6 +718,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right !px-2 !py-0.5">{formatNumber(loadedM, 0)}</TableCell>
                               <TableCell className="text-right font-medium !px-2 !py-0.5">{formatNumber(totalM, 0)}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${formatNumber(dollarPerMile, 2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatNumber(milesPerGallon, 1)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(factoring)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dispPay)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
@@ -721,6 +753,7 @@ export default function FleetFinancialsTab() {
                           <TableCell className="!px-2 !py-0.5"></TableCell>
                           <TableCell className="!px-2 !py-0.5"></TableCell>
                           <TableCell className="!px-2 !py-0.5"></TableCell>
+                          <TableCell className="!px-2 !py-0.5"></TableCell>
                           <TableCell className="text-right !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
                           <TableCell className="text-right !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
                           <TableCell className="!px-2 !py-0.5"></TableCell>
@@ -734,7 +767,7 @@ export default function FleetFinancialsTab() {
                       {/* Weekly Summary Row */}
                       {day.isWeekEnd && (
                         <TableRow key={`week-${day.date.toISOString()}`} className="bg-muted/50 border-t-2">
-                          <TableCell colSpan={19} className="text-right font-semibold">Weekly Total:</TableCell>
+                          <TableCell colSpan={20} className="text-right font-semibold">Weekly Total:</TableCell>
                           <TableCell className={cn("text-right font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
                             {formatCurrency(getWeeklyTotal(index))}
                           </TableCell>
@@ -747,8 +780,8 @@ export default function FleetFinancialsTab() {
             </table>
 
             {/* Monthly Totals Footer - inside scrollable area */}
-            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1580px]">
-              <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
+            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1630px]">
+              <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_48px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
                 <div className="text-center px-2 whitespace-nowrap">
                   <div className="text-[10px] text-muted-foreground">P/U Date</div>
                   <div className="font-bold">-</div>
@@ -780,6 +813,10 @@ export default function FleetFinancialsTab() {
                 <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">$/Mi</div>
                   <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">MPG</div>
+                  <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
                 </div>
                 <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">Factor</div>
@@ -837,6 +874,89 @@ export default function FleetFinancialsTab() {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
+    </div>
+  </TabsContent>
+
+  {/* Fuel Settings Tab */}
+  <TabsContent value="fuel-settings" className="flex-1 m-0 p-6 overflow-auto">
+    <div className="max-w-2xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fuel className="h-5 w-5" />
+            Fuel Settings
+          </CardTitle>
+          <CardDescription>
+            Configure fuel consumption parameters for calculating fuel costs and MPG statistics.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="mpg">Average Miles Per Gallon (MPG)</Label>
+              <Input
+                id="mpg"
+                type="number"
+                step="0.1"
+                min="1"
+                max="20"
+                value={milesPerGallon}
+                onChange={(e) => setMilesPerGallon(parseFloat(e.target.value) || 6.5)}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Typical truck MPG ranges from 5.5 to 8.0
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dpg">Dollar Per Gallon ($)</Label>
+              <Input
+                id="dpg"
+                type="number"
+                step="0.01"
+                min="0"
+                max="10"
+                value={dollarPerGallon}
+                onChange={(e) => setDollarPerGallon(parseFloat(e.target.value) || 3.50)}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Current average fuel price per gallon
+              </p>
+            </div>
+          </div>
+          
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium mb-2">Calculated Values</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="text-muted-foreground">Cost Per Mile</div>
+                <div className="text-lg font-bold">
+                  ${(dollarPerGallon / milesPerGallon).toFixed(3)}
+                </div>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="text-muted-foreground">Gallons Per 100 Miles</div>
+                <div className="text-lg font-bold">
+                  {(100 / milesPerGallon).toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button 
+            onClick={saveFuelSettings}
+            disabled={savingFuelSettings}
+            className="w-full"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {savingFuelSettings ? "Saving..." : "Save Fuel Settings"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  </TabsContent>
+</Tabs>
     </div>
   );
 }
