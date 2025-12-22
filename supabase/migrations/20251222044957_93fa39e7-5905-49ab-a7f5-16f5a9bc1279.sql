@@ -1,0 +1,22 @@
+-- Add compensation fields to applications table
+ALTER TABLE public.applications
+ADD COLUMN IF NOT EXISTS hourly_rate numeric,
+ADD COLUMN IF NOT EXISTS hours_per_week integer,
+ADD COLUMN IF NOT EXISTS load_percentage numeric,
+ADD COLUMN IF NOT EXISTS base_salary numeric,
+ADD COLUMN IF NOT EXISTS overtime_eligible boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS overtime_multiplier text DEFAULT '1.5',
+ADD COLUMN IF NOT EXISTS weekend_premium numeric,
+ADD COLUMN IF NOT EXISTS holiday_pay_rate text DEFAULT 'none',
+ADD COLUMN IF NOT EXISTS sign_on_bonus numeric,
+ADD COLUMN IF NOT EXISTS safety_bonus numeric,
+ADD COLUMN IF NOT EXISTS fuel_bonus numeric,
+ADD COLUMN IF NOT EXISTS referral_bonus numeric,
+ADD COLUMN IF NOT EXISTS per_diem numeric,
+ADD COLUMN IF NOT EXISTS layover_pay numeric,
+ADD COLUMN IF NOT EXISTS detention_pay numeric,
+ADD COLUMN IF NOT EXISTS stop_pay numeric,
+ADD COLUMN IF NOT EXISTS insurance_deduction numeric,
+ADD COLUMN IF NOT EXISTS escrow_deduction numeric,
+ADD COLUMN IF NOT EXISTS equipment_lease numeric,
+ADD COLUMN IF NOT EXISTS other_deductions numeric;
