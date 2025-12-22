@@ -74,7 +74,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'tools', 'analytics', 'usage', 'fleet-financials'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'tools', 'analytics', 'usage', 'fleet-financials', 'carrier-dashboard'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -305,7 +305,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
       navigate(`/dashboard/${value}?subtab=users`);
-    } else if (value === 'map' || value === 'load-hunter' || value === 'loads' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'screenshare' || value === 'tools' || value === 'analytics' || value === 'usage' || value === 'fleet-financials') {
+    } else if (value === 'map' || value === 'load-hunter' || value === 'loads' || value === 'maintenance' || value === 'development' || value === 'changelog' || value === 'screenshare' || value === 'tools' || value === 'analytics' || value === 'usage' || value === 'fleet-financials' || value === 'carrier-dashboard') {
       navigate(`/dashboard/${value}`);
     } else {
       navigate(`/dashboard/${value}?filter=active`);
@@ -318,6 +318,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "load-hunter", icon: Target, label: "Load Hunter" },
     { value: "loads", icon: Package, label: "Loads" },
     { value: "fleet-financials", icon: Wallet, label: "Fleet $" },
+    { value: "carrier-dashboard", icon: Briefcase, label: "Carrier's Dashboard" },
     { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
     { value: "accounting", icon: Calculator, label: "Accounting" },
     { value: "analytics", icon: TrendingUp, label: "Analytics" },

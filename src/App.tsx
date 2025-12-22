@@ -16,6 +16,7 @@ import LoadDetail from "./pages/LoadDetail";
 import DashboardLayout from "./components/DashboardLayout";
 import DispatcherDetail from "./pages/DispatcherDetail";
 import DispatcherDashboard from "./pages/DispatcherDashboard";
+import CarrierDashboard from "./pages/CarrierDashboard";
 import LoadsTab from "./pages/LoadsTab";
 import SettlementDetail from "./pages/SettlementDetail";
 import InvoiceDetail from "./pages/InvoiceDetail";
@@ -63,6 +64,7 @@ const App = () => (
           <Route path="/dashboard/business" element={<DashboardLayout><BusinessManagerTab /></DashboardLayout>} />
           <Route path="/dashboard/dispatchers/:id" element={<DashboardLayout><DispatcherDetail /></DashboardLayout>} />
           <Route path="/dashboard/my-dashboard" element={<DashboardLayout><DispatcherDashboard /></DashboardLayout>} />
+          <Route path="/dashboard/carrier-dashboard" element={<DashboardLayout><CarrierDashboard /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
           <Route path="/dashboard/accounting" element={<DashboardLayout><AccountingTab /></DashboardLayout>} />
           <Route path="/dashboard/accounting/audit/:id" element={<DashboardLayout><AuditDetail /></DashboardLayout>} />
