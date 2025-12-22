@@ -373,14 +373,13 @@ export default function FleetFinancialsTab() {
                       setCarrierSearch("");
                     }}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                      "w-full text-left px-3 py-2.5 text-sm font-medium transition-all border-l-4",
                       selectedCarrier === carrier.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted"
+                        ? "bg-primary/10 text-primary border-l-primary shadow-sm"
+                        : "hover:bg-muted/80 border-l-transparent hover:border-l-muted-foreground/30"
                     )}
                   >
-                    <div className="font-medium truncate">{carrier.name}</div>
-                    <div className="text-xs opacity-70">Carrier Symbol:</div>
+                    <div className="truncate">{carrier.name}</div>
                   </button>
                 ))}
             </div>
