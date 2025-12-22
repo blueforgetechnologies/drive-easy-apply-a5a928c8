@@ -33,6 +33,7 @@ import DevelopmentTab from "./pages/DevelopmentTab";
 import FlowDiagramTab from "./pages/FlowDiagramTab";
 import UsageTab from "./pages/UsageTab";
 import FleetFinancialsTab from "./pages/FleetFinancialsTab";
+import LoadApprovalTab from "./pages/LoadApprovalTab";
 
 import DuplicateCustomersTab from "./pages/DuplicateCustomersTab";
 
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/dashboard/my-dashboard" element={<DashboardLayout><DispatcherDashboard /></DashboardLayout>} />
           <Route path="/dashboard/carrier-dashboard" element={<DashboardLayout><CarrierDashboard /></DashboardLayout>} />
           <Route path="/dashboard/loads" element={<DashboardLayout><LoadsTab /></DashboardLayout>} />
+          <Route path="/dashboard/load-approval" element={<DashboardLayout><LoadApprovalTab /></DashboardLayout>} />
           <Route path="/dashboard/accounting" element={<DashboardLayout><AccountingTab /></DashboardLayout>} />
           <Route path="/dashboard/accounting/audit/:id" element={<DashboardLayout><AuditDetail /></DashboardLayout>} />
           <Route path="/dashboard/locations/:id" element={<DashboardLayout><LocationDetail /></DashboardLayout>} />

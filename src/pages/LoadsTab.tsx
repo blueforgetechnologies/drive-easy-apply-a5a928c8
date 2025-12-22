@@ -951,20 +951,29 @@ export default function LoadsTab() {
       {/* Header - Mobile optimized */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-xl sm:text-2xl font-bold">Booked Loads</h2>
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            // Reset customer matching state when dialog closes
-            setPendingCustomerData(null);
-            setMatchedCustomerId(null);
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 w-full sm:w-auto h-11 sm:h-10 rounded-xl">
-              <Plus className="h-4 w-4" />
-              Create Load
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline"
+            className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl"
+            onClick={() => navigate("/dashboard/load-approval")}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Load Approval
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              // Reset customer matching state when dialog closes
+              setPendingCustomerData(null);
+              setMatchedCustomerId(null);
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl">
+                <Plus className="h-4 w-4" />
+                Create Load
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto rounded-2xl p-0">
             <DialogHeader className="px-6 pt-5 pb-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
               <DialogTitle className="text-xl font-bold">Create New Load</DialogTitle>
@@ -1496,6 +1505,7 @@ export default function LoadsTab() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {selectedLoadIds.length > 0 && (
