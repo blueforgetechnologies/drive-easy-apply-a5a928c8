@@ -29,6 +29,7 @@ interface Vehicle {
   id: string;
   vehicle_number: string;
   carrier: string | null;
+  requires_load_approval: boolean | null;
 }
 
 interface Load {
@@ -56,7 +57,8 @@ interface Load {
 interface ApprovalLoad extends Load {
   carrier_pay?: number;
   carrier_rate_per_mile?: number;
-  approved?: boolean;
+  carrier_approved?: boolean | null;
+  carrier_rate?: number | null;
 }
 
 export default function LoadApprovalTab() {
@@ -107,10 +109,10 @@ export default function LoadApprovalTab() {
         ? carriers.find(c => c.id === selectedCarrier)?.name 
         : null;
       
-      // Load vehicles for selected carrier
+      // Load vehicles for selected carrier - include requires_load_approval
       let vehicleQuery = supabase
         .from("vehicles")
-        .select("id, vehicle_number, carrier")
+        .select("id, vehicle_number, carrier, requires_load_approval")
         .eq("status", "active");
       
       if (selectedCarrierName) {
@@ -119,7 +121,15 @@ export default function LoadApprovalTab() {
       
       const { data: vehicleData } = await vehicleQuery.order("vehicle_number");
       setVehicles((vehicleData as Vehicle[]) || []);
-      // Load loads for the past 3 weeks with status ready for approval
+      
+      // Get vehicle IDs that require load approval
+      const vehiclesRequiringApproval = (vehicleData || [])
+        .filter((v: any) => v.requires_load_approval)
+        .map((v: any) => v.id);
+      
+      // Load loads for the past 3 weeks
+      // Show those that are ready for approval (delivered/completed/closed)
+      // OR those from vehicles requiring approval that haven't been approved yet
       const threeWeeksAgo = subWeeks(new Date(), 3);
       
       let loadQuery = supabase
@@ -131,7 +141,6 @@ export default function LoadApprovalTab() {
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `)
-        .in("status", ["delivered", "completed", "closed"])
         .gte("pickup_date", format(threeWeeksAgo, "yyyy-MM-dd"));
       
       if (selectedCarrier !== "all") {
@@ -143,7 +152,18 @@ export default function LoadApprovalTab() {
       }
       
       const { data: loadData } = await loadQuery.order("pickup_date", { ascending: false });
-      setLoads((loadData as ApprovalLoad[]) || []);
+      
+      // Filter loads: show those that are ready for approval (delivered/completed/closed)
+      // OR those from vehicles requiring approval that haven't been approved yet
+      const filteredLoads = (loadData || []).filter((load: any) => {
+        const isDeliveredStatus = ["delivered", "completed", "closed"].includes(load.status?.toLowerCase() || "");
+        const needsCarrierApproval = vehiclesRequiringApproval.includes(load.assigned_vehicle_id) && 
+          load.carrier_approved !== true;
+        
+        return isDeliveredStatus || needsCarrierApproval;
+      });
+      
+      setLoads(filteredLoads as ApprovalLoad[]);
     } finally {
       setLoading(false);
     }
@@ -210,18 +230,19 @@ export default function LoadApprovalTab() {
     const carrierPay = carrierRates[load.id] || load.rate || 0;
     
     try {
-      // Update the load with approved carrier pay
+      // Update the load with approved carrier pay and mark as carrier approved
       const { error } = await supabase
         .from("loads")
         .update({
-          rate: carrierPay,
+          carrier_rate: carrierPay,
+          carrier_approved: true,
           settlement_status: "approved"
         })
         .eq("id", load.id);
 
       if (error) throw error;
       
-      toast.success(`Load ${load.load_number} approved with carrier pay $${carrierPay.toLocaleString()}`);
+      toast.success(`Load ${load.load_number} approved for carrier with rate $${carrierPay.toLocaleString()}`);
       loadData();
     } catch (error) {
       console.error("Error approving load:", error);

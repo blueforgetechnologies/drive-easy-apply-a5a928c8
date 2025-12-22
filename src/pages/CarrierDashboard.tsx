@@ -33,6 +33,7 @@ interface Vehicle {
   vehicle_number: string;
   asset_type: string;
   carrier: string;
+  requires_load_approval: boolean | null;
 }
 
 interface Load {
@@ -52,6 +53,8 @@ interface Load {
   broker_name: string | null;
   customer_id: string | null;
   customers?: { name: string } | null;
+  carrier_approved: boolean | null;
+  carrier_rate: number | null;
 }
 
 export default function CarrierDashboard() {
@@ -160,7 +163,7 @@ export default function CarrierDashboard() {
       // Load vehicles for selected carrier(s)
       let vehicleQuery = supabase
         .from("vehicles")
-        .select("id, vehicle_number, asset_type, carrier")
+        .select("id, vehicle_number, asset_type, carrier, requires_load_approval")
         .eq("status", "active");
 
       if (selectedCarrier !== "all") {
@@ -184,12 +187,26 @@ export default function CarrierDashboard() {
       // Load loads assigned to these vehicles
       const { data: loadData, error: loadError } = await supabase
         .from("loads")
-        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, customers(name)")
+        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, carrier_approved, carrier_rate, customers(name)")
         .in("assigned_vehicle_id", vehicleIds)
         .order("pickup_date", { ascending: false });
 
       if (loadError) throw loadError;
-      setLoads(loadData || []);
+      
+      // Filter out loads that require approval but haven't been approved yet
+      const vehiclesRequiringApproval = (vehicleData || [])
+        .filter(v => v.requires_load_approval)
+        .map(v => v.id);
+      
+      const filteredLoadData = (loadData || []).filter(load => {
+        // If vehicle requires approval, only show if carrier_approved is true
+        if (vehiclesRequiringApproval.includes(load.assigned_vehicle_id || '')) {
+          return load.carrier_approved === true;
+        }
+        return true;
+      });
+      
+      setLoads(filteredLoadData);
     } catch (error) {
       console.error("Error loading carrier data:", error);
     } finally {
@@ -203,7 +220,7 @@ export default function CarrierDashboard() {
       // Load loads for selected dispatcher(s)
       let loadQuery = supabase
         .from("loads")
-        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, customers(name)")
+        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, carrier_approved, carrier_rate, customers(name)")
         .order("pickup_date", { ascending: false });
 
       if (selectedDispatcher !== "all") {
@@ -219,7 +236,7 @@ export default function CarrierDashboard() {
       const { data: loadData, error: loadError } = await loadQuery;
       if (loadError) throw loadError;
 
-      setLoads(loadData || []);
+      setLoads((loadData || []) as Load[]);
 
       // Get unique vehicle IDs from loads
       const vehicleIds = [...new Set((loadData || []).map(l => l.assigned_vehicle_id).filter(Boolean))] as string[];
@@ -227,7 +244,7 @@ export default function CarrierDashboard() {
       if (vehicleIds.length > 0) {
         const { data: vehicleData, error: vehicleError } = await supabase
           .from("vehicles")
-          .select("id, vehicle_number, asset_type, carrier")
+          .select("id, vehicle_number, asset_type, carrier, requires_load_approval")
           .in("id", vehicleIds);
 
         if (vehicleError) throw vehicleError;
