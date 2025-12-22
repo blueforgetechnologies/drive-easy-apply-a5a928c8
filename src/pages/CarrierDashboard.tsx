@@ -50,6 +50,8 @@ interface Load {
   assigned_dispatcher_id: string | null;
   carrier_id: string | null;
   broker_name: string | null;
+  customer_id: string | null;
+  customers?: { name: string } | null;
 }
 
 export default function CarrierDashboard() {
@@ -182,7 +184,7 @@ export default function CarrierDashboard() {
       // Load loads assigned to these vehicles
       const { data: loadData, error: loadError } = await supabase
         .from("loads")
-        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name")
+        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, customers(name)")
         .in("assigned_vehicle_id", vehicleIds)
         .order("pickup_date", { ascending: false });
 
@@ -201,7 +203,7 @@ export default function CarrierDashboard() {
       // Load loads for selected dispatcher(s)
       let loadQuery = supabase
         .from("loads")
-        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name")
+        .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, customers(name)")
         .order("pickup_date", { ascending: false });
 
       if (selectedDispatcher !== "all") {
@@ -752,7 +754,7 @@ export default function CarrierDashboard() {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm">{load.broker_name || '-'}</TableCell>
+                            <TableCell className="text-sm">{load.broker_name || load.customers?.name || '-'}</TableCell>
                             <TableCell className="text-right font-medium">
                               {dashboardType === "dispatcher" 
                                 ? (getDispatcherPay(load) ? `$${getDispatcherPay(load)!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-')
