@@ -56,9 +56,11 @@ export type Database = {
           account_type: string | null
           application_date: string | null
           bank_name: string | null
+          base_salary: number | null
           cell_phone: string | null
           checking_number: string | null
           contractor_agreement: Json
+          detention_pay: number | null
           direct_deposit: Json
           document_upload: Json
           driver_address: string | null
@@ -70,27 +72,45 @@ export type Database = {
           drug_alcohol_policy: Json
           emergency_contacts: Json | null
           employment_history: Json
+          equipment_lease: number | null
+          escrow_deduction: number | null
+          fuel_bonus: number | null
           green_card_expiry: string | null
           hired_date: string | null
+          holiday_pay_rate: string | null
           home_phone: string | null
+          hourly_rate: number | null
+          hours_per_week: number | null
           id: string
+          insurance_deduction: number | null
           invite_id: string | null
+          layover_pay: number | null
           license_info: Json
+          load_percentage: number | null
           medical_card_expiry: string | null
           national_registry: string | null
           no_rider_policy: Json
+          other_deductions: number | null
+          overtime_eligible: boolean | null
+          overtime_multiplier: string | null
           pay_method: string | null
           pay_per_mile: number | null
           payroll_policy: Json
+          per_diem: number | null
           personal_info: Json
+          referral_bonus: number | null
           restrictions: string | null
           routing_number: string | null
           safe_driving_policy: Json
+          safety_bonus: number | null
           score_card: string | null
+          sign_on_bonus: number | null
           status: string | null
+          stop_pay: number | null
           submitted_at: string | null
           termination_date: string | null
           vehicle_note: string | null
+          weekend_premium: number | null
           weekly_salary: number | null
           why_hire_you: Json
           work_permit_expiry: string | null
@@ -100,9 +120,11 @@ export type Database = {
           account_type?: string | null
           application_date?: string | null
           bank_name?: string | null
+          base_salary?: number | null
           cell_phone?: string | null
           checking_number?: string | null
           contractor_agreement: Json
+          detention_pay?: number | null
           direct_deposit: Json
           document_upload: Json
           driver_address?: string | null
@@ -114,27 +136,45 @@ export type Database = {
           drug_alcohol_policy: Json
           emergency_contacts?: Json | null
           employment_history: Json
+          equipment_lease?: number | null
+          escrow_deduction?: number | null
+          fuel_bonus?: number | null
           green_card_expiry?: string | null
           hired_date?: string | null
+          holiday_pay_rate?: string | null
           home_phone?: string | null
+          hourly_rate?: number | null
+          hours_per_week?: number | null
           id?: string
+          insurance_deduction?: number | null
           invite_id?: string | null
+          layover_pay?: number | null
           license_info: Json
+          load_percentage?: number | null
           medical_card_expiry?: string | null
           national_registry?: string | null
           no_rider_policy: Json
+          other_deductions?: number | null
+          overtime_eligible?: boolean | null
+          overtime_multiplier?: string | null
           pay_method?: string | null
           pay_per_mile?: number | null
           payroll_policy: Json
+          per_diem?: number | null
           personal_info: Json
+          referral_bonus?: number | null
           restrictions?: string | null
           routing_number?: string | null
           safe_driving_policy: Json
+          safety_bonus?: number | null
           score_card?: string | null
+          sign_on_bonus?: number | null
           status?: string | null
+          stop_pay?: number | null
           submitted_at?: string | null
           termination_date?: string | null
           vehicle_note?: string | null
+          weekend_premium?: number | null
           weekly_salary?: number | null
           why_hire_you: Json
           work_permit_expiry?: string | null
@@ -144,9 +184,11 @@ export type Database = {
           account_type?: string | null
           application_date?: string | null
           bank_name?: string | null
+          base_salary?: number | null
           cell_phone?: string | null
           checking_number?: string | null
           contractor_agreement?: Json
+          detention_pay?: number | null
           direct_deposit?: Json
           document_upload?: Json
           driver_address?: string | null
@@ -158,27 +200,45 @@ export type Database = {
           drug_alcohol_policy?: Json
           emergency_contacts?: Json | null
           employment_history?: Json
+          equipment_lease?: number | null
+          escrow_deduction?: number | null
+          fuel_bonus?: number | null
           green_card_expiry?: string | null
           hired_date?: string | null
+          holiday_pay_rate?: string | null
           home_phone?: string | null
+          hourly_rate?: number | null
+          hours_per_week?: number | null
           id?: string
+          insurance_deduction?: number | null
           invite_id?: string | null
+          layover_pay?: number | null
           license_info?: Json
+          load_percentage?: number | null
           medical_card_expiry?: string | null
           national_registry?: string | null
           no_rider_policy?: Json
+          other_deductions?: number | null
+          overtime_eligible?: boolean | null
+          overtime_multiplier?: string | null
           pay_method?: string | null
           pay_per_mile?: number | null
           payroll_policy?: Json
+          per_diem?: number | null
           personal_info?: Json
+          referral_bonus?: number | null
           restrictions?: string | null
           routing_number?: string | null
           safe_driving_policy?: Json
+          safety_bonus?: number | null
           score_card?: string | null
+          sign_on_bonus?: number | null
           status?: string | null
+          stop_pay?: number | null
           submitted_at?: string | null
           termination_date?: string | null
           vehicle_note?: string | null
+          weekend_premium?: number | null
           weekly_salary?: number | null
           why_hire_you?: Json
           work_permit_expiry?: string | null
