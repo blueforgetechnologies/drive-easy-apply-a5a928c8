@@ -91,7 +91,7 @@ export default function FleetFinancialsTab() {
   });
   const [showColumnLines, setShowColumnLines] = useState(false);
   const [carrierSearch, setCarrierSearch] = useState("");
-  const [carrierStatusFilter, setCarrierStatusFilter] = useState<"active" | "inactive">("active");
+  const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
 
   // Load all data
   useEffect(() => {
@@ -361,20 +361,28 @@ export default function FleetFinancialsTab() {
           <div className="flex w-full mt-2">
             <Button
               variant="outline"
-              onClick={() => setCarrierStatusFilter("active")}
+              onClick={() => setCarrierStatusFilter(prev => 
+                prev.includes("active") 
+                  ? prev.filter(s => s !== "active")
+                  : [...prev, "active"]
+              )}
               className={cn(
                 "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0",
-                carrierStatusFilter === "active" ? "bg-primary text-foreground" : "bg-background text-muted-foreground"
+                carrierStatusFilter.includes("active") ? "bg-primary text-foreground" : "bg-background text-muted-foreground"
               )}
             >
               Active
             </Button>
             <Button
               variant="outline"
-              onClick={() => setCarrierStatusFilter("inactive")}
+              onClick={() => setCarrierStatusFilter(prev => 
+                prev.includes("inactive") 
+                  ? prev.filter(s => s !== "inactive")
+                  : [...prev, "inactive"]
+              )}
               className={cn(
                 "flex-1 h-8 text-sm font-medium rounded-l-none",
-                carrierStatusFilter === "inactive" ? "bg-primary text-foreground" : "bg-background text-muted-foreground"
+                carrierStatusFilter.includes("inactive") ? "bg-primary text-foreground" : "bg-background text-muted-foreground"
               )}
             >
               Inactive
@@ -388,7 +396,7 @@ export default function FleetFinancialsTab() {
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .filter(carrier => 
-                  (carrier.status === carrierStatusFilter) &&
+                  (carrierStatusFilter.length === 0 || carrierStatusFilter.includes(carrier.status || "")) &&
                   (carrierSearch === "" || carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase()))
                 )
                 .map((carrier, idx, arr) => {
