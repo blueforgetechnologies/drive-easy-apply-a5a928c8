@@ -354,10 +354,9 @@ export default function FleetFinancialsTab() {
       {/* Left Sidebar - Carrier Filter */}
       <div className="w-[190px] border-r bg-card flex-shrink-0">
         <div className="pl-3 pr-4 py-3 border-b space-y-2">
-          <Button 
-            variant="outline"
+          <button 
             className={cn(
-              "w-full h-9 text-sm font-bold border-0",
+              "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
               !selectedCarrier 
                 ? "btn-glossy-primary text-white" 
                 : "btn-glossy text-gray-700"
@@ -393,7 +392,7 @@ export default function FleetFinancialsTab() {
             }}
           >
             All Carriers
-          </Button>
+          </button>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
