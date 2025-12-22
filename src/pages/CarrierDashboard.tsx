@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,9 +40,11 @@ interface Load {
 
 export default function CarrierDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const carrierFromUrl = searchParams.get("carrier");
   const [loading, setLoading] = useState(true);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
-  const [selectedCarrier, setSelectedCarrier] = useState<string>("all");
+  const [selectedCarrier, setSelectedCarrier] = useState<string>(carrierFromUrl || "all");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,6 +59,15 @@ export default function CarrierDashboard() {
       loadVehiclesAndLoads();
     }
   }, [selectedCarrier, carriers]);
+
+  const handleCarrierChange = (value: string) => {
+    setSelectedCarrier(value);
+    if (value === "all") {
+      setSearchParams({});
+    } else {
+      setSearchParams({ carrier: value });
+    }
+  };
 
   const loadCarriers = async () => {
     try {
@@ -177,7 +188,7 @@ export default function CarrierDashboard() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Select value={selectedCarrier} onValueChange={setSelectedCarrier}>
+              <Select value={selectedCarrier} onValueChange={handleCarrierChange}>
                 <SelectTrigger className="w-full sm:w-[220px]">
                   <SelectValue placeholder="Select Carrier" />
                 </SelectTrigger>
