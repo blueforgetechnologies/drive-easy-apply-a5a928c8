@@ -94,6 +94,7 @@ export type Database = {
           overtime_eligible: boolean | null
           overtime_multiplier: string | null
           pay_method: string | null
+          pay_method_active: boolean | null
           pay_per_mile: number | null
           payroll_policy: Json
           per_diem: number | null
@@ -158,6 +159,7 @@ export type Database = {
           overtime_eligible?: boolean | null
           overtime_multiplier?: string | null
           pay_method?: string | null
+          pay_method_active?: boolean | null
           pay_per_mile?: number | null
           payroll_policy: Json
           per_diem?: number | null
@@ -222,6 +224,7 @@ export type Database = {
           overtime_eligible?: boolean | null
           overtime_multiplier?: string | null
           pay_method?: string | null
+          pay_method_active?: boolean | null
           pay_per_mile?: number | null
           payroll_policy?: Json
           per_diem?: number | null

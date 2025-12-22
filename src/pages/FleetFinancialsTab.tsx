@@ -22,6 +22,19 @@ interface Vehicle {
   carrier: string | null; // This is actually carrier_id (UUID)
   insurance_cost_per_month: number | null;
   monthly_payment: number | null;
+  driver_1_id: string | null;
+}
+
+interface DriverCompensation {
+  id: string;
+  pay_method: string | null;
+  pay_method_active: boolean | null;
+  weekly_salary: number | null;
+  hourly_rate: number | null;
+  hours_per_week: number | null;
+  pay_per_mile: number | null;
+  load_percentage: number | null;
+  base_salary: number | null;
 }
 
 interface VehicleWithCarrierName extends Vehicle {
@@ -88,6 +101,7 @@ export default function FleetFinancialsTab() {
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [driverCompensation, setDriverCompensation] = useState<DriverCompensation | null>(null);
   const [factoringPercentage, setFactoringPercentage] = useState<number>(2); // Default 2%
   
   // Fuel settings
@@ -116,14 +130,38 @@ export default function FleetFinancialsTab() {
   useEffect(() => {
     if (selectedVehicleId) {
       loadLoadsForVehicle();
+      loadDriverCompensation();
     }
   }, [selectedMonth, selectedVehicleId]);
+
+  // Load driver compensation when vehicle changes
+  const loadDriverCompensation = async () => {
+    if (!selectedVehicleId) return;
+    
+    const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+    if (!vehicle?.driver_1_id) {
+      setDriverCompensation(null);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("applications")
+      .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary")
+      .eq("id", vehicle.driver_1_id)
+      .single();
+
+    if (data) setDriverCompensation(data);
+    if (error) {
+      console.error("Error loading driver compensation:", error);
+      setDriverCompensation(null);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment").eq("status", "active").order("vehicle_number"),
+        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
@@ -322,6 +360,38 @@ export default function FleetFinancialsTab() {
       dispatcherPay = payload * (dispatcher.pay_percentage / 100);
     }
 
+    // Driver pay calculation based on active pay method
+    if (driverCompensation?.pay_method_active) {
+      const payMethod = driverCompensation.pay_method || 'salary';
+      const weeksInMonth = daysInMonth / 7;
+      
+      switch (payMethod) {
+        case 'salary':
+          // Weekly salary * weeks in month
+          driverPay = (driverCompensation.weekly_salary || 0) * weeksInMonth;
+          break;
+        case 'hourly':
+          // Hourly rate * hours per week * weeks in month
+          const hoursPerWeek = driverCompensation.hours_per_week || 40;
+          driverPay = (driverCompensation.hourly_rate || 0) * hoursPerWeek * weeksInMonth;
+          break;
+        case 'mileage':
+          // Pay per mile * total miles
+          driverPay = (driverCompensation.pay_per_mile || 0) * totalMiles;
+          break;
+        case 'percentage':
+          // Percentage of total payload
+          driverPay = payload * ((driverCompensation.load_percentage || 0) / 100);
+          break;
+        case 'hybrid':
+          // Base salary + per mile
+          const baseSalary = (driverCompensation.base_salary || 0) * weeksInMonth;
+          const mileagePay = (driverCompensation.pay_per_mile || 0) * totalMiles;
+          driverPay = baseSalary + mileagePay;
+          break;
+      }
+    }
+
     const dollarPerMile = totalMiles > 0 ? payload / totalMiles : 0;
     const carrierPay = payload;
     const carrierPerMile = totalMiles > 0 ? payload / totalMiles : 0;
@@ -349,8 +419,10 @@ export default function FleetFinancialsTab() {
       carrierPay,
       carrierPerMile,
       netProfit,
+      driverPayMethod: driverCompensation?.pay_method || null,
+      driverPayActive: driverCompensation?.pay_method_active || false,
     };
-  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon, selectedVehicle]);
+  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon, selectedVehicle, driverCompensation]);
 
   const getCustomerName = (customerId: string | null) => {
     if (!customerId) return "-";
@@ -877,8 +949,20 @@ export default function FleetFinancialsTab() {
                   <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
                 </div>
                 <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Drv Pay</div>
-                  <div className="font-bold">{formatCurrency(totals.driverPay)}</div>
+                  <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    Drv Pay
+                    {totals.driverPayActive && (
+                      <span className="text-[8px] text-emerald-500">
+                        ({totals.driverPayMethod === 'percentage' ? '%' : 
+                          totals.driverPayMethod === 'mileage' ? '$/mi' : 
+                          totals.driverPayMethod === 'hourly' ? '$/hr' : 
+                          totals.driverPayMethod === 'hybrid' ? 'hyb' : '$'})
+                      </span>
+                    )}
+                  </div>
+                  <div className={`font-bold ${totals.driverPayActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {formatCurrency(totals.driverPay)}
+                  </div>
                 </div>
                 <div className="text-center px-2">
                   <div className="text-[10px] text-muted-foreground">WComp</div>
