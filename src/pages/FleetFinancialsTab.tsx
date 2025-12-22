@@ -410,7 +410,7 @@ export default function FleetFinancialsTab() {
                         setCarrierSearch("");
                       }}
                       className={cn(
-                        "w-full h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                        "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
                         isLast && "border-b",
                         isFirst && "rounded-t-md",
                         isLast && "rounded-b-md",
