@@ -404,34 +404,36 @@ export default function FleetFinancialsTab() {
             />
           </div>
           <div className="flex w-full mt-2">
-            <Button
-              variant="outline"
+            <button
               onClick={() => setCarrierStatusFilter(prev => 
                 prev.includes("active") 
                   ? prev.filter(s => s !== "active")
                   : [...prev, "active"]
               )}
               className={cn(
-                "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0",
-                carrierStatusFilter.includes("active") ? "bg-primary text-primary-foreground" : "btn-glossy text-muted-foreground"
+                "flex-1 h-8 text-sm font-medium rounded-l-md transition-all duration-200",
+                carrierStatusFilter.includes("active") 
+                  ? "btn-glossy-primary text-white" 
+                  : "btn-glossy text-muted-foreground"
               )}
             >
               Active
-            </Button>
-            <Button
-              variant="outline"
+            </button>
+            <button
               onClick={() => setCarrierStatusFilter(prev => 
                 prev.includes("inactive") 
                   ? prev.filter(s => s !== "inactive")
                   : [...prev, "inactive"]
               )}
               className={cn(
-                "flex-1 h-8 text-sm font-medium rounded-l-none",
-                carrierStatusFilter.includes("inactive") ? "bg-primary text-primary-foreground" : "btn-glossy text-muted-foreground"
+                "flex-1 h-8 text-sm font-medium rounded-r-md transition-all duration-200",
+                carrierStatusFilter.includes("inactive") 
+                  ? "btn-glossy-primary text-white" 
+                  : "btn-glossy text-muted-foreground"
               )}
             >
               Inactive
-            </Button>
+            </button>
           </div>
         </div>
         <div className="pl-3 pr-4 py-3">
