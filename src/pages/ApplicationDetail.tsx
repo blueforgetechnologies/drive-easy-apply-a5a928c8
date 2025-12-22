@@ -16,9 +16,10 @@ import {
   ArrowLeft, Save, Trash2, User, CreditCard, FileText, 
   Phone, Mail, Calendar, MapPin, Shield, Briefcase,
   Building2, DollarSign, AlertCircle, Upload, Eye, Clock,
-  TrendingUp, Wallet, MinusCircle
+  TrendingUp, Wallet, MinusCircle, Check
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 export default function ApplicationDetail() {
   const { id } = useParams();
@@ -666,12 +667,30 @@ export default function ApplicationDetail() {
               </Card>
 
               {/* Primary Compensation */}
-              <Card className="border-l-4 border-l-amber-500 shadow-sm">
+              <Card className={`border-l-4 shadow-sm ${formData.pay_method_active ? 'border-l-amber-500' : 'border-l-slate-300'}`}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-amber-600">
-                    <DollarSign className="w-5 h-5" />
-                    Primary Compensation
+                  <CardTitle className="flex items-center justify-between">
+                    <span className={`flex items-center gap-2 ${formData.pay_method_active ? 'text-amber-600' : 'text-slate-400'}`}>
+                      <DollarSign className="w-5 h-5" />
+                      Primary Compensation
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="pay-active" className="text-xs text-muted-foreground">
+                        {formData.pay_method_active ? 'Active' : 'Inactive'}
+                      </Label>
+                      <Switch 
+                        id="pay-active"
+                        checked={formData.pay_method_active ?? true}
+                        onCheckedChange={(checked) => updateField('pay_method_active', checked)}
+                      />
+                    </div>
                   </CardTitle>
+                  {formData.pay_method_active && (
+                    <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      Used for Fleet$ calculations
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
