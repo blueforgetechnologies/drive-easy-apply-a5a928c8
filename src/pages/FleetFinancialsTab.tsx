@@ -846,7 +846,7 @@ export default function FleetFinancialsTab() {
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
                           const dailyInsurance = totals.dailyInsuranceRate;
                           const carrierNet = rate - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
-                          const carrierPerMile = totalM > 0 ? carrierNet / totalM : 0;
+                          const carrierPerMile = loadedM > 0 ? rate / loadedM : 0;
 
                           return (
                             <TableRow key={load.id} className="hover:bg-muted/30 h-[25px]">
