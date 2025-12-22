@@ -84,7 +84,7 @@ export default function ApplicationDetail() {
 
       if (error) throw error;
       toast.success("Driver deleted successfully");
-      navigate("/dashboard/drivers?filter=active");
+      navigate("/dashboard/business?subtab=drivers");
     } catch (error: any) {
       toast.error("Failed to delete driver: " + error.message);
       console.error("Delete error:", error);
@@ -137,7 +137,7 @@ export default function ApplicationDetail() {
       <header className="sticky top-0 z-10 border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button onClick={() => navigate("/dashboard/drivers?filter=active")} variant="ghost" size="sm">
+            <Button onClick={() => navigate("/dashboard/business?subtab=drivers")} variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Drivers
             </Button>
