@@ -305,7 +305,11 @@ export default function FleetFinancialsTab() {
     // Total rental for the month
     rental = vehicleMonthlyPayment;
     
-    insuranceCost = DAILY_INSURANCE_RATE * daysInMonth;
+    // Calculate daily insurance rate from vehicle's monthly insurance cost
+    const vehicleInsuranceCost = selectedVehicle?.insurance_cost_per_month || 0;
+    const dailyInsuranceRate = daysInMonth > 0 ? vehicleInsuranceCost / daysInMonth : 0;
+    
+    insuranceCost = vehicleInsuranceCost;
     other = DAILY_OTHER_COST * daysInMonth;
 
     // Dispatcher pay calculation
@@ -337,6 +341,7 @@ export default function FleetFinancialsTab() {
       dailyRentalRate,
       businessDaysInMonth,
       insuranceCost,
+      dailyInsuranceRate,
       vehicleCost,
       other,
       carrierPay,
@@ -371,6 +376,7 @@ export default function FleetFinancialsTab() {
   const getWeeklyTotal = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
+    const dailyInsurance = totals.dailyInsuranceRate;
     for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
       const dayDate = dailyData[i].date;
       const isBusinessDay = !isWeekend(dayDate);
@@ -380,11 +386,11 @@ export default function FleetFinancialsTab() {
         const rate = load.rate || 0;
         const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
-        weekTotal += rate - factoring - dispPay - dayRentalCost - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
+        weekTotal += rate - factoring - dispPay - dayRentalCost - dailyInsurance - DAILY_OTHER_COST;
       });
       // Add empty day costs
       if (dailyData[i].loads.length === 0) {
-        weekTotal -= dayRentalCost + DAILY_INSURANCE_RATE + DAILY_OTHER_COST;
+        weekTotal -= dayRentalCost + dailyInsurance + DAILY_OTHER_COST;
       }
     }
     return weekTotal;
@@ -729,7 +735,8 @@ export default function FleetFinancialsTab() {
                           const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
                           const isBusinessDay = !isWeekend(day.date);
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-                          const carrierNet = rate - factoring - dispPay - fuelCost - dailyRental - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
+                          const dailyInsurance = totals.dailyInsuranceRate;
+                          const carrierNet = rate - factoring - dispPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
                           const carrierPerMile = totalM > 0 ? rate / totalM : 0;
 
                           return (
@@ -756,7 +763,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(fuelCost)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyRental)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
@@ -770,7 +777,8 @@ export default function FleetFinancialsTab() {
                         (() => {
                           const isBusinessDay = !isWeekend(day.date);
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-                          const emptyDayNet = -(dailyRental + DAILY_INSURANCE_RATE + DAILY_OTHER_COST);
+                          const dailyInsurance = totals.dailyInsuranceRate;
+                          const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
                           return (
                             <TableRow key={day.date.toISOString()} className="text-muted-foreground h-[25px]">
                               <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
@@ -789,7 +797,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">{isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${DAILY_OTHER_COST.toFixed(2)}</TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
