@@ -245,7 +245,7 @@ export default function CarrierDashboard() {
   const getVehicleNumber = (vehicleId: string | null) => {
     if (!vehicleId) return "Unassigned";
     const vehicle = vehicles.find(v => v.id === vehicleId);
-    return vehicle ? `${vehicle.asset_type || 'TAL'}-${vehicle.vehicle_number}` : "Unknown";
+    return vehicle ? vehicle.vehicle_number : "Unknown";
   };
 
   const getStatusColor = (status: string | null) => {
