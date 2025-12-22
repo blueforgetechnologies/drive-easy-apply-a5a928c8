@@ -359,7 +359,7 @@ export default function FleetFinancialsTab() {
         </div>
         <div className="p-3">
           <ScrollArea className="h-[calc(100vh-260px)]">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {carriers
                 .filter(carrier => 
                   carrierSearch === "" || 
@@ -373,10 +373,10 @@ export default function FleetFinancialsTab() {
                       setCarrierSearch("");
                     }}
                     className={cn(
-                      "w-full text-left px-3 py-2.5 text-sm font-medium transition-all border-l-4",
+                      "w-full text-left px-3 py-2 text-xs font-medium transition-all rounded-md border",
                       selectedCarrier === carrier.id
-                        ? "bg-primary/10 text-primary border-l-primary shadow-sm"
-                        : "hover:bg-muted/80 border-l-transparent hover:border-l-muted-foreground/30"
+                        ? "btn-glossy-primary text-white border-primary/30"
+                        : "btn-glossy text-gray-700 border-gray-300/50"
                     )}
                   >
                     <div className="truncate">{carrier.name}</div>
