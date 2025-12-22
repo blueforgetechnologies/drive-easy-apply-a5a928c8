@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -80,6 +81,7 @@ const WORKMAN_COMP_RATE = 0; // can be configured
 const DRIVER_PAY_RATE = 0; // per load or percentage
 
 export default function FleetFinancialsTab() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -741,7 +743,10 @@ export default function FleetFinancialsTab() {
 
                           return (
                             <TableRow key={load.id} className="hover:bg-muted/30 h-[25px]">
-                              <TableCell className="font-medium text-muted-foreground !px-2 !py-0.5 whitespace-nowrap">
+                              <TableCell 
+                                className="font-medium text-muted-foreground !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline"
+                                onClick={() => navigate(`/dashboard/loads/${load.id}`)}
+                              >
                                 {loadIndex === 0 && `${dayName} ${dateStr}`}
                               </TableCell>
                               <TableCell className="truncate max-w-[140px] !px-2 !py-0.5" title={getCustomerName(load.customer_id)}>
