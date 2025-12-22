@@ -364,7 +364,7 @@ export default function FleetFinancialsTab() {
               onClick={() => setCarrierStatusFilter("active")}
               className={cn(
                 "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0",
-                carrierStatusFilter === "active" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+                carrierStatusFilter === "active" ? "bg-primary text-foreground" : "bg-background text-muted-foreground"
               )}
             >
               Active
@@ -374,7 +374,7 @@ export default function FleetFinancialsTab() {
               onClick={() => setCarrierStatusFilter("inactive")}
               className={cn(
                 "flex-1 h-8 text-sm font-medium rounded-l-none",
-                carrierStatusFilter === "inactive" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+                carrierStatusFilter === "inactive" ? "bg-primary text-foreground" : "bg-background text-muted-foreground"
               )}
             >
               Inactive
