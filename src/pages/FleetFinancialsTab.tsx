@@ -281,6 +281,9 @@ export default function FleetFinancialsTab() {
     });
 
     totalMiles = emptyMiles + loadedMiles;
+    
+    // Calculate fuel cost based on total miles and fuel settings
+    fuel = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
 
     // Calculate daily costs for days in month
     const [year, month] = selectedMonth.split("-").map(Number);
@@ -321,7 +324,7 @@ export default function FleetFinancialsTab() {
       carrierPerMile,
       netProfit,
     };
-  }, [loads, dispatchers, selectedMonth]);
+  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon]);
 
   const getCustomerName = (customerId: string | null) => {
     if (!customerId) return "-";
@@ -699,7 +702,8 @@ export default function FleetFinancialsTab() {
                           const dollarPerMile = totalM > 0 ? rate / totalM : 0;
                           const factoring = rate * (factoringPercentage / 100);
                           const dispPay = getDispatcherPay(load);
-                          const carrierNet = rate - factoring - dispPay - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
+                          const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
+                          const carrierNet = rate - factoring - dispPay - fuelCost - DAILY_INSURANCE_RATE - DAILY_OTHER_COST;
                           const carrierPerMile = totalM > 0 ? rate / totalM : 0;
 
                           return (
@@ -723,7 +727,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dispPay)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(fuelCost)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">${DAILY_INSURANCE_RATE.toFixed(2)}</TableCell>
