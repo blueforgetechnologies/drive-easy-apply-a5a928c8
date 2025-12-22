@@ -494,8 +494,28 @@ export default function DriversTab() {
                             <div>{personalInfo.firstName} {personalInfo.lastName}</div>
                             <div className="text-xs text-muted-foreground">{personalInfo.phone}</div>
                           </TableCell>
-                          <TableCell className="py-1 px-2 text-destructive font-medium">
-                            {app.payroll_policy?.salary || "N/A"}
+                          <TableCell className="py-1 px-2">
+                            {app.pay_method_active ? (
+                              <div className="flex flex-col">
+                                <span className={`font-medium ${
+                                  app.pay_method === 'percentage' ? 'text-amber-600' :
+                                  app.pay_method === 'salary' ? 'text-blue-600' :
+                                  app.pay_method === 'hourly' ? 'text-green-600' :
+                                  app.pay_method === 'mileage' ? 'text-purple-600' :
+                                  'text-foreground'
+                                }`}>
+                                  {app.pay_method === 'percentage' && app.load_percentage ? `${app.load_percentage}%` :
+                                   app.pay_method === 'salary' && app.weekly_salary ? `$${app.weekly_salary}/wk` :
+                                   app.pay_method === 'hourly' && app.hourly_rate ? `$${app.hourly_rate}/hr` :
+                                   app.pay_method === 'mileage' && app.pay_per_mile ? `$${app.pay_per_mile}/mi` :
+                                   app.pay_method === 'hybrid' ? 'Hybrid' :
+                                   'N/A'}
+                                </span>
+                                <span className="text-xs text-emerald-600">Fleet$</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">N/A</span>
+                            )}
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             <div>{age !== null ? age : "N/A"}</div>
