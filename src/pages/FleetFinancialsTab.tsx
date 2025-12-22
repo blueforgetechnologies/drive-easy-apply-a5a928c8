@@ -361,6 +361,8 @@ export default function FleetFinancialsTab() {
           <ScrollArea className="h-[calc(100vh-260px)] overflow-visible">
             <div className="flex flex-col w-[70%]">
               {carriers
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
                 .filter(carrier => 
                   carrierSearch === "" || 
                   carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase())
