@@ -821,6 +821,7 @@ export default function FleetFinancialsTab() {
                   <TableHead className="w-[78px] px-2 text-right sticky top-0 bg-muted">Carr Pay</TableHead>
                   <TableHead className="w-[52px] px-2 text-right sticky top-0 bg-muted">$/Mi</TableHead>
                   <TableHead className="w-[80px] px-2 text-right sticky top-0 bg-muted">Net</TableHead>
+                  <TableHead className="w-[80px] px-2 text-right sticky top-0 bg-muted">Carr NET</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -882,6 +883,9 @@ export default function FleetFinancialsTab() {
                               <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
                                 {formatCurrency(carrierNet)}
                               </TableCell>
+                              <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
+                                {formatCurrency(carrierNet)}
+                              </TableCell>
                             </TableRow>
                           );
                         })
@@ -916,6 +920,9 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
                                 {formatCurrency(emptyDayNet)}
                               </TableCell>
+                              <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
+                                {formatCurrency(emptyDayNet)}
+                              </TableCell>
                             </TableRow>
                           );
                         })()
@@ -924,7 +931,7 @@ export default function FleetFinancialsTab() {
                       {/* Weekly Summary Row */}
                       {day.isWeekEnd && (
                         <TableRow key={`week-${day.date.toISOString()}`} className="bg-muted/50 border-t-2">
-                          <TableCell colSpan={20} className="text-right font-semibold">Weekly Total:</TableCell>
+                          <TableCell colSpan={21} className="text-right font-semibold">Weekly Total:</TableCell>
                           <TableCell className={cn("text-right font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
                             {formatCurrency(getWeeklyTotal(index))}
                           </TableCell>
