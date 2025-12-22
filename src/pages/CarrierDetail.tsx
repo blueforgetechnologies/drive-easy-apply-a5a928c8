@@ -8,8 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, Upload, X, Image } from "lucide-react";
+import { 
+  ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, 
+  Upload, X, Image, Building2, Phone, Mail, Shield, Users, Truck, FileText, DollarSign
+} from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Configure PDF.js worker for v3.x
@@ -89,7 +93,6 @@ export default function CarrierDetail() {
       setCarrier(data);
       setUsdotLookup(data.dot_number || "");
       
-      // Auto-fetch Highway data if DOT number exists
       if (data.dot_number) {
         fetchHighwayData(data.dot_number);
       }
@@ -110,9 +113,7 @@ export default function CarrierDetail() {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-highway-data`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dot_number: dotNumber }),
         }
       );
@@ -146,81 +147,68 @@ export default function CarrierDetail() {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-    }).promise;
+    await page.render({ canvasContext: context, viewport }).promise;
     
     return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) resolve(blob);
-        else reject(new Error('Failed to convert PDF to image'));
-      }, 'image/png', 1.0);
+        else reject(new Error('Failed to convert canvas to blob'));
+      }, 'image/png');
     });
   };
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !carrier) return;
 
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
-
-    if (!isImage && !isPdf) {
-      toast.error('Please upload an image or PDF file');
-      return;
-    }
-
-    const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error(isPdf ? 'PDF must be less than 10MB' : 'Image must be less than 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
       return;
     }
 
     setUploading(true);
     try {
-      let fileToUpload: Blob = file;
-      let fileName: string;
-
-      if (isPdf) {
-        toast.info('Converting PDF to image...');
-        fileToUpload = await convertPdfToImage(file);
-        fileName = `carrier-logo-${id}-${Date.now()}.png`;
+      let uploadFile: File | Blob = file;
+      let fileName = `${carrier.id}-logo-${Date.now()}`;
+      
+      if (file.type === 'application/pdf') {
+        uploadFile = await convertPdfToImage(file);
+        fileName += '.png';
       } else {
-        const fileExt = file.name.split('.').pop();
-        fileName = `carrier-logo-${id}-${Date.now()}.${fileExt}`;
+        const ext = file.name.split('.').pop() || 'png';
+        fileName += `.${ext}`;
       }
 
-      const { error: uploadError } = await supabase.storage
-        .from('company-logos')
-        .upload(fileName, fileToUpload, { upsert: true });
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('carrier-logos')
+        .upload(fileName, uploadFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('company-logos')
+        .from('carrier-logos')
         .getPublicUrl(fileName);
 
-      updateField('logo_url', publicUrl);
-      toast.success('Logo uploaded successfully');
+      setCarrier({ ...carrier, logo_url: publicUrl });
+      toast.success("Logo uploaded successfully");
     } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload logo');
+      toast.error("Failed to upload logo: " + error.message);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleRemoveLogo = () => {
-    updateField('logo_url', null);
+    if (carrier) {
+      setCarrier({ ...carrier, logo_url: null });
+      toast.success("Logo removed");
+    }
   };
 
   const handleSave = async () => {
     if (!carrier) return;
-
+    
     setSaving(true);
     try {
       const { error } = await supabase
@@ -273,9 +261,7 @@ export default function CarrierDetail() {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ usdot: usdotLookup }),
         }
       );
@@ -314,521 +300,502 @@ export default function CarrierDetail() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-emerald-500/10 text-emerald-600 border-emerald-200';
+      case 'pending': return 'bg-amber-500/10 text-amber-600 border-amber-200';
+      case 'inactive': return 'bg-slate-500/10 text-slate-600 border-slate-200';
+      default: return 'bg-slate-500/10 text-slate-600 border-slate-200';
+    }
+  };
+
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
   }
 
   if (!carrier) {
-    return <div className="text-center py-8">Carrier not found</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Carrier not found</div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate("/dashboard/business?subtab=carriers")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Carriers
-          </Button>
-          <h1 className="text-3xl font-bold">{carrier.name}</h1>
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-semibold">Status:</Label>
-            <Select value={carrier.status} onValueChange={(value) => updateField("status", value)}>
-              <SelectTrigger className="w-[140px] bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Logo, Safer Status & Dispatch Info */}
-        <div className="space-y-6">
-          {/* Carrier Logo Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Carrier Logo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                {carrier?.logo_url ? (
-                  <div className="relative">
-                    <img 
-                      src={carrier.logo_url} 
-                      alt="Carrier Logo" 
-                      className="h-20 w-20 object-contain border rounded-lg bg-white"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6"
-                      onClick={handleRemoveLogo}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="h-20 w-20 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
-                    <Image className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                )}
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploading ? 'Uploading...' : 'Upload Logo'}
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, or PDF up to 10MB</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Safer Status Section */}
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <Label className="text-sm text-muted-foreground">Safer Status:</Label>
-                <Badge 
-                  variant={
-                    carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') 
-                      ? 'destructive' 
-                      : 'default'
-                  }
-                  className="mt-2 w-full justify-center py-2 text-sm font-medium"
-                >
-                  {carrier.safer_status || "AUTHORIZED FOR PROPERTY"}
-                </Badge>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Safer Rating Check:</Label>
-                <Badge 
-                  variant={
-                    carrier.safety_rating?.toUpperCase() === 'CONDITIONAL'
-                      ? 'destructive'
-                      : 'default'
-                  }
-                  className="mt-2 w-full justify-center py-2 text-sm font-medium"
-                >
-                  {carrier.safety_rating || "NONE"}
-                </Badge>
-              </div>
-
-              <Separator />
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Carrier Admins:</Label>
-                <div className="mt-2 flex items-center justify-between p-2 border rounded">
-                  <span className="text-sm">{carrier.contact_name || "Not Set"}</span>
-                  <Button size="sm" variant="outline" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white">
-                    EDIT
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Carrier Payees:</Label>
-                <div className="mt-2 flex items-center justify-between p-2 border rounded">
-                  <span className="text-sm">{carrier.contact_name || "Not Set"}</span>
-                  <Button size="sm" variant="outline" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white">
-                    EDIT
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Dispatch Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Dispatch Info</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Dispatch Name:</Label>
-                <div className="relative">
-                  <Input
-                    value={carrier.dispatch_name || ""}
-                    onChange={(e) => updateField("dispatch_name", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <Label>Dispatch Phone:</Label>
-                <div className="relative">
-                  <Input
-                    value={carrier.dispatch_phone || ""}
-                    onChange={(e) => updateField("dispatch_phone", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <Label>Dispatch Email:</Label>
-                <div className="relative">
-                  <Input
-                    type="email"
-                    value={carrier.dispatch_email || ""}
-                    onChange={(e) => updateField("dispatch_email", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <Label>After Hours Phone:</Label>
-                <div className="relative">
-                  <Input
-                    value={carrier.after_hours_phone || ""}
-                    onChange={(e) => updateField("after_hours_phone", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <Label>Personal/Business:</Label>
-                <Input
-                  value={carrier.personal_business || ""}
-                  onChange={(e) => updateField("personal_business", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Highway Data */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  Highway Data
-                  {!highwayData?.configured && (
-                    <Badge variant="outline" className="text-xs">Not Configured</Badge>
-                  )}
-                </CardTitle>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => carrier?.dot_number && fetchHighwayData(carrier.dot_number)}
-                  disabled={highwayLoading || !carrier?.dot_number}
-                  className="h-8 w-8 p-0"
-                >
-                  <RefreshCw className={`h-4 w-4 ${highwayLoading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!highwayData ? (
-                <p className="text-sm text-muted-foreground">
-                  {carrier?.dot_number ? 'Loading Highway data...' : 'Enter DOT number to fetch Highway data'}
-                </p>
-              ) : !highwayData.configured ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm">Highway API not configured</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Add HIGHWAY_API_KEY to enable carrier verification, contact enrichment, and fraud prevention.
-                  </p>
-                </div>
-              ) : highwayData.error ? (
-                <div className="flex items-center gap-2 text-destructive">
-                  <XCircle className="h-4 w-4" />
-                  <span className="text-sm">{highwayData.error}</span>
-                </div>
-              ) : !highwayData.found ? (
-                <p className="text-sm text-muted-foreground">Carrier not found in Highway database</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Button onClick={() => navigate("/dashboard/business?subtab=carriers")} variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Carriers
+            </Button>
+            <div className="hidden sm:flex items-center gap-3">
+              {carrier.logo_url ? (
+                <img src={carrier.logo_url} alt="Logo" className="h-10 w-10 rounded-lg object-contain border bg-white" />
               ) : (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Contact Email</Label>
-                      <p className="font-medium">{highwayData.data?.contact_email || '—'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Contact Phone</Label>
-                      <p className="font-medium">{highwayData.data?.contact_phone || '—'}</p>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Rightful Owner</span>
-                      {highwayData.data?.rightful_owner_validated ? (
-                        <Badge variant="default" className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Validated</Badge>
-                      ) : (
-                        <Badge variant="outline">Pending</Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Dispatch Service</span>
-                      {highwayData.data?.dispatch_service_detected ? (
-                        <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> Detected</Badge>
-                      ) : (
-                        <Badge variant="default" className="bg-green-600">None Detected</Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Insurance</span>
-                      {highwayData.data?.insurance_valid ? (
-                        <Badge variant="default" className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Valid</Badge>
-                      ) : (
-                        <Badge variant="outline">Unknown</Badge>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {highwayData.data?.fleet_size && (
-                    <>
-                      <Separator />
-                      <div className="text-sm">
-                        <Label className="text-xs text-muted-foreground">Fleet Size</Label>
-                        <p className="font-medium">{highwayData.data.fleet_size} vehicles</p>
-                      </div>
-                    </>
-                  )}
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                  {carrier.name?.[0]?.toUpperCase() || 'C'}
                 </div>
               )}
-            </CardContent>
-          </Card>
+              <div>
+                <h1 className="font-semibold text-lg">{carrier.name}</h1>
+                <Badge variant="outline" className={getStatusColor(carrier.status)}>
+                  {carrier.status || 'Pending'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
         </div>
+      </header>
 
-        {/* Middle Column - Contact Information */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Carrier Symbol:</Label>
-                <Input
-                  value={carrier.carrier_symbol || ""}
-                  onChange={(e) => updateField("carrier_symbol", e.target.value)}
-                />
-              </div>
+      <main className="container mx-auto px-4 py-6">
+        <Tabs defaultValue="company" className="space-y-6">
+          <TabsList className="bg-white dark:bg-slate-800 p-1 shadow-sm">
+            <TabsTrigger value="company" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+              <Building2 className="w-4 h-4 mr-2" />
+              Company
+            </TabsTrigger>
+            <TabsTrigger value="dispatch" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+              <Truck className="w-4 h-4 mr-2" />
+              Dispatch
+            </TabsTrigger>
+            <TabsTrigger value="safety" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
+              <Shield className="w-4 h-4 mr-2" />
+              Safety
+            </TabsTrigger>
+            <TabsTrigger value="payee" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Payee
+            </TabsTrigger>
+          </TabsList>
 
-              <div>
-                <Label>Company Name:</Label>
-                <Input
-                  value={carrier.name}
-                  onChange={(e) => updateField("name", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label>Address:</Label>
-                <div className="relative">
-                  <Input
-                    value={carrier.address || ""}
-                    onChange={(e) => updateField("address", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>USDOT:</Label>
-                  <Input
-                    value={usdotLookup}
-                    onChange={(e) => setUsdotLookup(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    onClick={handleUsdotLookup} 
-                    disabled={lookupLoading}
-                    className="w-full bg-blue-500 hover:bg-blue-600"
-                  >
-                    {lookupLoading ? "Loading..." : "Search"}
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <Label>MC:</Label>
-                <Input
-                  value={carrier.mc_number || ""}
-                  onChange={(e) => updateField("mc_number", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label>Phone:</Label>
-                <div className="relative">
-                  <Input
-                    value={carrier.phone || ""}
-                    onChange={(e) => updateField("phone", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <Label>DUN &Brad Street:</Label>
-                <div className="relative">
-                  <Input
-                    value={carrier.dun_bradstreet || ""}
-                    onChange={(e) => updateField("dun_bradstreet", e.target.value)}
-                  />
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h3 className="font-semibold mb-4">Emergency Contact</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Contact Name:</Label>
-                    <div className="relative">
-                      <Input
-                        value={carrier.emergency_contact_name || ""}
-                        onChange={(e) => updateField("emergency_contact_name", e.target.value)}
-                      />
-                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
+          {/* Company Tab */}
+          <TabsContent value="company" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Logo & Basic Info */}
+              <Card className="border-l-4 border-l-blue-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-blue-600">
+                    <Building2 className="w-5 h-5" />
+                    Company Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Logo Upload */}
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    {carrier.logo_url ? (
+                      <div className="relative">
+                        <img src={carrier.logo_url} alt="Logo" className="h-16 w-16 object-contain border rounded-lg bg-white" />
+                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6" onClick={handleRemoveLogo}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="h-16 w-16 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+                        <Image className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={handleLogoUpload} className="hidden" />
+                      <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {uploading ? 'Uploading...' : 'Upload Logo'}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">PNG, JPG, or PDF up to 10MB</p>
                     </div>
                   </div>
 
-                  <div>
-                    <Label>Title:</Label>
-                    <Input
-                      value={carrier.emergency_contact_title || ""}
-                      onChange={(e) => updateField("emergency_contact_title", e.target.value)}
-                    />
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Status</Label>
+                    <Select value={carrier.status} onValueChange={(value) => updateField("status", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div>
-                    <Label>Home Phone:</Label>
-                    <div className="relative">
-                      <Input
-                        value={carrier.emergency_contact_home_phone || ""}
-                        onChange={(e) => updateField("emergency_contact_home_phone", e.target.value)}
-                      />
-                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Company Name</Label>
+                    <Input value={carrier.name} onChange={(e) => updateField("name", e.target.value)} className="border-slate-200 focus:border-blue-500" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Carrier Symbol</Label>
+                    <Input value={carrier.carrier_symbol || ""} onChange={(e) => updateField("carrier_symbol", e.target.value)} className="border-slate-200 focus:border-blue-500" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> Address
+                    </Label>
+                    <Input value={carrier.address || ""} onChange={(e) => updateField("address", e.target.value)} className="border-slate-200 focus:border-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* DOT & MC */}
+              <Card className="border-l-4 border-l-indigo-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-indigo-600">
+                    <FileText className="w-5 h-5" />
+                    Authority Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">USDOT Number</Label>
+                      <Input value={usdotLookup} onChange={(e) => setUsdotLookup(e.target.value)} className="border-slate-200 focus:border-indigo-500" />
+                    </div>
+                    <div className="flex items-end">
+                      <Button onClick={handleUsdotLookup} disabled={lookupLoading} className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600">
+                        <Search className="h-4 w-4 mr-1" />
+                        {lookupLoading ? "..." : "Search"}
+                      </Button>
                     </div>
                   </div>
 
-                  <div>
-                    <Label>Cell Phone:</Label>
-                    <div className="relative">
-                      <Input
-                        value={carrier.emergency_contact_cell_phone || ""}
-                        onChange={(e) => updateField("emergency_contact_cell_phone", e.target.value)}
-                      />
-                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">MC Number</Label>
+                    <Input value={carrier.mc_number || ""} onChange={(e) => updateField("mc_number", e.target.value)} className="border-slate-200 focus:border-indigo-500" />
                   </div>
 
-                  <div>
-                    <Label>Email:</Label>
-                    <div className="relative">
-                      <Input
-                        type="email"
-                        value={carrier.emergency_contact_email || ""}
-                        onChange={(e) => updateField("emergency_contact_email", e.target.value)}
-                      />
-                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">DUN & Bradstreet</Label>
+                    <Input value={carrier.dun_bradstreet || ""} onChange={(e) => updateField("dun_bradstreet", e.target.value)} className="border-slate-200 focus:border-indigo-500" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Personal/Business</Label>
+                    <Input value={carrier.personal_business || ""} onChange={(e) => updateField("personal_business", e.target.value)} className="border-slate-200 focus:border-indigo-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Information */}
+              <Card className="border-l-4 border-l-emerald-500 shadow-sm lg:col-span-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-emerald-600">
+                    <Phone className="w-5 h-5" />
+                    Contact Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contact Name</Label>
+                      <Input value={carrier.contact_name || ""} onChange={(e) => updateField("contact_name", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Phone className="w-3 h-3" /> Phone
+                      </Label>
+                      <Input value={carrier.phone || ""} onChange={(e) => updateField("phone", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Mail className="w-3 h-3" /> Email
+                      </Label>
+                      <Input type="email" value={carrier.email || ""} onChange={(e) => updateField("email", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Dispatch Tab */}
+          <TabsContent value="dispatch" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-emerald-600">
+                    <Truck className="w-5 h-5" />
+                    Dispatch Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Dispatch Name</Label>
+                    <Input value={carrier.dispatch_name || ""} onChange={(e) => updateField("dispatch_name", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Dispatch Phone</Label>
+                    <Input value={carrier.dispatch_phone || ""} onChange={(e) => updateField("dispatch_phone", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Dispatch Email</Label>
+                    <Input type="email" value={carrier.dispatch_email || ""} onChange={(e) => updateField("dispatch_email", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">After Hours Phone</Label>
+                    <Input value={carrier.after_hours_phone || ""} onChange={(e) => updateField("after_hours_phone", e.target.value)} className="border-slate-200 focus:border-emerald-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Emergency Contact */}
+              <Card className="border-l-4 border-l-rose-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-rose-600">
+                    <AlertCircle className="w-5 h-5" />
+                    Emergency Contact
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
+                      <Input value={carrier.emergency_contact_name || ""} onChange={(e) => updateField("emergency_contact_name", e.target.value)} className="border-slate-200 focus:border-rose-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Title</Label>
+                      <Input value={carrier.emergency_contact_title || ""} onChange={(e) => updateField("emergency_contact_title", e.target.value)} className="border-slate-200 focus:border-rose-500" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Home Phone</Label>
+                      <Input value={carrier.emergency_contact_home_phone || ""} onChange={(e) => updateField("emergency_contact_home_phone", e.target.value)} className="border-slate-200 focus:border-rose-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cell Phone</Label>
+                      <Input value={carrier.emergency_contact_cell_phone || ""} onChange={(e) => updateField("emergency_contact_cell_phone", e.target.value)} className="border-slate-200 focus:border-rose-500" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <Mail className="w-3 h-3" /> Email
+                    </Label>
+                    <Input type="email" value={carrier.emergency_contact_email || ""} onChange={(e) => updateField("emergency_contact_email", e.target.value)} className="border-slate-200 focus:border-rose-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Safety Tab */}
+          <TabsContent value="safety" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-l-4 border-l-amber-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-amber-600">
+                    <Shield className="w-5 h-5" />
+                    SAFER Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Operating Status</Label>
+                    <Badge 
+                      variant={carrier.safer_status?.toUpperCase().includes('NOT AUTHORIZED') ? 'destructive' : 'default'}
+                      className="w-full justify-center py-3 text-sm font-medium"
+                    >
+                      {carrier.safer_status || "AUTHORIZED FOR PROPERTY"}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Safety Rating</Label>
+                    <Badge 
+                      variant={carrier.safety_rating?.toUpperCase() === 'CONDITIONAL' ? 'destructive' : 'default'}
+                      className="w-full justify-center py-3 text-sm font-medium"
+                    >
+                      {carrier.safety_rating || "NONE"}
+                    </Badge>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <span className="text-sm text-muted-foreground">Carrier Admins</span>
+                      <span className="text-sm font-medium">{carrier.contact_name || "Not Set"}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <span className="text-sm text-muted-foreground">Carrier Payees</span>
+                      <span className="text-sm font-medium">{carrier.contact_name || "Not Set"}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Highway Data */}
+              <Card className="border-l-4 border-l-violet-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-violet-600">
+                      Highway Verification
+                      {!highwayData?.configured && (
+                        <Badge variant="outline" className="text-xs">Not Configured</Badge>
+                      )}
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => carrier?.dot_number && fetchHighwayData(carrier.dot_number)}
+                      disabled={highwayLoading || !carrier?.dot_number}
+                      className="h-8 w-8 p-0"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${highwayLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!highwayData ? (
+                    <p className="text-sm text-muted-foreground">
+                      {carrier?.dot_number ? 'Loading Highway data...' : 'Enter DOT number to fetch Highway data'}
+                    </p>
+                  ) : !highwayData.configured ? (
+                    <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">Highway API not configured</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Add HIGHWAY_API_KEY to enable carrier verification.
+                      </p>
+                    </div>
+                  ) : highwayData.error ? (
+                    <div className="flex items-center gap-2 text-destructive p-4 bg-destructive/10 rounded-lg">
+                      <XCircle className="h-4 w-4" />
+                      <span className="text-sm">{highwayData.error}</span>
+                    </div>
+                  ) : !highwayData.found ? (
+                    <p className="text-sm text-muted-foreground p-4 bg-slate-50 rounded-lg">Carrier not found in Highway database</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Contact Email</Label>
+                          <p className="font-medium text-sm">{highwayData.data?.contact_email || '—'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Contact Phone</Label>
+                          <p className="font-medium text-sm">{highwayData.data?.contact_phone || '—'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-muted-foreground">Rightful Owner</span>
+                          {highwayData.data?.rightful_owner_validated ? (
+                            <Badge className="bg-emerald-500"><CheckCircle className="h-3 w-3 mr-1" /> Validated</Badge>
+                          ) : (
+                            <Badge variant="outline">Pending</Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-muted-foreground">Dispatch Service</span>
+                          {highwayData.data?.dispatch_service_detected ? (
+                            <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> Detected</Badge>
+                          ) : (
+                            <Badge className="bg-emerald-500">None Detected</Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <span className="text-sm text-muted-foreground">Insurance</span>
+                          {highwayData.data?.insurance_valid ? (
+                            <Badge className="bg-emerald-500"><CheckCircle className="h-3 w-3 mr-1" /> Valid</Badge>
+                          ) : (
+                            <Badge variant="outline">Unknown</Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {highwayData.data?.fleet_size && (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <Label className="text-xs text-muted-foreground">Fleet Size</Label>
+                          <p className="font-medium">{highwayData.data.fleet_size} vehicles</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Payee Tab */}
+          <TabsContent value="payee" className="space-y-6">
+            <Card className="border-l-4 border-l-violet-500 shadow-sm max-w-2xl">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-violet-600">
+                  <DollarSign className="w-5 h-5" />
+                  Payee Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                  <span className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer">
+                    {carrier.contact_name || "Not Set"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Contact</Label>
+                    <p className="text-sm font-medium">{carrier.contact_name || "—"}</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Phone</Label>
+                    <p className="text-sm font-medium">{carrier.phone || "—"}</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="text-sm font-medium">{carrier.email || "—"}</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Pay Percentage</Label>
+                    <p className="text-sm font-medium">0%</p>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Right Column - Payee Information */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Payee Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-b pb-2">
-                <span className="text-sm font-medium text-blue-600 cursor-pointer hover:underline">
-                  {carrier.contact_name || "Not Set"}
-                </span>
-              </div>
+                <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <Label className="text-xs text-muted-foreground">Physical Address</Label>
+                  <p className="text-sm font-medium">{carrier.address || "—"}</p>
+                </div>
 
-              <div>
-                <Label className="text-sm text-muted-foreground">Contact:</Label>
-                <p className="text-sm mt-1">{carrier.contact_name || "—"}</p>
-              </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Auto Approve</Label>
+                    <p className="text-sm font-medium text-emerald-600">Yes</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">W9</Label>
+                    <p className="text-sm font-medium">—</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">EIN</Label>
+                    <p className="text-sm font-medium">—</p>
+                  </div>
+                </div>
 
-              <div>
-                <Label className="text-sm text-muted-foreground">Phone:</Label>
-                <p className="text-sm mt-1">{carrier.phone || "—"}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Physical Address:</Label>
-                <p className="text-sm mt-1">{carrier.address || "—"}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Email:</Label>
-                <p className="text-sm mt-1">{carrier.email || "—"}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Pay Percentage:</Label>
-                <p className="text-sm mt-1">0</p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Auto Approve:</Label>
-                <p className="text-sm mt-1">true</p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">W9:</Label>
-                <p className="text-sm mt-1">—</p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">EIN:</Label>
-                <p className="text-sm mt-1">—</p>
-              </div>
-
-              <Button className="w-full bg-blue-500 hover:bg-blue-600">
-                Go to Payee Details
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                <Button className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600">
+                  Go to Payee Details
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
 }
