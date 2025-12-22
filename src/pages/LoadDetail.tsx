@@ -739,11 +739,25 @@ export default function LoadDetail() {
             </div>
             <div className={`rounded-md px-2 py-1.5 text-center ${!load.empty_miles ? 'bg-red-100 dark:bg-red-900/30' : 'bg-muted/50'}`}>
               <p className={`text-[10px] uppercase tracking-wide ${!load.empty_miles ? 'text-red-500' : 'text-muted-foreground'}`}>DH Miles</p>
-              <p className={`text-sm font-bold ${!load.empty_miles ? 'text-red-500' : ''}`}>{load.empty_miles || '—'}</p>
+              <Input
+                type="number"
+                value={load.empty_miles ?? ""}
+                onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)}
+                onBlur={handleSave}
+                className={`h-6 text-sm font-bold text-center border-0 bg-transparent p-0 focus:ring-1 focus:ring-primary ${!load.empty_miles ? 'text-red-500 placeholder:text-red-400' : ''}`}
+                placeholder="—"
+              />
             </div>
             <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Miles</p>
-              <p className="text-sm font-bold">{load.estimated_miles || '—'}</p>
+              <Input
+                type="number"
+                value={load.estimated_miles ?? ""}
+                onChange={(e) => updateField("estimated_miles", e.target.value ? Number(e.target.value) : null)}
+                onBlur={handleSave}
+                className="h-6 text-sm font-bold text-center border-0 bg-transparent p-0 focus:ring-1 focus:ring-primary"
+                placeholder="—"
+              />
             </div>
             <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Weight</p>
