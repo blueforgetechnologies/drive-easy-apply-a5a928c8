@@ -25,6 +25,7 @@ interface Dispatcher {
   first_name: string;
   last_name: string;
   status: string | null;
+  pay_percentage: number | null;
 }
 
 interface Vehicle {
@@ -141,7 +142,7 @@ export default function CarrierDashboard() {
     try {
       const { data, error } = await supabase
         .from("dispatchers")
-        .select("id, first_name, last_name, status")
+        .select("id, first_name, last_name, status, pay_percentage")
         .order("first_name");
 
       if (error) throw error;
@@ -306,6 +307,26 @@ export default function CarrierDashboard() {
   const selectedDispatcherName = selectedDispatcherObj 
     ? `${selectedDispatcherObj.first_name} ${selectedDispatcherObj.last_name}` 
     : "All Dispatchers";
+
+  // Calculate dispatcher pay for a load
+  const getDispatcherPay = (load: Load) => {
+    if (!load.rate) return null;
+    // If viewing a specific dispatcher, use their pay percentage
+    if (selectedDispatcherObj?.pay_percentage) {
+      return load.rate * (selectedDispatcherObj.pay_percentage / 100);
+    }
+    // If viewing all dispatchers, try to find the dispatcher for this load
+    const dispatcher = dispatchers.find(d => d.id === load.assigned_dispatcher_id);
+    if (dispatcher?.pay_percentage) {
+      return load.rate * (dispatcher.pay_percentage / 100);
+    }
+    return null;
+  };
+
+  // Calculate total dispatcher pay net
+  const totalDispatcherPayNet = dashboardType === "dispatcher" 
+    ? filteredLoads.reduce((sum, load) => sum + (getDispatcherPay(load) || 0), 0)
+    : 0;
 
   const handleRefresh = () => {
     if (dashboardType === "carrier") {
@@ -613,8 +634,15 @@ export default function CarrierDashboard() {
                       <DollarSign className="h-5 w-5 text-violet-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {dashboardType === "dispatcher" ? "Dispatcher Pay Net" : "Total Revenue"}
+                      </p>
+                      <p className="text-2xl font-bold">
+                        ${dashboardType === "dispatcher" 
+                          ? totalDispatcherPayNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : totalRevenue.toLocaleString()
+                        }
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -680,7 +708,9 @@ export default function CarrierDashboard() {
                           <TableHead>Pickup</TableHead>
                           <TableHead>Delivery</TableHead>
                           <TableHead>Broker</TableHead>
-                          <TableHead className="text-right">Rate</TableHead>
+                          <TableHead className="text-right">
+                            {dashboardType === "dispatcher" ? "Dispatch Pay" : "Rate"}
+                          </TableHead>
                           <TableHead className="w-[60px]"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -724,7 +754,10 @@ export default function CarrierDashboard() {
                             </TableCell>
                             <TableCell className="text-sm">{load.broker_name || '-'}</TableCell>
                             <TableCell className="text-right font-medium">
-                              {load.rate ? `$${load.rate.toLocaleString()}` : '-'}
+                              {dashboardType === "dispatcher" 
+                                ? (getDispatcherPay(load) ? `$${getDispatcherPay(load)!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-')
+                                : (load.rate ? `$${load.rate.toLocaleString()}` : '-')
+                              }
                             </TableCell>
                             <TableCell>
                               <Button 
