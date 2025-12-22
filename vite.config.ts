@@ -45,6 +45,11 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,svg}"],
         // Invoice/PDF tooling can create a larger JS bundle; allow precaching up to 10MB.
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB
+        // SPA navigation should always fall back to index.html
+        navigateFallback: "/index.html",
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -74,7 +74,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Detect active tab from URL
     const pathParts = location.pathname.split('/');
     const tabFromUrl = pathParts[2]; // /dashboard/[tab]
-    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'tools', 'analytics', 'usage', 'fleet-financials', 'carrier-dashboard'];
+    const validTabs = ['map', 'load-hunter', 'business', 'loads', 'load-approval', 'accounting', 'maintenance', 'settings', 'screenshare', 'development', 'tools', 'analytics', 'usage', 'fleet-financials', 'carrier-dashboard'];
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
