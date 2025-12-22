@@ -436,6 +436,37 @@ export default function FleetFinancialsTab() {
     return load.rate * (dispatcher.pay_percentage / 100);
   };
 
+  // Calculate driver pay based on toggled pay method
+  const getDriverPay = (load: Load) => {
+    if (!driverCompensation?.pay_method_active || !driverCompensation?.pay_method) return 0;
+    
+    const rate = load.rate || 0;
+    const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+    
+    switch (driverCompensation.pay_method) {
+      case 'percentage':
+        // Percentage of load rate
+        return rate * ((driverCompensation.load_percentage || 0) / 100);
+      case 'mileage':
+        // Pay per mile
+        return totalMiles * (driverCompensation.pay_per_mile || 0);
+      case 'salary':
+        // Weekly salary divided by loads (approximate per-load)
+        // For display purposes, we show $0 per load since salary is fixed
+        return 0;
+      case 'hourly':
+        // Hourly rate * hours per week (approximate per-load)
+        // For display purposes, we show $0 per load since hourly is fixed
+        return 0;
+      case 'hybrid':
+        // Base salary + percentage
+        const percentagePay = rate * ((driverCompensation.load_percentage || 0) / 100);
+        return percentagePay; // Base salary is fixed, so just show percentage portion per load
+      default:
+        return 0;
+    }
+  };
+
   
 
   const formatCurrency = (value: number) => {
@@ -458,9 +489,12 @@ export default function FleetFinancialsTab() {
       
       dailyData[i].loads.forEach(load => {
         const rate = load.rate || 0;
+        const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+        const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
         const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
-        weekTotal += rate - factoring - dispPay - dayRentalCost - dailyInsurance - DAILY_OTHER_COST;
+        const drvPay = getDriverPay(load);
+        weekTotal += rate - factoring - dispPay - drvPay - fuelCost - dayRentalCost - dailyInsurance - DAILY_OTHER_COST;
       });
       // Add empty day costs
       if (dailyData[i].loads.length === 0) {
@@ -806,11 +840,12 @@ export default function FleetFinancialsTab() {
                           const dollarPerMile = totalM > 0 ? rate / totalM : 0;
                           const factoring = rate * (factoringPercentage / 100);
                           const dispPay = getDispatcherPay(load);
+                          const drvPay = getDriverPay(load);
                           const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
                           const isBusinessDay = !isWeekend(day.date);
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
                           const dailyInsurance = totals.dailyInsuranceRate;
-                          const carrierNet = rate - factoring - dispPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
+                          const carrierNet = rate - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
                           const carrierPerMile = totalM > 0 ? carrierNet / totalM : 0;
 
                           return (
@@ -835,7 +870,7 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatNumber(milesPerGallon, 1)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(factoring)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dispPay)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(drvPay)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(fuelCost)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
