@@ -331,7 +331,7 @@ export default function FleetFinancialsTab() {
     <div className="flex h-[calc(100vh-80px)]">
       {/* Left Sidebar - Carrier Filter */}
       <div className="w-44 border-r bg-card flex-shrink-0">
-        <div className="p-3 border-b space-y-2">
+        <div className="pl-3 pr-4 py-3 border-b space-y-2">
           <Button 
             variant={!selectedCarrier ? "default" : "outline"} 
             className={cn(
@@ -357,7 +357,7 @@ export default function FleetFinancialsTab() {
             />
           </div>
         </div>
-        <div className="p-3">
+        <div className="pl-3 pr-4 py-3">
           <ScrollArea className="h-[calc(100vh-260px)] overflow-visible">
             <div className="space-y-1.5">
               {carriers
