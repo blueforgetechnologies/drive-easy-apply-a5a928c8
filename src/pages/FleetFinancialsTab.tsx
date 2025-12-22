@@ -356,9 +356,29 @@ export default function FleetFinancialsTab() {
               className="pl-8 h-9"
             />
           </div>
+          <div className="flex w-full mt-2">
+            <Button
+              variant="outline"
+              className={cn(
+                "flex-1 h-8 text-sm font-medium rounded-r-none border-r-0",
+                true ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+              )}
+            >
+              Active
+            </Button>
+            <Button
+              variant="outline"
+              className={cn(
+                "flex-1 h-8 text-sm font-medium rounded-l-none",
+                false ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+              )}
+            >
+              Inactive
+            </Button>
+          </div>
         </div>
         <div className="pl-3 pr-4 py-3">
-          <ScrollArea className="h-[calc(100vh-260px)] overflow-visible">
+          <ScrollArea className="h-[calc(100vh-300px)] overflow-visible">
             <div className="flex flex-col w-[70%]">
               {carriers
                 .slice()
