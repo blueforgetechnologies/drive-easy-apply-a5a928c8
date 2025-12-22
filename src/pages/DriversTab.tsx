@@ -36,12 +36,20 @@ interface DriverInvite {
   application_id?: string;
 }
 
+interface VehicleAssignment {
+  id: string;
+  vehicle_number: string;
+  driver_1_id: string | null;
+  driver_2_id: string | null;
+}
+
 export default function DriversTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [applications, setApplications] = useState<Application[]>([]);
   const [invites, setInvites] = useState<DriverInvite[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,6 +62,9 @@ export default function DriversTab() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Always load vehicles for assignment display
+      await loadVehicles();
+      
       if (filter === "all") {
         await loadAllDrivers();
       } else if (filter === "active") {
@@ -68,6 +79,24 @@ export default function DriversTab() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadVehicles = async () => {
+    const { data, error } = await supabase
+      .from("vehicles")
+      .select("id, vehicle_number, driver_1_id, driver_2_id")
+      .eq("status", "active");
+
+    if (!error && data) {
+      setVehicles(data);
+    }
+  };
+
+  const getVehicleForDriver = (applicationId: string): string | null => {
+    const vehicle = vehicles.find(
+      v => v.driver_1_id === applicationId || v.driver_2_id === applicationId
+    );
+    return vehicle?.vehicle_number || null;
   };
 
   const loadAllDrivers = async () => {
@@ -433,6 +462,7 @@ export default function DriversTab() {
                     <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Status</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Name/Phone</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Vehicle</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Salary</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Age/DOB</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">DL Class</TableHead>
@@ -493,6 +523,13 @@ export default function DriversTab() {
                           <TableCell className="py-1 px-2 font-medium">
                             <div>{personalInfo.firstName} {personalInfo.lastName}</div>
                             <div className="text-xs text-muted-foreground">{personalInfo.phone}</div>
+                          </TableCell>
+                          <TableCell className="py-1 px-2">
+                            {getVehicleForDriver(app.id) ? (
+                              <span className="text-blue-600 font-medium">{getVehicleForDriver(app.id)}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             {app.pay_method_active ? (
