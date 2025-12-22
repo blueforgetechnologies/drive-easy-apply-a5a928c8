@@ -15,8 +15,10 @@ import { toast } from "sonner";
 import { 
   ArrowLeft, Save, Trash2, User, CreditCard, FileText, 
   Phone, Mail, Calendar, MapPin, Shield, Briefcase,
-  Building2, DollarSign, AlertCircle, Upload, Eye
+  Building2, DollarSign, AlertCircle, Upload, Eye, Clock,
+  TrendingUp, Wallet, MinusCircle
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ApplicationDetail() {
   const { id } = useParams();
@@ -598,7 +600,7 @@ export default function ApplicationDetail() {
 
           {/* Financial Tab */}
           <TabsContent value="financial" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {/* Banking Information */}
               <Card className="border-l-4 border-l-violet-500 shadow-sm">
                 <CardHeader className="pb-3">
@@ -645,44 +647,98 @@ export default function ApplicationDetail() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Account Type</Label>
-                    <Input 
+                    <Select 
                       value={formData.account_type || directDeposit.accountType || ''} 
-                      onChange={(e) => updateField('account_type', e.target.value)}
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="Business / Personal"
-                    />
+                      onValueChange={(value) => updateField('account_type', value)}
+                    >
+                      <SelectTrigger className="border-slate-200 focus:border-violet-500">
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="personal_checking">Personal Checking</SelectItem>
+                        <SelectItem value="personal_savings">Personal Savings</SelectItem>
+                        <SelectItem value="business_checking">Business Checking</SelectItem>
+                        <SelectItem value="business_savings">Business Savings</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Pay Information */}
+              {/* Primary Compensation */}
               <Card className="border-l-4 border-l-amber-500 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-amber-600">
                     <DollarSign className="w-5 h-5" />
-                    Pay Information
+                    Primary Compensation
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Method</Label>
-                    <RadioGroup 
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Type</Label>
+                    <Select 
                       value={formData.pay_method || 'salary'} 
                       onValueChange={(value) => updateField('pay_method', value)}
-                      className="flex gap-6"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="salary" id="salary" />
-                        <Label htmlFor="salary" className="cursor-pointer">Salary</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="mileage" id="mileage" />
-                        <Label htmlFor="mileage" className="cursor-pointer">Mileage</Label>
-                      </div>
-                    </RadioGroup>
+                      <SelectTrigger className="border-slate-200 focus:border-amber-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="salary">Weekly Salary</SelectItem>
+                        <SelectItem value="hourly">Hourly Rate</SelectItem>
+                        <SelectItem value="mileage">Per Mile</SelectItem>
+                        <SelectItem value="percentage">Percentage of Load</SelectItem>
+                        <SelectItem value="hybrid">Hybrid (Base + Mileage)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Conditional fields based on pay type */}
+                  {formData.pay_method === 'salary' && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Salary</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          value={formData.weekly_salary || ''} 
+                          onChange={(e) => updateField('weekly_salary', e.target.value)}
+                          className="pl-7 border-slate-200 focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.pay_method === 'hourly' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Hourly Rate</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={formData.hourly_rate || ''} 
+                            onChange={(e) => updateField('hourly_rate', e.target.value)}
+                            className="pl-7 border-slate-200 focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Hours/Week</Label>
+                        <Input 
+                          type="number"
+                          value={formData.hours_per_week || ''} 
+                          onChange={(e) => updateField('hours_per_week', e.target.value)}
+                          className="border-slate-200 focus:border-amber-500"
+                          placeholder="40"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.pay_method === 'mileage' && (
                     <div className="space-y-2">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Per Mile</Label>
                       <div className="relative">
@@ -696,18 +752,367 @@ export default function ApplicationDetail() {
                         />
                       </div>
                     </div>
+                  )}
+
+                  {formData.pay_method === 'percentage' && (
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Salary</Label>
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Percentage of Load</Label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                         <Input 
                           type="number"
-                          step="0.01"
-                          value={formData.weekly_salary || ''} 
-                          onChange={(e) => updateField('weekly_salary', e.target.value)}
-                          className="pl-7 border-slate-200 focus:border-amber-500"
+                          step="0.5"
+                          min="0"
+                          max="100"
+                          value={formData.load_percentage || ''} 
+                          onChange={(e) => updateField('load_percentage', e.target.value)}
+                          className="pr-8 border-slate-200 focus:border-amber-500"
                         />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                       </div>
+                    </div>
+                  )}
+
+                  {formData.pay_method === 'hybrid' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Base Salary</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={formData.base_salary || ''} 
+                            onChange={(e) => updateField('base_salary', e.target.value)}
+                            className="pl-7 border-slate-200 focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Per Mile</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={formData.pay_per_mile || ''} 
+                            onChange={(e) => updateField('pay_per_mile', e.target.value)}
+                            className="pl-7 border-slate-200 focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show all fields in a summary if no specific type */}
+                  {(!formData.pay_method || formData.pay_method === 'salary') && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Per Mile</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={formData.pay_per_mile || ''} 
+                            onChange={(e) => updateField('pay_per_mile', e.target.value)}
+                            className="pl-7 border-slate-200 focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Hourly Rate</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={formData.hourly_rate || ''} 
+                            onChange={(e) => updateField('hourly_rate', e.target.value)}
+                            className="pl-7 border-slate-200 focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Overtime & Premium Pay */}
+              <Card className="border-l-4 border-l-orange-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-orange-600">
+                    <Clock className="w-5 h-5" />
+                    Overtime & Premium Pay
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+                    <div>
+                      <Label className="text-sm font-medium">Overtime Eligible</Label>
+                      <p className="text-xs text-muted-foreground">After 40 hours/week</p>
+                    </div>
+                    <Checkbox 
+                      checked={formData.overtime_eligible || false}
+                      onCheckedChange={(checked) => updateField('overtime_eligible', checked)}
+                    />
+                  </div>
+
+                  {formData.overtime_eligible && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Overtime Rate Multiplier</Label>
+                      <Select 
+                        value={formData.overtime_multiplier || '1.5'} 
+                        onValueChange={(value) => updateField('overtime_multiplier', value)}
+                      >
+                        <SelectTrigger className="border-slate-200 focus:border-orange-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1.5">1.5x (Time and a Half)</SelectItem>
+                          <SelectItem value="2.0">2.0x (Double Time)</SelectItem>
+                          <SelectItem value="1.25">1.25x</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekend Premium</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.weekend_premium || ''} 
+                        onChange={(e) => updateField('weekend_premium', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-orange-500"
+                        placeholder="Extra per day"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Holiday Pay Rate</Label>
+                    <Select 
+                      value={formData.holiday_pay_rate || 'none'} 
+                      onValueChange={(value) => updateField('holiday_pay_rate', value)}
+                    >
+                      <SelectTrigger className="border-slate-200 focus:border-orange-500">
+                        <SelectValue placeholder="Select holiday pay" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Holiday Pay</SelectItem>
+                        <SelectItem value="1.5x">1.5x Regular Rate</SelectItem>
+                        <SelectItem value="2.0x">2.0x Regular Rate</SelectItem>
+                        <SelectItem value="flat">Flat Bonus</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Bonuses & Incentives */}
+              <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-emerald-600">
+                    <TrendingUp className="w-5 h-5" />
+                    Bonuses & Incentives
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Sign-On Bonus</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.sign_on_bonus || ''} 
+                        onChange={(e) => updateField('sign_on_bonus', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Safety Bonus (Monthly)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.safety_bonus || ''} 
+                        onChange={(e) => updateField('safety_bonus', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Efficiency Bonus</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.fuel_bonus || ''} 
+                        onChange={(e) => updateField('fuel_bonus', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Referral Bonus</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.referral_bonus || ''} 
+                        onChange={(e) => updateField('referral_bonus', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Allowances */}
+              <Card className="border-l-4 border-l-sky-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sky-600">
+                    <Wallet className="w-5 h-5" />
+                    Allowances & Per Diem
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Per Diem (Daily)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.per_diem || ''} 
+                        onChange={(e) => updateField('per_diem', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-sky-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Layover Pay</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.layover_pay || ''} 
+                        onChange={(e) => updateField('layover_pay', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-sky-500"
+                        placeholder="Per night"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Detention Pay (Hourly)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.detention_pay || ''} 
+                        onChange={(e) => updateField('detention_pay', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-sky-500"
+                        placeholder="After 2 hours"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Stop Pay</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.stop_pay || ''} 
+                        onChange={(e) => updateField('stop_pay', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-sky-500"
+                        placeholder="Per extra stop"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Deductions */}
+              <Card className="border-l-4 border-l-rose-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-rose-600">
+                    <MinusCircle className="w-5 h-5" />
+                    Standard Deductions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Deduction</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.insurance_deduction || ''} 
+                        onChange={(e) => updateField('insurance_deduction', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-rose-500"
+                        placeholder="Per week"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Escrow Deduction</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.escrow_deduction || ''} 
+                        onChange={(e) => updateField('escrow_deduction', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-rose-500"
+                        placeholder="Per week"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Equipment Lease</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.equipment_lease || ''} 
+                        onChange={(e) => updateField('equipment_lease', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-rose-500"
+                        placeholder="Per week"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Other Deductions</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={formData.other_deductions || ''} 
+                        onChange={(e) => updateField('other_deductions', e.target.value)}
+                        className="pl-7 border-slate-200 focus:border-rose-500"
+                      />
                     </div>
                   </div>
                 </CardContent>
