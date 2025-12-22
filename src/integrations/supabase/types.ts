@@ -3454,6 +3454,7 @@ export type Database = {
           cargo_coverage_exp_date: string | null
           cargo_coverage_status: string | null
           carrier: string | null
+          cents_per_mile: number | null
           clearance: number | null
           created_at: string | null
           dash_cam_sn: string | null
@@ -3492,6 +3493,7 @@ export type Database = {
           make: string | null
           mileage: number | null
           model: string | null
+          monthly_payment: number | null
           next_service_date: string | null
           notes: string | null
           odometer: number | null
@@ -3532,6 +3534,7 @@ export type Database = {
           vehicle_size: number | null
           vertical_etrack_rows: number | null
           vin: string | null
+          weekly_payment: number | null
           year: number | null
         }
         Insert: {
@@ -3547,6 +3550,7 @@ export type Database = {
           cargo_coverage_exp_date?: string | null
           cargo_coverage_status?: string | null
           carrier?: string | null
+          cents_per_mile?: number | null
           clearance?: number | null
           created_at?: string | null
           dash_cam_sn?: string | null
@@ -3585,6 +3589,7 @@ export type Database = {
           make?: string | null
           mileage?: number | null
           model?: string | null
+          monthly_payment?: number | null
           next_service_date?: string | null
           notes?: string | null
           odometer?: number | null
@@ -3625,6 +3630,7 @@ export type Database = {
           vehicle_size?: number | null
           vertical_etrack_rows?: number | null
           vin?: string | null
+          weekly_payment?: number | null
           year?: number | null
         }
         Update: {
@@ -3640,6 +3646,7 @@ export type Database = {
           cargo_coverage_exp_date?: string | null
           cargo_coverage_status?: string | null
           carrier?: string | null
+          cents_per_mile?: number | null
           clearance?: number | null
           created_at?: string | null
           dash_cam_sn?: string | null
@@ -3678,6 +3685,7 @@ export type Database = {
           make?: string | null
           mileage?: number | null
           model?: string | null
+          monthly_payment?: number | null
           next_service_date?: string | null
           notes?: string | null
           odometer?: number | null
@@ -3718,6 +3726,7 @@ export type Database = {
           vehicle_size?: number | null
           vertical_etrack_rows?: number | null
           vin?: string | null
+          weekly_payment?: number | null
           year?: number | null
         }
         Relationships: []
