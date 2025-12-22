@@ -363,19 +363,32 @@ export default function FleetFinancialsTab() {
                 : "btn-glossy text-gray-700"
             )}
             onClick={() => {
-              setSelectedCarrier(null);
               setCarrierSearch("");
-              // Auto-select first vehicle from all vehicles
-              const sortedVehicles = vehiclesWithNames
-                .slice()
-                .sort((a, b) => {
-                  const numA = parseInt(a.vehicle_number, 10);
-                  const numB = parseInt(b.vehicle_number, 10);
-                  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                  return a.vehicle_number.localeCompare(b.vehicle_number);
-                });
-              if (sortedVehicles.length > 0) {
-                setSelectedVehicleId(sortedVehicles[0].id);
+              // Select first carrier in the filtered list
+              const filteredCarriers = carriers
+                .filter(carrier => 
+                  (carrierStatusFilter.length === 0 || carrierStatusFilter.includes(carrier.status || ""))
+                )
+                .sort((a, b) => a.name.localeCompare(b.name));
+              
+              if (filteredCarriers.length > 0) {
+                const firstCarrier = filteredCarriers[0];
+                setSelectedCarrier(firstCarrier.id);
+                
+                // Auto-select first vehicle for this carrier
+                const carrierVehicles = vehiclesWithNames
+                  .filter(v => v.carrier === firstCarrier.id)
+                  .sort((a, b) => {
+                    const numA = parseInt(a.vehicle_number, 10);
+                    const numB = parseInt(b.vehicle_number, 10);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a.vehicle_number.localeCompare(b.vehicle_number);
+                  });
+                if (carrierVehicles.length > 0) {
+                  setSelectedVehicleId(carrierVehicles[0].id);
+                } else {
+                  setSelectedVehicleId(null);
+                }
               }
             }}
           >
