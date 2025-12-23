@@ -103,12 +103,7 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange, prefetch
   }, [startDate, endDate, activePreset]);
 
   const handlePresetClick = (preset: PresetOption) => {
-    // Check if this preset is ready (done) or always available (24h)
-    if (prefetchStatus && preset.prefetchKey && preset.prefetchKey !== '24h') {
-      const status = prefetchStatus[preset.prefetchKey];
-      if (status !== 'done') return; // Don't allow click if not ready
-    }
-    
+    // Always allow clicking - prefetch is just for optimization, not a blocker
     setCustomRange({ from: undefined, to: undefined });
     const { start, end } = preset.getRange();
     // Pass the range key so parent can use cached data directly
@@ -157,18 +152,15 @@ export function AnalyticsDateFilter({ startDate, endDate, onDateChange, prefetch
       {presets.map((preset) => {
         const status = getPresetStatus(preset);
         const isActive = activePreset === preset.value;
-        const isDisabled = status === 'waiting' || status === 'loading';
         
         return (
           <Button
             key={preset.value}
             variant={isActive ? "default" : "outline"}
             size="sm"
-            disabled={isDisabled && !isActive}
             className={cn(
               "h-7 px-2 text-xs font-medium min-w-[42px] relative",
-              isActive && "bg-primary text-primary-foreground",
-              isDisabled && !isActive && "opacity-50 cursor-not-allowed"
+              isActive && "bg-primary text-primary-foreground"
             )}
             onClick={() => handlePresetClick(preset)}
           >
