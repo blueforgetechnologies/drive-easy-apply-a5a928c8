@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2 } from "lucide-react";
-import { format, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isWeekend } from "date-fns";
+import { format, subDays, eachDayOfInterval, isSameDay, isWeekend, startOfWeek, endOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -134,7 +134,7 @@ export default function LoadApprovalTab() {
       // Load loads for the past 3 weeks
       // Show those that are ready for approval (delivered/completed/closed)
       // OR those from vehicles requiring approval that haven't been approved yet
-      const threeWeeksAgo = subWeeks(new Date(), 3);
+      const thirtyDaysAgo = subDays(new Date(), 30);
       
       let loadQuery = supabase
         .from("loads")
@@ -146,7 +146,7 @@ export default function LoadApprovalTab() {
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `)
-        .gte("pickup_date", format(threeWeeksAgo, "yyyy-MM-dd"));
+        .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"));
       
       if (selectedCarrier !== "all") {
         loadQuery = loadQuery.eq("carrier_id", selectedCarrier);
@@ -220,12 +220,11 @@ export default function LoadApprovalTab() {
     });
   }, [carriers, carrierSearch, carrierStatusFilter]);
 
-  // Get 3 weeks calendar data
-  const threeWeeksRange = useMemo(() => {
+  // Get 30 days calendar data
+  const thirtyDaysRange = useMemo(() => {
     const now = new Date();
-    const start = startOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-    const end = endOfWeek(now, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
+    const start = subDays(now, 29);
+    return eachDayOfInterval({ start, end: now });
   }, []);
 
   // Group loads by date
@@ -311,7 +310,7 @@ export default function LoadApprovalTab() {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     let total = 0;
     
-    threeWeeksRange.forEach(date => {
+    thirtyDaysRange.forEach(date => {
       if (date >= weekStart && date <= weekEnd) {
         const dateKey = format(date, "yyyy-MM-dd");
         const dayLoads = loadsByDate[dateKey] || [];
@@ -662,7 +661,7 @@ export default function LoadApprovalTab() {
           <CardContent className="p-4 h-full flex flex-col">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">{selectedCarrierName} - 3 Week View</h3>
+              <h3 className="font-semibold">{selectedCarrierName} - 30 Days View</h3>
             </div>
             
             <ScrollArea className="flex-1">
@@ -686,7 +685,7 @@ export default function LoadApprovalTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {threeWeeksRange.map((date, index) => {
+                  {thirtyDaysRange.map((date, index) => {
                     const dateKey = format(date, "yyyy-MM-dd");
                     const dayLoads = loadsByDate[dateKey] || [];
                     const dayName = format(date, "EEE");
