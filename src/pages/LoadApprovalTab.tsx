@@ -48,6 +48,8 @@ interface Load {
   estimated_miles: number | null;
   empty_miles: number | null;
   broker_name: string | null;
+  reference_number: string | null;
+  shipper_load_id: string | null;
   customer?: { name: string | null };
   vehicle?: { vehicle_number: string | null; driver_1_id?: string | null };
   driver?: { personal_info: any };
@@ -544,6 +546,7 @@ export default function LoadApprovalTab() {
                         </TableCell>
                         <TableCell className="text-xs">
                           <div className="font-medium">{load.load_number}</div>
+                          <div className="text-muted-foreground">{(load as any).reference_number || (load as any).shipper_load_id || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div>{load.pickup_city}, {load.pickup_state}</div>
