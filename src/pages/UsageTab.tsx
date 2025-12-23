@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, Map, Mail, Sparkles, Database, Inbox, DollarSign } from "lucide-react";
+import { LayoutDashboard, Map, Mail, Sparkles, Database, Inbox, DollarSign, HeartPulse } from "lucide-react";
 import { UsageMonthFilter } from "@/components/UsageMonthFilter";
 import UsageCostsTab from "./UsageCostsTab";
 import LovableCloudAITab from "./LovableCloudAITab";
@@ -16,6 +16,7 @@ import { UsageOverviewTab } from "@/components/usage/UsageOverviewTab";
 import { UsageMapboxTab } from "@/components/usage/UsageMapboxTab";
 import { UsageEmailTab } from "@/components/usage/UsageEmailTab";
 import { UsageGmailTab } from "@/components/usage/UsageGmailTab";
+import { SystemHealthTab } from "@/components/usage/SystemHealthTab";
 
 const MAPBOX_FREE_TIER = 100000;
 
@@ -67,7 +68,7 @@ const UsageTab = () => {
 
   useEffect(() => {
     const subtab = searchParams.get("subtab");
-    if (subtab && ["overview", "mapbox", "gmail", "email", "ai", "cloud"].includes(subtab)) {
+    if (subtab && ["overview", "health", "mapbox", "gmail", "email", "ai", "cloud"].includes(subtab)) {
       setActiveSubTab(subtab);
     }
     
@@ -93,6 +94,7 @@ const UsageTab = () => {
 
   const subTabs = [
     { value: "overview", label: "Overview", icon: LayoutDashboard },
+    { value: "health", label: "System Health", icon: HeartPulse },
     { value: "mapbox", label: "Mapbox", icon: Map },
     { value: "gmail", label: "Gmail API", icon: Inbox },
     { value: "email", label: "Email", icon: Mail },
@@ -141,6 +143,10 @@ const UsageTab = () => {
 
         <TabsContent value="overview" className="mt-4">
           <UsageOverviewTab selectedMonth={selectedMonth} />
+        </TabsContent>
+
+        <TabsContent value="health" className="mt-4">
+          <SystemHealthTab />
         </TabsContent>
 
         <TabsContent value="mapbox" className="mt-4">

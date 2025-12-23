@@ -391,6 +391,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cleanup_job_logs: {
+        Row: {
+          duration_ms: number | null
+          error_message: string | null
+          executed_at: string
+          id: string
+          job_name: string
+          records_affected: number | null
+          success: boolean | null
+        }
+        Insert: {
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          job_name: string
+          records_affected?: number | null
+          success?: boolean | null
+        }
+        Update: {
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          job_name?: string
+          records_affected?: number | null
+          success?: boolean | null
+        }
+        Relationships: []
+      }
       company_profile: {
         Row: {
           address: string | null
@@ -3859,6 +3889,9 @@ export type Database = {
     Functions: {
       archive_old_load_emails: { Args: never; Returns: number }
       can_manage_roles: { Args: { _user_id: string }; Returns: boolean }
+      cleanup_email_queue: { Args: never; Returns: number }
+      cleanup_pubsub_tracking: { Args: never; Returns: number }
+      cleanup_vehicle_location_history: { Args: never; Returns: number }
       generate_load_id_for_date: {
         Args: { target_date: string }
         Returns: string
