@@ -35,10 +35,7 @@ interface Vehicle {
 interface Load {
   id: string;
   load_number: string;
-  status: string | null;
-  settlement_status: string | null;
-  carrier_approved: boolean | null;
-  carrier_rate: number | null;
+  status: string;
   rate: number | null;
   pickup_city: string | null;
   pickup_state: string | null;
@@ -49,17 +46,11 @@ interface Load {
   assigned_vehicle_id: string | null;
   carrier_id: string | null;
   estimated_miles: number | null;
-  actual_miles: number | null;
   empty_miles: number | null;
   broker_name: string | null;
   reference_number: string | null;
   shipper_load_id: string | null;
-  po_number: string | null;
-  bol_number: string | null;
-  pro_number: string | null;
-  other_charges: number | null;
   customer?: { name: string | null };
-  carrier?: { name: string | null };
   vehicle?: { vehicle_number: string | null; driver_1_id?: string | null };
   driver?: { personal_info: any };
   dispatcher?: { first_name: string | null; last_name: string | null };
@@ -68,59 +59,9 @@ interface Load {
 interface ApprovalLoad extends Load {
   carrier_pay?: number;
   carrier_rate_per_mile?: number;
+  carrier_approved?: boolean | null;
+  carrier_rate?: number | null;
 }
-
-const moneyCompact = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-
-const moneyFixed2 = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const toTitleCase = (value: string) =>
-  value
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-
-const formatMoney = (value: number | null | undefined) =>
-  value == null ? "-" : moneyCompact.format(value);
-
-const formatMoney2 = (value: number | null | undefined) =>
-  value == null ? "-" : moneyFixed2.format(value);
-
-const formatMiles = (miles: number | null | undefined) =>
-  miles == null ? "-" : String(Math.round(miles));
-
-const formatCityState = (city: string | null | undefined, state: string | null | undefined) => {
-  const c = (city || "").trim();
-  const s = (state || "").trim();
-  if (!c && !s) return "-";
-  if (c && s) return `${c}, ${s}`;
-  return c || s;
-};
-
-const getCustomerLoadNumber = (load: Load) =>
-  load.shipper_load_id ||
-  load.reference_number ||
-  load.po_number ||
-  load.bol_number ||
-  load.pro_number ||
-  null;
-
-const getApprovalStatusLabel = (load: Load) => {
-  const raw = load.settlement_status || (load.carrier_approved ? "approved" : "pending");
-  return toTitleCase(raw);
-};
-
 
 export default function LoadApprovalTab() {
   const navigate = useNavigate();
@@ -186,40 +127,33 @@ export default function LoadApprovalTab() {
       
       // Get vehicle IDs that require load approval
       const vehiclesRequiringApproval = (vehicleData || [])
-        .filter((v: any) => v.requires_load_approval === true)
+        .filter((v: any) => v.requires_load_approval)
         .map((v: any) => v.id);
-
-      // Nothing to approve if no vehicles have approval enabled
-      if (vehiclesRequiringApproval.length === 0) {
-        setLoads([]);
-        setVehicleDriverInfoById({});
-        return;
-      }
-
+      
       // Load loads for the past 3 weeks
+      // Show those that are ready for approval (delivered/completed/closed)
+      // OR those from vehicles requiring approval that haven't been approved yet
       const threeWeeksAgo = subWeeks(new Date(), 3);
-
+      
       let loadQuery = supabase
         .from("loads")
         .select(`
           *,
           customer:customers!customer_id(name),
-          carrier:carriers!carrier_id(name),
           vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id),
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `)
-        .gte("pickup_date", format(threeWeeksAgo, "yyyy-MM-dd"))
-        .in("assigned_vehicle_id", vehiclesRequiringApproval);
-
+        .gte("pickup_date", format(threeWeeksAgo, "yyyy-MM-dd"));
+      
       if (selectedCarrier !== "all") {
         loadQuery = loadQuery.eq("carrier_id", selectedCarrier);
       }
-
+      
       if (selectedVehicle !== "all") {
         loadQuery = loadQuery.eq("assigned_vehicle_id", selectedVehicle);
       }
-
+      
       const { data: loadData, error: loadError } = await loadQuery.order("pickup_date", { ascending: false });
 
       if (loadError) {
@@ -259,11 +193,20 @@ export default function LoadApprovalTab() {
         setVehicleDriverInfoById({});
       }
 
-      // Only show loads that still need approval
-      const filteredLoads = (loadData || []).filter((load: any) => load.carrier_approved !== true);
+      // Filter loads: ONLY show loads from vehicles that have requires_load_approval enabled
+      // and that haven't been approved yet
+      const filteredLoads = (loadData || []).filter((load: any) => {
+        const isFromApprovalRequiredVehicle = vehiclesRequiringApproval.includes(load.assigned_vehicle_id);
+        const needsCarrierApproval = load.carrier_approved !== true;
+
+        return isFromApprovalRequiredVehicle && needsCarrierApproval;
+      });
 
       setLoads(filteredLoads as unknown as ApprovalLoad[]);
-
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter carriers by search and status
   const filteredCarriers = useMemo(() => {
@@ -304,29 +247,22 @@ export default function LoadApprovalTab() {
 
   const totalPages = Math.ceil(loads.length / ROWS_PER_PAGE);
 
-  const calculateCarrierPay = (load: ApprovalLoad) =>
-    carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+  // Calculate carrier pay based on entered rate
+  const calculateCarrierPay = (load: ApprovalLoad) => {
+    const rate = carrierRates[load.id] || load.rate || 0;
+    const totalMiles = (load.estimated_miles || 0) + (load.empty_miles || 0);
+    return rate > 0 ? rate : 0;
+  };
 
   const calculateRatePerMile = (load: ApprovalLoad) => {
     const carrierPay = calculateCarrierPay(load);
-    const loadedMiles = load.actual_miles ?? load.estimated_miles;
-    const roundedLoadedMiles = loadedMiles == null ? 0 : Math.round(loadedMiles);
-    return roundedLoadedMiles > 0 ? carrierPay / roundedLoadedMiles : 0;
+    const loadedMiles = load.estimated_miles || 0;
+    return loadedMiles > 0 ? carrierPay / loadedMiles : 0;
   };
 
   const handleRateChange = (loadId: string, value: string) => {
-    if (value.trim() === "") {
-      setCarrierRates(prev => {
-        const next = { ...prev };
-        delete next[loadId];
-        return next;
-      });
-      return;
-    }
-
-    const parsed = Number(value);
-    const rounded = Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
-    setCarrierRates(prev => ({ ...prev, [loadId]: rounded }));
+    const numValue = parseFloat(value) || 0;
+    setCarrierRates(prev => ({ ...prev, [loadId]: numValue }));
   };
 
   const handleApprove = async (load: ApprovalLoad) => {
@@ -573,21 +509,10 @@ export default function LoadApprovalTab() {
                       </TableCell>
                     </TableRow>
                   ) : paginatedLoads.map(load => {
-                    const loadedMilesSource = load.actual_miles ?? load.estimated_miles;
-                    const loadedMiles = loadedMilesSource == null ? null : Math.round(loadedMilesSource);
-                    const emptyMiles = load.empty_miles == null ? null : Math.round(load.empty_miles);
-
-                    const ratePerMile =
-                      loadedMiles != null && loadedMiles > 0 && load.rate != null ? load.rate / loadedMiles : null;
-
-                    const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? null;
-                    const carrierRatePerMile =
-                      loadedMiles != null && loadedMiles > 0 && carrierPay != null ? carrierPay / loadedMiles : null;
-
-                    const statusLabel = getApprovalStatusLabel(load);
-                    const carrierName = load.carrier?.name ?? load.broker_name ?? "-";
-                    const customerLoadNumber = getCustomerLoadNumber(load);
-
+                    const totalMiles = (load.estimated_miles || 0) + (load.empty_miles || 0);
+                    const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
+                    const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
+                    const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
                     const loadDriverInfo = load.driver?.personal_info;
@@ -606,14 +531,9 @@ export default function LoadApprovalTab() {
                         <TableCell className="min-w-[100px]">
                           <Badge 
                             variant="outline" 
-                            className={cn(
-                              "text-xs whitespace-nowrap",
-                              statusLabel.toLowerCase() === "approved"
-                                ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30"
-                                : "bg-amber-500/10 text-amber-700 border-amber-500/30"
-                            )}
+                            className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs whitespace-nowrap"
                           >
-                            {statusLabel}
+                            Pending
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
@@ -621,44 +541,42 @@ export default function LoadApprovalTab() {
                           <div className="text-muted-foreground">{driverName}</div>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <div className="font-medium">{carrierName}</div>
+                          <div className="font-medium">{load.broker_name || "-"}</div>
                           <div className="text-muted-foreground">{load.customer?.name || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div className="font-medium">{load.load_number}</div>
-                          <div className="text-muted-foreground">{customerLoadNumber || "-"}</div>
+                          <div className="text-muted-foreground">{(load as any).reference_number || (load as any).shipper_load_id || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <div>{formatCityState(load.pickup_city, load.pickup_state)}</div>
-                          <div className="text-muted-foreground">{formatCityState(load.delivery_city, load.delivery_state)}</div>
+                          <div>{load.pickup_city}, {load.pickup_state}</div>
+                          <div className="text-muted-foreground">{load.delivery_city}, {load.delivery_state}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div>{load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy") : "-"}</div>
                           <div className="text-muted-foreground">{load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy") : "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          <div>{formatMiles(emptyMiles)}</div>
-                          <div className="text-muted-foreground">{formatMiles(loadedMiles)}</div>
+                          <div>{load.empty_miles || 0}</div>
+                          <div className="text-muted-foreground">{load.estimated_miles || 0}</div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          {ratePerMile == null ? "-" : formatMoney2(ratePerMile)}
+                          ${ratePerMile.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          {load.rate == null ? "-" : formatMoney(load.rate)}
+                          ${(load.rate || 0).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
                           <Input
                             type="number"
-                            step="0.01"
-                            min="0"
-                            value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
+                            value={carrierRates[load.id] ?? load.rate ?? ""}
                             onChange={(e) => handleRateChange(load.id, e.target.value)}
                             className="w-24 h-7 text-xs text-right text-green-600 font-medium"
                             placeholder="0.00"
                           />
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          {carrierRatePerMile == null ? "-" : formatMoney2(carrierRatePerMile)}
+                          ${carrierRatePerMile.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs">
                           {load.dispatcher 
@@ -771,7 +689,7 @@ export default function LoadApprovalTab() {
                           <TableCell colSpan={11}></TableCell>
                           {isWeekEnd && (
                             <TableCell className="text-right font-bold text-sm">
-                              {formatMoney2(weeklyTotal)}
+                              ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </TableCell>
                           )}
                           {!isWeekEnd && <TableCell></TableCell>}
@@ -780,19 +698,11 @@ export default function LoadApprovalTab() {
                     }
 
                     return dayLoads.map((load, loadIndex) => {
-                      const loadedMilesSource = load.actual_miles ?? load.estimated_miles;
-                      const loadedMiles = loadedMilesSource == null ? null : Math.round(loadedMilesSource);
-                      const emptyMiles = load.empty_miles == null ? null : Math.round(load.empty_miles);
-                      const totalMiles = loadedMiles != null && emptyMiles != null ? loadedMiles + emptyMiles : null;
-
-                      const ratePerMile =
-                        totalMiles != null && totalMiles > 0 && load.rate != null ? load.rate / totalMiles : null;
-
-                      const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? null;
-                      const carrierRatePerMile =
-                        loadedMiles != null && loadedMiles > 0 && carrierPay != null ? carrierPay / loadedMiles : null;
-
-                      const carrierNet = carrierPay;
+                      const totalMiles = (load.estimated_miles || 0) + (load.empty_miles || 0);
+                      const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
+                      const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
+                      const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
+                      const carrierNet = carrierPay; // Can subtract costs here
 
                       return (
                         <TableRow 
@@ -808,28 +718,24 @@ export default function LoadApprovalTab() {
                           <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>
                             {loadIndex === 0 ? format(date, "MM/dd/yyyy") : ""}
                           </TableCell>
-                          <TableCell className="text-xs">{load.customer?.name || "-"}</TableCell>
+                          <TableCell className="text-xs">{load.customer?.name || load.broker_name || "-"}</TableCell>
                           <TableCell className="text-xs">
                             {load.pickup_state} to {load.delivery_state}
                           </TableCell>
-                          <TableCell className="text-xs text-right">{formatMoney(load.rate)}</TableCell>
-                          <TableCell className="text-xs text-right">{formatMiles(emptyMiles)}</TableCell>
-                          <TableCell className="text-xs text-right">{formatMiles(loadedMiles)}</TableCell>
-                          <TableCell className="text-xs text-right">{totalMiles == null ? "-" : totalMiles}</TableCell>
-                          <TableCell className="text-xs text-right">{ratePerMile == null ? "-" : formatMoney2(ratePerMile)}</TableCell>
-                          <TableCell className="text-xs text-right">{formatMoney(load.other_charges)}</TableCell>
+                          <TableCell className="text-xs text-right">${(load.rate || 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-xs text-right">{load.empty_miles || 0}</TableCell>
+                          <TableCell className="text-xs text-right">{load.estimated_miles || 0}</TableCell>
+                          <TableCell className="text-xs text-right">{totalMiles}</TableCell>
+                          <TableCell className="text-xs text-right">${ratePerMile.toFixed(2)}</TableCell>
+                          <TableCell className="text-xs text-right">$0.00</TableCell>
                           <TableCell className="text-xs text-right text-green-600 font-medium">
-                            {carrierPay == null ? "-" : formatMoney(carrierPay)}
+                            ${carrierPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </TableCell>
-                          <TableCell className="text-xs text-right">
-                            {carrierRatePerMile == null ? "-" : formatMoney2(carrierRatePerMile)}
-                          </TableCell>
-                          <TableCell className="text-xs text-right">
-                            {carrierNet == null ? "-" : formatMoney(carrierNet)}
-                          </TableCell>
+                          <TableCell className="text-xs text-right">${carrierRatePerMile.toFixed(2)}</TableCell>
+                          <TableCell className="text-xs text-right">${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                           {isWeekEnd && loadIndex === dayLoads.length - 1 ? (
                             <TableCell className="text-right font-bold text-sm">
-                              {formatMoney2(weeklyTotal)}
+                              ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </TableCell>
                           ) : (
                             <TableCell></TableCell>
