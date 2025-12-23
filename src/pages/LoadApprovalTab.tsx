@@ -51,6 +51,7 @@ interface Load {
   reference_number: string | null;
   shipper_load_id: string | null;
   customer?: { name: string | null };
+  carrier?: { name: string | null };
   vehicle?: { vehicle_number: string | null; driver_1_id?: string | null };
   driver?: { personal_info: any };
   dispatcher?: { first_name: string | null; last_name: string | null };
@@ -140,6 +141,7 @@ export default function LoadApprovalTab() {
         .select(`
           *,
           customer:customers!customer_id(name),
+          carrier:carriers!carrier_id(name),
           vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id),
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
@@ -563,8 +565,8 @@ export default function LoadApprovalTab() {
                           <div className="text-muted-foreground">{driverName}</div>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <div className="font-medium">{load.broker_name || "-"}</div>
-                          <div className="text-muted-foreground">{load.customer?.name || "-"}</div>
+                          <div className="font-medium">{load.carrier?.name || "-"}</div>
+                          <div className="text-muted-foreground">{load.customer?.name || load.broker_name || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div className="font-medium">{load.load_number}</div>
