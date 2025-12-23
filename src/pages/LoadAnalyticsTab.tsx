@@ -302,9 +302,15 @@ export default function LoadAnalyticsTab() {
     const batchSize = 3;
     
     // Helper to fetch paginated data from a table
+    // Archive table has original_created_at instead of created_at
     const fetchFromTable = async (tableName: 'load_emails' | 'load_emails_archive', recordCount: number) => {
       const numPages = Math.ceil(recordCount / pageSize);
       const tableData: any[] = [];
+      
+      // Different select columns for each table
+      const selectColumns = tableName === 'load_emails' 
+        ? "id, received_at, created_at, parsed_data, email_source"
+        : "id, received_at, original_created_at, parsed_data, email_source";
       
       for (let i = 0; i < numPages; i += batchSize) {
         const batchQueries = Array.from(
@@ -313,7 +319,7 @@ export default function LoadAnalyticsTab() {
             const page = i + j;
             return supabase
               .from(tableName)
-              .select("id, received_at, created_at, parsed_data, email_source")
+              .select(selectColumns)
               .order("received_at", { ascending: false })
               .range(page * pageSize, (page + 1) * pageSize - 1)
               .gte("received_at", dateFilter)
@@ -325,7 +331,16 @@ export default function LoadAnalyticsTab() {
         
         for (const result of results) {
           if (result.error) throw result.error;
-          if (result.data) tableData.push(...result.data);
+          if (result.data) {
+            // Normalize archive data to have created_at field
+            if (tableName === 'load_emails_archive') {
+              result.data.forEach((item: any) => {
+                item.created_at = item.original_created_at;
+                delete item.original_created_at;
+              });
+            }
+            tableData.push(...result.data);
+          }
         }
       }
       
