@@ -49,7 +49,7 @@ interface Load {
   empty_miles: number | null;
   broker_name: string | null;
   customer?: { name: string | null };
-  vehicle?: { vehicle_number: string | null; vehicle_driver?: { personal_info: any } | { personal_info: any }[] | null };
+  vehicle?: { vehicle_number: string | null; driver_1_id?: string | null };
   driver?: { personal_info: any };
   dispatcher?: { first_name: string | null; last_name: string | null };
 }
@@ -82,6 +82,7 @@ export default function LoadApprovalTab() {
   
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
+  const [vehicleDriverInfoById, setVehicleDriverInfoById] = useState<Record<string, any>>({});
 
   useEffect(() => {
     loadCarriers();
@@ -137,7 +138,7 @@ export default function LoadApprovalTab() {
         .select(`
           *,
           customer:customers!customer_id(name),
-          vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id, vehicle_driver:applications!driver_1_id(personal_info)),
+          vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id),
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `)
@@ -151,18 +152,55 @@ export default function LoadApprovalTab() {
         loadQuery = loadQuery.eq("assigned_vehicle_id", selectedVehicle);
       }
       
-      const { data: loadData } = await loadQuery.order("pickup_date", { ascending: false });
-      
+      const { data: loadData, error: loadError } = await loadQuery.order("pickup_date", { ascending: false });
+
+      if (loadError) {
+        console.error("LoadApprovalTab load query error", loadError);
+        toast.error("Couldn't load approval loads.");
+        setLoads([]);
+        setVehicleDriverInfoById({});
+        return;
+      }
+
+      // Fetch vehicle driver info (fallback) for loads missing an assigned driver
+      const vehicleDriverIds = Array.from(
+        new Set(
+          (loadData || [])
+            .map((l: any) => l?.vehicle?.driver_1_id)
+            .filter(Boolean)
+        )
+      ) as string[];
+
+      if (vehicleDriverIds.length > 0) {
+        const { data: driverApps, error: driverAppsError } = await supabase
+          .from("applications")
+          .select("id, personal_info")
+          .in("id", vehicleDriverIds);
+
+        if (driverAppsError) {
+          console.error("LoadApprovalTab driver lookup error", driverAppsError);
+          setVehicleDriverInfoById({});
+        } else {
+          const map: Record<string, any> = {};
+          (driverApps || []).forEach((d: any) => {
+            map[d.id] = d.personal_info;
+          });
+          setVehicleDriverInfoById(map);
+        }
+      } else {
+        setVehicleDriverInfoById({});
+      }
+
       // Filter loads: ONLY show loads from vehicles that have requires_load_approval enabled
       // and that haven't been approved yet
       const filteredLoads = (loadData || []).filter((load: any) => {
         const isFromApprovalRequiredVehicle = vehiclesRequiringApproval.includes(load.assigned_vehicle_id);
         const needsCarrierApproval = load.carrier_approved !== true;
-        
+
         return isFromApprovalRequiredVehicle && needsCarrierApproval;
       });
-      
-      setLoads(filteredLoads as ApprovalLoad[]);
+
+      setLoads(filteredLoads as unknown as ApprovalLoad[]);
     } finally {
       setLoading(false);
     }
@@ -473,15 +511,13 @@ export default function LoadApprovalTab() {
                     const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
                     const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
                     const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
-                    // Try to get driver name from load's assigned driver first, then fall back to vehicle's driver
+                    // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
                     const loadDriverInfo = load.driver?.personal_info;
-                    const vehicleDriver = load.vehicle?.vehicle_driver;
-                    const vehicleDriverInfo = Array.isArray(vehicleDriver) 
-                      ? vehicleDriver[0]?.personal_info 
-                      : vehicleDriver?.personal_info;
+                    const vehicleDriverId = (load.vehicle as any)?.driver_1_id as string | undefined;
+                    const vehicleDriverInfo = vehicleDriverId ? vehicleDriverInfoById[vehicleDriverId] : undefined;
                     const driverInfo = loadDriverInfo || vehicleDriverInfo;
-                    
+
                     if (driverInfo) {
                       const firstName = driverInfo.first_name || driverInfo.firstName || "";
                       const lastName = driverInfo.last_name || driverInfo.lastName || "";
