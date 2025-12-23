@@ -91,10 +91,10 @@ serve(async (req) => {
     }
 
     const allJobs = [
-      { name: 'email_queue_cleanup', rpc: 'cleanup_email_queue' },
-      { name: 'pubsub_tracking_cleanup', rpc: 'cleanup_pubsub_tracking' },
-      { name: 'vehicle_location_cleanup', rpc: 'cleanup_vehicle_location_history' },
-      { name: 'email_archive', rpc: 'archive_old_load_emails' }
+      { name: 'email_queue_cleanup', rpc: 'cleanup_email_queue', batched: false },
+      { name: 'pubsub_tracking_cleanup', rpc: 'cleanup_pubsub_tracking', batched: false },
+      { name: 'vehicle_location_cleanup', rpc: 'cleanup_vehicle_location_history', batched: false },
+      { name: 'email_archive', rpc: 'archive_old_load_emails_batched', batched: true }
     ];
 
     // Filter jobs if specific ones requested
@@ -108,11 +108,38 @@ serve(async (req) => {
     const results: CleanupResult[] = [];
     
     for (const job of jobsToRun) {
-      const result = await runCleanupJob(job.name, job.rpc);
-      results.push(result);
-      
-      // Log each result to the database
-      await logCleanupResult(result);
+      // For batched jobs, run multiple iterations
+      if (job.batched) {
+        let totalAffected = 0;
+        let batchCount = 0;
+        const maxBatches = 10; // Max 10 batches per run to avoid timeout
+        
+        while (batchCount < maxBatches) {
+          const result = await runCleanupJob(`${job.name}_batch_${batchCount + 1}`, job.rpc);
+          
+          if (!result.success || result.records_affected === 0) {
+            break;
+          }
+          
+          totalAffected += result.records_affected;
+          batchCount++;
+        }
+        
+        const finalResult: CleanupResult = {
+          job_name: job.name,
+          records_affected: totalAffected,
+          success: true,
+          duration_ms: 0
+        };
+        
+        results.push(finalResult);
+        await logCleanupResult(finalResult);
+        console.log(`✅ ${job.name} completed: ${totalAffected} records in ${batchCount} batches`);
+      } else {
+        const result = await runCleanupJob(job.name, job.rpc);
+        results.push(result);
+        await logCleanupResult(result);
+      }
     }
 
     // Calculate summary
