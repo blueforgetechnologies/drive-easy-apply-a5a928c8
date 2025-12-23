@@ -137,7 +137,7 @@ export default function LoadApprovalTab() {
         .select(`
           *,
           customer:customers!customer_id(name),
-          vehicle:vehicles!assigned_vehicle_id(vehicle_number),
+          vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id),
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `)
@@ -473,18 +473,22 @@ export default function LoadApprovalTab() {
                     const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
                     const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
                     const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
-                    const driverName = load.driver?.personal_info?.first_name 
-                      ? `${load.driver.personal_info.first_name} ${load.driver.personal_info.last_name || ""}`
-                      : "-";
+                    // Try to get driver name from load's assigned driver first, then fall back to vehicle's driver
+                    let driverName = "-";
+                    if (load.driver?.personal_info?.first_name || load.driver?.personal_info?.firstName) {
+                      const firstName = load.driver.personal_info.first_name || load.driver.personal_info.firstName || "";
+                      const lastName = load.driver.personal_info.last_name || load.driver.personal_info.lastName || "";
+                      driverName = `${firstName} ${lastName}`.trim();
+                    }
 
                     return (
                       <TableRow key={load.id} className="hover:bg-muted/30">
-                        <TableCell>
+                        <TableCell className="min-w-[100px]">
                           <Badge 
                             variant="outline" 
-                            className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs"
+                            className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs whitespace-nowrap"
                           >
-                            Ready for audit
+                            Pending
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
