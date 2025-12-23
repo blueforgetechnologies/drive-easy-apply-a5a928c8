@@ -49,7 +49,7 @@ interface Load {
   empty_miles: number | null;
   broker_name: string | null;
   customer?: { name: string | null };
-  vehicle?: { vehicle_number: string | null };
+  vehicle?: { vehicle_number: string | null; vehicle_driver?: { personal_info: any } | { personal_info: any }[] | null };
   driver?: { personal_info: any };
   dispatcher?: { first_name: string | null; last_name: string | null };
 }
@@ -137,7 +137,7 @@ export default function LoadApprovalTab() {
         .select(`
           *,
           customer:customers!customer_id(name),
-          vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id),
+          vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id, vehicle_driver:applications!driver_1_id(personal_info)),
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
         `)
@@ -475,10 +475,17 @@ export default function LoadApprovalTab() {
                     const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
                     // Try to get driver name from load's assigned driver first, then fall back to vehicle's driver
                     let driverName = "-";
-                    if (load.driver?.personal_info?.first_name || load.driver?.personal_info?.firstName) {
-                      const firstName = load.driver.personal_info.first_name || load.driver.personal_info.firstName || "";
-                      const lastName = load.driver.personal_info.last_name || load.driver.personal_info.lastName || "";
-                      driverName = `${firstName} ${lastName}`.trim();
+                    const loadDriverInfo = load.driver?.personal_info;
+                    const vehicleDriver = load.vehicle?.vehicle_driver;
+                    const vehicleDriverInfo = Array.isArray(vehicleDriver) 
+                      ? vehicleDriver[0]?.personal_info 
+                      : vehicleDriver?.personal_info;
+                    const driverInfo = loadDriverInfo || vehicleDriverInfo;
+                    
+                    if (driverInfo) {
+                      const firstName = driverInfo.first_name || driverInfo.firstName || "";
+                      const lastName = driverInfo.last_name || driverInfo.lastName || "";
+                      driverName = `${firstName} ${lastName}`.trim() || "-";
                     }
 
                     return (
