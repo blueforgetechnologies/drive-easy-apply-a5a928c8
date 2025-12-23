@@ -51,6 +51,7 @@ interface Load {
   reference_number: string | null;
   shipper_load_id: string | null;
   customer?: { name: string | null };
+  carrier?: { name: string | null };
   vehicle?: { vehicle_number: string | null; driver_1_id?: string | null };
   driver?: { personal_info: any };
   dispatcher?: { first_name: string | null; last_name: string | null };
@@ -140,6 +141,7 @@ export default function LoadApprovalTab() {
         .select(`
           *,
           customer:customers!customer_id(name),
+          carrier:carriers!carrier_id(name),
           vehicle:vehicles!assigned_vehicle_id(vehicle_number, driver_1_id),
           driver:applications!assigned_driver_id(personal_info),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name)
@@ -509,10 +511,12 @@ export default function LoadApprovalTab() {
                       </TableCell>
                     </TableRow>
                   ) : paginatedLoads.map(load => {
-                    const totalMiles = (load.estimated_miles || 0) + (load.empty_miles || 0);
-                    const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
+                    const loadedMiles = Math.round(load.estimated_miles || 0);
+                    const emptyMiles = Math.round(load.empty_miles || 0);
+                    const totalMiles = loadedMiles + emptyMiles;
+                    const ratePerMile = loadedMiles > 0 ? (load.rate || 0) / loadedMiles : 0;
                     const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
-                    const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
+                    const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
                     const loadDriverInfo = load.driver?.personal_info;
@@ -541,7 +545,7 @@ export default function LoadApprovalTab() {
                           <div className="text-muted-foreground">{driverName}</div>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <div className="font-medium">{load.broker_name || "-"}</div>
+                          <div className="font-medium">{load.carrier?.name || "-"}</div>
                           <div className="text-muted-foreground">{load.customer?.name || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
@@ -557,8 +561,8 @@ export default function LoadApprovalTab() {
                           <div className="text-muted-foreground">{load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy") : "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          <div>{load.empty_miles || 0}</div>
-                          <div className="text-muted-foreground">{load.estimated_miles || 0}</div>
+                          <div>{Math.round(load.empty_miles || 0)}</div>
+                          <div className="text-muted-foreground">{Math.round(load.estimated_miles || 0)}</div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
                           ${ratePerMile.toFixed(2)}
