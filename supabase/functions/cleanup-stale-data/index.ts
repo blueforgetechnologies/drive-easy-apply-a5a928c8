@@ -112,7 +112,7 @@ serve(async (req) => {
       if (job.batched) {
         let totalAffected = 0;
         let batchCount = 0;
-        const maxBatches = 10; // Max 10 batches per run to avoid timeout
+        const maxBatches = 50; // Max 50 batches per run (50k records) - edge functions can run ~150s
         
         while (batchCount < maxBatches) {
           const result = await runCleanupJob(`${job.name}_batch_${batchCount + 1}`, job.rpc);
