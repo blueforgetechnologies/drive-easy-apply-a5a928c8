@@ -234,7 +234,7 @@ export default function LoadsTab() {
   useEffect(() => {
     loadData();
     loadDriversAndVehicles();
-  }, [filter]);
+  }, []);
 
   // Set default carrier in form when loaded
   useEffect(() => {
@@ -334,7 +334,8 @@ export default function LoadsTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      let query = supabase
+      // Always fetch ALL loads to get accurate counts for tabs
+      const query = supabase
         .from("loads" as any)
         .select(`
           *,
@@ -344,14 +345,10 @@ export default function LoadsTab() {
           customer:customers!customer_id(name),
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name),
           load_owner:dispatchers!load_owner_id(first_name, last_name)
-        `);
+        `)
+        .order("created_at", { ascending: false });
       
-      // Only filter by status if not "all"
-      if (filter !== "all") {
-        query = query.eq("status", filter);
-      }
-      
-      const { data, error } = await query.order("created_at", { ascending: false });
+      const { data, error } = await query;
 
       if (error) {
         toast.error("Error loading loads");
@@ -821,6 +818,9 @@ export default function LoadsTab() {
 
   const filteredLoads = loads
     .filter((load) => {
+      // Status filter from URL param
+      const matchesStatus = filter === "all" || load.status === filter;
+      
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = (
         (load.load_number || "").toLowerCase().includes(searchLower) ||
@@ -850,7 +850,7 @@ export default function LoadsTab() {
         }
       }
       
-      return matchesSearch && matchesDate;
+      return matchesStatus && matchesSearch && matchesDate;
     })
     // Apply sorting
     .sort((a, b) => {
