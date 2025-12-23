@@ -3888,6 +3888,10 @@ export type Database = {
     }
     Functions: {
       archive_old_load_emails: { Args: never; Returns: number }
+      archive_old_load_emails_batched: {
+        Args: { batch_size?: number }
+        Returns: number
+      }
       can_manage_roles: { Args: { _user_id: string }; Returns: boolean }
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
