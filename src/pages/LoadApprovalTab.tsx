@@ -509,10 +509,14 @@ export default function LoadApprovalTab() {
                       </TableCell>
                     </TableRow>
                   ) : paginatedLoads.map(load => {
-                    const totalMiles = (load.estimated_miles || 0) + (load.empty_miles || 0);
-                    const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
-                    const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
-                    const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
+                    const loadedMiles = load.estimated_miles || 0;
+                    const emptyMiles = load.empty_miles || 0;
+                    const customerRate = (load as any).customer_rate || load.rate || 0;
+                    const customerRatePerMile = loadedMiles > 0 ? customerRate / loadedMiles : 0;
+                    const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+                    const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
+                    const payload = (load as any).cargo_weight || 0;
+                    
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
                     const loadDriverInfo = load.driver?.personal_info;
@@ -526,14 +530,32 @@ export default function LoadApprovalTab() {
                       driverName = `${firstName} ${lastName}`.trim() || "-";
                     }
 
+                    // Get status badge styling based on actual load status
+                    const getStatusBadge = (status: string) => {
+                      const statusLower = status?.toLowerCase() || "";
+                      if (statusLower.includes("completed") || statusLower.includes("delivered")) {
+                        return { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-500/30" };
+                      }
+                      if (statusLower.includes("transit") || statusLower.includes("dispatched")) {
+                        return { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-500/30" };
+                      }
+                      if (statusLower.includes("cancelled")) {
+                        return { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-500/30" };
+                      }
+                      return { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/30" };
+                    };
+
+                    const statusStyle = getStatusBadge(load.status);
+                    const displayStatus = load.status?.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()) || "Pending";
+
                     return (
                       <TableRow key={load.id} className="hover:bg-muted/30">
                         <TableCell className="min-w-[100px]">
                           <Badge 
                             variant="outline" 
-                            className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs whitespace-nowrap"
+                            className={cn(statusStyle.bg, statusStyle.text, statusStyle.border, "text-xs whitespace-nowrap")}
                           >
-                            Pending
+                            {displayStatus}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
@@ -549,27 +571,27 @@ export default function LoadApprovalTab() {
                           <div className="text-muted-foreground">{(load as any).reference_number || (load as any).shipper_load_id || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <div>{load.pickup_city}, {load.pickup_state}</div>
-                          <div className="text-muted-foreground">{load.delivery_city}, {load.delivery_state}</div>
+                          <div>{load.pickup_city}{load.pickup_state ? `, ${load.pickup_state}` : ""}</div>
+                          <div className="text-muted-foreground">{load.delivery_city}{load.delivery_state ? `, ${load.delivery_state}` : ""}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div>{load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy") : "-"}</div>
                           <div className="text-muted-foreground">{load.delivery_date ? format(new Date(load.delivery_date), "MM/dd/yy") : "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          <div>{load.empty_miles || 0}</div>
-                          <div className="text-muted-foreground">{load.estimated_miles || 0}</div>
+                          <div>{Math.round(emptyMiles)}</div>
+                          <div className="text-muted-foreground">{Math.round(loadedMiles)}</div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          ${ratePerMile.toFixed(2)}
+                          ${customerRatePerMile.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          ${(load.rate || 0).toLocaleString()}
+                          {payload > 0 ? `${Number(payload).toLocaleString()} lbs` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
                           <Input
                             type="number"
-                            value={carrierRates[load.id] ?? load.rate ?? ""}
+                            value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
                             onChange={(e) => handleRateChange(load.id, e.target.value)}
                             className="w-24 h-7 text-xs text-right text-green-600 font-medium"
                             placeholder="0.00"
