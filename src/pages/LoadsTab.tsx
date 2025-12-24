@@ -13,12 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck, History } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { PDFImageViewer } from "@/components/PDFImageViewer";
+import { CarrierRateHistoryDialog } from "@/components/CarrierRateHistoryDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +111,8 @@ export default function LoadsTab() {
   const [selectedDocument, setSelectedDocument] = useState<{ url: string; name: string; type: string } | null>(null);
   const [loadApprovalMode, setLoadApprovalMode] = useState(false);
   const [vehiclesRequiringApproval, setVehiclesRequiringApproval] = useState<string[]>([]);
+  const [rateHistoryDialogOpen, setRateHistoryDialogOpen] = useState(false);
+  const [selectedLoadForHistory, setSelectedLoadForHistory] = useState<{ id: string; loadNumber: string } | null>(null);
   const ROWS_PER_PAGE = 14;
   
   // Status priority order matching the tab order - action_needed first!
@@ -1966,11 +1969,23 @@ export default function LoadsTab() {
                                                        approvedPayload !== undefined &&
                                                        rate !== approvedPayload;
                                 
+                                const handleCarrierPayClick = (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  setSelectedLoadForHistory({ id: load.id, loadNumber: load.load_number });
+                                  setRateHistoryDialogOpen(true);
+                                };
+                                
                                 if (vehicleRequiresApproval && !isApproved) {
                                   // Vehicle requires approval but not yet approved - show $0 with LA badge
                                   return (
                                     <div className="flex items-center gap-1 text-xs font-semibold">
-                                      <span className="text-orange-600 font-bold">$0.00</span>
+                                      <span 
+                                        className="text-orange-600 font-bold cursor-pointer hover:underline"
+                                        onClick={handleCarrierPayClick}
+                                        title="View rate history"
+                                      >
+                                        $0.00
+                                      </span>
                                       <Badge 
                                         variant="outline" 
                                         className="text-[8px] px-0.5 py-0 bg-amber-50 text-amber-700 border-amber-300 scale-[0.85]"
@@ -1985,7 +2000,11 @@ export default function LoadsTab() {
                                   // Payload changed after approval - show strikethrough rate with LA badge
                                   return (
                                     <div className="flex items-center gap-1 text-xs font-semibold">
-                                      <span className="text-red-600 font-bold line-through">
+                                      <span 
+                                        className="text-red-600 font-bold line-through cursor-pointer hover:underline"
+                                        onClick={handleCarrierPayClick}
+                                        title="View rate history"
+                                      >
                                         ${carrierRate?.toFixed(2) || "0.00"}
                                       </span>
                                       <Badge 
@@ -2001,14 +2020,22 @@ export default function LoadsTab() {
                                 } else if (vehicleRequiresApproval && isApproved && carrierRate) {
                                   // Approved - show the approved carrier rate
                                   return (
-                                    <div className="text-xs font-semibold text-green-600">
+                                    <div 
+                                      className="text-xs font-semibold text-green-600 cursor-pointer hover:underline"
+                                      onClick={handleCarrierPayClick}
+                                      title="View rate history"
+                                    >
                                       ${carrierRate.toFixed(2)}
                                     </div>
                                   );
                                 } else {
                                   // No approval required - show payload/rate
                                   return (
-                                    <div className="text-xs font-semibold text-green-600">
+                                    <div 
+                                      className="text-xs font-semibold text-green-600 cursor-pointer hover:underline"
+                                      onClick={handleCarrierPayClick}
+                                      title="View rate history"
+                                    >
                                       {rate ? `$${rate.toFixed(2)}` : "-"}
                                     </div>
                                   );
@@ -2134,6 +2161,16 @@ export default function LoadsTab() {
         </div>
       </DialogContent>
     </Dialog>
+    
+    {/* Carrier Rate History Dialog */}
+    {selectedLoadForHistory && (
+      <CarrierRateHistoryDialog
+        open={rateHistoryDialogOpen}
+        onOpenChange={setRateHistoryDialogOpen}
+        loadId={selectedLoadForHistory.id}
+        loadNumber={selectedLoadForHistory.loadNumber}
+      />
+    )}
     </>
   );
 }

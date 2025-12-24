@@ -301,6 +301,47 @@ export type Database = {
         }
         Relationships: []
       }
+      carrier_rate_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_name: string | null
+          id: string
+          load_id: string
+          new_rate: number
+          notes: string | null
+          old_rate: number | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          id?: string
+          load_id: string
+          new_rate: number
+          notes?: string | null
+          old_rate?: number | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          id?: string
+          load_id?: string
+          new_rate?: number
+          notes?: string | null
+          old_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carrier_rate_history_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       carriers: {
         Row: {
           address: string | null

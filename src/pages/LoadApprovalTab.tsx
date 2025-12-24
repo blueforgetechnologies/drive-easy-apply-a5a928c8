@@ -355,7 +355,25 @@ export default function LoadApprovalTab() {
     const isCurrentlyApproved = carrierPayApproved[load.id] || load.carrier_approved;
     const newApprovalStatus = !isCurrentlyApproved;
     
+    // Get old rate for history tracking
+    const oldRate = load.carrier_rate ?? null;
+    
     try {
+      // Get current user for history tracking
+      const { data: { user } } = await supabase.auth.getUser();
+      let changedByName = "Unknown";
+      
+      if (user) {
+        // Try to get user's name from profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", user.id)
+          .single();
+        
+        changedByName = profile?.full_name || profile?.email || user.email || "Unknown";
+      }
+      
       const { error } = await supabase
         .from("loads")
         .update({
@@ -366,6 +384,24 @@ export default function LoadApprovalTab() {
         .eq("id", load.id);
 
       if (error) throw error;
+      
+      // Save rate change to history when approving (not when removing approval)
+      if (newApprovalStatus) {
+        const { error: historyError } = await supabase
+          .from("carrier_rate_history")
+          .insert({
+            load_id: load.id,
+            old_rate: oldRate,
+            new_rate: carrierPay,
+            changed_by: user?.id,
+            changed_by_name: changedByName,
+            notes: oldRate !== null ? `Rate changed from $${oldRate.toLocaleString()} to $${carrierPay.toLocaleString()}` : "Initial rate approval"
+          });
+        
+        if (historyError) {
+          console.error("Error saving rate history:", historyError);
+        }
+      }
       
       setCarrierPayApproved(prev => ({
         ...prev,
