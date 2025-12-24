@@ -3051,6 +3051,7 @@ export type Database = {
           phone_secondary: string | null
           state: string | null
           status: string | null
+          timezone: string | null
           updated_at: string | null
           zip: string | null
         }
@@ -3067,6 +3068,7 @@ export type Database = {
           phone_secondary?: string | null
           state?: string | null
           status?: string | null
+          timezone?: string | null
           updated_at?: string | null
           zip?: string | null
         }
@@ -3083,6 +3085,7 @@ export type Database = {
           phone_secondary?: string | null
           state?: string | null
           status?: string | null
+          timezone?: string | null
           updated_at?: string | null
           zip?: string | null
         }
