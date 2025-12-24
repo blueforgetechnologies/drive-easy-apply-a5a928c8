@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2 } from "lucide-react";
-import { format, subDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
+import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -226,8 +226,9 @@ export default function LoadApprovalTab() {
 
   // Get 30 days calendar data - recalculate when loads change to stay fresh
   const thirtyDaysRange = useMemo(() => {
-    const end = startOfDay(toZonedTime(new Date(), timezone));
-    const start = subDays(end, 29);
+    const today = startOfDay(toZonedTime(new Date(), timezone));
+    const start = subDays(today, 30);
+    const end = addDays(today, 3);
     return eachDayOfInterval({ start, end });
   }, [loads, timezone]);
 
