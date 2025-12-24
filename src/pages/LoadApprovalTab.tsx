@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2 } from "lucide-react";
 import { format, subDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -71,10 +71,7 @@ export default function LoadApprovalTab() {
   const [loading, setLoading] = useState(true);
   const { timezone } = useUserTimezone();
 
-  const todayKey = useMemo(
-    () => format(startOfDay(toZonedTime(new Date(), timezone)), "yyyy-MM-dd"),
-    [timezone],
-  );
+  const todayKey = useMemo(() => formatInTimeZone(new Date(), timezone, "yyyy-MM-dd"), [timezone]);
 
   // Carrier state
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -251,7 +248,8 @@ export default function LoadApprovalTab() {
     
     filteredLoads.forEach(load => {
       if (load.pickup_date) {
-        const dateKey = format(new Date(load.pickup_date), "yyyy-MM-dd");
+        const raw = String(load.pickup_date);
+        const dateKey = raw.length >= 10 ? raw.slice(0, 10) : format(new Date(raw), "yyyy-MM-dd");
         if (!grouped[dateKey]) grouped[dateKey] = [];
         grouped[dateKey].push(load);
       }
@@ -729,9 +727,9 @@ export default function LoadApprovalTab() {
                 </TableHeader>
                 <TableBody>
                   {thirtyDaysRange.map((date, index) => {
-                    const dateKey = format(date, "yyyy-MM-dd");
+                    const dateKey = formatInTimeZone(date, timezone, "yyyy-MM-dd");
                     const dayLoads = loadsByDate[dateKey] || [];
-                    const dayName = format(date, "EEE");
+                    const dayName = formatInTimeZone(date, timezone, "EEE");
                     const isWeekendDay = isWeekend(date);
                     const isWeekEnd = date.getDay() === 0; // Sunday
                     const isToday = dateKey === todayKey;
@@ -747,13 +745,13 @@ export default function LoadApprovalTab() {
                         <TableRow 
                           key={dateKey} 
                           className={cn(
-                            isToday && "bg-none bg-yellow-100 dark:bg-yellow-900/30",
+                            isToday && "!bg-none !bg-warning/35 dark:!bg-warning/25",
                             isWeekendDay && !isToday && "bg-none bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && "border-b-2"
                           )}
                         >
                           <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>{dayName}</TableCell>
-                          <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>{format(date, "MM/dd/yyyy")}</TableCell>
+                          <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>{formatInTimeZone(date, timezone, "MM/dd/yyyy")}</TableCell>
                           <TableCell colSpan={11}></TableCell>
                           {isWeekEnd && (
                             <TableCell className="text-right font-bold text-sm">
@@ -778,7 +776,7 @@ export default function LoadApprovalTab() {
                         <TableRow 
                           key={`${dateKey}-${load.id}`}
                           className={cn(
-                            isToday && !isSelectedLoad && "bg-none bg-yellow-100 dark:bg-yellow-900/30",
+                            isToday && !isSelectedLoad && "!bg-none !bg-warning/55 dark:!bg-warning/35",
                             isWeekendDay && !isToday && !isSelectedLoad && "bg-none bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && loadIndex === dayLoads.length - 1 && "border-b-2",
                             isSelectedLoad && "!bg-none !bg-green-200 dark:!bg-green-800/40 ring-2 ring-green-500/50 ring-inset"
@@ -788,7 +786,7 @@ export default function LoadApprovalTab() {
                             {loadIndex === 0 ? dayName : ""}
                           </TableCell>
                           <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>
-                            {loadIndex === 0 ? format(date, "MM/dd/yyyy") : ""}
+                            {loadIndex === 0 ? formatInTimeZone(date, timezone, "MM/dd/yyyy") : ""}
                           </TableCell>
                           <TableCell className="text-xs">{load.customer?.name || load.broker_name || "-"}</TableCell>
                           <TableCell className="text-xs">
