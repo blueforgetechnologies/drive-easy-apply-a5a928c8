@@ -726,7 +726,8 @@ export default function LoadApprovalTab() {
                     const dayName = format(date, "EEE");
                     const isWeekendDay = isWeekend(date);
                     const isWeekEnd = date.getDay() === 0; // Sunday
-                    const isToday = isSameDay(date, new Date());
+                    const rangeEnd = thirtyDaysRange[thirtyDaysRange.length - 1] || new Date();
+                    const isToday = isSameDay(date, rangeEnd);
                     
                     // Calculate running total for the week
                     let weeklyTotal = 0;
