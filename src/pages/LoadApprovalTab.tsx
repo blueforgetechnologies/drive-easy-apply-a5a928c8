@@ -409,18 +409,6 @@ export default function LoadApprovalTab() {
               Back to Loads
             </Button>
             
-            <button
-              onClick={() => handleCarrierSelect("all")}
-              className={cn(
-                "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
-                selectedCarrier === "all"
-                  ? "btn-glossy-primary text-white"
-                  : "btn-glossy text-muted-foreground"
-              )}
-            >
-              All Carriers
-            </button>
-            
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
