@@ -638,13 +638,13 @@ export default function LoadApprovalTab() {
                           {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <span className="text-green-600 font-bold">$</span>
+                          <div className="relative w-24">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-green-600 font-bold text-xs">$</span>
                             <Input
                               type="number"
                               value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
                               onChange={(e) => handleRateChange(load.id, e.target.value)}
-                              className="w-24 h-7 text-xs text-right text-green-600 font-bold"
+                              className="w-24 h-7 text-xs text-right text-green-600 font-bold pl-5"
                               placeholder="0.00"
                             />
                           </div>
