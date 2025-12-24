@@ -1829,6 +1829,9 @@ export default function LoadsTab() {
                         <div>Payload</div>
                       </TableHead>
                       <TableHead className="text-primary text-xs py-2 px-2">
+                        <div>Carr Pay</div>
+                      </TableHead>
+                      <TableHead className="text-primary text-xs py-2 px-2">
                         <div>Load Owner</div>
                         <div>Dispatcher</div>
                       </TableHead>
@@ -1942,6 +1945,11 @@ export default function LoadsTab() {
                               </div>
                             </TableCell>
                             <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                              <div className="text-xs font-semibold text-green-600">
+                                {(load as any).carrier_rate ? `$${(load as any).carrier_rate.toFixed(2)}` : "-"}
+                              </div>
+                            </TableCell>
+                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
                               <div className="text-xs">
                                 {load.load_owner?.first_name && load.load_owner?.last_name
                                   ? `${load.load_owner.first_name} ${load.load_owner.last_name}`
@@ -1993,7 +2001,7 @@ export default function LoadsTab() {
                           {/* Red separator line after last action_needed load */}
                           {isLastActionNeeded && (
                             <TableRow className="h-1 bg-transparent border-0 p-0">
-                              <TableCell colSpan={13} className="p-0 border-0">
+                              <TableCell colSpan={14} className="p-0 border-0">
                                 <div className="h-1 bg-red-500 dark:bg-red-600 shadow-md shadow-red-500/50" />
                               </TableCell>
                             </TableRow>
