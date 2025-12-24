@@ -495,8 +495,8 @@ export default function LoadApprovalTab() {
                             isFirst && "rounded-tr-md",
                             isLast && "rounded-br-md border-b",
                             selectedCarrier === carrier.id
-                              ? "btn-glossy-primary text-white border-primary/30"
-                              : "bg-gradient-to-b from-rose-400 to-rose-500 text-white border-rose-400/50 shadow-sm"
+                              ? "btn-glossy-primary text-red-500 border-primary/30"
+                              : "btn-glossy text-red-600 border-gray-300/50"
                           )}
                         >
                           {pendingCount}
