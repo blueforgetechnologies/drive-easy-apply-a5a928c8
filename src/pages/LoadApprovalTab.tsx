@@ -694,55 +694,51 @@ export default function LoadApprovalTab() {
                           {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center justify-end gap-1">
                             {/* Show old approved rate with strikethrough if payload changed */}
                             {payloadChanged && previousApprovedRate !== null && (
-                              <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 rounded">
-                                <span className="text-xs font-bold text-red-600 line-through">
-                                  ${previousApprovedRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
+                              <span className="text-xs font-bold text-red-600 line-through bg-orange-100 px-1 py-0.5 rounded">
+                                ${previousApprovedRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </span>
                             )}
                             {/* Input for new rate */}
-                            <div className="flex items-center gap-1">
-                              <div className="relative w-24">
-                                <span className={cn(
-                                  "absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm",
-                                  (carrierPayApproved[load.id] && !payloadChanged) ? "text-green-600" : "text-red-600"
-                                )}>$</span>
-                                <Input
-                                  type="number"
-                                  value={carrierRates[load.id] ?? (payloadChanged ? "" : (load.carrier_rate ?? load.rate ?? ""))}
-                                  onChange={(e) => handleRateChange(load.id, e.target.value)}
-                                  className={cn(
-                                    "w-24 h-7 text-sm text-right font-bold pl-5 !shadow-none !bg-none",
-                                    payloadChanged
-                                      ? "!bg-orange-50 text-red-600"
-                                      : (carrierPayApproved[load.id] ?? load.carrier_approved)
-                                        ? "!bg-green-50 text-green-600" 
-                                        : "!bg-orange-50 text-red-600"
-                                  )}
-                                  placeholder={payloadChanged ? "New rate" : "0.00"}
-                                />
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCarrierPayApproval(load);
-                                }}
+                            <div className="relative w-24">
+                              <span className={cn(
+                                "absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm",
+                                (carrierPayApproved[load.id] && !payloadChanged) ? "text-green-600" : "text-red-600"
+                              )}>$</span>
+                              <Input
+                                type="number"
+                                value={carrierRates[load.id] ?? (payloadChanged ? "" : (load.carrier_rate ?? load.rate ?? ""))}
+                                onChange={(e) => handleRateChange(load.id, e.target.value)}
                                 className={cn(
-                                  "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
-                                  (carrierPayApproved[load.id] && !payloadChanged)
-                                    ? "bg-green-500 hover:bg-green-600"
-                                    : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
+                                  "w-24 h-7 text-sm text-right font-bold pl-5 !shadow-none !bg-none",
+                                  payloadChanged
+                                    ? "!bg-orange-50 text-red-600"
+                                    : (carrierPayApproved[load.id] ?? load.carrier_approved)
+                                      ? "!bg-green-50 text-green-600" 
+                                      : "!bg-orange-50 text-red-600"
                                 )}
-                              >
-                                <Check className={cn(
-                                  "h-4 w-4",
-                                  (carrierPayApproved[load.id] && !payloadChanged) ? "text-white" : "text-black"
-                                )} />
-                              </button>
+                                placeholder={payloadChanged ? "New rate" : "0.00"}
+                              />
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCarrierPayApproval(load);
+                              }}
+                              className={cn(
+                                "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
+                                (carrierPayApproved[load.id] && !payloadChanged)
+                                  ? "bg-green-500 hover:bg-green-600"
+                                  : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
+                              )}
+                            >
+                              <Check className={cn(
+                                "h-4 w-4",
+                                (carrierPayApproved[load.id] && !payloadChanged) ? "text-white" : "text-black"
+                              )} />
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
