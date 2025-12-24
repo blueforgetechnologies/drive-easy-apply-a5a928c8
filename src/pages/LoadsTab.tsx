@@ -1950,7 +1950,7 @@ export default function LoadsTab() {
                                   : "N/A"}
                               </div>
                             </TableCell>
-                            <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
+                            <TableCell className="py-2 px-2">
                               {(() => {
                                 const vehicleRequiresApproval = (load.vehicle as any)?.requires_load_approval;
                                 const isApproved = (load as any).carrier_approved === true;
@@ -1961,11 +1961,12 @@ export default function LoadsTab() {
                                                        approvedPayload !== undefined &&
                                                        rate !== approvedPayload;
                                 
-                                // If approved and payload hasn't changed, show green like Carrier Pay
-                                const isFullyApproved = vehicleRequiresApproval && isApproved && !payloadChanged;
+                                // If approved and payload hasn't changed, use normal text color
+                                // If action needed (not approved or payload changed), use red
+                                const needsAction = vehicleRequiresApproval && (!isApproved || payloadChanged);
                                 
                                 return (
-                                  <div className={`text-xs font-semibold ${isFullyApproved ? 'text-green-600' : ''}`}>
+                                  <div className={`text-xs font-semibold ${needsAction ? 'text-red-700 dark:text-red-300' : ''}`}>
                                     {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
                                   </div>
                                 );
