@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2 } from "lucide-react";
-import { format, subDays, eachDayOfInterval, isSameDay, isWeekend, startOfWeek, endOfWeek } from "date-fns";
+import { format, subDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -68,8 +69,13 @@ interface ApprovalLoad extends Load {
 export default function LoadApprovalTab() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const { getTodayInTimezone } = useUserTimezone();
-  
+  const { timezone } = useUserTimezone();
+
+  const todayKey = useMemo(
+    () => format(startOfDay(toZonedTime(new Date(), timezone)), "yyyy-MM-dd"),
+    [timezone],
+  );
+
   // Carrier state
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [selectedCarrier, setSelectedCarrier] = useState<string>("all");
@@ -223,10 +229,10 @@ export default function LoadApprovalTab() {
 
   // Get 30 days calendar data - recalculate when loads change to stay fresh
   const thirtyDaysRange = useMemo(() => {
-    const now = new Date();
-    const start = subDays(now, 29);
-    return eachDayOfInterval({ start, end: now });
-  }, [loads]);
+    const end = startOfDay(toZonedTime(new Date(), timezone));
+    const start = subDays(end, 29);
+    return eachDayOfInterval({ start, end });
+  }, [loads, timezone]);
 
   // Get the selected load object
   const selectedLoad = useMemo(() => {
