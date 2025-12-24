@@ -735,7 +735,18 @@ export default function LoadDetail() {
           <div className="grid grid-cols-7 gap-1.5">
             <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Rate</p>
-              <p className="text-sm font-bold text-green-600">${load.rate || 0}</p>
+              <div className="flex items-center justify-center">
+                <span className="text-sm font-bold text-green-600">$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={load.rate ?? ""}
+                  onChange={(e) => updateField("rate", e.target.value ? Number(e.target.value) : null)}
+                  onBlur={handleSave}
+                  className="h-6 w-20 text-sm font-bold text-green-600 text-center border-0 bg-transparent p-0 focus:ring-1 focus:ring-primary"
+                  placeholder="0"
+                />
+              </div>
             </div>
             <div className={`rounded-md px-2 py-1.5 text-center ${!load.empty_miles ? 'bg-red-100 dark:bg-red-900/30' : 'bg-muted/50'}`}>
               <p className={`text-[10px] uppercase tracking-wide ${!load.empty_miles ? 'text-red-500' : 'text-muted-foreground'}`}>DH Miles</p>
