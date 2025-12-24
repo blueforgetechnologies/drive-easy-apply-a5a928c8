@@ -130,31 +130,27 @@ export default function LoadApprovalTab() {
       .eq("requires_load_approval", true);
 
     const vehicleIds = (vehicleData || []).map((v: any) => v.id);
-    const vehicleToCarrier = new Map((vehicleData || []).map((v: any) => [v.id, v.carrier]));
 
     if (vehicleIds.length === 0) {
       setCarrierPendingCounts(new Map());
       return;
     }
 
-    // Load loads needing rate approval from these vehicles
-    // A load needs rate approval if carrier_approved is null or false
+    // Load loads needing rate approval - use carrier_id directly for accurate count
+    // A load needs rate approval if it's from an approval-required vehicle AND carrier_approved is null or false
     const thirtyDaysAgo = subDays(new Date(), 30);
-    const threeDaysFromNow = addDays(new Date(), 3);
     const { data: loadsData } = await supabase
       .from("loads")
-      .select("id, assigned_vehicle_id, carrier_approved")
+      .select("id, carrier_id, assigned_vehicle_id, carrier_approved")
       .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"))
-      .lte("pickup_date", format(threeDaysFromNow, "yyyy-MM-dd"))
       .in("assigned_vehicle_id", vehicleIds)
       .or("carrier_approved.is.null,carrier_approved.eq.false");
 
-    // Count pending loads per carrier
+    // Count pending loads per carrier using load's carrier_id directly
     const countsByCarrier = new Map<string, number>();
     (loadsData || []).forEach((load: any) => {
-      const carrierId = vehicleToCarrier.get(load.assigned_vehicle_id);
-      if (carrierId) {
-        countsByCarrier.set(carrierId, (countsByCarrier.get(carrierId) || 0) + 1);
+      if (load.carrier_id) {
+        countsByCarrier.set(load.carrier_id, (countsByCarrier.get(load.carrier_id) || 0) + 1);
       }
     });
     setCarrierPendingCounts(countsByCarrier);
