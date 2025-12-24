@@ -610,12 +610,9 @@ export default function LoadApprovalTab() {
                     const currentRate = load.rate || 0;
                     
                     // Check if payload changed after approval (needs re-approval)
-                    // But if user just clicked approve locally, consider it approved (no longer showing strikethrough)
-                    const isLocallyApproved = carrierPayApproved[load.id] === true;
-                    const payloadChanged = !isLocallyApproved && 
-                                           load.carrier_approved === true && 
+                    const payloadChanged = load.carrier_approved === true && 
                                            load.approved_payload !== null && 
-                                           Number(load.rate) !== Number(load.approved_payload);
+                                           load.rate !== load.approved_payload;
                     const previousApprovedRate = payloadChanged ? (load.carrier_rate ?? 0) : null;
                     
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
