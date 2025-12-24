@@ -694,17 +694,16 @@ export default function LoadApprovalTab() {
                           {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex flex-col items-end gap-0.5">
-                            {/* Show old approved rate with strikethrough if payload changed */}
-                            {payloadChanged && previousApprovedRate !== null && (
-                              <div className="w-24 text-right pr-1">
-                                <span className="text-xs font-bold text-red-600 line-through">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Input column with strikethrough above */}
+                            <div className="flex flex-col items-end gap-0.5">
+                              {/* Show old approved rate with strikethrough if payload changed */}
+                              {payloadChanged && previousApprovedRate !== null && (
+                                <span className="text-xs font-bold text-red-600 line-through pr-1">
                                   ${previousApprovedRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </span>
-                              </div>
-                            )}
-                            {/* Input for new rate */}
-                            <div className="flex items-center gap-1">
+                              )}
+                              {/* Input for new rate */}
                               <div className="relative w-24">
                                 <span className={cn(
                                   "absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm",
@@ -725,24 +724,25 @@ export default function LoadApprovalTab() {
                                   placeholder={payloadChanged ? "New rate" : "0.00"}
                                 />
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCarrierPayApproval(load);
-                                }}
-                                className={cn(
-                                  "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
-                                  (carrierPayApproved[load.id] && !payloadChanged)
-                                    ? "bg-green-500 hover:bg-green-600"
-                                    : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
-                                )}
-                              >
-                                <Check className={cn(
-                                  "h-4 w-4",
-                                  (carrierPayApproved[load.id] && !payloadChanged) ? "text-white" : "text-black"
-                                )} />
-                              </button>
                             </div>
+                            {/* Approval button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCarrierPayApproval(load);
+                              }}
+                              className={cn(
+                                "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md self-end",
+                                (carrierPayApproved[load.id] && !payloadChanged)
+                                  ? "bg-green-500 hover:bg-green-600"
+                                  : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
+                              )}
+                            >
+                              <Check className={cn(
+                                "h-4 w-4",
+                                (carrierPayApproved[load.id] && !payloadChanged) ? "text-white" : "text-black"
+                              )} />
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
