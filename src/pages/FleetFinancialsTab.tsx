@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ interface Vehicle {
   insurance_cost_per_month: number | null;
   monthly_payment: number | null;
   driver_1_id: string | null;
+  requires_load_approval: boolean | null;
 }
 
 interface DriverCompensation {
@@ -68,6 +69,8 @@ interface Load {
   delivery_city: string | null;
   delivery_state: string | null;
   rate: number | null;
+  carrier_rate: number | null;
+  carrier_approved: boolean | null;
   estimated_miles: number | null;
   empty_miles: number | null;
   assigned_vehicle_id: string | null;
@@ -161,7 +164,7 @@ export default function FleetFinancialsTab() {
     setLoading(true);
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id").eq("status", "active").order("vehicle_number"),
+        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id, requires_load_approval").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
@@ -846,8 +849,17 @@ export default function FleetFinancialsTab() {
                           const isBusinessDay = !isWeekend(day.date);
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
                           const dailyInsurance = totals.dailyInsuranceRate;
-                          const carrierNet = rate - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
-                          const carrierPerMile = loadedM > 0 ? rate / loadedM : 0;
+                          
+                          // Check if vehicle requires approval
+                          const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
+                          const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
+                          const isApproved = load.carrier_approved === true;
+                          const carrierPayAmount = vehicleRequiresApproval && !isApproved 
+                            ? 0 
+                            : (load.carrier_rate || rate);
+                          
+                          const carrierNet = carrierPayAmount - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
+                          const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
 
                           return (
                             <TableRow key={load.id} className="hover:bg-muted/30 h-[25px]">
@@ -878,7 +890,16 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyRental)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
+                              <TableCell className="text-right !px-2 !py-0.5">
+                                {vehicleRequiresApproval && !isApproved ? (
+                                  <div className="flex items-center justify-end gap-1 text-orange-600">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    <span>$0.00</span>
+                                  </div>
+                                ) : (
+                                  formatCurrency(carrierPayAmount)
+                                )}
+                              </TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
                               <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
                                 {formatCurrency(carrierNet)}
