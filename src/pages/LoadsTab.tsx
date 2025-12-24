@@ -828,7 +828,15 @@ export default function LoadsTab() {
       // Load Approval Mode filter - only show loads needing approval
       if (loadApprovalMode) {
         const isFromApprovalRequiredVehicle = vehiclesRequiringApproval.includes(load.assigned_vehicle_id || '');
-        const needsCarrierApproval = (load as any).carrier_approved !== true;
+        const carrierApproved = (load as any).carrier_approved === true;
+        const approvedPayload = (load as any).approved_payload as number | string | null | undefined;
+
+        // Needs approval if not approved yet OR if payload changed since approval (or baseline is missing)
+        const payloadChanged = carrierApproved && (
+          approvedPayload == null || Number(load.rate) !== Number(approvedPayload)
+        );
+        const needsCarrierApproval = !carrierApproved || payloadChanged;
+
         if (!isFromApprovalRequiredVehicle || !needsCarrierApproval) {
           return false;
         }
