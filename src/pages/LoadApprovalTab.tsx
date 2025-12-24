@@ -634,7 +634,7 @@ export default function LoadApprovalTab() {
                         <TableCell className="text-xs text-right">
                           ${customerRatePerMile.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-xs text-right">
+                        <TableCell className="text-sm text-right font-bold">
                           {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
