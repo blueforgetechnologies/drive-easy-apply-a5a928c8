@@ -94,6 +94,7 @@ export default function LoadApprovalTab() {
   
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
+  const [carrierPayApproved, setCarrierPayApproved] = useState<Record<string, boolean>>({});
   const [vehicleDriverInfoById, setVehicleDriverInfoById] = useState<Record<string, any>>({});
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -638,15 +639,45 @@ export default function LoadApprovalTab() {
                           {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="relative w-24">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-red-600 font-bold text-sm">$</span>
-                            <Input
-                              type="number"
-                              value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
-                              onChange={(e) => handleRateChange(load.id, e.target.value)}
-                              className="w-24 h-7 text-sm text-right text-red-600 font-bold pl-5 !bg-orange-50 !shadow-none !bg-none"
-                              placeholder="0.00"
-                            />
+                          <div className="flex items-center justify-end gap-1">
+                            <div className="relative w-24">
+                              <span className={cn(
+                                "absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm",
+                                carrierPayApproved[load.id] ? "text-green-600" : "text-red-600"
+                              )}>$</span>
+                              <Input
+                                type="number"
+                                value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
+                                onChange={(e) => handleRateChange(load.id, e.target.value)}
+                                className={cn(
+                                  "w-24 h-7 text-sm text-right font-bold pl-5 !shadow-none !bg-none",
+                                  carrierPayApproved[load.id] 
+                                    ? "!bg-green-50 text-green-600" 
+                                    : "!bg-orange-50 text-red-600"
+                                )}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCarrierPayApproved(prev => ({
+                                  ...prev,
+                                  [load.id]: !prev[load.id]
+                                }));
+                              }}
+                              className={cn(
+                                "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
+                                carrierPayApproved[load.id]
+                                  ? "bg-green-500 hover:bg-green-600"
+                                  : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
+                              )}
+                            >
+                              <Check className={cn(
+                                "h-4 w-4",
+                                carrierPayApproved[load.id] ? "text-white" : "text-black"
+                              )} />
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
