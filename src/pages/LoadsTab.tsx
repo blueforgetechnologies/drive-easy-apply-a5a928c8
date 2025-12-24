@@ -1951,9 +1951,25 @@ export default function LoadsTab() {
                               </div>
                             </TableCell>
                             <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
-                              <div className="text-xs font-semibold">
-                                {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
-                              </div>
+                              {(() => {
+                                const vehicleRequiresApproval = (load.vehicle as any)?.requires_load_approval;
+                                const isApproved = (load as any).carrier_approved === true;
+                                const approvedPayload = (load as any).approved_payload;
+                                const rate = load.rate;
+                                const payloadChanged = isApproved && 
+                                                       approvedPayload !== null && 
+                                                       approvedPayload !== undefined &&
+                                                       rate !== approvedPayload;
+                                
+                                // If approved and payload hasn't changed, show green like Carrier Pay
+                                const isFullyApproved = vehicleRequiresApproval && isApproved && !payloadChanged;
+                                
+                                return (
+                                  <div className={`text-xs font-semibold ${isFullyApproved ? 'text-green-600' : ''}`}>
+                                    {load.rate ? `$${load.rate.toFixed(2)}` : "N/A"}
+                                  </div>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
                               {(() => {
