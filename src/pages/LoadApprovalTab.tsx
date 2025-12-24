@@ -350,13 +350,30 @@ export default function LoadApprovalTab() {
   };
 
   const handleCarrierPayApproval = async (load: ApprovalLoad) => {
-    const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+    const newCarrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
     const currentPayload = load.rate ?? 0;
-    const isCurrentlyApproved = carrierPayApproved[load.id] || load.carrier_approved;
-    const newApprovalStatus = !isCurrentlyApproved;
+    const isCurrentlyApproved = carrierPayApproved[load.id] ?? load.carrier_approved;
+    
+    // Check if payload changed (strikethrough scenario)
+    const payloadChanged = isCurrentlyApproved && 
+                           load.approved_payload !== null && 
+                           load.approved_payload !== undefined &&
+                           load.rate !== load.approved_payload;
     
     // Get old rate for history tracking
     const oldRate = load.carrier_rate ?? null;
+    
+    // Determine behavior:
+    // - If payload changed: ALWAYS update to new rate (re-approve)
+    // - If not payload changed and currently approved: toggle OFF
+    // - If not approved: approve
+    const shouldApprove = payloadChanged ? true : !isCurrentlyApproved;
+    
+    // For payload changed scenario, user MUST enter a new rate
+    if (payloadChanged && (carrierRates[load.id] === undefined || carrierRates[load.id] === null)) {
+      toast.error("Please enter a new carrier rate before approving");
+      return;
+    }
     
     try {
       // Get current user for history tracking
@@ -377,25 +394,25 @@ export default function LoadApprovalTab() {
       const { error } = await supabase
         .from("loads")
         .update({
-          carrier_rate: newApprovalStatus ? carrierPay : null,
-          carrier_approved: newApprovalStatus,
-          approved_payload: newApprovalStatus ? currentPayload : null
+          carrier_rate: shouldApprove ? newCarrierPay : null,
+          carrier_approved: shouldApprove,
+          approved_payload: shouldApprove ? currentPayload : null
         })
         .eq("id", load.id);
 
       if (error) throw error;
       
-      // Save rate change to history when approving (not when removing approval)
-      if (newApprovalStatus) {
+      // Save rate change to history when approving with a new/changed rate
+      if (shouldApprove && (oldRate !== newCarrierPay || payloadChanged)) {
         const { error: historyError } = await supabase
           .from("carrier_rate_history")
           .insert({
             load_id: load.id,
             old_rate: oldRate,
-            new_rate: carrierPay,
+            new_rate: newCarrierPay,
             changed_by: user?.id,
             changed_by_name: changedByName,
-            notes: oldRate !== null ? `Rate changed from $${oldRate.toLocaleString()} to $${carrierPay.toLocaleString()}` : "Initial rate approval"
+            notes: oldRate !== null ? `Rate changed from $${oldRate.toLocaleString()} to $${newCarrierPay.toLocaleString()}` : "Initial rate approval"
           });
         
         if (historyError) {
@@ -405,14 +422,26 @@ export default function LoadApprovalTab() {
       
       setCarrierPayApproved(prev => ({
         ...prev,
-        [load.id]: newApprovalStatus
+        [load.id]: shouldApprove
       }));
       
-      if (newApprovalStatus) {
-        toast.success(`Carrier pay of $${carrierPay.toLocaleString()} approved`);
+      // Clear the entered rate after successful approval
+      if (shouldApprove && payloadChanged) {
+        setCarrierRates(prev => {
+          const updated = { ...prev };
+          delete updated[load.id];
+          return updated;
+        });
+      }
+      
+      if (shouldApprove) {
+        toast.success(`Carrier pay of $${newCarrierPay.toLocaleString()} approved`);
       } else {
         toast.info("Carrier pay approval removed");
       }
+      
+      // Refresh data to get updated values
+      loadData();
     } catch (error) {
       console.error("Error updating carrier pay approval:", error);
       toast.error("Failed to update carrier pay approval");
