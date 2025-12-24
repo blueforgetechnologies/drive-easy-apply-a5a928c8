@@ -83,6 +83,9 @@ export default function LoadApprovalTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 3;
   
+  // Selected load for 30 Days View filtering
+  const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
+  
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
   const [vehicleDriverInfoById, setVehicleDriverInfoById] = useState<Record<string, any>>({});
@@ -227,10 +230,22 @@ export default function LoadApprovalTab() {
     return eachDayOfInterval({ start, end: now });
   }, []);
 
-  // Group loads by date
+  // Get the selected load object
+  const selectedLoad = useMemo(() => {
+    return selectedLoadId ? loads.find(l => l.id === selectedLoadId) : null;
+  }, [selectedLoadId, loads]);
+
+  // Get the vehicle ID to filter by (from selected load)
+  const filterVehicleId = selectedLoad?.assigned_vehicle_id || null;
+
+  // Group loads by date - filtered by selected vehicle if a load is selected
   const loadsByDate = useMemo(() => {
     const grouped: Record<string, ApprovalLoad[]> = {};
-    loads.forEach(load => {
+    const filteredLoads = filterVehicleId 
+      ? loads.filter(load => load.assigned_vehicle_id === filterVehicleId)
+      : loads;
+    
+    filteredLoads.forEach(load => {
       if (load.pickup_date) {
         const dateKey = format(new Date(load.pickup_date), "yyyy-MM-dd");
         if (!grouped[dateKey]) grouped[dateKey] = [];
@@ -238,7 +253,7 @@ export default function LoadApprovalTab() {
       }
     });
     return grouped;
-  }, [loads]);
+  }, [loads, filterVehicleId]);
 
   // Paginated loads for top table
   const paginatedLoads = useMemo(() => {
@@ -550,7 +565,14 @@ export default function LoadApprovalTab() {
                     const displayStatus = load.status?.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()) || "Pending";
 
                     return (
-                      <TableRow key={load.id} className="hover:bg-muted/30">
+                      <TableRow 
+                        key={load.id} 
+                        className={cn(
+                          "hover:bg-muted/30 cursor-pointer",
+                          selectedLoadId === load.id && "bg-primary/10"
+                        )}
+                        onClick={() => setSelectedLoadId(selectedLoadId === load.id ? null : load.id)}
+                      >
                         <TableCell className="min-w-[100px]">
                           <Badge 
                             variant="outline" 
@@ -659,9 +681,26 @@ export default function LoadApprovalTab() {
         {/* Calendar View - 3 Weeks of Loads */}
         <Card className="flex-1 min-h-0">
           <CardContent className="p-4 h-full flex flex-col">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">{selectedCarrierName} - 30 Days View</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">
+                  {selectedLoad 
+                    ? `Vehicle ${selectedLoad.vehicle?.vehicle_number || ''} - 30 Days View`
+                    : `${selectedCarrierName} - 30 Days View`
+                  }
+                </h3>
+              </div>
+              {selectedLoadId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedLoadId(null)}
+                  className="text-xs"
+                >
+                  Show All
+                </Button>
+              )}
             </div>
             
             <ScrollArea className="flex-1">
