@@ -421,30 +421,11 @@ export default function LoadApprovalTab() {
               />
             </div>
             
-            <div className="flex w-full mt-2">
-              <button
-                onClick={() => toggleCarrierStatus("active")}
-                className={cn(
-                  "flex-1 h-8 text-sm font-medium rounded-l-md transition-all duration-200",
-                  carrierStatusFilter.includes("active") 
-                    ? "btn-glossy-primary text-white" 
-                    : "btn-glossy text-muted-foreground"
-                )}
-              >
-                Active
-              </button>
-              <button
-                onClick={() => toggleCarrierStatus("inactive")}
-                className={cn(
-                  "flex-1 h-8 text-sm font-medium rounded-r-md transition-all duration-200",
-                  carrierStatusFilter.includes("inactive") 
-                    ? "btn-glossy-primary text-white" 
-                    : "btn-glossy text-muted-foreground"
-                )}
-              >
-                Inactive
-              </button>
-            </div>
+            <button
+              className="w-full mt-2 h-8 text-sm font-medium rounded-md btn-glossy-primary text-white transition-all duration-200"
+            >
+              Modified Loads
+            </button>
           </div>
           
           <div className="pl-3 pr-4 py-3 flex-1 overflow-hidden">
