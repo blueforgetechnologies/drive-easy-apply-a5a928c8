@@ -137,12 +137,15 @@ export default function LoadApprovalTab() {
       return;
     }
 
-    // Load loads pending approval from these vehicles
+    // Load loads needing rate approval from these vehicles
+    // A load needs rate approval if carrier_approved is null or false
     const thirtyDaysAgo = subDays(new Date(), 30);
+    const threeDaysFromNow = addDays(new Date(), 3);
     const { data: loadsData } = await supabase
       .from("loads")
       .select("id, assigned_vehicle_id, carrier_approved")
       .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"))
+      .lte("pickup_date", format(threeDaysFromNow, "yyyy-MM-dd"))
       .in("assigned_vehicle_id", vehicleIds)
       .or("carrier_approved.is.null,carrier_approved.eq.false");
 
@@ -354,6 +357,7 @@ export default function LoadApprovalTab() {
       
       toast.success(`Load ${load.load_number} approved for carrier with rate $${carrierPay.toLocaleString()}`);
       loadData();
+      loadCarriers(); // Refresh carrier pending counts
     } catch (error) {
       console.error("Error approving load:", error);
       toast.error("Failed to approve load");
