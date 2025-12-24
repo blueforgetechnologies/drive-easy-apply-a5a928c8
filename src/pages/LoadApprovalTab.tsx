@@ -412,18 +412,13 @@ export default function LoadApprovalTab() {
             <button
               onClick={() => handleCarrierSelect("all")}
               className={cn(
-                "w-full h-9 text-sm font-bold rounded-md transition-all duration-200 relative",
+                "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
                 selectedCarrier === "all"
                   ? "btn-glossy-primary text-white"
                   : "btn-glossy text-muted-foreground"
               )}
             >
               All Carriers
-              {totalPendingLoads > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
-                  {totalPendingLoads}
-                </span>
-              )}
             </button>
             
             <div className="relative">
