@@ -1850,7 +1850,7 @@ export default function LoadsTab() {
                                 ? 'bg-red-600/25 dark:bg-red-800/50 hover:bg-red-600/35 dark:hover:bg-red-800/60' 
                                 : 'hover:bg-muted/40 border-b border-border/50'
                             }`}
-                            onClick={() => viewLoadDetail(load.id)}
+                            onClick={() => loadApprovalMode ? navigate("/dashboard/load-approval") : viewLoadDetail(load.id)}
                           >
                             <TableCell onClick={(e) => e.stopPropagation()} className="py-2 px-2">
                               <Checkbox 
