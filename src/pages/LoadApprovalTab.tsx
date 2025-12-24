@@ -464,7 +464,7 @@ export default function LoadApprovalTab() {
           
           <div className="pl-3 pr-4 py-3 flex-1 overflow-hidden">
             <ScrollArea className="h-full">
-              <div className="flex flex-col w-[70%]">
+              <div className="flex flex-col w-[85%]">
                 {filteredCarriers.map((carrier, idx, arr) => {
                   const isFirst = idx === 0;
                   const isLast = idx === arr.length - 1;
