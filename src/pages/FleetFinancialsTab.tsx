@@ -869,7 +869,7 @@ export default function FleetFinancialsTab() {
                                 className="font-medium text-muted-foreground !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline"
                                 onClick={() => navigate(`/dashboard/load/${load.id}`)}
                               >
-                                {loadIndex === 0 && `${dayName} ${dateStr}`}
+                                {loadIndex === 0 && `${isToday ? "Today" : dayName} ${dateStr}`}
                               </TableCell>
                               <TableCell className="truncate max-w-[140px] !px-2 !py-0.5" title={getCustomerName(load.customer_id)}>
                                 {getCustomerName(load.customer_id)}
@@ -928,7 +928,7 @@ export default function FleetFinancialsTab() {
                           const isToday = isSameDay(day.date, new Date());
                           return (
                             <TableRow key={day.date.toISOString()} className={cn("text-muted-foreground h-[25px]", isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50")}>
-                              <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
+                              <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${isToday ? "Today" : dayName} ${dateStr}`}</TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
