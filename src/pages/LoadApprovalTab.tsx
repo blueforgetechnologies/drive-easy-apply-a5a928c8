@@ -75,6 +75,7 @@ export default function LoadApprovalTab() {
 
   // Carrier state
   const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [carriersWithPendingLoads, setCarriersWithPendingLoads] = useState<Set<string>>(new Set());
   const [selectedCarrier, setSelectedCarrier] = useState<string>("all");
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
@@ -114,11 +115,46 @@ export default function LoadApprovalTab() {
   }, [selectedCarrier, selectedVehicle, carriers]);
 
   const loadCarriers = async () => {
-    const { data } = await supabase
+    // Load all carriers
+    const { data: carrierData } = await supabase
       .from("carriers")
       .select("id, name, status")
       .order("name");
-    setCarriers(data || []);
+    setCarriers(carrierData || []);
+
+    // Load all vehicles that require approval
+    const { data: vehicleData } = await supabase
+      .from("vehicles")
+      .select("id, carrier, requires_load_approval")
+      .eq("status", "active")
+      .eq("requires_load_approval", true);
+
+    const vehicleIds = (vehicleData || []).map((v: any) => v.id);
+    const vehicleToCarrier = new Map((vehicleData || []).map((v: any) => [v.id, v.carrier]));
+
+    if (vehicleIds.length === 0) {
+      setCarriersWithPendingLoads(new Set());
+      return;
+    }
+
+    // Load loads pending approval from these vehicles
+    const thirtyDaysAgo = subDays(new Date(), 30);
+    const { data: loadsData } = await supabase
+      .from("loads")
+      .select("id, assigned_vehicle_id, carrier_approved")
+      .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"))
+      .in("assigned_vehicle_id", vehicleIds)
+      .or("carrier_approved.is.null,carrier_approved.eq.false");
+
+    // Get unique carrier IDs that have pending loads
+    const carrierIdsWithLoads = new Set<string>();
+    (loadsData || []).forEach((load: any) => {
+      const carrierId = vehicleToCarrier.get(load.assigned_vehicle_id);
+      if (carrierId) {
+        carrierIdsWithLoads.add(carrierId);
+      }
+    });
+    setCarriersWithPendingLoads(carrierIdsWithLoads);
   };
 
   const loadData = async () => {
@@ -222,15 +258,16 @@ export default function LoadApprovalTab() {
     }
   };
 
-  // Filter carriers by search and status
+  // Filter carriers by search, status, and whether they have pending loads
   const filteredCarriers = useMemo(() => {
     return carriers.filter(carrier => {
       const matchesSearch = carrier.name.toLowerCase().includes(carrierSearch.toLowerCase());
       const matchesStatus = carrierStatusFilter.length === 0 || 
         carrierStatusFilter.includes(carrier.status || "active");
-      return matchesSearch && matchesStatus;
+      const hasPendingLoads = carriersWithPendingLoads.has(carrier.id);
+      return matchesSearch && matchesStatus && hasPendingLoads;
     });
-  }, [carriers, carrierSearch, carrierStatusFilter]);
+  }, [carriers, carrierSearch, carrierStatusFilter, carriersWithPendingLoads]);
 
   // Get 30 days calendar data - recalculate when loads change to stay fresh
   const thirtyDaysRange = useMemo(() => {
