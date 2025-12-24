@@ -569,7 +569,7 @@ export default function LoadApprovalTab() {
                         key={load.id} 
                         className={cn(
                           "hover:bg-muted/30 cursor-pointer",
-                          selectedLoadId === load.id && "bg-primary/10"
+                          selectedLoadId === load.id && "bg-blue-200 dark:bg-blue-800/50 ring-2 ring-blue-400 ring-inset"
                         )}
                         onClick={() => setSelectedLoadId(selectedLoadId === load.id ? null : load.id)}
                       >
@@ -774,7 +774,7 @@ export default function LoadApprovalTab() {
                           className={cn(
                             isWeekendDay && !isSelectedLoad && "bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && loadIndex === dayLoads.length - 1 && "border-b-2",
-                            isSelectedLoad && "bg-blue-100 dark:bg-blue-900/30"
+                            isSelectedLoad && "bg-blue-200 dark:bg-blue-800/50 ring-2 ring-blue-400 ring-inset"
                           )}
                         >
                           <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>
