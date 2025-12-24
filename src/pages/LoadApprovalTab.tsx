@@ -832,13 +832,13 @@ export default function LoadApprovalTab() {
                         <TableRow 
                           key={dateKey} 
                           className={cn(
-                            isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50",
+                            isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20",
                             isWeekendDay && !isToday && "bg-none bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && "border-b-2"
                           )}
                         >
-                          <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>{dayName}</TableCell>
-                          <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>{formatInTimeZone(date, timezone, "MM/dd/yyyy")}</TableCell>
+                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{isToday ? "Today" : dayName}</TableCell>
+                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{formatInTimeZone(date, timezone, "MM/dd/yyyy")}</TableCell>
                           <TableCell colSpan={11}></TableCell>
                           {isWeekEnd && (
                             <TableCell className="text-right font-bold text-sm">
@@ -864,16 +864,16 @@ export default function LoadApprovalTab() {
                           key={`${dateKey}-${load.id}`}
                           ref={isSelectedLoad ? selectedRowRef : null}
                           className={cn(
-                            isToday && !isSelectedLoad && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50",
+                            isToday && !isSelectedLoad && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20",
                             isWeekendDay && !isToday && !isSelectedLoad && "bg-none bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && loadIndex === dayLoads.length - 1 && "border-b-2",
                             isSelectedLoad && "!bg-none !bg-green-200 dark:!bg-green-800/40 ring-2 ring-green-500/50 ring-inset"
                           )}
                         >
-                          <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>
-                            {loadIndex === 0 ? dayName : ""}
+                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
+                            {loadIndex === 0 ? (isToday ? "Today" : dayName) : ""}
                           </TableCell>
-                          <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>
+                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
                             {loadIndex === 0 ? formatInTimeZone(date, timezone, "MM/dd/yyyy") : ""}
                           </TableCell>
                           <TableCell className="text-xs">{load.customer?.name || load.broker_name || "-"}</TableCell>
