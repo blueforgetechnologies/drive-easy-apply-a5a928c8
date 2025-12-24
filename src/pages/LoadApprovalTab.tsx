@@ -639,12 +639,12 @@ export default function LoadApprovalTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="relative w-24">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-green-600 font-bold text-xs">$</span>
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-red-600 font-bold text-sm">$</span>
                             <Input
                               type="number"
                               value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
                               onChange={(e) => handleRateChange(load.id, e.target.value)}
-                              className="w-24 h-7 text-xs text-right text-green-600 font-bold pl-5 !bg-orange-200 !shadow-none !bg-none"
+                              className="w-24 h-7 text-sm text-right text-red-600 font-bold pl-5 !bg-orange-50 !shadow-none !bg-none"
                               placeholder="0.00"
                             />
                           </div>
