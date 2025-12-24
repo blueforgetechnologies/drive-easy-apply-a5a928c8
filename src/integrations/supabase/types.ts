@@ -2033,6 +2033,7 @@ export type Database = {
           actual_delivery_date: string | null
           actual_miles: number | null
           actual_pickup_date: string | null
+          approved_payload: number | null
           assigned_dispatcher_id: string | null
           assigned_driver_id: string | null
           assigned_vehicle_id: string | null
@@ -2156,6 +2157,7 @@ export type Database = {
           actual_delivery_date?: string | null
           actual_miles?: number | null
           actual_pickup_date?: string | null
+          approved_payload?: number | null
           assigned_dispatcher_id?: string | null
           assigned_driver_id?: string | null
           assigned_vehicle_id?: string | null
@@ -2279,6 +2281,7 @@ export type Database = {
           actual_delivery_date?: string | null
           actual_miles?: number | null
           actual_pickup_date?: string | null
+          approved_payload?: number | null
           assigned_dispatcher_id?: string | null
           assigned_driver_id?: string | null
           assigned_vehicle_id?: string | null

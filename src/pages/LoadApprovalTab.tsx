@@ -64,6 +64,7 @@ interface ApprovalLoad extends Load {
   carrier_rate_per_mile?: number;
   carrier_approved?: boolean | null;
   carrier_rate?: number | null;
+  approved_payload?: number | null;
 }
 
 export default function LoadApprovalTab() {
@@ -138,20 +139,27 @@ export default function LoadApprovalTab() {
     }
 
     // Load loads needing rate approval - use carrier_id directly for accurate count
-    // A load needs rate approval if it's from an approval-required vehicle AND carrier_approved is null or false
+    // A load needs rate approval if it's from an approval-required vehicle AND:
+    // 1. carrier_approved is null or false, OR
+    // 2. carrier_approved is true but payload (rate) differs from approved_payload
     const thirtyDaysAgo = subDays(new Date(), 30);
     const { data: loadsData } = await supabase
       .from("loads")
-      .select("id, carrier_id, assigned_vehicle_id, carrier_approved")
+      .select("id, carrier_id, assigned_vehicle_id, carrier_approved, rate, approved_payload")
       .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"))
-      .in("assigned_vehicle_id", vehicleIds)
-      .or("carrier_approved.is.null,carrier_approved.eq.false");
+      .in("assigned_vehicle_id", vehicleIds);
 
     // Count pending loads per carrier using load's carrier_id directly
     const countsByCarrier = new Map<string, number>();
     (loadsData || []).forEach((load: any) => {
       if (load.carrier_id) {
-        countsByCarrier.set(load.carrier_id, (countsByCarrier.get(load.carrier_id) || 0) + 1);
+        const needsApproval = load.carrier_approved !== true;
+        const payloadChanged = load.carrier_approved === true && 
+                               load.approved_payload !== null && 
+                               load.rate !== load.approved_payload;
+        if (needsApproval || payloadChanged) {
+          countsByCarrier.set(load.carrier_id, (countsByCarrier.get(load.carrier_id) || 0) + 1);
+        }
       }
     });
     setCarrierPendingCounts(countsByCarrier);
@@ -244,12 +252,17 @@ export default function LoadApprovalTab() {
       }
 
       // Filter loads: ONLY show loads from vehicles that have requires_load_approval enabled
-      // and that haven't been approved yet
+      // and that either:
+      // 1. Haven't been approved yet (carrier_approved !== true)
+      // 2. OR have been approved but payload changed (rate !== approved_payload)
       const filteredLoads = (loadData || []).filter((load: any) => {
         const isFromApprovalRequiredVehicle = vehiclesRequiringApproval.includes(load.assigned_vehicle_id);
         const needsCarrierApproval = load.carrier_approved !== true;
+        const payloadChanged = load.carrier_approved === true && 
+                               load.approved_payload !== null && 
+                               load.rate !== load.approved_payload;
 
-        return isFromApprovalRequiredVehicle && needsCarrierApproval;
+        return isFromApprovalRequiredVehicle && (needsCarrierApproval || payloadChanged);
       });
 
       setLoads(filteredLoads as unknown as ApprovalLoad[]);
@@ -338,6 +351,7 @@ export default function LoadApprovalTab() {
 
   const handleCarrierPayApproval = async (load: ApprovalLoad) => {
     const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+    const currentPayload = load.rate ?? 0;
     const isCurrentlyApproved = carrierPayApproved[load.id] || load.carrier_approved;
     const newApprovalStatus = !isCurrentlyApproved;
     
@@ -346,7 +360,8 @@ export default function LoadApprovalTab() {
         .from("loads")
         .update({
           carrier_rate: newApprovalStatus ? carrierPay : null,
-          carrier_approved: newApprovalStatus
+          carrier_approved: newApprovalStatus,
+          approved_payload: newApprovalStatus ? currentPayload : null
         })
         .eq("id", load.id);
 
@@ -370,6 +385,7 @@ export default function LoadApprovalTab() {
 
   const handleApprove = async (load: ApprovalLoad) => {
     const carrierPay = carrierRates[load.id] || load.rate || 0;
+    const currentPayload = load.rate ?? 0;
     
     try {
       // Update the load with approved carrier pay and mark as carrier approved
@@ -378,7 +394,8 @@ export default function LoadApprovalTab() {
         .update({
           carrier_rate: carrierPay,
           carrier_approved: true,
-          settlement_status: "approved"
+          settlement_status: "approved",
+          approved_payload: currentPayload
         })
         .eq("id", load.id);
 
@@ -592,6 +609,12 @@ export default function LoadApprovalTab() {
                     const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
                     const currentRate = load.rate || 0;
                     
+                    // Check if payload changed after approval (needs re-approval)
+                    const payloadChanged = load.carrier_approved === true && 
+                                           load.approved_payload !== null && 
+                                           load.rate !== load.approved_payload;
+                    const previousApprovedRate = payloadChanged ? (load.carrier_rate ?? 0) : null;
+                    
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
                     const loadDriverInfo = load.driver?.personal_info;
@@ -671,42 +694,55 @@ export default function LoadApprovalTab() {
                           {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="relative w-24">
-                              <span className={cn(
-                                "absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm",
-                                carrierPayApproved[load.id] ? "text-green-600" : "text-red-600"
-                              )}>$</span>
-                              <Input
-                                type="number"
-                                value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
-                                onChange={(e) => handleRateChange(load.id, e.target.value)}
+                          <div className="flex flex-col items-end gap-1">
+                            {/* Show old approved rate with strikethrough if payload changed */}
+                            {payloadChanged && previousApprovedRate !== null && (
+                              <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 rounded">
+                                <span className="text-xs font-bold text-red-600 line-through">
+                                  ${previousApprovedRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
+                            {/* Input for new rate */}
+                            <div className="flex items-center gap-1">
+                              <div className="relative w-24">
+                                <span className={cn(
+                                  "absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm",
+                                  (carrierPayApproved[load.id] && !payloadChanged) ? "text-green-600" : "text-red-600"
+                                )}>$</span>
+                                <Input
+                                  type="number"
+                                  value={carrierRates[load.id] ?? (payloadChanged ? "" : (load.carrier_rate ?? load.rate ?? ""))}
+                                  onChange={(e) => handleRateChange(load.id, e.target.value)}
+                                  className={cn(
+                                    "w-24 h-7 text-sm text-right font-bold pl-5 !shadow-none !bg-none",
+                                    payloadChanged
+                                      ? "!bg-orange-50 text-red-600"
+                                      : (carrierPayApproved[load.id] ?? load.carrier_approved)
+                                        ? "!bg-green-50 text-green-600" 
+                                        : "!bg-orange-50 text-red-600"
+                                  )}
+                                  placeholder={payloadChanged ? "New rate" : "0.00"}
+                                />
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCarrierPayApproval(load);
+                                }}
                                 className={cn(
-                                  "w-24 h-7 text-sm text-right font-bold pl-5 !shadow-none !bg-none",
-                                  (carrierPayApproved[load.id] ?? load.carrier_approved)
-                                    ? "!bg-green-50 text-green-600" 
-                                    : "!bg-orange-50 text-red-600"
+                                  "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
+                                  (carrierPayApproved[load.id] && !payloadChanged)
+                                    ? "bg-green-500 hover:bg-green-600"
+                                    : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
                                 )}
-                                placeholder="0.00"
-                              />
+                              >
+                                <Check className={cn(
+                                  "h-4 w-4",
+                                  (carrierPayApproved[load.id] && !payloadChanged) ? "text-white" : "text-black"
+                                )} />
+                              </button>
                             </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCarrierPayApproval(load);
-                              }}
-                              className={cn(
-                                "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
-                                (carrierPayApproved[load.id] ?? load.carrier_approved)
-                                  ? "bg-green-500 hover:bg-green-600"
-                                  : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
-                              )}
-                            >
-                              <Check className={cn(
-                                "h-4 w-4",
-                                (carrierPayApproved[load.id] ?? load.carrier_approved) ? "text-white" : "text-black"
-                              )} />
-                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-right">
