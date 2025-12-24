@@ -955,6 +955,14 @@ export default function LoadsTab() {
           <Button 
             variant="outline"
             className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl"
+            onClick={() => navigate("/dashboard/load-approval?mode=approval")}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Load Approval MODE
+          </Button>
+          <Button 
+            variant="outline"
+            className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl"
             onClick={() => navigate("/dashboard/load-approval")}
           >
             <CheckCircle2 className="h-4 w-4" />
