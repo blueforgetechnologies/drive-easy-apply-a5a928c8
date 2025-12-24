@@ -745,7 +745,7 @@ export default function LoadApprovalTab() {
                         <TableRow 
                           key={dateKey} 
                           className={cn(
-                            isToday && "!bg-none !bg-warning/35 dark:!bg-warning/25",
+                            isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50",
                             isWeekendDay && !isToday && "bg-none bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && "border-b-2"
                           )}
@@ -776,7 +776,7 @@ export default function LoadApprovalTab() {
                         <TableRow 
                           key={`${dateKey}-${load.id}`}
                           className={cn(
-                            isToday && !isSelectedLoad && "!bg-none !bg-warning/55 dark:!bg-warning/35",
+                            isToday && !isSelectedLoad && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50",
                             isWeekendDay && !isToday && !isSelectedLoad && "bg-none bg-red-50/50 dark:bg-red-950/20",
                             isWeekEnd && loadIndex === dayLoads.length - 1 && "border-b-2",
                             isSelectedLoad && "!bg-none !bg-green-200 dark:!bg-green-800/40 ring-2 ring-green-500/50 ring-inset"
