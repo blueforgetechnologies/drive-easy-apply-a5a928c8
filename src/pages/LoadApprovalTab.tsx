@@ -111,19 +111,15 @@ export default function LoadApprovalTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get carrier name for filtering
-      const selectedCarrierName = selectedCarrier !== "all" 
-        ? carriers.find(c => c.id === selectedCarrier)?.name 
-        : null;
-      
       // Load vehicles for selected carrier - include requires_load_approval
+      // Note: vehicle.carrier field stores the carrier ID, not the name
       let vehicleQuery = supabase
         .from("vehicles")
         .select("id, vehicle_number, carrier, requires_load_approval")
         .eq("status", "active");
       
-      if (selectedCarrierName) {
-        vehicleQuery = vehicleQuery.eq("carrier", selectedCarrierName);
+      if (selectedCarrier !== "all") {
+        vehicleQuery = vehicleQuery.eq("carrier", selectedCarrier);
       }
       
       const { data: vehicleData } = await vehicleQuery.order("vehicle_number");
