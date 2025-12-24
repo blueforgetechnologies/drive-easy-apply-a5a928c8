@@ -491,7 +491,7 @@ export default function LoadApprovalTab() {
                       {pendingCount > 0 && (
                         <span 
                           className={cn(
-                            "w-6 flex items-center justify-center text-[18px] font-bold border-t border-r transition-all",
+                            "w-6 flex items-center justify-center text-[14px] font-bold border-t border-r transition-all",
                             isFirst && "rounded-tr-md",
                             isLast && "rounded-br-md border-b",
                             selectedCarrier === carrier.id
