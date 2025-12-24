@@ -408,7 +408,55 @@ export default function LoadApprovalTab() {
               <ArrowLeft className="h-4 w-4" />
               Back to Loads
             </Button>
-            
+          </div>
+
+          {/* Vehicle filter when carrier selected - moved to top */}
+          {selectedCarrier !== "all" && vehicles.length > 0 && (
+            <div className="border-b pl-3 pr-4 py-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Trucks</span>
+              </div>
+              <button
+                onClick={() => setSelectedVehicle("all")}
+                className={cn(
+                  "w-full h-8 text-sm font-bold rounded-md transition-all duration-200",
+                  selectedVehicle === "all"
+                    ? "btn-glossy-primary text-white"
+                    : "btn-glossy text-muted-foreground"
+                )}
+              >
+                All Trucks
+              </button>
+              <ScrollArea className="max-h-32">
+                <div className="flex flex-col">
+                  {vehicles.map((v, idx, arr) => {
+                    const isFirst = idx === 0;
+                    const isLast = idx === arr.length - 1;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => setSelectedVehicle(v.id)}
+                        className={cn(
+                          "w-full h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                          isLast && "border-b",
+                          isFirst && "rounded-t-md",
+                          isLast && "rounded-b-md",
+                          selectedVehicle === v.id
+                            ? "btn-glossy-primary text-white border-primary/30"
+                            : "btn-glossy text-gray-700 border-gray-300/50"
+                        )}
+                      >
+                        {v.vehicle_number}
+                      </button>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+          
+          <div className="pl-3 pr-4 py-3 border-b space-y-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -494,52 +542,6 @@ export default function LoadApprovalTab() {
               </div>
             </ScrollArea>
           </div>
-
-          {/* Vehicle filter when carrier selected */}
-          {selectedCarrier !== "all" && vehicles.length > 0 && (
-            <div className="border-t pl-3 pr-4 py-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <Truck className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Trucks</span>
-              </div>
-              <button
-                onClick={() => setSelectedVehicle("all")}
-                className={cn(
-                  "w-full h-8 text-sm font-bold rounded-md transition-all duration-200",
-                  selectedVehicle === "all"
-                    ? "btn-glossy-primary text-white"
-                    : "btn-glossy text-muted-foreground"
-                )}
-              >
-                All Trucks
-              </button>
-              <ScrollArea className="max-h-32">
-                <div className="flex flex-col">
-                  {vehicles.map((v, idx, arr) => {
-                    const isFirst = idx === 0;
-                    const isLast = idx === arr.length - 1;
-                    return (
-                      <button
-                        key={v.id}
-                        onClick={() => setSelectedVehicle(v.id)}
-                        className={cn(
-                          "w-full h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
-                          isLast && "border-b",
-                          isFirst && "rounded-t-md",
-                          isLast && "rounded-b-md",
-                          selectedVehicle === v.id
-                            ? "btn-glossy-primary text-white border-primary/30"
-                            : "btn-glossy text-gray-700 border-gray-300/50"
-                        )}
-                      >
-                        {v.vehicle_number}
-                      </button>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </div>
-          )}
         </div>
 
       {/* Main Content */}
