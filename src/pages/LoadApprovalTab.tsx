@@ -766,12 +766,15 @@ export default function LoadApprovalTab() {
                       const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
                       const carrierNet = carrierPay; // Can subtract costs here
 
+                      const isSelectedLoad = load.id === selectedLoadId;
+
                       return (
                         <TableRow 
                           key={`${dateKey}-${load.id}`}
                           className={cn(
-                            isWeekendDay && "bg-red-50/50 dark:bg-red-950/20",
-                            isWeekEnd && loadIndex === dayLoads.length - 1 && "border-b-2"
+                            isWeekendDay && !isSelectedLoad && "bg-red-50/50 dark:bg-red-950/20",
+                            isWeekEnd && loadIndex === dayLoads.length - 1 && "border-b-2",
+                            isSelectedLoad && "bg-blue-100 dark:bg-blue-900/30"
                           )}
                         >
                           <TableCell className={cn("text-xs", isWeekendDay && "text-red-600")}>
