@@ -1949,7 +1949,14 @@ export default function LoadsTab() {
                                 const vehicleRequiresApproval = (load.vehicle as any)?.requires_load_approval;
                                 const isApproved = (load as any).carrier_approved === true;
                                 const carrierRate = (load as any).carrier_rate;
+                                const approvedPayload = (load as any).approved_payload;
                                 const rate = load.rate;
+                                
+                                // Check if payload changed after approval (needs re-approval)
+                                const payloadChanged = isApproved && 
+                                                       approvedPayload !== null && 
+                                                       approvedPayload !== undefined &&
+                                                       rate !== approvedPayload;
                                 
                                 if (vehicleRequiresApproval && !isApproved) {
                                   // Vehicle requires approval but not yet approved - show $0 with LA badge
@@ -1960,6 +1967,23 @@ export default function LoadsTab() {
                                         variant="outline" 
                                         className="text-[8px] px-0.5 py-0 bg-amber-50 text-amber-700 border-amber-300 scale-[0.85]"
                                         title="Load Approval Required"
+                                      >
+                                        <ShieldCheck className="h-2 w-2 mr-0.5" />
+                                        LA
+                                      </Badge>
+                                    </div>
+                                  );
+                                } else if (vehicleRequiresApproval && payloadChanged) {
+                                  // Payload changed after approval - show strikethrough rate with LA badge
+                                  return (
+                                    <div className="flex items-center gap-1 text-xs font-semibold">
+                                      <span className="text-red-600 font-bold line-through">
+                                        ${carrierRate?.toFixed(2) || "0.00"}
+                                      </span>
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-[8px] px-0.5 py-0 bg-amber-50 text-amber-700 border-amber-300 scale-[0.85]"
+                                        title="Payload Changed - Re-approval Required"
                                       >
                                         <ShieldCheck className="h-2 w-2 mr-0.5" />
                                         LA
