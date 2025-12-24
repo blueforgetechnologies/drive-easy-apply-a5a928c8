@@ -11,6 +11,7 @@ import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2 } from
 import { format, subDays, eachDayOfInterval, isSameDay, isWeekend, startOfWeek, endOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 import {
   Pagination,
   PaginationContent,
@@ -67,6 +68,7 @@ interface ApprovalLoad extends Load {
 export default function LoadApprovalTab() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const { getTodayInTimezone } = useUserTimezone();
   
   // Carrier state
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -726,8 +728,8 @@ export default function LoadApprovalTab() {
                     const dayName = format(date, "EEE");
                     const isWeekendDay = isWeekend(date);
                     const isWeekEnd = date.getDay() === 0; // Sunday
-                    const rangeEnd = thirtyDaysRange[thirtyDaysRange.length - 1] || new Date();
-                    const isToday = isSameDay(date, rangeEnd);
+                    const todayInTz = getTodayInTimezone();
+                    const isToday = isSameDay(date, todayInTz);
                     
                     // Calculate running total for the week
                     let weeklyTotal = 0;
