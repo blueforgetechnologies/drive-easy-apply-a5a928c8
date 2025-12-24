@@ -156,7 +156,7 @@ export default function LoadApprovalTab() {
         const needsApproval = load.carrier_approved !== true;
         const payloadChanged = load.carrier_approved === true && 
                                load.approved_payload !== null && 
-                               load.rate !== load.approved_payload;
+                               Number(load.rate) !== Number(load.approved_payload);
         if (needsApproval || payloadChanged) {
           countsByCarrier.set(load.carrier_id, (countsByCarrier.get(load.carrier_id) || 0) + 1);
         }
@@ -260,7 +260,7 @@ export default function LoadApprovalTab() {
         const needsCarrierApproval = load.carrier_approved !== true;
         const payloadChanged = load.carrier_approved === true && 
                                load.approved_payload !== null && 
-                               load.rate !== load.approved_payload;
+                               Number(load.rate) !== Number(load.approved_payload);
 
         return isFromApprovalRequiredVehicle && (needsCarrierApproval || payloadChanged);
       });
