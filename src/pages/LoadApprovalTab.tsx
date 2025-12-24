@@ -219,12 +219,12 @@ export default function LoadApprovalTab() {
     });
   }, [carriers, carrierSearch, carrierStatusFilter]);
 
-  // Get 30 days calendar data
+  // Get 30 days calendar data - recalculate when loads change to stay fresh
   const thirtyDaysRange = useMemo(() => {
     const now = new Date();
     const start = subDays(now, 29);
     return eachDayOfInterval({ start, end: now });
-  }, []);
+  }, [loads]);
 
   // Get the selected load object
   const selectedLoad = useMemo(() => {
