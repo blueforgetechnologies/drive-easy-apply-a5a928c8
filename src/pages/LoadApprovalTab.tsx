@@ -336,6 +336,38 @@ export default function LoadApprovalTab() {
     setCarrierRates(prev => ({ ...prev, [loadId]: numValue }));
   };
 
+  const handleCarrierPayApproval = async (load: ApprovalLoad) => {
+    const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+    const isCurrentlyApproved = carrierPayApproved[load.id] || load.carrier_approved;
+    const newApprovalStatus = !isCurrentlyApproved;
+    
+    try {
+      const { error } = await supabase
+        .from("loads")
+        .update({
+          carrier_rate: newApprovalStatus ? carrierPay : null,
+          carrier_approved: newApprovalStatus
+        })
+        .eq("id", load.id);
+
+      if (error) throw error;
+      
+      setCarrierPayApproved(prev => ({
+        ...prev,
+        [load.id]: newApprovalStatus
+      }));
+      
+      if (newApprovalStatus) {
+        toast.success(`Carrier pay of $${carrierPay.toLocaleString()} approved`);
+      } else {
+        toast.info("Carrier pay approval removed");
+      }
+    } catch (error) {
+      console.error("Error updating carrier pay approval:", error);
+      toast.error("Failed to update carrier pay approval");
+    }
+  };
+
   const handleApprove = async (load: ApprovalLoad) => {
     const carrierPay = carrierRates[load.id] || load.rate || 0;
     
@@ -651,7 +683,7 @@ export default function LoadApprovalTab() {
                                 onChange={(e) => handleRateChange(load.id, e.target.value)}
                                 className={cn(
                                   "w-24 h-7 text-sm text-right font-bold pl-5 !shadow-none !bg-none",
-                                  carrierPayApproved[load.id] 
+                                  (carrierPayApproved[load.id] ?? load.carrier_approved)
                                     ? "!bg-green-50 text-green-600" 
                                     : "!bg-orange-50 text-red-600"
                                 )}
@@ -661,21 +693,18 @@ export default function LoadApprovalTab() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setCarrierPayApproved(prev => ({
-                                  ...prev,
-                                  [load.id]: !prev[load.id]
-                                }));
+                                handleCarrierPayApproval(load);
                               }}
                               className={cn(
                                 "h-6 w-6 rounded-md flex items-center justify-center transition-all duration-200 shadow-md",
-                                carrierPayApproved[load.id]
+                                (carrierPayApproved[load.id] ?? load.carrier_approved)
                                   ? "bg-green-500 hover:bg-green-600"
                                   : "bg-gray-100 hover:bg-gray-200 border border-gray-300"
                               )}
                             >
                               <Check className={cn(
                                 "h-4 w-4",
-                                carrierPayApproved[load.id] ? "text-white" : "text-black"
+                                (carrierPayApproved[load.id] ?? load.carrier_approved) ? "text-white" : "text-black"
                               )} />
                             </button>
                           </div>

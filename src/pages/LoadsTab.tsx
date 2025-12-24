@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, AlertTriangle } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
@@ -346,7 +346,7 @@ export default function LoadsTab() {
         .from("loads" as any)
         .select(`
           *,
-          vehicle:vehicles!assigned_vehicle_id(vehicle_number),
+          vehicle:vehicles!assigned_vehicle_id(vehicle_number, requires_load_approval),
           driver:applications!assigned_driver_id(personal_info),
           carrier:carriers!carrier_id(name),
           customer:customers!customer_id(name),
@@ -1945,9 +1945,36 @@ export default function LoadsTab() {
                               </div>
                             </TableCell>
                             <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
-                              <div className="text-xs font-semibold text-green-600">
-                                {(load as any).carrier_rate ? `$${(load as any).carrier_rate.toFixed(2)}` : "-"}
-                              </div>
+                              {(() => {
+                                const vehicleRequiresApproval = (load.vehicle as any)?.requires_load_approval;
+                                const isApproved = (load as any).carrier_approved === true;
+                                const carrierRate = (load as any).carrier_rate;
+                                const rate = load.rate;
+                                
+                                if (vehicleRequiresApproval && !isApproved) {
+                                  // Vehicle requires approval but not yet approved - show $0 with warning
+                                  return (
+                                    <div className="flex items-center gap-1 text-xs font-semibold text-orange-600">
+                                      <AlertTriangle className="h-3.5 w-3.5" />
+                                      <span>$0.00</span>
+                                    </div>
+                                  );
+                                } else if (vehicleRequiresApproval && isApproved && carrierRate) {
+                                  // Approved - show the approved carrier rate
+                                  return (
+                                    <div className="text-xs font-semibold text-green-600">
+                                      ${carrierRate.toFixed(2)}
+                                    </div>
+                                  );
+                                } else {
+                                  // No approval required - show payload/rate
+                                  return (
+                                    <div className="text-xs font-semibold text-green-600">
+                                      {rate ? `$${rate.toFixed(2)}` : "-"}
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </TableCell>
                             <TableCell className={`py-2 px-2 ${isActionNeeded ? 'text-red-700 dark:text-red-300' : ''}`}>
                               <div className="text-xs">
