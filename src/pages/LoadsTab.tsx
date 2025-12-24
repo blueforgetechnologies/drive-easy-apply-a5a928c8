@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -107,6 +108,8 @@ export default function LoadsTab() {
   const [loadDocuments, setLoadDocuments] = useState<Record<string, LoadDocument[]>>({});
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ url: string; name: string; type: string } | null>(null);
+  const [loadApprovalMode, setLoadApprovalMode] = useState(false);
+  const [vehiclesRequiringApproval, setVehiclesRequiringApproval] = useState<string[]>([]);
   const ROWS_PER_PAGE = 14;
   
   // Status priority order matching the tab order - action_needed first!
@@ -248,17 +251,21 @@ export default function LoadsTab() {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      const [driversResult, vehiclesResult, customersResult, companyProfileResult, dispatcherResult] = await Promise.all([
+      const [driversResult, vehiclesResult, customersResult, companyProfileResult, dispatcherResult, vehiclesApprovalResult] = await Promise.all([
         supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
         supabase.from("vehicles" as any).select("id, vehicle_number").eq("status", "active"),
         supabase.from("customers" as any).select("id, name, contact_name, mc_number, email, phone").eq("status", "active"),
         supabase.from("company_profile").select("default_carrier_id").limit(1).maybeSingle(),
         user?.id ? supabase.from("dispatchers").select("id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+        supabase.from("vehicles" as any).select("id").eq("requires_load_approval", true),
       ]);
       
       if (driversResult.data) setDrivers(driversResult.data);
       if (vehiclesResult.data) setVehicles(vehiclesResult.data);
       if (customersResult.data) setCustomers(customersResult.data);
+      if (vehiclesApprovalResult.data) {
+        setVehiclesRequiringApproval(vehiclesApprovalResult.data.map((v: any) => v.id));
+      }
       if (companyProfileResult.data?.default_carrier_id) {
         setDefaultCarrierId(companyProfileResult.data.default_carrier_id);
       }
@@ -818,6 +825,15 @@ export default function LoadsTab() {
 
   const filteredLoads = loads
     .filter((load) => {
+      // Load Approval Mode filter - only show loads needing approval
+      if (loadApprovalMode) {
+        const isFromApprovalRequiredVehicle = vehiclesRequiringApproval.includes(load.assigned_vehicle_id || '');
+        const needsCarrierApproval = (load as any).carrier_approved !== true;
+        if (!isFromApprovalRequiredVehicle || !needsCarrierApproval) {
+          return false;
+        }
+      }
+      
       // Status filter from URL param
       const matchesStatus = filter === "all" || load.status === filter;
       
@@ -953,12 +969,15 @@ export default function LoadsTab() {
         <h2 className="text-xl sm:text-2xl font-bold">Booked Loads</h2>
         <div className="flex gap-2 w-full sm:w-auto">
           <Button 
-            variant="outline"
-            className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl"
-            onClick={() => navigate("/dashboard/load-approval?mode=approval")}
+            variant={loadApprovalMode ? "default" : "outline"}
+            className={cn(
+              "gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl",
+              loadApprovalMode && "bg-green-600 hover:bg-green-700"
+            )}
+            onClick={() => setLoadApprovalMode(!loadApprovalMode)}
           >
             <CheckCircle2 className="h-4 w-4" />
-            Load Approval MODE
+            {loadApprovalMode ? "Exit Approval Mode" : "Load Approval MODE"}
           </Button>
           <Button 
             variant="outline"
