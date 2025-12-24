@@ -75,7 +75,7 @@ export default function LoadApprovalTab() {
 
   // Carrier state
   const [carriers, setCarriers] = useState<Carrier[]>([]);
-  const [carriersWithPendingLoads, setCarriersWithPendingLoads] = useState<Set<string>>(new Set());
+  const [carrierPendingCounts, setCarrierPendingCounts] = useState<Map<string, number>>(new Map());
   const [selectedCarrier, setSelectedCarrier] = useState<string>("all");
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
@@ -133,7 +133,7 @@ export default function LoadApprovalTab() {
     const vehicleToCarrier = new Map((vehicleData || []).map((v: any) => [v.id, v.carrier]));
 
     if (vehicleIds.length === 0) {
-      setCarriersWithPendingLoads(new Set());
+      setCarrierPendingCounts(new Map());
       return;
     }
 
@@ -146,15 +146,15 @@ export default function LoadApprovalTab() {
       .in("assigned_vehicle_id", vehicleIds)
       .or("carrier_approved.is.null,carrier_approved.eq.false");
 
-    // Get unique carrier IDs that have pending loads
-    const carrierIdsWithLoads = new Set<string>();
+    // Count pending loads per carrier
+    const countsByCarrier = new Map<string, number>();
     (loadsData || []).forEach((load: any) => {
       const carrierId = vehicleToCarrier.get(load.assigned_vehicle_id);
       if (carrierId) {
-        carrierIdsWithLoads.add(carrierId);
+        countsByCarrier.set(carrierId, (countsByCarrier.get(carrierId) || 0) + 1);
       }
     });
-    setCarriersWithPendingLoads(carrierIdsWithLoads);
+    setCarrierPendingCounts(countsByCarrier);
   };
 
   const loadData = async () => {
@@ -264,10 +264,17 @@ export default function LoadApprovalTab() {
       const matchesSearch = carrier.name.toLowerCase().includes(carrierSearch.toLowerCase());
       const matchesStatus = carrierStatusFilter.length === 0 || 
         carrierStatusFilter.includes(carrier.status || "active");
-      const hasPendingLoads = carriersWithPendingLoads.has(carrier.id);
+      const hasPendingLoads = carrierPendingCounts.has(carrier.id);
       return matchesSearch && matchesStatus && hasPendingLoads;
     });
-  }, [carriers, carrierSearch, carrierStatusFilter, carriersWithPendingLoads]);
+  }, [carriers, carrierSearch, carrierStatusFilter, carrierPendingCounts]);
+
+  // Calculate total pending loads count
+  const totalPendingLoads = useMemo(() => {
+    let total = 0;
+    carrierPendingCounts.forEach(count => { total += count; });
+    return total;
+  }, [carrierPendingCounts]);
 
   // Get 30 days calendar data - recalculate when loads change to stay fresh
   const thirtyDaysRange = useMemo(() => {
@@ -412,9 +419,9 @@ export default function LoadApprovalTab() {
               )}
             >
               All Carriers
-              {carriersWithPendingLoads.size > 0 && (
+              {totalPendingLoads > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
-                  {carriersWithPendingLoads.size}
+                  {totalPendingLoads}
                 </span>
               )}
             </button>
@@ -461,22 +468,29 @@ export default function LoadApprovalTab() {
                 {filteredCarriers.map((carrier, idx, arr) => {
                   const isFirst = idx === 0;
                   const isLast = idx === arr.length - 1;
+                  const pendingCount = carrierPendingCounts.get(carrier.id) || 0;
                   return (
-                    <button
-                      key={carrier.id}
-                      onClick={() => handleCarrierSelect(carrier.id)}
-                      className={cn(
-                        "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
-                        isLast && "border-b",
-                        isFirst && "rounded-t-md",
-                        isLast && "rounded-b-md",
-                        selectedCarrier === carrier.id
-                          ? "btn-glossy-primary text-white border-primary/30"
-                          : "btn-glossy text-gray-700 border-gray-300/50"
+                    <div key={carrier.id} className="flex items-center">
+                      <button
+                        onClick={() => handleCarrierSelect(carrier.id)}
+                        className={cn(
+                          "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                          isLast && "border-b",
+                          isFirst && "rounded-t-md",
+                          isLast && "rounded-b-md",
+                          selectedCarrier === carrier.id
+                            ? "btn-glossy-primary text-white border-primary/30"
+                            : "btn-glossy text-gray-700 border-gray-300/50"
+                        )}
+                      >
+                        <div className="truncate">{carrier.name}</div>
+                      </button>
+                      {pendingCount > 0 && (
+                        <span className="ml-1 min-w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground">
+                          {pendingCount}
+                        </span>
                       )}
-                    >
-                      <div className="truncate">{carrier.name}</div>
-                    </button>
+                    </div>
                   );
                 })}
                 {filteredCarriers.length === 0 && (
