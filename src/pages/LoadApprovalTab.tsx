@@ -557,7 +557,7 @@ export default function LoadApprovalTab() {
                     const customerRatePerMile = loadedMiles > 0 ? customerRate / loadedMiles : 0;
                     const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
                     const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
-                    const payload = (load as any).cargo_weight || 0;
+                    const currentRate = load.rate || 0;
                     
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
@@ -635,7 +635,7 @@ export default function LoadApprovalTab() {
                           ${customerRatePerMile.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs text-right">
-                          {payload > 0 ? `${Number(payload).toLocaleString()} lbs` : "-"}
+                          {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
                           <Input
