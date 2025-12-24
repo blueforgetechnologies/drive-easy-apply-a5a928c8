@@ -850,6 +850,7 @@ export default function FleetFinancialsTab() {
                           const isBusinessDay = !isWeekend(day.date);
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
                           const dailyInsurance = totals.dailyInsuranceRate;
+                          const isToday = isSameDay(day.date, new Date());
                           
                           // Check if vehicle requires approval
                           const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
@@ -863,7 +864,7 @@ export default function FleetFinancialsTab() {
                           const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
 
                           return (
-                            <TableRow key={load.id} className="hover:bg-muted/30 h-[25px]">
+                            <TableRow key={load.id} className={cn("hover:bg-muted/30 h-[25px]", isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50")}>
                               <TableCell 
                                 className="font-medium text-muted-foreground !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline"
                                 onClick={() => navigate(`/dashboard/load/${load.id}`)}
@@ -924,8 +925,9 @@ export default function FleetFinancialsTab() {
                           const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
                           const dailyInsurance = totals.dailyInsuranceRate;
                           const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
+                          const isToday = isSameDay(day.date, new Date());
                           return (
-                            <TableRow key={day.date.toISOString()} className="text-muted-foreground h-[25px]">
+                            <TableRow key={day.date.toISOString()} className={cn("text-muted-foreground h-[25px]", isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50")}>
                               <TableCell className="font-medium !px-2 !py-0.5 whitespace-nowrap">{`${dayName} ${dateStr}`}</TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
