@@ -1955,6 +1955,7 @@ export default function LoadsTab() {
                                   // Vehicle requires approval but not yet approved - show $0 with LA badge
                                   return (
                                     <div className="flex items-center gap-1 text-xs font-semibold">
+                                      <span className="text-orange-600 font-bold">$0.00</span>
                                       <Badge 
                                         variant="outline" 
                                         className="text-[8px] px-0.5 py-0 bg-amber-50 text-amber-700 border-amber-300 scale-[0.85]"
@@ -1963,7 +1964,6 @@ export default function LoadsTab() {
                                         <ShieldCheck className="h-2 w-2 mr-0.5" />
                                         LA
                                       </Badge>
-                                      <span className="text-orange-600 font-bold">$0.00</span>
                                     </div>
                                   );
                                 } else if (vehicleRequiresApproval && isApproved && carrierRate) {
