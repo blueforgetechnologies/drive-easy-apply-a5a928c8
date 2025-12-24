@@ -644,7 +644,7 @@ export default function LoadApprovalTab() {
                               type="number"
                               value={carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? ""}
                               onChange={(e) => handleRateChange(load.id, e.target.value)}
-                              className="w-24 h-7 text-xs text-right text-green-600 font-bold pl-5"
+                              className="w-24 h-7 text-xs text-right text-green-600 font-bold pl-5 bg-orange-100"
                               placeholder="0.00"
                             />
                           </div>
