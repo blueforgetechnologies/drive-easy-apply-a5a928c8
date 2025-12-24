@@ -697,9 +697,11 @@ export default function LoadApprovalTab() {
                           <div className="flex flex-col items-end gap-0.5">
                             {/* Show old approved rate with strikethrough if payload changed */}
                             {payloadChanged && previousApprovedRate !== null && (
-                              <span className="text-xs font-bold text-red-600 line-through">
-                                ${previousApprovedRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
+                              <div className="w-24 text-right pr-1">
+                                <span className="text-xs font-bold text-red-600 line-through">
+                                  ${previousApprovedRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
                             )}
                             {/* Input for new rate */}
                             <div className="flex items-center gap-1">
