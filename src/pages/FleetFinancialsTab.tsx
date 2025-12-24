@@ -4,11 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save, AlertTriangle } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, ShieldCheck } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -892,9 +893,16 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">
                                 {vehicleRequiresApproval && !isApproved ? (
-                                  <div className="flex items-center justify-end gap-1 text-orange-600">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    <span>$0.00</span>
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Badge 
+                                      variant="outline" 
+                                      className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700 border-amber-300"
+                                      title="Load Approval Required"
+                                    >
+                                      <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
+                                      LA
+                                    </Badge>
+                                    <span className="text-orange-600">$0.00</span>
                                   </div>
                                 ) : (
                                   formatCurrency(carrierPayAmount)
