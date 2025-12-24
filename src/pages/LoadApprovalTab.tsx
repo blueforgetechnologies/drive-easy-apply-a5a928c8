@@ -501,8 +501,8 @@ export default function LoadApprovalTab() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4 min-h-0">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Load Approval</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold">Load Approval</h2>
             {/* Truck filter buttons */}
             {selectedCarrier !== "all" && vehicles.length > 0 && (
               <div className="flex items-center">
@@ -528,10 +528,10 @@ export default function LoadApprovalTab() {
                 })}
               </div>
             )}
-            <Badge variant="outline" className="text-sm">
-              {selectedCarrierName}
-            </Badge>
           </div>
+          <Badge variant="outline" className="text-sm">
+            {selectedCarrierName}
+          </Badge>
         </div>
 
         {/* Top Table - Ready for Audit Loads */}
