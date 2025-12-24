@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, AlertTriangle } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
@@ -1952,11 +1952,18 @@ export default function LoadsTab() {
                                 const rate = load.rate;
                                 
                                 if (vehicleRequiresApproval && !isApproved) {
-                                  // Vehicle requires approval but not yet approved - show $0 with warning
+                                  // Vehicle requires approval but not yet approved - show $0 with LA badge
                                   return (
-                                    <div className="flex items-center gap-1 text-xs font-semibold text-orange-600">
-                                      <AlertTriangle className="h-3.5 w-3.5" />
-                                      <span>$0.00</span>
+                                    <div className="flex items-center gap-1 text-xs font-semibold">
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700 border-amber-300"
+                                        title="Load Approval Required"
+                                      >
+                                        <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
+                                        LA
+                                      </Badge>
+                                      <span className="text-orange-600">$0.00</span>
                                     </div>
                                   );
                                 } else if (vehicleRequiresApproval && isApproved && carrierRate) {
