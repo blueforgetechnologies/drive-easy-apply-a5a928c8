@@ -864,9 +864,9 @@ export default function FleetFinancialsTab() {
                           const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
 
                           return (
-                            <TableRow key={load.id} className={cn("hover:bg-muted/30 h-[25px]", isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50")}>
+                            <TableRow key={load.id} className={cn("hover:bg-muted/30 h-[25px]", isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20")}>
                               <TableCell 
-                                className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline", isToday ? "text-red-600 font-bold" : "text-muted-foreground")}
+                                className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline", isToday ? "text-green-600 font-bold" : "text-muted-foreground")}
                                 onClick={() => navigate(`/dashboard/load/${load.id}`)}
                               >
                                 {loadIndex === 0 && `${isToday ? "Today" : dayName} ${dateStr}`}
@@ -927,8 +927,8 @@ export default function FleetFinancialsTab() {
                           const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
                           const isToday = isSameDay(day.date, new Date());
                           return (
-                            <TableRow key={day.date.toISOString()} className={cn("text-muted-foreground h-[25px]", isToday && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50")}>
-                              <TableCell className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap", isToday ? "text-red-600 font-bold" : "")}>{`${isToday ? "Today" : dayName} ${dateStr}`}</TableCell>
+                            <TableRow key={day.date.toISOString()} className={cn("text-muted-foreground h-[25px]", isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20")}>
+                              <TableCell className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap", isToday ? "text-green-600 font-bold" : "")}>{`${isToday ? "Today" : dayName} ${dateStr}`}</TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
                               <TableCell className="!px-2 !py-0.5"></TableCell>
