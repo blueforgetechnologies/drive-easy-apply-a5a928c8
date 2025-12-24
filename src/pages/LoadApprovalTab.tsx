@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -94,6 +94,14 @@ export default function LoadApprovalTab() {
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
   const [vehicleDriverInfoById, setVehicleDriverInfoById] = useState<Record<string, any>>({});
+  const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Scroll to selected load when it changes
+  useEffect(() => {
+    if (selectedLoadId && selectedRowRef.current) {
+      selectedRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [selectedLoadId]);
 
   useEffect(() => {
     loadCarriers();
@@ -776,6 +784,7 @@ export default function LoadApprovalTab() {
                       return (
                         <TableRow 
                           key={`${dateKey}-${load.id}`}
+                          ref={isSelectedLoad ? selectedRowRef : null}
                           className={cn(
                             isToday && !isSelectedLoad && "!bg-none !bg-yellow-300 dark:!bg-yellow-500/50",
                             isWeekendDay && !isToday && !isSelectedLoad && "bg-none bg-red-50/50 dark:bg-red-950/20",
