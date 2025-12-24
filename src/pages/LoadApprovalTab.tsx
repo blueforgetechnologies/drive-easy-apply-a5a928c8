@@ -470,14 +470,17 @@ export default function LoadApprovalTab() {
                   const isLast = idx === arr.length - 1;
                   const pendingCount = carrierPendingCounts.get(carrier.id) || 0;
                   return (
-                    <div key={carrier.id} className="flex items-center">
+                    <div key={carrier.id} className="flex items-stretch">
                       <button
                         onClick={() => handleCarrierSelect(carrier.id)}
                         className={cn(
-                          "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                          "flex-1 h-7 text-left px-3 text-xs font-medium transition-all border-l border-t",
                           isLast && "border-b",
-                          isFirst && "rounded-t-md",
-                          isLast && "rounded-b-md",
+                          isFirst && "rounded-tl-md",
+                          isLast && "rounded-bl-md",
+                          pendingCount === 0 && "border-r",
+                          pendingCount === 0 && isFirst && "rounded-tr-md",
+                          pendingCount === 0 && isLast && "rounded-br-md",
                           selectedCarrier === carrier.id
                             ? "btn-glossy-primary text-white border-primary/30"
                             : "btn-glossy text-gray-700 border-gray-300/50"
@@ -486,7 +489,16 @@ export default function LoadApprovalTab() {
                         <div className="truncate">{carrier.name}</div>
                       </button>
                       {pendingCount > 0 && (
-                        <span className="ml-1 min-w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground">
+                        <span 
+                          className={cn(
+                            "w-6 flex items-center justify-center text-[10px] font-bold border-t border-r transition-all",
+                            isFirst && "rounded-tr-md",
+                            isLast && "rounded-br-md border-b",
+                            selectedCarrier === carrier.id
+                              ? "btn-glossy-primary text-white border-primary/30"
+                              : "bg-gradient-to-b from-rose-400 to-rose-500 text-white border-rose-400/50 shadow-sm"
+                          )}
+                        >
                           {pendingCount}
                         </span>
                       )}
