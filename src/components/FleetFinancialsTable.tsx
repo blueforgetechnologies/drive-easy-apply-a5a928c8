@@ -83,6 +83,7 @@ interface FleetFinancialsTableProps {
   dollarPerGallon: number;
   factoringPercentage: number;
   showColumnLines: boolean;
+  isEditMode: boolean;
   getCustomerName: (customerId: string | null) => string;
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
@@ -99,9 +100,10 @@ const formatNumber = (value: number, decimals = 1) => {
   return value.toFixed(decimals);
 };
 
-// Draggable column header component
-function DraggableHeader({
+// Column header component - draggable only in edit mode
+function ColumnHeader({
   column,
+  isEditMode,
   draggedColumn,
   dragOverColumn,
   onDragStart,
@@ -109,6 +111,7 @@ function DraggableHeader({
   onDragEnd,
 }: {
   column: FleetColumn;
+  isEditMode: boolean;
   draggedColumn: string | null;
   dragOverColumn: string | null;
   onDragStart: (id: string) => void;
@@ -118,6 +121,21 @@ function DraggableHeader({
   const isDragging = draggedColumn === column.id;
   const isOver = dragOverColumn === column.id;
 
+  if (!isEditMode) {
+    // Normal view - centered text, no truncation
+    return (
+      <th
+        className={cn(
+          column.width,
+          "px-2 py-2 font-medium whitespace-nowrap text-center"
+        )}
+      >
+        {column.label}
+      </th>
+    );
+  }
+
+  // Edit mode - draggable with grip handle
   return (
     <th
       draggable
@@ -138,8 +156,8 @@ function DraggableHeader({
       )}
     >
       <div className="flex items-center gap-0.5">
-        <GripVertical className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity flex-shrink-0" />
-        <span className={cn("flex-1", column.align === "right" && "text-right")}>{column.label}</span>
+        <GripVertical className="h-3 w-3 opacity-40 flex-shrink-0" />
+        <span className={cn("flex-1 truncate", column.align === "right" && "text-right")}>{column.label}</span>
       </div>
     </th>
   );
@@ -608,6 +626,7 @@ export function FleetFinancialsTable({
   dollarPerGallon,
   factoringPercentage,
   showColumnLines,
+  isEditMode,
   getCustomerName,
   getDispatcherPay,
   getDriverPay,
@@ -643,9 +662,10 @@ export function FleetFinancialsTable({
       <thead className="sticky top-0 z-30 bg-muted shadow-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-30 [&_th]:bg-muted">
         <tr>
           {visibleColumns.map((column) => (
-            <DraggableHeader
+            <ColumnHeader
               key={column.id}
               column={column}
+              isEditMode={isEditMode}
               draggedColumn={draggedColumn}
               dragOverColumn={dragOverColumn}
               onDragStart={handleDragStart}

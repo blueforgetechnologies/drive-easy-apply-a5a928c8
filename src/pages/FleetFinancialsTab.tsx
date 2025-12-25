@@ -6,7 +6,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -107,7 +107,7 @@ const DRIVER_PAY_RATE = 0; // per load or percentage
 
 export default function FleetFinancialsTab() {
   const navigate = useNavigate();
-  const { resetColumns } = useFleetColumns();
+  const { resetColumns, isEditMode, toggleEditMode } = useFleetColumns();
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -809,17 +809,31 @@ export default function FleetFinancialsTab() {
           )}
           <div className="ml-auto flex items-center gap-2">
             <Button
-              variant="outline"
+              variant={isEditMode ? "default" : "outline"}
               size="sm"
-              className="rounded-full border-0 btn-glossy text-gray-700"
-              onClick={() => {
-                resetColumns();
-                toast.success("Column order reset to default");
-              }}
+              className={cn(
+                "rounded-full border-0",
+                isEditMode ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+              )}
+              onClick={toggleEditMode}
+              title={isEditMode ? "Exit edit mode" : "Edit columns"}
             >
-              <RotateCcw className="h-3 w-3 mr-1" />
-              Reset Columns
+              <Settings className="h-3 w-3" />
             </Button>
+            {isEditMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full border-0 btn-glossy text-gray-700"
+                onClick={() => {
+                  resetColumns();
+                  toast.success("Column order reset to default");
+                }}
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Reset
+              </Button>
+            )}
             <Button
               variant={showColumnLines ? "default" : "outline"}
               size="sm"
@@ -845,6 +859,7 @@ export default function FleetFinancialsTab() {
             dollarPerGallon={dollarPerGallon}
             factoringPercentage={factoringPercentage}
             showColumnLines={showColumnLines}
+            isEditMode={isEditMode}
             getCustomerName={getCustomerName}
             getDispatcherPay={getDispatcherPay}
             getDriverPay={getDriverPay}
