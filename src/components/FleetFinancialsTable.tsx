@@ -340,9 +340,9 @@ function CellValue({
       return <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>;
     case "carr_pay":
       return (
-        <TableCell className="text-right !px-2 !py-0.5">
+        <TableCell className="text-right !px-1 !py-0.5 overflow-hidden">
           {vehicleRequiresApproval ? (
-            <div className="flex items-center justify-end gap-1">
+            <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
               {isApproved ? (
                 <>
                   <span
