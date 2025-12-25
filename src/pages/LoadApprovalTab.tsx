@@ -634,11 +634,12 @@ export default function LoadApprovalTab() {
                 }}
                 className={cn(
                   "flex-1 h-10 text-sm font-semibold transition-all duration-200",
-                  "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600",
-                  "border-t border-orange-300/50",
-                  "hover:from-orange-500 hover:via-orange-600 hover:to-orange-700",
+                  "border-t",
                   "text-white",
-                  modifiedLoadsCount > 0 ? "rounded-l-lg" : "rounded-lg"
+                  modifiedLoadsCount > 0 ? "rounded-l-lg" : "rounded-lg",
+                  showModifiedOnly 
+                    ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-400/50 hover:from-red-600 hover:via-red-700 hover:to-red-800"
+                    : "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600 border-orange-300/50 hover:from-orange-500 hover:via-orange-600 hover:to-orange-700"
                 )}
                 style={{
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.2)"
@@ -650,9 +651,11 @@ export default function LoadApprovalTab() {
                 <span 
                   className={cn(
                     "w-10 flex items-center justify-center text-lg font-black rounded-r-lg transition-all",
-                    "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600",
-                    "border-l border-orange-700/30",
-                    "text-white"
+                    "border-l",
+                    "text-white",
+                    showModifiedOnly
+                      ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-800/30"
+                      : "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600 border-orange-700/30"
                   )}
                   style={{
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)"
