@@ -977,8 +977,10 @@ export default function LoadApprovalTab() {
                           <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
                             {loadIndex === 0 ? formatInTimeZone(date, timezone, "MM/dd/yyyy") : ""}
                           </TableCell>
-                          <TableCell className="text-xs">{load.customer?.name || load.broker_name || "-"}</TableCell>
-                          <TableCell className="text-xs">
+                          <TableCell className="text-xs max-w-[120px]">
+                            <div className="truncate" title={load.customer?.name || load.broker_name || "-"}>{load.customer?.name || load.broker_name || "-"}</div>
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
                             {load.pickup_state} to {load.delivery_state}
                           </TableCell>
                           <TableCell className="text-xs text-right">${(load.rate || 0).toLocaleString()}</TableCell>
