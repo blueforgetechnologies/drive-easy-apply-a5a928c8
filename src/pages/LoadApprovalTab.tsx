@@ -895,7 +895,7 @@ export default function LoadApprovalTab() {
             
             <ScrollArea className="flex-1">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-xs w-12"></TableHead>
                     <TableHead className="text-xs w-24">P/U Date</TableHead>
