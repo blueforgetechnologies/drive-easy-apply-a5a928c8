@@ -322,10 +322,15 @@ export default function LoadApprovalTab() {
     return grouped;
   }, [loads, filterVehicleId]);
 
-  // Paginated loads for top table
+  // Paginated loads for top table - sorted by pickup_date ascending (oldest first)
   const paginatedLoads = useMemo(() => {
+    const sortedLoads = [...loads].sort((a, b) => {
+      const dateA = a.pickup_date ? new Date(a.pickup_date).getTime() : 0;
+      const dateB = b.pickup_date ? new Date(b.pickup_date).getTime() : 0;
+      return dateA - dateB; // Ascending: older dates first
+    });
     const start = (currentPage - 1) * ROWS_PER_PAGE;
-    return loads.slice(start, start + ROWS_PER_PAGE);
+    return sortedLoads.slice(start, start + ROWS_PER_PAGE);
   }, [loads, currentPage]);
 
   const totalPages = Math.ceil(loads.length / ROWS_PER_PAGE);
