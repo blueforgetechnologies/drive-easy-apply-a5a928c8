@@ -319,7 +319,7 @@ export default function CarrierDashboard() {
   // Calculate stats
   const totalLoads = filteredLoads.length;
   const activeLoads = filteredLoads.filter(l => ['in_transit', 'in transit', 'dispatched', 'assigned'].includes(l.status?.toLowerCase() || '')).length;
-  const totalRevenue = filteredLoads.reduce((sum, load) => sum + (load.rate || 0), 0);
+  const totalRevenue = filteredLoads.reduce((sum, load) => sum + (load.carrier_rate ?? load.rate ?? 0), 0);
 
   const selectedCarrierName = carriers.find(c => c.id === selectedCarrier)?.name || "All Carriers";
   const selectedDispatcherObj = dispatchers.find(d => d.id === selectedDispatcher);
@@ -775,7 +775,7 @@ export default function CarrierDashboard() {
                             <TableCell className="text-right font-medium">
                               {dashboardType === "dispatcher" 
                                 ? (getDispatcherPay(load) ? `$${getDispatcherPay(load)!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-')
-                                : (load.rate ? `$${load.rate.toLocaleString()}` : '-')
+                                : ((load.carrier_rate ?? load.rate) ? `$${(load.carrier_rate ?? load.rate)!.toLocaleString()}` : '-')
                               }
                             </TableCell>
                             <TableCell>
