@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle, Mail, ChevronDown, Package, Users, Building, MapPinned } from "lucide-react";
+import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle, Mail, ChevronDown, Package, Users, Building, MapPinned, ClipboardCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import LoadRouteMap from "@/components/LoadRouteMap";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
@@ -649,6 +649,10 @@ export default function LoadDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate("/dashboard/load-approval")}>
+            <ClipboardCheck className="mr-2 h-4 w-4" />
+            Rate Approval
+          </Button>
           {originalEmail && (
             <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
               <DialogTrigger asChild>
