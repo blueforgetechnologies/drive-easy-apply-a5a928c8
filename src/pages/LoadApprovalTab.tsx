@@ -893,7 +893,7 @@ export default function LoadApprovalTab() {
               )}
             </div>
             
-            <ScrollArea className="flex-1">
+            <div className="flex-1 min-h-0">
               <Table>
                 <TableHeader className="bg-card [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-card">
                   <TableRow className="border-b shadow-sm">
@@ -1007,7 +1007,7 @@ export default function LoadApprovalTab() {
                   })}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       </div>
