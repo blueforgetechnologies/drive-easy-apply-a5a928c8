@@ -879,12 +879,7 @@ export default function LoadApprovalTab() {
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">
-                  {selectedLoad 
-                    ? `Vehicle ${selectedLoad.vehicle?.vehicle_number || ''} - 30 Days View`
-                    : `${selectedCarrierName} - 30 Days View`
-                  }
-                </h3>
+                <h3 className="font-semibold text-sm">30 Days View</h3>
               </div>
               {selectedLoadId && (
                 <Button
