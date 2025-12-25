@@ -731,9 +731,9 @@ export default function LoadApprovalTab() {
                           <div className="font-medium">{load.vehicle?.vehicle_number || "-"}</div>
                           <div className="text-muted-foreground">{driverName}</div>
                         </TableCell>
-                        <TableCell className="text-xs">
-                          <div className="font-medium">{load.carrier?.name || "-"}</div>
-                          <div className="text-muted-foreground">{load.customer?.name || load.broker_name || "-"}</div>
+                        <TableCell className="text-xs min-w-[140px]">
+                          <div className="font-medium truncate max-w-[140px]" title={load.carrier?.name || "-"}>{load.carrier?.name || "-"}</div>
+                          <div className="text-muted-foreground truncate max-w-[140px]" title={load.customer?.name || load.broker_name || "-"}>{load.customer?.name || load.broker_name || "-"}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div className="font-medium">{load.load_number}</div>
