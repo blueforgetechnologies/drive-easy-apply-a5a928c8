@@ -895,8 +895,8 @@ export default function LoadApprovalTab() {
             
             <ScrollArea className="flex-1">
               <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background">
-                  <TableRow className="bg-muted/50">
+                <TableHeader className="sticky top-0 z-10">
+                  <TableRow className="bg-card border-b shadow-sm">
                     <TableHead className="text-xs w-12"></TableHead>
                     <TableHead className="text-xs w-24">P/U Date</TableHead>
                     <TableHead className="text-xs">Customer</TableHead>
