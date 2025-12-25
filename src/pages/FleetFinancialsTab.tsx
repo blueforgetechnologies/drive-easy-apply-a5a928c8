@@ -919,7 +919,7 @@ export default function FleetFinancialsTab() {
                                   )}
                                   onClick={() => navigate(`/dashboard/load/${load.id}`)}
                                 >
-                                  {`${isToday ? "Today" : dayName} ${dateStr}`}
+                                  {loadIndex === 0 && `${isToday ? "Today" : dayName} ${dateStr}`}
                                 </TableCell>
                                 <TableCell
                                   className="truncate max-w-[140px] !px-2 !py-0.5"
