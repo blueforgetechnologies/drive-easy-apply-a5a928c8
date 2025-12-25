@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2 } from "lucide-react";
+import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2, Eye } from "lucide-react";
 import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
@@ -683,7 +683,7 @@ export default function LoadApprovalTab() {
                     <TableHead className="text-xs text-right">Carrier Pay</TableHead>
                     <TableHead className="text-xs text-right">$/Mile</TableHead>
                     <TableHead className="text-xs">Dispatcher</TableHead>
-                    <TableHead className="text-xs">Actions</TableHead>
+                    <TableHead className="text-xs">View Load</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -857,10 +857,10 @@ export default function LoadApprovalTab() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-100"
-                            onClick={() => handleApprove(load)}
+                            className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                            onClick={() => navigate(`/dashboard/loads/${load.id}`)}
                           >
-                            <Check className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
