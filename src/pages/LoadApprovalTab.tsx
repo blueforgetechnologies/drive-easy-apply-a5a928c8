@@ -464,12 +464,17 @@ export default function LoadApprovalTab() {
       
       // Save rate change to history when approving with a new/changed rate
       if (shouldApprove && (oldRate !== newCarrierPay || payloadChanged)) {
+        // Get old payload for history tracking
+        const oldPayload = load.approved_payload ?? load.rate ?? null;
+        
         const { error: historyError } = await supabase
           .from("carrier_rate_history")
           .insert({
             load_id: load.id,
             old_rate: oldRate,
             new_rate: newCarrierPay,
+            old_payload: oldPayload,
+            new_payload: currentPayloadValue,
             changed_by: user?.id,
             changed_by_name: changedByName,
             notes: oldRate !== null ? `Rate changed from $${oldRate.toLocaleString()} to $${newCarrierPay.toLocaleString()}` : "Initial rate approval"

@@ -308,8 +308,10 @@ export type Database = {
           changed_by_name: string | null
           id: string
           load_id: string
+          new_payload: number | null
           new_rate: number
           notes: string | null
+          old_payload: number | null
           old_rate: number | null
         }
         Insert: {
@@ -318,8 +320,10 @@ export type Database = {
           changed_by_name?: string | null
           id?: string
           load_id: string
+          new_payload?: number | null
           new_rate: number
           notes?: string | null
+          old_payload?: number | null
           old_rate?: number | null
         }
         Update: {
@@ -328,8 +332,10 @@ export type Database = {
           changed_by_name?: string | null
           id?: string
           load_id?: string
+          new_payload?: number | null
           new_rate?: number
           notes?: string | null
+          old_payload?: number | null
           old_rate?: number | null
         }
         Relationships: [
