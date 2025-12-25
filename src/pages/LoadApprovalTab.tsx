@@ -368,14 +368,16 @@ export default function LoadApprovalTab() {
     return sortedLoads.slice(start, start + ROWS_PER_PAGE);
   }, [loads, currentPage, showModifiedOnly]);
 
-  // Calculate total pages based on filtered loads
-  const filteredLoadsCount = useMemo(() => {
-    if (!showModifiedOnly) return loads.length;
+  // Count of modified loads (always calculated for badge display)
+  const modifiedLoadsCount = useMemo(() => {
     return loads.filter(load => {
       const isApproved = load.carrier_approved === true;
       return isApproved && load.approved_payload !== null && load.approved_payload !== load.rate;
     }).length;
-  }, [loads, showModifiedOnly]);
+  }, [loads]);
+
+  // Calculate total pages based on filtered loads
+  const filteredLoadsCount = showModifiedOnly ? modifiedLoadsCount : loads.length;
   
   const totalPages = Math.ceil(filteredLoadsCount / ROWS_PER_PAGE);
 
@@ -624,20 +626,35 @@ export default function LoadApprovalTab() {
               />
             </div>
             
-            <button
-              onClick={() => {
-                setShowModifiedOnly(!showModifiedOnly);
-                setCurrentPage(1);
-              }}
-              className={cn(
-                "w-full h-7 text-sm font-medium rounded-md transition-all duration-200",
-                showModifiedOnly 
-                  ? "bg-red-600 hover:bg-red-700 text-white" 
-                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+            <div className="flex items-stretch">
+              <button
+                onClick={() => {
+                  setShowModifiedOnly(!showModifiedOnly);
+                  setCurrentPage(1);
+                }}
+                className={cn(
+                  "flex-1 h-7 text-sm font-medium transition-all duration-200 border border-orange-400",
+                  modifiedLoadsCount > 0 ? "rounded-l-md" : "rounded-md",
+                  showModifiedOnly 
+                    ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                    : "bg-orange-100 hover:bg-orange-200 text-orange-700"
+                )}
+              >
+                {showModifiedOnly ? "Show All" : "Modified Loads"}
+              </button>
+              {modifiedLoadsCount > 0 && (
+                <span 
+                  className={cn(
+                    "w-7 flex items-center justify-center text-[14px] font-bold border-t border-r border-b border-orange-400 rounded-r-md transition-all",
+                    showModifiedOnly 
+                      ? "bg-orange-500 text-white" 
+                      : "bg-orange-100 text-red-600"
+                  )}
+                >
+                  {modifiedLoadsCount}
+                </span>
               )}
-            >
-              {showModifiedOnly ? "Show All Loads" : "Modified Loads"}
-            </button>
+            </div>
           </div>
           
           <div className="pl-3 pr-4 py-2 flex-1 overflow-hidden">
