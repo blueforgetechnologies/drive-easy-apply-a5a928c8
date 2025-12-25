@@ -875,11 +875,11 @@ export default function LoadApprovalTab() {
 
         {/* Calendar View - 3 Weeks of Loads */}
         <Card className="flex-1 min-h-0">
-          <CardContent className="p-4 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">
+          <CardContent className="p-2 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold text-sm">
                   {selectedLoad 
                     ? `Vehicle ${selectedLoad.vehicle?.vehicle_number || ''} - 30 Days View`
                     : `${selectedCarrierName} - 30 Days View`
@@ -891,7 +891,7 @@ export default function LoadApprovalTab() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedLoadId(null)}
-                  className="text-xs"
+                  className="text-xs h-6 px-2"
                 >
                   Show All
                 </Button>
