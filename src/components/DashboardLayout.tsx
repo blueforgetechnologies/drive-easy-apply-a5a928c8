@@ -553,7 +553,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <main className={cn(
         "max-w-[1630px] w-full mx-auto px-3 sm:px-4 py-4 flex-1",
-        location.pathname.includes('/load-hunter') ? "pb-4" : "pb-20 md:pb-4"
+        location.pathname.includes('/load-hunter') ? "pb-4" : "pb-20 md:pb-4",
+        location.pathname.includes('/fleet-financials') && "min-h-0 overflow-hidden",
       )}>
         {children}
       </main>
