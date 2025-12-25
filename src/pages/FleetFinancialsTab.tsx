@@ -562,8 +562,8 @@ export default function FleetFinancialsTab() {
         </div>
 
         {/* Vehicle Statistics Tab */}
-        <TabsContent value="statistics" className="flex-1 m-0 overflow-hidden">
-          <div className="flex h-full">
+        <TabsContent value="statistics" className="flex-1 min-h-0 m-0 overflow-hidden">
+          <div className="flex h-full min-h-0">
             {/* Left Sidebar - Carrier Filter */}
             <div className="w-[190px] border-r bg-card flex-shrink-0">
         <div className="pl-3 pr-4 py-3 border-b space-y-2">
@@ -689,7 +689,7 @@ export default function FleetFinancialsTab() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Vehicle Tabs */}
         <div className="border-b bg-card px-3 py-1.5">
           <ScrollArea className="w-full">
@@ -832,7 +832,7 @@ export default function FleetFinancialsTab() {
             )}
           >
             {/* Sticky Header */}
-            <thead className="sticky top-0 z-20 bg-muted shadow-sm">
+            <thead className="sticky top-0 z-30 bg-muted shadow-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-30 [&_th]:bg-muted">
               <tr>
                 <th className="w-[88px] px-2 py-2 text-left font-medium whitespace-nowrap">P/U Date</th>
                 <th className="w-[140px] px-2 py-2 text-left font-medium">Customer</th>
@@ -1127,7 +1127,7 @@ export default function FleetFinancialsTab() {
                 </TableBody>
 
             {/* Sticky Footer */}
-            <tfoot className="sticky bottom-0 z-20 bg-muted/95 border-t shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
+            <tfoot className="sticky bottom-0 z-30 bg-muted/95 border-t shadow-md [&_td]:sticky [&_td]:bottom-0 [&_td]:z-30 [&_td]:bg-muted/95">
               <tr>
                 <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">P/U Date</div>
