@@ -932,10 +932,14 @@ export default function FleetFinancialsTab() {
                                           className={cn(
                                             "text-[8px] px-0.5 py-0 scale-[0.85]",
                                             payloadChangedAfterApproval 
-                                              ? "bg-red-50 text-red-700 border-red-300" 
+                                              ? "bg-red-50 text-red-700 border-red-300 cursor-pointer hover:bg-red-100" 
                                               : "bg-green-50 text-green-700 border-green-300"
                                           )}
-                                          title={payloadChangedAfterApproval ? "Payload changed - requires re-approval" : "Load Approved"}
+                                          title={payloadChangedAfterApproval ? "Click to approve - Payload changed" : "Load Approved"}
+                                          onClick={payloadChangedAfterApproval ? (e) => {
+                                            e.stopPropagation();
+                                            navigate(`/dashboard/load-approval?loadId=${load.id}`);
+                                          } : undefined}
                                         >
                                           {payloadChangedAfterApproval ? <AlertTriangle className="h-2 w-2 mr-0.5" /> : <ShieldCheck className="h-2 w-2 mr-0.5" />}
                                           LA
