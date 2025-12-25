@@ -860,7 +860,7 @@ export default function LoadApprovalTab() {
                             className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/dashboard/loads/${load.id}`);
+                              navigate(`/dashboard/load/${load.id}`);
                             }}
                           >
                             <Eye className="h-4 w-4" />
