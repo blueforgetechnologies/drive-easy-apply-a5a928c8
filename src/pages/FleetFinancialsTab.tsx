@@ -812,13 +812,18 @@ export default function FleetFinancialsTab() {
               variant={isEditMode ? "default" : "outline"}
               size="sm"
               className={cn(
-                "rounded-full border-0",
-                isEditMode ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                "rounded-full border-0 transition-all duration-300",
+                isEditMode 
+                  ? "btn-glossy-primary text-white shadow-[0_0_20px_hsl(221_83%_53%/0.5)] animate-pulse" 
+                  : "btn-glossy text-gray-700"
               )}
               onClick={toggleEditMode}
               title={isEditMode ? "Exit edit mode" : "Edit columns"}
             >
-              <Settings className="h-3 w-3" />
+              <Settings className={cn(
+                "h-3.5 w-3.5 transition-transform duration-500",
+                isEditMode && "animate-spin"
+              )} style={isEditMode ? { animationDuration: '3s' } : undefined} />
             </Button>
             {isEditMode && (
               <Button
