@@ -626,38 +626,28 @@ export default function LoadApprovalTab() {
               />
             </div>
             
-            <div className="flex items-stretch shadow-md rounded-md overflow-hidden">
+            <div className="flex items-stretch rounded-md overflow-hidden">
               <button
                 onClick={() => {
                   setShowModifiedOnly(!showModifiedOnly);
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "flex-1 h-7 text-xs font-medium transition-all duration-200 rounded-l-md",
-                  "border-t",
-                  "text-white",
+                  "flex-1 h-7 text-xs font-medium transition-all duration-200 rounded-l-md border-l border-t border-b",
                   showModifiedOnly 
-                    ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-400/50 hover:from-red-600 hover:via-red-700 hover:to-red-800"
-                    : "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600 border-orange-300/50 hover:from-orange-500 hover:via-orange-600 hover:to-orange-700"
+                    ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-400/50 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white"
+                    : "btn-glossy text-gray-700 border-gray-300/50"
                 )}
-                style={{
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.15)"
-                }}
               >
                 {showModifiedOnly ? "Show All" : "Modified Loads"}
               </button>
               <span 
                 className={cn(
-                  "w-6 flex items-center justify-center text-[14px] font-bold rounded-r-md transition-all",
-                  "border-l",
-                  "text-white",
+                  "w-6 flex items-center justify-center text-[14px] font-bold rounded-r-md transition-all border-t border-r border-b",
                   showModifiedOnly
-                    ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-800/30"
-                    : "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600 border-orange-700/30"
+                    ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-800/30 text-white"
+                    : "btn-glossy border-gray-300/50 !text-red-600"
                 )}
-                style={{
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)"
-                }}
               >
                 {showModifiedOnly ? loads.length : modifiedLoadsCount}
               </span>
