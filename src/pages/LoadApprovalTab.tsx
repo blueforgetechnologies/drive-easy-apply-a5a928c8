@@ -774,9 +774,9 @@ export default function LoadApprovalTab() {
                           <div className="font-medium">{load.load_number}</div>
                           <div className="text-muted-foreground">{(load as any).reference_number || (load as any).shipper_load_id || "-"}</div>
                         </TableCell>
-                        <TableCell className="text-xs">
-                          <div>{load.pickup_city}{load.pickup_state ? `, ${load.pickup_state}` : ""}</div>
-                          <div className="text-muted-foreground">{load.delivery_city}{load.delivery_state ? `, ${load.delivery_state}` : ""}</div>
+                        <TableCell className="text-xs min-w-[120px]">
+                          <div className="whitespace-nowrap">{load.pickup_city}{load.pickup_state ? `, ${load.pickup_state}` : ""}</div>
+                          <div className="text-muted-foreground whitespace-nowrap">{load.delivery_city}{load.delivery_state ? `, ${load.delivery_state}` : ""}</div>
                         </TableCell>
                         <TableCell className="text-xs">
                           <div>{load.pickup_date ? format(new Date(load.pickup_date), "MM/dd/yy") : "-"}</div>
