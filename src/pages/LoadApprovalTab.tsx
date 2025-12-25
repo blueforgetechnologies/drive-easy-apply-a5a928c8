@@ -95,6 +95,7 @@ export default function LoadApprovalTab() {
   
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
+  const [payloadRates, setPayloadRates] = useState<Record<string, number>>({});
   const [carrierPayApproved, setCarrierPayApproved] = useState<Record<string, boolean>>({});
   const [vehicleDriverInfoById, setVehicleDriverInfoById] = useState<Record<string, any>>({});
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
@@ -353,16 +354,31 @@ export default function LoadApprovalTab() {
     setCarrierRates(prev => ({ ...prev, [loadId]: numValue }));
   };
 
+  const handlePayloadChange = async (loadId: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setPayloadRates(prev => ({ ...prev, [loadId]: numValue }));
+    
+    // Also update the database
+    try {
+      await supabase
+        .from("loads")
+        .update({ rate: numValue })
+        .eq("id", loadId);
+    } catch (error) {
+      console.error("Failed to update payload:", error);
+    }
+  };
+
   const handleCarrierPayApproval = async (load: ApprovalLoad) => {
+    const currentPayloadValue = payloadRates[load.id] ?? load.rate ?? 0;
     const newCarrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
-    const currentPayload = load.rate ?? 0;
     const isCurrentlyApproved = carrierPayApproved[load.id] ?? load.carrier_approved;
     
     // Check if payload changed (strikethrough scenario)
     const payloadChanged = isCurrentlyApproved && 
                            load.approved_payload !== null && 
                            load.approved_payload !== undefined &&
-                           load.rate !== load.approved_payload;
+                           currentPayloadValue !== load.approved_payload;
     
     // Get old rate for history tracking
     const oldRate = load.carrier_rate ?? null;
@@ -400,7 +416,7 @@ export default function LoadApprovalTab() {
         .update({
           carrier_rate: shouldApprove ? newCarrierPay : null,
           carrier_approved: shouldApprove,
-          approved_payload: shouldApprove ? currentPayload : null
+          approved_payload: shouldApprove ? currentPayloadValue : null
         })
         .eq("id", load.id);
 
@@ -706,12 +722,15 @@ export default function LoadApprovalTab() {
                     const customerRatePerMile = loadedMiles > 0 ? customerRate / loadedMiles : 0;
                     const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
                     const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
-                    const currentRate = load.rate || 0;
+                    
+                    // Use local payload state if edited, otherwise use DB value
+                    const currentPayloadValue = payloadRates[load.id] ?? load.rate ?? 0;
                     
                     // Check if payload changed after approval (needs re-approval)
+                    // Compare current payload (local or DB) against the approved_payload
                     const payloadChanged = load.carrier_approved === true && 
                                            load.approved_payload !== null && 
-                                           load.rate !== load.approved_payload;
+                                           currentPayloadValue !== load.approved_payload;
                     const previousApprovedRate = payloadChanged ? (load.carrier_rate ?? 0) : null;
                     
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
@@ -789,8 +808,17 @@ export default function LoadApprovalTab() {
                         <TableCell className="text-xs text-right">
                           ${customerRatePerMile.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-sm text-right font-bold">
-                          {currentRate > 0 ? `$${Number(currentRate).toLocaleString()}` : "-"}
+                        <TableCell className="text-right">
+                          <div className="relative w-20">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm">$</span>
+                            <Input
+                              type="number"
+                              value={payloadRates[load.id] ?? load.rate ?? ""}
+                              onChange={(e) => handlePayloadChange(load.id, e.target.value)}
+                              className="w-20 h-7 text-sm text-right font-bold pl-5 !shadow-none"
+                              placeholder="0.00"
+                            />
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
