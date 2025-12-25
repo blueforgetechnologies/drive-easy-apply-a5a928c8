@@ -727,9 +727,9 @@ export default function LoadApprovalTab() {
                             {displayStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs">
+                        <TableCell className="text-xs min-w-[90px]">
                           <div className="font-medium">{load.vehicle?.vehicle_number || "-"}</div>
-                          <div className="text-muted-foreground">{driverName}</div>
+                          <div className="text-muted-foreground truncate max-w-[90px]" title={driverName}>{driverName}</div>
                         </TableCell>
                         <TableCell className="text-xs min-w-[140px]">
                           <div className="font-medium truncate max-w-[140px]" title={load.carrier?.name || "-"}>{load.carrier?.name || "-"}</div>
