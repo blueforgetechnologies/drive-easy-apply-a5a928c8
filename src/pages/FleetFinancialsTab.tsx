@@ -551,9 +551,9 @@ export default function FleetFinancialsTab() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col">
+    <div className="h-full min-h-0 flex flex-col">
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col">
         <div className="border-b bg-card px-4 py-2">
           <TabsList className="h-9">
             <TabsTrigger value="statistics" className="text-sm">Vehicle Statistics</TabsTrigger>
