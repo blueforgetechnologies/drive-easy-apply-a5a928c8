@@ -100,7 +100,7 @@ const formatNumber = (value: number, decimals = 1) => {
   return value.toFixed(decimals);
 };
 
-// Column header component - draggable only in edit mode
+// Column header component - draggable only in edit mode with high-tech effects
 function ColumnHeader({
   column,
   isEditMode,
@@ -119,7 +119,7 @@ function ColumnHeader({
   onDragEnd: () => void;
 }) {
   const isDragging = draggedColumn === column.id;
-  const isOver = dragOverColumn === column.id;
+  const isOver = dragOverColumn === column.id && !isDragging;
 
   if (!isEditMode) {
     // Normal view - centered text, no truncation
@@ -135,29 +135,59 @@ function ColumnHeader({
     );
   }
 
-  // Edit mode - draggable with grip handle
+  // Edit mode - draggable with high-tech effects
   return (
     <th
       draggable
-      onDragStart={() => onDragStart(column.id)}
+      onDragStart={(e) => {
+        // Create a custom drag image
+        const element = e.currentTarget;
+        const rect = element.getBoundingClientRect();
+        const ghost = element.cloneNode(true) as HTMLElement;
+        ghost.style.position = 'absolute';
+        ghost.style.left = '-9999px';
+        ghost.style.width = `${rect.width}px`;
+        ghost.style.transform = 'scale(1.05)';
+        ghost.style.opacity = '0.9';
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
+        setTimeout(() => document.body.removeChild(ghost), 0);
+        onDragStart(column.id);
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         onDragOver(column.id);
       }}
       onDragEnd={onDragEnd}
+      onDragLeave={(e) => {
+        e.currentTarget.classList.remove('column-drop-target');
+      }}
       className={cn(
         column.width,
-        "px-2 py-2 font-medium whitespace-nowrap cursor-grab select-none transition-all group",
+        "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable",
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
-        isDragging && "opacity-50 bg-primary/10",
-        isOver && "bg-primary/20 border-l-2 border-primary"
+        !isDragging && !isOver && "column-edit-mode",
+        isDragging && "column-dragging",
+        isOver && "column-drop-target"
       )}
     >
-      <div className="flex items-center gap-0.5">
-        <GripVertical className="h-3 w-3 opacity-40 flex-shrink-0" />
-        <span className={cn("flex-1 truncate", column.align === "right" && "text-right")}>{column.label}</span>
+      <div className={cn(
+        "flex items-center gap-1 px-1 py-0.5 rounded transition-all duration-200",
+        isDragging && "bg-primary/10"
+      )}>
+        <GripVertical className={cn(
+          "h-3.5 w-3.5 flex-shrink-0 grip-handle transition-all duration-200",
+          isDragging ? "text-primary animate-pulse" : "opacity-50"
+        )} />
+        <span className={cn(
+          "flex-1 truncate font-semibold text-xs uppercase tracking-wide",
+          column.align === "right" && "text-right",
+          isDragging && "text-primary"
+        )}>
+          {column.label}
+        </span>
       </div>
     </th>
   );
@@ -651,30 +681,42 @@ export function FleetFinancialsTable({
   }, [visibleColumns]);
 
   return (
-    <table
-      className={cn(
-        "table-glossy w-full caption-bottom text-sm table-fixed",
-        showColumnLines ? "[&_td]:border-x [&_td]:border-border/50 [&_th]:border-x [&_th]:border-border/50" : ""
+    <div className={cn("relative", isEditMode && "edit-mode-active overflow-hidden rounded-lg")}>
+      {/* High-tech overlay effect when in edit mode */}
+      {isEditMode && (
+        <div className="absolute inset-0 pointer-events-none z-20 bg-gradient-to-b from-primary/5 via-transparent to-primary/5 rounded-lg" />
       )}
-      style={{ minWidth: `${minTableWidth}px` }}
-    >
-      {/* Sticky Header */}
-      <thead className="sticky top-0 z-30 bg-muted shadow-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-30 [&_th]:bg-muted">
-        <tr>
-          {visibleColumns.map((column) => (
-            <ColumnHeader
-              key={column.id}
-              column={column}
-              isEditMode={isEditMode}
-              draggedColumn={draggedColumn}
-              dragOverColumn={dragOverColumn}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-            />
-          ))}
-        </tr>
-      </thead>
+      
+      <table
+        className={cn(
+          "table-glossy w-full caption-bottom text-sm table-fixed",
+          showColumnLines ? "[&_td]:border-x [&_td]:border-border/50 [&_th]:border-x [&_th]:border-border/50" : "",
+          isEditMode && "relative z-10"
+        )}
+        style={{ minWidth: `${minTableWidth}px` }}
+      >
+        {/* Sticky Header with edit mode styling */}
+        <thead className={cn(
+          "sticky top-0 z-30 shadow-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-30",
+          isEditMode 
+            ? "bg-gradient-to-b from-primary/10 to-primary/5 [&_th]:bg-transparent" 
+            : "bg-muted [&_th]:bg-muted"
+        )}>
+          <tr className={cn(isEditMode && "border-b-2 border-primary/30")}>
+            {visibleColumns.map((column) => (
+              <ColumnHeader
+                key={column.id}
+                column={column}
+                isEditMode={isEditMode}
+                draggedColumn={draggedColumn}
+                dragOverColumn={dragOverColumn}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </tr>
+        </thead>
 
       <TableBody>
         {dailyData.map((day, index) => {
@@ -748,7 +790,12 @@ export function FleetFinancialsTable({
       </TableBody>
 
       {/* Sticky Footer */}
-      <tfoot className="sticky bottom-0 z-30 bg-muted/95 border-t shadow-md [&_td]:sticky [&_td]:bottom-0 [&_td]:z-30 [&_td]:bg-muted/95">
+      <tfoot className={cn(
+        "sticky bottom-0 z-30 border-t shadow-md [&_td]:sticky [&_td]:bottom-0 [&_td]:z-30",
+        isEditMode 
+          ? "bg-gradient-to-t from-primary/10 to-primary/5 [&_td]:bg-transparent border-t-2 border-primary/30"
+          : "bg-muted/95 [&_td]:bg-muted/95"
+      )}>
         <tr>
           {visibleColumns.map((column) => (
             <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} />
@@ -756,6 +803,7 @@ export function FleetFinancialsTable({
         </tr>
       </tfoot>
     </table>
+    </div>
   );
 }
 
