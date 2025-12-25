@@ -637,12 +637,12 @@ export default function LoadApprovalTab() {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs">Truck ID<br/><span className="text-muted-foreground">Driver</span></TableHead>
-                    <TableHead className="text-xs">Carrier<br/><span className="text-muted-foreground">Customer</span></TableHead>
-                    <TableHead className="text-xs">Our Load ID<br/><span className="text-muted-foreground">Customer Load</span></TableHead>
-                    <TableHead className="text-xs">Origin<br/><span className="text-muted-foreground">Destination</span></TableHead>
-                    <TableHead className="text-xs">Pickup<br/><span className="text-muted-foreground">Delivery</span></TableHead>
-                    <TableHead className="text-xs text-right">Empty Miles<br/><span className="text-muted-foreground">Loaded Miles</span></TableHead>
+                    <TableHead className="text-xs">Truck ID / <span className="text-muted-foreground">Driver</span></TableHead>
+                    <TableHead className="text-xs">Carrier / <span className="text-muted-foreground">Customer</span></TableHead>
+                    <TableHead className="text-xs">Our Load ID / <span className="text-muted-foreground">Customer Load</span></TableHead>
+                    <TableHead className="text-xs">Origin / <span className="text-muted-foreground">Destination</span></TableHead>
+                    <TableHead className="text-xs">Pickup / <span className="text-muted-foreground">Delivery</span></TableHead>
+                    <TableHead className="text-xs text-right">Empty Miles / <span className="text-muted-foreground">Loaded Miles</span></TableHead>
                     <TableHead className="text-xs text-right">$/Mile</TableHead>
                     <TableHead className="text-xs text-right">Payload</TableHead>
                     <TableHead className="text-xs text-right">Carrier Pay</TableHead>
@@ -837,26 +837,32 @@ export default function LoadApprovalTab() {
             
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-2 border-t">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between px-3 py-1 border-t">
+                <span className="text-xs text-muted-foreground">
                   Items per page: {ROWS_PER_PAGE}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {(currentPage - 1) * ROWS_PER_PAGE + 1} – {Math.min(currentPage * ROWS_PER_PAGE, loads.length)} of {loads.length}
                   </span>
-                  <Pagination>
-                    <PaginationContent>
+                  <Pagination className="w-auto mx-0 flex-none">
+                    <PaginationContent className="gap-0.5">
                       <PaginationItem>
-                        <PaginationPrevious 
+                        <PaginationPrevious
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          className={cn(
+                            "h-7 px-2 py-0 text-xs",
+                            currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+                          )}
                         />
                       </PaginationItem>
                       <PaginationItem>
-                        <PaginationNext 
+                        <PaginationNext
                           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          className={cn(
+                            "h-7 px-2 py-0 text-xs",
+                            currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
+                          )}
                         />
                       </PaginationItem>
                     </PaginationContent>
