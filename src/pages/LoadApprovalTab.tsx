@@ -626,15 +626,15 @@ export default function LoadApprovalTab() {
               />
             </div>
             
-            <div className="flex items-stretch">
+            <div className="flex items-stretch shadow-lg rounded-lg">
               <button
                 onClick={() => {
                   setShowModifiedOnly(!showModifiedOnly);
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "flex-1 h-7 text-sm font-medium transition-all duration-200 border border-orange-400",
-                  modifiedLoadsCount > 0 ? "rounded-l-md" : "rounded-md",
+                  "flex-1 h-12 text-base font-bold transition-all duration-200 border-2 border-orange-500",
+                  modifiedLoadsCount > 0 ? "rounded-l-lg" : "rounded-lg",
                   showModifiedOnly 
                     ? "bg-orange-500 hover:bg-orange-600 text-white" 
                     : "bg-orange-100 hover:bg-orange-200 text-orange-700"
@@ -645,7 +645,7 @@ export default function LoadApprovalTab() {
               {modifiedLoadsCount > 0 && (
                 <span 
                   className={cn(
-                    "w-7 flex items-center justify-center text-[14px] font-bold border-t border-r border-b border-orange-400 rounded-r-md transition-all",
+                    "w-12 flex items-center justify-center text-xl font-black border-t-2 border-r-2 border-b-2 border-orange-500 rounded-r-lg transition-all",
                     showModifiedOnly 
                       ? "bg-orange-500 text-white" 
                       : "bg-orange-100 text-red-600"
