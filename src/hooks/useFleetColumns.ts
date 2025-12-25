@@ -54,6 +54,7 @@ export function useFleetColumns() {
 
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     try {
@@ -64,16 +65,19 @@ export function useFleetColumns() {
   }, [columns]);
 
   const handleDragStart = (columnId: string) => {
+    if (!isEditMode) return;
     setDraggedColumn(columnId);
   };
 
   const handleDragOver = (columnId: string) => {
+    if (!isEditMode) return;
     if (draggedColumn && columnId !== draggedColumn) {
       setDragOverColumn(columnId);
     }
   };
 
   const handleDragEnd = () => {
+    if (!isEditMode) return;
     if (draggedColumn && dragOverColumn && draggedColumn !== dragOverColumn) {
       setColumns((prev) => {
         const newColumns = [...prev];
@@ -103,15 +107,21 @@ export function useFleetColumns() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  const toggleEditMode = () => {
+    setIsEditMode((prev) => !prev);
+  };
+
   return {
     columns,
     visibleColumns: columns.filter((c) => c.visible),
     draggedColumn,
     dragOverColumn,
+    isEditMode,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
     toggleColumnVisibility,
     resetColumns,
+    toggleEditMode,
   };
 }
