@@ -637,12 +637,42 @@ export default function LoadApprovalTab() {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs">Truck ID / <span className="text-muted-foreground">Driver</span></TableHead>
-                    <TableHead className="text-xs">Carrier / <span className="text-muted-foreground">Customer</span></TableHead>
-                    <TableHead className="text-xs">Our Load ID / <span className="text-muted-foreground">Customer Load</span></TableHead>
-                    <TableHead className="text-xs">Origin / <span className="text-muted-foreground">Destination</span></TableHead>
-                    <TableHead className="text-xs">Pickup / <span className="text-muted-foreground">Delivery</span></TableHead>
-                    <TableHead className="text-xs text-right">Empty Miles / <span className="text-muted-foreground">Loaded Miles</span></TableHead>
+                    <TableHead className="text-xs">
+                      <div className="leading-tight">
+                        <div className="whitespace-nowrap">Truck ID /</div>
+                        <div className="text-muted-foreground whitespace-nowrap">Driver</div>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs">
+                      <div className="leading-tight">
+                        <div className="whitespace-nowrap">Carrier /</div>
+                        <div className="text-muted-foreground whitespace-nowrap">Customer</div>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs">
+                      <div className="leading-tight">
+                        <div className="whitespace-nowrap">Our Load ID /</div>
+                        <div className="text-muted-foreground whitespace-nowrap">Customer Load</div>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs">
+                      <div className="leading-tight">
+                        <div className="whitespace-nowrap">Origin /</div>
+                        <div className="text-muted-foreground whitespace-nowrap">Destination</div>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs">
+                      <div className="leading-tight">
+                        <div className="whitespace-nowrap">Pickup /</div>
+                        <div className="text-muted-foreground whitespace-nowrap">Delivery</div>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs text-right">
+                      <div className="flex flex-col items-end leading-tight">
+                        <div className="whitespace-nowrap">Empty Miles /</div>
+                        <div className="text-muted-foreground whitespace-nowrap">Loaded Miles</div>
+                      </div>
+                    </TableHead>
                     <TableHead className="text-xs text-right">$/Mile</TableHead>
                     <TableHead className="text-xs text-right">Payload</TableHead>
                     <TableHead className="text-xs text-right">Carrier Pay</TableHead>
