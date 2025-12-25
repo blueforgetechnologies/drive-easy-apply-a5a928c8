@@ -335,7 +335,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col">
+    <div
+      className={cn(
+        "w-full bg-background flex flex-col",
+        location.pathname.includes("/fleet-financials")
+          ? "h-[100dvh] overflow-hidden"
+          : "min-h-screen",
+      )}
+    >
       <header 
         className="sticky top-0 z-40 border-b border-white/20"
         style={{
