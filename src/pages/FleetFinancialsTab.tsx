@@ -107,7 +107,17 @@ const DRIVER_PAY_RATE = 0; // per load or percentage
 
 export default function FleetFinancialsTab() {
   const navigate = useNavigate();
-  const { resetColumns, isEditMode, toggleEditMode } = useFleetColumns();
+  const { 
+    resetColumns, 
+    isEditMode, 
+    toggleEditMode,
+    visibleColumns,
+    draggedColumn,
+    dragOverColumn,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  } = useFleetColumns();
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -814,16 +824,16 @@ export default function FleetFinancialsTab() {
               className={cn(
                 "rounded-full border-0 transition-all duration-300",
                 isEditMode 
-                  ? "btn-glossy-primary text-white shadow-[0_0_20px_hsl(221_83%_53%/0.5)] animate-pulse" 
+                  ? "btn-glossy-primary text-white shadow-[0_0_12px_hsl(221_83%_53%/0.4)]" 
                   : "btn-glossy text-gray-700"
               )}
               onClick={toggleEditMode}
-              title={isEditMode ? "Exit edit mode" : "Edit columns"}
+              title={isEditMode ? "Exit edit mode - Click to save" : "Edit columns"}
             >
               <Settings className={cn(
-                "h-3.5 w-3.5 transition-transform duration-500",
-                isEditMode && "animate-spin"
-              )} style={isEditMode ? { animationDuration: '3s' } : undefined} />
+                "h-3.5 w-3.5 transition-transform duration-300",
+                isEditMode && "rotate-90"
+              )} />
             </Button>
             {isEditMode && (
               <Button
@@ -869,6 +879,12 @@ export default function FleetFinancialsTab() {
             getDispatcherPay={getDispatcherPay}
             getDriverPay={getDriverPay}
             getWeeklyTotal={getWeeklyTotal}
+            visibleColumns={visibleColumns}
+            draggedColumn={draggedColumn}
+            dragOverColumn={dragOverColumn}
+            handleDragStart={handleDragStart}
+            handleDragOver={handleDragOver}
+            handleDragEnd={handleDragEnd}
           />
         </div>
 
