@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +69,7 @@ interface ApprovalLoad extends Load {
 
 export default function LoadApprovalTab() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const { timezone } = useUserTimezone();
 
@@ -90,8 +91,8 @@ export default function LoadApprovalTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 3;
   
-  // Selected load for 30 Days View filtering
-  const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
+  // Selected load for 30 Days View filtering - initialize from URL param
+  const [selectedLoadId, setSelectedLoadId] = useState<string | null>(() => searchParams.get("loadId"));
   
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
@@ -106,6 +107,25 @@ export default function LoadApprovalTab() {
       selectedRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [selectedLoadId]);
+
+  // When loads are loaded and we have a loadId from URL, navigate to the correct page
+  useEffect(() => {
+    if (!loading && selectedLoadId && loads.length > 0) {
+      // Sort loads the same way as paginatedLoads
+      const sortedLoads = [...loads].sort((a, b) => {
+        const dateA = a.pickup_date ? new Date(a.pickup_date).getTime() : 0;
+        const dateB = b.pickup_date ? new Date(b.pickup_date).getTime() : 0;
+        return dateA - dateB;
+      });
+      const loadIndex = sortedLoads.findIndex(l => l.id === selectedLoadId);
+      if (loadIndex >= 0) {
+        const targetPage = Math.floor(loadIndex / ROWS_PER_PAGE) + 1;
+        if (targetPage !== currentPage) {
+          setCurrentPage(targetPage);
+        }
+      }
+    }
+  }, [loading, selectedLoadId, loads]);
 
   useEffect(() => {
     loadCarriers();
