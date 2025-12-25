@@ -72,6 +72,7 @@ interface Load {
   rate: number | null;
   carrier_rate: number | null;
   carrier_approved: boolean | null;
+  approved_payload: number | null;
   estimated_miles: number | null;
   empty_miles: number | null;
   assigned_vehicle_id: string | null;
@@ -881,18 +882,34 @@ export default function FleetFinancialsTab() {
                           const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
                           const isApproved = load.carrier_approved === true;
                           
-                          // Check if there's a pending rate change (has history but not approved)
-                          const loadHistory = rateHistory.filter(h => h.load_id === load.id);
-                          const hasPendingChange = loadHistory.length > 0 && !isApproved && vehicleRequiresApproval;
-                          const latestHistory = loadHistory[0]; // Already sorted by changed_at desc
-                          const previousRate = hasPendingChange && latestHistory?.old_rate != null ? latestHistory.old_rate : null;
+                          // Check if payload changed after approval (needs re-approval)
+                          const payloadChangedAfterApproval = isApproved && 
+                            load.approved_payload != null && 
+                            Number(load.rate) !== Number(load.approved_payload);
                           
-                          const carrierPayAmount = vehicleRequiresApproval && !isApproved 
+                          // Check if there's a pending rate change (has history but not approved, or payload changed)
+                          const loadHistory = rateHistory.filter(h => h.load_id === load.id);
+                          const latestHistory = loadHistory[0]; // Already sorted by changed_at desc
+                          
+                          // Show pending state if: not approved, OR payload changed after approval
+                          const hasPendingChange = vehicleRequiresApproval && (
+                            (!isApproved && loadHistory.length > 0) || 
+                            payloadChangedAfterApproval
+                          );
+                          
+                          // Get previous rate: either from history (old_rate) or approved carrier_rate if payload changed
+                          const previousRate = hasPendingChange 
+                            ? (payloadChangedAfterApproval 
+                                ? load.carrier_rate 
+                                : (latestHistory?.old_rate ?? null))
+                            : null;
+                          
+                          const effectiveCarrierPay = vehicleRequiresApproval && (!isApproved || payloadChangedAfterApproval) 
                             ? 0 
                             : (load.carrier_rate || rate);
                           
-                          const carrierNet = carrierPayAmount - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
-                          const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
+                          const carrierNet = effectiveCarrierPay - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
+                          const carrierPerMile = loadedM > 0 ? effectiveCarrierPay / loadedM : 0;
 
                           return (
                             <TableRow key={load.id} className={cn("hover:bg-muted/30 h-[25px]", isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20")}>
@@ -947,7 +964,7 @@ export default function FleetFinancialsTab() {
                                     ) : (
                                       <>
                                         <span className={isApproved ? "text-green-600 font-bold" : "text-orange-600 font-bold"}>
-                                          {isApproved ? formatCurrency(carrierPayAmount) : "$0.00"}
+                                          {isApproved ? formatCurrency(effectiveCarrierPay) : "$0.00"}
                                         </span>
                                         <Badge 
                                           variant="outline" 
@@ -966,7 +983,7 @@ export default function FleetFinancialsTab() {
                                     )}
                                   </div>
                                 ) : (
-                                  formatCurrency(carrierPayAmount)
+                                  formatCurrency(effectiveCarrierPay)
                                 )}
                               </TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
