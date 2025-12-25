@@ -282,12 +282,11 @@ export default function LoadApprovalTab() {
     });
   }, [carriers, carrierSearch, carrierStatusFilter, carrierPendingCounts]);
 
-  // Calculate total pending loads count
+  // Calculate total pending loads count - use actual loads.length for accuracy
+  // since carrierPendingCounts only includes loads with carrier_id assigned
   const totalPendingLoads = useMemo(() => {
-    let total = 0;
-    carrierPendingCounts.forEach(count => { total += count; });
-    return total;
-  }, [carrierPendingCounts]);
+    return loads.length;
+  }, [loads]);
 
   // Get 30 days calendar data - recalculate when loads change to stay fresh
   const thirtyDaysRange = useMemo(() => {
