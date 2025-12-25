@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save, ShieldCheck } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,15 @@ interface Load {
   other_charges: number | null;
 }
 
+interface RateHistory {
+  load_id: string;
+  old_rate: number | null;
+  new_rate: number;
+  old_payload: number | null;
+  new_payload: number | null;
+  changed_at: string;
+}
+
 interface DailyData {
   date: Date;
   dayOfWeek: number;
@@ -105,6 +114,7 @@ export default function FleetFinancialsTab() {
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [rateHistory, setRateHistory] = useState<RateHistory[]>([]);
   const [driverCompensation, setDriverCompensation] = useState<DriverCompensation | null>(null);
   const [factoringPercentage, setFactoringPercentage] = useState<number>(2); // Default 2%
   
@@ -206,7 +216,21 @@ export default function FleetFinancialsTab() {
       .lte("pickup_date", format(endDate, "yyyy-MM-dd"))
       .order("pickup_date");
 
-    if (data) setLoads(data);
+    if (data) {
+      setLoads(data);
+      // Fetch rate history for these loads
+      const loadIds = data.map(l => l.id);
+      if (loadIds.length > 0) {
+        const { data: historyData } = await supabase
+          .from("carrier_rate_history")
+          .select("load_id, old_rate, new_rate, old_payload, new_payload, changed_at")
+          .in("load_id", loadIds)
+          .order("changed_at", { ascending: false });
+        setRateHistory(historyData || []);
+      } else {
+        setRateHistory([]);
+      }
+    }
     if (error) console.error("Error loading loads:", error);
   };
 
@@ -856,6 +880,13 @@ export default function FleetFinancialsTab() {
                           const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
                           const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
                           const isApproved = load.carrier_approved === true;
+                          
+                          // Check if there's a pending rate change (has history but not approved)
+                          const loadHistory = rateHistory.filter(h => h.load_id === load.id);
+                          const hasPendingChange = loadHistory.length > 0 && !isApproved && vehicleRequiresApproval;
+                          const latestHistory = loadHistory[0]; // Already sorted by changed_at desc
+                          const previousRate = hasPendingChange && latestHistory?.old_rate != null ? latestHistory.old_rate : null;
+                          
                           const carrierPayAmount = vehicleRequiresApproval && !isApproved 
                             ? 0 
                             : (load.carrier_rate || rate);
@@ -895,22 +926,44 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right !px-2 !py-0.5">
                                 {vehicleRequiresApproval ? (
                                   <div className="flex items-center justify-end gap-1">
-                                    <span className={isApproved ? "text-green-600 font-bold" : "text-orange-600 font-bold"}>
-                                      {isApproved ? formatCurrency(carrierPayAmount) : "$0.00"}
-                                    </span>
-                                    <Badge 
-                                      variant="outline" 
-                                      className={cn(
-                                        "text-[8px] px-0.5 py-0 scale-[0.85]",
-                                        isApproved 
-                                          ? "bg-green-50 text-green-700 border-green-300" 
-                                          : "bg-amber-50 text-amber-700 border-amber-300"
-                                      )}
-                                      title={isApproved ? "Load Approval Enabled" : "Load Approval Required"}
-                                    >
-                                      <ShieldCheck className="h-2 w-2 mr-0.5" />
-                                      LA
-                                    </Badge>
+                                    {hasPendingChange && previousRate !== null ? (
+                                      // Pending change: show old rate struck through in red, then new rate
+                                      <div className="flex items-center gap-1">
+                                        <span className="line-through text-destructive text-xs">
+                                          {formatCurrency(previousRate)}
+                                        </span>
+                                        <span className="text-orange-600 font-bold">
+                                          {formatCurrency(load.carrier_rate || 0)}
+                                        </span>
+                                        <Badge 
+                                          variant="outline" 
+                                          className="text-[8px] px-0.5 py-0 scale-[0.85] bg-red-50 text-red-700 border-red-300"
+                                          title="Rate changed - Pending approval"
+                                        >
+                                          <AlertTriangle className="h-2 w-2 mr-0.5" />
+                                          LA
+                                        </Badge>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <span className={isApproved ? "text-green-600 font-bold" : "text-orange-600 font-bold"}>
+                                          {isApproved ? formatCurrency(carrierPayAmount) : "$0.00"}
+                                        </span>
+                                        <Badge 
+                                          variant="outline" 
+                                          className={cn(
+                                            "text-[8px] px-0.5 py-0 scale-[0.85]",
+                                            isApproved 
+                                              ? "bg-green-50 text-green-700 border-green-300" 
+                                              : "bg-amber-50 text-amber-700 border-amber-300"
+                                          )}
+                                          title={isApproved ? "Load Approved" : "Pending Approval"}
+                                        >
+                                          <ShieldCheck className="h-2 w-2 mr-0.5" />
+                                          LA
+                                        </Badge>
+                                      </>
+                                    )}
                                   </div>
                                 ) : (
                                   formatCurrency(carrierPayAmount)
