@@ -823,36 +823,46 @@ export default function FleetFinancialsTab() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <ScrollArea className="flex-1">
-          <div className="min-w-[1630px]">
-            <table className={cn("table-glossy w-full caption-bottom text-sm table-fixed", showColumnLines ? "[&_th]:border-x [&_td]:border-x [&_th]:border-border/50 [&_td]:border-border/50" : "")}>
-              <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
-                <TableRow>
-                  <TableHead className="w-[88px] px-2 whitespace-nowrap bg-muted">P/U Date</TableHead>
-                  <TableHead className="w-[140px] px-2 bg-muted">Customer</TableHead>
-                  <TableHead className="w-[65px] px-2 bg-muted">Route</TableHead>
-                  <TableHead className="w-[78px] px-2 text-right bg-muted">Payload</TableHead>
-                  <TableHead className="w-[60px] px-2 text-right bg-muted">Empty</TableHead>
-                  <TableHead className="w-[62px] px-2 text-right bg-muted">Loaded</TableHead>
-                  <TableHead className="w-[55px] px-2 text-right bg-muted">Total</TableHead>
-                  <TableHead className="w-[52px] px-2 text-right bg-muted">$/Mi</TableHead>
-                  <TableHead className="w-[48px] px-2 text-right bg-muted">MPG</TableHead>
-                  <TableHead className="w-[68px] px-2 text-right bg-muted">Factor</TableHead>
-                  <TableHead className="w-[75px] px-2 text-right bg-muted">Disp Pay</TableHead>
-                  <TableHead className="w-[70px] px-2 text-right bg-muted">Drv Pay</TableHead>
-                  <TableHead className="w-[62px] px-2 text-right bg-muted">WComp</TableHead>
-                  <TableHead className="w-[55px] px-2 text-right bg-muted">Fuel</TableHead>
-                  <TableHead className="w-[55px] px-2 text-right bg-muted">Tolls</TableHead>
-                  <TableHead className="w-[58px] px-2 text-right bg-muted">Rental</TableHead>
-                  <TableHead className="w-[62px] px-2 text-right bg-muted">Insur</TableHead>
-                  <TableHead className="w-[58px] px-2 text-right bg-muted">Other</TableHead>
-                  <TableHead className="w-[78px] px-2 text-right bg-muted">Carr Pay</TableHead>
-                  <TableHead className="w-[52px] px-2 text-right bg-muted">$/Mi</TableHead>
-                  <TableHead className="w-[80px] px-2 text-right bg-muted">Net</TableHead>
-                  <TableHead className="w-[80px] px-2 text-right bg-muted">Carr NET</TableHead>
-                </TableRow>
-              </TableHeader>
+        {/* Data Table Container */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Sticky Header - Outside ScrollArea */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[1630px] bg-muted border-b shadow-sm">
+              <table className={cn("table-glossy w-full text-sm table-fixed", showColumnLines ? "[&_th]:border-x [&_th]:border-border/50" : "")}>
+                <thead>
+                  <tr>
+                    <th className="w-[88px] px-2 py-2 text-left font-medium whitespace-nowrap">P/U Date</th>
+                    <th className="w-[140px] px-2 py-2 text-left font-medium">Customer</th>
+                    <th className="w-[65px] px-2 py-2 text-left font-medium">Route</th>
+                    <th className="w-[78px] px-2 py-2 text-right font-medium">Payload</th>
+                    <th className="w-[60px] px-2 py-2 text-right font-medium">Empty</th>
+                    <th className="w-[62px] px-2 py-2 text-right font-medium">Loaded</th>
+                    <th className="w-[55px] px-2 py-2 text-right font-medium">Total</th>
+                    <th className="w-[52px] px-2 py-2 text-right font-medium">$/Mi</th>
+                    <th className="w-[48px] px-2 py-2 text-right font-medium">MPG</th>
+                    <th className="w-[68px] px-2 py-2 text-right font-medium">Factor</th>
+                    <th className="w-[75px] px-2 py-2 text-right font-medium">Disp Pay</th>
+                    <th className="w-[70px] px-2 py-2 text-right font-medium">Drv Pay</th>
+                    <th className="w-[62px] px-2 py-2 text-right font-medium">WComp</th>
+                    <th className="w-[55px] px-2 py-2 text-right font-medium">Fuel</th>
+                    <th className="w-[55px] px-2 py-2 text-right font-medium">Tolls</th>
+                    <th className="w-[58px] px-2 py-2 text-right font-medium">Rental</th>
+                    <th className="w-[62px] px-2 py-2 text-right font-medium">Insur</th>
+                    <th className="w-[58px] px-2 py-2 text-right font-medium">Other</th>
+                    <th className="w-[78px] px-2 py-2 text-right font-medium">Carr Pay</th>
+                    <th className="w-[52px] px-2 py-2 text-right font-medium">$/Mi</th>
+                    <th className="w-[80px] px-2 py-2 text-right font-medium">Net</th>
+                    <th className="w-[80px] px-2 py-2 text-right font-medium">Carr NET</th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+          </div>
+
+          {/* Scrollable Body */}
+          <ScrollArea className="flex-1">
+            <div className="min-w-[1630px]">
+              <table className={cn("table-glossy w-full caption-bottom text-sm table-fixed", showColumnLines ? "[&_td]:border-x [&_td]:border-border/50" : "")}>
               <TableBody>
                 {dailyData.map((day, index) => {
                   const dayName = format(day.date, "EEE");
@@ -1027,115 +1037,118 @@ export default function FleetFinancialsTab() {
                 })}
               </TableBody>
             </table>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-            {/* Monthly Totals Footer - inside scrollable area */}
-            <div className="border-t bg-muted/50 py-3 px-2 min-w-[1630px]">
-              <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_48px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
-                <div className="text-center px-2 whitespace-nowrap">
-                  <div className="text-[10px] text-muted-foreground">P/U Date</div>
-                  <div className="font-bold">-</div>
+        {/* Sticky Footer - Outside ScrollArea */}
+        <div className="overflow-x-auto border-t bg-muted/50 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
+          <div className="min-w-[1630px] py-3 px-2">
+            <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_48px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
+              <div className="text-center px-2 whitespace-nowrap">
+                <div className="text-[10px] text-muted-foreground">P/U Date</div>
+                <div className="font-bold">-</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Customer</div>
+                <div className="font-bold">-</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Route</div>
+                <div className="font-bold">-</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Payload</div>
+                <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Empty</div>
+                <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Loaded</div>
+                <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Total</div>
+                <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">$/Mi</div>
+                <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">MPG</div>
+                <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Factor</div>
+                <div className="font-bold">{formatCurrency(totals.factoring)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Disp Pay</div>
+                <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                  Drv Pay
+                  {totals.driverPayActive && (
+                    <span className="text-[8px] text-emerald-500">
+                      ({totals.driverPayMethod === 'percentage' ? '%' : 
+                        totals.driverPayMethod === 'mileage' ? '$/mi' : 
+                        totals.driverPayMethod === 'hourly' ? '$/hr' : 
+                        totals.driverPayMethod === 'hybrid' ? 'hyb' : '$'})
+                    </span>
+                  )}
                 </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Customer</div>
-                  <div className="font-bold">-</div>
+                <div className={`font-bold ${totals.driverPayActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {formatCurrency(totals.driverPay)}
                 </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Route</div>
-                  <div className="font-bold">-</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Payload</div>
-                  <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Empty</div>
-                  <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Loaded</div>
-                  <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Total</div>
-                  <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">$/Mi</div>
-                  <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">MPG</div>
-                  <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Factor</div>
-                  <div className="font-bold">{formatCurrency(totals.factoring)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Disp Pay</div>
-                  <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                    Drv Pay
-                    {totals.driverPayActive && (
-                      <span className="text-[8px] text-emerald-500">
-                        ({totals.driverPayMethod === 'percentage' ? '%' : 
-                          totals.driverPayMethod === 'mileage' ? '$/mi' : 
-                          totals.driverPayMethod === 'hourly' ? '$/hr' : 
-                          totals.driverPayMethod === 'hybrid' ? 'hyb' : '$'})
-                      </span>
-                    )}
-                  </div>
-                  <div className={`font-bold ${totals.driverPayActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {formatCurrency(totals.driverPay)}
-                  </div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">WComp</div>
-                  <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Fuel</div>
-                  <div className="font-bold">{formatCurrency(totals.fuel)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Tolls</div>
-                  <div className="font-bold">{formatCurrency(totals.tolls)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Rental</div>
-                  <div className="font-bold">{formatCurrency(totals.rental)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Insur</div>
-                  <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Other</div>
-                  <div className="font-bold">{formatCurrency(totals.other)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Carr Pay</div>
-                  <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">$/Mi</div>
-                  <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
-                </div>
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-muted-foreground">Net</div>
-                  <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
-                    {formatCurrency(totals.netProfit)}
-                  </div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">WComp</div>
+                <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Fuel</div>
+                <div className="font-bold">{formatCurrency(totals.fuel)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Tolls</div>
+                <div className="font-bold">{formatCurrency(totals.tolls)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Rental</div>
+                <div className="font-bold">{formatCurrency(totals.rental)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Insur</div>
+                <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Other</div>
+                <div className="font-bold">{formatCurrency(totals.other)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Carr Pay</div>
+                <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">$/Mi</div>
+                <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
+              </div>
+              <div className="text-center px-2">
+                <div className="text-[10px] text-muted-foreground">Net</div>
+                <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
+                  {formatCurrency(totals.netProfit)}
                 </div>
               </div>
             </div>
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </div>
     </div>
+  </div>
   </TabsContent>
 
   {/* Fuel Settings Tab */}
