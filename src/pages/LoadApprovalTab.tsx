@@ -659,7 +659,7 @@ export default function LoadApprovalTab() {
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)"
                 }}
               >
-                {modifiedLoadsCount}
+                {showModifiedOnly ? loads.length : modifiedLoadsCount}
               </span>
             </div>
           </div>
