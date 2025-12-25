@@ -824,11 +824,297 @@ export default function FleetFinancialsTab() {
         </div>
 
         {/* Data Table Container */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Sticky Header - Outside ScrollArea */}
-          <div className="overflow-x-auto">
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          {/* Scrollable Body (rows slide under header/footer) */}
+          <ScrollArea className="h-full">
+            <div className="min-w-[1630px] pt-10 pb-20">
+              <table
+                className={cn(
+                  "table-glossy w-full caption-bottom text-sm table-fixed",
+                  showColumnLines ? "[&_td]:border-x [&_td]:border-border/50" : "",
+                )}
+              >
+                <TableBody>
+                  {dailyData.map((day, index) => {
+                    const dayName = format(day.date, "EEE");
+                    const dateStr = format(day.date, "MM/dd");
+                    const hasLoads = day.loads.length > 0;
+
+                    return (
+                      <>
+                        {hasLoads ? (
+                          day.loads.map((load, loadIndex) => {
+                            const rate = load.rate || 0;
+                            const emptyM = load.empty_miles || 0;
+                            const loadedM = load.estimated_miles || 0;
+                            const totalM = emptyM + loadedM;
+                            const dollarPerMile = totalM > 0 ? rate / totalM : 0;
+                            const factoring = rate * (factoringPercentage / 100);
+                            const dispPay = getDispatcherPay(load);
+                            const drvPay = getDriverPay(load);
+                            const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
+                            const isBusinessDay = !isWeekend(day.date);
+                            const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
+                            const dailyInsurance = totals.dailyInsuranceRate;
+                            const isToday = isSameDay(day.date, new Date());
+
+                            // Check if vehicle requires approval
+                            const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+                            const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
+                            const isApproved = load.carrier_approved === true;
+
+                            // Check if payload changed after approval (approved_payload differs from current rate)
+                            const payloadChangedAfterApproval =
+                              isApproved && load.approved_payload !== null && load.approved_payload !== rate;
+
+                            const carrierPayAmount = load.carrier_rate || rate;
+
+                            const carrierNet =
+                              (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) -
+                              factoring -
+                              dispPay -
+                              drvPay -
+                              fuelCost -
+                              dailyRental -
+                              dailyInsurance -
+                              DAILY_OTHER_COST;
+                            const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
+
+                            return (
+                              <TableRow
+                                key={load.id}
+                                className={cn(
+                                  "hover:bg-muted/30 h-[25px]",
+                                  isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20",
+                                )}
+                              >
+                                <TableCell
+                                  className={cn(
+                                    "font-medium !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline",
+                                    isToday ? "text-green-600 font-bold" : "text-muted-foreground",
+                                  )}
+                                  onClick={() => navigate(`/dashboard/load/${load.id}`)}
+                                >
+                                  {loadIndex === 0 && `${isToday ? "Today" : dayName} ${dateStr}`}
+                                </TableCell>
+                                <TableCell
+                                  className="truncate max-w-[140px] !px-2 !py-0.5"
+                                  title={getCustomerName(load.customer_id)}
+                                >
+                                  {getCustomerName(load.customer_id)}
+                                </TableCell>
+                                <TableCell className="text-xs !px-2 !py-0.5">
+                                  {load.pickup_state}→{load.delivery_state}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold !px-2 !py-0.5">
+                                  {formatCurrency(rate)}
+                                </TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">
+                                  {formatNumber(emptyM, 0)}
+                                </TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">
+                                  {formatNumber(loadedM, 0)}
+                                </TableCell>
+                                <TableCell className="text-right font-medium !px-2 !py-0.5">
+                                  {formatNumber(totalM, 0)}
+                                </TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">${formatNumber(dollarPerMile, 2)}</TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatNumber(milesPerGallon, 1)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatCurrency(factoring)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatCurrency(dispPay)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatCurrency(drvPay)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatCurrency(fuelCost)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatCurrency(dailyRental)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+                                  {formatCurrency(dailyInsurance)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">
+                                  {vehicleRequiresApproval ? (
+                                    <div className="flex items-center justify-end gap-1">
+                                      {isApproved ? (
+                                        <>
+                                          <span
+                                            className={cn(
+                                              "font-bold",
+                                              payloadChangedAfterApproval
+                                                ? "line-through text-destructive"
+                                                : "text-green-600",
+                                            )}
+                                          >
+                                            {formatCurrency(carrierPayAmount)}
+                                          </span>
+                                          <Badge
+                                            variant="outline"
+                                            className={cn(
+                                              "text-[8px] px-0.5 py-0 scale-[0.85]",
+                                              payloadChangedAfterApproval
+                                                ? "bg-red-50 text-red-700 border-red-300 cursor-pointer hover:bg-red-100"
+                                                : "bg-green-50 text-green-700 border-green-300",
+                                            )}
+                                            title={
+                                              payloadChangedAfterApproval
+                                                ? "Click to approve - Payload changed"
+                                                : "Load Approved"
+                                            }
+                                            onClick={
+                                              payloadChangedAfterApproval
+                                                ? (e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/dashboard/load-approval?loadId=${load.id}`);
+                                                  }
+                                                : undefined
+                                            }
+                                          >
+                                            {payloadChangedAfterApproval ? (
+                                              <AlertTriangle className="h-2 w-2 mr-0.5" />
+                                            ) : (
+                                              <ShieldCheck className="h-2 w-2 mr-0.5" />
+                                            )}
+                                            LA
+                                          </Badge>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="text-orange-600 font-bold">$0.00</span>
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[8px] px-0.5 py-0 scale-[0.85] bg-amber-50 text-amber-700 border-amber-300"
+                                            title="Pending Approval"
+                                          >
+                                            <ShieldCheck className="h-2 w-2 mr-0.5" />
+                                            LA
+                                          </Badge>
+                                        </>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    formatCurrency(carrierPayAmount)
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
+                                <TableCell
+                                  className={cn(
+                                    "text-right font-bold !px-2 !py-0.5",
+                                    carrierNet >= 0 ? "text-green-600" : "text-destructive",
+                                  )}
+                                >
+                                  {formatCurrency(carrierNet)}
+                                </TableCell>
+                                <TableCell
+                                  className={cn(
+                                    "text-right font-bold !px-2 !py-0.5",
+                                    carrierNet >= 0 ? "text-green-600" : "text-destructive",
+                                  )}
+                                >
+                                  {formatCurrency(carrierNet)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        ) : (
+                          (() => {
+                            const isBusinessDay = !isWeekend(day.date);
+                            const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
+                            const dailyInsurance = totals.dailyInsuranceRate;
+                            const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
+                            const isToday = isSameDay(day.date, new Date());
+                            return (
+                              <TableRow
+                                key={day.date.toISOString()}
+                                className={cn(
+                                  "text-muted-foreground h-[25px]",
+                                  isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20",
+                                )}
+                              >
+                                <TableCell
+                                  className={cn(
+                                    "font-medium !px-2 !py-0.5 whitespace-nowrap",
+                                    isToday ? "text-green-600 font-bold" : "",
+                                  )}
+                                >
+                                  {`${isToday ? "Today" : dayName} ${dateStr}`}
+                                </TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">
+                                  {isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
+                                </TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
+                                <TableCell className="text-right !px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="!px-2 !py-0.5"></TableCell>
+                                <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
+                                  {formatCurrency(emptyDayNet)}
+                                </TableCell>
+                                <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
+                                  {formatCurrency(emptyDayNet)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })()
+                        )}
+
+                        {/* Weekly Summary Row */}
+                        {day.isWeekEnd && (
+                          <TableRow key={`week-${day.date.toISOString()}`} className="bg-muted/50 border-t-2">
+                            <TableCell colSpan={21} className="text-right font-semibold">
+                              Weekly Total:
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                "text-right font-bold",
+                                getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive",
+                              )}
+                            >
+                              {formatCurrency(getWeeklyTotal(index))}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    );
+                  })}
+                </TableBody>
+              </table>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          {/* Overlay Header */}
+          <div className="absolute inset-x-0 top-0 z-20 overflow-x-auto">
             <div className="min-w-[1630px] bg-muted border-b shadow-sm">
-              <table className={cn("table-glossy w-full text-sm table-fixed", showColumnLines ? "[&_th]:border-x [&_th]:border-border/50" : "")}>
+              <table
+                className={cn(
+                  "table-glossy w-full text-sm table-fixed",
+                  showColumnLines ? "[&_th]:border-x [&_th]:border-border/50" : "",
+                )}
+              >
                 <thead>
                   <tr>
                     <th className="w-[88px] px-2 py-2 text-left font-medium whitespace-nowrap">P/U Date</th>
@@ -859,294 +1145,118 @@ export default function FleetFinancialsTab() {
             </div>
           </div>
 
-          {/* Scrollable Body */}
-          <ScrollArea className="flex-1">
-            <div className="min-w-[1630px]">
-              <table className={cn("table-glossy w-full caption-bottom text-sm table-fixed", showColumnLines ? "[&_td]:border-x [&_td]:border-border/50" : "")}>
-              <TableBody>
-                {dailyData.map((day, index) => {
-                  const dayName = format(day.date, "EEE");
-                  const dateStr = format(day.date, "MM/dd");
-                  const hasLoads = day.loads.length > 0;
-
-                  return (
-                    <>
-                      {hasLoads ? (
-                        day.loads.map((load, loadIndex) => {
-                          const rate = load.rate || 0;
-                          const emptyM = load.empty_miles || 0;
-                          const loadedM = load.estimated_miles || 0;
-                          const totalM = emptyM + loadedM;
-                          const dollarPerMile = totalM > 0 ? rate / totalM : 0;
-                          const factoring = rate * (factoringPercentage / 100);
-                          const dispPay = getDispatcherPay(load);
-                          const drvPay = getDriverPay(load);
-                          const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
-                          const isBusinessDay = !isWeekend(day.date);
-                          const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-                          const dailyInsurance = totals.dailyInsuranceRate;
-                          const isToday = isSameDay(day.date, new Date());
-                          
-                          // Check if vehicle requires approval
-                          const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
-                          const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
-                          const isApproved = load.carrier_approved === true;
-                          
-                          // Check if payload changed after approval (approved_payload differs from current rate)
-                          const payloadChangedAfterApproval = isApproved && load.approved_payload !== null && load.approved_payload !== rate;
-                          
-                          const carrierPayAmount = load.carrier_rate || rate;
-                          
-                          const carrierNet = (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
-                          const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
-
-                          return (
-                            <TableRow key={load.id} className={cn("hover:bg-muted/30 h-[25px]", isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20")}>
-                              <TableCell 
-                                className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline", isToday ? "text-green-600 font-bold" : "text-muted-foreground")}
-                                onClick={() => navigate(`/dashboard/load/${load.id}`)}
-                              >
-                                {loadIndex === 0 && `${isToday ? "Today" : dayName} ${dateStr}`}
-                              </TableCell>
-                              <TableCell className="truncate max-w-[140px] !px-2 !py-0.5" title={getCustomerName(load.customer_id)}>
-                                {getCustomerName(load.customer_id)}
-                              </TableCell>
-                              <TableCell className="text-xs !px-2 !py-0.5">
-                                {load.pickup_state}→{load.delivery_state}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">{formatNumber(emptyM, 0)}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">{formatNumber(loadedM, 0)}</TableCell>
-                              <TableCell className="text-right font-medium !px-2 !py-0.5">{formatNumber(totalM, 0)}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">${formatNumber(dollarPerMile, 2)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatNumber(milesPerGallon, 1)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(factoring)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dispPay)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(drvPay)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(fuelCost)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyRental)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
-                              <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">
-                                {vehicleRequiresApproval ? (
-                                  <div className="flex items-center justify-end gap-1">
-                                    {isApproved ? (
-                                      <>
-                                        <span className={cn("font-bold", payloadChangedAfterApproval ? "line-through text-destructive" : "text-green-600")}>
-                                          {formatCurrency(carrierPayAmount)}
-                                        </span>
-                                        <Badge 
-                                          variant="outline" 
-                                          className={cn(
-                                            "text-[8px] px-0.5 py-0 scale-[0.85]",
-                                            payloadChangedAfterApproval 
-                                              ? "bg-red-50 text-red-700 border-red-300 cursor-pointer hover:bg-red-100" 
-                                              : "bg-green-50 text-green-700 border-green-300"
-                                          )}
-                                          title={payloadChangedAfterApproval ? "Click to approve - Payload changed" : "Load Approved"}
-                                          onClick={payloadChangedAfterApproval ? (e) => {
-                                            e.stopPropagation();
-                                            navigate(`/dashboard/load-approval?loadId=${load.id}`);
-                                          } : undefined}
-                                        >
-                                          {payloadChangedAfterApproval ? <AlertTriangle className="h-2 w-2 mr-0.5" /> : <ShieldCheck className="h-2 w-2 mr-0.5" />}
-                                          LA
-                                        </Badge>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span className="text-orange-600 font-bold">$0.00</span>
-                                        <Badge 
-                                          variant="outline" 
-                                          className="text-[8px] px-0.5 py-0 scale-[0.85] bg-amber-50 text-amber-700 border-amber-300"
-                                          title="Pending Approval"
-                                        >
-                                          <ShieldCheck className="h-2 w-2 mr-0.5" />
-                                          LA
-                                        </Badge>
-                                      </>
-                                    )}
-                                  </div>
-                                ) : (
-                                  formatCurrency(carrierPayAmount)
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
-                              <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
-                                {formatCurrency(carrierNet)}
-                              </TableCell>
-                              <TableCell className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}>
-                                {formatCurrency(carrierNet)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        (() => {
-                          const isBusinessDay = !isWeekend(day.date);
-                          const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-                          const dailyInsurance = totals.dailyInsuranceRate;
-                          const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
-                          const isToday = isSameDay(day.date, new Date());
-                          return (
-                            <TableRow key={day.date.toISOString()} className={cn("text-muted-foreground h-[25px]", isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20")}>
-                              <TableCell className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap", isToday ? "text-green-600 font-bold" : "")}>{`${isToday ? "Today" : dayName} ${dateStr}`}</TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">{isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
-                              <TableCell className="text-right !px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="!px-2 !py-0.5"></TableCell>
-                              <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
-                                {formatCurrency(emptyDayNet)}
-                              </TableCell>
-                              <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
-                                {formatCurrency(emptyDayNet)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })()
-                      )}
-
-                      {/* Weekly Summary Row */}
-                      {day.isWeekEnd && (
-                        <TableRow key={`week-${day.date.toISOString()}`} className="bg-muted/50 border-t-2">
-                          <TableCell colSpan={21} className="text-right font-semibold">Weekly Total:</TableCell>
-                          <TableCell className={cn("text-right font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                            {formatCurrency(getWeeklyTotal(index))}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  );
-                })}
-              </TableBody>
-            </table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-
-        {/* Sticky Footer - Outside ScrollArea */}
-        <div className="overflow-x-auto border-t bg-muted/50 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
-          <div className="min-w-[1630px] py-3 px-2">
-            <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_48px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
-              <div className="text-center px-2 whitespace-nowrap">
-                <div className="text-[10px] text-muted-foreground">P/U Date</div>
-                <div className="font-bold">-</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Customer</div>
-                <div className="font-bold">-</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Route</div>
-                <div className="font-bold">-</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Payload</div>
-                <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Empty</div>
-                <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Loaded</div>
-                <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Total</div>
-                <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">$/Mi</div>
-                <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">MPG</div>
-                <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Factor</div>
-                <div className="font-bold">{formatCurrency(totals.factoring)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Disp Pay</div>
-                <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                  Drv Pay
-                  {totals.driverPayActive && (
-                    <span className="text-[8px] text-emerald-500">
-                      ({totals.driverPayMethod === 'percentage' ? '%' : 
-                        totals.driverPayMethod === 'mileage' ? '$/mi' : 
-                        totals.driverPayMethod === 'hourly' ? '$/hr' : 
-                        totals.driverPayMethod === 'hybrid' ? 'hyb' : '$'})
-                    </span>
-                  )}
+          {/* Overlay Footer */}
+          <div className="absolute inset-x-0 bottom-0 z-20 overflow-x-auto border-t bg-muted/50 shadow-md">
+            <div className="min-w-[1630px] py-3 px-2">
+              <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_48px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
+                <div className="text-center px-2 whitespace-nowrap">
+                  <div className="text-[10px] text-muted-foreground">P/U Date</div>
+                  <div className="font-bold">-</div>
                 </div>
-                <div className={`font-bold ${totals.driverPayActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {formatCurrency(totals.driverPay)}
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Customer</div>
+                  <div className="font-bold">-</div>
                 </div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">WComp</div>
-                <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Fuel</div>
-                <div className="font-bold">{formatCurrency(totals.fuel)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Tolls</div>
-                <div className="font-bold">{formatCurrency(totals.tolls)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Rental</div>
-                <div className="font-bold">{formatCurrency(totals.rental)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Insur</div>
-                <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Other</div>
-                <div className="font-bold">{formatCurrency(totals.other)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Carr Pay</div>
-                <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">$/Mi</div>
-                <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-[10px] text-muted-foreground">Net</div>
-                <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
-                  {formatCurrency(totals.netProfit)}
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Route</div>
+                  <div className="font-bold">-</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Payload</div>
+                  <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Empty</div>
+                  <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Loaded</div>
+                  <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Total</div>
+                  <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">$/Mi</div>
+                  <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">MPG</div>
+                  <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Factor</div>
+                  <div className="font-bold">{formatCurrency(totals.factoring)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Disp Pay</div>
+                  <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    Drv Pay
+                    {totals.driverPayActive && (
+                      <span className="text-[8px] text-emerald-500">
+                        ({totals.driverPayMethod === "percentage"
+                          ? "%"
+                          : totals.driverPayMethod === "mileage"
+                            ? "$/mi"
+                            : totals.driverPayMethod === "hourly"
+                              ? "$/hr"
+                              : totals.driverPayMethod === "hybrid"
+                                ? "hyb"
+                                : "$"})
+                      </span>
+                    )}
+                  </div>
+                  <div className={`font-bold ${totals.driverPayActive ? "text-foreground" : "text-muted-foreground"}`}>
+                    {formatCurrency(totals.driverPay)}
+                  </div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">WComp</div>
+                  <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Fuel</div>
+                  <div className="font-bold">{formatCurrency(totals.fuel)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Tolls</div>
+                  <div className="font-bold">{formatCurrency(totals.tolls)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Rental</div>
+                  <div className="font-bold">{formatCurrency(totals.rental)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Insur</div>
+                  <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Other</div>
+                  <div className="font-bold">{formatCurrency(totals.other)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Carr Pay</div>
+                  <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">$/Mi</div>
+                  <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-muted-foreground">Net</div>
+                  <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
+                    {formatCurrency(totals.netProfit)}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
     </div>
   </div>
   </TabsContent>
