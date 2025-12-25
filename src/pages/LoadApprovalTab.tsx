@@ -633,7 +633,7 @@ export default function LoadApprovalTab() {
                 "w-full h-7 text-sm font-medium rounded-md transition-all duration-200",
                 showModifiedOnly 
                   ? "bg-red-600 hover:bg-red-700 text-white" 
-                  : "btn-glossy-primary text-white"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
               )}
             >
               {showModifiedOnly ? "Show All Loads" : "Modified Loads"}
