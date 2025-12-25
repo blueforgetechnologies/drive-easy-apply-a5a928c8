@@ -626,7 +626,7 @@ export default function LoadApprovalTab() {
               />
             </div>
             
-            <div className="flex items-stretch rounded-md overflow-hidden">
+            <div className="flex items-stretch rounded-md overflow-hidden shadow-md">
               <button
                 onClick={() => {
                   setShowModifiedOnly(!showModifiedOnly);
@@ -636,8 +636,11 @@ export default function LoadApprovalTab() {
                   "flex-1 h-7 text-xs font-medium transition-all duration-200 rounded-l-md border-l border-t border-b",
                   showModifiedOnly 
                     ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-400/50 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white"
-                    : "bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-300"
+                    : "bg-gradient-to-b from-yellow-50 via-yellow-100 to-yellow-200 hover:from-yellow-100 hover:via-yellow-150 hover:to-yellow-250 text-yellow-800 border-yellow-300"
                 )}
+                style={!showModifiedOnly ? {
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.05)"
+                } : undefined}
               >
                 {showModifiedOnly ? "Show All" : "Modified Loads"}
               </button>
@@ -646,8 +649,11 @@ export default function LoadApprovalTab() {
                   "w-6 flex items-center justify-center text-[14px] font-bold rounded-r-md transition-all border-t border-r border-b",
                   showModifiedOnly
                     ? "bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-800/30 text-white"
-                    : "bg-yellow-50 border-yellow-300 text-red-600"
+                    : "bg-gradient-to-b from-yellow-50 via-yellow-100 to-yellow-200 border-yellow-300 text-red-600"
                 )}
+                style={!showModifiedOnly ? {
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.05)"
+                } : undefined}
               >
                 {showModifiedOnly ? loads.length : modifiedLoadsCount}
               </span>
