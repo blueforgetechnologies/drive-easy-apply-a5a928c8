@@ -2035,14 +2035,24 @@ export default function LoadsTab() {
                                     </div>
                                   );
                                 } else if (vehicleRequiresApproval && isApproved && carrierRate) {
-                                  // Approved - show the approved carrier rate
+                                  // Approved - show the approved carrier rate WITH LA badge
                                   return (
-                                    <div 
-                                      className="text-xs font-semibold text-green-600 cursor-pointer hover:underline"
-                                      onClick={handleCarrierPayClick}
-                                      title="View rate history"
-                                    >
-                                      ${carrierRate.toFixed(2)}
+                                    <div className="flex items-center gap-1 text-xs font-semibold">
+                                      <span 
+                                        className="text-green-600 cursor-pointer hover:underline"
+                                        onClick={handleCarrierPayClick}
+                                        title="View rate history"
+                                      >
+                                        ${carrierRate.toFixed(2)}
+                                      </span>
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-[8px] px-0.5 py-0 bg-green-50 text-green-700 border-green-300 scale-[0.85]"
+                                        title="Load Approval Enabled"
+                                      >
+                                        <ShieldCheck className="h-2 w-2 mr-0.5" />
+                                        LA
+                                      </Badge>
                                     </div>
                                   );
                                 } else {

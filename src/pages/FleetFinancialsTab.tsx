@@ -893,13 +893,20 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>
                               <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">
-                                {vehicleRequiresApproval && !isApproved ? (
+                                {vehicleRequiresApproval ? (
                                   <div className="flex items-center justify-end gap-1">
-                                    <span className="text-orange-600 font-bold">$0.00</span>
+                                    <span className={isApproved ? "text-green-600 font-bold" : "text-orange-600 font-bold"}>
+                                      {isApproved ? formatCurrency(carrierPayAmount) : "$0.00"}
+                                    </span>
                                     <Badge 
                                       variant="outline" 
-                                      className="text-[8px] px-0.5 py-0 bg-amber-50 text-amber-700 border-amber-300 scale-[0.85]"
-                                      title="Load Approval Required"
+                                      className={cn(
+                                        "text-[8px] px-0.5 py-0 scale-[0.85]",
+                                        isApproved 
+                                          ? "bg-green-50 text-green-700 border-green-300" 
+                                          : "bg-amber-50 text-amber-700 border-amber-300"
+                                      )}
+                                      title={isApproved ? "Load Approval Enabled" : "Load Approval Required"}
                                     >
                                       <ShieldCheck className="h-2 w-2 mr-0.5" />
                                       LA
