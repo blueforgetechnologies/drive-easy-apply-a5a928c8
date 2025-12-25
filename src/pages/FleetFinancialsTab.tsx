@@ -882,34 +882,14 @@ export default function FleetFinancialsTab() {
                           const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
                           const isApproved = load.carrier_approved === true;
                           
-                          // Check if payload changed after approval (needs re-approval)
-                          const payloadChangedAfterApproval = isApproved && 
-                            load.approved_payload != null && 
-                            Number(load.rate) !== Number(load.approved_payload);
-                          
-                          // Check if there's a pending rate change (has history but not approved, or payload changed)
+                          // Check if there's been any rate changes (has history)
                           const loadHistory = rateHistory.filter(h => h.load_id === load.id);
-                          const latestHistory = loadHistory[0]; // Already sorted by changed_at desc
+                          const hasRateChanges = loadHistory.length > 0;
                           
-                          // Show pending state if: not approved, OR payload changed after approval
-                          const hasPendingChange = vehicleRequiresApproval && (
-                            (!isApproved && loadHistory.length > 0) || 
-                            payloadChangedAfterApproval
-                          );
+                          const carrierPayAmount = load.carrier_rate || rate;
                           
-                          // Get previous rate: either from history (old_rate) or approved carrier_rate if payload changed
-                          const previousRate = hasPendingChange 
-                            ? (payloadChangedAfterApproval 
-                                ? load.carrier_rate 
-                                : (latestHistory?.old_rate ?? null))
-                            : null;
-                          
-                          const effectiveCarrierPay = vehicleRequiresApproval && (!isApproved || payloadChangedAfterApproval) 
-                            ? 0 
-                            : (load.carrier_rate || rate);
-                          
-                          const carrierNet = effectiveCarrierPay - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
-                          const carrierPerMile = loadedM > 0 ? effectiveCarrierPay / loadedM : 0;
+                          const carrierNet = (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) - factoring - dispPay - drvPay - fuelCost - dailyRental - dailyInsurance - DAILY_OTHER_COST;
+                          const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
 
                           return (
                             <TableRow key={load.id} className={cn("hover:bg-muted/30 h-[25px]", isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20")}>
@@ -943,38 +923,32 @@ export default function FleetFinancialsTab() {
                               <TableCell className="text-right !px-2 !py-0.5">
                                 {vehicleRequiresApproval ? (
                                   <div className="flex items-center justify-end gap-1">
-                                    {hasPendingChange && previousRate !== null ? (
-                                      // Pending change: show old rate struck through in red, then new rate
-                                      <div className="flex items-center gap-1">
-                                        <span className="line-through text-destructive text-xs">
-                                          {formatCurrency(previousRate)}
-                                        </span>
-                                        <span className="text-orange-600 font-bold">
-                                          {formatCurrency(load.carrier_rate || 0)}
-                                        </span>
-                                        <Badge 
-                                          variant="outline" 
-                                          className="text-[8px] px-0.5 py-0 scale-[0.85] bg-red-50 text-red-700 border-red-300"
-                                          title="Rate changed - Pending approval"
-                                        >
-                                          <AlertTriangle className="h-2 w-2 mr-0.5" />
-                                          LA
-                                        </Badge>
-                                      </div>
-                                    ) : (
+                                    {isApproved ? (
                                       <>
-                                        <span className={isApproved ? "text-green-600 font-bold" : "text-orange-600 font-bold"}>
-                                          {isApproved ? formatCurrency(effectiveCarrierPay) : "$0.00"}
+                                        <span className={cn("font-bold", hasRateChanges ? "line-through text-destructive" : "text-green-600")}>
+                                          {formatCurrency(carrierPayAmount)}
                                         </span>
                                         <Badge 
                                           variant="outline" 
                                           className={cn(
                                             "text-[8px] px-0.5 py-0 scale-[0.85]",
-                                            isApproved 
-                                              ? "bg-green-50 text-green-700 border-green-300" 
-                                              : "bg-amber-50 text-amber-700 border-amber-300"
+                                            hasRateChanges 
+                                              ? "bg-red-50 text-red-700 border-red-300" 
+                                              : "bg-green-50 text-green-700 border-green-300"
                                           )}
-                                          title={isApproved ? "Load Approved" : "Pending Approval"}
+                                          title={hasRateChanges ? "Rate was changed" : "Load Approved"}
+                                        >
+                                          {hasRateChanges ? <AlertTriangle className="h-2 w-2 mr-0.5" /> : <ShieldCheck className="h-2 w-2 mr-0.5" />}
+                                          LA
+                                        </Badge>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="text-orange-600 font-bold">$0.00</span>
+                                        <Badge 
+                                          variant="outline" 
+                                          className="text-[8px] px-0.5 py-0 scale-[0.85] bg-amber-50 text-amber-700 border-amber-300"
+                                          title="Pending Approval"
                                         >
                                           <ShieldCheck className="h-2 w-2 mr-0.5" />
                                           LA
@@ -983,7 +957,7 @@ export default function FleetFinancialsTab() {
                                     )}
                                   </div>
                                 ) : (
-                                  formatCurrency(effectiveCarrierPay)
+                                  formatCurrency(carrierPayAmount)
                                 )}
                               </TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>
