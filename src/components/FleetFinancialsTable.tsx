@@ -88,6 +88,13 @@ interface FleetFinancialsTableProps {
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
   getWeeklyTotal: (endIndex: number) => number;
+  // Column management props
+  visibleColumns: FleetColumn[];
+  draggedColumn: string | null;
+  dragOverColumn: string | null;
+  handleDragStart: (columnId: string) => void;
+  handleDragOver: (columnId: string) => void;
+  handleDragEnd: () => void;
 }
 
 const DAILY_OTHER_COST = 0;
@@ -661,16 +668,14 @@ export function FleetFinancialsTable({
   getDispatcherPay,
   getDriverPay,
   getWeeklyTotal,
+  visibleColumns,
+  draggedColumn,
+  dragOverColumn,
+  handleDragStart,
+  handleDragOver,
+  handleDragEnd,
 }: FleetFinancialsTableProps) {
   const navigate = useNavigate();
-  const {
-    visibleColumns,
-    draggedColumn,
-    dragOverColumn,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
-  } = useFleetColumns();
 
   const minTableWidth = useMemo(() => {
     // Calculate approximate width from columns
