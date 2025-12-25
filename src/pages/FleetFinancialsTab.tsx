@@ -882,9 +882,8 @@ export default function FleetFinancialsTab() {
                           const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
                           const isApproved = load.carrier_approved === true;
                           
-                          // Check if there's been any rate changes (has history)
-                          const loadHistory = rateHistory.filter(h => h.load_id === load.id);
-                          const hasRateChanges = loadHistory.length > 0;
+                          // Check if payload changed after approval (approved_payload differs from current rate)
+                          const payloadChangedAfterApproval = isApproved && load.approved_payload !== null && load.approved_payload !== rate;
                           
                           const carrierPayAmount = load.carrier_rate || rate;
                           
@@ -925,20 +924,20 @@ export default function FleetFinancialsTab() {
                                   <div className="flex items-center justify-end gap-1">
                                     {isApproved ? (
                                       <>
-                                        <span className={cn("font-bold", hasRateChanges ? "line-through text-destructive" : "text-green-600")}>
+                                        <span className={cn("font-bold", payloadChangedAfterApproval ? "line-through text-destructive" : "text-green-600")}>
                                           {formatCurrency(carrierPayAmount)}
                                         </span>
                                         <Badge 
                                           variant="outline" 
                                           className={cn(
                                             "text-[8px] px-0.5 py-0 scale-[0.85]",
-                                            hasRateChanges 
+                                            payloadChangedAfterApproval 
                                               ? "bg-red-50 text-red-700 border-red-300" 
                                               : "bg-green-50 text-green-700 border-green-300"
                                           )}
-                                          title={hasRateChanges ? "Rate was changed" : "Load Approved"}
+                                          title={payloadChangedAfterApproval ? "Payload changed - requires re-approval" : "Load Approved"}
                                         >
-                                          {hasRateChanges ? <AlertTriangle className="h-2 w-2 mr-0.5" /> : <ShieldCheck className="h-2 w-2 mr-0.5" />}
+                                          {payloadChangedAfterApproval ? <AlertTriangle className="h-2 w-2 mr-0.5" /> : <ShieldCheck className="h-2 w-2 mr-0.5" />}
                                           LA
                                         </Badge>
                                       </>
