@@ -626,30 +626,37 @@ export default function LoadApprovalTab() {
               />
             </div>
             
-            <div className="flex items-stretch shadow-lg rounded-lg">
+            <div className="flex items-stretch shadow-lg rounded-lg overflow-hidden">
               <button
                 onClick={() => {
                   setShowModifiedOnly(!showModifiedOnly);
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "flex-1 h-12 text-base font-bold transition-all duration-200 border-2 border-orange-500",
-                  modifiedLoadsCount > 0 ? "rounded-l-lg" : "rounded-lg",
-                  showModifiedOnly 
-                    ? "bg-orange-500 hover:bg-orange-600 text-white" 
-                    : "bg-orange-100 hover:bg-orange-200 text-orange-700"
+                  "flex-1 h-10 text-sm font-semibold transition-all duration-200",
+                  "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600",
+                  "border-t border-orange-300/50",
+                  "hover:from-orange-500 hover:via-orange-600 hover:to-orange-700",
+                  "text-white",
+                  modifiedLoadsCount > 0 ? "rounded-l-lg" : "rounded-lg"
                 )}
+                style={{
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.2)"
+                }}
               >
                 {showModifiedOnly ? "Show All" : "Modified Loads"}
               </button>
               {modifiedLoadsCount > 0 && (
                 <span 
                   className={cn(
-                    "w-12 flex items-center justify-center text-xl font-black border-t-2 border-r-2 border-b-2 border-orange-500 rounded-r-lg transition-all",
-                    showModifiedOnly 
-                      ? "bg-orange-500 text-white" 
-                      : "bg-orange-100 text-red-600"
+                    "w-10 flex items-center justify-center text-lg font-black rounded-r-lg transition-all",
+                    "bg-gradient-to-b from-orange-400 via-orange-500 to-orange-600",
+                    "border-l border-orange-700/30",
+                    "text-white"
                   )}
+                  style={{
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)"
+                  }}
                 >
                   {modifiedLoadsCount}
                 </span>
