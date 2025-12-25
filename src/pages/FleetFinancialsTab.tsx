@@ -823,17 +823,41 @@ export default function FleetFinancialsTab() {
           </div>
         </div>
 
-        {/* Data Table Container */}
-        <div className="flex-1 min-h-0 relative overflow-hidden">
-          {/* Scrollable Body (rows slide under header/footer) */}
-          <ScrollArea className="h-full">
-            <div className="min-w-[1630px] pt-10 pb-20">
-              <table
-                className={cn(
-                  "table-glossy w-full caption-bottom text-sm table-fixed",
-                  showColumnLines ? "[&_td]:border-x [&_td]:border-border/50" : "",
-                )}
-              >
+        {/* Data Table Container - Single scroll container with sticky thead/tfoot */}
+        <div className="flex-1 min-h-0 overflow-auto">
+          <table
+            className={cn(
+              "table-glossy w-full caption-bottom text-sm table-fixed min-w-[1630px]",
+              showColumnLines ? "[&_td]:border-x [&_td]:border-border/50 [&_th]:border-x [&_th]:border-border/50" : "",
+            )}
+          >
+            {/* Sticky Header */}
+            <thead className="sticky top-0 z-20 bg-muted shadow-sm">
+              <tr>
+                <th className="w-[88px] px-2 py-2 text-left font-medium whitespace-nowrap">P/U Date</th>
+                <th className="w-[140px] px-2 py-2 text-left font-medium">Customer</th>
+                <th className="w-[65px] px-2 py-2 text-left font-medium">Route</th>
+                <th className="w-[78px] px-2 py-2 text-right font-medium">Payload</th>
+                <th className="w-[60px] px-2 py-2 text-right font-medium">Empty</th>
+                <th className="w-[62px] px-2 py-2 text-right font-medium">Loaded</th>
+                <th className="w-[55px] px-2 py-2 text-right font-medium">Total</th>
+                <th className="w-[52px] px-2 py-2 text-right font-medium">$/Mi</th>
+                <th className="w-[48px] px-2 py-2 text-right font-medium">MPG</th>
+                <th className="w-[68px] px-2 py-2 text-right font-medium">Factor</th>
+                <th className="w-[75px] px-2 py-2 text-right font-medium">Disp Pay</th>
+                <th className="w-[70px] px-2 py-2 text-right font-medium">Drv Pay</th>
+                <th className="w-[62px] px-2 py-2 text-right font-medium">WComp</th>
+                <th className="w-[55px] px-2 py-2 text-right font-medium">Fuel</th>
+                <th className="w-[55px] px-2 py-2 text-right font-medium">Tolls</th>
+                <th className="w-[58px] px-2 py-2 text-right font-medium">Rental</th>
+                <th className="w-[62px] px-2 py-2 text-right font-medium">Insur</th>
+                <th className="w-[58px] px-2 py-2 text-right font-medium">Other</th>
+                <th className="w-[78px] px-2 py-2 text-right font-medium">Carr Pay</th>
+                <th className="w-[52px] px-2 py-2 text-right font-medium">$/Mi</th>
+                <th className="w-[80px] px-2 py-2 text-right font-medium">Net</th>
+                <th className="w-[80px] px-2 py-2 text-right font-medium">Carr NET</th>
+              </tr>
+            </thead>
                 <TableBody>
                   {dailyData.map((day, index) => {
                     const dayName = format(day.date, "EEE");
@@ -1101,99 +1125,55 @@ export default function FleetFinancialsTab() {
                     );
                   })}
                 </TableBody>
-              </table>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
 
-          {/* Overlay Header */}
-          <div className="absolute inset-x-0 top-0 z-20 overflow-x-auto">
-            <div className="min-w-[1630px] bg-muted border-b shadow-sm">
-              <table
-                className={cn(
-                  "table-glossy w-full text-sm table-fixed",
-                  showColumnLines ? "[&_th]:border-x [&_th]:border-border/50" : "",
-                )}
-              >
-                <thead>
-                  <tr>
-                    <th className="w-[88px] px-2 py-2 text-left font-medium whitespace-nowrap">P/U Date</th>
-                    <th className="w-[140px] px-2 py-2 text-left font-medium">Customer</th>
-                    <th className="w-[65px] px-2 py-2 text-left font-medium">Route</th>
-                    <th className="w-[78px] px-2 py-2 text-right font-medium">Payload</th>
-                    <th className="w-[60px] px-2 py-2 text-right font-medium">Empty</th>
-                    <th className="w-[62px] px-2 py-2 text-right font-medium">Loaded</th>
-                    <th className="w-[55px] px-2 py-2 text-right font-medium">Total</th>
-                    <th className="w-[52px] px-2 py-2 text-right font-medium">$/Mi</th>
-                    <th className="w-[48px] px-2 py-2 text-right font-medium">MPG</th>
-                    <th className="w-[68px] px-2 py-2 text-right font-medium">Factor</th>
-                    <th className="w-[75px] px-2 py-2 text-right font-medium">Disp Pay</th>
-                    <th className="w-[70px] px-2 py-2 text-right font-medium">Drv Pay</th>
-                    <th className="w-[62px] px-2 py-2 text-right font-medium">WComp</th>
-                    <th className="w-[55px] px-2 py-2 text-right font-medium">Fuel</th>
-                    <th className="w-[55px] px-2 py-2 text-right font-medium">Tolls</th>
-                    <th className="w-[58px] px-2 py-2 text-right font-medium">Rental</th>
-                    <th className="w-[62px] px-2 py-2 text-right font-medium">Insur</th>
-                    <th className="w-[58px] px-2 py-2 text-right font-medium">Other</th>
-                    <th className="w-[78px] px-2 py-2 text-right font-medium">Carr Pay</th>
-                    <th className="w-[52px] px-2 py-2 text-right font-medium">$/Mi</th>
-                    <th className="w-[80px] px-2 py-2 text-right font-medium">Net</th>
-                    <th className="w-[80px] px-2 py-2 text-right font-medium">Carr NET</th>
-                  </tr>
-                </thead>
-              </table>
-            </div>
-          </div>
-
-          {/* Overlay Footer */}
-          <div className="absolute inset-x-0 bottom-0 z-20 overflow-x-auto border-t bg-muted/50 shadow-md">
-            <div className="min-w-[1630px] py-3 px-2">
-              <div className="grid grid-cols-[88px_140px_65px_78px_60px_62px_55px_52px_48px_68px_75px_70px_62px_55px_55px_58px_62px_58px_78px_52px_80px] gap-0 text-sm">
-                <div className="text-center px-2 whitespace-nowrap">
+            {/* Sticky Footer */}
+            <tfoot className="sticky bottom-0 z-20 bg-muted/95 border-t shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
+              <tr>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">P/U Date</div>
                   <div className="font-bold">-</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Customer</div>
                   <div className="font-bold">-</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Route</div>
                   <div className="font-bold">-</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Payload</div>
                   <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Empty</div>
                   <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Loaded</div>
                   <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Total</div>
                   <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">$/Mi</div>
                   <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">MPG</div>
                   <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Factor</div>
                   <div className="font-bold">{formatCurrency(totals.factoring)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Disp Pay</div>
                   <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
                     Drv Pay
                     {totals.driverPayActive && (
@@ -1213,48 +1193,54 @@ export default function FleetFinancialsTab() {
                   <div className={`font-bold ${totals.driverPayActive ? "text-foreground" : "text-muted-foreground"}`}>
                     {formatCurrency(totals.driverPay)}
                   </div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">WComp</div>
                   <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Fuel</div>
                   <div className="font-bold">{formatCurrency(totals.fuel)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Tolls</div>
                   <div className="font-bold">{formatCurrency(totals.tolls)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Rental</div>
                   <div className="font-bold">{formatCurrency(totals.rental)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Insur</div>
                   <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Other</div>
                   <div className="font-bold">{formatCurrency(totals.other)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Carr Pay</div>
                   <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">$/Mi</div>
                   <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
-                </div>
-                <div className="text-center px-2">
+                </td>
+                <td className="px-2 py-2 text-center">
                   <div className="text-[10px] text-muted-foreground">Net</div>
                   <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
                     {formatCurrency(totals.netProfit)}
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                </td>
+                <td className="px-2 py-2 text-center">
+                  <div className="text-[10px] text-muted-foreground">Carr NET</div>
+                  <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
+                    {formatCurrency(totals.netProfit)}
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
 
     </div>
