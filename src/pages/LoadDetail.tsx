@@ -649,7 +649,7 @@ export default function LoadDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate("/dashboard/load-approval")}>
+          <Button variant="outline" onClick={() => navigate(`/dashboard/load-approval?loadId=${id}`)}>
             <ClipboardCheck className="mr-2 h-4 w-4" />
             Rate Approval
           </Button>
