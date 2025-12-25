@@ -355,30 +355,50 @@ export default function LoadApprovalTab() {
   };
 
   const handlePayloadChange = async (loadId: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    const parsed = parseFloat(value);
+    const numValue = Number.isFinite(parsed) ? parsed : 0;
+
+    const loadRow = loads.find(l => l.id === loadId);
+    const previousPayload = payloadRates[loadId] ?? loadRow?.rate ?? 0;
+    const shouldBackfillApprovedPayload = !!(
+      loadRow?.carrier_approved === true &&
+      (loadRow?.approved_payload === null || loadRow?.approved_payload === undefined)
+    );
+
     setPayloadRates(prev => ({ ...prev, [loadId]: numValue }));
-    
-    // Also update the database
-    try {
-      await supabase
-        .from("loads")
-        .update({ rate: numValue })
-        .eq("id", loadId);
-    } catch (error) {
+
+    // Keep UI in sync immediately
+    setLoads(prev =>
+      prev.map(l =>
+        l.id === loadId
+          ? {
+              ...l,
+              rate: numValue,
+              approved_payload: shouldBackfillApprovedPayload ? previousPayload : l.approved_payload,
+            }
+          : l
+      )
+    );
+
+    const update: Record<string, any> = { rate: numValue };
+    if (shouldBackfillApprovedPayload) update.approved_payload = previousPayload;
+
+    const { error } = await supabase.from("loads").update(update).eq("id", loadId);
+    if (error) {
       console.error("Failed to update payload:", error);
+      toast.error("Failed to update payload");
     }
   };
 
   const handleCarrierPayApproval = async (load: ApprovalLoad) => {
     const currentPayloadValue = payloadRates[load.id] ?? load.rate ?? 0;
+    const baselinePayload = load.approved_payload ?? load.rate ?? 0;
     const newCarrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
-    const isCurrentlyApproved = carrierPayApproved[load.id] ?? load.carrier_approved;
+    const isCurrentlyApproved = (carrierPayApproved[load.id] ?? load.carrier_approved) === true;
     
     // Check if payload changed (strikethrough scenario)
-    const payloadChanged = isCurrentlyApproved && 
-                           load.approved_payload !== null && 
-                           load.approved_payload !== undefined &&
-                           currentPayloadValue !== load.approved_payload;
+    const payloadChanged = isCurrentlyApproved &&
+      Number(currentPayloadValue) !== Number(baselinePayload);
     
     // Get old rate for history tracking
     const oldRate = load.carrier_rate ?? null;
@@ -718,20 +738,25 @@ export default function LoadApprovalTab() {
                   ) : paginatedLoads.map(load => {
                     const loadedMiles = load.estimated_miles || 0;
                     const emptyMiles = load.empty_miles || 0;
-                    const customerRate = (load as any).customer_rate || load.rate || 0;
-                    const customerRatePerMile = loadedMiles > 0 ? customerRate / loadedMiles : 0;
-                    const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
-                    const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
-                    
+
                     // Use local payload state if edited, otherwise use DB value
                     const currentPayloadValue = payloadRates[load.id] ?? load.rate ?? 0;
-                    
-                    // Check if payload changed after approval (needs re-approval)
-                    // Compare current payload (local or DB) against the approved_payload
-                    const payloadChanged = load.carrier_approved === true && 
-                                           load.approved_payload !== null && 
-                                           currentPayloadValue !== load.approved_payload;
-                    const previousApprovedRate = payloadChanged ? (load.carrier_rate ?? 0) : null;
+                    const baselinePayload = load.approved_payload ?? load.rate ?? 0;
+                    const isApproved = (carrierPayApproved[load.id] ?? load.carrier_approved) === true;
+
+                    const customerRate = (load as any).customer_rate ?? currentPayloadValue ?? 0;
+                    const customerRatePerMile = loadedMiles > 0 ? customerRate / loadedMiles : 0;
+
+                    const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? currentPayloadValue ?? 0;
+                    const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
+
+                    // Payload changed after approval => require new carrier pay
+                    const payloadChanged = isApproved &&
+                      Number(currentPayloadValue) !== Number(baselinePayload);
+
+                    const previousApprovedRate = payloadChanged
+                      ? (load.carrier_rate ?? 0)
+                      : null;
                     
                     // Try to get driver name from load's assigned driver first, then fall back to the vehicle's driver
                     let driverName = "-";
