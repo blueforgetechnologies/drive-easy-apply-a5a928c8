@@ -858,7 +858,10 @@ export default function LoadApprovalTab() {
                             size="sm"
                             variant="ghost"
                             className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                            onClick={() => navigate(`/dashboard/loads/${load.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/dashboard/loads/${load.id}`);
+                            }}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
