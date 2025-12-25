@@ -508,11 +508,11 @@ export default function LoadApprovalTab() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col">
+    <div className="h-[calc(100vh-56px)] flex flex-col">
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Carrier Navigation */}
         <div className="w-[190px] border-r bg-card flex-shrink-0 flex flex-col">
-          <div className="pl-3 pr-4 py-3 border-b space-y-2">
+          <div className="pl-3 pr-4 py-2 border-b space-y-1.5">
             <Button 
               variant="ghost" 
               size="sm"
@@ -524,25 +524,25 @@ export default function LoadApprovalTab() {
             </Button>
           </div>
 
-          <div className="pl-3 pr-4 py-3 border-b space-y-2">
+          <div className="pl-3 pr-4 py-2 border-b space-y-1.5">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Type to search..."
                 value={carrierSearch}
                 onChange={(e) => setCarrierSearch(e.target.value)}
-                className="pl-8 h-9"
+                className="pl-8 h-8"
               />
             </div>
             
             <button
-              className="w-full mt-2 h-8 text-sm font-medium rounded-md btn-glossy-primary text-white transition-all duration-200"
+              className="w-full h-7 text-sm font-medium rounded-md btn-glossy-primary text-white transition-all duration-200"
             >
               Modified Loads
             </button>
           </div>
           
-          <div className="pl-3 pr-4 py-3 flex-1 overflow-hidden">
+          <div className="pl-3 pr-4 py-2 flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               <div className="flex flex-col w-[85%]">
                 {filteredCarriers.map((carrier, idx, arr) => {
@@ -594,10 +594,10 @@ export default function LoadApprovalTab() {
         </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold">Load Approval</h2>
+      <div className="flex-1 flex flex-col gap-2 min-h-0">
+        <div className="flex items-center justify-between py-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">Load Approval</h2>
             {/* Truck filter buttons */}
             {selectedCarrier !== "all" && vehicles.length > 0 && (
               <div className="flex items-center">
@@ -609,7 +609,7 @@ export default function LoadApprovalTab() {
                       key={v.id}
                       onClick={() => setSelectedVehicle(v.id === selectedVehicle ? "all" : v.id)}
                       className={cn(
-                        "h-8 px-3 text-sm font-medium transition-all border-y border-l",
+                        "h-7 px-2.5 text-sm font-medium transition-all border-y border-l",
                         isFirst && "rounded-l-md",
                         isLast && "rounded-r-md border-r",
                         selectedVehicle === v.id
@@ -624,7 +624,7 @@ export default function LoadApprovalTab() {
               </div>
             )}
           </div>
-          <Badge variant="outline" className="text-sm">
+          <Badge variant="outline" className="text-xs">
             {selectedCarrierName}
           </Badge>
         </div>
