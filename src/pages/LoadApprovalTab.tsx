@@ -89,6 +89,7 @@ export default function LoadApprovalTab() {
   // Load state
   const [loads, setLoads] = useState<ApprovalLoad[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showModifiedOnly, setShowModifiedOnly] = useState(false);
   const ROWS_PER_PAGE = 3;
   
   // Selected load for 30 Days View filtering - initialize from URL param
@@ -345,16 +346,38 @@ export default function LoadApprovalTab() {
 
   // Paginated loads for top table - sorted by pickup_date ascending (oldest first)
   const paginatedLoads = useMemo(() => {
-    const sortedLoads = [...loads].sort((a, b) => {
+    let filteredLoads = [...loads];
+    
+    // Filter to only show modified loads if toggle is active
+    if (showModifiedOnly) {
+      filteredLoads = filteredLoads.filter(load => {
+        const isApproved = load.carrier_approved === true;
+        const hasPayloadChange = isApproved && 
+          load.approved_payload !== null && 
+          load.approved_payload !== load.rate;
+        return hasPayloadChange;
+      });
+    }
+    
+    const sortedLoads = filteredLoads.sort((a, b) => {
       const dateA = a.pickup_date ? new Date(a.pickup_date).getTime() : 0;
       const dateB = b.pickup_date ? new Date(b.pickup_date).getTime() : 0;
       return dateA - dateB; // Ascending: older dates first
     });
     const start = (currentPage - 1) * ROWS_PER_PAGE;
     return sortedLoads.slice(start, start + ROWS_PER_PAGE);
-  }, [loads, currentPage]);
+  }, [loads, currentPage, showModifiedOnly]);
 
-  const totalPages = Math.ceil(loads.length / ROWS_PER_PAGE);
+  // Calculate total pages based on filtered loads
+  const filteredLoadsCount = useMemo(() => {
+    if (!showModifiedOnly) return loads.length;
+    return loads.filter(load => {
+      const isApproved = load.carrier_approved === true;
+      return isApproved && load.approved_payload !== null && load.approved_payload !== load.rate;
+    }).length;
+  }, [loads, showModifiedOnly]);
+  
+  const totalPages = Math.ceil(filteredLoadsCount / ROWS_PER_PAGE);
 
   // Calculate carrier pay based on entered rate
   const calculateCarrierPay = (load: ApprovalLoad) => {
@@ -602,9 +625,18 @@ export default function LoadApprovalTab() {
             </div>
             
             <button
-              className="w-full h-7 text-sm font-medium rounded-md btn-glossy-primary text-white transition-all duration-200"
+              onClick={() => {
+                setShowModifiedOnly(!showModifiedOnly);
+                setCurrentPage(1);
+              }}
+              className={cn(
+                "w-full h-7 text-sm font-medium rounded-md transition-all duration-200",
+                showModifiedOnly 
+                  ? "bg-red-600 hover:bg-red-700 text-white" 
+                  : "btn-glossy-primary text-white"
+              )}
             >
-              Modified Loads
+              {showModifiedOnly ? "Show All Loads" : "Modified Loads"}
             </button>
           </div>
           
