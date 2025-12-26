@@ -6,7 +6,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings, Layers, ChevronDown, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings, Layers, ChevronDown, ChevronRight, Calculator } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { FleetFinancialsTable, useFleetColumns } from "@/components/FleetFinancialsTable";
 import { useExpenseGroup } from "@/hooks/useExpenseGroup";
 import { TruckExpenseConfigDialog } from "@/components/TruckExpenseConfigDialog";
+import { usePaymentFormulas } from "@/hooks/usePaymentFormulas";
+import { PaymentFormulaBuilder } from "@/components/PaymentFormulaBuilder";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -135,6 +137,15 @@ export default function FleetFinancialsTab() {
     resetToDefault: resetExpenseGroup,
   } = useExpenseGroup();
   
+  // Payment formulas management
+  const {
+    formulas: paymentFormulas,
+    loading: formulasLoading,
+    saving: formulasSaving,
+    saveFormula,
+    isConfigured: isFormulaConfigured,
+    calculateFormula,
+  } = usePaymentFormulas();
   // Sync expense group columns to the fleet columns hook for drag handling
   useEffect(() => {
     setExpenseGroupColumns(expenseGroupColumns);
@@ -604,6 +615,10 @@ export default function FleetFinancialsTab() {
           <TabsList className="h-9">
             <TabsTrigger value="statistics" className="text-sm">Vehicle Statistics</TabsTrigger>
             <TabsTrigger value="fuel-settings" className="text-sm">Fuel Settings</TabsTrigger>
+            <TabsTrigger value="payment-calc" className="text-sm">
+              <Calculator className="h-3.5 w-3.5 mr-1" />
+              Payment Calculation
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -964,6 +979,7 @@ export default function FleetFinancialsTab() {
             handleDragEnd={handleDragEnd}
             expenseGroupCollapsed={expenseGroupCollapsed}
             expenseGroupColumns={expenseGroupColumns}
+            calculateFormula={calculateFormula}
           />
         </div>
 
@@ -1048,6 +1064,17 @@ export default function FleetFinancialsTab() {
           </Button>
         </CardContent>
       </Card>
+    </div>
+  </TabsContent>
+
+  {/* Payment Calculation Tab */}
+  <TabsContent value="payment-calc" className="flex-1 m-0 p-6 overflow-auto">
+    <div className="max-w-4xl">
+      <PaymentFormulaBuilder
+        formulas={paymentFormulas}
+        onSave={saveFormula}
+        saving={formulasSaving}
+      />
     </div>
   </TabsContent>
 </Tabs>

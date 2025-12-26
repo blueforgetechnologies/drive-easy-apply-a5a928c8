@@ -3016,6 +3016,33 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_formulas: {
+        Row: {
+          add_columns: string[]
+          created_at: string
+          formula_name: string
+          id: string
+          subtract_columns: string[]
+          updated_at: string
+        }
+        Insert: {
+          add_columns?: string[]
+          created_at?: string
+          formula_name: string
+          id?: string
+          subtract_columns?: string[]
+          updated_at?: string
+        }
+        Update: {
+          add_columns?: string[]
+          created_at?: string
+          formula_name?: string
+          id?: string
+          subtract_columns?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           category: string

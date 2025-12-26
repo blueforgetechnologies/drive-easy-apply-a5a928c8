@@ -84,6 +84,8 @@ interface Totals {
   driverPayActive: boolean;
 }
 
+type FormulaName = "carr_net" | "my_net" | "brokering_net";
+
 interface FleetFinancialsTableProps {
   dailyData: DailyData[];
   totals: Totals;
@@ -110,6 +112,8 @@ interface FleetFinancialsTableProps {
   // Expense group props
   expenseGroupCollapsed: boolean;
   expenseGroupColumns: string[];
+  // Payment formula props
+  calculateFormula?: (formulaName: FormulaName, values: Record<string, number>) => number | null;
 }
 
 const DAILY_OTHER_COST = 0;
@@ -245,6 +249,7 @@ function CellValue({
   expenseGroupColumns,
   isFirstExpense,
   isLastExpense,
+  calculateFormula,
 }: {
   column: FleetColumn;
   load: Load;
@@ -265,6 +270,7 @@ function CellValue({
   expenseGroupColumns: string[];
   isFirstExpense?: boolean;
   isLastExpense?: boolean;
+  calculateFormula?: (formulaName: FormulaName, values: Record<string, number>) => number | null;
 }) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
@@ -301,8 +307,26 @@ function CellValue({
   const tolls = 0; // Placeholder for tolls - not yet tracked per load
   const wcomp = 0; // Placeholder for workman's comp - not yet tracked per load
   
-  // My Net = Payload - Factoring - Dispatch - driver pay - workman comp - fuel - tolls - rental - insurance - other
-  const myNet =
+  // Build the values object for formula calculation
+  const formulaValues: Record<string, number> = {
+    payload: rate,
+    carr_pay: vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount,
+    disp_pay: dispPay,
+    drv_pay: drvPay,
+    factor: factoring,
+    fuel: fuelCost,
+    rental: dailyRental,
+    insur: dailyInsurance,
+    tolls: tolls,
+    wcomp: wcomp,
+    other: DAILY_OTHER_COST,
+    rental_per_mile: selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+      ? selectedVehicle.cents_per_mile * totalM
+      : 0,
+  };
+  
+  // Fallback calculations for when formulas aren't configured
+  const defaultMyNet =
     rate -
     factoring -
     dispPay -
@@ -314,8 +338,7 @@ function CellValue({
     dailyInsurance -
     DAILY_OTHER_COST;
   
-  // Carr Net = Carr Pay - driver pay - workman comp - fuel - tolls - rental - insurance - other
-  const carrierNet =
+  const defaultCarrierNet =
     (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) -
     drvPay -
     wcomp -
@@ -325,8 +348,12 @@ function CellValue({
     dailyInsurance -
     DAILY_OTHER_COST;
   
-  // Brokering Net = Payload - Carr Pay - Dispatch Pay - Factoring
-  const brokeringNet = rate - carrierPayAmount - dispPay - factoring;
+  const defaultBrokeringNet = rate - carrierPayAmount - dispPay - factoring;
+  
+  // Use calculateFormula if available, otherwise use fallback
+  const myNet = calculateFormula ? calculateFormula("my_net", formulaValues) : defaultMyNet;
+  const carrierNet = calculateFormula ? calculateFormula("carr_net", formulaValues) : defaultCarrierNet;
+  const brokeringNet = calculateFormula ? calculateFormula("brokering_net", formulaValues) : defaultBrokeringNet;
   
   const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
 
@@ -528,25 +555,25 @@ function CellValue({
     case "net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", myNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
+          className={cn("text-right font-bold !px-2 !py-0.5", myNet === null ? "text-muted-foreground" : myNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
-          {formatCurrency(myNet)}
+          {myNet === null ? "Config" : formatCurrency(myNet)}
         </TableCell>
       );
     case "carr_net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
+          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet === null ? "text-muted-foreground" : carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
-          {formatCurrency(carrierNet)}
+          {carrierNet === null ? "Config" : formatCurrency(carrierNet)}
         </TableCell>
       );
     case "brokering_net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
+          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet === null ? "text-muted-foreground" : brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
-          {formatCurrency(brokeringNet)}
+          {brokeringNet === null ? "Config" : formatCurrency(brokeringNet)}
         </TableCell>
       );
     default:
@@ -937,6 +964,7 @@ export function FleetFinancialsTable({
   handleDragEnd,
   expenseGroupCollapsed,
   expenseGroupColumns,
+  calculateFormula,
 }: FleetFinancialsTableProps) {
   const navigate = useNavigate();
 
@@ -1133,6 +1161,7 @@ export function FleetFinancialsTable({
                         expenseGroupColumns={expenseGroupColumns}
                         isFirstExpense={column.id === expenseBoundaries.first}
                         isLastExpense={column.id === expenseBoundaries.last}
+                        calculateFormula={calculateFormula}
                       />
                     ))}
                   </TableRow>
