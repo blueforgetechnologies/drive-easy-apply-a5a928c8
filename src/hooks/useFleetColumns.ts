@@ -42,9 +42,24 @@ export function useFleetColumns() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as FleetColumn[];
-        // Merge with defaults to pick up any new columns
-        const columnMap = new Map(parsed.map((c) => [c.id, c]));
-        return DEFAULT_COLUMNS.map((defaultCol) => columnMap.get(defaultCol.id) || defaultCol);
+        // Create a map of saved columns for order/visibility, but use default widths
+        const savedMap = new Map(parsed.map((c) => [c.id, c]));
+        const defaultMap = new Map(DEFAULT_COLUMNS.map((c) => [c.id, c]));
+        
+        // Preserve saved order, merge with defaults for new columns and updated widths
+        const orderedIds = parsed.map(c => c.id).filter(id => defaultMap.has(id));
+        const newIds = DEFAULT_COLUMNS.filter(c => !savedMap.has(c.id)).map(c => c.id);
+        const allIds = [...orderedIds, ...newIds];
+        
+        return allIds.map(id => {
+          const defaultCol = defaultMap.get(id)!;
+          const savedCol = savedMap.get(id);
+          // Use default width always, but preserve saved visibility
+          return {
+            ...defaultCol,
+            visible: savedCol?.visible ?? defaultCol.visible,
+          };
+        });
       }
     } catch (e) {
       console.error("Failed to load column preferences", e);
