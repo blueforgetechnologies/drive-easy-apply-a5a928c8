@@ -26,6 +26,8 @@ export default function VehicleDetail() {
   const [samsaraStats, setSamsaraStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [truckTypeWarningOpen, setTruckTypeWarningOpen] = useState(false);
+  const [pendingTruckType, setPendingTruckType] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
   const [carriers, setCarriers] = useState<any[]>([]);
@@ -1067,18 +1069,42 @@ export default function VehicleDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Truck Type</Label>
-                    <RadioGroup value={formData.truck_type || 'my_truck'} onValueChange={(value) => updateField('truck_type', value)} className="flex gap-6">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="my_truck" id="my-truck" />
-                        <Label htmlFor="my-truck">My Truck</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contractor_truck" id="contractor-truck" />
-                        <Label htmlFor="contractor-truck">Contractor's Truck</Label>
-                      </div>
-                    </RadioGroup>
+                  {/* My Truck Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium">My Truck</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Company-owned or operated. Shows "My Net" column in Fleet$ and hides Carrier Net and Brokering Net columns.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.truck_type === 'my_truck' || !formData.truck_type}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setPendingTruckType('my_truck');
+                          setTruckTypeWarningOpen(true);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Contractor's Truck Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium">Contractor's Truck</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Third-party contractor equipment. Shows "Carrier Net" and "Brokering Net" columns in Fleet$ and hides My Net column.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.truck_type === 'contractor_truck'}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setPendingTruckType('contractor_truck');
+                          setTruckTypeWarningOpen(true);
+                        }
+                      }}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1188,6 +1214,39 @@ export default function VehicleDetail() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Truck Type Warning Dialog */}
+      <AlertDialog open={truckTypeWarningOpen} onOpenChange={setTruckTypeWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Truck Type?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Changing the truck type will affect how future loads are calculated and displayed in Fleet Financials.
+              </p>
+              <p className="font-medium text-foreground">
+                {pendingTruckType === 'my_truck' 
+                  ? 'Switching to "My Truck" will show the My Net column and hide Carrier Net and Brokering Net columns.'
+                  : 'Switching to "Contractor\'s Truck" will show Carrier Net and Brokering Net columns and hide the My Net column.'}
+              </p>
+              <p className="text-amber-600 dark:text-amber-400">
+                Existing loads booked under the previous type will display "N/A" for inapplicable net columns.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingTruckType(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (pendingTruckType) {
+                updateField('truck_type', pendingTruckType);
+                setPendingTruckType(null);
+              }
+            }}>
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <MaintenanceReminderDialog
         open={reminderDialogOpen}

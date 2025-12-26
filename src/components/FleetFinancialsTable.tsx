@@ -36,6 +36,7 @@ interface Load {
   accessorial_charges: number | null;
   detention_charges: number | null;
   other_charges: number | null;
+  truck_type_at_booking: string | null;
 }
 
 interface DailyData {
@@ -55,6 +56,7 @@ interface Vehicle {
   requires_load_approval: boolean | null;
   asset_ownership?: string | null;
   cents_per_mile?: number | null;
+  truck_type?: string | null;
 }
 
 interface Totals {

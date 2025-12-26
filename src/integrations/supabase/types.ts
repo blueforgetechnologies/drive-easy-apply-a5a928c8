@@ -2196,6 +2196,7 @@ export type Database = {
           total_charges: number | null
           total_cost: number | null
           total_revenue: number | null
+          truck_type_at_booking: string | null
           updated_at: string | null
           vehicle_size: string | null
         }
@@ -2320,6 +2321,7 @@ export type Database = {
           total_charges?: number | null
           total_cost?: number | null
           total_revenue?: number | null
+          truck_type_at_booking?: string | null
           updated_at?: string | null
           vehicle_size?: string | null
         }
@@ -2444,6 +2446,7 @@ export type Database = {
           total_charges?: number | null
           total_cost?: number | null
           total_revenue?: number | null
+          truck_type_at_booking?: string | null
           updated_at?: string | null
           vehicle_size?: string | null
         }
