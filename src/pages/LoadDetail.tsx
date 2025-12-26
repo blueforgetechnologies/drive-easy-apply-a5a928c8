@@ -2160,7 +2160,12 @@ export default function LoadDetail() {
                     type="number"
                     step="0.01"
                     value={load.customer_rate || ""}
-                    onChange={(e) => updateField("customer_rate", e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      updateField("customer_rate", value);
+                      // Auto-sync Payload with Customer Rate
+                      updateField("approved_payload", value);
+                    }}
                   />
                 </div>
 
@@ -2175,12 +2180,13 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
-                  <Label>Payload Amount</Label>
+                  <Label>Payload (Broker Pays)</Label>
                   <Input
                     type="number"
                     step="0.01"
                     value={load.approved_payload || ""}
                     onChange={(e) => updateField("approved_payload", e.target.value)}
+                    placeholder="Auto-synced from Customer Rate"
                   />
                 </div>
 
