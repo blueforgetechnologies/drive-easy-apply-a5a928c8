@@ -564,13 +564,13 @@ export default function VehicleDetail() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cents per Mile</Label>
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">$ per Mile</Label>
                         <Input 
                           type="number" 
                           step="0.01" 
                           value={formData.cents_per_mile || ''} 
                           onChange={(e) => updateField('cents_per_mile', e.target.value)} 
-                          placeholder="0.00"
+                          placeholder="0.20"
                         />
                       </div>
                     </>
