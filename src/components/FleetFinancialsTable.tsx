@@ -161,7 +161,7 @@ function ColumnHeader({
       className={cn(
         column.width,
         "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab transition-all duration-150",
-        column.id === "truck_expense" && "border-l-2 border-r-2 border-orange-400",
+        column.id === "truck_expense" && "shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]",
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
@@ -306,7 +306,7 @@ function CellValue({
   switch (column.id) {
     case "truck_expense":
       return (
-        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 border-l-2 border-r-2 border-orange-400", dragClass)}>
+        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]", dragClass)}>
           {formatCurrency(collapsedExpenseTotal)}
         </TableCell>
       );
@@ -525,7 +525,7 @@ function EmptyDayCellValue({
   switch (column.id) {
     case "truck_expense":
       return (
-        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 border-l-2 border-r-2 border-orange-400", dragClass)}>
+        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]", dragClass)}>
           {collapsedExpenseTotal !== 0 ? formatCurrency(collapsedExpenseTotal) : ""}
         </TableCell>
       );
@@ -591,7 +591,7 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
   switch (column.id) {
     case "truck_expense":
       return (
-        <td className={cn("px-2 py-2 text-center border-l-2 border-r-2 border-orange-400", dragClass)}>
+        <td className={cn("px-2 py-2 text-center shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]", dragClass)}>
           <div className="text-[10px] text-muted-foreground">COLLAPSED</div>
           <div className="font-bold">{formatCurrency(collapsedExpenseFooterTotal)}</div>
         </td>
