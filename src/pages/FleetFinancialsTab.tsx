@@ -143,7 +143,14 @@ export default function FleetFinancialsTab() {
     const now = new Date();
     return format(now, "yyyy-MM");
   });
-  const [showColumnLines, setShowColumnLines] = useState(false);
+  const [showColumnLines, setShowColumnLines] = useState(() => {
+    try {
+      const saved = localStorage.getItem("fleet-financials-show-column-lines");
+      return saved === "true";
+    } catch {
+      return false;
+    }
+  });
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
 
@@ -858,7 +865,11 @@ export default function FleetFinancialsTab() {
                 "rounded-full border-0",
                 showColumnLines ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
               )}
-              onClick={() => setShowColumnLines(!showColumnLines)}
+              onClick={() => {
+                const newValue = !showColumnLines;
+                setShowColumnLines(newValue);
+                localStorage.setItem("fleet-financials-show-column-lines", String(newValue));
+              }}
             >
               {showColumnLines ? "Hide Lines" : "Show Lines"}
             </Button>
