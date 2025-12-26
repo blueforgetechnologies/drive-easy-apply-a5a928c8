@@ -73,10 +73,19 @@ export function useExpenseGroup() {
 
 // Column IDs that can be merged into truck expense
 export const MERGEABLE_EXPENSE_COLUMNS = [
+  { id: "mpg", label: "MPG" },
+  { id: "factor", label: "Factoring" },
+  { id: "disp_pay", label: "Dispatch Pay" },
+  { id: "drv_pay", label: "Driver Pay" },
+  { id: "wcomp", label: "Workman Comp" },
   { id: "fuel", label: "Fuel" },
+  { id: "tolls", label: "Tolls" },
   { id: "rental", label: "Rental" },
   { id: "insur", label: "Insurance" },
-  { id: "tolls", label: "Tolls" },
-  { id: "wcomp", label: "Workman Comp" },
   { id: "other", label: "Other" },
+  { id: "carr_pay", label: "Carrier Pay" },
+  { id: "carr_dollar_per_mile", label: "Carr $/Mi" },
+  { id: "net", label: "My Net" },
+  { id: "carr_net", label: "Carrier Net" },
+  { id: "brokering_net", label: "Brokering Net" },
 ];
