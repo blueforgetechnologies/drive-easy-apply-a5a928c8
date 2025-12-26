@@ -451,7 +451,23 @@ function CellValue({
       );
     case "drv_pay":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(drvPay)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">{formatCurrency(drvPay)}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[250px]">
+                <div className="text-xs space-y-1">
+                  <div className="font-semibold">{totals.driverName || "No driver assigned"}</div>
+                  {totals.driverPayPercentage != null && totals.driverPayMethod === "percentage" && (
+                    <div className="text-muted-foreground">Pay Rate: {totals.driverPayPercentage}%</div>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </TableCell>
       );
     case "wcomp":
       return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>$0.00</TableCell>;
