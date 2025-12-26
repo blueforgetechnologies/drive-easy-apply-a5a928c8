@@ -74,6 +74,7 @@ export function useFleetColumns() {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [dragPosition, setDragPosition] = useState<DragPosition | null>(null);
+  const [dragStartPosition, setDragStartPosition] = useState<DragPosition | null>(null);
 
   useEffect(() => {
     try {
@@ -109,6 +110,7 @@ export function useFleetColumns() {
       setDraggedColumn(null);
       setDragOverColumn(null);
       setDragPosition(null);
+      setDragStartPosition(null);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -124,7 +126,12 @@ export function useFleetColumns() {
     if (!isEditMode) return;
     if (e) {
       e.preventDefault();
-      setDragPosition({ x: e.clientX, y: e.clientY });
+      const pos = { x: e.clientX, y: e.clientY };
+      setDragStartPosition(pos);
+      setDragPosition(pos);
+    } else {
+      setDragStartPosition(null);
+      setDragPosition(null);
     }
     setDraggedColumn(columnId);
   }, [isEditMode]);
@@ -141,6 +148,7 @@ export function useFleetColumns() {
     setDraggedColumn(null);
     setDragOverColumn(null);
     setDragPosition(null);
+    setDragStartPosition(null);
   }, [isEditMode]);
 
   const toggleColumnVisibility = (columnId: string) => {
@@ -165,6 +173,7 @@ export function useFleetColumns() {
     dragOverColumn,
     isEditMode,
     dragPosition,
+    dragStartPosition,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
