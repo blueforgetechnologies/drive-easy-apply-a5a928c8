@@ -181,16 +181,15 @@ function ColumnHeader({
       )}
     >
       <div className={cn(
-        "flex items-center gap-1 px-1 py-0.5 rounded transition-all duration-200",
+        "flex flex-col items-center gap-0.5 px-1 py-0.5 rounded transition-all duration-200",
         isDragging && "bg-primary/10"
       )}>
         <GripVertical className={cn(
-          "h-3.5 w-3.5 flex-shrink-0 grip-handle transition-all duration-200",
+          "h-3 w-3 flex-shrink-0 grip-handle transition-all duration-200 rotate-90",
           isDragging ? "text-primary animate-pulse" : "opacity-50"
         )} />
         <span className={cn(
-          "flex-1 truncate font-semibold text-xs uppercase tracking-wide",
-          column.align === "right" && "text-right",
+          "truncate font-semibold text-xs uppercase tracking-wide text-center w-full",
           isDragging && "text-primary"
         )}>
           {column.label}
