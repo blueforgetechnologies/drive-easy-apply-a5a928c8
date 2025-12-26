@@ -1041,6 +1041,8 @@ export function FleetFinancialsTable({
                 dragOverColumn={dragOverColumn}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
+                isFirstExpense={column.id === expenseBoundaries.first}
+                isLastExpense={column.id === expenseBoundaries.last}
               />
             ))}
           </tr>
@@ -1082,6 +1084,8 @@ export function FleetFinancialsTable({
                         draggedColumn={draggedColumn}
                         dragOverColumn={dragOverColumn}
                         expenseGroupColumns={expenseGroupColumns}
+                        isFirstExpense={column.id === expenseBoundaries.first}
+                        isLastExpense={column.id === expenseBoundaries.last}
                       />
                     ))}
                   </TableRow>
@@ -1094,7 +1098,17 @@ export function FleetFinancialsTable({
                   )}
                 >
                   {effectiveColumns.map((column) => (
-                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} expenseGroupColumns={expenseGroupColumns} />
+                    <EmptyDayCellValue 
+                      key={column.id} 
+                      column={column} 
+                      day={day} 
+                      totals={totals} 
+                      draggedColumn={draggedColumn} 
+                      dragOverColumn={dragOverColumn} 
+                      expenseGroupColumns={expenseGroupColumns}
+                      isFirstExpense={column.id === expenseBoundaries.first}
+                      isLastExpense={column.id === expenseBoundaries.last}
+                    />
                   ))}
                 </TableRow>
               )}
@@ -1127,11 +1141,21 @@ export function FleetFinancialsTable({
           ? "bg-muted border-t-2 border-primary/30 [&_td]:bg-muted"
           : "bg-muted/95 [&_td]:bg-muted/95"
       )}>
-        <tr>
-          {effectiveColumns.map((column) => (
-            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} expenseGroupColumns={expenseGroupColumns} />
-          ))}
-        </tr>
+          <tr>
+            {effectiveColumns.map((column) => (
+              <FooterCellValue 
+                key={column.id} 
+                column={column} 
+                totals={totals} 
+                milesPerGallon={milesPerGallon} 
+                draggedColumn={draggedColumn} 
+                dragOverColumn={dragOverColumn} 
+                expenseGroupColumns={expenseGroupColumns}
+                isFirstExpense={column.id === expenseBoundaries.first}
+                isLastExpense={column.id === expenseBoundaries.last}
+              />
+            ))}
+          </tr>
       </tfoot>
     </table>
     </div>
