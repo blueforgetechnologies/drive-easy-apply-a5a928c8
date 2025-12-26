@@ -30,7 +30,7 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
   { id: "wcomp", label: "WComp", width: "w-[62px]", align: "right", visible: true },
   { id: "fuel", label: "Fuel", width: "w-[55px]", align: "right", visible: true },
   { id: "tolls", label: "Tolls", width: "w-[55px]", align: "right", visible: true },
-  { id: "rental", label: "Rental", width: "w-[58px]", align: "right", visible: true },
+  { id: "rental", label: "Daily Rental", width: "w-[80px]", align: "right", visible: true },
   { id: "rental_per_mile", label: "Rental $/M", width: "w-[75px]", align: "right", visible: true },
   { id: "insur", label: "Insur", width: "w-[62px]", align: "right", visible: true },
   { id: "other", label: "Other", width: "w-[58px]", align: "right", visible: true },

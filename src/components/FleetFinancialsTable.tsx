@@ -828,7 +828,7 @@ function FooterCellValue({
     case "rental":
       return (
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
-          <div className="text-[10px] text-muted-foreground">Rental</div>
+          <div className="text-[10px] text-muted-foreground">Daily Rental</div>
           <div className="font-bold">{formatCurrency(totals.rental)}</div>
         </td>
       );
