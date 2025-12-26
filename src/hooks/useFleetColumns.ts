@@ -52,18 +52,43 @@ export function useFleetColumns() {
         const savedMap = new Map(parsed.map((c) => [c.id, c]));
         const defaultMap = new Map(DEFAULT_COLUMNS.map((c) => [c.id, c]));
         
-        const orderedIds = parsed.map(c => c.id).filter(id => defaultMap.has(id));
-        const newIds = DEFAULT_COLUMNS.filter(c => !savedMap.has(c.id)).map(c => c.id);
-        const allIds = [...orderedIds, ...newIds];
+        // Find new columns that don't exist in saved preferences
+        const newColumns = DEFAULT_COLUMNS.filter(c => !savedMap.has(c.id));
         
-        return allIds.map(id => {
-          const defaultCol = defaultMap.get(id)!;
-          const savedCol = savedMap.get(id);
-          return {
+        // Build result: start with saved order, then insert new columns at their default positions
+        const result: FleetColumn[] = [];
+        const processedNew = new Set<string>();
+        
+        for (const savedCol of parsed) {
+          if (!defaultMap.has(savedCol.id)) continue; // Skip removed columns
+          
+          const defaultCol = defaultMap.get(savedCol.id)!;
+          result.push({
             ...defaultCol,
-            visible: savedCol?.visible ?? defaultCol.visible,
-          };
-        });
+            visible: savedCol.visible ?? defaultCol.visible,
+          });
+          
+          // Check if any new columns should be inserted after this one based on default order
+          const savedIndex = DEFAULT_COLUMNS.findIndex(c => c.id === savedCol.id);
+          for (const newCol of newColumns) {
+            if (processedNew.has(newCol.id)) continue;
+            const newIndex = DEFAULT_COLUMNS.findIndex(c => c.id === newCol.id);
+            // Insert new column if it comes right after the current column in default order
+            if (newIndex === savedIndex + 1) {
+              result.push(newCol);
+              processedNew.add(newCol.id);
+            }
+          }
+        }
+        
+        // Add any remaining new columns at the end
+        for (const newCol of newColumns) {
+          if (!processedNew.has(newCol.id)) {
+            result.push(newCol);
+          }
+        }
+        
+        return result;
       }
     } catch (e) {
       console.error("Failed to load column preferences", e);
