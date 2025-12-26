@@ -399,8 +399,12 @@ function CellValue({
                   <span className="text-orange-600 font-bold">$0.00</span>
                   <Badge
                     variant="outline"
-                    className="text-[8px] px-0.5 py-0 scale-[0.85] bg-amber-50 text-amber-700 border-amber-300"
-                    title="Pending Approval"
+                    className="text-[8px] px-0.5 py-0 scale-[0.85] bg-amber-50 text-amber-700 border-amber-300 cursor-pointer hover:bg-amber-100"
+                    title="Click to approve load"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/dashboard/load-approval?loadId=${load.id}`);
+                    }}
                   >
                     <ShieldCheck className="h-2 w-2 mr-0.5" />
                     LA
