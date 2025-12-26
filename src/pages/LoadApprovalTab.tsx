@@ -56,7 +56,8 @@ interface Load {
   carrier?: { name: string | null };
   vehicle?: { vehicle_number: string | null; driver_1_id?: string | null };
   driver?: { personal_info: any };
-  dispatcher?: { first_name: string | null; last_name: string | null };
+  dispatcher?: { first_name: string | null; last_name: string | null; pay_percentage?: number | null };
+  assigned_dispatcher_id?: string | null;
 }
 
 interface ApprovalLoad extends Load {
@@ -65,6 +66,11 @@ interface ApprovalLoad extends Load {
   carrier_approved?: boolean | null;
   carrier_rate?: number | null;
   approved_payload?: number | null;
+}
+
+interface DispatcherPayInfo {
+  id: string;
+  pay_percentage: number | null;
 }
 
 export default function LoadApprovalTab() {
@@ -100,6 +106,8 @@ export default function LoadApprovalTab() {
   const [payloadRates, setPayloadRates] = useState<Record<string, number>>({});
   const [carrierPayApproved, setCarrierPayApproved] = useState<Record<string, boolean>>({});
   const [vehicleDriverInfoById, setVehicleDriverInfoById] = useState<Record<string, any>>({});
+  const [factoringPercentage, setFactoringPercentage] = useState<number>(0);
+  const [dispatcherPayInfo, setDispatcherPayInfo] = useState<Record<string, number>>({});
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
 
   // Scroll to selected load when it changes
@@ -145,6 +153,24 @@ export default function LoadApprovalTab() {
       .select("id, name, status")
       .order("name");
     setCarriers(carrierData || []);
+
+    // Load company profile for factoring percentage
+    const { data: companyProfile } = await supabase
+      .from("company_profile")
+      .select("factoring_percentage")
+      .limit(1)
+      .single();
+    setFactoringPercentage(companyProfile?.factoring_percentage || 0);
+
+    // Load all dispatchers with pay_percentage
+    const { data: dispatchersData } = await supabase
+      .from("dispatchers")
+      .select("id, pay_percentage");
+    const dispPayMap: Record<string, number> = {};
+    (dispatchersData || []).forEach((d: any) => {
+      dispPayMap[d.id] = d.pay_percentage || 0;
+    });
+    setDispatcherPayInfo(dispPayMap);
 
     // Load all vehicles that require approval
     const { data: vehicleData } = await supabase
@@ -794,6 +820,7 @@ export default function LoadApprovalTab() {
                     <TableHead className="text-xs text-right">$/Mile</TableHead>
                     <TableHead className="text-xs text-right">Payload</TableHead>
                     <TableHead className="text-xs text-right">Carrier Pay</TableHead>
+                    <TableHead className="text-xs text-right">Brokering Net</TableHead>
                     <TableHead className="text-xs text-right">$/Mile</TableHead>
                     <TableHead className="text-xs">Dispatcher</TableHead>
                     <TableHead className="text-xs">View Load</TableHead>
@@ -802,13 +829,13 @@ export default function LoadApprovalTab() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                         Loading...
                       </TableCell>
                     </TableRow>
                   ) : paginatedLoads.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                         No loads ready for approval
                       </TableCell>
                     </TableRow>
@@ -826,6 +853,12 @@ export default function LoadApprovalTab() {
 
                     const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? currentPayloadValue ?? 0;
                     const carrierRatePerMile = loadedMiles > 0 ? carrierPay / loadedMiles : 0;
+
+                    // Calculate Brokering Net = Payload - Carrier Pay - Dispatch Pay - Factoring
+                    const dispatcherPayPct = load.assigned_dispatcher_id ? (dispatcherPayInfo[load.assigned_dispatcher_id] || 0) : 0;
+                    const dispatcherPay = currentPayloadValue * (dispatcherPayPct / 100);
+                    const factoring = currentPayloadValue * (factoringPercentage / 100);
+                    const brokeringNet = currentPayloadValue - carrierPay - dispatcherPay - factoring;
 
                     // Payload changed after approval => require new carrier pay
                     const payloadChanged = isApproved &&
@@ -973,6 +1006,9 @@ export default function LoadApprovalTab() {
                               )} />
                             </button>
                           </div>
+                        </TableCell>
+                        <TableCell className={cn("text-xs text-right font-bold", brokeringNet >= 0 ? "text-green-600" : "text-destructive")}>
+                          ${brokeringNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="text-xs text-right">
                           ${carrierRatePerMile.toFixed(2)}
