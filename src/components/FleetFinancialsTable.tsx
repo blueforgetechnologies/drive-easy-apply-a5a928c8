@@ -749,7 +749,7 @@ export function FleetFinancialsTable({
     <div
       className={cn(
         "relative",
-        isEditMode && "edit-mode-active overflow-hidden rounded-lg",
+        isEditMode && "edit-mode-active rounded-lg",
         draggedColumn && dragPosition && dragStartPosition && "ff-dragging"
       )}
       style={dragVars}
