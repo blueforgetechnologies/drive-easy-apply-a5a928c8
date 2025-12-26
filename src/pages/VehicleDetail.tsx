@@ -497,97 +497,6 @@ export default function VehicleDetail() {
                 </CardContent>
               </Card>
 
-              {/* Ownership & Costs */}
-              <Card className="border-l-4 border-l-amber-500 shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-amber-600">
-                    <FileText className="w-5 h-5" />
-                    Ownership & Costs
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Truck Type</Label>
-                    <RadioGroup value={formData.truck_type || 'my_truck'} onValueChange={(value) => updateField('truck_type', value)} className="flex gap-6">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="my_truck" id="my-truck" />
-                        <Label htmlFor="my-truck">My Truck</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contractor_truck" id="contractor-truck" />
-                        <Label htmlFor="contractor-truck">Contractor's Truck</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Asset Ownership</Label>
-                    <RadioGroup value={formData.asset_ownership || 'owned'} onValueChange={(value) => updateField('asset_ownership', value)} className="flex gap-4">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="owned" id="owned" />
-                        <Label htmlFor="owned">Owned</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="financed" id="financed" />
-                        <Label htmlFor="financed">Financed</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="leased" id="leased" />
-                        <Label htmlFor="leased">Leased</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {(formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
-                    <div className="space-y-2">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Monthly Payment</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        value={formData.monthly_payment || ''} 
-                        onChange={(e) => updateField('monthly_payment', e.target.value)} 
-                        placeholder="0.00"
-                      />
-                    </div>
-                  )}
-
-                  {formData.asset_ownership === 'leased' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Payment</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          value={formData.weekly_payment || ''} 
-                          onChange={(e) => updateField('weekly_payment', e.target.value)} 
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">$ per Mile</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          value={formData.cents_per_mile || ''} 
-                          onChange={(e) => updateField('cents_per_mile', e.target.value)} 
-                          placeholder="0.20"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Rate ($/gallon)</Label>
-                    <Input type="number" step="0.01" value={formData.fuel_per_gallon || ''} onChange={(e) => updateField('fuel_per_gallon', e.target.value)} placeholder="7.50" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
-                    <Input type="number" step="0.01" value={formData.insurance_cost_per_month || ''} onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} placeholder="1700" />
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Vehicle Notes */}
               <Card className="border-l-4 border-l-violet-500 shadow-sm">
                 <CardHeader className="pb-3">
@@ -1149,10 +1058,101 @@ export default function VehicleDetail() {
           {/* Financial Tab */}
           <TabsContent value="financial" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Load Approval Settings */}
+              {/* Ownership & Costs */}
               <Card className="border-l-4 border-l-rose-500 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-rose-600">
+                    <DollarSign className="w-5 h-5" />
+                    Ownership & Costs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Truck Type</Label>
+                    <RadioGroup value={formData.truck_type || 'my_truck'} onValueChange={(value) => updateField('truck_type', value)} className="flex gap-6">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="my_truck" id="my-truck" />
+                        <Label htmlFor="my-truck">My Truck</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="contractor_truck" id="contractor-truck" />
+                        <Label htmlFor="contractor-truck">Contractor's Truck</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Asset Ownership</Label>
+                    <RadioGroup value={formData.asset_ownership || 'owned'} onValueChange={(value) => updateField('asset_ownership', value)} className="flex gap-4">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="owned" id="owned" />
+                        <Label htmlFor="owned">Owned</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="financed" id="financed" />
+                        <Label htmlFor="financed">Financed</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="leased" id="leased" />
+                        <Label htmlFor="leased">Leased</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {(formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Monthly Payment</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={formData.monthly_payment || ''} 
+                        onChange={(e) => updateField('monthly_payment', e.target.value)} 
+                        placeholder="0.00"
+                      />
+                    </div>
+                  )}
+
+                  {formData.asset_ownership === 'leased' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Payment</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.weekly_payment || ''} 
+                          onChange={(e) => updateField('weekly_payment', e.target.value)} 
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">$ per Mile</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.cents_per_mile || ''} 
+                          onChange={(e) => updateField('cents_per_mile', e.target.value)} 
+                          placeholder="0.20"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Rate ($/gallon)</Label>
+                    <Input type="number" step="0.01" value={formData.fuel_per_gallon || ''} onChange={(e) => updateField('fuel_per_gallon', e.target.value)} placeholder="7.50" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
+                    <Input type="number" step="0.01" value={formData.insurance_cost_per_month || ''} onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} placeholder="1700" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Load Approval Settings */}
+              <Card className="border-l-4 border-l-amber-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-amber-600">
                     <DollarSign className="w-5 h-5" />
                     Carrier Visibility Settings
                   </CardTitle>
