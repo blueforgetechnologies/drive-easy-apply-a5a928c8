@@ -110,6 +110,7 @@ export function BookLoadDialog({
       }
 
       // Create the load in the loads table with ALL data from the match and parsed email
+      // Include truck_type_at_booking to snapshot the vehicle's ownership type at booking time
       const { data: newLoad, error: loadError } = await supabase
         .from('loads')
         .insert({
@@ -122,6 +123,7 @@ export function BookLoadDialog({
           load_owner_id: dispatcherId || null, // Default load owner to dispatcher
           carrier_id: (vehicle?.carrier as any) || null,
           customer_id: customerId,
+          truck_type_at_booking: vehicle?.truck_type || 'my_truck', // Snapshot truck type at booking
           
           // Pickup info
           pickup_date: pickupDate || null,
