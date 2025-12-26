@@ -382,8 +382,9 @@ function CellValue({
                         ? (e) => {
                             e.stopPropagation();
                             const params = new URLSearchParams({ loadId: load.id });
-                            if (selectedVehicle?.carrier) params.set('carrierId', selectedVehicle.carrier);
-                            if (load.assigned_vehicle_id) params.set('vehicleId', load.assigned_vehicle_id);
+                            const carrierIdForLoad = vehicles.find((v) => v.id === load.assigned_vehicle_id)?.carrier;
+                            if (carrierIdForLoad) params.set("carrierId", carrierIdForLoad);
+                            if (load.assigned_vehicle_id) params.set("vehicleId", load.assigned_vehicle_id);
                             navigate(`/dashboard/load-approval?${params.toString()}`);
                           }
                         : undefined
@@ -407,8 +408,9 @@ function CellValue({
                     onClick={(e) => {
                       e.stopPropagation();
                       const params = new URLSearchParams({ loadId: load.id });
-                      if (selectedVehicle?.carrier) params.set('carrierId', selectedVehicle.carrier);
-                      if (load.assigned_vehicle_id) params.set('vehicleId', load.assigned_vehicle_id);
+                      const carrierIdForLoad = vehicles.find((v) => v.id === load.assigned_vehicle_id)?.carrier;
+                      if (carrierIdForLoad) params.set("carrierId", carrierIdForLoad);
+                      if (load.assigned_vehicle_id) params.set("vehicleId", load.assigned_vehicle_id);
                       navigate(`/dashboard/load-approval?${params.toString()}`);
                     }}
                   >
