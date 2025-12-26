@@ -251,12 +251,14 @@ function CellValue({
   const isApproved = load.carrier_approved === true;
   const payloadChangedAfterApproval = isApproved && load.approved_payload !== null && load.approved_payload !== rate;
   const carrierPayAmount = load.carrier_rate || rate;
+  const tolls = 0; // Placeholder for tolls - not yet tracked per load
+  const wcomp = 0; // Placeholder for workman's comp - not yet tracked per load
   const carrierNet =
     (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) -
-    factoring -
-    dispPay -
     drvPay -
+    wcomp -
     fuelCost -
+    tolls -
     dailyRental -
     dailyInsurance -
     DAILY_OTHER_COST;
