@@ -101,6 +101,7 @@ interface FleetFinancialsTableProps {
   getCustomerName: (customerId: string | null) => string;
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
+  getDispatcherName: (dispatcherId: string | null) => string;
   getWeeklyTotal: (endIndex: number) => number;
   // Column management props
   visibleColumns: FleetColumn[];
@@ -245,6 +246,7 @@ function CellValue({
   getCustomerName,
   getDispatcherPay,
   getDriverPay,
+  getDispatcherName,
   navigate,
   draggedColumn,
   dragOverColumn,
@@ -266,6 +268,7 @@ function CellValue({
   getCustomerName: (customerId: string | null) => string;
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
+  getDispatcherName: (dispatcherId: string | null) => string;
   navigate: (path: string) => void;
   draggedColumn: string | null;
   dragOverColumn: string | null;
@@ -592,6 +595,12 @@ function CellValue({
           className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet === null ? "text-muted-foreground" : brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
           {brokeringNet === null ? "Config" : formatCurrency(brokeringNet)}
+        </TableCell>
+      );
+    case "load_owner":
+      return (
+        <TableCell className={cn("truncate max-w-[100px] !px-2 !py-0.5", dragClass)} title={getDispatcherName(load.assigned_dispatcher_id)}>
+          {getDispatcherName(load.assigned_dispatcher_id)}
         </TableCell>
       );
     default:
@@ -972,6 +981,13 @@ function FooterCellValue({
           <div className="font-bold">-</div>
         </td>
       );
+    case "load_owner":
+      return (
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
+          <div className="text-[10px] text-muted-foreground">Load Owner</div>
+          <div className="font-bold">-</div>
+        </td>
+      );
     default:
       return <td className={cn("px-2 py-2 text-center", dragClass)}>-</td>;
   }
@@ -990,6 +1006,7 @@ export function FleetFinancialsTable({
   getCustomerName,
   getDispatcherPay,
   getDriverPay,
+  getDispatcherName,
   getWeeklyTotal,
   visibleColumns,
   draggedColumn,
@@ -1192,6 +1209,7 @@ export function FleetFinancialsTable({
                         getCustomerName={getCustomerName}
                         getDispatcherPay={getDispatcherPay}
                         getDriverPay={getDriverPay}
+                        getDispatcherName={getDispatcherName}
                         navigate={navigate}
                         draggedColumn={draggedColumn}
                         dragOverColumn={dragOverColumn}

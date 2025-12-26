@@ -40,6 +40,7 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
   { id: "net", label: "My Net", width: "w-[80px]", align: "right", visible: true },
   { id: "carr_net", label: "Carr NET", width: "w-[80px]", align: "right", visible: true },
   { id: "brokering_net", label: "Brokering Net", width: "w-[95px]", align: "right", visible: true },
+  { id: "load_owner", label: "Load Owner", width: "w-[100px]", align: "left", visible: true },
 ];
 
 const STORAGE_KEY = "fleet-financials-column-order";

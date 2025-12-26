@@ -564,7 +564,12 @@ export default function FleetFinancialsTab() {
     }
   };
 
-  
+  const getDispatcherName = (dispatcherId: string | null) => {
+    if (!dispatcherId) return "-";
+    const dispatcher = dispatchers.find(d => d.id === dispatcherId);
+    return dispatcher ? `${dispatcher.first_name} ${dispatcher.last_name}` : "-";
+  };
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
@@ -979,6 +984,7 @@ export default function FleetFinancialsTab() {
             getCustomerName={getCustomerName}
             getDispatcherPay={getDispatcherPay}
             getDriverPay={getDriverPay}
+            getDispatcherName={getDispatcherName}
             getWeeklyTotal={getWeeklyTotal}
             visibleColumns={visibleColumns}
             draggedColumn={draggedColumn}
