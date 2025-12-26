@@ -31,7 +31,6 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
   { id: "fuel", label: "Fuel", width: "w-[55px]", align: "right", visible: true },
   { id: "tolls", label: "Tolls", width: "w-[55px]", align: "right", visible: true },
   { id: "rental", label: "Rental", width: "w-[58px]", align: "right", visible: true },
-  { id: "rental_per_mile_cost", label: "Rental $/M Cost", width: "w-[85px]", align: "right", visible: true },
   { id: "insur", label: "Insur", width: "w-[62px]", align: "right", visible: true },
   { id: "other", label: "Other", width: "w-[58px]", align: "right", visible: true },
   { id: "carr_pay", label: "Carr Pay", width: "w-[117px]", align: "right", visible: true },
