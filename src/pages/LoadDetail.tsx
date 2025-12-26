@@ -2159,8 +2159,8 @@ export default function LoadDetail() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={load.approved_payload || ""}
-                    onChange={(e) => updateField("approved_payload", e.target.value)}
+                    value={load.customer_rate || ""}
+                    onChange={(e) => updateField("customer_rate", e.target.value)}
                   />
                 </div>
 
