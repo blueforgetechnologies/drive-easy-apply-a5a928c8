@@ -114,6 +114,7 @@ export default function FleetFinancialsTab() {
     visibleColumns,
     draggedColumn,
     dragOverColumn,
+    dragPosition,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
@@ -882,6 +883,7 @@ export default function FleetFinancialsTab() {
             visibleColumns={visibleColumns}
             draggedColumn={draggedColumn}
             dragOverColumn={dragOverColumn}
+            dragPosition={dragPosition}
             handleDragStart={handleDragStart}
             handleDragOver={handleDragOver}
             handleDragEnd={handleDragEnd}

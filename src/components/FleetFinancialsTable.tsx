@@ -1,11 +1,12 @@
 import { useMemo, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, isSameDay, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ShieldCheck, AlertTriangle, GripVertical } from "lucide-react";
-import { FleetColumn, useFleetColumns } from "@/hooks/useFleetColumns";
+import { FleetColumn, useFleetColumns, DragPosition } from "@/hooks/useFleetColumns";
 
 interface Load {
   id: string;
@@ -92,7 +93,8 @@ interface FleetFinancialsTableProps {
   visibleColumns: FleetColumn[];
   draggedColumn: string | null;
   dragOverColumn: string | null;
-  handleDragStart: (columnId: string) => void;
+  dragPosition: DragPosition | null;
+  handleDragStart: (columnId: string, e?: React.MouseEvent) => void;
   handleDragOver: (columnId: string) => void;
   handleDragEnd: () => void;
 }
@@ -115,15 +117,13 @@ function ColumnHeader({
   dragOverColumn,
   onDragStart,
   onDragOver,
-  onDragEnd,
 }: {
   column: FleetColumn;
   isEditMode: boolean;
   draggedColumn: string | null;
   dragOverColumn: string | null;
-  onDragStart: (id: string) => void;
+  onDragStart: (id: string, e?: React.MouseEvent) => void;
   onDragOver: (id: string) => void;
-  onDragEnd: () => void;
 }) {
   const isDragging = draggedColumn === column.id;
   const isOver = dragOverColumn === column.id && !isDragging;
@@ -142,55 +142,38 @@ function ColumnHeader({
     );
   }
 
-  // Edit mode - draggable with high-tech effects
+  // Edit mode - draggable with high-tech effects using mouse events
   return (
     <th
-      draggable
-      onDragStart={(e) => {
-        // Create a custom drag image
-        const element = e.currentTarget;
-        const rect = element.getBoundingClientRect();
-        const ghost = element.cloneNode(true) as HTMLElement;
-        ghost.style.position = 'absolute';
-        ghost.style.left = '-9999px';
-        ghost.style.width = `${rect.width}px`;
-        ghost.style.transform = 'scale(1.05)';
-        ghost.style.opacity = '0.9';
-        document.body.appendChild(ghost);
-        e.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
-        setTimeout(() => document.body.removeChild(ghost), 0);
-        onDragStart(column.id);
-      }}
-      onDragOver={(e) => {
+      onMouseDown={(e) => {
         e.preventDefault();
-        onDragOver(column.id);
+        onDragStart(column.id, e);
       }}
-      onDragEnd={onDragEnd}
-      onDragLeave={(e) => {
-        e.currentTarget.classList.remove('column-drop-target');
+      onMouseEnter={() => {
+        if (draggedColumn) {
+          onDragOver(column.id);
+        }
       }}
       className={cn(
         column.width,
-        "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable",
+        "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab",
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
         !isDragging && !isOver && "column-edit-mode",
-        isDragging && "column-dragging",
+        isDragging && "opacity-30",
         isOver && "column-drop-target"
       )}
     >
       <div className={cn(
         "flex flex-col items-center gap-0.5 px-1 py-0.5 rounded transition-all duration-200",
-        isDragging && "bg-primary/10"
       )}>
         <GripVertical className={cn(
           "h-3 w-3 flex-shrink-0 grip-handle transition-all duration-200 rotate-90",
-          isDragging ? "text-primary animate-pulse" : "opacity-50"
+          "opacity-50"
         )} />
         <span className={cn(
           "truncate font-semibold text-xs uppercase tracking-wide text-center w-full",
-          isDragging && "text-primary"
         )}>
           {column.label}
         </span>
@@ -720,6 +703,7 @@ export function FleetFinancialsTable({
   visibleColumns,
   draggedColumn,
   dragOverColumn,
+  dragPosition,
   handleDragStart,
   handleDragOver,
   handleDragEnd,
@@ -734,8 +718,40 @@ export function FleetFinancialsTable({
     }, 0);
   }, [visibleColumns]);
 
+  // Get the dragged column info for overlay
+  const draggedColumnInfo = useMemo(() => {
+    if (!draggedColumn) return null;
+    return visibleColumns.find(c => c.id === draggedColumn);
+  }, [draggedColumn, visibleColumns]);
+
   return (
     <div className={cn("relative", isEditMode && "edit-mode-active overflow-hidden rounded-lg")}>
+      {/* Floating drag overlay that follows mouse */}
+      {draggedColumn && dragPosition && draggedColumnInfo && createPortal(
+        <div 
+          className="fixed pointer-events-none z-[9999] transition-none"
+          style={{
+            left: dragPosition.x,
+            top: dragPosition.y,
+            transform: 'translate(-50%, -20px)',
+          }}
+        >
+          <div className="column-drag-overlay flex flex-col items-center animate-scale-in">
+            <div className="bg-gradient-to-b from-success/30 to-success/50 backdrop-blur-sm border-2 border-success rounded-lg px-4 py-3 shadow-2xl min-w-[80px]">
+              <GripVertical className="h-4 w-4 mx-auto text-success mb-1 rotate-90" />
+              <div className="text-xs font-bold text-success-foreground text-center uppercase tracking-wide">
+                {draggedColumnInfo.label}
+              </div>
+            </div>
+            <div className="w-1 h-8 bg-gradient-to-b from-success to-success/30 rounded-full" />
+            <div className="text-[10px] text-muted-foreground bg-background/90 px-2 py-0.5 rounded border shadow-sm">
+              Drop on target column
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* High-tech overlay effect when in edit mode */}
       {isEditMode && (
         <div className="absolute inset-0 pointer-events-none z-20 bg-gradient-to-b from-primary/5 via-transparent to-primary/5 rounded-lg" />
@@ -766,7 +782,6 @@ export function FleetFinancialsTable({
                 dragOverColumn={dragOverColumn}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
               />
             ))}
           </tr>
