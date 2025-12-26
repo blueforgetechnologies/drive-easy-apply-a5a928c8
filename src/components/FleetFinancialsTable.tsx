@@ -285,20 +285,29 @@ function CellValue({
   
   
 
-  // Calculate truck expense total
-  const truckExpenseTotal = 
+  // Calculate collapsed expenses total - sum of all selected expense columns
+  const collapsedExpenseTotal = 
+    (expenseGroupColumns.includes("mpg") ? (totalM > 0 ? totalM / milesPerGallon : 0) : 0) + // MPG as gallons used
+    (expenseGroupColumns.includes("factor") ? factoring : 0) +
+    (expenseGroupColumns.includes("disp_pay") ? dispPay : 0) +
+    (expenseGroupColumns.includes("drv_pay") ? drvPay : 0) +
+    (expenseGroupColumns.includes("wcomp") ? wcomp : 0) +
     (expenseGroupColumns.includes("fuel") ? fuelCost : 0) +
+    (expenseGroupColumns.includes("tolls") ? tolls : 0) +
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
-    (expenseGroupColumns.includes("tolls") ? tolls : 0) +
-    (expenseGroupColumns.includes("wcomp") ? wcomp : 0) +
-    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0);
+    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
+    (expenseGroupColumns.includes("carr_pay") ? carrierPayAmount : 0) +
+    (expenseGroupColumns.includes("carr_dollar_per_mile") ? carrierPerMile : 0) +
+    (expenseGroupColumns.includes("net") ? myNet : 0) +
+    (expenseGroupColumns.includes("carr_net") ? carrierNet : 0) +
+    (expenseGroupColumns.includes("brokering_net") ? brokeringNet : 0);
 
   switch (column.id) {
     case "truck_expense":
       return (
         <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 bg-yellow-50/40 dark:bg-yellow-900/10", dragClass)}>
-          {formatCurrency(truckExpenseTotal)}
+          {formatCurrency(collapsedExpenseTotal)}
         </TableCell>
       );
     case "pickup_date":
@@ -505,20 +514,19 @@ function EmptyDayCellValue({
 
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
-  // Calculate truck expense total for empty days
-  const truckExpenseTotal = 
-    (expenseGroupColumns.includes("fuel") ? 0 : 0) +
+  // Calculate collapsed expenses total for empty days (only rental/insurance apply)
+  const collapsedExpenseTotal = 
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
-    (expenseGroupColumns.includes("tolls") ? 0 : 0) +
-    (expenseGroupColumns.includes("wcomp") ? 0 : 0) +
-    (expenseGroupColumns.includes("other") ? 0 : 0);
+    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
+    (expenseGroupColumns.includes("net") ? emptyDayNet : 0) +
+    (expenseGroupColumns.includes("carr_net") ? emptyDayNet : 0);
 
   switch (column.id) {
     case "truck_expense":
       return (
         <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 bg-yellow-50/40 dark:bg-yellow-900/10", dragClass)}>
-          {truckExpenseTotal > 0 ? formatCurrency(truckExpenseTotal) : ""}
+          {collapsedExpenseTotal !== 0 ? formatCurrency(collapsedExpenseTotal) : ""}
         </TableCell>
       );
     case "pickup_date":
@@ -558,21 +566,34 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
-  // Calculate truck expense total for footer
-  const truckExpenseFooterTotal = 
+  // Calculate collapsed expenses total for footer - sum all selected columns
+  // Note: carrierNet and brokeringNet need to be calculated since they're not in totals
+  const carrierNetTotal = totals.carrierPay - totals.driverPay - totals.workmanComp - totals.fuel - totals.tolls - totals.rental - totals.insuranceCost - totals.other;
+  const brokeringNetTotal = totals.payload - totals.carrierPay - totals.dispatcherPay - totals.factoring;
+  
+  const collapsedExpenseFooterTotal = 
+    (expenseGroupColumns.includes("mpg") ? (totals.totalMiles > 0 ? totals.totalMiles / milesPerGallon : 0) : 0) +
+    (expenseGroupColumns.includes("factor") ? totals.factoring : 0) +
+    (expenseGroupColumns.includes("disp_pay") ? totals.dispatcherPay : 0) +
+    (expenseGroupColumns.includes("drv_pay") ? totals.driverPay : 0) +
+    (expenseGroupColumns.includes("wcomp") ? totals.workmanComp : 0) +
     (expenseGroupColumns.includes("fuel") ? totals.fuel : 0) +
+    (expenseGroupColumns.includes("tolls") ? totals.tolls : 0) +
     (expenseGroupColumns.includes("rental") ? totals.rental : 0) +
     (expenseGroupColumns.includes("insur") ? totals.insuranceCost : 0) +
-    (expenseGroupColumns.includes("tolls") ? totals.tolls : 0) +
-    (expenseGroupColumns.includes("wcomp") ? totals.workmanComp : 0) +
-    (expenseGroupColumns.includes("other") ? totals.other : 0);
+    (expenseGroupColumns.includes("other") ? totals.other : 0) +
+    (expenseGroupColumns.includes("carr_pay") ? totals.carrierPay : 0) +
+    (expenseGroupColumns.includes("carr_dollar_per_mile") ? (totals.loadedMiles > 0 ? totals.carrierPay / totals.loadedMiles : 0) : 0) +
+    (expenseGroupColumns.includes("net") ? totals.netProfit : 0) +
+    (expenseGroupColumns.includes("carr_net") ? carrierNetTotal : 0) +
+    (expenseGroupColumns.includes("brokering_net") ? brokeringNetTotal : 0);
   
   switch (column.id) {
     case "truck_expense":
       return (
         <td className={cn("px-2 py-2 text-center bg-yellow-50/40 dark:bg-yellow-900/10", dragClass)}>
           <div className="text-[10px] text-muted-foreground">COLLAPSED</div>
-          <div className="font-bold">{formatCurrency(truckExpenseFooterTotal)}</div>
+          <div className="font-bold">{formatCurrency(collapsedExpenseFooterTotal)}</div>
         </td>
       );
     case "pickup_date":
