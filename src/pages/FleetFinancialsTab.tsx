@@ -6,7 +6,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings, Layers, ChevronDown, ChevronRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { FleetFinancialsTable, useFleetColumns } from "@/components/FleetFinancialsTable";
+import { useExpenseGroup } from "@/hooks/useExpenseGroup";
+import { TruckExpenseConfigDialog } from "@/components/TruckExpenseConfigDialog";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -120,6 +122,16 @@ export default function FleetFinancialsTab() {
     handleDragOver,
     handleDragEnd,
   } = useFleetColumns();
+  
+  // Expense group management
+  const {
+    isCollapsed: expenseGroupCollapsed,
+    includedColumns: expenseGroupColumns,
+    toggleCollapsed: toggleExpenseGroup,
+    toggleColumn: toggleExpenseColumn,
+    resetToDefault: resetExpenseGroup,
+  } = useExpenseGroup();
+  const [expenseConfigOpen, setExpenseConfigOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -873,8 +885,42 @@ export default function FleetFinancialsTab() {
             >
               {showColumnLines ? "Hide Lines" : "Show Lines"}
             </Button>
+            
+            {/* Truck Expense Group Toggle */}
+            <Button
+              variant={expenseGroupCollapsed ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "rounded-full border-0",
+                expenseGroupCollapsed ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+              )}
+              onClick={toggleExpenseGroup}
+              title={expenseGroupCollapsed ? "Expand expense columns" : "Collapse expense columns into TRUCK EXPENSE"}
+            >
+              {expenseGroupCollapsed ? <ChevronRight className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+              {expenseGroupCollapsed ? "Expand Expenses" : "Collapse Expenses"}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-0 btn-glossy text-gray-700"
+              onClick={() => setExpenseConfigOpen(true)}
+              title="Configure which columns are in the Truck Expense group"
+            >
+              <Layers className="h-3 w-3" />
+            </Button>
           </div>
         </div>
+        
+        {/* Truck Expense Config Dialog */}
+        <TruckExpenseConfigDialog
+          open={expenseConfigOpen}
+          onOpenChange={setExpenseConfigOpen}
+          includedColumns={expenseGroupColumns}
+          onToggleColumn={toggleExpenseColumn}
+          onReset={resetExpenseGroup}
+        />
 
         {/* Data Table Container - Single scroll container with sticky thead/tfoot */}
         <div className="flex-1 min-h-0 overflow-auto">
@@ -900,6 +946,8 @@ export default function FleetFinancialsTab() {
             handleDragStart={handleDragStart}
             handleDragOver={handleDragOver}
             handleDragEnd={handleDragEnd}
+            expenseGroupCollapsed={expenseGroupCollapsed}
+            expenseGroupColumns={expenseGroupColumns}
           />
         </div>
 
