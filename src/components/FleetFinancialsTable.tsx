@@ -277,6 +277,10 @@ function CellValue({
     dailyRental -
     dailyInsurance -
     DAILY_OTHER_COST;
+  
+  // Brokering Net = Payload - Carr Pay - Dispatch Pay - Factoring
+  const brokeringNet = rate - carrierPayAmount - dispPay - factoring;
+  
   const carrierPerMile = loadedM > 0 ? carrierPayAmount / loadedM : 0;
 
   const dayName = format(day.date, "EEE");
@@ -431,6 +435,14 @@ function CellValue({
           className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}
         >
           {formatCurrency(carrierNet)}
+        </TableCell>
+      );
+    case "brokering_net":
+      return (
+        <TableCell
+          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet >= 0 ? "text-green-600" : "text-destructive")}
+        >
+          {formatCurrency(brokeringNet)}
         </TableCell>
       );
     default:

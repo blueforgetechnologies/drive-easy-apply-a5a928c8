@@ -32,6 +32,7 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
   { id: "carr_dollar_per_mile", label: "$/Mi", shortLabel: "$/Mi", width: "w-[52px]", align: "right", visible: true },
   { id: "net", label: "My Net", width: "w-[80px]", align: "right", visible: true },
   { id: "carr_net", label: "Carr NET", width: "w-[80px]", align: "right", visible: true },
+  { id: "brokering_net", label: "Brokering Net", width: "w-[95px]", align: "right", visible: true },
 ];
 
 const STORAGE_KEY = "fleet-financials-column-order";
