@@ -606,7 +606,7 @@ function EmptyDayCellValue({
         </TableCell>
       );
     default:
-      return <TableCell className={cn("!px-2 !py-0.5", dragClass)}></TableCell>;
+      return <TableCell className={cn("!px-2 !py-0.5", expenseRailClass, dragClass)}></TableCell>;
   }
 }
 
