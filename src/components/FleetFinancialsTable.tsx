@@ -215,6 +215,7 @@ function CellValue({
   getDispatcherPay,
   getDriverPay,
   navigate,
+  draggedColumn,
 }: {
   column: FleetColumn;
   load: Load;
@@ -230,7 +231,9 @@ function CellValue({
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
   navigate: (path: string) => void;
+  draggedColumn: string | null;
 }) {
+  const isDraggedColumn = draggedColumn === column.id;
   const rate = load.rate || 0;
   const emptyM = load.empty_miles || 0;
   const loadedM = load.estimated_miles || 0;
@@ -284,6 +287,8 @@ function CellValue({
 
   const dayName = format(day.date, "EEE");
   const dateStr = format(day.date, "MM/dd");
+  
+  const dragClass = isDraggedColumn ? "cell-column-dragging" : "";
 
   switch (column.id) {
     case "pickup_date":
@@ -291,7 +296,8 @@ function CellValue({
         <TableCell
           className={cn(
             "font-medium !px-2 !py-0.5 whitespace-nowrap cursor-pointer hover:text-primary hover:underline",
-            isToday ? "text-green-600 font-bold" : "text-muted-foreground"
+            isToday ? "text-green-600 font-bold" : "text-muted-foreground",
+            dragClass
           )}
           onClick={() => navigate(`/dashboard/load/${load.id}`)}
         >
@@ -300,67 +306,67 @@ function CellValue({
       );
     case "customer":
       return (
-        <TableCell className="truncate max-w-[140px] !px-2 !py-0.5" title={getCustomerName(load.customer_id)}>
+        <TableCell className={cn("truncate max-w-[140px] !px-2 !py-0.5", dragClass)} title={getCustomerName(load.customer_id)}>
           {getCustomerName(load.customer_id)}
         </TableCell>
       );
     case "route":
       return (
-        <TableCell className="text-xs !px-2 !py-0.5">
+        <TableCell className={cn("text-xs !px-2 !py-0.5", dragClass)}>
           {load.pickup_state}→{load.delivery_state}
         </TableCell>
       );
     case "payload":
-      return <TableCell className="text-right font-semibold !px-2 !py-0.5">{formatCurrency(rate)}</TableCell>;
+      return <TableCell className={cn("text-right font-semibold !px-2 !py-0.5", dragClass)}>{formatCurrency(rate)}</TableCell>;
     case "empty":
-      return <TableCell className="text-right !px-2 !py-0.5">{formatNumber(emptyM, 0)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>{formatNumber(emptyM, 0)}</TableCell>;
     case "loaded":
-      return <TableCell className="text-right !px-2 !py-0.5">{formatNumber(loadedM, 0)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>{formatNumber(loadedM, 0)}</TableCell>;
     case "total":
-      return <TableCell className="text-right font-medium !px-2 !py-0.5">{formatNumber(totalM, 0)}</TableCell>;
+      return <TableCell className={cn("text-right font-medium !px-2 !py-0.5", dragClass)}>{formatNumber(totalM, 0)}</TableCell>;
     case "dollar_per_mile":
-      return <TableCell className="text-right !px-2 !py-0.5">${formatNumber(dollarPerMile, 2)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>${formatNumber(dollarPerMile, 2)}</TableCell>;
     case "mpg":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>
           {formatNumber(milesPerGallon, 1)}
         </TableCell>
       );
     case "factor":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(factoring)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(factoring)}</TableCell>
       );
     case "disp_pay":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dispPay)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(dispPay)}</TableCell>
       );
     case "drv_pay":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(drvPay)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(drvPay)}</TableCell>
       );
     case "wcomp":
-      return <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>;
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>$0.00</TableCell>;
     case "fuel":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(fuelCost)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(fuelCost)}</TableCell>
       );
     case "tolls":
-      return <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">$0.00</TableCell>;
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>$0.00</TableCell>;
     case "rental":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">{formatCurrency(dailyRental)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(dailyRental)}</TableCell>
       );
     case "insur":
       return (
-        <TableCell className="text-right text-muted-foreground !px-2 !py-0.5">
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>
           {formatCurrency(dailyInsurance)}
         </TableCell>
       );
     case "other":
-      return <TableCell className="text-right text-muted-foreground !px-2 !py-0.5"></TableCell>;
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}></TableCell>;
     case "carr_pay":
       return (
-        <TableCell className="text-right !px-1 !py-0.5 overflow-hidden">
+        <TableCell className={cn("text-right !px-1 !py-0.5 overflow-hidden", dragClass)}>
           {vehicleRequiresApproval ? (
             <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
               {isApproved ? (
@@ -419,11 +425,11 @@ function CellValue({
         </TableCell>
       );
     case "carr_dollar_per_mile":
-      return <TableCell className="text-right !px-2 !py-0.5">${formatNumber(carrierPerMile, 2)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>${formatNumber(carrierPerMile, 2)}</TableCell>;
     case "net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", myNet >= 0 ? "text-green-600" : "text-destructive")}
+          className={cn("text-right font-bold !px-2 !py-0.5", myNet >= 0 ? "text-green-600" : "text-destructive", dragClass)}
         >
           {formatCurrency(myNet)}
         </TableCell>
@@ -431,7 +437,7 @@ function CellValue({
     case "carr_net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}
+          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive", dragClass)}
         >
           {formatCurrency(carrierNet)}
         </TableCell>
@@ -439,13 +445,13 @@ function CellValue({
     case "brokering_net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet >= 0 ? "text-green-600" : "text-destructive")}
+          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet >= 0 ? "text-green-600" : "text-destructive", dragClass)}
         >
           {formatCurrency(brokeringNet)}
         </TableCell>
       );
     default:
-      return <TableCell className="!px-2 !py-0.5">-</TableCell>;
+      return <TableCell className={cn("!px-2 !py-0.5", dragClass)}>-</TableCell>;
   }
 }
 
@@ -454,11 +460,14 @@ function EmptyDayCellValue({
   column,
   day,
   totals,
+  draggedColumn,
 }: {
   column: FleetColumn;
   day: DailyData;
   totals: Totals;
+  draggedColumn: string | null;
 }) {
+  const isDraggedColumn = draggedColumn === column.id;
   const isBusinessDay = !isWeekend(day.date);
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
   const dailyInsurance = totals.dailyInsuranceRate;
@@ -467,121 +476,126 @@ function EmptyDayCellValue({
   const dayName = format(day.date, "EEE");
   const dateStr = format(day.date, "MM/dd");
 
+  const dragClass = isDraggedColumn ? "cell-column-dragging" : "";
+
   switch (column.id) {
     case "pickup_date":
       return (
-        <TableCell className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap", isToday && "text-green-600 font-bold")}>
+        <TableCell className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap", isToday && "text-green-600 font-bold", dragClass)}>
           {`${isToday ? "Today" : dayName} ${dateStr}`}
         </TableCell>
       );
     case "rental":
       return (
-        <TableCell className="text-right !px-2 !py-0.5">
+        <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>
           {isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
         </TableCell>
       );
     case "insur":
-      return <TableCell className="text-right !px-2 !py-0.5">{formatCurrency(dailyInsurance)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>{formatCurrency(dailyInsurance)}</TableCell>;
     case "net":
       return (
-        <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
+        <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", dragClass)}>
           {formatCurrency(emptyDayNet)}
         </TableCell>
       );
     case "carr_net":
       return (
-        <TableCell className="text-right font-bold text-destructive !px-2 !py-0.5">
+        <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", dragClass)}>
           {formatCurrency(emptyDayNet)}
         </TableCell>
       );
     default:
-      return <TableCell className="!px-2 !py-0.5"></TableCell>;
+      return <TableCell className={cn("!px-2 !py-0.5", dragClass)}></TableCell>;
   }
 }
 
 // Footer cell value renderer
-function FooterCellValue({ column, totals, milesPerGallon }: { column: FleetColumn; totals: Totals; milesPerGallon: number }) {
+function FooterCellValue({ column, totals, milesPerGallon, draggedColumn }: { column: FleetColumn; totals: Totals; milesPerGallon: number; draggedColumn: string | null }) {
+  const isDraggedColumn = draggedColumn === column.id;
+  const dragClass = isDraggedColumn ? "cell-column-dragging" : "";
+  
   switch (column.id) {
     case "pickup_date":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">P/U Date</div>
           <div className="font-bold">-</div>
         </td>
       );
     case "customer":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Customer</div>
           <div className="font-bold">-</div>
         </td>
       );
     case "route":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Route</div>
           <div className="font-bold">-</div>
         </td>
       );
     case "payload":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Payload</div>
           <div className="font-bold text-primary">{formatCurrency(totals.payload)}</div>
         </td>
       );
     case "empty":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Empty</div>
           <div className="font-bold">{formatNumber(totals.emptyMiles, 1)}</div>
         </td>
       );
     case "loaded":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Loaded</div>
           <div className="font-bold">{formatNumber(totals.loadedMiles, 1)}</div>
         </td>
       );
     case "total":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Total</div>
           <div className="font-bold">{formatNumber(totals.totalMiles, 0)}</div>
         </td>
       );
     case "dollar_per_mile":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">$/Mi</div>
           <div className="font-bold">${formatNumber(totals.dollarPerMile, 2)}</div>
         </td>
       );
     case "mpg":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">MPG</div>
           <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
         </td>
       );
     case "factor":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Factor</div>
           <div className="font-bold">{formatCurrency(totals.factoring)}</div>
         </td>
       );
     case "disp_pay":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Disp Pay</div>
           <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
         </td>
       );
     case "drv_pay":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
             Drv Pay
             {totals.driverPayActive && (
@@ -605,63 +619,63 @@ function FooterCellValue({ column, totals, milesPerGallon }: { column: FleetColu
       );
     case "wcomp":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">WComp</div>
           <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
         </td>
       );
     case "fuel":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Fuel</div>
           <div className="font-bold">{formatCurrency(totals.fuel)}</div>
         </td>
       );
     case "tolls":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Tolls</div>
           <div className="font-bold">{formatCurrency(totals.tolls)}</div>
         </td>
       );
     case "rental":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Rental</div>
           <div className="font-bold">{formatCurrency(totals.rental)}</div>
         </td>
       );
     case "insur":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Insur</div>
           <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
         </td>
       );
     case "other":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Other</div>
           <div className="font-bold">{formatCurrency(totals.other)}</div>
         </td>
       );
     case "carr_pay":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Carr Pay</div>
           <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
         </td>
       );
     case "carr_dollar_per_mile":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">$/Mi</div>
           <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
         </td>
       );
     case "net":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Net</div>
           <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
             {formatCurrency(totals.netProfit)}
@@ -670,15 +684,22 @@ function FooterCellValue({ column, totals, milesPerGallon }: { column: FleetColu
       );
     case "carr_net":
       return (
-        <td className="px-2 py-2 text-center">
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
           <div className="text-[10px] text-muted-foreground">Carr NET</div>
           <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
             {formatCurrency(totals.netProfit)}
           </div>
         </td>
       );
+    case "brokering_net":
+      return (
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
+          <div className="text-[10px] text-muted-foreground">Broker Net</div>
+          <div className="font-bold">-</div>
+        </td>
+      );
     default:
-      return <td className="px-2 py-2 text-center">-</td>;
+      return <td className={cn("px-2 py-2 text-center", dragClass)}>-</td>;
   }
 }
 
@@ -784,6 +805,7 @@ export function FleetFinancialsTable({
                         getDispatcherPay={getDispatcherPay}
                         getDriverPay={getDriverPay}
                         navigate={navigate}
+                        draggedColumn={draggedColumn}
                       />
                     ))}
                   </TableRow>
@@ -796,7 +818,7 @@ export function FleetFinancialsTable({
                   )}
                 >
                   {visibleColumns.map((column) => (
-                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} />
+                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} draggedColumn={draggedColumn} />
                   ))}
                 </TableRow>
               )}
@@ -831,7 +853,7 @@ export function FleetFinancialsTable({
       )}>
         <tr>
           {visibleColumns.map((column) => (
-            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} />
+            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} draggedColumn={draggedColumn} />
           ))}
         </tr>
       </tfoot>
