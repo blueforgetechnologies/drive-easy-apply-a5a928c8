@@ -336,9 +336,9 @@ function CellValue({
   
 
   // Calculate collapsed expenses total - sum of all selected expense columns
-  // Calculate rental per mile cost for this load
+  // Calculate rental per mile cost for this load ($ per mile × total miles)
   const loadRentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
-    ? (selectedVehicle.cents_per_mile / 100) * totalM
+    ? selectedVehicle.cents_per_mile * totalM
     : 0;
   
   const collapsedExpenseTotal = 
