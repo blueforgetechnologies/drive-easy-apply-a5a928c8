@@ -2155,17 +2155,12 @@ export default function LoadDetail() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Customer Rate</Label>
+                  <Label>Payload (Broker Pays)</Label>
                   <Input
                     type="number"
                     step="0.01"
-                    value={load.customer_rate || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      updateField("customer_rate", value);
-                      // Auto-sync Payload with Customer Rate
-                      updateField("approved_payload", value);
-                    }}
+                    value={load.approved_payload || ""}
+                    onChange={(e) => updateField("approved_payload", e.target.value)}
                   />
                 </div>
 
@@ -2176,17 +2171,6 @@ export default function LoadDetail() {
                     step="0.01"
                     value={load.carrier_rate || ""}
                     onChange={(e) => updateField("carrier_rate", e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label>Payload (Broker Pays)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={load.approved_payload || ""}
-                    onChange={(e) => updateField("approved_payload", e.target.value)}
-                    placeholder="Auto-synced from Customer Rate"
                   />
                 </div>
 
