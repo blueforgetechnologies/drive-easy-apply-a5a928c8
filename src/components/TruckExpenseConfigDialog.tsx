@@ -31,9 +31,9 @@ export function TruckExpenseConfigDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px] bg-background">
         <DialogHeader>
-          <DialogTitle>Configure Truck Expense</DialogTitle>
+          <DialogTitle>Configure Collapsed Expenses</DialogTitle>
           <DialogDescription>
-            Select which columns to hide and merge into the "TRUCK EXPENSE" column when collapsed.
+            Select which columns to hide and merge into the "Collapsed Expenses" column.
           </DialogDescription>
         </DialogHeader>
         

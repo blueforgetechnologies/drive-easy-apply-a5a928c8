@@ -296,7 +296,7 @@ function CellValue({
   switch (column.id) {
     case "truck_expense":
       return (
-        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 bg-yellow-50/40 dark:bg-yellow-900/10", dragClass)}>
           {formatCurrency(truckExpenseTotal)}
         </TableCell>
       );
@@ -516,7 +516,7 @@ function EmptyDayCellValue({
   switch (column.id) {
     case "truck_expense":
       return (
-        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 bg-yellow-50/40 dark:bg-yellow-900/10", dragClass)}>
           {truckExpenseTotal > 0 ? formatCurrency(truckExpenseTotal) : ""}
         </TableCell>
       );
@@ -569,8 +569,8 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
   switch (column.id) {
     case "truck_expense":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
-          <div className="text-[10px] text-muted-foreground">TRUCK EXP</div>
+        <td className={cn("px-2 py-2 text-center bg-yellow-50/40 dark:bg-yellow-900/10", dragClass)}>
+          <div className="text-[10px] text-muted-foreground">COLLAPSED</div>
           <div className="font-bold">{formatCurrency(truckExpenseFooterTotal)}</div>
         </td>
       );
@@ -818,7 +818,7 @@ export function FleetFinancialsTable({
     // Insert the merged column at the first expense column position
     const mergedColumn: FleetColumn = {
       id: "truck_expense",
-      label: "TRUCK EXPENSE",
+      label: "COLLAPSED EXP",
       width: "w-[100px]",
       align: "right",
       visible: true,
