@@ -95,9 +95,12 @@ export default function LoadApprovalTab() {
   // Selected load for 30 Days View filtering - initialize from URL param
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(() => searchParams.get("loadId"));
   
-  // Initialize carrier and vehicle from URL params
+  // URL params - read once on mount
   const urlCarrierId = searchParams.get("carrierId");
   const urlVehicleId = searchParams.get("vehicleId");
+  
+  // Track if we've applied URL params to avoid re-applying
+  const [urlParamsApplied, setUrlParamsApplied] = useState(false);
   
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
@@ -136,26 +139,30 @@ export default function LoadApprovalTab() {
     loadCarriers();
   }, []);
 
-  // Set carrier and vehicle from URL params after carriers load
+  // Set carrier from URL params after carriers load (only once)
   useEffect(() => {
-    if (carriers.length > 0 && urlCarrierId) {
-      // Check if the carrier exists in the list
+    if (!urlParamsApplied && carriers.length > 0 && urlCarrierId) {
       const carrierExists = carriers.some(c => c.id === urlCarrierId);
-      if (carrierExists && selectedCarrier !== urlCarrierId) {
+      if (carrierExists) {
         setSelectedCarrier(urlCarrierId);
       }
     }
-  }, [carriers, urlCarrierId]);
+  }, [carriers, urlCarrierId, urlParamsApplied]);
 
-  // Set vehicle from URL params after vehicles load
+  // Set vehicle from URL params after vehicles load (only once)
   useEffect(() => {
-    if (vehicles.length > 0 && urlVehicleId) {
+    if (!urlParamsApplied && vehicles.length > 0 && urlVehicleId) {
       const vehicleExists = vehicles.some(v => v.id === urlVehicleId);
-      if (vehicleExists && selectedVehicle !== urlVehicleId) {
+      if (vehicleExists) {
         setSelectedVehicle(urlVehicleId);
+        // Mark params as applied after vehicle is set (vehicle is the last one)
+        setUrlParamsApplied(true);
       }
+    } else if (!urlParamsApplied && vehicles.length > 0 && urlCarrierId && !urlVehicleId) {
+      // If we only have carrierId (no vehicleId), mark as applied after carrier data loads
+      setUrlParamsApplied(true);
     }
-  }, [vehicles, urlVehicleId]);
+  }, [vehicles, urlVehicleId, urlCarrierId, urlParamsApplied]);
 
   useEffect(() => {
     if (carriers.length > 0) {
