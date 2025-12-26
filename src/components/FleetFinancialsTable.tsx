@@ -47,6 +47,8 @@ interface Vehicle {
   monthly_payment: number | null;
   driver_1_id: string | null;
   requires_load_approval: boolean | null;
+  asset_ownership?: string | null;
+  cents_per_mile?: number | null;
 }
 
 interface Totals {
@@ -62,6 +64,7 @@ interface Totals {
   fuel: number;
   tolls: number;
   rental: number;
+  rentalPerMileCost: number;
   dailyRentalRate: number;
   businessDaysInMonth: number;
   insuranceCost: number;
@@ -313,6 +316,11 @@ function CellValue({
   
 
   // Calculate collapsed expenses total - sum of all selected expense columns
+  // Calculate rental per mile cost for this load
+  const loadRentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+    ? (selectedVehicle.cents_per_mile / 100) * totalM
+    : 0;
+  
   const collapsedExpenseTotal = 
     (expenseGroupColumns.includes("mpg") ? (totalM > 0 ? totalM / milesPerGallon : 0) : 0) + // MPG as gallons used
     (expenseGroupColumns.includes("factor") ? factoring : 0) +
@@ -322,6 +330,7 @@ function CellValue({
     (expenseGroupColumns.includes("fuel") ? fuelCost : 0) +
     (expenseGroupColumns.includes("tolls") ? tolls : 0) +
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
+    (expenseGroupColumns.includes("rental_per_mile") ? loadRentalPerMileCost : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
     (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
     (expenseGroupColumns.includes("carr_pay") ? carrierPayAmount : 0) +
@@ -407,6 +416,17 @@ function CellValue({
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyRental)}</TableCell>
       );
+    case "rental_per_mile": {
+      // Calculate rental $/mile cost: if leased, cents_per_mile × total miles
+      const rentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+        ? (selectedVehicle.cents_per_mile / 100) * totalM
+        : 0;
+      return (
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
+          {rentalPerMileCost > 0 ? formatCurrency(rentalPerMileCost) : ""}
+        </TableCell>
+      );
+    }
     case "insur":
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
@@ -591,6 +611,9 @@ function EmptyDayCellValue({
           {isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
         </TableCell>
       );
+    case "rental_per_mile":
+      // No per-mile cost on empty days (no miles driven)
+      return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}></TableCell>;
     case "insur":
       return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyInsurance)}</TableCell>;
     case "net":
@@ -657,6 +680,7 @@ function FooterCellValue({
     (expenseGroupColumns.includes("fuel") ? totals.fuel : 0) +
     (expenseGroupColumns.includes("tolls") ? totals.tolls : 0) +
     (expenseGroupColumns.includes("rental") ? totals.rental : 0) +
+    (expenseGroupColumns.includes("rental_per_mile") ? totals.rentalPerMileCost : 0) +
     (expenseGroupColumns.includes("insur") ? totals.insuranceCost : 0) +
     (expenseGroupColumns.includes("other") ? totals.other : 0) +
     (expenseGroupColumns.includes("carr_pay") ? totals.carrierPay : 0) +
@@ -806,6 +830,13 @@ function FooterCellValue({
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Rental</div>
           <div className="font-bold">{formatCurrency(totals.rental)}</div>
+        </td>
+      );
+    case "rental_per_mile":
+      return (
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
+          <div className="text-[10px] text-muted-foreground">Rental $/M</div>
+          <div className="font-bold">{formatCurrency(totals.rentalPerMileCost || 0)}</div>
         </td>
       );
     case "insur":
