@@ -253,6 +253,21 @@ function CellValue({
   const carrierPayAmount = load.carrier_rate || rate;
   const tolls = 0; // Placeholder for tolls - not yet tracked per load
   const wcomp = 0; // Placeholder for workman's comp - not yet tracked per load
+  
+  // My Net = Payload - Factoring - Dispatch - driver pay - workman comp - fuel - tolls - rental - insurance - other
+  const myNet =
+    rate -
+    factoring -
+    dispPay -
+    drvPay -
+    wcomp -
+    fuelCost -
+    tolls -
+    dailyRental -
+    dailyInsurance -
+    DAILY_OTHER_COST;
+  
+  // Carr Net = Carr Pay - driver pay - workman comp - fuel - tolls - rental - insurance - other
   const carrierNet =
     (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) -
     drvPay -
@@ -405,9 +420,9 @@ function CellValue({
     case "net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive")}
+          className={cn("text-right font-bold !px-2 !py-0.5", myNet >= 0 ? "text-green-600" : "text-destructive")}
         >
-          {formatCurrency(carrierNet)}
+          {formatCurrency(myNet)}
         </TableCell>
       );
     case "carr_net":

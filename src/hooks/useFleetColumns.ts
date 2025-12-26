@@ -30,7 +30,7 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
   { id: "other", label: "Other", width: "w-[58px]", align: "right", visible: true },
   { id: "carr_pay", label: "Carr Pay", width: "w-[117px]", align: "right", visible: true },
   { id: "carr_dollar_per_mile", label: "$/Mi", shortLabel: "$/Mi", width: "w-[52px]", align: "right", visible: true },
-  { id: "net", label: "Net", width: "w-[80px]", align: "right", visible: true },
+  { id: "net", label: "My Net", width: "w-[80px]", align: "right", visible: true },
   { id: "carr_net", label: "Carr NET", width: "w-[80px]", align: "right", visible: true },
 ];
 
