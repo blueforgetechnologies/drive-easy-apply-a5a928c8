@@ -121,6 +121,8 @@ function ColumnHeader({
   dragOverColumn,
   onDragStart,
   onDragOver,
+  isFirstExpense,
+  isLastExpense,
 }: {
   column: FleetColumn;
   isEditMode: boolean;
@@ -128,9 +130,15 @@ function ColumnHeader({
   dragOverColumn: string | null;
   onDragStart: (id: string, e?: React.MouseEvent) => void;
   onDragOver: (id: string) => void;
+  isFirstExpense?: boolean;
+  isLastExpense?: boolean;
 }) {
   const isDragging = draggedColumn === column.id;
   const isOver = dragOverColumn === column.id && !isDragging;
+
+  // Orange rail classes for expense group boundaries
+  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
+  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
 
   if (!isEditMode) {
     // Normal view - centered text, no truncation
@@ -139,8 +147,9 @@ function ColumnHeader({
         className={cn(
           column.width,
           "px-2 py-2 font-medium whitespace-nowrap text-center",
-          column.id === "truck_expense" &&
-            "relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning"
+          (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
+          (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
+          (column.id === "truck_expense" || isLastExpense) && rightRailClass
         )}
       >
         {column.label}
@@ -163,8 +172,9 @@ function ColumnHeader({
       className={cn(
         column.width,
         "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab transition-all duration-150",
-        column.id === "truck_expense" &&
-          "relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+        (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
+        (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
+        (column.id === "truck_expense" || isLastExpense) && rightRailClass,
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
@@ -210,6 +220,8 @@ function CellValue({
   draggedColumn,
   dragOverColumn,
   expenseGroupColumns,
+  isFirstExpense,
+  isLastExpense,
 }: {
   column: FleetColumn;
   load: Load;
@@ -228,9 +240,21 @@ function CellValue({
   draggedColumn: string | null;
   dragOverColumn: string | null;
   expenseGroupColumns: string[];
+  isFirstExpense?: boolean;
+  isLastExpense?: boolean;
 }) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
+  
+  // Orange rail classes for expense group boundaries
+  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
+  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
+  const expenseRailClass = cn(
+    (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
+    (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
+    (column.id === "truck_expense" || isLastExpense) && rightRailClass
+  );
+  
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   const rate = load.rate || 0;
   const emptyM = load.empty_miles || 0;
@@ -355,45 +379,45 @@ function CellValue({
       return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>${formatNumber(dollarPerMile, 2)}</TableCell>;
     case "mpg":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
           {formatNumber(milesPerGallon, 1)}
         </TableCell>
       );
     case "factor":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(factoring)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(factoring)}</TableCell>
       );
     case "disp_pay":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(dispPay)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dispPay)}</TableCell>
       );
     case "drv_pay":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(drvPay)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(drvPay)}</TableCell>
       );
     case "wcomp":
-      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>$0.00</TableCell>;
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>$0.00</TableCell>;
     case "fuel":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(fuelCost)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(fuelCost)}</TableCell>
       );
     case "tolls":
-      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>$0.00</TableCell>;
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>$0.00</TableCell>;
     case "rental":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>{formatCurrency(dailyRental)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyRental)}</TableCell>
       );
     case "insur":
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
           {formatCurrency(dailyInsurance)}
         </TableCell>
       );
     case "other":
-      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", dragClass)}></TableCell>;
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}></TableCell>;
     case "carr_pay":
       return (
-        <TableCell className={cn("text-right !px-1 !py-0.5 overflow-hidden", dragClass)}>
+        <TableCell className={cn("text-right !px-1 !py-0.5 overflow-hidden", expenseRailClass, dragClass)}>
           {vehicleRequiresApproval ? (
             <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
               {isApproved ? (
@@ -464,11 +488,11 @@ function CellValue({
         </TableCell>
       );
     case "carr_dollar_per_mile":
-      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>${formatNumber(carrierPerMile, 2)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>${formatNumber(carrierPerMile, 2)}</TableCell>;
     case "net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", myNet >= 0 ? "text-green-600" : "text-destructive", dragClass)}
+          className={cn("text-right font-bold !px-2 !py-0.5", myNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
           {formatCurrency(myNet)}
         </TableCell>
@@ -476,7 +500,7 @@ function CellValue({
     case "carr_net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive", dragClass)}
+          className={cn("text-right font-bold !px-2 !py-0.5", carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
           {formatCurrency(carrierNet)}
         </TableCell>
@@ -484,7 +508,7 @@ function CellValue({
     case "brokering_net":
       return (
         <TableCell
-          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet >= 0 ? "text-green-600" : "text-destructive", dragClass)}
+          className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
         >
           {formatCurrency(brokeringNet)}
         </TableCell>
@@ -502,6 +526,8 @@ function EmptyDayCellValue({
   draggedColumn,
   dragOverColumn,
   expenseGroupColumns,
+  isFirstExpense,
+  isLastExpense,
 }: {
   column: FleetColumn;
   day: DailyData;
@@ -509,6 +535,8 @@ function EmptyDayCellValue({
   draggedColumn: string | null;
   dragOverColumn: string | null;
   expenseGroupColumns: string[];
+  isFirstExpense?: boolean;
+  isLastExpense?: boolean;
 }) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
@@ -522,6 +550,15 @@ function EmptyDayCellValue({
 
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
+  // Orange rail classes for expense group boundaries
+  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
+  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
+  const expenseRailClass = cn(
+    (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
+    (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
+    (column.id === "truck_expense" || isLastExpense) && rightRailClass
+  );
+  
   // Calculate collapsed expenses total for empty days (only rental/insurance apply)
   const collapsedExpenseTotal = 
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
@@ -534,7 +571,8 @@ function EmptyDayCellValue({
       return (
         <TableCell
           className={cn(
-            "text-right text-muted-foreground font-medium !px-2 !py-0.5 relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+            "text-right text-muted-foreground font-medium !px-2 !py-0.5",
+            expenseRailClass,
             dragClass
           )}
         >
@@ -549,21 +587,21 @@ function EmptyDayCellValue({
       );
     case "rental":
       return (
-        <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>
           {isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
         </TableCell>
       );
     case "insur":
-      return <TableCell className={cn("text-right !px-2 !py-0.5", dragClass)}>{formatCurrency(dailyInsurance)}</TableCell>;
+      return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyInsurance)}</TableCell>;
     case "net":
       return (
-        <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", expenseRailClass, dragClass)}>
           {formatCurrency(emptyDayNet)}
         </TableCell>
       );
     case "carr_net":
       return (
-        <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", dragClass)}>
+        <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", expenseRailClass, dragClass)}>
           {formatCurrency(emptyDayNet)}
         </TableCell>
       );
@@ -573,10 +611,37 @@ function EmptyDayCellValue({
 }
 
 // Footer cell value renderer
-function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOverColumn, expenseGroupColumns }: { column: FleetColumn; totals: Totals; milesPerGallon: number; draggedColumn: string | null; dragOverColumn: string | null; expenseGroupColumns: string[] }) {
+function FooterCellValue({ 
+  column, 
+  totals, 
+  milesPerGallon, 
+  draggedColumn, 
+  dragOverColumn, 
+  expenseGroupColumns,
+  isFirstExpense,
+  isLastExpense,
+}: { 
+  column: FleetColumn; 
+  totals: Totals; 
+  milesPerGallon: number; 
+  draggedColumn: string | null; 
+  dragOverColumn: string | null; 
+  expenseGroupColumns: string[];
+  isFirstExpense?: boolean;
+  isLastExpense?: boolean;
+}) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
+  
+  // Orange rail classes for expense group boundaries
+  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
+  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
+  const expenseRailClass = cn(
+    (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
+    (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
+    (column.id === "truck_expense" || isLastExpense) && rightRailClass
+  );
   
   // Calculate collapsed expenses total for footer - sum all selected columns
   // Note: carrierNet and brokeringNet need to be calculated since they're not in totals
@@ -605,7 +670,8 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
       return (
         <td
           className={cn(
-            "px-2 py-2 text-center relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+            "px-2 py-2 text-center",
+            expenseRailClass,
             dragClass
           )}
         >
@@ -671,28 +737,28 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
       );
     case "mpg":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">MPG</div>
           <div className="font-bold">{formatNumber(milesPerGallon, 1)}</div>
         </td>
       );
     case "factor":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Factor</div>
           <div className="font-bold">{formatCurrency(totals.factoring)}</div>
         </td>
       );
     case "disp_pay":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Disp Pay</div>
           <div className="font-bold">{formatCurrency(totals.dispatcherPay)}</div>
         </td>
       );
     case "drv_pay":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
             Drv Pay
             {totals.driverPayActive && (
@@ -716,63 +782,63 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
       );
     case "wcomp":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">WComp</div>
           <div className="font-bold">{formatCurrency(totals.workmanComp)}</div>
         </td>
       );
     case "fuel":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Fuel</div>
           <div className="font-bold">{formatCurrency(totals.fuel)}</div>
         </td>
       );
     case "tolls":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Tolls</div>
           <div className="font-bold">{formatCurrency(totals.tolls)}</div>
         </td>
       );
     case "rental":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Rental</div>
           <div className="font-bold">{formatCurrency(totals.rental)}</div>
         </td>
       );
     case "insur":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Insur</div>
           <div className="font-bold">{formatCurrency(totals.insuranceCost)}</div>
         </td>
       );
     case "other":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Other</div>
           <div className="font-bold">{formatCurrency(totals.other)}</div>
         </td>
       );
     case "carr_pay":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Carr Pay</div>
           <div className="font-bold">{formatCurrency(totals.carrierPay)}</div>
         </td>
       );
     case "carr_dollar_per_mile":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">$/Mi</div>
           <div className="font-bold">${formatNumber(totals.carrierPerMile, 2)}</div>
         </td>
       );
     case "net":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Net</div>
           <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
             {formatCurrency(totals.netProfit)}
@@ -781,7 +847,7 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
       );
     case "carr_net":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Carr NET</div>
           <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
             {formatCurrency(totals.netProfit)}
@@ -790,7 +856,7 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
       );
     case "brokering_net":
       return (
-        <td className={cn("px-2 py-2 text-center", dragClass)}>
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Broker Net</div>
           <div className="font-bold">-</div>
         </td>
@@ -891,6 +957,24 @@ export function FleetFinancialsTable({
     if (!draggedColumn) return null;
     return effectiveColumns.find((c) => c.id === draggedColumn);
   }, [draggedColumn, effectiveColumns]);
+
+  // Calculate which columns are first/last in the expense group (for orange rails when expanded)
+  const expenseBoundaries = useMemo(() => {
+    if (expenseGroupCollapsed) return { first: null, last: null };
+    
+    // Find the first and last expense columns in the visible columns order
+    let firstExpenseCol: string | null = null;
+    let lastExpenseCol: string | null = null;
+    
+    for (const col of effectiveColumns) {
+      if (expenseGroupColumns.includes(col.id)) {
+        if (firstExpenseCol === null) firstExpenseCol = col.id;
+        lastExpenseCol = col.id;
+      }
+    }
+    
+    return { first: firstExpenseCol, last: lastExpenseCol };
+  }, [effectiveColumns, expenseGroupColumns, expenseGroupCollapsed]);
 
   return (
     <div
