@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface FleetColumn {
   id: string;
@@ -45,58 +46,150 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
 
 const STORAGE_KEY = "fleet-financials-column-order";
 
-export function useFleetColumns() {
-  const [columns, setColumns] = useState<FleetColumn[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as FleetColumn[];
-        const savedMap = new Map(parsed.map((c) => [c.id, c]));
-        const defaultMap = new Map(DEFAULT_COLUMNS.map((c) => [c.id, c]));
-        
-        // Find new columns that don't exist in saved preferences
-        const newColumns = DEFAULT_COLUMNS.filter(c => !savedMap.has(c.id));
-        
-        // Build result: start with saved order, then insert new columns at their default positions
-        const result: FleetColumn[] = [];
-        const processedNew = new Set<string>();
-        
-        for (const savedCol of parsed) {
-          if (!defaultMap.has(savedCol.id)) continue; // Skip removed columns
-          
-          const defaultCol = defaultMap.get(savedCol.id)!;
-          result.push({
-            ...defaultCol,
-            visible: savedCol.visible ?? defaultCol.visible,
-          });
-          
-          // Check if any new columns should be inserted after this one based on default order
-          const savedIndex = DEFAULT_COLUMNS.findIndex(c => c.id === savedCol.id);
-          for (const newCol of newColumns) {
-            if (processedNew.has(newCol.id)) continue;
-            const newIndex = DEFAULT_COLUMNS.findIndex(c => c.id === newCol.id);
-            // Insert new column if it comes right after the current column in default order
-            if (newIndex === savedIndex + 1) {
-              result.push(newCol);
-              processedNew.add(newCol.id);
-            }
-          }
-        }
-        
-        // Add any remaining new columns at the end
-        for (const newCol of newColumns) {
-          if (!processedNew.has(newCol.id)) {
-            result.push(newCol);
-          }
-        }
-        
-        return result;
+function mergeColumnsWithDefaults(saved: FleetColumn[]): FleetColumn[] {
+  const savedMap = new Map(saved.map((c) => [c.id, c]));
+  const defaultMap = new Map(DEFAULT_COLUMNS.map((c) => [c.id, c]));
+  
+  // Find new columns that don't exist in saved preferences
+  const newColumns = DEFAULT_COLUMNS.filter(c => !savedMap.has(c.id));
+  
+  // Build result: start with saved order, then insert new columns at their default positions
+  const result: FleetColumn[] = [];
+  const processedNew = new Set<string>();
+  
+  for (const savedCol of saved) {
+    if (!defaultMap.has(savedCol.id)) continue; // Skip removed columns
+    
+    const defaultCol = defaultMap.get(savedCol.id)!;
+    result.push({
+      ...defaultCol,
+      visible: savedCol.visible ?? defaultCol.visible,
+    });
+    
+    // Check if any new columns should be inserted after this one based on default order
+    const savedIndex = DEFAULT_COLUMNS.findIndex(c => c.id === savedCol.id);
+    for (const newCol of newColumns) {
+      if (processedNew.has(newCol.id)) continue;
+      const newIndex = DEFAULT_COLUMNS.findIndex(c => c.id === newCol.id);
+      // Insert new column if it comes right after the current column in default order
+      if (newIndex === savedIndex + 1) {
+        result.push(newCol);
+        processedNew.add(newCol.id);
       }
-    } catch (e) {
-      console.error("Failed to load column preferences", e);
     }
-    return DEFAULT_COLUMNS;
-  });
+  }
+  
+  // Add any remaining new columns at the end
+  for (const newCol of newColumns) {
+    if (!processedNew.has(newCol.id)) {
+      result.push(newCol);
+    }
+  }
+  
+  return result;
+}
+
+export function useFleetColumns() {
+  const [columns, setColumns] = useState<FleetColumn[]>(DEFAULT_COLUMNS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load user and preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          // Fallback to localStorage for non-authenticated users
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved) as FleetColumn[];
+            setColumns(mergeColumnsWithDefaults(parsed));
+          }
+          setIsLoading(false);
+          return;
+        }
+        
+        setUserId(user.id);
+        
+        // Try to load from database
+        const { data, error } = await supabase
+          .from("user_fleet_column_preferences")
+          .select("columns")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Failed to load column preferences from database", error);
+          // Fallback to localStorage
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved) as FleetColumn[];
+            setColumns(mergeColumnsWithDefaults(parsed));
+          }
+        } else if (data?.columns) {
+          const parsed = data.columns as unknown as FleetColumn[];
+          setColumns(mergeColumnsWithDefaults(parsed));
+        } else {
+          // No saved preferences, check localStorage and migrate
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved) as FleetColumn[];
+            const merged = mergeColumnsWithDefaults(parsed);
+            setColumns(merged);
+            // Migrate localStorage to database
+            await supabase
+              .from("user_fleet_column_preferences")
+              .upsert([{ user_id: user.id, columns: JSON.parse(JSON.stringify(merged)) }]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load column preferences", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadPreferences();
+  }, []);
+
+  // Save preferences with debounce
+  useEffect(() => {
+    if (isLoading) return; // Don't save during initial load
+    
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Debounce save to database
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (userId) {
+        // Save to database
+        const { error } = await supabase
+          .from("user_fleet_column_preferences")
+          .upsert([{ user_id: userId, columns: JSON.parse(JSON.stringify(columns)) }]);
+        
+        if (error) {
+          console.error("Failed to save column preferences to database", error);
+        }
+      } else {
+        // Fallback to localStorage for non-authenticated users
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
+        } catch (e) {
+          console.error("Failed to save column preferences", e);
+        }
+      }
+    }, 500);
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [columns, userId, isLoading]);
 
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -110,14 +203,6 @@ export function useFleetColumns() {
   const setExpenseGroupColumns = useCallback((cols: string[]) => {
     expenseGroupColumnsRef.current = cols;
   }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
-    } catch (e) {
-      console.error("Failed to save column preferences", e);
-    }
-  }, [columns]);
 
   // Track mouse movement during drag
   useEffect(() => {
@@ -219,9 +304,15 @@ export function useFleetColumns() {
     );
   };
 
-  const resetColumns = () => {
+  const resetColumns = async () => {
     setColumns(DEFAULT_COLUMNS);
     localStorage.removeItem(STORAGE_KEY);
+    if (userId) {
+      await supabase
+        .from("user_fleet_column_preferences")
+        .delete()
+        .eq("user_id", userId);
+    }
   };
 
   const toggleEditMode = () => {
@@ -236,6 +327,7 @@ export function useFleetColumns() {
     isEditMode,
     dragPosition,
     dragStartPosition,
+    isLoading,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
