@@ -169,8 +169,8 @@ function ColumnHeader({
                 <TooltipTrigger asChild>
                   <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-[250px]">
-                  <p className="text-xs">{column.tooltip}</p>
+                <TooltipContent side="top" className="max-w-[320px] whitespace-normal">
+                  <p className="text-xs leading-relaxed">{column.tooltip}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
