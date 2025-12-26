@@ -41,6 +41,7 @@ interface DriverCompensation {
   pay_per_mile: number | null;
   load_percentage: number | null;
   base_salary: number | null;
+  personal_info: { firstName?: string; lastName?: string } | null;
 }
 
 interface VehicleWithCarrierName extends Vehicle {
@@ -211,11 +212,17 @@ export default function FleetFinancialsTab() {
 
     const { data, error } = await supabase
       .from("applications")
-      .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary")
+      .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info")
       .eq("id", vehicle.driver_1_id)
       .single();
 
-    if (data) setDriverCompensation(data);
+    if (data) {
+      // Parse personal_info JSON if needed
+      const personalInfo = typeof data.personal_info === 'string' 
+        ? JSON.parse(data.personal_info) 
+        : data.personal_info;
+      setDriverCompensation({ ...data, personal_info: personalInfo });
+    }
     if (error) {
       console.error("Error loading driver compensation:", error);
       setDriverCompensation(null);
@@ -507,6 +514,10 @@ export default function FleetFinancialsTab() {
       netProfit,
       driverPayMethod: driverCompensation?.pay_method || null,
       driverPayActive: driverCompensation?.pay_method_active || false,
+      driverName: driverCompensation?.personal_info
+        ? `${driverCompensation.personal_info.firstName || ''} ${driverCompensation.personal_info.lastName || ''}`.trim() || null
+        : null,
+      driverPayPercentage: driverCompensation?.load_percentage || null,
     };
   }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon, selectedVehicle, driverCompensation]);
 

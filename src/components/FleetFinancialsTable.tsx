@@ -82,6 +82,8 @@ interface Totals {
   netProfit: number;
   driverPayMethod: string | null;
   driverPayActive: boolean;
+  driverName: string | null;
+  driverPayPercentage: number | null;
 }
 
 type FormulaName = "carr_net" | "my_net" | "brokering_net";
@@ -826,25 +828,44 @@ function FooterCellValue({
     case "drv_pay":
       return (
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
-          <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-            Drv Pay
-            {totals.driverPayActive && (
-              <span className="text-[8px] text-emerald-500">
-                ({totals.driverPayMethod === "percentage"
-                  ? "%"
-                  : totals.driverPayMethod === "mileage"
-                  ? "$/mi"
-                  : totals.driverPayMethod === "hourly"
-                  ? "$/hr"
-                  : totals.driverPayMethod === "hybrid"
-                  ? "hyb"
-                  : "$"})
-              </span>
-            )}
-          </div>
-          <div className={cn("font-bold", totals.driverPayActive ? "text-foreground" : "text-muted-foreground")}>
-            {formatCurrency(totals.driverPay)}
-          </div>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-help">
+                  <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    Drv Pay
+                    {totals.driverPayActive && (
+                      <span className="text-[8px] text-emerald-500">
+                        ({totals.driverPayMethod === "percentage"
+                          ? "%"
+                          : totals.driverPayMethod === "mileage"
+                          ? "$/mi"
+                          : totals.driverPayMethod === "hourly"
+                          ? "$/hr"
+                          : totals.driverPayMethod === "hybrid"
+                          ? "hyb"
+                          : "$"})
+                      </span>
+                    )}
+                  </div>
+                  <div className={cn("font-bold", totals.driverPayActive ? "text-foreground" : "text-muted-foreground")}>
+                    {formatCurrency(totals.driverPay)}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[250px]">
+                <div className="text-xs space-y-1">
+                  <div className="font-semibold">{totals.driverName || "No driver assigned"}</div>
+                  {totals.driverPayPercentage != null && totals.driverPayMethod === "percentage" && (
+                    <div className="text-muted-foreground">Pay Rate: {totals.driverPayPercentage}%</div>
+                  )}
+                  {totals.driverPayMethod && (
+                    <div className="text-muted-foreground capitalize">Method: {totals.driverPayMethod}</div>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </td>
       );
     case "wcomp":
