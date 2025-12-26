@@ -81,6 +81,7 @@ export const MERGEABLE_EXPENSE_COLUMNS = [
   { id: "fuel", label: "Fuel" },
   { id: "tolls", label: "Tolls" },
   { id: "rental", label: "Rental" },
+  { id: "rental_per_mile", label: "Rental $/M" },
   { id: "insur", label: "Insurance" },
   { id: "other", label: "Other" },
   { id: "carr_pay", label: "Carrier Pay" },
