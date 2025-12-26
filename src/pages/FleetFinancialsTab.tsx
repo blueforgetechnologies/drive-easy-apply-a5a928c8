@@ -895,7 +895,7 @@ export default function FleetFinancialsTab() {
                 expenseGroupCollapsed ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
               )}
               onClick={toggleExpenseGroup}
-              title={expenseGroupCollapsed ? "Expand expense columns" : "Collapse expense columns into TRUCK EXPENSE"}
+              title={expenseGroupCollapsed ? "Expand expense columns" : "Collapse expense columns"}
             >
               {expenseGroupCollapsed ? <ChevronRight className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
               {expenseGroupCollapsed ? "Expand Expenses" : "Collapse Expenses"}
@@ -906,7 +906,7 @@ export default function FleetFinancialsTab() {
               size="sm"
               className="rounded-full border-0 btn-glossy text-gray-700"
               onClick={() => setExpenseConfigOpen(true)}
-              title="Configure which columns are in the Truck Expense group"
+              title="Configure Collapsed Expenses group"
             >
               <Layers className="h-3 w-3" />
             </Button>
