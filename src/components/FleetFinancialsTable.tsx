@@ -892,7 +892,7 @@ export function FleetFinancialsTable({
       <tfoot className={cn(
         "sticky bottom-0 z-30 border-t shadow-md [&_td]:sticky [&_td]:bottom-0 [&_td]:z-30",
         isEditMode 
-          ? "bg-gradient-to-t from-primary/10 to-primary/5 [&_td]:bg-transparent border-t-2 border-primary/30"
+          ? "bg-muted border-t-2 border-primary/30 [&_td]:bg-muted"
           : "bg-muted/95 [&_td]:bg-muted/95"
       )}>
         <tr>
