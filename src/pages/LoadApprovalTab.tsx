@@ -95,6 +95,10 @@ export default function LoadApprovalTab() {
   // Selected load for 30 Days View filtering - initialize from URL param
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(() => searchParams.get("loadId"));
   
+  // Initialize carrier and vehicle from URL params
+  const urlCarrierId = searchParams.get("carrierId");
+  const urlVehicleId = searchParams.get("vehicleId");
+  
   // Approval rates - editable per load
   const [carrierRates, setCarrierRates] = useState<Record<string, number>>({});
   const [payloadRates, setPayloadRates] = useState<Record<string, number>>({});
@@ -131,6 +135,27 @@ export default function LoadApprovalTab() {
   useEffect(() => {
     loadCarriers();
   }, []);
+
+  // Set carrier and vehicle from URL params after carriers load
+  useEffect(() => {
+    if (carriers.length > 0 && urlCarrierId) {
+      // Check if the carrier exists in the list
+      const carrierExists = carriers.some(c => c.id === urlCarrierId);
+      if (carrierExists && selectedCarrier !== urlCarrierId) {
+        setSelectedCarrier(urlCarrierId);
+      }
+    }
+  }, [carriers, urlCarrierId]);
+
+  // Set vehicle from URL params after vehicles load
+  useEffect(() => {
+    if (vehicles.length > 0 && urlVehicleId) {
+      const vehicleExists = vehicles.some(v => v.id === urlVehicleId);
+      if (vehicleExists && selectedVehicle !== urlVehicleId) {
+        setSelectedVehicle(urlVehicleId);
+      }
+    }
+  }, [vehicles, urlVehicleId]);
 
   useEffect(() => {
     if (carriers.length > 0) {
