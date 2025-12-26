@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface FleetColumn {
   id: string;
@@ -7,6 +7,11 @@ export interface FleetColumn {
   width: string;
   align: "left" | "right" | "center";
   visible: boolean;
+}
+
+export interface DragPosition {
+  x: number;
+  y: number;
 }
 
 const DEFAULT_COLUMNS: FleetColumn[] = [
@@ -43,11 +48,9 @@ export function useFleetColumns() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as FleetColumn[];
-        // Create a map of saved columns for order/visibility, but use default widths
         const savedMap = new Map(parsed.map((c) => [c.id, c]));
         const defaultMap = new Map(DEFAULT_COLUMNS.map((c) => [c.id, c]));
         
-        // Preserve saved order, merge with defaults for new columns and updated widths
         const orderedIds = parsed.map(c => c.id).filter(id => defaultMap.has(id));
         const newIds = DEFAULT_COLUMNS.filter(c => !savedMap.has(c.id)).map(c => c.id);
         const allIds = [...orderedIds, ...newIds];
@@ -55,7 +58,6 @@ export function useFleetColumns() {
         return allIds.map(id => {
           const defaultCol = defaultMap.get(id)!;
           const savedCol = savedMap.get(id);
-          // Use default width always, but preserve saved visibility
           return {
             ...defaultCol,
             visible: savedCol?.visible ?? defaultCol.visible,
@@ -71,6 +73,7 @@ export function useFleetColumns() {
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [dragPosition, setDragPosition] = useState<DragPosition | null>(null);
 
   useEffect(() => {
     try {
@@ -80,37 +83,65 @@ export function useFleetColumns() {
     }
   }, [columns]);
 
-  const handleDragStart = (columnId: string) => {
-    if (!isEditMode) return;
-    setDraggedColumn(columnId);
-  };
+  // Track mouse movement during drag
+  useEffect(() => {
+    if (!draggedColumn) return;
 
-  const handleDragOver = (columnId: string) => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setDragPosition({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleMouseUp = () => {
+      if (draggedColumn && dragOverColumn && draggedColumn !== dragOverColumn) {
+        setColumns((prev) => {
+          const newColumns = [...prev];
+          const draggedIndex = newColumns.findIndex((c) => c.id === draggedColumn);
+          const targetIndex = newColumns.findIndex((c) => c.id === dragOverColumn);
+          
+          if (draggedIndex !== -1 && targetIndex !== -1) {
+            const [removed] = newColumns.splice(draggedIndex, 1);
+            newColumns.splice(targetIndex, 0, removed);
+          }
+          
+          return newColumns;
+        });
+      }
+      setDraggedColumn(null);
+      setDragOverColumn(null);
+      setDragPosition(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [draggedColumn, dragOverColumn]);
+
+  const handleDragStart = useCallback((columnId: string, e?: React.MouseEvent) => {
+    if (!isEditMode) return;
+    if (e) {
+      e.preventDefault();
+      setDragPosition({ x: e.clientX, y: e.clientY });
+    }
+    setDraggedColumn(columnId);
+  }, [isEditMode]);
+
+  const handleDragOver = useCallback((columnId: string) => {
     if (!isEditMode) return;
     if (draggedColumn && columnId !== draggedColumn) {
       setDragOverColumn(columnId);
     }
-  };
+  }, [isEditMode, draggedColumn]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     if (!isEditMode) return;
-    if (draggedColumn && dragOverColumn && draggedColumn !== dragOverColumn) {
-      setColumns((prev) => {
-        const newColumns = [...prev];
-        const draggedIndex = newColumns.findIndex((c) => c.id === draggedColumn);
-        const targetIndex = newColumns.findIndex((c) => c.id === dragOverColumn);
-        
-        if (draggedIndex !== -1 && targetIndex !== -1) {
-          const [removed] = newColumns.splice(draggedIndex, 1);
-          newColumns.splice(targetIndex, 0, removed);
-        }
-        
-        return newColumns;
-      });
-    }
     setDraggedColumn(null);
     setDragOverColumn(null);
-  };
+    setDragPosition(null);
+  }, [isEditMode]);
 
   const toggleColumnVisibility = (columnId: string) => {
     setColumns((prev) =>
@@ -133,6 +164,7 @@ export function useFleetColumns() {
     draggedColumn,
     dragOverColumn,
     isEditMode,
+    dragPosition,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
