@@ -98,6 +98,9 @@ interface FleetFinancialsTableProps {
   handleDragStart: (columnId: string, e?: React.MouseEvent) => void;
   handleDragOver: (columnId: string) => void;
   handleDragEnd: () => void;
+  // Expense group props
+  expenseGroupCollapsed: boolean;
+  expenseGroupColumns: string[];
 }
 
 const DAILY_OTHER_COST = 0;
@@ -202,6 +205,7 @@ function CellValue({
   navigate,
   draggedColumn,
   dragOverColumn,
+  expenseGroupColumns,
 }: {
   column: FleetColumn;
   load: Load;
@@ -219,6 +223,7 @@ function CellValue({
   navigate: (path: string) => void;
   draggedColumn: string | null;
   dragOverColumn: string | null;
+  expenseGroupColumns: string[];
 }) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
@@ -279,7 +284,22 @@ function CellValue({
   
   
 
+  // Calculate truck expense total
+  const truckExpenseTotal = 
+    (expenseGroupColumns.includes("fuel") ? fuelCost : 0) +
+    (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
+    (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
+    (expenseGroupColumns.includes("tolls") ? tolls : 0) +
+    (expenseGroupColumns.includes("wcomp") ? wcomp : 0) +
+    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0);
+
   switch (column.id) {
+    case "truck_expense":
+      return (
+        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5", dragClass)}>
+          {formatCurrency(truckExpenseTotal)}
+        </TableCell>
+      );
     case "pickup_date":
       return (
         <TableCell
@@ -463,12 +483,14 @@ function EmptyDayCellValue({
   totals,
   draggedColumn,
   dragOverColumn,
+  expenseGroupColumns,
 }: {
   column: FleetColumn;
   day: DailyData;
   totals: Totals;
   draggedColumn: string | null;
   dragOverColumn: string | null;
+  expenseGroupColumns: string[];
 }) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
@@ -481,8 +503,23 @@ function EmptyDayCellValue({
   const dateStr = format(day.date, "MM/dd");
 
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
+  
+  // Calculate truck expense total for empty days
+  const truckExpenseTotal = 
+    (expenseGroupColumns.includes("fuel") ? 0 : 0) +
+    (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
+    (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
+    (expenseGroupColumns.includes("tolls") ? 0 : 0) +
+    (expenseGroupColumns.includes("wcomp") ? 0 : 0) +
+    (expenseGroupColumns.includes("other") ? 0 : 0);
 
   switch (column.id) {
+    case "truck_expense":
+      return (
+        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5", dragClass)}>
+          {truckExpenseTotal > 0 ? formatCurrency(truckExpenseTotal) : ""}
+        </TableCell>
+      );
     case "pickup_date":
       return (
         <TableCell className={cn("font-medium !px-2 !py-0.5 whitespace-nowrap", isToday && "text-green-600 font-bold", dragClass)}>
@@ -515,12 +552,28 @@ function EmptyDayCellValue({
 }
 
 // Footer cell value renderer
-function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOverColumn }: { column: FleetColumn; totals: Totals; milesPerGallon: number; draggedColumn: string | null; dragOverColumn: string | null }) {
+function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOverColumn, expenseGroupColumns }: { column: FleetColumn; totals: Totals; milesPerGallon: number; draggedColumn: string | null; dragOverColumn: string | null; expenseGroupColumns: string[] }) {
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
+  // Calculate truck expense total for footer
+  const truckExpenseFooterTotal = 
+    (expenseGroupColumns.includes("fuel") ? totals.fuel : 0) +
+    (expenseGroupColumns.includes("rental") ? totals.rental : 0) +
+    (expenseGroupColumns.includes("insur") ? totals.insuranceCost : 0) +
+    (expenseGroupColumns.includes("tolls") ? totals.tolls : 0) +
+    (expenseGroupColumns.includes("wcomp") ? totals.workmanComp : 0) +
+    (expenseGroupColumns.includes("other") ? totals.other : 0);
+  
   switch (column.id) {
+    case "truck_expense":
+      return (
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
+          <div className="text-[10px] text-muted-foreground">TRUCK EXP</div>
+          <div className="font-bold">{formatCurrency(truckExpenseFooterTotal)}</div>
+        </td>
+      );
     case "pickup_date":
       return (
         <td className={cn("px-2 py-2 text-center", dragClass)}>
@@ -730,16 +783,59 @@ export function FleetFinancialsTable({
   handleDragStart,
   handleDragOver,
   handleDragEnd,
+  expenseGroupCollapsed,
+  expenseGroupColumns,
 }: FleetFinancialsTableProps) {
   const navigate = useNavigate();
 
+  // Build the effective columns list - replace expense columns with merged column when collapsed
+  const effectiveColumns = useMemo(() => {
+    if (!expenseGroupCollapsed) {
+      return visibleColumns;
+    }
+    
+    // Find the first expense column's position to insert the merged column there
+    let firstExpenseIndex = -1;
+    const nonExpenseColumns: FleetColumn[] = [];
+    
+    for (let i = 0; i < visibleColumns.length; i++) {
+      const col = visibleColumns[i];
+      if (expenseGroupColumns.includes(col.id)) {
+        if (firstExpenseIndex === -1) {
+          firstExpenseIndex = nonExpenseColumns.length;
+        }
+        // Skip this column - it will be merged
+      } else {
+        nonExpenseColumns.push(col);
+      }
+    }
+    
+    // If no expense columns found, return original
+    if (firstExpenseIndex === -1) {
+      return visibleColumns;
+    }
+    
+    // Insert the merged column at the first expense column position
+    const mergedColumn: FleetColumn = {
+      id: "truck_expense",
+      label: "TRUCK EXPENSE",
+      width: "w-[100px]",
+      align: "right",
+      visible: true,
+    };
+    
+    const result = [...nonExpenseColumns];
+    result.splice(firstExpenseIndex, 0, mergedColumn);
+    return result;
+  }, [visibleColumns, expenseGroupCollapsed, expenseGroupColumns]);
+
   const minTableWidth = useMemo(() => {
     // Calculate approximate width from columns
-    return visibleColumns.reduce((acc, col) => {
+    return effectiveColumns.reduce((acc, col) => {
       const width = parseInt(col.width.replace("w-[", "").replace("px]", ""), 10) || 80;
       return acc + width;
     }, 0);
-  }, [visibleColumns]);
+  }, [effectiveColumns]);
 
   const dragVars = useMemo<CSSProperties | undefined>(() => {
     if (!draggedColumn || !dragPosition || !dragStartPosition) return undefined;
@@ -754,8 +850,8 @@ export function FleetFinancialsTable({
   // Get the dragged column info for overlay
   const draggedColumnInfo = useMemo(() => {
     if (!draggedColumn) return null;
-    return visibleColumns.find((c) => c.id === draggedColumn);
-  }, [draggedColumn, visibleColumns]);
+    return effectiveColumns.find((c) => c.id === draggedColumn);
+  }, [draggedColumn, effectiveColumns]);
 
   return (
     <div
@@ -813,7 +909,7 @@ export function FleetFinancialsTable({
             : "bg-muted [&_th]:bg-muted"
         )}>
           <tr className={cn(isEditMode && "border-b-2 border-primary/30")}>
-            {visibleColumns.map((column) => (
+            {effectiveColumns.map((column) => (
               <ColumnHeader
                 key={column.id}
                 column={column}
@@ -843,7 +939,7 @@ export function FleetFinancialsTable({
                       isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20"
                     )}
                   >
-                    {visibleColumns.map((column) => (
+                    {effectiveColumns.map((column) => (
                       <CellValue
                         key={column.id}
                         column={column}
@@ -862,6 +958,7 @@ export function FleetFinancialsTable({
                         navigate={navigate}
                         draggedColumn={draggedColumn}
                         dragOverColumn={dragOverColumn}
+                        expenseGroupColumns={expenseGroupColumns}
                       />
                     ))}
                   </TableRow>
@@ -873,8 +970,8 @@ export function FleetFinancialsTable({
                     isToday && "!bg-none !bg-yellow-100 dark:!bg-yellow-500/20"
                   )}
                 >
-                  {visibleColumns.map((column) => (
-                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} />
+                  {effectiveColumns.map((column) => (
+                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} expenseGroupColumns={expenseGroupColumns} />
                   ))}
                 </TableRow>
               )}
@@ -882,7 +979,7 @@ export function FleetFinancialsTable({
               {/* Weekly Summary Row */}
               {day.isWeekEnd && (
                 <TableRow className="bg-muted/50 border-t-2">
-                  <TableCell colSpan={visibleColumns.length - 1} className="text-right font-semibold">
+                  <TableCell colSpan={effectiveColumns.length - 1} className="text-right font-semibold">
                     Weekly Total:
                   </TableCell>
                   <TableCell
@@ -908,8 +1005,8 @@ export function FleetFinancialsTable({
           : "bg-muted/95 [&_td]:bg-muted/95"
       )}>
         <tr>
-          {visibleColumns.map((column) => (
-            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} />
+          {effectiveColumns.map((column) => (
+            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} expenseGroupColumns={expenseGroupColumns} />
           ))}
         </tr>
       </tfoot>
