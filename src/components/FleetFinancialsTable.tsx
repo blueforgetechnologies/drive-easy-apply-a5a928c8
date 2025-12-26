@@ -201,6 +201,7 @@ function CellValue({
   getDriverPay,
   navigate,
   draggedColumn,
+  dragOverColumn,
 }: {
   column: FleetColumn;
   load: Load;
@@ -217,8 +218,11 @@ function CellValue({
   getDriverPay: (load: Load) => number;
   navigate: (path: string) => void;
   draggedColumn: string | null;
+  dragOverColumn: string | null;
 }) {
   const isDraggedColumn = draggedColumn === column.id;
+  const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
+  const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   const rate = load.rate || 0;
   const emptyM = load.empty_miles || 0;
   const loadedM = load.estimated_miles || 0;
@@ -273,7 +277,7 @@ function CellValue({
   const dayName = format(day.date, "EEE");
   const dateStr = format(day.date, "MM/dd");
   
-  const dragClass = isDraggedColumn ? "cell-column-dragging" : "";
+  
 
   switch (column.id) {
     case "pickup_date":
@@ -446,13 +450,16 @@ function EmptyDayCellValue({
   day,
   totals,
   draggedColumn,
+  dragOverColumn,
 }: {
   column: FleetColumn;
   day: DailyData;
   totals: Totals;
   draggedColumn: string | null;
+  dragOverColumn: string | null;
 }) {
   const isDraggedColumn = draggedColumn === column.id;
+  const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const isBusinessDay = !isWeekend(day.date);
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
   const dailyInsurance = totals.dailyInsuranceRate;
@@ -461,7 +468,7 @@ function EmptyDayCellValue({
   const dayName = format(day.date, "EEE");
   const dateStr = format(day.date, "MM/dd");
 
-  const dragClass = isDraggedColumn ? "cell-column-dragging" : "";
+  const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
 
   switch (column.id) {
     case "pickup_date":
@@ -496,9 +503,10 @@ function EmptyDayCellValue({
 }
 
 // Footer cell value renderer
-function FooterCellValue({ column, totals, milesPerGallon, draggedColumn }: { column: FleetColumn; totals: Totals; milesPerGallon: number; draggedColumn: string | null }) {
+function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOverColumn }: { column: FleetColumn; totals: Totals; milesPerGallon: number; draggedColumn: string | null; dragOverColumn: string | null }) {
   const isDraggedColumn = draggedColumn === column.id;
-  const dragClass = isDraggedColumn ? "cell-column-dragging" : "";
+  const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
+  const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
   switch (column.id) {
     case "pickup_date":
@@ -841,6 +849,7 @@ export function FleetFinancialsTable({
                         getDriverPay={getDriverPay}
                         navigate={navigate}
                         draggedColumn={draggedColumn}
+                        dragOverColumn={dragOverColumn}
                       />
                     ))}
                   </TableRow>
@@ -853,7 +862,7 @@ export function FleetFinancialsTable({
                   )}
                 >
                   {visibleColumns.map((column) => (
-                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} draggedColumn={draggedColumn} />
+                    <EmptyDayCellValue key={column.id} column={column} day={day} totals={totals} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} />
                   ))}
                 </TableRow>
               )}
@@ -888,7 +897,7 @@ export function FleetFinancialsTable({
       )}>
         <tr>
           {visibleColumns.map((column) => (
-            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} draggedColumn={draggedColumn} />
+            <FooterCellValue key={column.id} column={column} totals={totals} milesPerGallon={milesPerGallon} draggedColumn={draggedColumn} dragOverColumn={dragOverColumn} />
           ))}
         </tr>
       </tfoot>

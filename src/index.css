@@ -441,7 +441,7 @@ All colors MUST be HSL.
     pointer-events: none;
   }
   
-  /* Drop target indicator */
+  /* Drop target indicator - header only */
   .column-drop-target {
     @apply relative;
     background: linear-gradient(180deg, hsl(142 71% 45% / 0.1) 0%, hsl(142 71% 45% / 0.2) 100%);
@@ -461,6 +461,35 @@ All colors MUST be HSL.
     background: linear-gradient(180deg, hsl(142 71% 45%) 0%, hsl(142 71% 55%) 100%);
     border-radius: 4px;
     animation: pulse-glow 1s ease-in-out infinite;
+  }
+  
+  /* Drop target for body/footer cells - full column line */
+  .cell-drop-target {
+    @apply relative;
+    background: linear-gradient(180deg, hsl(142 71% 45% / 0.08) 0%, hsl(142 71% 45% / 0.12) 100%) !important;
+  }
+  
+  .cell-drop-target::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: hsl(142 71% 45%);
+    border-radius: 2px;
+    z-index: 50;
+    box-shadow: 0 0 8px hsl(142 71% 45% / 0.6);
+  }
+  
+  /* Header drop target - extend line down */
+  thead .column-drop-target::before {
+    bottom: -1000px;
+  }
+  
+  /* Footer drop target - extend line up */
+  tfoot .cell-drop-target::before {
+    top: -1000px;
   }
   
   @keyframes pulse-glow {
