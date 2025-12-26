@@ -47,6 +47,8 @@ interface Vehicle {
   monthly_payment: number | null;
   driver_1_id: string | null;
   requires_load_approval: boolean | null;
+  asset_ownership: string | null;
+  cents_per_mile: number | null;
 }
 
 interface Totals {
@@ -62,6 +64,7 @@ interface Totals {
   fuel: number;
   tolls: number;
   rental: number;
+  rentalPerMileCost: number;
   dailyRentalRate: number;
   businessDaysInMonth: number;
   insuranceCost: number;
@@ -407,6 +410,17 @@ function CellValue({
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyRental)}</TableCell>
       );
+    case "rental_per_mile_cost": {
+      // Calculate rental per mile cost: if leased, cents_per_mile * total miles
+      const rentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+        ? (selectedVehicle.cents_per_mile / 100) * totalM
+        : 0;
+      return (
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
+          {rentalPerMileCost > 0 ? formatCurrency(rentalPerMileCost) : ""}
+        </TableCell>
+      );
+    }
     case "insur":
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
@@ -591,6 +605,9 @@ function EmptyDayCellValue({
           {isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
         </TableCell>
       );
+    case "rental_per_mile_cost":
+      // Empty days have no miles, so rental per mile cost is 0
+      return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}></TableCell>;
     case "insur":
       return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyInsurance)}</TableCell>;
     case "net":
@@ -806,6 +823,13 @@ function FooterCellValue({
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Rental</div>
           <div className="font-bold">{formatCurrency(totals.rental)}</div>
+        </td>
+      );
+    case "rental_per_mile_cost":
+      return (
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
+          <div className="text-[10px] text-muted-foreground">Rental $/M</div>
+          <div className="font-bold">{formatCurrency(totals.rentalPerMileCost || 0)}</div>
         </td>
       );
     case "insur":
