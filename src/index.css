@@ -279,6 +279,49 @@ All colors MUST be HSL.
     border-spacing: 0;
   }
   
+  /* Deep carved column lines when enabled */
+  .table-column-lines td,
+  .table-column-lines th {
+    border-left: 1px solid hsl(220 13% 85%);
+    border-right: 1px solid hsl(220 13% 85%);
+    box-shadow: 
+      inset 1px 0 0 hsl(0 0% 100% / 0.5),
+      inset -1px 0 0 hsl(220 13% 70% / 0.3);
+  }
+  
+  .table-column-lines td:first-child,
+  .table-column-lines th:first-child {
+    border-left: none;
+    box-shadow: inset -1px 0 0 hsl(220 13% 70% / 0.3);
+  }
+  
+  .table-column-lines td:last-child,
+  .table-column-lines th:last-child {
+    border-right: none;
+    box-shadow: inset 1px 0 0 hsl(0 0% 100% / 0.5);
+  }
+  
+  .dark .table-column-lines td,
+  .dark .table-column-lines th {
+    border-left: 1px solid hsl(215 28% 25%);
+    border-right: 1px solid hsl(215 28% 25%);
+    box-shadow: 
+      inset 1px 0 0 hsl(215 28% 35% / 0.4),
+      inset -1px 0 0 hsl(215 28% 12% / 0.6);
+  }
+  
+  .dark .table-column-lines td:first-child,
+  .dark .table-column-lines th:first-child {
+    border-left: none;
+    box-shadow: inset -1px 0 0 hsl(215 28% 12% / 0.6);
+  }
+  
+  .dark .table-column-lines td:last-child,
+  .dark .table-column-lines th:last-child {
+    border-right: none;
+    box-shadow: inset 1px 0 0 hsl(215 28% 35% / 0.4);
+  }
+  
   .table-header-glossy {
     background: linear-gradient(180deg, hsl(221 83% 53% / 0.08) 0%, hsl(221 83% 53% / 0.12) 100%);
   }
