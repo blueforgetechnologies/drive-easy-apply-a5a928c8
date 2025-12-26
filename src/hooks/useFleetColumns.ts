@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface FleetColumn {
   id: string;
@@ -75,6 +75,13 @@ export function useFleetColumns() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [dragPosition, setDragPosition] = useState<DragPosition | null>(null);
   const [dragStartPosition, setDragStartPosition] = useState<DragPosition | null>(null);
+  
+  // Store expense group columns for handling truck_expense drag
+  const expenseGroupColumnsRef = useRef<string[]>([]);
+  
+  const setExpenseGroupColumns = useCallback((cols: string[]) => {
+    expenseGroupColumnsRef.current = cols;
+  }, []);
 
   useEffect(() => {
     try {
@@ -96,6 +103,33 @@ export function useFleetColumns() {
       if (draggedColumn && dragOverColumn && draggedColumn !== dragOverColumn) {
         setColumns((prev) => {
           const newColumns = [...prev];
+          
+          // Special handling for truck_expense (collapsed expenses group)
+          if (draggedColumn === "truck_expense") {
+            const expenseGroupCols = expenseGroupColumnsRef.current;
+            if (expenseGroupCols.length === 0) return prev;
+            
+            // Find target position
+            const targetIndex = newColumns.findIndex((c) => c.id === dragOverColumn);
+            if (targetIndex === -1) return prev;
+            
+            // Extract all expense columns (maintaining their relative order)
+            const expenseColumns = newColumns.filter(c => expenseGroupCols.includes(c.id));
+            const nonExpenseColumns = newColumns.filter(c => !expenseGroupCols.includes(c.id));
+            
+            // Find where target is in nonExpenseColumns
+            const targetInNonExpense = nonExpenseColumns.findIndex(c => c.id === dragOverColumn);
+            
+            // Insert expense columns as a group at target position
+            if (targetInNonExpense !== -1) {
+              nonExpenseColumns.splice(targetInNonExpense, 0, ...expenseColumns);
+              return nonExpenseColumns;
+            }
+            
+            return prev;
+          }
+          
+          // Normal single column drag
           const draggedIndex = newColumns.findIndex((c) => c.id === draggedColumn);
           const targetIndex = newColumns.findIndex((c) => c.id === dragOverColumn);
           
@@ -180,5 +214,6 @@ export function useFleetColumns() {
     toggleColumnVisibility,
     resetColumns,
     toggleEditMode,
+    setExpenseGroupColumns,
   };
 }

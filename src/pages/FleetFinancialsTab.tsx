@@ -121,6 +121,7 @@ export default function FleetFinancialsTab() {
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    setExpenseGroupColumns,
   } = useFleetColumns();
   
   // Expense group management
@@ -131,6 +132,12 @@ export default function FleetFinancialsTab() {
     toggleColumn: toggleExpenseColumn,
     resetToDefault: resetExpenseGroup,
   } = useExpenseGroup();
+  
+  // Sync expense group columns to the fleet columns hook for drag handling
+  useEffect(() => {
+    setExpenseGroupColumns(expenseGroupColumns);
+  }, [expenseGroupColumns, setExpenseGroupColumns]);
+  
   const [expenseConfigOpen, setExpenseConfigOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
