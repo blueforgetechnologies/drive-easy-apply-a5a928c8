@@ -138,7 +138,9 @@ function ColumnHeader({
       <th
         className={cn(
           column.width,
-          "px-2 py-2 font-medium whitespace-nowrap text-center"
+          "px-2 py-2 font-medium whitespace-nowrap text-center",
+          column.id === "truck_expense" &&
+            "relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning"
         )}
       >
         {column.label}
@@ -161,7 +163,8 @@ function ColumnHeader({
       className={cn(
         column.width,
         "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab transition-all duration-150",
-        column.id === "truck_expense" && "shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]",
+        column.id === "truck_expense" &&
+          "relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
@@ -306,7 +309,12 @@ function CellValue({
   switch (column.id) {
     case "truck_expense":
       return (
-        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]", dragClass)}>
+        <TableCell
+          className={cn(
+            "text-right text-muted-foreground font-medium !px-2 !py-0.5 relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+            dragClass
+          )}
+        >
           {formatCurrency(collapsedExpenseTotal)}
         </TableCell>
       );
@@ -521,11 +529,15 @@ function EmptyDayCellValue({
     (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
     (expenseGroupColumns.includes("net") ? emptyDayNet : 0) +
     (expenseGroupColumns.includes("carr_net") ? emptyDayNet : 0);
-
   switch (column.id) {
     case "truck_expense":
       return (
-        <TableCell className={cn("text-right text-muted-foreground font-medium !px-2 !py-0.5 shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]", dragClass)}>
+        <TableCell
+          className={cn(
+            "text-right text-muted-foreground font-medium !px-2 !py-0.5 relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+            dragClass
+          )}
+        >
           {collapsedExpenseTotal !== 0 ? formatCurrency(collapsedExpenseTotal) : ""}
         </TableCell>
       );
@@ -591,7 +603,12 @@ function FooterCellValue({ column, totals, milesPerGallon, draggedColumn, dragOv
   switch (column.id) {
     case "truck_expense":
       return (
-        <td className={cn("px-2 py-2 text-center shadow-[inset_2px_0_0_0_rgb(251,146,60),inset_-2px_0_0_0_rgb(251,146,60)]", dragClass)}>
+        <td
+          className={cn(
+            "px-2 py-2 text-center relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+            dragClass
+          )}
+        >
           <div className="text-[10px] text-muted-foreground">COLLAPSED</div>
           <div className="font-bold">{formatCurrency(collapsedExpenseFooterTotal)}</div>
         </td>
