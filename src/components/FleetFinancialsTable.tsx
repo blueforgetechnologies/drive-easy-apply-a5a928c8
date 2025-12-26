@@ -436,17 +436,10 @@ function CellValue({
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyRental)}</TableCell>
       );
-    case "rental_per_mile": {
-      // Calculate rental $/mile cost: if leased, cents_per_mile × total miles
-      const rentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
-        ? (selectedVehicle.cents_per_mile / 100) * totalM
-        : 0;
-      return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {rentalPerMileCost > 0 ? formatCurrency(rentalPerMileCost) : ""}
-        </TableCell>
-      );
-    }
+    case "rental_per_mile":
+      // RCPM is a monthly total (cents_per_mile × total monthly miles), not per-load
+      // Show empty on individual load rows - only display in footer
+      return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}></TableCell>;
     case "insur":
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
