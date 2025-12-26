@@ -780,7 +780,7 @@ export function FleetFinancialsTable({
       <table
         className={cn(
           "table-glossy w-full caption-bottom text-sm table-fixed",
-          showColumnLines ? "[&_td]:border-x [&_td]:border-border/50 [&_th]:border-x [&_th]:border-border/50" : "",
+          showColumnLines && "table-column-lines",
           isEditMode && "relative z-10"
         )}
         style={{ minWidth: `${minTableWidth}px` }}
