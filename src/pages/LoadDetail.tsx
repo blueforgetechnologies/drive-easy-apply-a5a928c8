@@ -2185,16 +2185,6 @@ export default function LoadDetail() {
                 </div>
 
                 <div>
-                  <Label>Driver/Carrier Rate</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={load.rate || ""}
-                    onChange={(e) => updateField("rate", e.target.value)}
-                  />
-                </div>
-
-                <div>
                   <Label>Broker Fee</Label>
                   <Input
                     type="number"
