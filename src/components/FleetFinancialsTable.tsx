@@ -1,4 +1,4 @@
-import { useMemo, Fragment } from "react";
+import { useMemo, Fragment, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -94,6 +94,7 @@ interface FleetFinancialsTableProps {
   draggedColumn: string | null;
   dragOverColumn: string | null;
   dragPosition: DragPosition | null;
+  dragStartPosition: DragPosition | null;
   handleDragStart: (columnId: string, e?: React.MouseEvent) => void;
   handleDragOver: (columnId: string) => void;
   handleDragEnd: () => void;
@@ -161,7 +162,7 @@ function ColumnHeader({
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
         !isDragging && !isOver && "column-edit-mode",
-        isDragging && "opacity-30 cell-column-dragging",
+        isDragging && "column-dragging cell-column-dragging cursor-grabbing",
         isOver && "column-drop-target"
       )}
     >
@@ -705,6 +706,7 @@ export function FleetFinancialsTable({
   draggedColumn,
   dragOverColumn,
   dragPosition,
+  dragStartPosition,
   handleDragStart,
   handleDragOver,
   handleDragEnd,
@@ -719,14 +721,31 @@ export function FleetFinancialsTable({
     }, 0);
   }, [visibleColumns]);
 
+  const dragVars = useMemo<CSSProperties | undefined>(() => {
+    if (!draggedColumn || !dragPosition || !dragStartPosition) return undefined;
+    const dx = dragPosition.x - dragStartPosition.x;
+    const dy = dragPosition.y - dragStartPosition.y;
+    return {
+      ["--ff-drag-x" as any]: `${dx}px`,
+      ["--ff-drag-y" as any]: `${dy}px`,
+    } as CSSProperties;
+  }, [draggedColumn, dragPosition, dragStartPosition]);
+
   // Get the dragged column info for overlay
   const draggedColumnInfo = useMemo(() => {
     if (!draggedColumn) return null;
-    return visibleColumns.find(c => c.id === draggedColumn);
+    return visibleColumns.find((c) => c.id === draggedColumn);
   }, [draggedColumn, visibleColumns]);
 
   return (
-    <div className={cn("relative", isEditMode && "edit-mode-active overflow-hidden rounded-lg")}>
+    <div
+      className={cn(
+        "relative",
+        isEditMode && "edit-mode-active overflow-hidden rounded-lg",
+        draggedColumn && dragPosition && dragStartPosition && "ff-dragging"
+      )}
+      style={dragVars}
+    >
       {/* Floating drag overlay that follows mouse */}
       {draggedColumn && dragPosition && draggedColumnInfo && createPortal(
         <div 

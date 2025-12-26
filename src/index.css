@@ -312,7 +312,8 @@ All colors MUST be HSL.
   /* Column being dragged - lifted with green glow */
   .column-dragging {
     @apply z-50;
-    transform: scale(1.05) translateY(-8px);
+    position: relative;
+    transform: translate3d(var(--ff-drag-x, 0px), calc(var(--ff-drag-y, 0px) - 10px), 0) scale(1.05);
     background: linear-gradient(180deg, hsl(142 71% 45% / 0.2) 0%, hsl(142 71% 45% / 0.35) 100%);
     box-shadow: 
       0 20px 40px hsl(142 71% 45% / 0.4),
@@ -331,7 +332,7 @@ All colors MUST be HSL.
       0 0 0 2px hsl(142 71% 45%);
   }
   
-  /* Cell in dragged column - green highlight with lift effect */
+  /* Cell in dragged column - green highlight with lift + follow-mouse */
   .cell-column-dragging {
     background: linear-gradient(180deg, hsl(142 71% 45% / 0.15) 0%, hsl(142 71% 45% / 0.25) 100%) !important;
     box-shadow: 
@@ -339,9 +340,10 @@ All colors MUST be HSL.
       3px 0 0 hsl(142 71% 45% / 0.8),
       0 0 12px hsl(142 71% 45% / 0.3);
     position: relative;
-    z-index: 25;
-    transform: scale(1.02);
-    transition: all 0.15s ease-out;
+    z-index: 60;
+    transform: translate3d(var(--ff-drag-x, 0px), calc(var(--ff-drag-y, 0px) - 10px), 0) scale(1.03);
+    transition: none;
+    will-change: transform;
   }
   
   /* First cell in column gets top border */
@@ -388,6 +390,12 @@ All colors MUST be HSL.
       3px 0 0 hsl(142 71% 45%),
       0 3px 0 hsl(142 71% 45%),
       0 8px 20px hsl(142 71% 45% / 0.5);
+  }
+
+  /* While dragging: let other headers receive hover for drop target */
+  .ff-dragging .cell-column-dragging,
+  .ff-dragging th.column-dragging {
+    pointer-events: none;
   }
   
   /* Drop target indicator */
