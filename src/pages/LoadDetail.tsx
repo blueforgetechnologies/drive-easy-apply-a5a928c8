@@ -225,6 +225,8 @@ export default function LoadDetail() {
           cargo_pieces: load.cargo_pieces,
           rate: load.rate,
           customer_rate: load.customer_rate,
+          carrier_rate: load.carrier_rate,
+          approved_payload: load.approved_payload,
           broker_fee: load.broker_fee,
           fuel_surcharge: load.fuel_surcharge,
           accessorial_charges: load.accessorial_charges,
@@ -2159,6 +2161,26 @@ export default function LoadDetail() {
                     step="0.01"
                     value={load.customer_rate || ""}
                     onChange={(e) => updateField("customer_rate", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Carrier Pay</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.carrier_rate || ""}
+                    onChange={(e) => updateField("carrier_rate", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Payload Amount</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={load.approved_payload || ""}
+                    onChange={(e) => updateField("approved_payload", e.target.value)}
                   />
                 </div>
 
