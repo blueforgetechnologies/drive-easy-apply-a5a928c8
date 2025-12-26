@@ -6,12 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Settings, Play, Volume2 } from "lucide-react";
 import { toast } from "sonner";
-
-export interface SoundSettings {
-  loadReceiveSound: string;
-  bidSentSound: string;
-  volume: number;
-}
+import { useUserPreferences, type SoundSettings } from "@/hooks/useUserPreferences";
 
 interface SoundOption {
   id: string;
@@ -31,7 +26,7 @@ const SOUND_OPTIONS: SoundOption[] = [
 const DEFAULT_SETTINGS: SoundSettings = {
   loadReceiveSound: 'chime',
   bidSentSound: 'success',
-  volume: 50,
+  volume: 0.5,
 };
 
 interface SoundSettingsDialogProps {
@@ -41,12 +36,20 @@ interface SoundSettingsDialogProps {
 
 export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettingsDialogProps) {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<SoundSettings>(DEFAULT_SETTINGS);
+  const { soundSettings, updateSoundSettings, isLoading: prefsLoading } = useUserPreferences();
+  const [localSettings, setLocalSettings] = useState<SoundSettings>(DEFAULT_SETTINGS);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const soundCacheRef = useRef<Map<string, string>>(new Map());
   const aiSoundsUnavailableRef = useRef(false);
   const aiSoundsUnavailableToastShownRef = useRef(false);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
+  
+  // Sync local state with database settings
+  useEffect(() => {
+    if (soundSettings) {
+      setLocalSettings(soundSettings);
+    }
+  }, [soundSettings]);
 
   const ensureCacheRef = () => {
     if (!(soundCacheRef.current instanceof Map)) {
@@ -76,7 +79,7 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
       oscillator.frequency.setValueAtTime(700, ctx.currentTime + 0.08);
       oscillator.type = 'sine';
 
-      const vol = Math.max(0, Math.min(1, settings.volume / 100));
+      const vol = Math.max(0, Math.min(1, localSettings.volume));
       gainNode.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
 
@@ -87,36 +90,23 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
     }
   };
 
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('soundSettings');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-      } catch (e) {
-        console.error('Error parsing sound settings:', e);
-      }
-    }
-  }, []);
-
-  // Save settings to localStorage and notify parent
+  // Save settings to database and notify parent
   const saveSettings = (newSettings: SoundSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem('soundSettings', JSON.stringify(newSettings));
+    setLocalSettings(newSettings);
+    updateSoundSettings(newSettings);
     onSettingsChange?.(newSettings);
   };
 
   const handleLoadSoundChange = (value: string) => {
-    saveSettings({ ...settings, loadReceiveSound: value });
+    saveSettings({ ...localSettings, loadReceiveSound: value });
   };
 
   const handleBidSoundChange = (value: string) => {
-    saveSettings({ ...settings, bidSentSound: value });
+    saveSettings({ ...localSettings, bidSentSound: value });
   };
 
   const handleVolumeChange = (value: number[]) => {
-    saveSettings({ ...settings, volume: value[0] });
+    saveSettings({ ...localSettings, volume: value[0] / 100 });
   };
 
   const previewSound = async (soundId: string) => {
@@ -134,7 +124,8 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
     const cachedUrl = soundCacheRef.current.get(soundId);
     if (cachedUrl) {
       const audio = new Audio(cachedUrl);
-      audio.volume = settings.volume / 100;
+      audio.volume = localSettings.volume;
+      await audio.play();
       await audio.play();
       return;
     }
@@ -185,7 +176,7 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
       soundCacheRef.current.set(soundId, audioUrl);
 
       const audio = new Audio(audioUrl);
-      audio.volume = settings.volume / 100;
+      audio.volume = localSettings.volume;
       await audio.play();
     } catch (error) {
       console.error('Error previewing sound:', error);
@@ -216,9 +207,9 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
         <div className="space-y-6 py-4">
           {/* Volume Control */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Volume: {settings.volume}%</Label>
+            <Label className="text-sm font-medium">Volume: {Math.round(localSettings.volume * 100)}%</Label>
             <Slider
-              value={[settings.volume]}
+              value={[Math.round(localSettings.volume * 100)]}
               onValueChange={handleVolumeChange}
               max={100}
               step={5}
@@ -231,7 +222,7 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
             <Label className="text-sm font-medium">New Load Match Sound</Label>
             <p className="text-xs text-muted-foreground">Plays when a new load matches your hunt criteria</p>
             <div className="flex gap-2">
-              <Select value={settings.loadReceiveSound} onValueChange={handleLoadSoundChange}>
+              <Select value={localSettings.loadReceiveSound} onValueChange={handleLoadSoundChange}>
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -246,10 +237,10 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => previewSound(settings.loadReceiveSound)}
+                onClick={() => previewSound(localSettings.loadReceiveSound)}
                 disabled={isGenerating !== null}
               >
-                {isGenerating === settings.loadReceiveSound ? (
+                {isGenerating === localSettings.loadReceiveSound ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 ) : (
                   <Play className="h-4 w-4" />
@@ -263,7 +254,7 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
             <Label className="text-sm font-medium">Bid Sent Sound</Label>
             <p className="text-xs text-muted-foreground">Plays when you successfully send a bid</p>
             <div className="flex gap-2">
-              <Select value={settings.bidSentSound} onValueChange={handleBidSoundChange}>
+              <Select value={localSettings.bidSentSound} onValueChange={handleBidSoundChange}>
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -278,10 +269,10 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => previewSound(settings.bidSentSound)}
+                onClick={() => previewSound(localSettings.bidSentSound)}
                 disabled={isGenerating !== null}
               >
-                {isGenerating === settings.bidSentSound ? (
+                {isGenerating === localSettings.bidSentSound ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 ) : (
                   <Play className="h-4 w-4" />
@@ -301,14 +292,8 @@ export function getSoundPrompt(soundId: string): string {
   return option?.prompt || SOUND_OPTIONS[0].prompt;
 }
 
+// Fallback for when hook is not available (legacy compatibility)
 export function loadSoundSettings(): SoundSettings {
-  const saved = localStorage.getItem('soundSettings');
-  if (saved) {
-    try {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
-    } catch {
-      return DEFAULT_SETTINGS;
-    }
-  }
+  // This now returns defaults - actual settings come from useUserPreferences hook
   return DEFAULT_SETTINGS;
 }

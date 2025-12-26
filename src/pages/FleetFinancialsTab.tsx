@@ -19,6 +19,7 @@ import { useExpenseGroup } from "@/hooks/useExpenseGroup";
 import { TruckExpenseConfigDialog } from "@/components/TruckExpenseConfigDialog";
 import { usePaymentFormulas } from "@/hooks/usePaymentFormulas";
 import { PaymentFormulaBuilder } from "@/components/PaymentFormulaBuilder";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -176,14 +177,8 @@ export default function FleetFinancialsTab() {
     const now = new Date();
     return format(now, "yyyy-MM");
   });
-  const [showColumnLines, setShowColumnLines] = useState(() => {
-    try {
-      const saved = localStorage.getItem("fleet-financials-show-column-lines");
-      return saved === "true";
-    } catch {
-      return false;
-    }
-  });
+  // Use database-backed preferences
+  const { showColumnLines, updateShowColumnLines, isLoading: prefsLoading } = useUserPreferences();
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
 
@@ -925,9 +920,7 @@ export default function FleetFinancialsTab() {
                 showColumnLines ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
               )}
               onClick={() => {
-                const newValue = !showColumnLines;
-                setShowColumnLines(newValue);
-                localStorage.setItem("fleet-financials-show-column-lines", String(newValue));
+                updateShowColumnLines(!showColumnLines);
               }}
             >
               {showColumnLines ? "Hide Lines" : "Show Lines"}
