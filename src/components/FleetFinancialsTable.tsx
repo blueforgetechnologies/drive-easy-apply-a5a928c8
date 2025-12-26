@@ -156,12 +156,12 @@ function ColumnHeader({
       }}
       className={cn(
         column.width,
-        "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab",
+        "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab transition-all duration-150",
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
         !isDragging && !isOver && "column-edit-mode",
-        isDragging && "opacity-30",
+        isDragging && "opacity-30 cell-column-dragging",
         isOver && "column-drop-target"
       )}
     >
