@@ -381,7 +381,10 @@ function CellValue({
                       payloadChangedAfterApproval
                         ? (e) => {
                             e.stopPropagation();
-                            navigate(`/dashboard/load-approval?loadId=${load.id}`);
+                            const params = new URLSearchParams({ loadId: load.id });
+                            if (selectedVehicle?.carrier) params.set('carrierId', selectedVehicle.carrier);
+                            if (load.assigned_vehicle_id) params.set('vehicleId', load.assigned_vehicle_id);
+                            navigate(`/dashboard/load-approval?${params.toString()}`);
                           }
                         : undefined
                     }
@@ -403,7 +406,10 @@ function CellValue({
                     title="Click to approve load"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/dashboard/load-approval?loadId=${load.id}`);
+                      const params = new URLSearchParams({ loadId: load.id });
+                      if (selectedVehicle?.carrier) params.set('carrierId', selectedVehicle.carrier);
+                      if (load.assigned_vehicle_id) params.set('vehicleId', load.assigned_vehicle_id);
+                      navigate(`/dashboard/load-approval?${params.toString()}`);
                     }}
                   >
                     <ShieldCheck className="h-2 w-2 mr-0.5" />
