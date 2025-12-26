@@ -172,9 +172,10 @@ function ColumnHeader({
           "h-3 w-3 flex-shrink-0 grip-handle transition-all duration-200 rotate-90",
           "opacity-50"
         )} />
-        <span className={cn(
-          "truncate font-semibold text-xs uppercase tracking-wide text-center w-full",
-        )}>
+        <span 
+          className="font-semibold text-xs uppercase tracking-wide text-center whitespace-normal leading-tight"
+          title={column.label}
+        >
           {column.label}
         </span>
       </div>
