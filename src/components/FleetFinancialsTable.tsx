@@ -308,6 +308,9 @@ function CellValue({
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
   const vehicleRequiresApproval = selectedVehicle?.requires_load_approval;
+  const currentTruckType = selectedVehicle?.truck_type || 'my_truck';
+  const loadTruckType = load.truck_type_at_booking || currentTruckType; // Default to current if not set
+  const isTruckTypeMismatch = loadTruckType !== currentTruckType;
   const isApproved = load.carrier_approved === true;
   const payloadChangedAfterApproval = isApproved && load.approved_payload !== null && load.approved_payload !== rate;
   const carrierPayAmount = load.carrier_rate || rate;
@@ -576,6 +579,15 @@ function CellValue({
     case "carr_dollar_per_mile":
       return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>${formatNumber(carrierPerMile, 2)}</TableCell>;
     case "net":
+      // Show N/A if current truck type is contractor but load was booked as my_truck
+      if (currentTruckType === 'contractor_truck' && !isTruckTypeMismatch) {
+        // Current is contractor, load is also contractor - hide my net
+        return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
+      }
+      if (isTruckTypeMismatch && currentTruckType === 'my_truck') {
+        // Current is my_truck but load was booked as contractor - show N/A
+        return <TableCell className={cn("text-right text-muted-foreground italic !px-2 !py-0.5", expenseRailClass, dragClass)}>N/A</TableCell>;
+      }
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", myNet === null ? "text-muted-foreground" : myNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
@@ -584,6 +596,15 @@ function CellValue({
         </TableCell>
       );
     case "carr_net":
+      // Show N/A if current truck type is my_truck but load was booked as contractor
+      if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
+        // Current is my_truck, load is also my_truck - hide carr net
+        return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
+      }
+      if (isTruckTypeMismatch && currentTruckType === 'contractor_truck') {
+        // Current is contractor but load was booked as my_truck - show N/A
+        return <TableCell className={cn("text-right text-muted-foreground italic !px-2 !py-0.5", expenseRailClass, dragClass)}>N/A</TableCell>;
+      }
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", carrierNet === null ? "text-muted-foreground" : carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
@@ -592,6 +613,15 @@ function CellValue({
         </TableCell>
       );
     case "brokering_net":
+      // Show N/A if current truck type is my_truck but load was booked as contractor
+      if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
+        // Current is my_truck, load is also my_truck - hide brokering net
+        return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
+      }
+      if (isTruckTypeMismatch && currentTruckType === 'contractor_truck') {
+        // Current is contractor but load was booked as my_truck - show N/A
+        return <TableCell className={cn("text-right text-muted-foreground italic !px-2 !py-0.5", expenseRailClass, dragClass)}>N/A</TableCell>;
+      }
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet === null ? "text-muted-foreground" : brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}

@@ -3763,6 +3763,7 @@ export type Database = {
           toll_device_sn: string | null
           tracking_device_imei: string | null
           trailer_tracking: boolean | null
+          truck_type: string | null
           updated_at: string | null
           vehicle_number: string | null
           vehicle_size: number | null
@@ -3860,6 +3861,7 @@ export type Database = {
           toll_device_sn?: string | null
           tracking_device_imei?: string | null
           trailer_tracking?: boolean | null
+          truck_type?: string | null
           updated_at?: string | null
           vehicle_number?: string | null
           vehicle_size?: number | null
@@ -3957,6 +3959,7 @@ export type Database = {
           toll_device_sn?: string | null
           tracking_device_imei?: string | null
           trailer_tracking?: boolean | null
+          truck_type?: string | null
           updated_at?: string | null
           vehicle_number?: string | null
           vehicle_size?: number | null
