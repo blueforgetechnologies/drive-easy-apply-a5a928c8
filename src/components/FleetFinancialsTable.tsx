@@ -146,36 +146,45 @@ function ColumnHeader({
     );
   }
 
+  // The truck_expense column is a virtual merged column and cannot be dragged
+  const isDraggable = column.id !== "truck_expense";
+  
   // Edit mode - draggable with high-tech effects using mouse events
   return (
     <th
       onMouseDown={(e) => {
+        if (!isDraggable) return;
         e.preventDefault();
         onDragStart(column.id, e);
       }}
       onMouseEnter={() => {
-        if (draggedColumn) {
+        if (draggedColumn && isDraggable) {
           onDragOver(column.id);
         }
       }}
       className={cn(
         column.width,
-        "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab transition-all duration-150",
+        "px-2 py-2.5 font-medium whitespace-nowrap select-none transition-all duration-150",
+        isDraggable && "column-draggable cursor-grab",
+        !isDraggable && "cursor-not-allowed opacity-70",
+        column.id === "truck_expense" && "bg-yellow-50/40 dark:bg-yellow-900/10",
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
-        !isDragging && !isOver && "column-edit-mode",
+        !isDragging && !isOver && isDraggable && "column-edit-mode",
         isDragging && "column-dragging cell-column-dragging cursor-grabbing",
-        isOver && "column-drop-target"
+        isOver && isDraggable && "column-drop-target"
       )}
     >
       <div className={cn(
         "flex flex-col items-center gap-0.5 px-1 py-0.5 rounded transition-all duration-200",
       )}>
-        <GripVertical className={cn(
-          "h-3 w-3 flex-shrink-0 grip-handle transition-all duration-200 rotate-90",
-          "opacity-50"
-        )} />
+        {isDraggable && (
+          <GripVertical className={cn(
+            "h-3 w-3 flex-shrink-0 grip-handle transition-all duration-200 rotate-90",
+            "opacity-50"
+          )} />
+        )}
         <span 
           className="font-semibold text-xs uppercase tracking-wide text-center whitespace-normal leading-tight"
           title={column.label}
