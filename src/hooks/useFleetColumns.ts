@@ -4,6 +4,7 @@ export interface FleetColumn {
   id: string;
   label: string;
   shortLabel?: string;
+  tooltip?: string;
   width: string;
   align: "left" | "right" | "center";
   visible: boolean;
@@ -30,8 +31,8 @@ const DEFAULT_COLUMNS: FleetColumn[] = [
   { id: "wcomp", label: "WComp", width: "w-[62px]", align: "right", visible: true },
   { id: "fuel", label: "Fuel", width: "w-[55px]", align: "right", visible: true },
   { id: "tolls", label: "Tolls", width: "w-[55px]", align: "right", visible: true },
-  { id: "rental", label: "Daily Rental", width: "w-[80px]", align: "right", visible: true },
-  { id: "rental_per_mile", label: "Rental $/M", width: "w-[75px]", align: "right", visible: true },
+  { id: "rental", label: "RCPD", tooltip: "Rental Cost Per Day – Daily estimated rental cost from vehicle settings, divided by business days", width: "w-[65px]", align: "right", visible: true },
+  { id: "rental_per_mile", label: "RCPM", tooltip: "Rental Cost Per Mile – Calculated from vehicle rental rate multiplied by total miles", width: "w-[65px]", align: "right", visible: true },
   { id: "insur", label: "Insur", width: "w-[62px]", align: "right", visible: true },
   { id: "other", label: "Other", width: "w-[58px]", align: "right", visible: true },
   { id: "carr_pay", label: "Carr Pay", width: "w-[117px]", align: "right", visible: true },

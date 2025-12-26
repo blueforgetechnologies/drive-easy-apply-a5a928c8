@@ -5,8 +5,14 @@ import { TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, isSameDay, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ShieldCheck, AlertTriangle, GripVertical } from "lucide-react";
+import { ShieldCheck, AlertTriangle, GripVertical, Info } from "lucide-react";
 import { FleetColumn, useFleetColumns, DragPosition } from "@/hooks/useFleetColumns";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Load {
   id: string;
@@ -155,7 +161,21 @@ function ColumnHeader({
           (column.id === "truck_expense" || isLastExpense) && rightRailClass
         )}
       >
-        {column.label}
+        <div className="flex items-center justify-center gap-0.5">
+          <span>{column.label}</span>
+          {column.tooltip && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[250px]">
+                  <p className="text-xs">{column.tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </th>
     );
   }
@@ -828,14 +848,14 @@ function FooterCellValue({
     case "rental":
       return (
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
-          <div className="text-[10px] text-muted-foreground">Daily Rental</div>
+          <div className="text-[10px] text-muted-foreground">RCPD</div>
           <div className="font-bold">{formatCurrency(totals.rental)}</div>
         </td>
       );
     case "rental_per_mile":
       return (
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
-          <div className="text-[10px] text-muted-foreground">Rental $/M</div>
+          <div className="text-[10px] text-muted-foreground">RCPM</div>
           <div className="font-bold">{formatCurrency(totals.rentalPerMileCost || 0)}</div>
         </td>
       );
