@@ -25,6 +25,8 @@ interface Vehicle {
   monthly_payment: number | null;
   driver_1_id: string | null;
   requires_load_approval: boolean | null;
+  asset_ownership: string | null;
+  cents_per_mile: number | null;
 }
 
 interface DriverCompensation {
@@ -213,7 +215,7 @@ export default function FleetFinancialsTab() {
     setLoading(true);
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id, requires_load_approval").eq("status", "active").order("vehicle_number"),
+        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
@@ -461,6 +463,12 @@ export default function FleetFinancialsTab() {
     const dollarPerMile = totalMiles > 0 ? payload / totalMiles : 0;
     const carrierPay = payload;
     const carrierPerMile = totalMiles > 0 ? payload / totalMiles : 0;
+    
+    // Calculate rental per mile cost: if leased, cents_per_mile * total miles
+    const rentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+      ? (selectedVehicle.cents_per_mile / 100) * totalMiles
+      : 0;
+    
     const netProfit = payload - factoring - dispatcherPay - driverPay - workmanComp - fuel - tolls - rental - insuranceCost - vehicleCost - other;
 
     return {
@@ -476,6 +484,7 @@ export default function FleetFinancialsTab() {
       fuel,
       tolls,
       rental,
+      rentalPerMileCost,
       dailyRentalRate,
       businessDaysInMonth,
       insuranceCost,
