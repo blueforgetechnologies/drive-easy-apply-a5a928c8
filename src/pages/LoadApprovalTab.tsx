@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2, Eye } from "lucide-react";
+import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2, Eye, MapPin } from "lucide-react";
+import { LoadApprovalMap } from "@/components/LoadApprovalMap";
 import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
@@ -1090,9 +1091,11 @@ export default function LoadApprovalTab() {
           </CardContent>
         </Card>
 
-        {/* Calendar View - 3 Weeks of Loads */}
-        <Card className="flex-1 min-h-0">
-          <CardContent className="p-2 h-full flex flex-col">
+        {/* 30 Days View + Map Layout */}
+        <div className="flex-1 min-h-0 flex gap-2">
+          {/* Calendar View - 30 Days of Loads */}
+          <Card className="flex-1 min-h-0">
+            <CardContent className="p-2 h-full flex flex-col">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-primary" />
@@ -1219,6 +1222,22 @@ export default function LoadApprovalTab() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Route Map */}
+        <Card className="w-[350px] min-h-0 flex-shrink-0">
+          <CardContent className="p-2 h-full flex flex-col">
+            <div className="flex items-center gap-1.5 mb-1">
+              <MapPin className="h-4 w-4 text-primary" />
+              <h3 className="font-bold text-base">Route Map</h3>
+            </div>
+            <div className="flex-1 min-h-0">
+              <LoadApprovalMap 
+                selectedLoad={selectedLoadId ? loads.find(l => l.id === selectedLoadId) || null : null} 
+              />
+            </div>
+          </CardContent>
+        </Card>
+        </div>
       </div>
       </div>
     </div>
