@@ -1117,18 +1117,18 @@ export default function LoadApprovalTab() {
               <Table>
                 <TableHeader className="bg-card [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-card">
                   <TableRow className="border-b shadow-sm">
-                    <TableHead className="text-[10px] uppercase tracking-wide w-10"></TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide w-20">P/U Date</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide">Customer</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide">Location</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Pay Load</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Empty Miles</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Loaded Miles</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Total Miles</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right">$/Mile</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right text-green-600">Carrier Pay</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Carrier $/Mile</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide text-right font-bold">Carrier Net</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 w-8"></TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 w-16">P/U Date</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 max-w-[80px]">Customer</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 w-14">Location</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-14">Pay Load</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-12">Empty</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-12">Loaded</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-12">Total</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-12">$/Mi</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right text-green-600 w-16">Carr Pay</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-12">$/Mi</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right font-bold w-16">Carr Net</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1224,7 +1224,7 @@ export default function LoadApprovalTab() {
         </Card>
 
         {/* Route Map */}
-        <Card className="w-[350px] min-h-0 flex-shrink-0">
+        <Card className="w-[280px] min-h-0 flex-shrink-0">
           <CardContent className="p-2 h-full flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <MapPin className="h-4 w-4 text-primary" />
