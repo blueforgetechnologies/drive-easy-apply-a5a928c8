@@ -1114,23 +1114,23 @@ export default function LoadApprovalTab() {
             </div>
             
             <div className="flex-1 min-h-0 overflow-auto">
-              <table className="table-glossy w-full caption-bottom text-sm table-fixed">
-                <thead className="sticky top-0 z-30 shadow-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-30 bg-muted [&_th]:bg-muted">
-                  <tr className="border-b">
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide w-10"></th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-left w-20">P/U Date</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-left w-[130px]">Customer</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-left w-16">Location</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-16">Pay Load</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">Empty</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">Loaded</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">Total</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">$/Mi</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right text-green-600 w-20">Carr Pay</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">$/Mi</th>
-                    <th className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right font-bold w-20">Carr Net</th>
-                  </tr>
-                </thead>
+              <Table className="table-glossy w-full caption-bottom text-sm">
+                <TableHeader className="sticky top-0 z-30 shadow-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-30 bg-muted [&_th]:bg-muted">
+                  <TableRow className="border-b">
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide w-10"></TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-left w-20">P/U Date</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-left w-[130px]">Customer</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-left w-16">Location</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-16">Pay Load</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">Empty</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">Loaded</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">Total</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">$/Mi</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right text-green-600 w-20">Carr Pay</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right w-14">$/Mi</TableHead>
+                    <TableHead className="px-2 py-2.5 font-semibold text-xs uppercase tracking-wide text-right font-bold w-20">Carr Net</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
                   {thirtyDaysRange.map((date, index) => {
                     const dateKey = formatInTimeZone(date, timezone, "yyyy-MM-dd");
@@ -1259,7 +1259,7 @@ export default function LoadApprovalTab() {
                     );
                   })}
                 </TableBody>
-              </table>
+              </Table>
             </div>
           </CardContent>
         </Card>
