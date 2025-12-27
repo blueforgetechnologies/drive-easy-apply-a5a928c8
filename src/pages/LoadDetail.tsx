@@ -636,13 +636,16 @@ export default function LoadDetail() {
   }
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-  const totalRevenue = (parseFloat(load.customer_rate) || 0) + 
+  // Use customer_rate if set, otherwise fall back to rate
+  const payloadAmount = parseFloat(load.customer_rate) || parseFloat(load.rate) || 0;
+  const totalRevenue = payloadAmount + 
                        (parseFloat(load.fuel_surcharge) || 0) + 
                        (parseFloat(load.accessorial_charges) || 0) +
                        (parseFloat(load.detention_charges) || 0) +
                        (parseFloat(load.layover_charges) || 0) +
                        (parseFloat(load.other_charges) || 0);
-  const netProfit = totalRevenue - totalExpenses - (parseFloat(load.rate) || 0);
+  const carrierPayAmount = parseFloat(load.carrier_rate) || 0;
+  const netProfit = totalRevenue - totalExpenses - carrierPayAmount;
 
   return (
     <div className="space-y-3 p-4">
@@ -2216,7 +2219,7 @@ export default function LoadDetail() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={load.customer_rate || ""}
+                    value={load.customer_rate || load.rate || ""}
                     onChange={(e) => updateField("customer_rate", e.target.value)}
                   />
                 </div>
