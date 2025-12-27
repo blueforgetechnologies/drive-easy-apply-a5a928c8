@@ -729,7 +729,11 @@ function EmptyDayCellValue({
       // No per-mile cost on empty days (no miles driven)
       return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}></TableCell>;
     case "insur":
-      return <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyInsurance)}</TableCell>;
+      return (
+        <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>
+          {isBusinessDay && dailyInsurance > 0 ? formatCurrency(dailyInsurance) : ""}
+        </TableCell>
+      );
     case "net":
       return (
         <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", expenseRailClass, dragClass)}>
