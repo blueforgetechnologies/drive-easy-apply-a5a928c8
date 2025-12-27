@@ -267,7 +267,33 @@ export default function LoadApprovalTab() {
       }
       
       const { data: vehicleData } = await vehicleQuery.order("vehicle_number");
-      setVehicles((vehicleData as Vehicle[]) || []);
+      let allVehicles = (vehicleData as Vehicle[]) || [];
+      
+      // If we have a selectedLoadId, we need to ensure its vehicle is in the list for financial calculations
+      // First, find the load to get its vehicle ID
+      let selectedLoadVehicleId: string | null = null;
+      if (selectedLoadId) {
+        const { data: selectedLoadData } = await supabase
+          .from("loads")
+          .select("assigned_vehicle_id")
+          .eq("id", selectedLoadId)
+          .maybeSingle();
+        selectedLoadVehicleId = selectedLoadData?.assigned_vehicle_id || null;
+        
+        // If the vehicle isn't in our list, fetch it separately
+        if (selectedLoadVehicleId && !allVehicles.find(v => v.id === selectedLoadVehicleId)) {
+          const { data: extraVehicle } = await supabase
+            .from("vehicles")
+            .select("id, vehicle_number, carrier, requires_load_approval, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, asset_ownership, cents_per_mile")
+            .eq("id", selectedLoadVehicleId)
+            .maybeSingle();
+          if (extraVehicle) {
+            allVehicles = [...allVehicles, extraVehicle as Vehicle];
+          }
+        }
+      }
+      
+      setVehicles(allVehicles);
       
       // Get vehicle IDs that require load approval
       const vehiclesRequiringApproval = (vehicleData || [])
@@ -591,8 +617,10 @@ export default function LoadApprovalTab() {
       return calculatedNet;
     }
     
-    // Default fallback: Carrier Pay - Fuel - Rental - Insurance - Tolls - WComp - Other - RentalPerMile - Driver Pay
-    return carrierPayAmount - fuelCost - dailyRental - dailyInsurance - tolls - wcomp - DAILY_OTHER_COST - rentalPerMile - drvPay;
+    // Default fallback matches FleetFinancialsTable exactly:
+    // Carrier Pay - Driver Pay - WComp - Fuel - Tolls - Daily Rental - Daily Insurance - Other
+    // Note: rentalPerMile is only included if formula is configured to include it
+    return carrierPayAmount - drvPay - wcomp - fuelCost - tolls - dailyRental - dailyInsurance - DAILY_OTHER_COST;
   };
 
   const handleRateChange = (loadId: string, value: string) => {
