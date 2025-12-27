@@ -1193,7 +1193,11 @@ export default function LoadApprovalTab() {
                             {loadIndex === 0 ? formatInTimeZone(date, timezone, "MM/dd/yyyy") : ""}
                           </TableCell>
                           <TableCell className="text-[10px] max-w-[100px]">
-                            <div className="truncate" title={load.customer?.name || load.broker_name || "-"}>{load.customer?.name || load.broker_name || "-"}</div>
+                            <div className="truncate" title={load.customer?.name || load.broker_name || "-"}>
+                              {((load.customer?.name || load.broker_name || "-").length > 18 
+                                ? (load.customer?.name || load.broker_name || "-").slice(0, 18) + "..." 
+                                : (load.customer?.name || load.broker_name || "-"))}
+                            </div>
                           </TableCell>
                           <TableCell className="text-[10px] whitespace-nowrap">
                             {load.pickup_state}→{load.delivery_state}
