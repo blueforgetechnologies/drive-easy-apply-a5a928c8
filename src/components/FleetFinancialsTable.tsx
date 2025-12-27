@@ -1318,55 +1318,59 @@ export function FleetFinancialsTable({
               )}
 
               {/* Weekly Summary Row */}
-              {day.isWeekEnd && (
-                <TableRow className="bg-muted/50 border-t-2">
-                  {effectiveColumns.map((column, colIdx) => {
-                    // Find the column right before carr_net, net, or brokering_net for the label
-                    const nextCol = effectiveColumns[colIdx + 1];
-                    const isLabelCell = nextCol && (nextCol.id === 'carr_net' || nextCol.id === 'net' || nextCol.id === 'brokering_net');
-                    
-                    if (isLabelCell) {
-                      return (
-                        <TableCell key={column.id} className="text-right font-semibold pr-2">
-                          Weekly Total:
-                        </TableCell>
-                      );
-                    }
-                    
-                    if (column.id === 'carr_net') {
-                      return (
-                        <TableCell key={column.id} className="text-right px-2">
-                          <span className={cn("font-bold", getWeeklyCarrierNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                            {formatCurrency(getWeeklyCarrierNet(index))}
-                          </span>
-                        </TableCell>
-                      );
-                    }
-                    
-                    if (column.id === 'net') {
-                      return (
-                        <TableCell key={column.id} className="text-right px-2">
-                          <span className={cn("font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                            {formatCurrency(getWeeklyTotal(index))}
-                          </span>
-                        </TableCell>
-                      );
-                    }
-                    
-                    if (column.id === 'brokering_net') {
-                      return (
-                        <TableCell key={column.id} className="text-right px-2">
-                          <span className={cn("font-bold", getWeeklyBrokeringNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                            {formatCurrency(getWeeklyBrokeringNet(index))}
-                          </span>
-                        </TableCell>
-                      );
-                    }
-                    
-                    return <TableCell key={column.id}></TableCell>;
-                  })}
-                </TableRow>
-              )}
+              {day.isWeekEnd && (() => {
+                // Find the index of the first NET column to place the label before it
+                const netColumnIds = ['carr_net', 'net', 'brokering_net'];
+                const firstNetIndex = effectiveColumns.findIndex(col => netColumnIds.includes(col.id));
+                const labelIndex = firstNetIndex > 0 ? firstNetIndex - 1 : -1;
+                
+                return (
+                  <TableRow className="bg-muted/50 border-t-2">
+                    {effectiveColumns.map((column, colIdx) => {
+                      // Place "Weekly Total:" in the cell right before the first NET column
+                      if (colIdx === labelIndex) {
+                        return (
+                          <TableCell key={column.id} className="text-right font-semibold pr-2">
+                            Weekly Total:
+                          </TableCell>
+                        );
+                      }
+                      
+                      if (column.id === 'carr_net') {
+                        return (
+                          <TableCell key={column.id} className="text-right px-2">
+                            <span className={cn("font-bold", getWeeklyCarrierNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                              {formatCurrency(getWeeklyCarrierNet(index))}
+                            </span>
+                          </TableCell>
+                        );
+                      }
+                      
+                      if (column.id === 'net') {
+                        return (
+                          <TableCell key={column.id} className="text-right px-2">
+                            <span className={cn("font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                              {formatCurrency(getWeeklyTotal(index))}
+                            </span>
+                          </TableCell>
+                        );
+                      }
+                      
+                      if (column.id === 'brokering_net') {
+                        return (
+                          <TableCell key={column.id} className="text-right px-2">
+                            <span className={cn("font-bold", getWeeklyBrokeringNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                              {formatCurrency(getWeeklyBrokeringNet(index))}
+                            </span>
+                          </TableCell>
+                        );
+                      }
+                      
+                      return <TableCell key={column.id}></TableCell>;
+                    })}
+                  </TableRow>
+                );
+              })()}
             </Fragment>
           );
         })}
