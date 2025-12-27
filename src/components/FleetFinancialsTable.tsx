@@ -1070,18 +1070,35 @@ export function FleetFinancialsTable({
 }: FleetFinancialsTableProps) {
   const navigate = useNavigate();
 
-  // Build the effective columns list - replace expense columns with merged column when collapsed
+  // Determine the current truck type for column visibility
+  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+  const currentTruckType = selectedVehicle?.truck_type || 'my_truck';
+  
+  // Build the effective columns list - filter by truck type and handle expense grouping
   const effectiveColumns = useMemo(() => {
+    // First filter columns based on truck type
+    let filteredColumns = visibleColumns.filter(col => {
+      // If contractor truck, hide My Net column
+      if (currentTruckType === 'contractor_truck' && col.id === 'net') {
+        return false;
+      }
+      // If my truck, hide Carr Net and Brokering Net columns
+      if (currentTruckType === 'my_truck' && (col.id === 'carr_net' || col.id === 'brokering_net')) {
+        return false;
+      }
+      return true;
+    });
+    
     if (!expenseGroupCollapsed) {
-      return visibleColumns;
+      return filteredColumns;
     }
     
     // Find the first expense column's position to insert the merged column there
     let firstExpenseIndex = -1;
     const nonExpenseColumns: FleetColumn[] = [];
     
-    for (let i = 0; i < visibleColumns.length; i++) {
-      const col = visibleColumns[i];
+    for (let i = 0; i < filteredColumns.length; i++) {
+      const col = filteredColumns[i];
       if (expenseGroupColumns.includes(col.id)) {
         if (firstExpenseIndex === -1) {
           firstExpenseIndex = nonExpenseColumns.length;
@@ -1092,9 +1109,9 @@ export function FleetFinancialsTable({
       }
     }
     
-    // If no expense columns found, return original
+    // If no expense columns found, return filtered columns
     if (firstExpenseIndex === -1) {
-      return visibleColumns;
+      return filteredColumns;
     }
     
     // Insert the merged column at the first expense column position
@@ -1109,7 +1126,7 @@ export function FleetFinancialsTable({
     const result = [...nonExpenseColumns];
     result.splice(firstExpenseIndex, 0, mergedColumn);
     return result;
-  }, [visibleColumns, expenseGroupCollapsed, expenseGroupColumns]);
+  }, [visibleColumns, expenseGroupCollapsed, expenseGroupColumns, currentTruckType]);
 
   const minTableWidth = useMemo(() => {
     // Calculate approximate width from columns
