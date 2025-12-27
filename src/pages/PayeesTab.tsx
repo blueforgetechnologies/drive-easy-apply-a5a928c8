@@ -9,7 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users, User, Mail, Phone, Building2, CreditCard, Check, Briefcase, Truck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Payee {
@@ -385,68 +388,213 @@ export default function PayeesTab() {
                 </form>
               </TabsContent>
               
-              <TabsContent value="existing" className="mt-0 space-y-4">
+              <TabsContent value="existing" className="mt-0 space-y-5">
+                {/* Type Selection Cards */}
                 <div>
-                  <Label>Select Type</Label>
-                  <Select value={selectedSourceType} onValueChange={(v) => {
-                    setSelectedSourceType(v as "dispatcher" | "driver");
-                    setSelectedSourceId("");
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dispatcher">Dispatcher</SelectItem>
-                      <SelectItem value="driver">Driver</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label>Select {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"}</Label>
-                  <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={`Select ${selectedSourceType}`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedSourceType === "dispatcher" ? (
-                        dispatchers.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.first_name} {d.last_name} ({d.email})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        drivers.filter(d => d.personal_info?.firstName).map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.personal_info?.firstName} {d.personal_info?.lastName} {d.personal_info?.email ? `(${d.personal_info.email})` : ""}
-                          </SelectItem>
-                        ))
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
+                    Select Source Type
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSourceType("dispatcher");
+                        setSelectedSourceId("");
+                      }}
+                      className={cn(
+                        "relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        selectedSourceType === "dispatcher"
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
                       )}
-                    </SelectContent>
-                  </Select>
+                    >
+                      {selectedSourceType === "dispatcher" && (
+                        <div className="absolute top-2 right-2">
+                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          </div>
+                        </div>
+                      )}
+                      <div className={cn(
+                        "h-12 w-12 rounded-full flex items-center justify-center",
+                        selectedSourceType === "dispatcher" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <Briefcase className={cn(
+                          "h-6 w-6",
+                          selectedSourceType === "dispatcher" ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-sm">Dispatcher</p>
+                        <p className="text-xs text-muted-foreground">{dispatchers.length} available</p>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSourceType("driver");
+                        setSelectedSourceId("");
+                      }}
+                      className={cn(
+                        "relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        selectedSourceType === "driver"
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      {selectedSourceType === "driver" && (
+                        <div className="absolute top-2 right-2">
+                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          </div>
+                        </div>
+                      )}
+                      <div className={cn(
+                        "h-12 w-12 rounded-full flex items-center justify-center",
+                        selectedSourceType === "driver" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <Truck className={cn(
+                          "h-6 w-6",
+                          selectedSourceType === "driver" ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-sm">Driver</p>
+                        <p className="text-xs text-muted-foreground">{drivers.filter(d => d.personal_info?.firstName).length} available</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* User Selection */}
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
+                    Select {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"}
+                  </Label>
+                  <div className="max-h-[200px] overflow-y-auto rounded-xl border bg-card">
+                    {selectedSourceType === "dispatcher" ? (
+                      dispatchers.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground text-sm">
+                          No dispatchers found
+                        </div>
+                      ) : (
+                        <RadioGroup value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                          {dispatchers.map((d, idx) => (
+                            <label
+                              key={d.id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                                selectedSourceId === d.id ? "bg-primary/5" : "hover:bg-muted/50",
+                                idx !== dispatchers.length - 1 && "border-b"
+                              )}
+                            >
+                              <RadioGroupItem value={d.id} className="shrink-0" />
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
+                                <User className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{d.first_name} {d.last_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{d.email}</p>
+                              </div>
+                              {selectedSourceId === d.id && (
+                                <Badge variant="secondary" className="shrink-0 text-xs">Selected</Badge>
+                              )}
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      )
+                    ) : (
+                      drivers.filter(d => d.personal_info?.firstName).length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground text-sm">
+                          No drivers found
+                        </div>
+                      ) : (
+                        <RadioGroup value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                          {drivers.filter(d => d.personal_info?.firstName).map((d, idx, arr) => (
+                            <label
+                              key={d.id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                                selectedSourceId === d.id ? "bg-primary/5" : "hover:bg-muted/50",
+                                idx !== arr.length - 1 && "border-b"
+                              )}
+                            >
+                              <RadioGroupItem value={d.id} className="shrink-0" />
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center shrink-0">
+                                <Truck className="h-4 w-4 text-emerald-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{d.personal_info?.firstName} {d.personal_info?.lastName}</p>
+                                <p className="text-xs text-muted-foreground truncate">{d.personal_info?.email || d.cell_phone || "No contact"}</p>
+                              </div>
+                              {selectedSourceId === d.id && (
+                                <Badge variant="secondary" className="shrink-0 text-xs">Selected</Badge>
+                              )}
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      )
+                    )}
+                  </div>
                 </div>
                 
+                {/* Preview Card */}
                 {selectedSourceId && (
-                  <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
-                    <p className="font-medium text-foreground">Preview:</p>
+                  <div className="rounded-xl border bg-gradient-to-br from-muted/50 to-muted/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <p className="font-semibold text-sm">Ready to Add</p>
+                    </div>
                     {selectedSourceType === "dispatcher" ? (() => {
                       const d = dispatchers.find(x => x.id === selectedSourceId);
                       return d ? (
-                        <>
-                          <p><span className="text-muted-foreground">Name:</span> {d.first_name} {d.last_name}</p>
-                          <p><span className="text-muted-foreground">Email:</span> {d.email}</p>
-                          <p><span className="text-muted-foreground">Phone:</span> {d.phone || "N/A"}</p>
-                        </>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.first_name} {d.last_name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.phone || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Badge variant="outline" className="text-xs">Dispatcher</Badge>
+                          </div>
+                        </div>
                       ) : null;
                     })() : (() => {
                       const d = drivers.find(x => x.id === selectedSourceId);
                       return d ? (
-                        <>
-                          <p><span className="text-muted-foreground">Name:</span> {d.personal_info?.firstName} {d.personal_info?.lastName}</p>
-                          <p><span className="text-muted-foreground">Email:</span> {d.personal_info?.email || "N/A"}</p>
-                          <p><span className="text-muted-foreground">Phone:</span> {d.cell_phone || d.personal_info?.phone || "N/A"}</p>
-                          <p><span className="text-muted-foreground">Bank:</span> {d.bank_name || "N/A"}</p>
-                        </>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.personal_info?.firstName} {d.personal_info?.lastName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.personal_info?.email || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.cell_phone || d.personal_info?.phone || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{d.bank_name || "No bank info"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm col-span-full">
+                            <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Badge variant="outline" className="text-xs">Driver</Badge>
+                          </div>
+                        </div>
                       ) : null;
                     })()}
                   </div>
@@ -455,10 +603,11 @@ export default function PayeesTab() {
                 <Button 
                   type="button" 
                   onClick={handleAddFromExisting} 
-                  className="w-full"
+                  className="w-full h-11 text-sm font-medium gap-2"
                   disabled={!selectedSourceId}
                 >
-                  Add from {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"}
+                  <Plus className="h-4 w-4" />
+                  Add {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"} as Payee
                 </Button>
               </TabsContent>
             </Tabs>
