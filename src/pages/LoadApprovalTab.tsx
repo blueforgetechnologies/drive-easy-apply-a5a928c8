@@ -965,17 +965,8 @@ export default function LoadApprovalTab() {
                         <TableCell className="text-xs text-right">
                           ${customerRatePerMile.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="relative w-20">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm">$</span>
-                            <Input
-                              type="number"
-                              value={payloadRates[load.id] ?? load.rate ?? ""}
-                              onChange={(e) => handlePayloadChange(load.id, e.target.value)}
-                              className="w-20 h-7 text-sm text-right font-bold pl-5 !shadow-none"
-                              placeholder="0.00"
-                            />
-                          </div>
+                        <TableCell className="text-right font-bold text-sm">
+                          ${(load.rate ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
