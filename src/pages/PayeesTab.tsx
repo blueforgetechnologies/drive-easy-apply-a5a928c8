@@ -748,6 +748,7 @@ export default function PayeesTab() {
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[70px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Name</div>
                       <div className="text-xs font-normal text-muted-foreground">Type</div>
@@ -761,7 +762,6 @@ export default function PayeesTab() {
                       <div className="text-xs font-normal text-muted-foreground">Bank</div>
                     </TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide hidden xl:table-cell">Address</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Status</TableHead>
                     <TableHead className="py-2 px-2 w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -772,6 +772,16 @@ export default function PayeesTab() {
                       className="h-10 cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => handleOpenPayeeDetail(payee)}
                     >
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                        <Badge variant="outline" className={cn(
+                          "text-xs",
+                          payee.status === "active" && "bg-green-100 text-green-800 border-green-200",
+                          payee.status === "pending" && "bg-orange-100 text-orange-800 border-orange-200",
+                          payee.status === "inactive" && "bg-gray-100 text-gray-800 border-gray-200"
+                        )}>
+                          {payee.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="py-1 px-2">
                         <div className="font-medium">{payee.name}</div>
                         <div className="text-xs text-muted-foreground">{payee.type || "N/A"}</div>
@@ -785,16 +795,6 @@ export default function PayeesTab() {
                         <div className="text-xs text-muted-foreground">{payee.bank_name || "N/A"}</div>
                       </TableCell>
                       <TableCell className="py-1 px-2 hidden xl:table-cell text-muted-foreground text-xs">{payee.address || "N/A"}</TableCell>
-                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                        <Badge variant="outline" className={cn(
-                          "text-xs",
-                          payee.status === "active" && "bg-green-100 text-green-800 border-green-200",
-                          payee.status === "pending" && "bg-orange-100 text-orange-800 border-orange-200",
-                          payee.status === "inactive" && "bg-gray-100 text-gray-800 border-gray-200"
-                        )}>
-                          {payee.status}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           size="icon" 
