@@ -184,9 +184,30 @@ export default function FleetFinancialsTab() {
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
 
-  // Load all data
+  // Load all data on mount
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Refetch vehicles when page gains focus (to get updated truck_type after changes in VehicleDetail)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Refetch vehicle data to get any truck_type changes
+        const refetchVehicles = async () => {
+          const { data } = await supabase
+            .from("vehicles")
+            .select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type")
+            .eq("status", "active")
+            .order("vehicle_number");
+          if (data) setVehicles(data);
+        };
+        refetchVehicles();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Load loads when month or vehicle changes
