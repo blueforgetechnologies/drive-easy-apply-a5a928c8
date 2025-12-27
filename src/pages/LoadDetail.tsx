@@ -90,7 +90,7 @@ export default function LoadDetail() {
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
         supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval").eq("status", "active"),
+        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval, carrier").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
@@ -1442,17 +1442,25 @@ export default function LoadDetail() {
               </CardHeader>
               <CardContent className="pt-2 pb-2.5 px-3">
                 <div className="grid md:grid-cols-4 gap-3">
-                  {/* Carrier */}
+                  {/* Carrier - Auto-set from vehicle, disabled when vehicle is selected */}
                   <div>
                     <Label className="text-[10px] font-medium text-muted-foreground">Carrier</Label>
                     <div className="flex gap-1">
-                      <Select value={load.carrier_id || ""} onValueChange={(value) => updateField("carrier_id", value)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <Select 
+                        value={load.carrier_id || ""} 
+                        onValueChange={(value) => updateField("carrier_id", value)}
+                        disabled={!!load.assigned_vehicle_id}
+                      >
+                        <SelectTrigger className={`h-7 text-xs ${load.assigned_vehicle_id ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
                         <SelectContent className="bg-background z-50">
                           {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
+                      {!load.assigned_vehicle_id && (
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
+                      )}
                     </div>
                     {load.carrier_id && (() => {
                       const carrier = carriers.find(c => c.id === load.carrier_id);
@@ -1463,6 +1471,9 @@ export default function LoadDetail() {
                         </div>
                       ) : null;
                     })()}
+                    {load.assigned_vehicle_id && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">Set by vehicle</p>
+                    )}
                   </div>
 
                   {/* Vehicle */}
@@ -1484,6 +1495,10 @@ export default function LoadDetail() {
                             const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
                             const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
                             updateField("equipment_type", `${sizePrefix}${vehicleType}`);
+                          }
+                          // Auto-set carrier from vehicle's carrier
+                          if (selectedVehicle?.carrier) {
+                            updateField("carrier_id", selectedVehicle.carrier);
                           }
                         }}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
