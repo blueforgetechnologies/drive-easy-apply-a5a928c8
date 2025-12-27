@@ -365,20 +365,27 @@ export default function LoadApprovalTab() {
 
       setLoads(filteredLoads as unknown as ApprovalLoad[]);
 
-      // Load driver compensation for the selected vehicle
-      if (selectedVehicle !== "all") {
-        const selectedVehicleData = (vehicleData || []).find((v: any) => v.id === selectedVehicle);
-        if (selectedVehicleData?.driver_1_id) {
+      // Load driver compensation for the financial vehicle (selected load truck wins)
+      const financialVehicleId = selectedLoadId
+        ? (loadData || []).find((l: any) => l.id === selectedLoadId)?.assigned_vehicle_id ?? null
+        : (selectedVehicle !== "all" ? selectedVehicle : null);
+
+      if (financialVehicleId) {
+        const financialVehicle = (vehicleData || []).find((v: any) => v.id === financialVehicleId);
+        if (financialVehicle?.driver_1_id) {
           const { data: driverData } = await supabase
             .from("applications")
-            .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info")
-            .eq("id", selectedVehicleData.driver_1_id)
+            .select(
+              "id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info"
+            )
+            .eq("id", financialVehicle.driver_1_id)
             .single();
 
           if (driverData) {
-            const personalInfo = typeof driverData.personal_info === 'string' 
-              ? JSON.parse(driverData.personal_info) 
-              : driverData.personal_info;
+            const personalInfo =
+              typeof driverData.personal_info === "string"
+                ? JSON.parse(driverData.personal_info)
+                : driverData.personal_info;
             setDriverCompensation({ ...driverData, personal_info: personalInfo });
           } else {
             setDriverCompensation(null);
@@ -386,6 +393,8 @@ export default function LoadApprovalTab() {
         } else {
           setDriverCompensation(null);
         }
+      } else {
+        setDriverCompensation(null);
       }
     } finally {
       setLoading(false);
@@ -425,6 +434,8 @@ export default function LoadApprovalTab() {
   // Get the vehicle ID to filter by (from selected load)
   const filterVehicleId = selectedLoad?.assigned_vehicle_id || null;
 
+  // Vehicle used for financial calculations in 30 Days View (selected load's truck wins)
+  const financialVehicleId = filterVehicleId ?? (selectedVehicle !== "all" ? selectedVehicle : null);
   // Group loads by date - filtered by selected vehicle if a load is selected
   const loadsByDate = useMemo(() => {
     const grouped: Record<string, ApprovalLoad[]> = {};
@@ -493,11 +504,11 @@ export default function LoadApprovalTab() {
     return loadedMiles > 0 ? carrierPay / loadedMiles : 0;
   };
 
-  // Get selected vehicle for cost calculations
+  // Get vehicle for financial calculations (selected load truck or selected vehicle filter)
   const selectedVehicleData = useMemo(() => {
-    if (selectedVehicle === "all") return null;
-    return vehicles.find(v => v.id === selectedVehicle);
-  }, [vehicles, selectedVehicle]);
+    if (!financialVehicleId) return null;
+    return vehicles.find((v) => v.id === financialVehicleId) || null;
+  }, [vehicles, financialVehicleId]);
 
   // Calculate daily rates for rental and insurance
   const dailyCostRates = useMemo(() => {
@@ -788,7 +799,7 @@ export default function LoadApprovalTab() {
     
     thirtyDaysRange.forEach(date => {
       if (date >= weekStart && date <= weekEnd) {
-        const dateKey = format(date, "yyyy-MM-dd");
+        const dateKey = formatInTimeZone(date, timezone, "yyyy-MM-dd");
         const dayLoads = loadsByDate[dateKey] || [];
         
         if (dayLoads.length === 0) {
@@ -1333,10 +1344,12 @@ export default function LoadApprovalTab() {
                             <TableCell className="!px-2 !py-0.5"></TableCell>
                             <TableCell className="!px-2 !py-0.5"></TableCell>
                             <TableCell className="!px-2 !py-0.5"></TableCell>
-                            <TableCell className={cn("text-right font-bold !px-2 !py-0.5", emptyDayNet < 0 ? "text-destructive" : "")}>
+                            <TableCell className={cn("text-right font-bold !px-2 !py-0.5", emptyDayNet < 0 ? "text-destructive" : "")}> 
                               {/* Show daily cost as negative CARR NET on business days up to today */}
-                              {!isFutureDate && !isWeekendDay && emptyDayNet !== 0 
-                                ? `$${emptyDayNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              {!isFutureDate && !isWeekendDay && emptyDayNet !== 0
+                                ? (emptyDayNet < 0
+                                    ? `-$${Math.abs(emptyDayNet).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    : `$${emptyDayNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
                                 : ""}
                             </TableCell>
                           </TableRow>
