@@ -1107,6 +1107,25 @@ export default function VehicleDetail() {
                     />
                   </div>
 
+                  {/* Contractor's Percentage - only shown when Contractor's Truck is selected */}
+                  {formData.truck_type === 'contractor_truck' && (
+                    <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contractor's Percentage</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.contractor_percentage || ''} 
+                        onChange={(e) => updateField('contractor_percentage', e.target.value)} 
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        This is a percentage of the load that your Contractor keeps for himself.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Asset Ownership</Label>
                     <RadioGroup value={formData.asset_ownership || 'owned'} onValueChange={(value) => updateField('asset_ownership', value)} className="flex gap-4">
