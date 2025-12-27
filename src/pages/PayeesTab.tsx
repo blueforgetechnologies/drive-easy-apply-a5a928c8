@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Payee {
   id: string;
@@ -26,15 +27,48 @@ interface Payee {
   created_at: string;
 }
 
+interface Dispatcher {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
+}
+
+interface Driver {
+  id: string;
+  personal_info: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+  bank_name: string | null;
+  routing_number: string | null;
+  checking_number: string | null;
+  driver_address: string | null;
+  cell_phone: string | null;
+}
+
 export default function PayeesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [payees, setPayees] = useState<Payee[]>([]);
+  const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [addMode, setAddMode] = useState<"new" | "existing">("new");
+  const [selectedSourceType, setSelectedSourceType] = useState<"dispatcher" | "driver">("dispatcher");
+  const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const ROWS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -51,6 +85,27 @@ export default function PayeesTab() {
   useEffect(() => {
     loadData();
   }, [filter]);
+
+  useEffect(() => {
+    // Load dispatchers and drivers when dialog opens
+    if (dialogOpen) {
+      loadExistingUsers();
+    }
+  }, [dialogOpen]);
+
+  const loadExistingUsers = async () => {
+    try {
+      const [dispatchersRes, driversRes] = await Promise.all([
+        supabase.from("dispatchers").select("id, first_name, last_name, email, phone, address").eq("status", "active"),
+        supabase.from("applications").select("id, personal_info, bank_name, routing_number, checking_number, driver_address, cell_phone")
+      ]);
+      
+      if (dispatchersRes.data) setDispatchers(dispatchersRes.data);
+      if (driversRes.data) setDrivers(driversRes.data as Driver[]);
+    } catch (error) {
+      console.error("Error loading existing users:", error);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -88,22 +143,81 @@ export default function PayeesTab() {
 
       if (error) throw error;
       toast.success("Payee added successfully");
-      setDialogOpen(false);
-      setFormData({
-        name: "",
-        type: "driver",
-        payment_method: "direct_deposit",
-        bank_name: "",
-        account_number: "",
-        routing_number: "",
-        email: "",
-        phone: "",
-        address: "",
-      });
+      resetDialogState();
       loadData();
     } catch (error: any) {
       toast.error("Failed to add payee: " + error.message);
     }
+  };
+
+  const handleAddFromExisting = async () => {
+    if (!selectedSourceId) {
+      toast.error("Please select a user");
+      return;
+    }
+
+    let payeeData: Partial<Payee> = { status: "active", payment_method: "direct_deposit" };
+
+    if (selectedSourceType === "dispatcher") {
+      const dispatcher = dispatchers.find(d => d.id === selectedSourceId);
+      if (dispatcher) {
+        payeeData = {
+          ...payeeData,
+          name: `${dispatcher.first_name} ${dispatcher.last_name}`.trim(),
+          type: "dispatcher",
+          email: dispatcher.email,
+          phone: dispatcher.phone || "",
+          address: dispatcher.address || "",
+        };
+      }
+    } else {
+      const driver = drivers.find(d => d.id === selectedSourceId);
+      if (driver) {
+        const pi = driver.personal_info || {};
+        payeeData = {
+          ...payeeData,
+          name: `${pi.firstName || ""} ${pi.lastName || ""}`.trim(),
+          type: "driver",
+          email: pi.email || "",
+          phone: driver.cell_phone || pi.phone || "",
+          address: driver.driver_address || [pi.address, pi.city, pi.state, pi.zip].filter(Boolean).join(", ") || "",
+          bank_name: driver.bank_name || "",
+          routing_number: driver.routing_number || "",
+          account_number: driver.checking_number || "",
+        };
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from("payees" as any)
+        .insert(payeeData);
+
+      if (error) throw error;
+      toast.success("Payee added successfully");
+      resetDialogState();
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to add payee: " + error.message);
+    }
+  };
+
+  const resetDialogState = () => {
+    setDialogOpen(false);
+    setAddMode("new");
+    setSelectedSourceType("dispatcher");
+    setSelectedSourceId("");
+    setFormData({
+      name: "",
+      type: "driver",
+      payment_method: "direct_deposit",
+      bank_name: "",
+      account_number: "",
+      routing_number: "",
+      email: "",
+      phone: "",
+      address: "",
+    });
   };
 
   const handleDeletePayee = async (id: string) => {
@@ -173,88 +287,181 @@ export default function PayeesTab() {
               Add Payee
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add New Payee</DialogTitle>
+              <DialogTitle>Add Payee</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleAddPayee} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Payee Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="type">Type</Label>
-                <Input
-                  id="type"
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  placeholder="e.g., Driver, Contractor, Vendor"
-                />
-              </div>
-              <div>
-                <Label htmlFor="payment_method">Payment Method</Label>
-                <Input
-                  id="payment_method"
-                  value={formData.payment_method}
-                  onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="bank_name">Bank Name</Label>
-                <Input
-                  id="bank_name"
-                  value={formData.bank_name}
-                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="routing_number">Routing Number</Label>
-                <Input
-                  id="routing_number"
-                  value={formData.routing_number}
-                  onChange={(e) => setFormData({ ...formData, routing_number: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="account_number">Account Number</Label>
-                <Input
-                  id="account_number"
-                  value={formData.account_number}
-                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                />
-              </div>
-              <Button type="submit" className="w-full">Add Payee</Button>
-            </form>
+            
+            <Tabs value={addMode} onValueChange={(v) => setAddMode(v as "new" | "existing")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="new" className="gap-1.5">
+                  <UserPlus className="h-3.5 w-3.5" />
+                  New Payee
+                </TabsTrigger>
+                <TabsTrigger value="existing" className="gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  From Existing
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="new" className="mt-0">
+                <form onSubmit={handleAddPayee} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Payee Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="type">Type</Label>
+                    <Input
+                      id="type"
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      placeholder="e.g., Driver, Contractor, Vendor"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="payment_method">Payment Method</Label>
+                    <Input
+                      id="payment_method"
+                      value={formData.payment_method}
+                      onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bank_name">Bank Name</Label>
+                    <Input
+                      id="bank_name"
+                      value={formData.bank_name}
+                      onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="routing_number">Routing Number</Label>
+                    <Input
+                      id="routing_number"
+                      value={formData.routing_number}
+                      onChange={(e) => setFormData({ ...formData, routing_number: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="account_number">Account Number</Label>
+                    <Input
+                      id="account_number"
+                      value={formData.account_number}
+                      onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">Add Payee</Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="existing" className="mt-0 space-y-4">
+                <div>
+                  <Label>Select Type</Label>
+                  <Select value={selectedSourceType} onValueChange={(v) => {
+                    setSelectedSourceType(v as "dispatcher" | "driver");
+                    setSelectedSourceId("");
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dispatcher">Dispatcher</SelectItem>
+                      <SelectItem value="driver">Driver</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Select {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"}</Label>
+                  <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={`Select ${selectedSourceType}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedSourceType === "dispatcher" ? (
+                        dispatchers.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.first_name} {d.last_name} ({d.email})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        drivers.filter(d => d.personal_info?.firstName).map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.personal_info?.firstName} {d.personal_info?.lastName} {d.personal_info?.email ? `(${d.personal_info.email})` : ""}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {selectedSourceId && (
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                    <p className="font-medium text-foreground">Preview:</p>
+                    {selectedSourceType === "dispatcher" ? (() => {
+                      const d = dispatchers.find(x => x.id === selectedSourceId);
+                      return d ? (
+                        <>
+                          <p><span className="text-muted-foreground">Name:</span> {d.first_name} {d.last_name}</p>
+                          <p><span className="text-muted-foreground">Email:</span> {d.email}</p>
+                          <p><span className="text-muted-foreground">Phone:</span> {d.phone || "N/A"}</p>
+                        </>
+                      ) : null;
+                    })() : (() => {
+                      const d = drivers.find(x => x.id === selectedSourceId);
+                      return d ? (
+                        <>
+                          <p><span className="text-muted-foreground">Name:</span> {d.personal_info?.firstName} {d.personal_info?.lastName}</p>
+                          <p><span className="text-muted-foreground">Email:</span> {d.personal_info?.email || "N/A"}</p>
+                          <p><span className="text-muted-foreground">Phone:</span> {d.cell_phone || d.personal_info?.phone || "N/A"}</p>
+                          <p><span className="text-muted-foreground">Bank:</span> {d.bank_name || "N/A"}</p>
+                        </>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+                
+                <Button 
+                  type="button" 
+                  onClick={handleAddFromExisting} 
+                  className="w-full"
+                  disabled={!selectedSourceId}
+                >
+                  Add from {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"}
+                </Button>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
