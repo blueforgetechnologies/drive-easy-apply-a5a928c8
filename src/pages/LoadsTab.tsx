@@ -256,7 +256,7 @@ export default function LoadsTab() {
       
       const [driversResult, vehiclesResult, customersResult, companyProfileResult, dispatcherResult, vehiclesApprovalResult] = await Promise.all([
         supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles" as any).select("id, vehicle_number").eq("status", "active"),
+        supabase.from("vehicles" as any).select("id, vehicle_number, requires_load_approval").eq("status", "active"),
         supabase.from("customers" as any).select("id, name, contact_name, mc_number, email, phone").eq("status", "active"),
         supabase.from("company_profile").select("default_carrier_id").limit(1).maybeSingle(),
         user?.id ? supabase.from("dispatchers").select("id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
@@ -467,9 +467,20 @@ export default function LoadsTab() {
 
   const handleBulkAssignment = async (field: 'assigned_driver_id' | 'assigned_vehicle_id', value: string) => {
     try {
+      const update: Record<string, any> = { [field]: value };
+
+      // If assigning a vehicle that requires load approval, force it back into approval workflow
+      if (field === 'assigned_vehicle_id') {
+        const v = vehicles.find((veh: any) => veh.id === value);
+        if (v?.requires_load_approval === true) {
+          update.carrier_approved = false;
+          update.approved_payload = null;
+        }
+      }
+
       const { error } = await supabase
         .from("loads" as any)
-        .update({ [field]: value })
+        .update(update)
         .in("id", selectedLoadIds);
 
       if (error) throw error;
