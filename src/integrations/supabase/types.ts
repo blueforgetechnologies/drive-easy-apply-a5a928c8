@@ -96,6 +96,7 @@ export type Database = {
           pay_method: string | null
           pay_method_active: boolean | null
           pay_per_mile: number | null
+          payee_id: string | null
           payroll_policy: Json
           per_diem: number | null
           personal_info: Json
@@ -161,6 +162,7 @@ export type Database = {
           pay_method?: string | null
           pay_method_active?: boolean | null
           pay_per_mile?: number | null
+          payee_id?: string | null
           payroll_policy: Json
           per_diem?: number | null
           personal_info: Json
@@ -226,6 +228,7 @@ export type Database = {
           pay_method?: string | null
           pay_method_active?: boolean | null
           pay_per_mile?: number | null
+          payee_id?: string | null
           payroll_policy?: Json
           per_diem?: number | null
           personal_info?: Json
@@ -252,6 +255,13 @@ export type Database = {
             columns: ["invite_id"]
             isOneToOne: false
             referencedRelation: "driver_invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "payees"
             referencedColumns: ["id"]
           },
         ]
@@ -788,6 +798,7 @@ export type Database = {
           must_change_password: boolean | null
           notes: string | null
           pay_percentage: number | null
+          payee_id: string | null
           phone: string | null
           role: string | null
           show_all_tab: boolean | null
@@ -820,6 +831,7 @@ export type Database = {
           must_change_password?: boolean | null
           notes?: string | null
           pay_percentage?: number | null
+          payee_id?: string | null
           phone?: string | null
           role?: string | null
           show_all_tab?: boolean | null
@@ -852,6 +864,7 @@ export type Database = {
           must_change_password?: boolean | null
           notes?: string | null
           pay_percentage?: number | null
+          payee_id?: string | null
           phone?: string | null
           role?: string | null
           show_all_tab?: boolean | null
@@ -860,7 +873,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dispatchers_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "payees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       driver_invites: {
         Row: {
@@ -2985,6 +3006,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pay_structures: {
+        Row: {
+          applies_to: string
+          created_at: string | null
+          description: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          is_active: boolean
+          pay_type: string
+          priority: number
+          rate: number
+          updated_at: string | null
+        }
+        Insert: {
+          applies_to: string
+          created_at?: string | null
+          description?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          is_active?: boolean
+          pay_type: string
+          priority?: number
+          rate: number
+          updated_at?: string | null
+        }
+        Update: {
+          applies_to?: string
+          created_at?: string | null
+          description?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          pay_type?: string
+          priority?: number
+          rate?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       payees: {
         Row: {
           account_number: string | null
@@ -3701,6 +3764,7 @@ export type Database = {
           cargo_coverage_exp_date: string | null
           cargo_coverage_status: string | null
           carrier: string | null
+          carrier_id: string | null
           cents_per_mile: number | null
           clearance: number | null
           created_at: string | null
@@ -3750,6 +3814,7 @@ export type Database = {
           pallet_jack_capacity: number | null
           panic_button: boolean | null
           payee: string | null
+          payee_id: string | null
           payload: number | null
           physical_coverage_exp_date: string | null
           physical_coverage_status: string | null
@@ -3799,6 +3864,7 @@ export type Database = {
           cargo_coverage_exp_date?: string | null
           cargo_coverage_status?: string | null
           carrier?: string | null
+          carrier_id?: string | null
           cents_per_mile?: number | null
           clearance?: number | null
           created_at?: string | null
@@ -3848,6 +3914,7 @@ export type Database = {
           pallet_jack_capacity?: number | null
           panic_button?: boolean | null
           payee?: string | null
+          payee_id?: string | null
           payload?: number | null
           physical_coverage_exp_date?: string | null
           physical_coverage_status?: string | null
@@ -3897,6 +3964,7 @@ export type Database = {
           cargo_coverage_exp_date?: string | null
           cargo_coverage_status?: string | null
           carrier?: string | null
+          carrier_id?: string | null
           cents_per_mile?: number | null
           clearance?: number | null
           created_at?: string | null
@@ -3946,6 +4014,7 @@ export type Database = {
           pallet_jack_capacity?: number | null
           panic_button?: boolean | null
           payee?: string | null
+          payee_id?: string | null
           payload?: number | null
           physical_coverage_exp_date?: string | null
           physical_coverage_status?: string | null
@@ -3982,7 +4051,22 @@ export type Database = {
           weekly_payment?: number | null
           year?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "payees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
