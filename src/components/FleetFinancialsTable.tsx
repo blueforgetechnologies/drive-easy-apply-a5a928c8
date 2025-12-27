@@ -1082,8 +1082,8 @@ export function FleetFinancialsTable({
       if (currentTruckType === 'contractor_truck' && col.id === 'net') {
         return false;
       }
-      // If my truck, hide Carr Net and Brokering Net columns
-      if (currentTruckType === 'my_truck' && (col.id === 'carr_net' || col.id === 'brokering_net')) {
+      // If my truck, hide Carr Pay, Carr $/Mi, Carr Net and Brokering Net columns
+      if (currentTruckType === 'my_truck' && (col.id === 'carr_pay' || col.id === 'carr_dollar_per_mile' || col.id === 'carr_net' || col.id === 'brokering_net')) {
         return false;
       }
       return true;
