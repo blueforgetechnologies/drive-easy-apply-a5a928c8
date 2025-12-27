@@ -384,9 +384,12 @@ export default function FleetFinancialsTab() {
 
     return days.map((date, index) => {
       const dayOfWeek = getDay(date);
+      const dateStr = format(date, "yyyy-MM-dd");
       const dayLoads = loads.filter(load => {
         if (!load.pickup_date) return false;
-        return isSameDay(new Date(load.pickup_date), date);
+        // Extract just the date portion to avoid timezone issues
+        const loadDateStr = load.pickup_date.split('T')[0].split(' ')[0];
+        return loadDateStr === dateStr;
       });
 
       // Check if it's the end of a week (Sunday)
@@ -403,7 +406,7 @@ export default function FleetFinancialsTab() {
 
   const selectedVehicle = vehiclesWithNames.find(v => v.id === selectedVehicleId);
 
-  // Calculate totals - only include data up to today
+  // Calculate totals - loads show regardless of date, but costs are prorated up to today
   const totals = useMemo(() => {
     const today = startOfDay(new Date());
     
@@ -422,12 +425,8 @@ export default function FleetFinancialsTab() {
     let other = 0;
     let factoring = 0;
 
-    // Only include loads with pickup_date up to today
+    // Include ALL loads in payload/miles totals (future loads should still show)
     loads.forEach(load => {
-      if (load.pickup_date) {
-        const loadDate = startOfDay(new Date(load.pickup_date));
-        if (isAfter(loadDate, today)) return; // Skip future loads
-      }
       const rate = load.rate || 0;
       payload += rate;
       emptyMiles += load.empty_miles || 0;
