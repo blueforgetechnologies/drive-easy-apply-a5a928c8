@@ -615,7 +615,15 @@ function CellValue({
       if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
         return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
       }
-      // Always calculate and show carr_net when there's a load (even on weekends or with truck type mismatch)
+      // Show $0 if not approved yet
+      if (!isApproved) {
+        return (
+          <TableCell className={cn("text-right font-bold !px-2 !py-0.5 text-muted-foreground", expenseRailClass, dragClass)}>
+            $0.00
+          </TableCell>
+        );
+      }
+      // Show calculated value when approved
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", carrierNet === null ? "text-muted-foreground" : carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
@@ -628,7 +636,15 @@ function CellValue({
       if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
         return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
       }
-      // Always calculate and show brokering_net when there's a load (even on weekends or with truck type mismatch)
+      // Show $0 if not approved yet
+      if (!isApproved) {
+        return (
+          <TableCell className={cn("text-right font-bold !px-2 !py-0.5 text-muted-foreground", expenseRailClass, dragClass)}>
+            $0.00
+          </TableCell>
+        );
+      }
+      // Show calculated value when approved
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet === null ? "text-muted-foreground" : brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
