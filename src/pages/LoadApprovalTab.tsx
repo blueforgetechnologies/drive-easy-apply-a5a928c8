@@ -1094,7 +1094,7 @@ export default function LoadApprovalTab() {
         {/* 30 Days View + Map Layout */}
         <div className="flex-1 min-h-0 flex gap-2">
           {/* Calendar View - 30 Days of Loads */}
-          <Card className="flex-1 min-h-0">
+          <Card className="w-auto min-w-0 flex-shrink-0">
             <CardContent className="p-2 h-full flex flex-col">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
@@ -1228,7 +1228,7 @@ export default function LoadApprovalTab() {
         </Card>
 
         {/* Route Map */}
-        <Card className="w-[280px] min-h-0 flex-shrink-0">
+        <Card className="flex-1 min-h-0">
           <CardContent className="p-2 h-full flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <MapPin className="h-4 w-4 text-primary" />
