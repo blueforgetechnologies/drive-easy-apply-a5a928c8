@@ -2004,7 +2004,7 @@ export default function LoadsTab() {
                                 };
                                 
                                 if (vehicleRequiresApproval && !isApproved) {
-                                  // Vehicle requires approval but not yet approved - show $0 with LA badge
+                                  // Vehicle requires approval but not yet approved - show DB-stored calculated carrier pay with LA badge
                                   return (
                                     <div className="flex items-center gap-1 text-xs font-semibold">
                                       <span 
@@ -2012,7 +2012,7 @@ export default function LoadsTab() {
                                         onClick={handleCarrierPayClick}
                                         title="View rate history"
                                       >
-                                        $0.00
+                                        ${Number(carrierRate ?? 0).toFixed(2)}
                                       </span>
                                       <Badge 
                                         variant="outline" 
