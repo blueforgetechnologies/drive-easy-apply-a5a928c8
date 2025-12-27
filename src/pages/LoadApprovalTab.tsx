@@ -180,13 +180,21 @@ export default function LoadApprovalTab() {
       .eq("requires_load_approval", true);
 
     const vehicleIds = (vehicleData || []).map((v: any) => v.id);
+    
+    // Build a map of vehicle ID -> carrier ID for counting
+    const vehicleCarrierMap = new Map<string, string>();
+    (vehicleData || []).forEach((v: any) => {
+      if (v.carrier) {
+        vehicleCarrierMap.set(v.id, v.carrier);
+      }
+    });
 
     if (vehicleIds.length === 0) {
       setCarrierPendingCounts(new Map());
       return;
     }
 
-    // Load loads needing rate approval - use carrier_id directly for accurate count
+    // Load loads needing rate approval
     // A load needs rate approval if it's from an approval-required vehicle AND:
     // 1. carrier_approved is null or false, OR
     // 2. carrier_approved is true but payload (rate) differs from approved_payload
@@ -197,16 +205,19 @@ export default function LoadApprovalTab() {
       .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"))
       .in("assigned_vehicle_id", vehicleIds);
 
-    // Count pending loads per carrier using load's carrier_id directly
+    // Count pending loads per carrier using VEHICLE's carrier (owner), not load's carrier_id
+    // This ensures loads appear under the carrier that owns the vehicle
     const countsByCarrier = new Map<string, number>();
     (loadsData || []).forEach((load: any) => {
-      if (load.carrier_id) {
+      // Get the carrier from the vehicle assignment, not the load's carrier_id
+      const vehicleCarrierId = vehicleCarrierMap.get(load.assigned_vehicle_id);
+      if (vehicleCarrierId) {
         const needsApproval = load.carrier_approved !== true;
         const payloadChanged = load.carrier_approved === true && 
                                load.approved_payload !== null && 
                                Number(load.rate) !== Number(load.approved_payload);
         if (needsApproval || payloadChanged) {
-          countsByCarrier.set(load.carrier_id, (countsByCarrier.get(load.carrier_id) || 0) + 1);
+          countsByCarrier.set(vehicleCarrierId, (countsByCarrier.get(vehicleCarrierId) || 0) + 1);
         }
       }
     });
@@ -235,6 +246,9 @@ export default function LoadApprovalTab() {
         .filter((v: any) => v.requires_load_approval)
         .map((v: any) => v.id);
       
+      // Get ALL vehicle IDs for the selected carrier (for filtering loads)
+      const carrierVehicleIds = (vehicleData || []).map((v: any) => v.id);
+      
       // Load loads for the past 3 weeks
       // Show those that are ready for approval (delivered/completed/closed)
       // OR those from vehicles requiring approval that haven't been approved yet
@@ -252,8 +266,16 @@ export default function LoadApprovalTab() {
         `)
         .gte("pickup_date", format(thirtyDaysAgo, "yyyy-MM-dd"));
       
-      if (selectedCarrier !== "all") {
-        loadQuery = loadQuery.eq("carrier_id", selectedCarrier);
+      // Filter by vehicle ownership (carrier) rather than load's carrier_id
+      // This ensures loads assigned to a carrier's vehicles show up for that carrier
+      if (selectedCarrier !== "all" && carrierVehicleIds.length > 0) {
+        loadQuery = loadQuery.in("assigned_vehicle_id", carrierVehicleIds);
+      } else if (selectedCarrier !== "all" && carrierVehicleIds.length === 0) {
+        // No vehicles for this carrier, so no loads to show
+        setLoads([]);
+        setVehicleDriverInfoById({});
+        setLoading(false);
+        return;
       }
       
       if (selectedVehicle !== "all") {
