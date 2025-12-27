@@ -533,9 +533,9 @@ export default function DriversTab() {
                           </TableCell>
                           <TableCell className="py-1 px-2">
                             {app.pay_method_active ? (
-                              <div className="flex flex-col items-start">
-                                <span className={`font-bold text-base ${
-                                  app.pay_method === 'percentage' ? 'text-orange-500' :
+                              <div className="flex flex-col">
+                                <span className={`font-medium ${
+                                  app.pay_method === 'percentage' ? 'text-amber-600' :
                                   app.pay_method === 'salary' ? 'text-blue-600' :
                                   app.pay_method === 'hourly' ? 'text-green-600' :
                                   app.pay_method === 'mileage' ? 'text-purple-600' :
@@ -548,7 +548,7 @@ export default function DriversTab() {
                                    app.pay_method === 'hybrid' ? 'Hybrid' :
                                    'N/A'}
                                 </span>
-                                <span className="text-sm font-semibold text-emerald-500">Fleet$</span>
+                                <span className="text-xs text-emerald-600">Fleet$</span>
                               </div>
                             ) : (
                               <span className="text-muted-foreground">N/A</span>
