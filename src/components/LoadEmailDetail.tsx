@@ -1101,6 +1101,9 @@ const LoadEmailDetail = ({
       if (onBidPlaced && match?.id && email?.id) {
         onBidPlaced(match.id, email.id, bidRateNum);
       }
+      
+      // Close the email builder and return to parent view
+      onClose();
     } catch (err: any) {
       console.error('Error sending bid email:', err);
       toast.error(`Failed to send bid email: ${err.message || 'Unknown error'}`);
