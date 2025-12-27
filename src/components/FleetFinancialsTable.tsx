@@ -1319,23 +1319,20 @@ export function FleetFinancialsTable({
 
               {/* Weekly Summary Row */}
               {day.isWeekEnd && (() => {
-                // Find the index of the first NET column to place the label before it
+                // Find the index of the first NET column
                 const netColumnIds = ['carr_net', 'net', 'brokering_net'];
                 const firstNetIndex = effectiveColumns.findIndex(col => netColumnIds.includes(col.id));
-                const labelIndex = firstNetIndex > 0 ? firstNetIndex - 1 : -1;
                 
                 return (
                   <TableRow className="bg-muted/50 border-t-2">
-                    {effectiveColumns.map((column, colIdx) => {
-                      // Place "Weekly Total:" in the cell right before the first NET column
-                      if (colIdx === labelIndex) {
-                        return (
-                          <TableCell key={column.id} className="text-right font-semibold pr-2">
-                            Weekly Total:
-                          </TableCell>
-                        );
-                      }
-                      
+                    {/* Span all columns before the NET columns with the label */}
+                    {firstNetIndex > 0 && (
+                      <TableCell colSpan={firstNetIndex} className="text-right font-semibold pr-3">
+                        Weekly Total:
+                      </TableCell>
+                    )}
+                    {/* Render only the NET columns and remaining columns */}
+                    {effectiveColumns.slice(firstNetIndex).map((column) => {
                       if (column.id === 'carr_net') {
                         return (
                           <TableCell key={column.id} className="text-right px-2">
