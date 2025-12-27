@@ -613,14 +613,15 @@ export default function FleetFinancialsTab() {
     return value.toFixed(decimals);
   };
 
-  // Calculate weekly totals - only include days up to today
+  // Calculate weekly totals - sum the last 7 days
   const getWeeklyTotal = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
     const dailyInsurance = totals.dailyInsuranceRate;
     const today = startOfDay(new Date());
+    let daysProcessed = 0;
     
-    for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
+    for (let i = endIndex; i >= 0 && daysProcessed < 7; i--, daysProcessed++) {
       const dayDate = dailyData[i].date;
       const isFutureDate = isAfter(startOfDay(dayDate), today);
       
@@ -647,14 +648,15 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
-  // Calculate weekly Carrier NET totals - only include approved loads
+  // Calculate weekly Carrier NET totals - only include approved loads, sum last 7 days
   const getWeeklyCarrierNet = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
     const dailyInsurance = totals.dailyInsuranceRate;
     const today = startOfDay(new Date());
+    let daysProcessed = 0;
     
-    for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
+    for (let i = endIndex; i >= 0 && daysProcessed < 7; i--, daysProcessed++) {
       const dayDate = dailyData[i].date;
       const isFutureDate = isAfter(startOfDay(dayDate), today);
       
@@ -685,12 +687,13 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
-  // Calculate weekly Brokering NET totals - only include approved loads
+  // Calculate weekly Brokering NET totals - only include approved loads, sum last 7 days
   const getWeeklyBrokeringNet = (endIndex: number) => {
     let weekTotal = 0;
     const today = startOfDay(new Date());
+    let daysProcessed = 0;
     
-    for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
+    for (let i = endIndex; i >= 0 && daysProcessed < 7; i--, daysProcessed++) {
       const dayDate = dailyData[i].date;
       const isFutureDate = isAfter(startOfDay(dayDate), today);
       
