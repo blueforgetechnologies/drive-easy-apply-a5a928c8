@@ -743,52 +743,97 @@ export default function CarrierDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                  <span className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer">
-                    {carrier.contact_name || "Not Set"}
-                  </span>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">Contact</Label>
-                    <p className="text-sm font-medium">{carrier.contact_name || "—"}</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contact Name</Label>
+                    <Input 
+                      value={carrier.contact_name || ""} 
+                      onChange={(e) => updateField("contact_name", e.target.value)} 
+                      className="border-slate-200 focus:border-violet-500"
+                      placeholder="Enter contact name"
+                    />
                   </div>
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">Phone</Label>
-                    <p className="text-sm font-medium">{carrier.phone || "—"}</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label>
+                    <Input 
+                      value={carrier.phone || ""} 
+                      onChange={(e) => updateField("phone", e.target.value)} 
+                      className="border-slate-200 focus:border-violet-500"
+                      placeholder="Enter phone number"
+                    />
                   </div>
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">Email</Label>
-                    <p className="text-sm font-medium">{carrier.email || "—"}</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
+                    <Input 
+                      type="email"
+                      value={carrier.email || ""} 
+                      onChange={(e) => updateField("email", e.target.value)} 
+                      className="border-slate-200 focus:border-violet-500"
+                      placeholder="Enter email address"
+                    />
                   </div>
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">Pay Percentage</Label>
-                    <p className="text-sm font-medium">0%</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Percentage</Label>
+                    <Input 
+                      type="number"
+                      value={carrier.dun_bradstreet || "0"} 
+                      onChange={(e) => updateField("dun_bradstreet", e.target.value)} 
+                      className="border-slate-200 focus:border-violet-500"
+                      placeholder="Enter percentage"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <Label className="text-xs text-muted-foreground">Physical Address</Label>
-                  <p className="text-sm font-medium">{carrier.address || "—"}</p>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Physical Address</Label>
+                  <Input 
+                    value={carrier.address || ""} 
+                    onChange={(e) => updateField("address", e.target.value)} 
+                    className="border-slate-200 focus:border-violet-500"
+                    placeholder="Enter physical address"
+                  />
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">Auto Approve</Label>
-                    <p className="text-sm font-medium text-emerald-600">Yes</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Auto Approve</Label>
+                    <Select 
+                      value={carrier.personal_business || "yes"} 
+                      onValueChange={(value) => updateField("personal_business", value)}
+                    >
+                      <SelectTrigger className="border-slate-200 focus:border-violet-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">W9</Label>
-                    <p className="text-sm font-medium">—</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">W9</Label>
+                    <Input 
+                      value={carrier.mc_number || ""} 
+                      onChange={(e) => updateField("mc_number", e.target.value)} 
+                      className="border-slate-200 focus:border-violet-500"
+                      placeholder="W9 document"
+                    />
                   </div>
-                  <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">EIN</Label>
-                    <p className="text-sm font-medium">—</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">EIN</Label>
+                    <Input 
+                      value={carrier.dot_number || ""} 
+                      onChange={(e) => updateField("dot_number", e.target.value)} 
+                      className="border-slate-200 focus:border-violet-500"
+                      placeholder="Enter EIN"
+                    />
                   </div>
                 </div>
 
-                <Button className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600">
+                <Button 
+                  onClick={() => navigate("/dashboard/payees")}
+                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                >
                   Go to Payee Details
                 </Button>
               </CardContent>
