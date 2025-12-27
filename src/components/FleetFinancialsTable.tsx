@@ -1320,28 +1320,51 @@ export function FleetFinancialsTable({
               {/* Weekly Summary Row */}
               {day.isWeekEnd && (
                 <TableRow className="bg-muted/50 border-t-2">
-                  <TableCell colSpan={effectiveColumns.length - 4} className="text-right font-semibold pr-4">
-                    Weekly Total:
-                  </TableCell>
-                  <TableCell className="text-center px-2">
-                    <div className="text-[10px] text-muted-foreground font-medium">Carr Net</div>
-                    <div className={cn("font-bold text-sm", getWeeklyCarrierNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                      {formatCurrency(getWeeklyCarrierNet(index))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center px-2 border-l-2 border-orange-400/50 bg-orange-50/30 dark:bg-orange-900/10">
-                    <div className="text-[10px] text-muted-foreground font-medium">My Net</div>
-                    <div className={cn("font-bold text-sm", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                      {formatCurrency(getWeeklyTotal(index))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center px-2">
-                    <div className="text-[10px] text-muted-foreground font-medium">Broker Net</div>
-                    <div className={cn("font-bold text-sm", getWeeklyBrokeringNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
-                      {formatCurrency(getWeeklyBrokeringNet(index))}
-                    </div>
-                  </TableCell>
-                  <TableCell></TableCell>
+                  {effectiveColumns.map((column, colIdx) => {
+                    // Find the column right before carr_net, net, or brokering_net for the label
+                    const nextCol = effectiveColumns[colIdx + 1];
+                    const isLabelCell = nextCol && (nextCol.id === 'carr_net' || nextCol.id === 'net' || nextCol.id === 'brokering_net');
+                    
+                    if (isLabelCell) {
+                      return (
+                        <TableCell key={column.id} className="text-right font-semibold pr-2">
+                          Weekly Total:
+                        </TableCell>
+                      );
+                    }
+                    
+                    if (column.id === 'carr_net') {
+                      return (
+                        <TableCell key={column.id} className="text-right px-2">
+                          <span className={cn("font-bold", getWeeklyCarrierNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                            {formatCurrency(getWeeklyCarrierNet(index))}
+                          </span>
+                        </TableCell>
+                      );
+                    }
+                    
+                    if (column.id === 'net') {
+                      return (
+                        <TableCell key={column.id} className="text-right px-2">
+                          <span className={cn("font-bold", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                            {formatCurrency(getWeeklyTotal(index))}
+                          </span>
+                        </TableCell>
+                      );
+                    }
+                    
+                    if (column.id === 'brokering_net') {
+                      return (
+                        <TableCell key={column.id} className="text-right px-2">
+                          <span className={cn("font-bold", getWeeklyBrokeringNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                            {formatCurrency(getWeeklyBrokeringNet(index))}
+                          </span>
+                        </TableCell>
+                      );
+                    }
+                    
+                    return <TableCell key={column.id}></TableCell>;
+                  })}
                 </TableRow>
               )}
             </Fragment>
