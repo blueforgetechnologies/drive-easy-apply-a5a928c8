@@ -498,7 +498,7 @@ function CellValue({
       // Only show rental on first load of the day to avoid duplication
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {loadIndex === 0 ? formatCurrency(dailyRental) : "$0.00"}
+          {loadIndex === 0 ? formatCurrency(dailyRental) : ""}
         </TableCell>
       );
     case "rental_per_mile":
@@ -512,7 +512,7 @@ function CellValue({
       // Only show insurance on first load of the day to avoid duplication
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {loadIndex === 0 ? formatCurrency(dailyInsurance) : "$0.00"}
+          {loadIndex === 0 ? formatCurrency(dailyInsurance) : ""}
         </TableCell>
       );
     case "other":
