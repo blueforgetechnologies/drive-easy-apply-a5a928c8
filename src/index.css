@@ -322,6 +322,51 @@ All colors MUST be HSL.
     box-shadow: inset 1px 0 0 hsl(215 28% 35% / 0.4);
   }
   
+  /* ========== EXPENSE GROUP ORANGE RAILS ========== */
+  /* These rails mark the boundaries of expense columns */
+  
+  .expense-rail-left,
+  .expense-rail-right,
+  .expense-rail-both {
+    position: relative;
+  }
+  
+  /* Left rail - solid orange line on the left edge */
+  .expense-rail-left::before,
+  .expense-rail-both::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: hsl(var(--warning));
+    z-index: 40;
+    pointer-events: none;
+  }
+  
+  /* Right rail - solid orange line on the right edge */
+  .expense-rail-right::after,
+  .expense-rail-both::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 3px;
+    background: hsl(var(--warning));
+    z-index: 40;
+    pointer-events: none;
+  }
+  
+  /* Ensure rails appear above column line shadows */
+  .table-column-lines .expense-rail-left::before,
+  .table-column-lines .expense-rail-right::after,
+  .table-column-lines .expense-rail-both::before,
+  .table-column-lines .expense-rail-both::after {
+    z-index: 50;
+  }
+  
   .table-header-glossy {
     background: linear-gradient(180deg, hsl(221 83% 53% / 0.08) 0%, hsl(221 83% 53% / 0.12) 100%);
   }
