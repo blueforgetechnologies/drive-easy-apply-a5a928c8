@@ -311,7 +311,7 @@ function CellValue({
   const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
   const isBusinessDay = !isWeekend(day.date);
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-  const dailyInsurance = totals.dailyInsuranceRate;
+  const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
   const isToday = isSameDay(day.date, new Date());
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -672,7 +672,7 @@ function EmptyDayCellValue({
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const isBusinessDay = !isWeekend(day.date);
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-  const dailyInsurance = totals.dailyInsuranceRate;
+  const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
   const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
   const isToday = isSameDay(day.date, new Date());
   const dayName = format(day.date, "EEE");
