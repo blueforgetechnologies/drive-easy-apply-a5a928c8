@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { format, isSameDay, isWeekend } from "date-fns";
+import { format, isSameDay, isWeekend, isAfter, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ShieldCheck, AlertTriangle, GripVertical, Info } from "lucide-react";
 import { FleetColumn, useFleetColumns, DragPosition } from "@/hooks/useFleetColumns";
@@ -675,6 +675,7 @@ function EmptyDayCellValue({
   const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
   const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
   const isToday = isSameDay(day.date, new Date());
+  const isFutureDate = isAfter(startOfDay(day.date), startOfDay(new Date()));
   const dayName = format(day.date, "EEE");
   const dateStr = format(day.date, "MM/dd");
 
@@ -722,7 +723,7 @@ function EmptyDayCellValue({
     case "rental":
       return (
         <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {isBusinessDay && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
+          {isBusinessDay && !isFutureDate && dailyRental > 0 ? formatCurrency(dailyRental) : ""}
         </TableCell>
       );
     case "rental_per_mile":
@@ -731,7 +732,7 @@ function EmptyDayCellValue({
     case "insur":
       return (
         <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {isBusinessDay && dailyInsurance > 0 ? formatCurrency(dailyInsurance) : ""}
+          {isBusinessDay && !isFutureDate && dailyInsurance > 0 ? formatCurrency(dailyInsurance) : ""}
         </TableCell>
       );
     case "net":
