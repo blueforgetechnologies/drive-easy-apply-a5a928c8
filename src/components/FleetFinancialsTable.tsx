@@ -695,12 +695,14 @@ function EmptyDayCellValue({
   const expenseRailClass = getExpenseRailClass();
   
   // Calculate collapsed expenses total for empty days (only rental/insurance apply)
-  const collapsedExpenseTotal = 
+  // Only show collapsed expenses for dates up to today (not future dates)
+  const collapsedExpenseTotal = isFutureDate ? 0 : (
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
     (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
     (expenseGroupColumns.includes("net") ? emptyDayNet : 0) +
-    (expenseGroupColumns.includes("carr_net") ? emptyDayNet : 0);
+    (expenseGroupColumns.includes("carr_net") ? emptyDayNet : 0)
+  );
   switch (column.id) {
     case "truck_expense":
       return (
