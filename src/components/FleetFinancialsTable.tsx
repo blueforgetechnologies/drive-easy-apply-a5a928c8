@@ -310,8 +310,9 @@ function CellValue({
   const drvPay = getDriverPay(load);
   const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
   const isBusinessDay = !isWeekend(day.date);
-  const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-  const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
+  // Only apply daily costs (rental, insurance) to the first load of the day to avoid duplication
+  const dailyRental = isBusinessDay && loadIndex === 0 ? totals.dailyRentalRate : 0;
+  const dailyInsurance = isBusinessDay && loadIndex === 0 ? totals.dailyInsuranceRate : 0;
   const isToday = isSameDay(day.date, new Date());
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -494,8 +495,11 @@ function CellValue({
     case "tolls":
       return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>$0.00</TableCell>;
     case "rental":
+      // Only show rental on first load of the day to avoid duplication
       return (
-        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>{formatCurrency(dailyRental)}</TableCell>
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
+          {loadIndex === 0 ? formatCurrency(dailyRental) : "$0.00"}
+        </TableCell>
       );
     case "rental_per_mile":
       // RCPM = load's total miles × cents_per_mile (rental cost per mile)
@@ -505,9 +509,10 @@ function CellValue({
         </TableCell>
       );
     case "insur":
+      // Only show insurance on first load of the day to avoid duplication
       return (
         <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {formatCurrency(dailyInsurance)}
+          {loadIndex === 0 ? formatCurrency(dailyInsurance) : "$0.00"}
         </TableCell>
       );
     case "other":
