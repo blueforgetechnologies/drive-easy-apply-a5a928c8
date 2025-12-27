@@ -449,9 +449,9 @@ export default function FleetFinancialsTab() {
     // Total rental for the month
     rental = vehicleMonthlyPayment;
     
-    // Calculate daily insurance rate from vehicle's monthly insurance cost
+    // Calculate daily insurance rate from vehicle's monthly insurance cost (using business days like RCPD)
     const vehicleInsuranceCost = selectedVehicle?.insurance_cost_per_month || 0;
-    const dailyInsuranceRate = daysInMonth > 0 ? vehicleInsuranceCost / daysInMonth : 0;
+    const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
     
     insuranceCost = vehicleInsuranceCost;
     other = DAILY_OTHER_COST * daysInMonth;
