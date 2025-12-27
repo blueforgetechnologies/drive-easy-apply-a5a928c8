@@ -566,7 +566,8 @@ function CellValue({
                 </>
               ) : (
                 <>
-                  <span className="text-orange-600 font-bold">$0.00</span>
+                  {/* Approval required: show DB-stored calculated carrier pay (e.g. contractor %), keep LA badge */}
+                  <span className="text-orange-600 font-bold">{formatCurrency(carrierPayAmount)}</span>
                   <Badge
                     variant="outline"
                     className="text-[8px] px-0.5 py-0 scale-[0.85] bg-amber-50 text-amber-700 border-amber-300 cursor-pointer hover:bg-amber-100"
