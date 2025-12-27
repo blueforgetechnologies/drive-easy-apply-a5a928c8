@@ -1098,23 +1098,8 @@ const LoadEmailDetail = ({
       });
 
       // Notify parent that bid was placed - move to MY BIDS and skip siblings
-      console.log('🔍 Checking onBidPlaced condition:', { 
-        hasOnBidPlaced: !!onBidPlaced, 
-        matchId: match?.id, 
-        emailId: email?.id,
-        fullEmailId: fullEmailData?.id 
-      });
-      if (onBidPlaced && match?.id && (email?.id || fullEmailData?.id)) {
-        const emailIdToUse = email?.id || fullEmailData?.id;
-        console.log('✅ Calling onBidPlaced with:', match.id, emailIdToUse, bidRateNum);
-        onBidPlaced(match.id, emailIdToUse, bidRateNum);
-      } else {
-        console.warn('⚠️ onBidPlaced not called - missing:', { 
-          onBidPlaced: !!onBidPlaced, 
-          matchId: match?.id, 
-          emailId: email?.id,
-          fullEmailId: fullEmailData?.id 
-        });
+      if (onBidPlaced && match?.id && email?.id) {
+        onBidPlaced(match.id, email.id, bidRateNum);
       }
       
       // Close the email builder and return to parent view
