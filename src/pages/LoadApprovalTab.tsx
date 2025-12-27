@@ -966,23 +966,15 @@ export default function LoadApprovalTab() {
                           ${customerRatePerMile.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex flex-col items-end gap-0.5">
-                            {/* Show old approved payload with strikethrough if payload changed */}
-                            {payloadChanged && load.approved_payload !== null && (
-                              <span className="text-xs font-bold text-red-600 line-through pr-1">
-                                ${load.approved_payload.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                            )}
-                            <div className="relative w-20">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm">$</span>
-                              <Input
-                                type="number"
-                                value={payloadRates[load.id] ?? load.rate ?? ""}
-                                onChange={(e) => handlePayloadChange(load.id, e.target.value)}
-                                className="w-20 h-7 text-sm text-right font-bold pl-5 !shadow-none"
-                                placeholder="0.00"
-                              />
-                            </div>
+                          <div className="relative w-20">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-sm">$</span>
+                            <Input
+                              type="number"
+                              value={payloadRates[load.id] ?? load.rate ?? ""}
+                              onChange={(e) => handlePayloadChange(load.id, e.target.value)}
+                              className="w-20 h-7 text-sm text-right font-bold pl-5 !shadow-none"
+                              placeholder="0.00"
+                            />
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
