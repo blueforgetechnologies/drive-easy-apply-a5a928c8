@@ -1160,7 +1160,7 @@ export default function LoadApprovalTab() {
                           <TableCell className={cn("text-[10px]", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{formatInTimeZone(date, timezone, "MM/dd/yyyy")}</TableCell>
                           <TableCell colSpan={9}></TableCell>
                           <TableCell className="text-right font-bold text-xs">
-                            {isWeekEnd ? `$${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ""}
+                            {isWeekEnd ? `$${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""}
                           </TableCell>
                         </TableRow>
                       );
@@ -1199,18 +1199,18 @@ export default function LoadApprovalTab() {
                             {load.pickup_state}→{load.delivery_state}
                           </TableCell>
                           <TableCell className="text-[10px] text-right">${(load.rate || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-[10px] text-right">{load.empty_miles || 0}</TableCell>
-                          <TableCell className="text-[10px] text-right">{load.estimated_miles || 0}</TableCell>
-                          <TableCell className="text-[10px] text-right">{totalMiles}</TableCell>
+                          <TableCell className="text-[10px] text-right">{Math.round(load.empty_miles || 0)}</TableCell>
+                          <TableCell className="text-[10px] text-right">{Math.round(load.estimated_miles || 0)}</TableCell>
+                          <TableCell className="text-[10px] text-right">{Math.round(totalMiles)}</TableCell>
                           <TableCell className="text-[10px] text-right">${ratePerMile.toFixed(2)}</TableCell>
                           <TableCell className="text-[10px] text-right text-green-600 font-medium">
-                            ${carrierPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            ${carrierPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-[10px] text-right">${carrierRatePerMile.toFixed(2)}</TableCell>
                           <TableCell className="text-[10px] text-right font-bold">
                             {isWeekEnd && loadIndex === dayLoads.length - 1 
-                              ? `$${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                              : `$${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                              ? `$${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : `$${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             }
                           </TableCell>
                         </TableRow>
