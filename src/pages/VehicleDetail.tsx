@@ -1059,8 +1059,8 @@ export default function VehicleDetail() {
 
           {/* Financial Tab */}
           <TabsContent value="financial" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
-              {/* Combined Ownership & Costs Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Ownership & Costs */}
               <Card className="border-l-4 border-l-rose-500 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-rose-600">
@@ -1068,46 +1068,43 @@ export default function VehicleDetail() {
                     Ownership & Costs
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Truck Type Section */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* My Truck Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">My Truck</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Company-owned or operated. Shows "My Net" column in Fleet$ and hides Carrier Net and Brokering Net columns.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={formData.truck_type === 'my_truck' || !formData.truck_type}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setPendingTruckType('my_truck');
-                            setTruckTypeWarningOpen(true);
-                          }
-                        }}
-                      />
+                <CardContent className="space-y-4">
+                  {/* My Truck Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium">My Truck</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Company-owned or operated. Shows "My Net" column in Fleet$ and hides Carrier Net and Brokering Net columns.
+                      </p>
                     </div>
+                    <Switch
+                      checked={formData.truck_type === 'my_truck' || !formData.truck_type}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setPendingTruckType('my_truck');
+                          setTruckTypeWarningOpen(true);
+                        }
+                      }}
+                    />
+                  </div>
 
-                    {/* Contractor's Truck Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">Contractor's Truck</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Third-party contractor equipment. Shows "Carrier Net" and "Brokering Net" columns in Fleet$ and hides My Net column.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={formData.truck_type === 'contractor_truck'}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setPendingTruckType('contractor_truck');
-                            setTruckTypeWarningOpen(true);
-                          }
-                        }}
-                      />
+                  {/* Contractor's Truck Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium">Contractor's Truck</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Third-party contractor equipment. Shows "Carrier Net" and "Brokering Net" columns in Fleet$ and hides My Net column.
+                      </p>
                     </div>
+                    <Switch
+                      checked={formData.truck_type === 'contractor_truck'}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setPendingTruckType('contractor_truck');
+                          setTruckTypeWarningOpen(true);
+                        }
+                      }}
+                    />
                   </div>
 
                   {/* Contractor's Truck Options - only shown when Contractor's Truck is selected */}
@@ -1155,118 +1152,120 @@ export default function VehicleDetail() {
                     </div>
                   )}
 
-                  {/* Divider - Asset Cost */}
+                </CardContent>
+              </Card>
+
+              {/* Asset Cost */}
+              <Card className="border-l-4 border-l-violet-500 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-violet-600">
+                    <DollarSign className="w-5 h-5" />
+                    Asset Cost
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Ownership Type</Label>
+                    <RadioGroup value={formData.asset_ownership || 'owned'} onValueChange={(value) => updateField('asset_ownership', value)} className="flex gap-4">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="owned" id="owned" />
+                        <Label htmlFor="owned">Owned</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="financed" id="financed" />
+                        <Label htmlFor="financed">Financed</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="leased" id="leased" />
+                        <Label htmlFor="leased">Leased</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {(formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Monthly Payment</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={formData.monthly_payment || ''} 
+                        onChange={(e) => updateField('monthly_payment', e.target.value)} 
+                        placeholder="0.00"
+                      />
+                    </div>
+                  )}
+
+                  {formData.asset_ownership === 'leased' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Payment</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.weekly_payment || ''} 
+                          onChange={(e) => updateField('weekly_payment', e.target.value)} 
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">$ per Mile</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.cents_per_mile || ''} 
+                          onChange={(e) => updateField('cents_per_mile', e.target.value)} 
+                          placeholder="0.20"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Divider */}
                   <div className="relative py-2">
                     <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-rose-200 dark:border-rose-800" />
+                      <span className="w-full border-t border-violet-200 dark:border-violet-800" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Asset Cost</span>
+                      <span className="bg-card px-2 text-muted-foreground">Recurring Costs</span>
                     </div>
                   </div>
 
-                  {/* Ownership Type & Payments */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Ownership Type</Label>
-                        <RadioGroup value={formData.asset_ownership || 'owned'} onValueChange={(value) => updateField('asset_ownership', value)} className="flex gap-4">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="owned" id="owned" />
-                            <Label htmlFor="owned">Owned</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="financed" id="financed" />
-                            <Label htmlFor="financed">Financed</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="leased" id="leased" />
-                            <Label htmlFor="leased">Leased</Label>
-                          </div>
-                        </RadioGroup>
+                  {/* Insurance Cost with icon */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-100 dark:border-violet-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-violet-100 dark:bg-violet-900">
+                        <Shield className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                       </div>
-
-                      {(formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
-                        <div className="space-y-2">
-                          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Monthly Payment</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={formData.monthly_payment || ''} 
-                            onChange={(e) => updateField('monthly_payment', e.target.value)} 
-                            placeholder="0.00"
-                          />
-                        </div>
-                      )}
-
-                      {formData.asset_ownership === 'leased' && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Payment</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={formData.weekly_payment || ''} 
-                              onChange={(e) => updateField('weekly_payment', e.target.value)} 
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">$ per Mile</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={formData.cents_per_mile || ''} 
-                              onChange={(e) => updateField('cents_per_mile', e.target.value)} 
-                              placeholder="0.20"
-                            />
-                          </div>
-                        </div>
-                      )}
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.insurance_cost_per_month || ''} 
+                          onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} 
+                          placeholder="1700" 
+                          className="bg-background"
+                        />
+                      </div>
                     </div>
+                  </div>
 
-                    {/* Recurring Costs */}
-                    <div className="space-y-4">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Recurring Costs</Label>
-                      
-                      {/* Insurance Cost with icon */}
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-100 dark:border-violet-800">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-violet-100 dark:bg-violet-900">
-                            <Shield className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={formData.insurance_cost_per_month || ''} 
-                              onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} 
-                              placeholder="1700" 
-                              className="bg-background"
-                            />
-                          </div>
-                        </div>
+                  {/* Fuel Rate with icon */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-100 dark:border-amber-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
+                        <Gauge className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                       </div>
-
-                      {/* Fuel Rate with icon */}
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-100 dark:border-amber-800">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
-                            <Gauge className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Rate ($/gallon)</Label>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={formData.fuel_per_gallon || ''} 
-                              onChange={(e) => updateField('fuel_per_gallon', e.target.value)} 
-                              placeholder="7.50" 
-                              className="bg-background"
-                            />
-                          </div>
-                        </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Rate ($/gallon)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.fuel_per_gallon || ''} 
+                          onChange={(e) => updateField('fuel_per_gallon', e.target.value)} 
+                          placeholder="7.50" 
+                          className="bg-background"
+                        />
                       </div>
                     </div>
                   </div>
