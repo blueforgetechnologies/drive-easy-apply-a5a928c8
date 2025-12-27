@@ -1114,20 +1114,18 @@ export default function LoadApprovalTab() {
               <Table>
                 <TableHeader className="bg-card [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-card">
                   <TableRow className="border-b shadow-sm">
-                    <TableHead className="text-xs w-12"></TableHead>
-                    <TableHead className="text-xs w-24">P/U Date</TableHead>
-                    <TableHead className="text-xs">Customer</TableHead>
-                    <TableHead className="text-xs">Location</TableHead>
-                    <TableHead className="text-xs text-right">Pay Load</TableHead>
-                    <TableHead className="text-xs text-right">Empty Miles</TableHead>
-                    <TableHead className="text-xs text-right">Loaded Miles</TableHead>
-                    <TableHead className="text-xs text-right">Total Miles</TableHead>
-                    <TableHead className="text-xs text-right">$/Mile</TableHead>
-                    <TableHead className="text-xs text-right">Other Cost</TableHead>
-                    <TableHead className="text-xs text-right text-green-600">Carrier Pay</TableHead>
-                    <TableHead className="text-xs text-right">Carrier $/Mile</TableHead>
-                    <TableHead className="text-xs text-right">Carrier Net</TableHead>
-                    <TableHead className="text-xs text-right font-bold">Carrier Total Net</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide w-10"></TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide w-20">P/U Date</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide">Customer</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide">Location</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Pay Load</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Empty Miles</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Loaded Miles</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Total Miles</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right">$/Mile</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right text-green-600">Carrier Pay</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right">Carrier $/Mile</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide text-right font-bold">Carrier Net</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1155,15 +1153,12 @@ export default function LoadApprovalTab() {
                             isWeekEnd && "border-b-2"
                           )}
                         >
-                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{isToday ? "Today" : dayName}</TableCell>
-                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{formatInTimeZone(date, timezone, "MM/dd/yyyy")}</TableCell>
-                          <TableCell colSpan={11}></TableCell>
-                          {isWeekEnd && (
-                            <TableCell className="text-right font-bold text-sm">
-                              ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </TableCell>
-                          )}
-                          {!isWeekEnd && <TableCell></TableCell>}
+                          <TableCell className={cn("text-[10px]", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{isToday ? "Today" : dayName}</TableCell>
+                          <TableCell className={cn("text-[10px]", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>{formatInTimeZone(date, timezone, "MM/dd/yyyy")}</TableCell>
+                          <TableCell colSpan={9}></TableCell>
+                          <TableCell className="text-right font-bold text-xs">
+                            {isWeekEnd ? `$${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ""}
+                          </TableCell>
                         </TableRow>
                       );
                     }
@@ -1188,36 +1183,33 @@ export default function LoadApprovalTab() {
                             isSelectedLoad && "!bg-none !bg-green-200 dark:!bg-green-800/40 ring-2 ring-green-500/50 ring-inset"
                           )}
                         >
-                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
+                          <TableCell className={cn("text-[10px]", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
                             {loadIndex === 0 ? (isToday ? "Today" : dayName) : ""}
                           </TableCell>
-                          <TableCell className={cn("text-xs", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
+                          <TableCell className={cn("text-[10px]", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
                             {loadIndex === 0 ? formatInTimeZone(date, timezone, "MM/dd/yyyy") : ""}
                           </TableCell>
-                          <TableCell className="text-xs max-w-[120px]">
+                          <TableCell className="text-[10px] max-w-[100px]">
                             <div className="truncate" title={load.customer?.name || load.broker_name || "-"}>{load.customer?.name || load.broker_name || "-"}</div>
                           </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {load.pickup_state} to {load.delivery_state}
+                          <TableCell className="text-[10px] whitespace-nowrap">
+                            {load.pickup_state}→{load.delivery_state}
                           </TableCell>
-                          <TableCell className="text-xs text-right">${(load.rate || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-xs text-right">{load.empty_miles || 0}</TableCell>
-                          <TableCell className="text-xs text-right">{load.estimated_miles || 0}</TableCell>
-                          <TableCell className="text-xs text-right">{totalMiles}</TableCell>
-                          <TableCell className="text-xs text-right">${ratePerMile.toFixed(2)}</TableCell>
-                          <TableCell className="text-xs text-right">$0.00</TableCell>
-                          <TableCell className="text-xs text-right text-green-600 font-medium">
+                          <TableCell className="text-[10px] text-right">${(load.rate || 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-[10px] text-right">{load.empty_miles || 0}</TableCell>
+                          <TableCell className="text-[10px] text-right">{load.estimated_miles || 0}</TableCell>
+                          <TableCell className="text-[10px] text-right">{totalMiles}</TableCell>
+                          <TableCell className="text-[10px] text-right">${ratePerMile.toFixed(2)}</TableCell>
+                          <TableCell className="text-[10px] text-right text-green-600 font-medium">
                             ${carrierPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </TableCell>
-                          <TableCell className="text-xs text-right">${carrierRatePerMile.toFixed(2)}</TableCell>
-                          <TableCell className="text-xs text-right">${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                          {isWeekEnd && loadIndex === dayLoads.length - 1 ? (
-                            <TableCell className="text-right font-bold text-sm">
-                              ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </TableCell>
-                          ) : (
-                            <TableCell></TableCell>
-                          )}
+                          <TableCell className="text-[10px] text-right">${carrierRatePerMile.toFixed(2)}</TableCell>
+                          <TableCell className="text-[10px] text-right font-bold">
+                            {isWeekEnd && loadIndex === dayLoads.length - 1 
+                              ? `$${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                              : `$${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                            }
+                          </TableCell>
                         </TableRow>
                       );
                     });
