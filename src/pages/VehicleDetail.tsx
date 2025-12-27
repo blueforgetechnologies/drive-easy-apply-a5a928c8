@@ -1107,22 +1107,48 @@ export default function VehicleDetail() {
                     />
                   </div>
 
-                  {/* Contractor's Percentage - only shown when Contractor's Truck is selected */}
+                  {/* Contractor's Truck Options - only shown when Contractor's Truck is selected */}
                   {formData.truck_type === 'contractor_truck' && (
-                    <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contractor's Percentage</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={formData.contractor_percentage || ''} 
-                        onChange={(e) => updateField('contractor_percentage', e.target.value)} 
-                        placeholder="0.00"
-                      />
-                      <p className="text-xs text-amber-700 dark:text-amber-400">
-                        This is a percentage of the load that your Contractor keeps for himself.
-                      </p>
+                    <div className="space-y-4 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contractor's Percentage</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={formData.contractor_percentage || ''} 
+                          onChange={(e) => updateField('contractor_percentage', e.target.value)} 
+                          placeholder="0.00"
+                        />
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          This is a percentage of the load that your Contractor keeps for himself.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-amber-200 dark:border-amber-700">
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium">Require Load Approval</Label>
+                          <p className="text-xs text-muted-foreground">
+                            When enabled, loads assigned to this vehicle will not appear in the Carrier's Dashboard
+                            until they are approved from the Load Approval screen.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={formData.requires_load_approval || false}
+                          onCheckedChange={(checked) => updateField('requires_load_approval', checked)}
+                        />
+                      </div>
+                      
+                      {formData.requires_load_approval && (
+                        <div className="p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-lg">
+                          <p className="text-xs text-amber-800 dark:text-amber-200">
+                            <strong>Note:</strong> Loads assigned to this vehicle will require manual approval before
+                            they become visible to the carrier. Use the Load Approval screen to set the carrier rate
+                            and approve each load.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1191,42 +1217,6 @@ export default function VehicleDetail() {
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
                     <Input type="number" step="0.01" value={formData.insurance_cost_per_month || ''} onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} placeholder="1700" />
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Load Approval Settings */}
-              <Card className="border-l-4 border-l-amber-500 shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-amber-600">
-                    <DollarSign className="w-5 h-5" />
-                    Carrier Visibility Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div className="space-y-1">
-                      <Label className="text-sm font-medium">Require Load Approval</Label>
-                      <p className="text-xs text-muted-foreground">
-                        When enabled, loads assigned to this vehicle will not appear in the Carrier's Dashboard
-                        until they are approved from the Load Approval screen. This allows you to adjust the
-                        carrier rate before making the load visible.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={formData.requires_load_approval || false}
-                      onCheckedChange={(checked) => updateField('requires_load_approval', checked)}
-                    />
-                  </div>
-                  
-                  {formData.requires_load_approval && (
-                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                      <p className="text-xs text-amber-800 dark:text-amber-200">
-                        <strong>Note:</strong> Loads assigned to this vehicle will require manual approval before
-                        they become visible to the carrier. Use the Load Approval screen to set the carrier rate
-                        and approve each load.
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
