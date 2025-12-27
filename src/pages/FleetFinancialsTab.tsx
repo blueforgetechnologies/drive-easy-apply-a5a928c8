@@ -647,7 +647,7 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
-  // Calculate weekly Carrier NET totals
+  // Calculate weekly Carrier NET totals - only include approved loads
   const getWeeklyCarrierNet = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
@@ -665,6 +665,9 @@ export default function FleetFinancialsTab() {
       const dayRentalCost = isBusinessDay ? dailyRental : 0;
       
       dailyData[i].loads.forEach((load, loadIndex) => {
+        // Only include approved loads in Carrier NET calculation
+        if (load.carrier_approved !== true) return;
+        
         const carrierPayAmount = load.carrier_rate || load.rate || 0;
         const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
         const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
@@ -682,7 +685,7 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
-  // Calculate weekly Brokering NET totals
+  // Calculate weekly Brokering NET totals - only include approved loads
   const getWeeklyBrokeringNet = (endIndex: number) => {
     let weekTotal = 0;
     const today = startOfDay(new Date());
@@ -695,6 +698,9 @@ export default function FleetFinancialsTab() {
       if (isFutureDate) continue;
       
       dailyData[i].loads.forEach(load => {
+        // Only include approved loads in Brokering NET calculation
+        if (load.carrier_approved !== true) return;
+        
         const rate = load.rate || 0;
         const carrierPayAmount = load.carrier_rate || rate;
         const factoring = rate * (factoringPercentage / 100);
