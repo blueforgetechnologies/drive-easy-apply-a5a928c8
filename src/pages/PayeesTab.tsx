@@ -72,6 +72,10 @@ export default function PayeesTab() {
   const [addMode, setAddMode] = useState<"new" | "existing">("new");
   const [selectedSourceType, setSelectedSourceType] = useState<"dispatcher" | "driver">("dispatcher");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedPayee, setSelectedPayee] = useState<Payee | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<Payee>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const ROWS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -232,6 +236,60 @@ export default function PayeesTab() {
 
       if (error) throw error;
       toast.success("Payee deleted successfully");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete payee: " + error.message);
+    }
+  };
+
+  const handleOpenPayeeDetail = (payee: Payee) => {
+    setSelectedPayee(payee);
+    setEditFormData({
+      name: payee.name,
+      type: payee.type || "",
+      payment_method: payee.payment_method || "",
+      bank_name: payee.bank_name || "",
+      account_number: payee.account_number || "",
+      routing_number: payee.routing_number || "",
+      email: payee.email || "",
+      phone: payee.phone || "",
+      address: payee.address || "",
+      status: payee.status,
+    });
+    setDetailDialogOpen(true);
+  };
+
+  const handleSavePayee = async () => {
+    if (!selectedPayee) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("payees" as any)
+        .update(editFormData)
+        .eq("id", selectedPayee.id);
+
+      if (error) throw error;
+      toast.success("Payee updated successfully");
+      setDetailDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to update payee: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePayeeFromDetail = async () => {
+    if (!selectedPayee) return;
+    try {
+      const { error } = await supabase
+        .from("payees" as any)
+        .delete()
+        .eq("id", selectedPayee.id);
+
+      if (error) throw error;
+      toast.success("Payee deleted successfully");
+      setDetailDialogOpen(false);
       loadData();
     } catch (error: any) {
       toast.error("Failed to delete payee: " + error.message);
@@ -700,7 +758,11 @@ export default function PayeesTab() {
               </TableHeader>
               <TableBody>
                 {paginatedPayees.map((payee) => (
-                  <TableRow key={payee.id} className="h-10 cursor-pointer hover:bg-muted/50">
+                  <TableRow 
+                    key={payee.id} 
+                    className="h-10 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleOpenPayeeDetail(payee)}
+                  >
                     <TableCell className="py-1 px-2 font-medium">{payee.name}</TableCell>
                     <TableCell className="py-1 px-2">{payee.type || "N/A"}</TableCell>
                     <TableCell className="py-1 px-2">{payee.payment_method || "N/A"}</TableCell>
@@ -708,51 +770,24 @@ export default function PayeesTab() {
                     <TableCell className="py-1 px-2">{payee.email || "N/A"}</TableCell>
                     <TableCell className="py-1 px-2">{payee.phone || "N/A"}</TableCell>
                     <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <div className={`w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs ${
-                          payee.status === "active" 
-                            ? "bg-green-600" 
-                            : payee.status === "pending"
-                            ? "bg-orange-500"
-                            : "bg-gray-500"
-                        }`}>
-                          0
-                        </div>
-                        <Select
-                          value={payee.status}
-                          onValueChange={(value) => handleStatusChange(payee.id, value)}
-                        >
-                          <SelectTrigger className={`w-[80px] h-6 text-sm px-1 ${
-                            payee.status === "active"
-                              ? "bg-green-100 text-green-800 border-green-200"
-                              : payee.status === "pending"
-                              ? "bg-orange-100 text-orange-800 border-orange-200"
-                              : "bg-gray-100 text-gray-800 border-gray-200"
-                          }`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active" className="text-sm">Active</SelectItem>
-                            <SelectItem value="pending" className="text-sm">Pending</SelectItem>
-                            <SelectItem value="inactive" className="text-sm">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <Badge variant="outline" className={cn(
+                        "text-xs",
+                        payee.status === "active" && "bg-green-100 text-green-800 border-green-200",
+                        payee.status === "pending" && "bg-orange-100 text-orange-800 border-orange-200",
+                        payee.status === "inactive" && "bg-gray-100 text-gray-800 border-gray-200"
+                      )}>
+                        {payee.status}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="py-1 px-2">
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-6 w-6">
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6"
-                          onClick={() => handleDeletePayee(payee.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                    <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6"
+                        onClick={() => handleOpenPayeeDetail(payee)}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -790,6 +825,179 @@ export default function PayeesTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payee Detail Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <span className="block">{selectedPayee?.name || "Payee Details"}</span>
+                <Badge variant="outline" className={cn(
+                  "text-xs mt-1",
+                  editFormData.status === "active" && "bg-green-100 text-green-800 border-green-200",
+                  editFormData.status === "pending" && "bg-orange-100 text-orange-800 border-orange-200",
+                  editFormData.status === "inactive" && "bg-gray-100 text-gray-800 border-gray-200"
+                )}>
+                  {editFormData.status}
+                </Badge>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Basic Info Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                <User className="h-4 w-4" />
+                Basic Information
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-name">Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editFormData.name || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-type">Type</Label>
+                  <Input
+                    id="edit-type"
+                    value={editFormData.type || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value })}
+                    placeholder="e.g., Driver, Dispatcher"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editFormData.email || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-phone">Phone</Label>
+                  <Input
+                    id="edit-phone"
+                    value={editFormData.phone || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="edit-address">Address</Label>
+                  <Input
+                    id="edit-address"
+                    value={editFormData.address || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select 
+                    value={editFormData.status || "active"} 
+                    onValueChange={(v) => setEditFormData({ ...editFormData, status: v })}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Info Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                <CreditCard className="h-4 w-4" />
+                Payment Information
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-payment-method">Payment Method</Label>
+                  <Select 
+                    value={editFormData.payment_method || "direct_deposit"} 
+                    onValueChange={(v) => setEditFormData({ ...editFormData, payment_method: v })}
+                  >
+                    <SelectTrigger id="edit-payment-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct_deposit">Direct Deposit</SelectItem>
+                      <SelectItem value="check">Check</SelectItem>
+                      <SelectItem value="wire">Wire Transfer</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-bank">Bank Name</Label>
+                  <Input
+                    id="edit-bank"
+                    value={editFormData.bank_name || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, bank_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-routing">Routing Number</Label>
+                  <Input
+                    id="edit-routing"
+                    value={editFormData.routing_number || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, routing_number: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-account">Account Number</Label>
+                  <Input
+                    id="edit-account"
+                    value={editFormData.account_number || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, account_number: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleDeletePayeeFromDetail}
+              className="gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setDetailDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSavePayee}
+                disabled={isSaving}
+                className="gap-1.5"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
