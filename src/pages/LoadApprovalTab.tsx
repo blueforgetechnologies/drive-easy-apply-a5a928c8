@@ -1119,7 +1119,7 @@ export default function LoadApprovalTab() {
                   <TableRow className="border-b shadow-sm">
                     <TableHead className="text-[10px] uppercase tracking-wide px-1 w-8"></TableHead>
                     <TableHead className="text-[10px] uppercase tracking-wide px-1 w-16">P/U Date</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide px-1 max-w-[80px]">Customer</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wide px-1 w-[120px]">Customer</TableHead>
                     <TableHead className="text-[10px] uppercase tracking-wide px-1 w-14">Location</TableHead>
                     <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-14">Pay Load</TableHead>
                     <TableHead className="text-[10px] uppercase tracking-wide px-1 text-right w-12">Empty</TableHead>
@@ -1192,7 +1192,7 @@ export default function LoadApprovalTab() {
                           <TableCell className={cn("text-[10px]", isToday ? "text-green-600 font-bold" : isWeekendDay && "text-red-600")}>
                             {loadIndex === 0 ? formatInTimeZone(date, timezone, "MM/dd/yyyy") : ""}
                           </TableCell>
-                          <TableCell className="text-[10px] max-w-[100px]">
+                          <TableCell className="text-[10px] w-[120px]">
                             <div className="truncate" title={load.customer?.name || load.broker_name || "-"}>
                               {((load.customer?.name || load.broker_name || "-").length > 18 
                                 ? (load.customer?.name || load.broker_name || "-").slice(0, 18) + "..." 
