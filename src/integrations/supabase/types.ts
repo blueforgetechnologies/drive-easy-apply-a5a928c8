@@ -2141,6 +2141,7 @@ export type Database = {
           equipment_type: string | null
           estimated_miles: number | null
           eta: string | null
+          external_truck_reference: string | null
           financial_status: string | null
           fuel_surcharge: number | null
           hazmat: boolean | null
@@ -2266,6 +2267,7 @@ export type Database = {
           equipment_type?: string | null
           estimated_miles?: number | null
           eta?: string | null
+          external_truck_reference?: string | null
           financial_status?: string | null
           fuel_surcharge?: number | null
           hazmat?: boolean | null
@@ -2391,6 +2393,7 @@ export type Database = {
           equipment_type?: string | null
           estimated_miles?: number | null
           eta?: string | null
+          external_truck_reference?: string | null
           financial_status?: string | null
           fuel_surcharge?: number | null
           hazmat?: boolean | null

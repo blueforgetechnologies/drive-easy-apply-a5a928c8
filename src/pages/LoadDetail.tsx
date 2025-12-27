@@ -219,6 +219,7 @@ export default function LoadDetail() {
           settlement_status: load.settlement_status,
           assigned_driver_id: load.assigned_driver_id,
           assigned_vehicle_id: load.assigned_vehicle_id,
+          external_truck_reference: load.external_truck_reference,
           assigned_dispatcher_id: load.assigned_dispatcher_id,
           load_owner_id: load.load_owner_id,
           carrier_id: load.carrier_id,
@@ -1442,25 +1443,34 @@ export default function LoadDetail() {
               </CardHeader>
               <CardContent className="pt-2 pb-2.5 px-3">
                 <div className="grid md:grid-cols-4 gap-3">
-                  {/* Carrier - Auto-set from vehicle, disabled when vehicle is selected */}
+                  {/* Carrier - Always selectable, but auto-set when vehicle is selected */}
                   <div>
                     <Label className="text-[10px] font-medium text-muted-foreground">Carrier</Label>
                     <div className="flex gap-1">
                       <Select 
                         value={load.carrier_id || ""} 
-                        onValueChange={(value) => updateField("carrier_id", value)}
-                        disabled={!!load.assigned_vehicle_id}
+                        onValueChange={(value) => {
+                          updateField("carrier_id", value);
+                          // Clear vehicle selection when carrier changes manually
+                          // (user might be switching to a carrier without vehicles)
+                          if (load.assigned_vehicle_id) {
+                            const currentVehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
+                            // Only clear if the new carrier doesn't match the vehicle's carrier
+                            if (currentVehicle?.carrier !== value) {
+                              updateField("assigned_vehicle_id", null);
+                              updateField("assigned_driver_id", null);
+                            }
+                          }
+                        }}
                       >
-                        <SelectTrigger className={`h-7 text-xs ${load.assigned_vehicle_id ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                        <SelectTrigger className="h-7 text-xs">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent className="bg-background z-50">
                           {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      {!load.assigned_vehicle_id && (
-                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
-                      )}
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
                     </div>
                     {load.carrier_id && (() => {
                       const carrier = carriers.find(c => c.id === load.carrier_id);
@@ -1471,44 +1481,68 @@ export default function LoadDetail() {
                         </div>
                       ) : null;
                     })()}
-                    {load.assigned_vehicle_id && (
-                      <p className="text-[9px] text-muted-foreground mt-0.5">Set by vehicle</p>
-                    )}
                   </div>
 
-                  {/* Vehicle */}
+                  {/* Vehicle - Show dropdown if carrier has vehicles, otherwise show text input */}
                   <div className="space-y-1.5">
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">Truck ID / Vehicle</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
-                          updateField("assigned_vehicle_id", value);
-                          // Auto-select driver assigned to this vehicle, or N/A if none
-                          const selectedVehicle = vehicles.find((v) => v.id === value);
-                          if (selectedVehicle?.driver_1_id) {
-                            updateField("assigned_driver_id", selectedVehicle.driver_1_id);
-                          } else {
-                            updateField("assigned_driver_id", null);
-                          }
-                          // Auto-populate equipment type from vehicle if blank (e.g. "24' Large Straight")
-                          if (!load.equipment_type && selectedVehicle) {
-                            const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
-                            const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
-                            updateField("equipment_type", `${sizePrefix}${vehicleType}`);
-                          }
-                          // Auto-set carrier from vehicle's carrier
-                          if (selectedVehicle?.carrier) {
-                            updateField("carrier_id", selectedVehicle.carrier);
-                          }
-                        }}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background">
-                            {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
-                        <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
-                      </div>
+                      {(() => {
+                        // Get vehicles for the selected carrier
+                        const carrierVehicles = load.carrier_id 
+                          ? vehicles.filter(v => v.carrier === load.carrier_id)
+                          : vehicles;
+                        const hasCarrierVehicles = carrierVehicles.length > 0;
+                        
+                        // Show text input if carrier is selected but has no vehicles
+                        if (load.carrier_id && !hasCarrierVehicles) {
+                          return (
+                            <div className="flex gap-1">
+                              <Input
+                                value={load.external_truck_reference || ""}
+                                onChange={(e) => updateField("external_truck_reference", e.target.value)}
+                                placeholder="Enter truck reference"
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                          );
+                        }
+                        
+                        // Show vehicle dropdown (filtered by carrier if one is selected)
+                        return (
+                          <div className="flex gap-1">
+                            <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
+                              updateField("assigned_vehicle_id", value);
+                              // Clear external reference when selecting a real vehicle
+                              updateField("external_truck_reference", null);
+                              // Auto-select driver assigned to this vehicle, or N/A if none
+                              const selectedVehicle = vehicles.find((v) => v.id === value);
+                              if (selectedVehicle?.driver_1_id) {
+                                updateField("assigned_driver_id", selectedVehicle.driver_1_id);
+                              } else {
+                                updateField("assigned_driver_id", null);
+                              }
+                              // Auto-populate equipment type from vehicle if blank (e.g. "24' Large Straight")
+                              if (!load.equipment_type && selectedVehicle) {
+                                const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
+                                const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
+                                updateField("equipment_type", `${sizePrefix}${vehicleType}`);
+                              }
+                              // Auto-set carrier from vehicle's carrier
+                              if (selectedVehicle?.carrier) {
+                                updateField("carrier_id", selectedVehicle.carrier);
+                              }
+                            }}>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectContent className="bg-background">
+                                {carrierVehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
+                            <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       <Label className="text-[10px] font-medium text-muted-foreground">DH Miles</Label>
