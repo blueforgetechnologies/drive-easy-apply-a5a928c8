@@ -738,7 +738,7 @@ function EmptyDayCellValue({
     case "net":
       return (
         <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {!isBusinessDay && emptyDayNet === 0 ? "" : formatCurrency(emptyDayNet)}
+          {isFutureDate || (!isBusinessDay && emptyDayNet === 0) ? "" : formatCurrency(emptyDayNet)}
         </TableCell>
       );
     case "carr_net":
