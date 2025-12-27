@@ -2143,6 +2143,7 @@ export default function LoadHunterTab() {
   const handleBidPlaced = async (matchId: string, loadEmailId: string, bidRate?: number) => {
     try {
       setMatchActionTaken(true); // Mark that action was taken
+      matchActionTakenRef.current = true; // Prevent onClose from marking as undecided
       console.log('💰 Bid placed for match:', matchId, 'load:', loadEmailId, 'rate:', bidRate);
       
       // 1. Set this match to 'bid' status with bid details
