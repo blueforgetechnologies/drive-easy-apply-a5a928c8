@@ -329,9 +329,10 @@ function CellValue({
   const wcomp = 0; // Placeholder for workman's comp - not yet tracked per load
   
   // Build the values object for formula calculation
+  // Always use the DB-stored carrier_rate (calculated from contractor % or manually set)
   const formulaValues: Record<string, number> = {
     payload: rate,
-    carr_pay: vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount,
+    carr_pay: carrierPayAmount,
     disp_pay: dispPay,
     drv_pay: drvPay,
     factor: factoring,
@@ -359,8 +360,9 @@ function CellValue({
     dailyInsurance -
     DAILY_OTHER_COST;
   
+  // Use DB-stored carrier_rate for Carrier NET calculation (always, regardless of approval)
   const defaultCarrierNet =
-    (vehicleRequiresApproval && !isApproved ? 0 : carrierPayAmount) -
+    carrierPayAmount -
     drvPay -
     wcomp -
     fuelCost -
@@ -616,15 +618,7 @@ function CellValue({
       if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
         return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
       }
-      // Show $0 if not approved yet
-      if (!isApproved) {
-        return (
-          <TableCell className={cn("text-right font-bold !px-2 !py-0.5 text-muted-foreground", expenseRailClass, dragClass)}>
-            $0.00
-          </TableCell>
-        );
-      }
-      // Show calculated value when approved
+      // Always show calculated value (uses DB-stored carrier_rate)
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", carrierNet === null ? "text-muted-foreground" : carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
@@ -637,15 +631,7 @@ function CellValue({
       if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
         return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
       }
-      // Show $0 if not approved yet
-      if (!isApproved) {
-        return (
-          <TableCell className={cn("text-right font-bold !px-2 !py-0.5 text-muted-foreground", expenseRailClass, dragClass)}>
-            $0.00
-          </TableCell>
-        );
-      }
-      // Show calculated value when approved
+      // Always show calculated value (uses DB-stored carrier_rate)
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet === null ? "text-muted-foreground" : brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
