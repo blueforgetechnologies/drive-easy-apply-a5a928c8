@@ -44,6 +44,19 @@ interface CarrierData {
   emergency_contact_cell_phone: string | null;
   emergency_contact_email: string | null;
   logo_url: string | null;
+  payee_id: string | null;
+}
+
+interface Payee {
+  id: string;
+  name: string;
+  type: string | null;
+  payment_method: string | null;
+  bank_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  status: string | null;
 }
 
 interface HighwayData {
@@ -76,10 +89,28 @@ export default function CarrierDetail() {
   const [highwayLoading, setHighwayLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [payees, setPayees] = useState<Payee[]>([]);
+  const [selectedPayee, setSelectedPayee] = useState<Payee | null>(null);
 
   useEffect(() => {
     loadCarrier();
+    loadPayees();
   }, [id]);
+
+  const loadPayees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("payees")
+        .select("id, name, type, payment_method, bank_name, email, phone, address, status")
+        .eq("status", "active")
+        .order("name");
+
+      if (error) throw error;
+      setPayees(data || []);
+    } catch (error: any) {
+      console.error("Failed to load payees:", error);
+    }
+  };
 
   const loadCarrier = async () => {
     try {
@@ -95,6 +126,19 @@ export default function CarrierDetail() {
       
       if (data.dot_number) {
         fetchHighwayData(data.dot_number);
+      }
+
+      // Load selected payee if exists
+      if (data.payee_id) {
+        const { data: payeeData } = await supabase
+          .from("payees")
+          .select("id, name, type, payment_method, bank_name, email, phone, address, status")
+          .eq("id", data.payee_id)
+          .maybeSingle();
+        
+        if (payeeData) {
+          setSelectedPayee(payeeData);
+        }
       }
     } catch (error: any) {
       toast.error("Failed to load carrier details");
@@ -237,6 +281,7 @@ export default function CarrierDetail() {
           emergency_contact_cell_phone: carrier.emergency_contact_cell_phone,
           emergency_contact_email: carrier.emergency_contact_email,
           logo_url: carrier.logo_url,
+          payee_id: carrier.payee_id,
         })
         .eq("id", id);
 
@@ -247,6 +292,20 @@ export default function CarrierDetail() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePayeeSelect = (payeeId: string) => {
+    if (!carrier) return;
+    
+    const payee = payees.find(p => p.id === payeeId);
+    setSelectedPayee(payee || null);
+    setCarrier({ ...carrier, payee_id: payeeId || null });
+  };
+
+  const handleClearPayee = () => {
+    if (!carrier) return;
+    setSelectedPayee(null);
+    setCarrier({ ...carrier, payee_id: null });
   };
 
   const handleUsdotLookup = async () => {
@@ -743,98 +802,85 @@ export default function CarrierDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contact Name</Label>
-                    <Input 
-                      value={carrier.contact_name || ""} 
-                      onChange={(e) => updateField("contact_name", e.target.value)} 
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="Enter contact name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label>
-                    <Input 
-                      value={carrier.phone || ""} 
-                      onChange={(e) => updateField("phone", e.target.value)} 
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
-                    <Input 
-                      type="email"
-                      value={carrier.email || ""} 
-                      onChange={(e) => updateField("email", e.target.value)} 
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="Enter email address"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pay Percentage</Label>
-                    <Input 
-                      type="number"
-                      value={carrier.dun_bradstreet || "0"} 
-                      onChange={(e) => updateField("dun_bradstreet", e.target.value)} 
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="Enter percentage"
-                    />
-                  </div>
-                </div>
-
+                {/* Payee Selection */}
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Physical Address</Label>
-                  <Input 
-                    value={carrier.address || ""} 
-                    onChange={(e) => updateField("address", e.target.value)} 
-                    className="border-slate-200 focus:border-violet-500"
-                    placeholder="Enter physical address"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Auto Approve</Label>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Select Payee</Label>
+                  <div className="flex gap-2">
                     <Select 
-                      value={carrier.personal_business || "yes"} 
-                      onValueChange={(value) => updateField("personal_business", value)}
+                      value={carrier.payee_id || ""} 
+                      onValueChange={handlePayeeSelect}
                     >
                       <SelectTrigger className="border-slate-200 focus:border-violet-500">
-                        <SelectValue />
+                        <SelectValue placeholder="Select a payee..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
+                        {payees.map((payee) => (
+                          <SelectItem key={payee.id} value={payee.id}>
+                            {payee.name} {payee.type ? `(${payee.type})` : ''}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">W9</Label>
-                    <Input 
-                      value={carrier.mc_number || ""} 
-                      onChange={(e) => updateField("mc_number", e.target.value)} 
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="W9 document"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">EIN</Label>
-                    <Input 
-                      value={carrier.dot_number || ""} 
-                      onChange={(e) => updateField("dot_number", e.target.value)} 
-                      className="border-slate-200 focus:border-violet-500"
-                      placeholder="Enter EIN"
-                    />
+                    {carrier.payee_id && (
+                      <Button variant="outline" size="icon" onClick={handleClearPayee}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
+
+                {/* Selected Payee Details */}
+                {selectedPayee ? (
+                  <div className="space-y-4 p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-lg border border-violet-100 dark:border-violet-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-violet-600 dark:text-violet-400 font-medium text-lg">
+                        {selectedPayee.name}
+                      </span>
+                      {selectedPayee.type && (
+                        <Badge variant="outline" className="bg-violet-100 text-violet-700 border-violet-200">
+                          {selectedPayee.type}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Phone</Label>
+                        <p className="text-sm font-medium">{selectedPayee.phone || "—"}</p>
+                      </div>
+                      <div className="space-y-1 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Email</Label>
+                        <p className="text-sm font-medium">{selectedPayee.email || "—"}</p>
+                      </div>
+                      <div className="space-y-1 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Payment Method</Label>
+                        <p className="text-sm font-medium">{selectedPayee.payment_method || "—"}</p>
+                      </div>
+                      <div className="space-y-1 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Bank Name</Label>
+                        <p className="text-sm font-medium">{selectedPayee.bank_name || "—"}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                      <Label className="text-xs text-muted-foreground">Address</Label>
+                      <p className="text-sm font-medium">{selectedPayee.address || "—"}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <DollarSign className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No payee selected</p>
+                    <p className="text-xs text-muted-foreground mt-1">Select a payee from the dropdown above</p>
+                  </div>
+                )}
 
                 <Button 
                   onClick={() => navigate("/dashboard/payees")}
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                  variant="outline"
+                  className="w-full"
                 >
-                  Go to Payee Details
+                  Manage Payees
                 </Button>
               </CardContent>
             </Card>

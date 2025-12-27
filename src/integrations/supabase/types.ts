@@ -370,6 +370,7 @@ export type Database = {
           logo_url: string | null
           mc_number: string | null
           name: string
+          payee_id: string | null
           personal_business: string | null
           phone: string | null
           safer_status: string | null
@@ -399,6 +400,7 @@ export type Database = {
           logo_url?: string | null
           mc_number?: string | null
           name: string
+          payee_id?: string | null
           personal_business?: string | null
           phone?: string | null
           safer_status?: string | null
@@ -428,6 +430,7 @@ export type Database = {
           logo_url?: string | null
           mc_number?: string | null
           name?: string
+          payee_id?: string | null
           personal_business?: string | null
           phone?: string | null
           safer_status?: string | null
@@ -436,7 +439,15 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "carriers_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "payees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cleanup_job_logs: {
         Row: {
