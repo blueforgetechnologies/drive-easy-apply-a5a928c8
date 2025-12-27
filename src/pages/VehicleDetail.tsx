@@ -1152,24 +1152,15 @@ export default function VehicleDetail() {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Rate ($/gallon)</Label>
-                    <Input type="number" step="0.01" value={formData.fuel_per_gallon || ''} onChange={(e) => updateField('fuel_per_gallon', e.target.value)} placeholder="7.50" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
-                    <Input type="number" step="0.01" value={formData.insurance_cost_per_month || ''} onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} placeholder="1700" />
-                  </div>
                 </CardContent>
               </Card>
 
-              {/* Asset Ownership */}
+              {/* Asset Cost */}
               <Card className="border-l-4 border-l-violet-500 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-violet-600">
-                    <FileText className="w-5 h-5" />
-                    Asset Ownership
+                    <DollarSign className="w-5 h-5" />
+                    Asset Cost
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1228,6 +1219,56 @@ export default function VehicleDetail() {
                       </div>
                     </>
                   )}
+
+                  {/* Divider */}
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-violet-200 dark:border-violet-800" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">Recurring Costs</span>
+                    </div>
+                  </div>
+
+                  {/* Insurance Cost with icon */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-100 dark:border-violet-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-violet-100 dark:bg-violet-900">
+                        <Shield className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Insurance Cost ($/month)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.insurance_cost_per_month || ''} 
+                          onChange={(e) => updateField('insurance_cost_per_month', e.target.value)} 
+                          placeholder="1700" 
+                          className="bg-background"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fuel Rate with icon */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-100 dark:border-amber-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
+                        <Gauge className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Rate ($/gallon)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={formData.fuel_per_gallon || ''} 
+                          onChange={(e) => updateField('fuel_per_gallon', e.target.value)} 
+                          placeholder="7.50" 
+                          className="bg-background"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
