@@ -154,9 +154,17 @@ function ColumnHeader({
   const isDragging = draggedColumn === column.id;
   const isOver = dragOverColumn === column.id && !isDragging;
 
-  // Orange rail classes for expense group boundaries
-  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
-  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
+  // Determine expense rail CSS class based on position
+  const getExpenseRailClass = () => {
+    const isCollapsedExpense = column.id === "truck_expense";
+    const hasLeftRail = isCollapsedExpense || isFirstExpense;
+    const hasRightRail = isCollapsedExpense || isLastExpense;
+    
+    if (hasLeftRail && hasRightRail) return "expense-rail-both";
+    if (hasLeftRail) return "expense-rail-left";
+    if (hasRightRail) return "expense-rail-right";
+    return "";
+  };
 
   if (!isEditMode) {
     // Normal view - centered text, no truncation
@@ -165,9 +173,7 @@ function ColumnHeader({
         className={cn(
           column.width,
           "px-2 py-2 font-medium whitespace-nowrap text-center",
-          (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
-          (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
-          (column.id === "truck_expense" || isLastExpense) && rightRailClass
+          getExpenseRailClass()
         )}
       >
         <div className="flex items-center justify-center gap-0.5">
@@ -204,9 +210,7 @@ function ColumnHeader({
       className={cn(
         column.width,
         "px-2 py-2.5 font-medium whitespace-nowrap select-none column-draggable cursor-grab transition-all duration-150",
-        (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
-        (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
-        (column.id === "truck_expense" || isLastExpense) && rightRailClass,
+        getExpenseRailClass(),
         column.align === "right" && "text-right",
         column.align === "center" && "text-center",
         column.align === "left" && "text-left",
@@ -282,14 +286,18 @@ function CellValue({
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   
-  // Orange rail classes for expense group boundaries
-  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
-  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
-  const expenseRailClass = cn(
-    (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
-    (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
-    (column.id === "truck_expense" || isLastExpense) && rightRailClass
-  );
+  // Determine expense rail CSS class based on position
+  const getExpenseRailClass = () => {
+    const isCollapsedExpense = column.id === "truck_expense";
+    const hasLeftRail = isCollapsedExpense || isFirstExpense;
+    const hasRightRail = isCollapsedExpense || isLastExpense;
+    
+    if (hasLeftRail && hasRightRail) return "expense-rail-both";
+    if (hasLeftRail) return "expense-rail-left";
+    if (hasRightRail) return "expense-rail-right";
+    return "";
+  };
+  const expenseRailClass = getExpenseRailClass();
   
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   const rate = load.rate || 0;
@@ -401,7 +409,7 @@ function CellValue({
       return (
         <TableCell
           className={cn(
-            "text-right text-muted-foreground font-medium !px-2 !py-0.5 relative before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning",
+            "text-right text-muted-foreground font-medium !px-2 !py-0.5 expense-rail-both",
             dragClass
           )}
         >
@@ -672,14 +680,18 @@ function EmptyDayCellValue({
 
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
-  // Orange rail classes for expense group boundaries
-  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
-  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
-  const expenseRailClass = cn(
-    (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
-    (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
-    (column.id === "truck_expense" || isLastExpense) && rightRailClass
-  );
+  // Determine expense rail CSS class based on position
+  const getExpenseRailClass = () => {
+    const isCollapsedExpense = column.id === "truck_expense";
+    const hasLeftRail = isCollapsedExpense || isFirstExpense;
+    const hasRightRail = isCollapsedExpense || isLastExpense;
+    
+    if (hasLeftRail && hasRightRail) return "expense-rail-both";
+    if (hasLeftRail) return "expense-rail-left";
+    if (hasRightRail) return "expense-rail-right";
+    return "";
+  };
+  const expenseRailClass = getExpenseRailClass();
   
   // Calculate collapsed expenses total for empty days (only rental/insurance apply)
   const collapsedExpenseTotal = 
@@ -759,14 +771,18 @@ function FooterCellValue({
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const dragClass = cn(isDraggedColumn && "cell-column-dragging", isDropTarget && "cell-drop-target");
   
-  // Orange rail classes for expense group boundaries
-  const leftRailClass = "before:pointer-events-none before:content-[''] before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-warning";
-  const rightRailClass = "after:pointer-events-none after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-warning";
-  const expenseRailClass = cn(
-    (column.id === "truck_expense" || isFirstExpense || isLastExpense) && "relative",
-    (column.id === "truck_expense" || isFirstExpense) && leftRailClass,
-    (column.id === "truck_expense" || isLastExpense) && rightRailClass
-  );
+  // Determine expense rail CSS class based on position
+  const getExpenseRailClass = () => {
+    const isCollapsedExpense = column.id === "truck_expense";
+    const hasLeftRail = isCollapsedExpense || isFirstExpense;
+    const hasRightRail = isCollapsedExpense || isLastExpense;
+    
+    if (hasLeftRail && hasRightRail) return "expense-rail-both";
+    if (hasLeftRail) return "expense-rail-left";
+    if (hasRightRail) return "expense-rail-right";
+    return "";
+  };
+  const expenseRailClass = getExpenseRailClass();
   
   // Calculate collapsed expenses total for footer - sum all selected columns
   // Note: carrierNet and brokeringNet need to be calculated since they're not in totals
