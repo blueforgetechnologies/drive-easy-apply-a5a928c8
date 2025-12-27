@@ -120,6 +120,7 @@ export function BookLoadDialog({
         .insert({
           load_number: loadNumber,
           status: initialStatus,
+          carrier_approved: vehicleRequiresApproval ? false : true,
           rate: parseFloat(rate),
           assigned_vehicle_id: vehicleId,
           assigned_driver_id: driverFromVehicle,

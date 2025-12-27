@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +42,7 @@ export default function LoadDetail() {
   const [carriers, setCarriers] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
+  const originalAssignedVehicleIdRef = useRef<string | null>(null);
   const [carrierDialogOpen, setCarrierDialogOpen] = useState(false);
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierLookupLoading, setCarrierLookupLoading] = useState(false);
@@ -89,7 +90,7 @@ export default function LoadDetail() {
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
         supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype").eq("status", "active"),
+        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
@@ -99,6 +100,7 @@ export default function LoadDetail() {
 
       if (loadRes.error) throw loadRes.error;
       setLoad(loadRes.data);
+      originalAssignedVehicleIdRef.current = (loadRes.data as any)?.assigned_vehicle_id ?? null;
       setStops(stopsRes.data || []);
       setExpenses(expensesRes.data || []);
       setDocuments(docsRes.data || []);
@@ -202,6 +204,11 @@ export default function LoadDetail() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const assignedVehicleId = (load?.assigned_vehicle_id as string | null) ?? null;
+      const assignedVehicle = vehicles.find((v: any) => v.id === assignedVehicleId);
+      const requiresApproval = assignedVehicle?.requires_load_approval === true;
+      const assignedChanged = originalAssignedVehicleIdRef.current !== assignedVehicleId;
+
       const { error } = await supabase
         .from("loads")
         .update({
@@ -226,7 +233,8 @@ export default function LoadDetail() {
           rate: load.rate,
           customer_rate: load.customer_rate,
           carrier_rate: load.carrier_rate,
-          approved_payload: load.approved_payload,
+          carrier_approved: assignedChanged && requiresApproval ? false : load.carrier_approved,
+          approved_payload: assignedChanged && requiresApproval ? null : load.approved_payload,
           broker_fee: load.broker_fee,
           fuel_surcharge: load.fuel_surcharge,
           accessorial_charges: load.accessorial_charges,
