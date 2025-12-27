@@ -9,11 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2, Eye, MapPin } from "lucide-react";
 import { LoadApprovalMap } from "@/components/LoadApprovalMap";
-import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay } from "date-fns";
+import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { usePaymentFormulas } from "@/hooks/usePaymentFormulas";
 import {
   Pagination,
   PaginationContent,
@@ -33,6 +34,25 @@ interface Vehicle {
   vehicle_number: string;
   carrier: string | null;
   requires_load_approval: boolean | null;
+  insurance_cost_per_month?: number | null;
+  monthly_payment?: number | null;
+  weekly_payment?: number | null;
+  driver_1_id?: string | null;
+  asset_ownership?: string | null;
+  cents_per_mile?: number | null;
+}
+
+interface DriverCompensation {
+  id: string;
+  pay_method: string | null;
+  pay_method_active: boolean | null;
+  weekly_salary: number | null;
+  hourly_rate: number | null;
+  hours_per_week: number | null;
+  pay_per_mile: number | null;
+  load_percentage: number | null;
+  base_salary: number | null;
+  personal_info: { firstName?: string; lastName?: string } | null;
 }
 
 interface Load {
@@ -79,6 +99,7 @@ export default function LoadApprovalTab() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const { timezone } = useUserTimezone();
+  const { calculateFormula } = usePaymentFormulas();
 
   const todayKey = useMemo(() => formatInTimeZone(new Date(), timezone, "yyyy-MM-dd"), [timezone]);
 
@@ -110,6 +131,12 @@ export default function LoadApprovalTab() {
   const [factoringPercentage, setFactoringPercentage] = useState<number>(0);
   const [dispatcherPayInfo, setDispatcherPayInfo] = useState<Record<string, number>>({});
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Carrier Net calculation state
+  const [driverCompensation, setDriverCompensation] = useState<DriverCompensation | null>(null);
+  const [milesPerGallon, setMilesPerGallon] = useState<number>(6.5);
+  const [dollarPerGallon, setDollarPerGallon] = useState<number>(3.50);
+  const DAILY_OTHER_COST = 0;
 
   // Scroll to selected load when it changes
   useEffect(() => {
@@ -232,7 +259,7 @@ export default function LoadApprovalTab() {
       // Note: vehicle.carrier field stores the carrier ID, not the name
       let vehicleQuery = supabase
         .from("vehicles")
-        .select("id, vehicle_number, carrier, requires_load_approval")
+        .select("id, vehicle_number, carrier, requires_load_approval, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, asset_ownership, cents_per_mile")
         .eq("status", "active");
       
       if (selectedCarrier !== "all") {
@@ -337,6 +364,29 @@ export default function LoadApprovalTab() {
       });
 
       setLoads(filteredLoads as unknown as ApprovalLoad[]);
+
+      // Load driver compensation for the selected vehicle
+      if (selectedVehicle !== "all") {
+        const selectedVehicleData = (vehicleData || []).find((v: any) => v.id === selectedVehicle);
+        if (selectedVehicleData?.driver_1_id) {
+          const { data: driverData } = await supabase
+            .from("applications")
+            .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info")
+            .eq("id", selectedVehicleData.driver_1_id)
+            .single();
+
+          if (driverData) {
+            const personalInfo = typeof driverData.personal_info === 'string' 
+              ? JSON.parse(driverData.personal_info) 
+              : driverData.personal_info;
+            setDriverCompensation({ ...driverData, personal_info: personalInfo });
+          } else {
+            setDriverCompensation(null);
+          }
+        } else {
+          setDriverCompensation(null);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -441,6 +491,97 @@ export default function LoadApprovalTab() {
     const carrierPay = calculateCarrierPay(load);
     const loadedMiles = load.estimated_miles || 0;
     return loadedMiles > 0 ? carrierPay / loadedMiles : 0;
+  };
+
+  // Get selected vehicle for cost calculations
+  const selectedVehicleData = useMemo(() => {
+    if (selectedVehicle === "all") return null;
+    return vehicles.find(v => v.id === selectedVehicle);
+  }, [vehicles, selectedVehicle]);
+
+  // Calculate daily rates for rental and insurance
+  const dailyCostRates = useMemo(() => {
+    if (!selectedVehicleData) return { dailyRentalRate: 0, dailyInsuranceRate: 0 };
+    
+    const today = new Date();
+    const startDate = startOfMonth(today);
+    const endDate = endOfMonth(today);
+    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+    const businessDaysInMonth = allDays.filter(day => !isWeekend(day)).length;
+    
+    const vehicleWeeklyPayment = selectedVehicleData.weekly_payment || 0;
+    const vehicleMonthlyPayment = selectedVehicleData.monthly_payment || 0;
+    const dailyRentalRate = vehicleWeeklyPayment > 0 
+      ? vehicleWeeklyPayment / 5 
+      : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
+    
+    const vehicleInsuranceCost = selectedVehicleData.insurance_cost_per_month || 0;
+    const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
+    
+    return { dailyRentalRate, dailyInsuranceRate };
+  }, [selectedVehicleData]);
+
+  // Calculate driver pay for a load
+  const getDriverPay = (load: ApprovalLoad) => {
+    if (!driverCompensation?.pay_method_active || !driverCompensation?.pay_method) return 0;
+    
+    const rate = load.rate || 0;
+    const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+    
+    switch (driverCompensation.pay_method) {
+      case 'percentage':
+        return rate * ((driverCompensation.load_percentage || 0) / 100);
+      case 'mileage':
+        return totalMiles * (driverCompensation.pay_per_mile || 0);
+      case 'salary':
+      case 'hourly':
+        return 0;
+      case 'hybrid':
+        return rate * ((driverCompensation.load_percentage || 0) / 100);
+      default:
+        return 0;
+    }
+  };
+
+  // Calculate Carrier Net for a load (identical to FleetFinancialsTable)
+  const calculateCarrierNet = (load: ApprovalLoad, loadIndex: number, date: Date) => {
+    const carrierPayAmount = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+    const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+    const drvPay = getDriverPay(load);
+    const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
+    const isBusinessDay = !isWeekend(date);
+    const dailyRental = isBusinessDay && loadIndex === 0 ? dailyCostRates.dailyRentalRate : 0;
+    const dailyInsurance = isBusinessDay && loadIndex === 0 ? dailyCostRates.dailyInsuranceRate : 0;
+    const tolls = 0;
+    const wcomp = 0;
+    const rentalPerMile = selectedVehicleData?.asset_ownership === 'leased' && selectedVehicleData?.cents_per_mile
+      ? selectedVehicleData.cents_per_mile * totalMiles
+      : 0;
+    
+    // Build values for formula calculation
+    const formulaValues: Record<string, number> = {
+      payload: load.rate || 0,
+      carr_pay: carrierPayAmount,
+      disp_pay: 0,
+      drv_pay: drvPay,
+      factor: 0,
+      fuel: fuelCost,
+      rental: dailyRental,
+      insur: dailyInsurance,
+      tolls: tolls,
+      wcomp: wcomp,
+      other: DAILY_OTHER_COST,
+      rental_per_mile: rentalPerMile,
+    };
+    
+    // Use formula if configured, otherwise use default calculation
+    const calculatedNet = calculateFormula("carr_net", formulaValues);
+    if (calculatedNet !== null) {
+      return calculatedNet;
+    }
+    
+    // Default fallback: Carrier Pay - Fuel - Rental - Insurance - Tolls - WComp - Other - RentalPerMile - Driver Pay
+    return carrierPayAmount - fuelCost - dailyRental - dailyInsurance - tolls - wcomp - DAILY_OTHER_COST - rentalPerMile - drvPay;
   };
 
   const handleRateChange = (loadId: string, value: string) => {
@@ -629,7 +770,7 @@ export default function LoadApprovalTab() {
 
   const selectedCarrierName = carriers.find(c => c.id === selectedCarrier)?.name || "All Carriers";
 
-  // Calculate weekly totals
+  // Calculate weekly totals using Carrier Net formula
   const calculateWeeklyTotal = (weekStart: Date) => {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     let total = 0;
@@ -638,8 +779,8 @@ export default function LoadApprovalTab() {
       if (date >= weekStart && date <= weekEnd) {
         const dateKey = format(date, "yyyy-MM-dd");
         const dayLoads = loadsByDate[dateKey] || [];
-        dayLoads.forEach(load => {
-          total += carrierRates[load.id] || load.rate || 0;
+        dayLoads.forEach((load, loadIndex) => {
+          total += calculateCarrierNet(load, loadIndex, date);
         });
       }
     });
@@ -1196,9 +1337,9 @@ export default function LoadApprovalTab() {
                         {dayLoads.map((load, loadIndex) => {
                           const totalMiles = (load.estimated_miles || 0) + (load.empty_miles || 0);
                           const ratePerMile = totalMiles > 0 ? (load.rate || 0) / totalMiles : 0;
-                          const carrierPay = carrierRates[load.id] ?? load.rate ?? 0;
+                          const carrierPay = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
                           const carrierRatePerMile = (load.estimated_miles || 0) > 0 ? carrierPay / (load.estimated_miles || 1) : 0;
-                          const carrierNet = carrierPay; // Can subtract costs here
+                          const carrierNet = calculateCarrierNet(load, loadIndex, date);
 
                           const isSelectedLoad = load.id === selectedLoadId;
 
