@@ -604,15 +604,11 @@ function CellValue({
         </TableCell>
       );
     case "carr_net":
-      // Show N/A if current truck type is my_truck but load was booked as contractor
+      // Show dash only if current truck type is my_truck and load is also my_truck (no mismatch)
       if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
-        // Current is my_truck, load is also my_truck - hide carr net
         return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
       }
-      if (isTruckTypeMismatch && currentTruckType === 'contractor_truck') {
-        // Current is contractor but load was booked as my_truck - show N/A
-        return <TableCell className={cn("text-right text-muted-foreground italic !px-2 !py-0.5", expenseRailClass, dragClass)}>N/A</TableCell>;
-      }
+      // Always calculate and show carr_net when there's a load (even on weekends or with truck type mismatch)
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", carrierNet === null ? "text-muted-foreground" : carrierNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
@@ -621,15 +617,11 @@ function CellValue({
         </TableCell>
       );
     case "brokering_net":
-      // Show N/A if current truck type is my_truck but load was booked as contractor
+      // Show dash only if current truck type is my_truck and load is also my_truck (no mismatch)
       if (currentTruckType === 'my_truck' && !isTruckTypeMismatch) {
-        // Current is my_truck, load is also my_truck - hide brokering net
         return <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>—</TableCell>;
       }
-      if (isTruckTypeMismatch && currentTruckType === 'contractor_truck') {
-        // Current is contractor but load was booked as my_truck - show N/A
-        return <TableCell className={cn("text-right text-muted-foreground italic !px-2 !py-0.5", expenseRailClass, dragClass)}>N/A</TableCell>;
-      }
+      // Always calculate and show brokering_net when there's a load (even on weekends or with truck type mismatch)
       return (
         <TableCell
           className={cn("text-right font-bold !px-2 !py-0.5", brokeringNet === null ? "text-muted-foreground" : brokeringNet >= 0 ? "text-green-600" : "text-destructive", expenseRailClass, dragClass)}
