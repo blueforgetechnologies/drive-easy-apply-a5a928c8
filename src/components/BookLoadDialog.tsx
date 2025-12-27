@@ -111,11 +111,15 @@ export function BookLoadDialog({
 
       // Create the load in the loads table with ALL data from the match and parsed email
       // Include truck_type_at_booking to snapshot the vehicle's ownership type at booking time
+      // Check if vehicle requires load approval - if so, set status to 'available' instead of 'pending_dispatch'
+      const vehicleRequiresApproval = vehicle?.requires_load_approval === true;
+      const initialStatus = vehicleRequiresApproval ? 'available' : 'pending_dispatch';
+      
       const { data: newLoad, error: loadError } = await supabase
         .from('loads')
         .insert({
           load_number: loadNumber,
-          status: 'pending_dispatch',
+          status: initialStatus,
           rate: parseFloat(rate),
           assigned_vehicle_id: vehicleId,
           assigned_driver_id: driverFromVehicle,
