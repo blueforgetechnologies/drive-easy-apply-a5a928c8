@@ -372,15 +372,15 @@ const LoadEmailDetail = ({
     }
   }, [match?.id, currentDispatcher?.id]);
 
-  // Check for existing SENT bid on this load_id to prevent double bidding
+  // Check for existing SENT bid on this specific load_email_id to prevent double bidding
   useEffect(() => {
     const checkExistingBid = async () => {
-      const loadId = email?.load_id;
-      if (!loadId) return;
+      const loadEmailId = email?.id;
+      if (!loadEmailId) return;
 
       setCheckingExistingBid(true);
       try {
-        // Only look for bids with status='sent' (the first real bid)
+        // Only look for bids with status='sent' on this specific email
         const { data: bid, error } = await supabase
           .from('load_bids')
           .select(`
@@ -391,7 +391,7 @@ const LoadEmailDetail = ({
             dispatcher:dispatchers(first_name, last_name),
             vehicle:vehicles(vehicle_number)
           `)
-          .eq('load_id', loadId)
+          .eq('load_email_id', loadEmailId)
           .eq('status', 'sent')
           .order('created_at', { ascending: true })
           .limit(1)
@@ -426,18 +426,18 @@ const LoadEmailDetail = ({
 
     checkExistingBid();
 
-    // Subscribe to realtime updates for this load_id
-    const loadId = email?.load_id;
-    if (loadId) {
+    // Subscribe to realtime updates for this load_email_id
+    const loadEmailId = email?.id;
+    if (loadEmailId) {
       const channel = supabase
-        .channel(`load_bid_${loadId}`)
+        .channel(`load_bid_email_${loadEmailId}`)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
             table: 'load_bids',
-            filter: `load_id=eq.${loadId}`
+            filter: `load_email_id=eq.${loadEmailId}`
           },
           (payload) => {
             console.log('🔔 Load bid changed:', payload);
@@ -450,7 +450,7 @@ const LoadEmailDetail = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [email?.load_id]);
+  }, [email?.id]);
 
   // Presence tracking - track who is viewing this load email in real-time
   // Uses load_email_id so all matches for the same load share presence
@@ -978,13 +978,13 @@ const LoadEmailDetail = ({
     const bidRateNum = bidAmount ? parseFloat(bidAmount.replace(/[^0-9.]/g, '')) : 0;
     
     try {
-      // Check if a bid already exists for this load_id (first-bid-wins logic)
+      // Check if a bid already exists for this specific load_email_id (first-bid-wins logic)
       let isDuplicate = false;
-      if (email?.load_id) {
+      if (email?.id) {
         const { data: existingBidCheck } = await supabase
           .from('load_bids')
           .select('id')
-          .eq('load_id', email.load_id)
+          .eq('load_email_id', email.id)
           .eq('status', 'sent')
           .limit(1)
           .maybeSingle();
