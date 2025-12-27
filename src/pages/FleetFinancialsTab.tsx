@@ -647,6 +647,64 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
+  // Calculate weekly Carrier NET totals
+  const getWeeklyCarrierNet = (endIndex: number) => {
+    let weekTotal = 0;
+    const dailyRental = totals.dailyRentalRate;
+    const dailyInsurance = totals.dailyInsuranceRate;
+    const today = startOfDay(new Date());
+    
+    for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
+      const dayDate = dailyData[i].date;
+      const isFutureDate = isAfter(startOfDay(dayDate), today);
+      
+      // Skip future dates
+      if (isFutureDate) continue;
+      
+      const isBusinessDay = !isWeekend(dayDate);
+      const dayRentalCost = isBusinessDay ? dailyRental : 0;
+      
+      dailyData[i].loads.forEach((load, loadIndex) => {
+        const carrierPayAmount = load.carrier_rate || load.rate || 0;
+        const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+        const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
+        const drvPay = getDriverPay(load);
+        // Only apply rental/insurance to first load of day
+        const loadRental = loadIndex === 0 ? dayRentalCost : 0;
+        const loadInsurance = loadIndex === 0 ? dailyInsurance : 0;
+        weekTotal += carrierPayAmount - drvPay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
+      });
+      // Add empty day costs
+      if (dailyData[i].loads.length === 0) {
+        weekTotal -= dayRentalCost + dailyInsurance + DAILY_OTHER_COST;
+      }
+    }
+    return weekTotal;
+  };
+
+  // Calculate weekly Brokering NET totals
+  const getWeeklyBrokeringNet = (endIndex: number) => {
+    let weekTotal = 0;
+    const today = startOfDay(new Date());
+    
+    for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
+      const dayDate = dailyData[i].date;
+      const isFutureDate = isAfter(startOfDay(dayDate), today);
+      
+      // Skip future dates
+      if (isFutureDate) continue;
+      
+      dailyData[i].loads.forEach(load => {
+        const rate = load.rate || 0;
+        const carrierPayAmount = load.carrier_rate || rate;
+        const factoring = rate * (factoringPercentage / 100);
+        const dispPay = getDispatcherPay(load);
+        weekTotal += rate - carrierPayAmount - dispPay - factoring;
+      });
+    }
+    return weekTotal;
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-4">
@@ -1025,6 +1083,8 @@ export default function FleetFinancialsTab() {
             getDriverPay={getDriverPay}
             getDispatcherName={getDispatcherName}
             getWeeklyTotal={getWeeklyTotal}
+            getWeeklyCarrierNet={getWeeklyCarrierNet}
+            getWeeklyBrokeringNet={getWeeklyBrokeringNet}
             visibleColumns={visibleColumns}
             draggedColumn={draggedColumn}
             dragOverColumn={dragOverColumn}

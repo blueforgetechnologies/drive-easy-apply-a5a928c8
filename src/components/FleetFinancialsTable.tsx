@@ -105,6 +105,8 @@ interface FleetFinancialsTableProps {
   getDriverPay: (load: Load) => number;
   getDispatcherName: (dispatcherId: string | null) => string;
   getWeeklyTotal: (endIndex: number) => number;
+  getWeeklyCarrierNet: (endIndex: number) => number;
+  getWeeklyBrokeringNet: (endIndex: number) => number;
   // Column management props
   visibleColumns: FleetColumn[];
   draggedColumn: string | null;
@@ -1060,6 +1062,8 @@ export function FleetFinancialsTable({
   getDriverPay,
   getDispatcherName,
   getWeeklyTotal,
+  getWeeklyCarrierNet,
+  getWeeklyBrokeringNet,
   visibleColumns,
   draggedColumn,
   dragOverColumn,
@@ -1316,17 +1320,28 @@ export function FleetFinancialsTable({
               {/* Weekly Summary Row */}
               {day.isWeekEnd && (
                 <TableRow className="bg-muted/50 border-t-2">
-                  <TableCell colSpan={effectiveColumns.length - 1} className="text-right font-semibold">
+                  <TableCell colSpan={effectiveColumns.length - 4} className="text-right font-semibold pr-4">
                     Weekly Total:
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right font-bold",
-                      getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive"
-                    )}
-                  >
-                    {formatCurrency(getWeeklyTotal(index))}
+                  <TableCell className="text-center px-2">
+                    <div className="text-[10px] text-muted-foreground font-medium">Carr Net</div>
+                    <div className={cn("font-bold text-sm", getWeeklyCarrierNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                      {formatCurrency(getWeeklyCarrierNet(index))}
+                    </div>
                   </TableCell>
+                  <TableCell className="text-center px-2 border-l-2 border-orange-400/50 bg-orange-50/30 dark:bg-orange-900/10">
+                    <div className="text-[10px] text-muted-foreground font-medium">My Net</div>
+                    <div className={cn("font-bold text-sm", getWeeklyTotal(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                      {formatCurrency(getWeeklyTotal(index))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center px-2">
+                    <div className="text-[10px] text-muted-foreground font-medium">Broker Net</div>
+                    <div className={cn("font-bold text-sm", getWeeklyBrokeringNet(index) >= 0 ? "text-green-600" : "text-destructive")}>
+                      {formatCurrency(getWeeklyBrokeringNet(index))}
+                    </div>
+                  </TableCell>
+                  <TableCell></TableCell>
                 </TableRow>
               )}
             </Fragment>
