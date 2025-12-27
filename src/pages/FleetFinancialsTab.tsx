@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend, isAfter, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings, Layers, ChevronDown, ChevronRight, Calculator } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -403,8 +403,10 @@ export default function FleetFinancialsTab() {
 
   const selectedVehicle = vehiclesWithNames.find(v => v.id === selectedVehicleId);
 
-  // Calculate totals
+  // Calculate totals - only include data up to today
   const totals = useMemo(() => {
+    const today = startOfDay(new Date());
+    
     let payload = 0;
     let emptyMiles = 0;
     let loadedMiles = 0;
@@ -420,7 +422,12 @@ export default function FleetFinancialsTab() {
     let other = 0;
     let factoring = 0;
 
+    // Only include loads with pickup_date up to today
     loads.forEach(load => {
+      if (load.pickup_date) {
+        const loadDate = startOfDay(new Date(load.pickup_date));
+        if (isAfter(loadDate, today)) return; // Skip future loads
+      }
       const rate = load.rate || 0;
       payload += rate;
       emptyMiles += load.empty_miles || 0;
@@ -443,6 +450,10 @@ export default function FleetFinancialsTab() {
     const allDays = eachDayOfInterval({ start: startDate, end: endDate });
     const businessDaysInMonth = allDays.filter(day => !isWeekend(day)).length;
     
+    // Calculate business days up to today (for prorated costs)
+    const businessDaysUpToToday = allDays.filter(day => !isWeekend(day) && !isAfter(startOfDay(day), today)).length;
+    const daysUpToToday = allDays.filter(day => !isAfter(startOfDay(day), today)).length;
+    
     // Calculate daily rental rate from vehicle's weekly or monthly payment
     // Prefer weekly_payment (divided by 5 business days), fall back to monthly
     const vehicleWeeklyPayment = selectedVehicle?.weekly_payment || 0;
@@ -451,17 +462,16 @@ export default function FleetFinancialsTab() {
       ? vehicleWeeklyPayment / 5 // 5 business days per week
       : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
     
-    // Total rental for the month - use weekly * weeks if weekly is set, else monthly
-    rental = vehicleWeeklyPayment > 0 
-      ? vehicleWeeklyPayment * (businessDaysInMonth / 5)
-      : vehicleMonthlyPayment;
+    // Total rental up to today - prorate based on business days elapsed
+    rental = dailyRentalRate * businessDaysUpToToday;
     
     // Calculate daily insurance rate from vehicle's monthly insurance cost (using business days like RCPD)
     const vehicleInsuranceCost = selectedVehicle?.insurance_cost_per_month || 0;
     const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
     
-    insuranceCost = vehicleInsuranceCost;
-    other = DAILY_OTHER_COST * daysInMonth;
+    // Prorate insurance cost up to today
+    insuranceCost = dailyInsuranceRate * businessDaysUpToToday;
+    other = DAILY_OTHER_COST * daysUpToToday;
 
     // Dispatcher pay calculation
     const dispatcher = dispatchers.find(d => 
@@ -604,13 +614,20 @@ export default function FleetFinancialsTab() {
     return value.toFixed(decimals);
   };
 
-  // Calculate weekly totals
+  // Calculate weekly totals - only include days up to today
   const getWeeklyTotal = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
     const dailyInsurance = totals.dailyInsuranceRate;
+    const today = startOfDay(new Date());
+    
     for (let i = endIndex; i >= 0 && dailyData[i].dayOfWeek !== 0; i--) {
       const dayDate = dailyData[i].date;
+      const isFutureDate = isAfter(startOfDay(dayDate), today);
+      
+      // Skip future dates
+      if (isFutureDate) continue;
+      
       const isBusinessDay = !isWeekend(dayDate);
       const dayRentalCost = isBusinessDay ? dailyRental : 0;
       
