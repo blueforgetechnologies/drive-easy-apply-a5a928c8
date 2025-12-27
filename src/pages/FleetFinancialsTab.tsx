@@ -26,6 +26,7 @@ interface Vehicle {
   carrier: string | null; // This is actually carrier_id (UUID)
   insurance_cost_per_month: number | null;
   monthly_payment: number | null;
+  weekly_payment: number | null;
   driver_1_id: string | null;
   requires_load_approval: boolean | null;
   asset_ownership: string | null;
@@ -197,7 +198,7 @@ export default function FleetFinancialsTab() {
         const refetchVehicles = async () => {
           const { data } = await supabase
             .from("vehicles")
-            .select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type")
+            .select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type")
             .eq("status", "active")
             .order("vehicle_number");
           if (data) setVehicles(data);
@@ -251,7 +252,7 @@ export default function FleetFinancialsTab() {
     setLoading(true);
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type").eq("status", "active").order("vehicle_number"),
+        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
@@ -442,12 +443,18 @@ export default function FleetFinancialsTab() {
     const allDays = eachDayOfInterval({ start: startDate, end: endDate });
     const businessDaysInMonth = allDays.filter(day => !isWeekend(day)).length;
     
-    // Calculate daily rental rate from vehicle's monthly payment
+    // Calculate daily rental rate from vehicle's weekly or monthly payment
+    // Prefer weekly_payment (divided by 5 business days), fall back to monthly
+    const vehicleWeeklyPayment = selectedVehicle?.weekly_payment || 0;
     const vehicleMonthlyPayment = selectedVehicle?.monthly_payment || 0;
-    const dailyRentalRate = businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0;
+    const dailyRentalRate = vehicleWeeklyPayment > 0 
+      ? vehicleWeeklyPayment / 5 // 5 business days per week
+      : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
     
-    // Total rental for the month
-    rental = vehicleMonthlyPayment;
+    // Total rental for the month - use weekly * weeks if weekly is set, else monthly
+    rental = vehicleWeeklyPayment > 0 
+      ? vehicleWeeklyPayment * (businessDaysInMonth / 5)
+      : vehicleMonthlyPayment;
     
     // Calculate daily insurance rate from vehicle's monthly insurance cost (using business days like RCPD)
     const vehicleInsuranceCost = selectedVehicle?.insurance_cost_per_month || 0;
