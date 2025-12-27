@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Truck, DollarSign, Search, Check, ArrowLeft, Calendar, Building2, Eye, MapPin } from "lucide-react";
 import { LoadApprovalMap } from "@/components/LoadApprovalMap";
-import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, subDays, addDays, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfDay, startOfMonth, endOfMonth, isAfter } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -770,7 +770,18 @@ export default function LoadApprovalTab() {
 
   const selectedCarrierName = carriers.find(c => c.id === selectedCarrier)?.name || "All Carriers";
 
-  // Calculate weekly totals using Carrier Net formula
+  // Calculate empty day net (cost on days without loads - identical to Fleet$)
+  const calculateEmptyDayNet = (date: Date) => {
+    const isBusinessDay = !isWeekend(date);
+    const isFutureDate = isAfter(startOfDay(date), startOfDay(new Date()));
+    if (!isBusinessDay || isFutureDate) return 0;
+    
+    const dailyRental = dailyCostRates.dailyRentalRate;
+    const dailyInsurance = dailyCostRates.dailyInsuranceRate;
+    return -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
+  };
+
+  // Calculate weekly totals using Carrier Net formula (includes empty day costs)
   const calculateWeeklyTotal = (weekStart: Date) => {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     let total = 0;
@@ -779,9 +790,15 @@ export default function LoadApprovalTab() {
       if (date >= weekStart && date <= weekEnd) {
         const dateKey = format(date, "yyyy-MM-dd");
         const dayLoads = loadsByDate[dateKey] || [];
-        dayLoads.forEach((load, loadIndex) => {
-          total += calculateCarrierNet(load, loadIndex, date);
-        });
+        
+        if (dayLoads.length === 0) {
+          // Empty day - still incur daily costs (rental/insurance)
+          total += calculateEmptyDayNet(date);
+        } else {
+          dayLoads.forEach((load, loadIndex) => {
+            total += calculateCarrierNet(load, loadIndex, date);
+          });
+        }
       }
     });
     
@@ -1289,6 +1306,9 @@ export default function LoadApprovalTab() {
                     }
 
                     if (dayLoads.length === 0) {
+                      const emptyDayNet = calculateEmptyDayNet(date);
+                      const isFutureDate = isAfter(startOfDay(date), startOfDay(new Date()));
+                      
                       return (
                         <Fragment key={dateKey}>
                           <TableRow 
@@ -1313,7 +1333,12 @@ export default function LoadApprovalTab() {
                             <TableCell className="!px-2 !py-0.5"></TableCell>
                             <TableCell className="!px-2 !py-0.5"></TableCell>
                             <TableCell className="!px-2 !py-0.5"></TableCell>
-                            <TableCell className="!px-2 !py-0.5"></TableCell>
+                            <TableCell className={cn("text-right font-bold !px-2 !py-0.5", emptyDayNet < 0 ? "text-destructive" : "")}>
+                              {/* Show daily cost as negative CARR NET on business days up to today */}
+                              {!isFutureDate && !isWeekendDay && emptyDayNet !== 0 
+                                ? `$${emptyDayNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : ""}
+                            </TableCell>
                           </TableRow>
                           {/* Weekly Summary Row */}
                           {isWeekEnd && (
