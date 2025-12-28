@@ -1181,29 +1181,6 @@ export default function VehicleDetail() {
                     </div>
                   )}
 
-                  {/* Payee Selection */}
-                  <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payee</Label>
-                    <Select
-                      value={formData.payee_id || "none"}
-                      onValueChange={(value) => updateField('payee_id', value === "none" ? null : value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payee..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Payee</SelectItem>
-                        {payees.map((payee) => (
-                          <SelectItem key={payee.id} value={payee.id}>
-                            {payee.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Associate this truck with a payee for settlements and payments.
-                    </p>
-                  </div>
 
                 </CardContent>
               </Card>
@@ -1319,6 +1296,34 @@ export default function VehicleDetail() {
                           placeholder="7.50" 
                           className="bg-background"
                         />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payee Selection */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-100 dark:border-green-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-green-100 dark:bg-green-900">
+                        <Users className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payee</Label>
+                        <Select
+                          value={formData.payee_id || "none"}
+                          onValueChange={(value) => updateField('payee_id', value === "none" ? null : value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select payee..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Payee</SelectItem>
+                            {payees.map((payee) => (
+                              <SelectItem key={payee.id} value={payee.id}>
+                                {payee.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
