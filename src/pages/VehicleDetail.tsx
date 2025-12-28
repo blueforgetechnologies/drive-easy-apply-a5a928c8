@@ -1136,7 +1136,22 @@ export default function VehicleDetail() {
                         </div>
                         <Switch
                           checked={formData.requires_load_approval || false}
-                          onCheckedChange={(checked) => updateField('requires_load_approval', checked)}
+                          onCheckedChange={async (checked) => {
+                            updateField('requires_load_approval', checked);
+                            // Auto-save this field immediately
+                            try {
+                              const { error } = await supabase
+                                .from("vehicles")
+                                .update({ requires_load_approval: checked })
+                                .eq("id", id);
+                              if (error) throw error;
+                              toast.success(checked ? "Load approval enabled" : "Load approval disabled");
+                            } catch (error: any) {
+                              toast.error("Failed to update: " + error.message);
+                              // Revert on error
+                              updateField('requires_load_approval', !checked);
+                            }
+                          }}
                         />
                       </div>
                       
