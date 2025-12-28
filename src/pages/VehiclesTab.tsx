@@ -16,7 +16,7 @@ interface Vehicle {
   id: string;
   vehicle_number: string | null;
   carrier: string | null;
-  payee: string | null;
+  payee_id: string | null;
   driver_1_id: string | null;
   driver_2_id: string | null;
   primary_dispatcher_id: string | null;
@@ -202,7 +202,7 @@ export default function VehiclesTab() {
       // Load payee names
       const payeeIds = Array.from(
         new Set(
-          vehiclesData.map((v) => v.payee).filter((id): id is string => !!id)
+          vehiclesData.map((v) => v.payee_id).filter((id): id is string => !!id)
         )
       );
 
@@ -420,7 +420,7 @@ export default function VehiclesTab() {
       v.status || "",
       v.vehicle_number || "",
       carriersMap[v.carrier] || v.carrier || "",
-      payeesMap[v.payee] || v.payee || "",
+      payeesMap[v.payee_id] || v.payee_id || "",
       driversMap[v.driver_1_id] || "",
       driversMap[v.driver_2_id] || "",
       dispatchersMap[v.primary_dispatcher_id] || "",
@@ -538,7 +538,7 @@ export default function VehiclesTab() {
     return (
       (vehicle.vehicle_number || "").toLowerCase().includes(searchLower) ||
       (vehicle.carrier || "").toLowerCase().includes(searchLower) ||
-      (vehicle.payee || "").toLowerCase().includes(searchLower) ||
+      (vehicle.payee_id ? payeesMap[vehicle.payee_id] || "" : "").toLowerCase().includes(searchLower) ||
       (vehicle.make || "").toLowerCase().includes(searchLower) ||
       (vehicle.model || "").toLowerCase().includes(searchLower) ||
       (vehicle.vin || "").toLowerCase().includes(searchLower) ||
@@ -953,7 +953,7 @@ export default function VehiclesTab() {
                       </TableCell>
                       <TableCell className="py-1 px-2 text-sm">
                         <div className="truncate max-w-[140px]">{vehicle.carrier ? carriersMap[vehicle.carrier] || "N/A" : "N/A"}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[140px]">{vehicle.payee ? payeesMap[vehicle.payee] || "N/A" : "N/A"}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[140px]">{vehicle.payee_id ? payeesMap[vehicle.payee_id] || "N/A" : "N/A"}</div>
                       </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="space-y-0">
