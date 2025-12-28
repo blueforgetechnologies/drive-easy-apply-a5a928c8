@@ -342,7 +342,7 @@ function CellValue({
     tolls: tolls,
     wcomp: wcomp,
     other: DAILY_OTHER_COST,
-    rental_per_mile: selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+    rental_per_mile: selectedVehicle?.cents_per_mile
       ? selectedVehicle.cents_per_mile * totalM
       : 0,
   };
@@ -387,7 +387,7 @@ function CellValue({
 
   // Calculate collapsed expenses total - sum of all selected expense columns
   // Calculate rental per mile cost for this load ($ per mile × total miles)
-  const loadRentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+  const loadRentalPerMileCost = selectedVehicle?.cents_per_mile
     ? selectedVehicle.cents_per_mile * totalM
     : 0;
   

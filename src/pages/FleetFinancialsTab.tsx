@@ -516,8 +516,8 @@ export default function FleetFinancialsTab() {
     const carrierPay = payload;
     const carrierPerMile = totalMiles > 0 ? payload / totalMiles : 0;
     
-    // Calculate rental $/mile cost: if leased, $ per mile × total miles
-    const rentalPerMileCost = selectedVehicle?.asset_ownership === 'leased' && selectedVehicle?.cents_per_mile
+    // Calculate rental $/mile cost: $ per mile × total miles (applies to any vehicle with cents_per_mile set)
+    const rentalPerMileCost = selectedVehicle?.cents_per_mile
       ? selectedVehicle.cents_per_mile * totalMiles
       : 0;
     
