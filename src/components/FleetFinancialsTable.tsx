@@ -348,6 +348,10 @@ function CellValue({
   };
   
   // Fallback calculations for when formulas aren't configured
+  const loadRcpm = selectedVehicle?.cents_per_mile
+    ? selectedVehicle.cents_per_mile * totalM
+    : 0;
+  
   const defaultMyNet =
     rate -
     factoring -
@@ -357,6 +361,7 @@ function CellValue({
     fuelCost -
     tolls -
     dailyRental -
+    loadRcpm -
     dailyInsurance -
     DAILY_OTHER_COST;
   
@@ -368,6 +373,7 @@ function CellValue({
     fuelCost -
     tolls -
     dailyRental -
+    loadRcpm -
     dailyInsurance -
     DAILY_OTHER_COST;
   
