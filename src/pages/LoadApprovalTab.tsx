@@ -570,11 +570,20 @@ export default function LoadApprovalTab() {
     const allDays = eachDayOfInterval({ start: startDate, end: endDate });
     const businessDaysInMonth = allDays.filter(day => !isWeekend(day)).length;
     
+    // Calculate daily rental rate based on asset_ownership type
+    const assetOwnership = selectedVehicleData.asset_ownership?.toLowerCase() || 'owned';
     const vehicleWeeklyPayment = selectedVehicleData.weekly_payment || 0;
     const vehicleMonthlyPayment = selectedVehicleData.monthly_payment || 0;
-    const dailyRentalRate = vehicleWeeklyPayment > 0 
-      ? vehicleWeeklyPayment / 5 
-      : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
+    
+    let dailyRentalRate = 0;
+    if (assetOwnership === 'leased') {
+      dailyRentalRate = vehicleWeeklyPayment > 0 
+        ? vehicleWeeklyPayment / 5 
+        : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
+    } else if (assetOwnership === 'financed') {
+      dailyRentalRate = businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0;
+    }
+    // Owned: dailyRentalRate stays 0
     
     const vehicleInsuranceCost = selectedVehicleData.insurance_cost_per_month || 0;
     const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;

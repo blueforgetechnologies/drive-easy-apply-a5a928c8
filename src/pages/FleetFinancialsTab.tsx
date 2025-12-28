@@ -453,13 +453,25 @@ export default function FleetFinancialsTab() {
     const businessDaysUpToToday = allDays.filter(day => !isWeekend(day) && !isAfter(startOfDay(day), today)).length;
     const daysUpToToday = allDays.filter(day => !isAfter(startOfDay(day), today)).length;
     
-    // Calculate daily rental rate from vehicle's weekly or monthly payment
-    // Prefer weekly_payment (divided by 5 business days), fall back to monthly
+    // Calculate daily rental rate based on asset_ownership type
+    // - Owned: No rental cost (RCPD = 0)
+    // - Financed: Use monthly_payment / business days
+    // - Leased: Use weekly_payment / 5 (or monthly_payment as fallback)
+    const assetOwnership = selectedVehicle?.asset_ownership?.toLowerCase() || 'owned';
     const vehicleWeeklyPayment = selectedVehicle?.weekly_payment || 0;
     const vehicleMonthlyPayment = selectedVehicle?.monthly_payment || 0;
-    const dailyRentalRate = vehicleWeeklyPayment > 0 
-      ? vehicleWeeklyPayment / 5 // 5 business days per week
-      : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
+    
+    let dailyRentalRate = 0;
+    if (assetOwnership === 'leased') {
+      // Leased: prefer weekly payment, fallback to monthly
+      dailyRentalRate = vehicleWeeklyPayment > 0 
+        ? vehicleWeeklyPayment / 5 
+        : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
+    } else if (assetOwnership === 'financed') {
+      // Financed: use monthly payment divided by business days
+      dailyRentalRate = businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0;
+    }
+    // Owned: dailyRentalRate stays 0
     
     // Total rental up to today - prorate based on business days elapsed
     rental = dailyRentalRate * businessDaysUpToToday;
