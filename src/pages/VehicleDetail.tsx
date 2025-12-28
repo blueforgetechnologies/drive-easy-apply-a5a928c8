@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Save, X, RefreshCw, Pencil, Truck, Settings, Shield, Wrench, Users, FileText, MapPin, Gauge, DollarSign } from "lucide-react";
+import { ArrowLeft, Save, X, RefreshCw, Pencil, Truck, Settings, Shield, Wrench, Users, FileText, MapPin, Gauge, DollarSign, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, formatDistanceToNow } from "date-fns";
@@ -1183,6 +1183,16 @@ export default function VehicleDetail() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground hover:text-primary"
+                      onClick={() => navigate('/dashboard/payees')}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Payee
+                    </Button>
                   </div>
 
                 </CardContent>
