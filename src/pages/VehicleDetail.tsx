@@ -1326,9 +1326,32 @@ export default function VehicleDetail() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingTruckType(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
+            <AlertDialogAction onClick={async () => {
               if (pendingTruckType) {
                 updateField('truck_type', pendingTruckType);
+                
+                // When switching to "My Truck", also reset contractor-related fields
+                if (pendingTruckType === 'my_truck') {
+                  updateField('requires_load_approval', false);
+                  updateField('contractor_percentage', 0);
+                  
+                  // Auto-save these resets to the database
+                  if (id) {
+                    try {
+                      await supabase
+                        .from("vehicles")
+                        .update({ 
+                          truck_type: 'my_truck',
+                          requires_load_approval: false,
+                          contractor_percentage: 0 
+                        })
+                        .eq("id", id);
+                    } catch (error) {
+                      console.error('Failed to reset contractor fields:', error);
+                    }
+                  }
+                }
+                
                 setPendingTruckType(null);
               }
             }}>
