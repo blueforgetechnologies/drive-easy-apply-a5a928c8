@@ -52,6 +52,7 @@ interface Vehicle {
   carrier: string | null;
   insurance_cost_per_month: number | null;
   monthly_payment: number | null;
+  weekly_payment: number | null;
   driver_1_id: string | null;
   requires_load_approval: boolean | null;
   asset_ownership?: string | null;
