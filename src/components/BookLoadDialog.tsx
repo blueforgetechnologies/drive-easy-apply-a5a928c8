@@ -113,6 +113,14 @@ export function BookLoadDialog({
       // Include truck_type_at_booking to snapshot the vehicle's ownership type at booking time
       // Check if vehicle requires load approval - if so, set status to 'available' instead of 'pending_dispatch'
       const vehicleRequiresApproval = vehicle?.requires_load_approval === true;
+      const isContractorTruck = vehicle?.truck_type === 'contractor_truck';
+      const contractorPercentage = vehicle?.contractor_percentage || 0;
+      
+      // Auto-approve if contractor truck with no approval required
+      const shouldAutoApprove = isContractorTruck && !vehicleRequiresApproval;
+      const loadRate = parseFloat(rate);
+      const autoCarrierRate = shouldAutoApprove ? loadRate * (contractorPercentage / 100) : null;
+      
       const initialStatus = vehicleRequiresApproval ? 'available' : 'pending_dispatch';
       
       const { data: newLoad, error: loadError } = await supabase
@@ -121,7 +129,9 @@ export function BookLoadDialog({
           load_number: loadNumber,
           status: initialStatus,
           carrier_approved: vehicleRequiresApproval ? false : true,
-          rate: parseFloat(rate),
+          carrier_rate: autoCarrierRate,
+          approved_payload: shouldAutoApprove ? loadRate : null,
+          rate: loadRate,
           assigned_vehicle_id: vehicleId,
           assigned_driver_id: driverFromVehicle,
           assigned_dispatcher_id: dispatcherId || null,

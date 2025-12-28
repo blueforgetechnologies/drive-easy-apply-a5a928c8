@@ -90,7 +90,7 @@ export default function LoadDetail() {
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
         supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval, carrier").eq("status", "active"),
+        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval, carrier, truck_type, contractor_percentage").eq("status", "active"),
         supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
         supabase.from("locations").select("*").eq("status", "active"),
         supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
@@ -208,6 +208,30 @@ export default function LoadDetail() {
       const assignedVehicle = vehicles.find((v: any) => v.id === assignedVehicleId);
       const requiresApproval = assignedVehicle?.requires_load_approval === true;
       const assignedChanged = originalAssignedVehicleIdRef.current !== assignedVehicleId;
+      
+      // Check if contractor truck with auto-approval (requires_load_approval = false)
+      const isContractorTruck = assignedVehicle?.truck_type === 'contractor_truck';
+      const contractorPercentage = assignedVehicle?.contractor_percentage || 0;
+      const shouldAutoApprove = isContractorTruck && !requiresApproval && assignedChanged;
+      
+      // Calculate carrier_rate from contractor percentage if auto-approving
+      let carrierRateToSave = load.carrier_rate;
+      let carrierApprovedToSave = load.carrier_approved;
+      let approvedPayloadToSave = load.approved_payload;
+      
+      if (assignedChanged) {
+        if (shouldAutoApprove) {
+          // Auto-approve using contractor percentage
+          const loadRate = parseFloat(load.rate) || 0;
+          carrierRateToSave = loadRate * (contractorPercentage / 100);
+          carrierApprovedToSave = true;
+          approvedPayloadToSave = loadRate; // Track the rate at time of approval
+        } else if (requiresApproval) {
+          // Reset approval status when reassigning to a vehicle requiring approval
+          carrierApprovedToSave = false;
+          approvedPayloadToSave = null;
+        }
+      }
 
       const { error } = await supabase
         .from("loads")
@@ -233,9 +257,9 @@ export default function LoadDetail() {
           cargo_pieces: load.cargo_pieces,
           rate: load.rate,
           customer_rate: load.customer_rate,
-          carrier_rate: load.carrier_rate,
-          carrier_approved: assignedChanged && requiresApproval ? false : load.carrier_approved,
-          approved_payload: assignedChanged && requiresApproval ? null : load.approved_payload,
+          carrier_rate: carrierRateToSave,
+          carrier_approved: carrierApprovedToSave,
+          approved_payload: approvedPayloadToSave,
           broker_fee: load.broker_fee,
           fuel_surcharge: load.fuel_surcharge,
           accessorial_charges: load.accessorial_charges,
