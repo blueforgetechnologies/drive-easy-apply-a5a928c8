@@ -1211,7 +1211,7 @@ export default function VehicleDetail() {
                     </RadioGroup>
                   </div>
 
-                  {(formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
+                  {(!formData.asset_ownership || formData.asset_ownership === 'owned' || formData.asset_ownership === 'financed') && (
                     <div className="space-y-2">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Monthly Payment</Label>
                       <Input 
