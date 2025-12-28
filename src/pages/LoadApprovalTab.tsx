@@ -134,6 +134,7 @@ export default function LoadApprovalTab() {
 
   // Carrier Net calculation state
   const [driverCompensation, setDriverCompensation] = useState<DriverCompensation | null>(null);
+  const [driverCompensationLoaded, setDriverCompensationLoaded] = useState<boolean>(false);
   const [milesPerGallon, setMilesPerGallon] = useState<number>(6.5);
   const [dollarPerGallon, setDollarPerGallon] = useState<number>(3.50);
   const DAILY_OTHER_COST = 0;
@@ -254,6 +255,7 @@ export default function LoadApprovalTab() {
 
   const loadData = async () => {
     setLoading(true);
+    setDriverCompensationLoaded(false);
     try {
       // Load vehicles for selected carrier - include requires_load_approval
       // Note: vehicle.carrier field stores the carrier ID, not the name
@@ -416,11 +418,14 @@ export default function LoadApprovalTab() {
           } else {
             setDriverCompensation(null);
           }
+          setDriverCompensationLoaded(true);
         } else {
           setDriverCompensation(null);
+          setDriverCompensationLoaded(true);
         }
       } else {
         setDriverCompensation(null);
+        setDriverCompensationLoaded(true);
       }
     } finally {
       setLoading(false);
@@ -578,6 +583,11 @@ export default function LoadApprovalTab() {
     
     return { dailyRentalRate, dailyInsuranceRate };
   }, [selectedVehicleData]);
+
+  // Check if all data required for Carr Net calculation is loaded
+  const isCarrNetDataReady = useMemo(() => {
+    return !loading && driverCompensationLoaded && selectedVehicleData !== null;
+  }, [loading, driverCompensationLoaded, selectedVehicleData]);
 
   // Calculate driver pay for a load
   const getDriverPay = (load: ApprovalLoad) => {
@@ -1405,11 +1415,13 @@ export default function LoadApprovalTab() {
                             <TableCell className="!px-2 !py-0.5"></TableCell>
                             <TableCell className={cn("text-right font-bold !px-2 !py-0.5", emptyDayNet < 0 ? "text-destructive" : "")}> 
                               {/* Show daily cost as negative CARR NET on business days up to today */}
-                              {!isFutureDate && !isWeekendDay && emptyDayNet !== 0
-                                ? (emptyDayNet < 0
-                                    ? `-$${Math.abs(emptyDayNet).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                    : `$${emptyDayNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-                                : ""}
+                              {!isCarrNetDataReady 
+                                ? "..."
+                                : (!isFutureDate && !isWeekendDay && emptyDayNet !== 0
+                                  ? (emptyDayNet < 0
+                                      ? `-$${Math.abs(emptyDayNet).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                      : `$${emptyDayNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+                                  : "")}
                             </TableCell>
                           </TableRow>
                           {/* Weekly Summary Row */}
@@ -1419,9 +1431,11 @@ export default function LoadApprovalTab() {
                                 Weekly Total:
                               </TableCell>
                               <TableCell className="text-right !px-2 !py-1">
-                                <span className={cn("font-bold", weeklyTotal >= 0 ? "text-green-600" : "text-destructive")}>
-                                  ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
+                                {isCarrNetDataReady ? (
+                                  <span className={cn("font-bold", weeklyTotal >= 0 ? "text-green-600" : "text-destructive")}>
+                                    ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                ) : "..."}
                               </TableCell>
                             </TableRow>
                           )}
@@ -1475,7 +1489,9 @@ export default function LoadApprovalTab() {
                               </TableCell>
                               <TableCell className="text-right !px-2 !py-0.5">${carrierRatePerMile.toFixed(2)}</TableCell>
                               <TableCell className="text-right font-bold !px-2 !py-0.5">
-                                ${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {isCarrNetDataReady 
+                                  ? `$${carrierNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : "..."}
                               </TableCell>
                             </TableRow>
                           );
@@ -1487,9 +1503,11 @@ export default function LoadApprovalTab() {
                               Weekly Total:
                             </TableCell>
                             <TableCell className="text-right !px-2 !py-1">
-                              <span className={cn("font-bold", weeklyTotal >= 0 ? "text-green-600" : "text-destructive")}>
-                                ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
+                              {isCarrNetDataReady ? (
+                                <span className={cn("font-bold", weeklyTotal >= 0 ? "text-green-600" : "text-destructive")}>
+                                  ${weeklyTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              ) : "..."}
                             </TableCell>
                           </TableRow>
                         )}
