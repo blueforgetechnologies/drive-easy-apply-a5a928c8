@@ -3773,6 +3773,7 @@ export type Database = {
           carrier_id: string | null
           cents_per_mile: number | null
           clearance: number | null
+          clearance_inches: number | null
           contractor_percentage: number | null
           created_at: string | null
           dash_cam_sn: string | null
@@ -3874,6 +3875,7 @@ export type Database = {
           carrier_id?: string | null
           cents_per_mile?: number | null
           clearance?: number | null
+          clearance_inches?: number | null
           contractor_percentage?: number | null
           created_at?: string | null
           dash_cam_sn?: string | null
@@ -3975,6 +3977,7 @@ export type Database = {
           carrier_id?: string | null
           cents_per_mile?: number | null
           clearance?: number | null
+          clearance_inches?: number | null
           contractor_percentage?: number | null
           created_at?: string | null
           dash_cam_sn?: string | null
