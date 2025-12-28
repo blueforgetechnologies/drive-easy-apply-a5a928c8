@@ -454,24 +454,22 @@ export default function FleetFinancialsTab() {
     const daysUpToToday = allDays.filter(day => !isAfter(startOfDay(day), today)).length;
     
     // Calculate daily rental rate based on asset_ownership type
-    // - Owned: No rental cost (RCPD = 0)
-    // - Financed: Use monthly_payment / business days
-    // - Leased: Use weekly_payment / 5 (or monthly_payment as fallback)
+    // Each selection uses ONLY its designated fields, ignoring others:
+    // - Owned: monthly_payment ÷ business_days (RCPM = $0)
+    // - Financed: monthly_payment ÷ business_days (RCPM = $0)
+    // - Leased: weekly_payment ÷ 5 (RCPM = cents_per_mile × miles)
     const assetOwnership = selectedVehicle?.asset_ownership?.toLowerCase() || 'owned';
-    const vehicleWeeklyPayment = selectedVehicle?.weekly_payment || 0;
-    const vehicleMonthlyPayment = selectedVehicle?.monthly_payment || 0;
     
     let dailyRentalRate = 0;
     if (assetOwnership === 'leased') {
-      // Leased: prefer weekly payment, fallback to monthly
-      dailyRentalRate = vehicleWeeklyPayment > 0 
-        ? vehicleWeeklyPayment / 5 
-        : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
-    } else if (assetOwnership === 'financed') {
-      // Financed: use monthly payment divided by business days
+      // Leased: use weekly_payment ÷ 5 business days
+      const vehicleWeeklyPayment = selectedVehicle?.weekly_payment || 0;
+      dailyRentalRate = vehicleWeeklyPayment / 5;
+    } else {
+      // Owned or Financed: use monthly_payment ÷ business_days_in_month
+      const vehicleMonthlyPayment = selectedVehicle?.monthly_payment || 0;
       dailyRentalRate = businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0;
     }
-    // Owned: dailyRentalRate stays 0
     
     // Total rental up to today - prorate based on business days elapsed
     rental = dailyRentalRate * businessDaysUpToToday;
@@ -528,8 +526,8 @@ export default function FleetFinancialsTab() {
     const carrierPay = payload;
     const carrierPerMile = totalMiles > 0 ? payload / totalMiles : 0;
     
-    // Calculate rental $/mile cost: $ per mile × total miles (applies to any vehicle with cents_per_mile set)
-    const rentalPerMileCost = selectedVehicle?.cents_per_mile
+    // Calculate rental $/mile cost: ONLY applies to leased vehicles
+    const rentalPerMileCost = assetOwnership === 'leased' && selectedVehicle?.cents_per_mile
       ? selectedVehicle.cents_per_mile * totalMiles
       : 0;
     

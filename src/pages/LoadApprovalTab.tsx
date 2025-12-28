@@ -571,19 +571,20 @@ export default function LoadApprovalTab() {
     const businessDaysInMonth = allDays.filter(day => !isWeekend(day)).length;
     
     // Calculate daily rental rate based on asset_ownership type
+    // Each selection uses ONLY its designated fields:
+    // - Owned: monthly_payment ÷ business_days (RCPM = $0)
+    // - Financed: monthly_payment ÷ business_days (RCPM = $0)
+    // - Leased: weekly_payment ÷ 5 (RCPM = cents_per_mile × miles)
     const assetOwnership = selectedVehicleData.asset_ownership?.toLowerCase() || 'owned';
-    const vehicleWeeklyPayment = selectedVehicleData.weekly_payment || 0;
-    const vehicleMonthlyPayment = selectedVehicleData.monthly_payment || 0;
     
     let dailyRentalRate = 0;
     if (assetOwnership === 'leased') {
-      dailyRentalRate = vehicleWeeklyPayment > 0 
-        ? vehicleWeeklyPayment / 5 
-        : (businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0);
-    } else if (assetOwnership === 'financed') {
+      const vehicleWeeklyPayment = selectedVehicleData.weekly_payment || 0;
+      dailyRentalRate = vehicleWeeklyPayment / 5;
+    } else {
+      const vehicleMonthlyPayment = selectedVehicleData.monthly_payment || 0;
       dailyRentalRate = businessDaysInMonth > 0 ? vehicleMonthlyPayment / businessDaysInMonth : 0;
     }
-    // Owned: dailyRentalRate stays 0
     
     const vehicleInsuranceCost = selectedVehicleData.insurance_cost_per_month || 0;
     const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
@@ -641,8 +642,9 @@ export default function LoadApprovalTab() {
     const dispPercentage = dispatcherId ? (dispatcherPayInfo[dispatcherId] || 0) : 0;
     const dispPay = rate * (dispPercentage / 100);
     
-    // Rental per mile calculation (applies to any vehicle with cents_per_mile set)
-    const rentalPerMile = selectedVehicleData?.cents_per_mile
+    // Rental per mile calculation: ONLY applies to leased vehicles
+    const assetOwnership = selectedVehicleData?.asset_ownership?.toLowerCase() || 'owned';
+    const rentalPerMile = assetOwnership === 'leased' && selectedVehicleData?.cents_per_mile
       ? selectedVehicleData.cents_per_mile * totalMiles
       : 0;
     
