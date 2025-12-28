@@ -1138,16 +1138,30 @@ export default function VehicleDetail() {
                           checked={formData.requires_load_approval || false}
                           onCheckedChange={async (checked) => {
                             updateField('requires_load_approval', checked);
-                            // Auto-save this field immediately
+
+                            // Auto-save this field immediately (and validate that it actually saved)
+                            if (!id) {
+                              toast.error("Missing vehicle ID");
+                              updateField('requires_load_approval', !checked);
+                              return;
+                            }
+
                             try {
-                              const { error } = await supabase
+                              const { data, error } = await supabase
                                 .from("vehicles")
                                 .update({ requires_load_approval: checked })
-                                .eq("id", id);
+                                .eq("id", id)
+                                .select("id, requires_load_approval")
+                                .maybeSingle();
+
                               if (error) throw error;
-                              toast.success(checked ? "Load approval enabled" : "Load approval disabled");
+                              if (!data) throw new Error("Update did not apply (no row updated)");
+
+                              // Ensure UI reflects the persisted value
+                              updateField('requires_load_approval', data.requires_load_approval);
+                              toast.success(data.requires_load_approval ? "Load approval enabled" : "Load approval disabled");
                             } catch (error: any) {
-                              toast.error("Failed to update: " + error.message);
+                              toast.error("Failed to update: " + (error?.message || "Unknown error"));
                               // Revert on error
                               updateField('requires_load_approval', !checked);
                             }
