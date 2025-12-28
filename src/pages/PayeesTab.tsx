@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users, User, Mail, Phone, Building2, CreditCard, Check, Briefcase, Truck } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users, User, Mail, Phone, Building2, CreditCard, Check, Briefcase, Truck, Factory } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
@@ -69,6 +69,15 @@ interface UserProfile {
   zip: string | null;
 }
 
+interface Carrier {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  contact_name: string | null;
+}
+
 export default function PayeesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,13 +86,14 @@ export default function PayeesTab() {
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceSearchQuery, setSourceSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [addMode, setAddMode] = useState<"new" | "existing">("new");
-  const [selectedSourceType, setSelectedSourceType] = useState<"dispatcher" | "driver" | "user">("dispatcher");
+  const [selectedSourceType, setSelectedSourceType] = useState<"dispatcher" | "driver" | "user" | "carrier">("dispatcher");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedPayee, setSelectedPayee] = useState<Payee | null>(null);
@@ -115,15 +125,17 @@ export default function PayeesTab() {
 
   const loadExistingUsers = async () => {
     try {
-      const [dispatchersRes, driversRes, usersRes] = await Promise.all([
+      const [dispatchersRes, driversRes, usersRes, carriersRes] = await Promise.all([
         supabase.from("dispatchers").select("id, first_name, last_name, email, phone, address").eq("status", "active"),
         supabase.from("applications").select("id, personal_info, bank_name, routing_number, checking_number, driver_address, cell_phone"),
-        supabase.from("profiles").select("id, full_name, email, phone, address, city, state, zip")
+        supabase.from("profiles").select("id, full_name, email, phone, address, city, state, zip"),
+        supabase.from("carriers").select("id, name, email, phone, address, contact_name").eq("status", "active")
       ]);
       
       if (dispatchersRes.data) setDispatchers(dispatchersRes.data);
       if (driversRes.data) setDrivers(driversRes.data as Driver[]);
       if (usersRes.data) setUsers(usersRes.data as UserProfile[]);
+      if (carriersRes.data) setCarriers(carriersRes.data as Carrier[]);
     } catch (error) {
       console.error("Error loading existing users:", error);
     }
@@ -220,6 +232,18 @@ export default function PayeesTab() {
           address: [user.address, user.city, user.state, user.zip].filter(Boolean).join(", ") || "",
         };
       }
+    } else if (selectedSourceType === "carrier") {
+      const carrier = carriers.find(c => c.id === selectedSourceId);
+      if (carrier) {
+        payeeData = {
+          ...payeeData,
+          name: carrier.name,
+          type: "carrier",
+          email: carrier.email || "",
+          phone: carrier.phone || "",
+          address: carrier.address || "",
+        };
+      }
     }
 
     try {
@@ -278,6 +302,15 @@ export default function PayeesTab() {
     return (
       (u.full_name || "").toLowerCase().includes(search) ||
       (u.email || "").toLowerCase().includes(search)
+    );
+  });
+
+  const filteredCarriers = carriers.filter(c => {
+    const search = sourceSearchQuery.toLowerCase();
+    return (
+      (c.name || "").toLowerCase().includes(search) ||
+      (c.email || "").toLowerCase().includes(search) ||
+      (c.contact_name || "").toLowerCase().includes(search)
     );
   });
 
@@ -506,7 +539,7 @@ export default function PayeesTab() {
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
                     Select Source Type
                   </Label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -614,13 +647,49 @@ export default function PayeesTab() {
                         <p className="text-xs text-muted-foreground">{users.length}</p>
                       </div>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSourceType("carrier");
+                        setSelectedSourceId("");
+                        setSourceSearchQuery("");
+                      }}
+                      className={cn(
+                        "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200",
+                        selectedSourceType === "carrier"
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      {selectedSourceType === "carrier" && (
+                        <div className="absolute top-1.5 right-1.5">
+                          <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                          </div>
+                        </div>
+                      )}
+                      <div className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center",
+                        selectedSourceType === "carrier" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <Factory className={cn(
+                          "h-5 w-5",
+                          selectedSourceType === "carrier" ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-xs">Carrier</p>
+                        <p className="text-xs text-muted-foreground">{carriers.length}</p>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
                 {/* User Selection */}
                 <div>
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
-                    Select {selectedSourceType === "dispatcher" ? "Dispatcher" : selectedSourceType === "driver" ? "Driver" : "User"}
+                    Select {selectedSourceType === "dispatcher" ? "Dispatcher" : selectedSourceType === "driver" ? "Driver" : selectedSourceType === "carrier" ? "Carrier" : "User"}
                   </Label>
                   {/* Search Field */}
                   <div className="relative mb-2">
@@ -695,7 +764,7 @@ export default function PayeesTab() {
                           ))}
                         </RadioGroup>
                       )
-                    ) : (
+                    ) : selectedSourceType === "user" ? (
                       filteredUsers.length === 0 ? (
                         <div className="p-6 text-center text-muted-foreground text-sm">
                           {sourceSearchQuery ? "No matching users" : "No users found"}
@@ -720,6 +789,37 @@ export default function PayeesTab() {
                                 <p className="text-xs text-muted-foreground truncate">{u.email || "No email"}</p>
                               </div>
                               {selectedSourceId === u.id && (
+                                <Badge variant="secondary" className="shrink-0 text-xs">Selected</Badge>
+                              )}
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      )
+                    ) : (
+                      filteredCarriers.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground text-sm">
+                          {sourceSearchQuery ? "No matching carriers" : "No carriers found"}
+                        </div>
+                      ) : (
+                        <RadioGroup value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                          {filteredCarriers.map((c, idx) => (
+                            <label
+                              key={c.id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                                selectedSourceId === c.id ? "bg-primary/5" : "hover:bg-muted/50",
+                                idx !== filteredCarriers.length - 1 && "border-b"
+                              )}
+                            >
+                              <RadioGroupItem value={c.id} className="shrink-0" />
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center shrink-0">
+                                <Factory className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{c.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{c.contact_name || c.email || "No contact"}</p>
+                              </div>
+                              {selectedSourceId === c.id && (
                                 <Badge variant="secondary" className="shrink-0 text-xs">Selected</Badge>
                               )}
                             </label>
@@ -787,7 +887,7 @@ export default function PayeesTab() {
                           </div>
                         </div>
                       ) : null;
-                    })() : (() => {
+                    })() : selectedSourceType === "user" ? (() => {
                       const u = users.find(x => x.id === selectedSourceId);
                       return u ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -809,6 +909,28 @@ export default function PayeesTab() {
                           </div>
                         </div>
                       ) : null;
+                    })() : (() => {
+                      const c = carriers.find(x => x.id === selectedSourceId);
+                      return c ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Factory className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{c.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{c.email || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{c.phone || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Factory className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Badge variant="outline" className="text-xs">Carrier</Badge>
+                          </div>
+                        </div>
+                      ) : null;
                     })()}
                   </div>
                 )}
@@ -820,7 +942,7 @@ export default function PayeesTab() {
                   disabled={!selectedSourceId}
                 >
                   <Plus className="h-4 w-4" />
-                  Add {selectedSourceType === "dispatcher" ? "Dispatcher" : selectedSourceType === "driver" ? "Driver" : "User"} as Payee
+                  Add {selectedSourceType === "dispatcher" ? "Dispatcher" : selectedSourceType === "driver" ? "Driver" : selectedSourceType === "carrier" ? "Carrier" : "User"} as Payee
                 </Button>
               </TabsContent>
             </Tabs>
