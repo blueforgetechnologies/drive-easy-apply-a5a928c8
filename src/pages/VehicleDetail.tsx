@@ -1181,6 +1181,30 @@ export default function VehicleDetail() {
                     </div>
                   )}
 
+                  {/* Payee Selection */}
+                  <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payee</Label>
+                    <Select
+                      value={formData.payee_id || "none"}
+                      onValueChange={(value) => updateField('payee_id', value === "none" ? null : value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payee..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Payee</SelectItem>
+                        {payees.map((payee) => (
+                          <SelectItem key={payee.id} value={payee.id}>
+                            {payee.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Associate this truck with a payee for settlements and payments.
+                    </p>
+                  </div>
+
                 </CardContent>
               </Card>
 
