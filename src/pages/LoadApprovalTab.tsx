@@ -532,13 +532,32 @@ export default function LoadApprovalTab() {
 
   // Get vehicle for financial calculations (selected load truck or selected vehicle filter)
   const selectedVehicleData = useMemo(() => {
-    if (!financialVehicleId) return null;
-    return vehicles.find((v) => v.id === financialVehicleId) || null;
+    if (!financialVehicleId) {
+      console.log('[30DaysView] No financialVehicleId');
+      return null;
+    }
+    const found = vehicles.find((v) => v.id === financialVehicleId);
+    console.log('[30DaysView] financialVehicleId:', financialVehicleId, 'found:', !!found, 'vehicles count:', vehicles.length);
+    if (found) {
+      console.log('[30DaysView] Vehicle data:', {
+        id: found.id,
+        vehicle_number: found.vehicle_number,
+        asset_ownership: found.asset_ownership,
+        cents_per_mile: found.cents_per_mile,
+        insurance_cost_per_month: found.insurance_cost_per_month,
+        weekly_payment: found.weekly_payment,
+        monthly_payment: found.monthly_payment,
+      });
+    }
+    return found || null;
   }, [vehicles, financialVehicleId]);
 
   // Calculate daily rates for rental and insurance
   const dailyCostRates = useMemo(() => {
-    if (!selectedVehicleData) return { dailyRentalRate: 0, dailyInsuranceRate: 0 };
+    if (!selectedVehicleData) {
+      console.log('[30DaysView] dailyCostRates: selectedVehicleData is null');
+      return { dailyRentalRate: 0, dailyInsuranceRate: 0 };
+    }
     
     const today = new Date();
     const startDate = startOfMonth(today);
@@ -554,6 +573,8 @@ export default function LoadApprovalTab() {
     
     const vehicleInsuranceCost = selectedVehicleData.insurance_cost_per_month || 0;
     const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
+    
+    console.log('[30DaysView] dailyCostRates:', { dailyRentalRate, dailyInsuranceRate, businessDaysInMonth });
     
     return { dailyRentalRate, dailyInsuranceRate };
   }, [selectedVehicleData]);
@@ -629,8 +650,8 @@ export default function LoadApprovalTab() {
     }
     
     // Default fallback matches FleetFinancialsTable exactly:
-    // Carrier Pay - Driver Pay - WComp - Fuel - Tolls - Daily Rental - Daily Insurance - Other
-    return carrierPayAmount - drvPay - wcomp - fuelCost - tolls - dailyRental - dailyInsurance - DAILY_OTHER_COST;
+    // Carrier Pay - Driver Pay - WComp - Fuel - Tolls - Daily Rental - Rental Per Mile - Daily Insurance - Other
+    return carrierPayAmount - drvPay - wcomp - fuelCost - tolls - dailyRental - rentalPerMile - dailyInsurance - DAILY_OTHER_COST;
   };
 
   const handleRateChange = (loadId: string, value: string) => {
