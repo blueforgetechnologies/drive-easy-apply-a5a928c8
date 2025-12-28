@@ -632,8 +632,8 @@ export default function LoadApprovalTab() {
     const dispPercentage = dispatcherId ? (dispatcherPayInfo[dispatcherId] || 0) : 0;
     const dispPay = rate * (dispPercentage / 100);
     
-    // Rental per mile calculation
-    const rentalPerMile = selectedVehicleData?.asset_ownership === 'leased' && selectedVehicleData?.cents_per_mile
+    // Rental per mile calculation (applies to any vehicle with cents_per_mile set)
+    const rentalPerMile = selectedVehicleData?.cents_per_mile
       ? selectedVehicleData.cents_per_mile * totalMiles
       : 0;
     
