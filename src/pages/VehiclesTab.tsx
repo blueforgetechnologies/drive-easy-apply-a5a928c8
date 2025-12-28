@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,6 +43,7 @@ interface Vehicle {
 
 export default function VehiclesTab() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -73,9 +74,24 @@ export default function VehiclesTab() {
     license_plate: "",
   });
 
+  // Reload data when filter/sortOrder changes
   useEffect(() => {
     loadData();
     loadAvailableDriversAndDispatchers();
+  }, [filter, sortOrder]);
+
+  // Reload data when navigating back to this tab (e.g., after editing a vehicle)
+  useEffect(() => {
+    loadData();
+  }, [location.key]);
+
+  // Reload data when window regains focus (catches external changes)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [filter, sortOrder]);
 
   const loadAvailableDriversAndDispatchers = async () => {
