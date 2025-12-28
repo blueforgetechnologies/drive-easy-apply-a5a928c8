@@ -582,7 +582,8 @@ export default function LoadApprovalTab() {
 
   // Calculate Carrier Net for a load (identical to FleetFinancialsTable)
   const calculateCarrierNet = (load: ApprovalLoad, loadIndex: number, date: Date) => {
-    const carrierPayAmount = carrierRates[load.id] ?? load.carrier_rate ?? load.rate ?? 0;
+    const rate = load.rate || 0;
+    const carrierPayAmount = carrierRates[load.id] ?? load.carrier_rate ?? rate;
     const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
     const drvPay = getDriverPay(load);
     const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
@@ -591,17 +592,27 @@ export default function LoadApprovalTab() {
     const dailyInsurance = isBusinessDay && loadIndex === 0 ? dailyCostRates.dailyInsuranceRate : 0;
     const tolls = 0;
     const wcomp = 0;
+    
+    // Calculate factoring exactly like FleetFinancialsTable (rate * factoringPercentage / 100)
+    const factoring = rate * (factoringPercentage / 100);
+    
+    // Calculate dispatcher pay exactly like FleetFinancialsTable
+    const dispatcherId = load.assigned_dispatcher_id;
+    const dispPercentage = dispatcherId ? (dispatcherPayInfo[dispatcherId] || 0) : 0;
+    const dispPay = rate * (dispPercentage / 100);
+    
+    // Rental per mile calculation
     const rentalPerMile = selectedVehicleData?.asset_ownership === 'leased' && selectedVehicleData?.cents_per_mile
       ? selectedVehicleData.cents_per_mile * totalMiles
       : 0;
     
-    // Build values for formula calculation
+    // Build values for formula calculation - EXACTLY like FleetFinancialsTable
     const formulaValues: Record<string, number> = {
-      payload: load.rate || 0,
+      payload: rate,
       carr_pay: carrierPayAmount,
-      disp_pay: 0,
+      disp_pay: dispPay,
       drv_pay: drvPay,
-      factor: 0,
+      factor: factoring,
       fuel: fuelCost,
       rental: dailyRental,
       insur: dailyInsurance,
@@ -619,7 +630,6 @@ export default function LoadApprovalTab() {
     
     // Default fallback matches FleetFinancialsTable exactly:
     // Carrier Pay - Driver Pay - WComp - Fuel - Tolls - Daily Rental - Daily Insurance - Other
-    // Note: rentalPerMile is only included if formula is configured to include it
     return carrierPayAmount - drvPay - wcomp - fuelCost - tolls - dailyRental - dailyInsurance - DAILY_OTHER_COST;
   };
 
