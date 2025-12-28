@@ -58,6 +58,7 @@ interface Vehicle {
   asset_ownership?: string | null;
   cents_per_mile?: number | null;
   truck_type?: string | null;
+  contractor_percentage?: number | null;
 }
 
 interface Totals {
@@ -325,7 +326,14 @@ function CellValue({
   const isTruckTypeMismatch = loadTruckType !== currentTruckType;
   const isApproved = load.carrier_approved === true;
   const payloadChangedAfterApproval = isApproved && load.approved_payload !== null && load.approved_payload !== rate;
-  const carrierPayAmount = load.carrier_rate || rate;
+  
+  // Calculate carrier pay: use stored carrier_rate, or calculate from contractor percentage for contractor trucks
+  const contractorPercentage = selectedVehicle?.contractor_percentage || 0;
+  const isContractorTruck = currentTruckType === 'contractor_truck';
+  const calculatedContractorRate = isContractorTruck && contractorPercentage > 0 
+    ? rate * (contractorPercentage / 100) 
+    : rate;
+  const carrierPayAmount = load.carrier_rate || calculatedContractorRate;
   const tolls = 0; // Placeholder for tolls - not yet tracked per load
   const wcomp = 0; // Placeholder for workman's comp - not yet tracked per load
   
