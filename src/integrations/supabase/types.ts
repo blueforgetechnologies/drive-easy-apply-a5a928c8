@@ -3664,6 +3664,8 @@ export type Database = {
       user_preferences: {
         Row: {
           created_at: string
+          expense_group_collapsed: boolean | null
+          expense_group_columns: string[] | null
           id: string
           show_column_lines: boolean | null
           sound_settings: Json | null
@@ -3672,6 +3674,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          expense_group_collapsed?: boolean | null
+          expense_group_columns?: string[] | null
           id?: string
           show_column_lines?: boolean | null
           sound_settings?: Json | null
@@ -3680,6 +3684,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          expense_group_collapsed?: boolean | null
+          expense_group_columns?: string[] | null
           id?: string
           show_column_lines?: boolean | null
           sound_settings?: Json | null
