@@ -770,7 +770,8 @@ export default function LoadDetail() {
               <p className={`text-[10px] uppercase tracking-wide ${!load.empty_miles ? 'text-red-500' : 'text-muted-foreground'}`}>DH Miles</p>
               <Input
                 type="number"
-                value={load.empty_miles ?? ""}
+                step="0.01"
+                value={load.empty_miles != null ? Math.round(load.empty_miles * 100) / 100 : ""}
                 onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)}
                 onBlur={handleSave}
                 className={`h-6 text-sm font-bold text-center border-0 bg-transparent p-0 focus:ring-1 focus:ring-primary ${!load.empty_miles ? 'text-red-500 placeholder:text-red-400' : ''}`}
