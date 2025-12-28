@@ -58,6 +58,17 @@ interface Driver {
   cell_phone: string | null;
 }
 
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+}
+
 export default function PayeesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,12 +76,14 @@ export default function PayeesTab() {
   const [payees, setPayees] = useState<Payee[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sourceSearchQuery, setSourceSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [addMode, setAddMode] = useState<"new" | "existing">("new");
-  const [selectedSourceType, setSelectedSourceType] = useState<"dispatcher" | "driver">("dispatcher");
+  const [selectedSourceType, setSelectedSourceType] = useState<"dispatcher" | "driver" | "user">("dispatcher");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedPayee, setSelectedPayee] = useState<Payee | null>(null);
@@ -102,13 +115,15 @@ export default function PayeesTab() {
 
   const loadExistingUsers = async () => {
     try {
-      const [dispatchersRes, driversRes] = await Promise.all([
+      const [dispatchersRes, driversRes, usersRes] = await Promise.all([
         supabase.from("dispatchers").select("id, first_name, last_name, email, phone, address").eq("status", "active"),
-        supabase.from("applications").select("id, personal_info, bank_name, routing_number, checking_number, driver_address, cell_phone")
+        supabase.from("applications").select("id, personal_info, bank_name, routing_number, checking_number, driver_address, cell_phone"),
+        supabase.from("profiles").select("id, full_name, email, phone, address, city, state, zip")
       ]);
       
       if (dispatchersRes.data) setDispatchers(dispatchersRes.data);
       if (driversRes.data) setDrivers(driversRes.data as Driver[]);
+      if (usersRes.data) setUsers(usersRes.data as UserProfile[]);
     } catch (error) {
       console.error("Error loading existing users:", error);
     }
@@ -177,7 +192,7 @@ export default function PayeesTab() {
           address: dispatcher.address || "",
         };
       }
-    } else {
+    } else if (selectedSourceType === "driver") {
       const driver = drivers.find(d => d.id === selectedSourceId);
       if (driver) {
         const pi = driver.personal_info || {};
@@ -191,6 +206,18 @@ export default function PayeesTab() {
           bank_name: driver.bank_name || "",
           routing_number: driver.routing_number || "",
           account_number: driver.checking_number || "",
+        };
+      }
+    } else if (selectedSourceType === "user") {
+      const user = users.find(u => u.id === selectedSourceId);
+      if (user) {
+        payeeData = {
+          ...payeeData,
+          name: user.full_name || user.email || "",
+          type: "user",
+          email: user.email || "",
+          phone: user.phone || "",
+          address: [user.address, user.city, user.state, user.zip].filter(Boolean).join(", ") || "",
         };
       }
     }
@@ -214,6 +241,7 @@ export default function PayeesTab() {
     setAddMode("new");
     setSelectedSourceType("dispatcher");
     setSelectedSourceId("");
+    setSourceSearchQuery("");
     setFormData({
       name: "",
       type: "driver",
@@ -226,6 +254,32 @@ export default function PayeesTab() {
       address: "",
     });
   };
+
+  // Filter functions for source lists
+  const filteredDispatchers = dispatchers.filter(d => {
+    const search = sourceSearchQuery.toLowerCase();
+    return (
+      `${d.first_name} ${d.last_name}`.toLowerCase().includes(search) ||
+      d.email.toLowerCase().includes(search)
+    );
+  });
+
+  const filteredDrivers = drivers.filter(d => {
+    if (!d.personal_info?.firstName) return false;
+    const search = sourceSearchQuery.toLowerCase();
+    return (
+      `${d.personal_info.firstName || ""} ${d.personal_info.lastName || ""}`.toLowerCase().includes(search) ||
+      (d.personal_info.email || "").toLowerCase().includes(search)
+    );
+  });
+
+  const filteredUsers = users.filter(u => {
+    const search = sourceSearchQuery.toLowerCase();
+    return (
+      (u.full_name || "").toLowerCase().includes(search) ||
+      (u.email || "").toLowerCase().includes(search)
+    );
+  });
 
   const handleDeletePayee = async (id: string) => {
     try {
@@ -452,39 +506,40 @@ export default function PayeesTab() {
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
                     Select Source Type
                   </Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedSourceType("dispatcher");
                         setSelectedSourceId("");
+                        setSourceSearchQuery("");
                       }}
                       className={cn(
-                        "relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200",
                         selectedSourceType === "dispatcher"
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/50 hover:bg-muted/50"
                       )}
                     >
                       {selectedSourceType === "dispatcher" && (
-                        <div className="absolute top-2 right-2">
-                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="h-3 w-3 text-primary-foreground" />
+                        <div className="absolute top-1.5 right-1.5">
+                          <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-2.5 w-2.5 text-primary-foreground" />
                           </div>
                         </div>
                       )}
                       <div className={cn(
-                        "h-12 w-12 rounded-full flex items-center justify-center",
+                        "h-10 w-10 rounded-full flex items-center justify-center",
                         selectedSourceType === "dispatcher" ? "bg-primary/10" : "bg-muted"
                       )}>
                         <Briefcase className={cn(
-                          "h-6 w-6",
+                          "h-5 w-5",
                           selectedSourceType === "dispatcher" ? "text-primary" : "text-muted-foreground"
                         )} />
                       </div>
                       <div className="text-center">
-                        <p className="font-semibold text-sm">Dispatcher</p>
-                        <p className="text-xs text-muted-foreground">{dispatchers.length} available</p>
+                        <p className="font-semibold text-xs">Dispatcher</p>
+                        <p className="text-xs text-muted-foreground">{dispatchers.length}</p>
                       </div>
                     </button>
                     
@@ -493,33 +548,70 @@ export default function PayeesTab() {
                       onClick={() => {
                         setSelectedSourceType("driver");
                         setSelectedSourceId("");
+                        setSourceSearchQuery("");
                       }}
                       className={cn(
-                        "relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200",
                         selectedSourceType === "driver"
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/50 hover:bg-muted/50"
                       )}
                     >
                       {selectedSourceType === "driver" && (
-                        <div className="absolute top-2 right-2">
-                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="h-3 w-3 text-primary-foreground" />
+                        <div className="absolute top-1.5 right-1.5">
+                          <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-2.5 w-2.5 text-primary-foreground" />
                           </div>
                         </div>
                       )}
                       <div className={cn(
-                        "h-12 w-12 rounded-full flex items-center justify-center",
+                        "h-10 w-10 rounded-full flex items-center justify-center",
                         selectedSourceType === "driver" ? "bg-primary/10" : "bg-muted"
                       )}>
                         <Truck className={cn(
-                          "h-6 w-6",
+                          "h-5 w-5",
                           selectedSourceType === "driver" ? "text-primary" : "text-muted-foreground"
                         )} />
                       </div>
                       <div className="text-center">
-                        <p className="font-semibold text-sm">Driver</p>
-                        <p className="text-xs text-muted-foreground">{drivers.filter(d => d.personal_info?.firstName).length} available</p>
+                        <p className="font-semibold text-xs">Driver</p>
+                        <p className="text-xs text-muted-foreground">{drivers.filter(d => d.personal_info?.firstName).length}</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSourceType("user");
+                        setSelectedSourceId("");
+                        setSourceSearchQuery("");
+                      }}
+                      className={cn(
+                        "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200",
+                        selectedSourceType === "user"
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      {selectedSourceType === "user" && (
+                        <div className="absolute top-1.5 right-1.5">
+                          <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                          </div>
+                        </div>
+                      )}
+                      <div className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center",
+                        selectedSourceType === "user" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <User className={cn(
+                          "h-5 w-5",
+                          selectedSourceType === "user" ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-xs">User</p>
+                        <p className="text-xs text-muted-foreground">{users.length}</p>
                       </div>
                     </button>
                   </div>
@@ -527,24 +619,34 @@ export default function PayeesTab() {
 
                 {/* User Selection */}
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
-                    Select {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"}
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
+                    Select {selectedSourceType === "dispatcher" ? "Dispatcher" : selectedSourceType === "driver" ? "Driver" : "User"}
                   </Label>
-                  <div className="max-h-[200px] overflow-y-auto rounded-xl border bg-card">
+                  {/* Search Field */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder={`Search ${selectedSourceType}s...`}
+                      value={sourceSearchQuery}
+                      onChange={(e) => setSourceSearchQuery(e.target.value)}
+                      className="pl-8 h-8 text-sm"
+                    />
+                  </div>
+                  <div className="max-h-[180px] overflow-y-auto rounded-xl border bg-card">
                     {selectedSourceType === "dispatcher" ? (
-                      dispatchers.length === 0 ? (
+                      filteredDispatchers.length === 0 ? (
                         <div className="p-6 text-center text-muted-foreground text-sm">
-                          No dispatchers found
+                          {sourceSearchQuery ? "No matching dispatchers" : "No dispatchers found"}
                         </div>
                       ) : (
                         <RadioGroup value={selectedSourceId} onValueChange={setSelectedSourceId}>
-                          {dispatchers.map((d, idx) => (
+                          {filteredDispatchers.map((d, idx) => (
                             <label
                               key={d.id}
                               className={cn(
                                 "flex items-center gap-3 p-3 cursor-pointer transition-colors",
                                 selectedSourceId === d.id ? "bg-primary/5" : "hover:bg-muted/50",
-                                idx !== dispatchers.length - 1 && "border-b"
+                                idx !== filteredDispatchers.length - 1 && "border-b"
                               )}
                             >
                               <RadioGroupItem value={d.id} className="shrink-0" />
@@ -562,20 +664,20 @@ export default function PayeesTab() {
                           ))}
                         </RadioGroup>
                       )
-                    ) : (
-                      drivers.filter(d => d.personal_info?.firstName).length === 0 ? (
+                    ) : selectedSourceType === "driver" ? (
+                      filteredDrivers.length === 0 ? (
                         <div className="p-6 text-center text-muted-foreground text-sm">
-                          No drivers found
+                          {sourceSearchQuery ? "No matching drivers" : "No drivers found"}
                         </div>
                       ) : (
                         <RadioGroup value={selectedSourceId} onValueChange={setSelectedSourceId}>
-                          {drivers.filter(d => d.personal_info?.firstName).map((d, idx, arr) => (
+                          {filteredDrivers.map((d, idx) => (
                             <label
                               key={d.id}
                               className={cn(
                                 "flex items-center gap-3 p-3 cursor-pointer transition-colors",
                                 selectedSourceId === d.id ? "bg-primary/5" : "hover:bg-muted/50",
-                                idx !== arr.length - 1 && "border-b"
+                                idx !== filteredDrivers.length - 1 && "border-b"
                               )}
                             >
                               <RadioGroupItem value={d.id} className="shrink-0" />
@@ -587,6 +689,37 @@ export default function PayeesTab() {
                                 <p className="text-xs text-muted-foreground truncate">{d.personal_info?.email || d.cell_phone || "No contact"}</p>
                               </div>
                               {selectedSourceId === d.id && (
+                                <Badge variant="secondary" className="shrink-0 text-xs">Selected</Badge>
+                              )}
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      )
+                    ) : (
+                      filteredUsers.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground text-sm">
+                          {sourceSearchQuery ? "No matching users" : "No users found"}
+                        </div>
+                      ) : (
+                        <RadioGroup value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                          {filteredUsers.map((u, idx) => (
+                            <label
+                              key={u.id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                                selectedSourceId === u.id ? "bg-primary/5" : "hover:bg-muted/50",
+                                idx !== filteredUsers.length - 1 && "border-b"
+                              )}
+                            >
+                              <RadioGroupItem value={u.id} className="shrink-0" />
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center shrink-0">
+                                <User className="h-4 w-4 text-violet-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{u.full_name || "Unnamed User"}</p>
+                                <p className="text-xs text-muted-foreground truncate">{u.email || "No email"}</p>
+                              </div>
+                              {selectedSourceId === u.id && (
                                 <Badge variant="secondary" className="shrink-0 text-xs">Selected</Badge>
                               )}
                             </label>
@@ -628,7 +761,7 @@ export default function PayeesTab() {
                           </div>
                         </div>
                       ) : null;
-                    })() : (() => {
+                    })() : selectedSourceType === "driver" ? (() => {
                       const d = drivers.find(x => x.id === selectedSourceId);
                       return d ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -654,6 +787,28 @@ export default function PayeesTab() {
                           </div>
                         </div>
                       ) : null;
+                    })() : (() => {
+                      const u = users.find(x => x.id === selectedSourceId);
+                      return u ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{u.full_name || "Unnamed User"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{u.email || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{u.phone || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Badge variant="outline" className="text-xs">User</Badge>
+                          </div>
+                        </div>
+                      ) : null;
                     })()}
                   </div>
                 )}
@@ -665,7 +820,7 @@ export default function PayeesTab() {
                   disabled={!selectedSourceId}
                 >
                   <Plus className="h-4 w-4" />
-                  Add {selectedSourceType === "dispatcher" ? "Dispatcher" : "Driver"} as Payee
+                  Add {selectedSourceType === "dispatcher" ? "Dispatcher" : selectedSourceType === "driver" ? "Driver" : "User"} as Payee
                 </Button>
               </TabsContent>
             </Tabs>
