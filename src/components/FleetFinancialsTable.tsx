@@ -329,6 +329,10 @@ function CellValue({
   const tolls = 0; // Placeholder for tolls - not yet tracked per load
   const wcomp = 0; // Placeholder for workman's comp - not yet tracked per load
   
+  // RCPM only applies to leased vehicles
+  const assetOwnership = selectedVehicle?.asset_ownership?.toLowerCase() || 'owned';
+  const isLeased = assetOwnership === 'leased';
+  
   // Build the values object for formula calculation
   // Always use the DB-stored carrier_rate (calculated from contractor % or manually set)
   const formulaValues: Record<string, number> = {
@@ -343,13 +347,14 @@ function CellValue({
     tolls: tolls,
     wcomp: wcomp,
     other: DAILY_OTHER_COST,
-    rental_per_mile: selectedVehicle?.cents_per_mile
+    rental_per_mile: isLeased && selectedVehicle?.cents_per_mile
       ? selectedVehicle.cents_per_mile * totalM
       : 0,
   };
   
   // Fallback calculations for when formulas aren't configured
-  const loadRcpm = selectedVehicle?.cents_per_mile
+  // RCPM only applies to leased vehicles
+  const loadRcpm = isLeased && selectedVehicle?.cents_per_mile
     ? selectedVehicle.cents_per_mile * totalM
     : 0;
   
@@ -393,11 +398,11 @@ function CellValue({
   
 
   // Calculate collapsed expenses total - sum of all selected expense columns
-  // Calculate rental per mile cost for this load ($ per mile × total miles)
-  const loadRentalPerMileCost = selectedVehicle?.cents_per_mile
+  // Calculate rental per mile cost for this load ($ per mile × total miles) - only for leased vehicles
+  const loadRentalPerMileCost = isLeased && selectedVehicle?.cents_per_mile
     ? selectedVehicle.cents_per_mile * totalM
     : 0;
-  
+
   const collapsedExpenseTotal = 
     (expenseGroupColumns.includes("mpg") ? (totalM > 0 ? totalM / milesPerGallon : 0) : 0) + // MPG as gallons used
     (expenseGroupColumns.includes("factor") ? factoring : 0) +
