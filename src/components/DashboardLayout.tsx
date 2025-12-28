@@ -300,7 +300,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     if (value === 'accounting') {
-      navigate(`/dashboard/${value}?subtab=invoices`);
+      navigate(`/dashboard/${value}?subtab=ready_for_audit`);
     } else if (value === 'business') {
       navigate(`/dashboard/${value}?subtab=assets`);
     } else if (value === 'settings') {
