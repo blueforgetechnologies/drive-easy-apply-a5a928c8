@@ -21,8 +21,6 @@ export const AVAILABLE_FORMULA_COLUMNS = [
   { id: "carr_pay", label: "Carrier Pay" },
   { id: "disp_pay", label: "Dispatch Pay" },
   { id: "drv_pay", label: "Drv1 Pay" },
-  { id: "drv1_name", label: "DRV1" },
-  { id: "drv2_name", label: "DRV2" },
   { id: "drv2_pay", label: "Drv2 Pay" },
   { id: "factor", label: "Factoring" },
   { id: "fuel", label: "Fuel" },

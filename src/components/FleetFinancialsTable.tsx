@@ -359,6 +359,7 @@ function CellValue({
     carr_pay: carrierPayAmount,
     disp_pay: dispPay,
     drv_pay: drvPay,
+    drv2_pay: drv2Pay,
     factor: factoring,
     fuel: fuelCost,
     rental: dailyRental,
