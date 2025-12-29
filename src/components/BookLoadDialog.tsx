@@ -36,6 +36,7 @@ export function BookLoadDialog({
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [isBooking, setIsBooking] = useState(false);
+  const [isAsapPickup, setIsAsapPickup] = useState(false);
 
   // Pre-fill values when dialog opens
   useEffect(() => {
@@ -50,14 +51,32 @@ export function BookLoadDialog({
       setDispatcherId(match.bid_by || currentDispatcherId || "");
       
       // Pickup date/time from parsed data
-      setPickupDate(parsedData.pickup_date || "");
-      setPickupTime(parsedData.pickup_time || "");
+      // Check if pickup_date is "ASAP" or similar - use today's date if so
+      const rawPickupDate = parsedData.pickup_date || "";
+      const isAsap = rawPickupDate.toLowerCase().includes("asap") || rawPickupDate.toLowerCase() === "asap";
+      setIsAsapPickup(isAsap);
+      
+      if (isAsap) {
+        // Use today's date for ASAP pickups
+        const today = new Date().toISOString().split('T')[0];
+        setPickupDate(today);
+        setPickupTime(""); // Force dispatcher to enter time
+      } else {
+        setPickupDate(rawPickupDate);
+        setPickupTime(parsedData.pickup_time || "");
+      }
     }
   }, [open, match, parsedData, currentDispatcherId]);
 
   const handleBookLoad = async () => {
     if (!rate || !vehicleId) {
       toast.error("Please fill in the required fields");
+      return;
+    }
+    
+    // Require pickup time when ASAP pickup
+    if (isAsapPickup && !pickupTime) {
+      toast.error("Pickup time is required for ASAP pickups");
       return;
     }
 
@@ -324,13 +343,14 @@ export function BookLoadDialog({
           {/* Pickup Time */}
           <div className="space-y-2">
             <Label htmlFor="pickupTime" className="text-sm font-medium">
-              Pickup Time
+              Pickup Time {isAsapPickup && <span className="text-destructive">*</span>}
             </Label>
             <Input
               id="pickupTime"
               type="time"
               value={pickupTime}
               onChange={(e) => setPickupTime(e.target.value)}
+              required={isAsapPickup}
             />
           </div>
 
@@ -359,7 +379,7 @@ export function BookLoadDialog({
           </Button>
           <Button 
             onClick={handleBookLoad} 
-            disabled={isBooking || !rate || !vehicleId}
+            disabled={isBooking || !rate || !vehicleId || (isAsapPickup && !pickupTime)}
             className="btn-glossy-success text-white"
           >
             {isBooking ? "Booking..." : "BOOK LOAD"}
