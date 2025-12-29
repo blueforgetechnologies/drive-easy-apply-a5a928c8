@@ -1407,8 +1407,8 @@ const LoadEmailDetail = ({
                   }
                   setBidError(null);
                   
-                  // Check if bidding below posted rate
-                  const postedRate = parseFloat(String(data.rate || '0').replace(/[^0-9.]/g, '')) || 0;
+                  // Check if bidding below posted rate (use posted_amount, fallback to rate)
+                  const postedRate = parseFloat(String(data.posted_amount || data.rate || '0').replace(/[^0-9.]/g, '')) || 0;
                   if (postedRate > 0 && bidValue < postedRate) {
                     // Show warning dialog
                     setPendingBidAmount(finalBid);
@@ -2262,7 +2262,7 @@ const LoadEmailDetail = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Bidding Below Posted Rate</AlertDialogTitle>
           <AlertDialogDescription>
-            This load is posted for <span className="font-bold text-foreground">${Number(data.rate || 0).toLocaleString()}</span> and you are bidding <span className="font-bold text-foreground">${Number(pendingBidAmount || 0).toLocaleString()}</span>.
+            This load is posted for <span className="font-bold text-foreground">${Number(data.posted_amount || data.rate || 0).toLocaleString()}</span> and you are bidding <span className="font-bold text-foreground">${Number(pendingBidAmount || 0).toLocaleString()}</span>.
             <br /><br />
             Are you sure you want to bid below the posted rate?
           </AlertDialogDescription>
