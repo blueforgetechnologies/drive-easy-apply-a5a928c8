@@ -978,7 +978,7 @@ function FooterCellValue({
               <TooltipTrigger asChild>
                 <div className="cursor-help">
                   <div className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                    Drv Pay
+                    Drv1 Pay
                     {totals.driverPayActive && (
                       <span className="text-[8px] text-emerald-500">
                         ({totals.driverPayMethod === "percentage"
