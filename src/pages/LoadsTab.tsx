@@ -349,7 +349,7 @@ export default function LoadsTab() {
         .from("loads" as any)
         .select(`
           *,
-          vehicle:vehicles!assigned_vehicle_id(vehicle_number, requires_load_approval),
+          vehicle:vehicles!assigned_vehicle_id(vehicle_number, requires_load_approval, truck_type, contractor_percentage),
           driver:applications!assigned_driver_id(personal_info),
           carrier:carriers!carrier_id(name),
           customer:customers!customer_id(name),
@@ -2067,14 +2067,26 @@ export default function LoadsTab() {
                                     </div>
                                   );
                                 } else {
-                                  // No approval required - show payload/rate
+                                  // No approval required - calculate carrier pay based on truck type
+                                  const truckType = (load.vehicle as any)?.truck_type;
+                                  const contractorPercentage = (load.vehicle as any)?.contractor_percentage || 0;
+                                  const isContractorTruck = truckType === 'contractor_truck';
+                                  
+                                  // Use carrier_rate if stored, otherwise calculate for contractor trucks
+                                  let displayCarrierPay = carrierRate;
+                                  if (!displayCarrierPay && rate) {
+                                    displayCarrierPay = isContractorTruck && contractorPercentage > 0
+                                      ? rate * (contractorPercentage / 100)
+                                      : rate;
+                                  }
+                                  
                                   return (
                                     <div 
                                       className="text-xs font-semibold text-green-600 cursor-pointer hover:underline"
                                       onClick={handleCarrierPayClick}
                                       title="View rate history"
                                     >
-                                      {rate ? `$${rate.toFixed(2)}` : "-"}
+                                      {displayCarrierPay ? `$${displayCarrierPay.toFixed(2)}` : "-"}
                                     </div>
                                   );
                                 }
