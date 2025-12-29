@@ -314,9 +314,10 @@ function CellValue({
   const drvPay = getDriverPay(load);
   const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
   const isBusinessDay = !isWeekend(day.date);
-  // Only apply daily costs (rental, insurance) to the first load of the day to avoid duplication
+  // Rental only applies to business days (Mon-Fri), but insurance applies to ALL days
+  // Only apply daily costs to the first load of the day to avoid duplication
   const dailyRental = isBusinessDay && loadIndex === 0 ? totals.dailyRentalRate : 0;
-  const dailyInsurance = isBusinessDay && loadIndex === 0 ? totals.dailyInsuranceRate : 0;
+  const dailyInsurance = loadIndex === 0 ? totals.dailyInsuranceRate : 0;
   const isToday = isSameDay(day.date, new Date());
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -693,8 +694,9 @@ function EmptyDayCellValue({
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const isBusinessDay = !isWeekend(day.date);
+  // Rental only applies to business days, but insurance applies to ALL days
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-  const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
+  const dailyInsurance = totals.dailyInsuranceRate; // Applies to all days
   const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
   const isToday = isSameDay(day.date, new Date());
   const isFutureDate = isAfter(startOfDay(day.date), startOfDay(new Date()));
@@ -756,7 +758,7 @@ function EmptyDayCellValue({
     case "insur":
       return (
         <TableCell className={cn("text-right !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {isBusinessDay && !isFutureDate && dailyInsurance > 0 ? formatCurrency(dailyInsurance) : ""}
+          {!isFutureDate && dailyInsurance > 0 ? formatCurrency(dailyInsurance) : ""}
         </TableCell>
       );
     case "net":
@@ -1046,8 +1048,8 @@ function FooterCellValue({
       return (
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
           <div className="text-[10px] text-muted-foreground">Carr NET</div>
-          <div className={cn("font-bold", totals.netProfit >= 0 ? "text-green-600" : "text-red-600")}>
-            {formatCurrency(totals.netProfit)}
+          <div className={cn("font-bold", carrierNetTotal >= 0 ? "text-green-600" : "text-red-600")}>
+            {formatCurrency(carrierNetTotal)}
           </div>
         </td>
       );
