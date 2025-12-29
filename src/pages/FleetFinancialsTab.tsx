@@ -499,13 +499,13 @@ export default function FleetFinancialsTab() {
     rental = dailyRentalRate * businessDaysUpToToday;
     
     // Calculate daily insurance rate from vehicle's monthly insurance cost
-    // Insurance applies to ALL days (not just business days) per memory spec
+    // Insurance only applies to business days (Mon-Fri), not weekends
     const vehicleInsuranceCost = selectedVehicle?.insurance_cost_per_month || 0;
-    const dailyInsuranceRate = daysInMonth > 0 ? vehicleInsuranceCost / daysInMonth : 0;
+    const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
     
-    // Prorate insurance cost up to today (all days, not just business days)
-    insuranceCost = dailyInsuranceRate * daysUpToToday;
-    other = DAILY_OTHER_COST * daysUpToToday;
+    // Prorate insurance cost up to today (only business days, not weekends)
+    insuranceCost = dailyInsuranceRate * businessDaysUpToToday;
+    other = DAILY_OTHER_COST * businessDaysUpToToday;
 
     // Dispatcher pay calculation
     const dispatcher = dispatchers.find(d => 
@@ -733,14 +733,15 @@ export default function FleetFinancialsTab() {
         const dispPay = getDispatcherPay(load);
         const drvPay = getDriverPay(load);
         const drv2Pay = getDriver2Pay(load);
-        // Only apply rental and insurance to the first load of the day
+        // Only apply rental and insurance to the first load of the day, business days only
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
-        const loadInsurance = loadIndex === 0 ? dailyInsurance : 0;
+        const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
         weekTotal += rate - factoring - dispPay - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
       });
-      // Add empty day costs (only if no loads on this day)
+      // Add empty day costs (only if no loads on this day), insurance only on business days
       if (dailyData[i].loads.length === 0) {
-        weekTotal -= dayRentalCost + dailyInsurance + DAILY_OTHER_COST;
+        const dayInsuranceCost = isBusinessDay ? dailyInsurance : 0;
+        weekTotal -= dayRentalCost + dayInsuranceCost + DAILY_OTHER_COST;
       }
     }
     return weekTotal;
@@ -771,14 +772,15 @@ export default function FleetFinancialsTab() {
         const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
         const drvPay = getDriverPay(load);
         const drv2Pay = getDriver2Pay(load);
-        // Only apply rental/insurance to first load of day
+        // Only apply rental/insurance to first load of day, business days only
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
-        const loadInsurance = loadIndex === 0 ? dailyInsurance : 0;
+        const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
         weekTotal += carrierPayAmount - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
       });
-      // Add empty day costs
+      // Add empty day costs, insurance only on business days
       if (dailyData[i].loads.length === 0) {
-        weekTotal -= dayRentalCost + dailyInsurance + DAILY_OTHER_COST;
+        const dayInsuranceCost = isBusinessDay ? dailyInsurance : 0;
+        weekTotal -= dayRentalCost + dayInsuranceCost + DAILY_OTHER_COST;
       }
     }
     return weekTotal;
