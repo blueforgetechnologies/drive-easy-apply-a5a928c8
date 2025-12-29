@@ -144,7 +144,10 @@ export function useFleetColumns() {
             // Migrate localStorage to database
             await supabase
               .from("user_fleet_column_preferences")
-              .upsert([{ user_id: user.id, columns: JSON.parse(JSON.stringify(merged)) }]);
+              .upsert(
+                [{ user_id: user.id, columns: JSON.parse(JSON.stringify(merged)) }],
+                { onConflict: 'user_id' }
+              );
           }
         }
       } catch (e) {
@@ -169,10 +172,13 @@ export function useFleetColumns() {
     // Debounce save to database
     saveTimeoutRef.current = setTimeout(async () => {
       if (userId) {
-        // Save to database
+        // Save to database with explicit conflict handling on user_id
         const { error } = await supabase
           .from("user_fleet_column_preferences")
-          .upsert([{ user_id: userId, columns: JSON.parse(JSON.stringify(columns)) }]);
+          .upsert(
+            [{ user_id: userId, columns: JSON.parse(JSON.stringify(columns)) }],
+            { onConflict: 'user_id' }
+          );
         
         if (error) {
           console.error("Failed to save column preferences to database", error);
