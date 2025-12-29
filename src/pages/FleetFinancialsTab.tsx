@@ -474,12 +474,13 @@ export default function FleetFinancialsTab() {
     // Total rental up to today - prorate based on business days elapsed
     rental = dailyRentalRate * businessDaysUpToToday;
     
-    // Calculate daily insurance rate from vehicle's monthly insurance cost (using business days like RCPD)
+    // Calculate daily insurance rate from vehicle's monthly insurance cost
+    // Insurance applies to ALL days (not just business days) per memory spec
     const vehicleInsuranceCost = selectedVehicle?.insurance_cost_per_month || 0;
-    const dailyInsuranceRate = businessDaysInMonth > 0 ? vehicleInsuranceCost / businessDaysInMonth : 0;
+    const dailyInsuranceRate = daysInMonth > 0 ? vehicleInsuranceCost / daysInMonth : 0;
     
-    // Prorate insurance cost up to today
-    insuranceCost = dailyInsuranceRate * businessDaysUpToToday;
+    // Prorate insurance cost up to today (all days, not just business days)
+    insuranceCost = dailyInsuranceRate * daysUpToToday;
     other = DAILY_OTHER_COST * daysUpToToday;
 
     // Dispatcher pay calculation
@@ -531,7 +532,7 @@ export default function FleetFinancialsTab() {
       ? selectedVehicle.cents_per_mile * totalMiles
       : 0;
     
-    const netProfit = payload - factoring - dispatcherPay - driverPay - workmanComp - fuel - tolls - rental - insuranceCost - vehicleCost - other;
+    const netProfit = payload - factoring - dispatcherPay - driverPay - workmanComp - fuel - tolls - rental - rentalPerMileCost - insuranceCost - vehicleCost - other;
 
     return {
       payload,
@@ -641,16 +642,19 @@ export default function FleetFinancialsTab() {
       const isBusinessDay = !isWeekend(dayDate);
       const dayRentalCost = isBusinessDay ? dailyRental : 0;
       
-      dailyData[i].loads.forEach(load => {
+      dailyData[i].loads.forEach((load, loadIndex) => {
         const rate = load.rate || 0;
         const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
         const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
         const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
         const drvPay = getDriverPay(load);
-        weekTotal += rate - factoring - dispPay - drvPay - fuelCost - dayRentalCost - dailyInsurance - DAILY_OTHER_COST;
+        // Only apply rental and insurance to the first load of the day
+        const loadRental = loadIndex === 0 ? dayRentalCost : 0;
+        const loadInsurance = loadIndex === 0 ? dailyInsurance : 0;
+        weekTotal += rate - factoring - dispPay - drvPay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
       });
-      // Add empty day costs
+      // Add empty day costs (only if no loads on this day)
       if (dailyData[i].loads.length === 0) {
         weekTotal -= dayRentalCost + dailyInsurance + DAILY_OTHER_COST;
       }
