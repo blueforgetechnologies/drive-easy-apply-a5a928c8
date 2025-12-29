@@ -2070,11 +2070,17 @@ export default function LoadsTab() {
                                   // No approval required - calculate carrier pay based on truck type
                                   const truckType = (load.vehicle as any)?.truck_type;
                                   const contractorPercentage = (load.vehicle as any)?.contractor_percentage || 0;
+                                  const isMyTruck = truckType === 'my_truck' || !truckType;
                                   const isContractorTruck = truckType === 'contractor_truck';
                                   
-                                  // Use carrier_rate if stored, otherwise calculate for contractor trucks
-                                  let displayCarrierPay = carrierRate;
-                                  if (!displayCarrierPay && rate) {
+                                  // "My Truck" always gets 100% of the rate
+                                  // "Contractor Truck" uses carrier_rate or calculates from percentage
+                                  let displayCarrierPay: number | undefined;
+                                  if (isMyTruck && rate) {
+                                    displayCarrierPay = rate;
+                                  } else if (carrierRate) {
+                                    displayCarrierPay = carrierRate;
+                                  } else if (rate) {
                                     displayCarrierPay = isContractorTruck && contractorPercentage > 0
                                       ? rate * (contractorPercentage / 100)
                                       : rate;

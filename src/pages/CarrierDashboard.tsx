@@ -34,6 +34,8 @@ interface Vehicle {
   asset_type: string;
   carrier: string;
   requires_load_approval: boolean | null;
+  truck_type: string | null;
+  contractor_percentage: number | null;
 }
 
 interface Load {
@@ -163,7 +165,7 @@ export default function CarrierDashboard() {
       // Load vehicles for selected carrier(s)
       let vehicleQuery = supabase
         .from("vehicles")
-        .select("id, vehicle_number, asset_type, carrier, requires_load_approval")
+        .select("id, vehicle_number, asset_type, carrier, requires_load_approval, truck_type, contractor_percentage")
         .eq("status", "active");
 
       if (selectedCarrier !== "all") {
@@ -244,7 +246,7 @@ export default function CarrierDashboard() {
       if (vehicleIds.length > 0) {
         const { data: vehicleData, error: vehicleError } = await supabase
           .from("vehicles")
-          .select("id, vehicle_number, asset_type, carrier, requires_load_approval")
+          .select("id, vehicle_number, asset_type, carrier, requires_load_approval, truck_type, contractor_percentage")
           .in("id", vehicleIds);
 
         if (vehicleError) throw vehicleError;
@@ -263,6 +265,30 @@ export default function CarrierDashboard() {
     if (!vehicleId) return "Unassigned";
     const vehicle = vehicles.find(v => v.id === vehicleId);
     return vehicle ? vehicle.vehicle_number : "Unknown";
+  };
+
+  // Calculate carrier pay based on truck type
+  // "My Truck" gets 100% of rate, "Contractor Truck" uses carrier_rate or percentage
+  const getCarrierPay = (load: Load): number | null => {
+    const rate = load.rate;
+    if (!rate) return null;
+    
+    const vehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
+    const truckType = vehicle?.truck_type;
+    const isMyTruck = truckType === 'my_truck' || !truckType;
+    
+    // "My Truck" always gets 100% of the rate
+    if (isMyTruck) {
+      return rate;
+    }
+    
+    // "Contractor Truck" uses stored carrier_rate or calculates from percentage
+    if (load.carrier_rate) {
+      return load.carrier_rate;
+    }
+    
+    const contractorPercentage = vehicle?.contractor_percentage || 0;
+    return contractorPercentage > 0 ? rate * (contractorPercentage / 100) : rate;
   };
 
   const getStatusColor = (status: string | null) => {
@@ -319,7 +345,7 @@ export default function CarrierDashboard() {
   // Calculate stats
   const totalLoads = filteredLoads.length;
   const activeLoads = filteredLoads.filter(l => ['in_transit', 'in transit', 'dispatched', 'assigned'].includes(l.status?.toLowerCase() || '')).length;
-  const totalRevenue = filteredLoads.reduce((sum, load) => sum + (load.carrier_rate ?? load.rate ?? 0), 0);
+  const totalRevenue = filteredLoads.reduce((sum, load) => sum + (getCarrierPay(load) ?? 0), 0);
 
   const selectedCarrierName = carriers.find(c => c.id === selectedCarrier)?.name || "All Carriers";
   const selectedDispatcherObj = dispatchers.find(d => d.id === selectedDispatcher);
@@ -775,7 +801,7 @@ export default function CarrierDashboard() {
                             <TableCell className="text-right font-medium">
                               {dashboardType === "dispatcher" 
                                 ? (getDispatcherPay(load) ? `$${getDispatcherPay(load)!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-')
-                                : ((load.carrier_rate ?? load.rate) ? `$${(load.carrier_rate ?? load.rate)!.toLocaleString()}` : '-')
+                                : (getCarrierPay(load) ? `$${getCarrierPay(load)!.toLocaleString()}` : '-')
                               }
                             </TableCell>
                             <TableCell>
