@@ -733,14 +733,15 @@ export default function FleetFinancialsTab() {
         const dispPay = getDispatcherPay(load);
         const drvPay = getDriverPay(load);
         const drv2Pay = getDriver2Pay(load);
-        // Only apply rental and insurance to the first load of the day, business days only
+        // Only apply rental, insurance, and other costs to the first load of the day, business days only
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
         const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
-        weekTotal += rate - factoring - dispPay - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
+        const loadOtherCost = loadIndex === 0 && isBusinessDay ? DAILY_OTHER_COST : 0;
+        weekTotal += rate - factoring - dispPay - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - loadOtherCost;
       });
-      // Add empty day costs (only if no loads on this day), insurance only on business days
-      if (dailyData[i].loads.length === 0) {
-        const dayInsuranceCost = isBusinessDay ? dailyInsurance : 0;
+      // Add empty day costs (only if no loads on this day), only on business days
+      if (dailyData[i].loads.length === 0 && isBusinessDay) {
+        const dayInsuranceCost = dailyInsurance;
         weekTotal -= dayRentalCost + dayInsuranceCost + DAILY_OTHER_COST;
       }
     }
@@ -772,14 +773,15 @@ export default function FleetFinancialsTab() {
         const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
         const drvPay = getDriverPay(load);
         const drv2Pay = getDriver2Pay(load);
-        // Only apply rental/insurance to first load of day, business days only
+        // Only apply rental/insurance/other to first load of day, business days only
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
         const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
-        weekTotal += carrierPayAmount - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
+        const loadOtherCost = loadIndex === 0 && isBusinessDay ? DAILY_OTHER_COST : 0;
+        weekTotal += carrierPayAmount - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - loadOtherCost;
       });
-      // Add empty day costs, insurance only on business days
-      if (dailyData[i].loads.length === 0) {
-        const dayInsuranceCost = isBusinessDay ? dailyInsurance : 0;
+      // Add empty day costs, only on business days
+      if (dailyData[i].loads.length === 0 && isBusinessDay) {
+        const dayInsuranceCost = dailyInsurance;
         weekTotal -= dayRentalCost + dayInsuranceCost + DAILY_OTHER_COST;
       }
     }
