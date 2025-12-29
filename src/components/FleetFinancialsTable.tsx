@@ -383,6 +383,7 @@ function CellValue({
     factoring -
     dispPay -
     drvPay -
+    drv2Pay -
     wcomp -
     fuelCost -
     tolls -
@@ -395,6 +396,7 @@ function CellValue({
   const defaultCarrierNet =
     carrierPayAmount -
     drvPay -
+    drv2Pay -
     wcomp -
     fuelCost -
     tolls -
