@@ -28,6 +28,7 @@ interface Vehicle {
   monthly_payment: number | null;
   weekly_payment: number | null;
   driver_1_id: string | null;
+  driver_2_id: string | null;
   requires_load_approval: boolean | null;
   asset_ownership: string | null;
   cents_per_mile: number | null;
@@ -165,6 +166,7 @@ export default function FleetFinancialsTab() {
   const [loads, setLoads] = useState<Load[]>([]);
   const [rateHistory, setRateHistory] = useState<RateHistory[]>([]);
   const [driverCompensation, setDriverCompensation] = useState<DriverCompensation | null>(null);
+  const [driver2Compensation, setDriver2Compensation] = useState<DriverCompensation | null>(null);
   const [factoringPercentage, setFactoringPercentage] = useState<number>(2); // Default 2%
   
   // Fuel settings
@@ -198,7 +200,7 @@ export default function FleetFinancialsTab() {
         const refetchVehicles = async () => {
           const { data } = await supabase
             .from("vehicles")
-            .select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type")
+            .select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, driver_2_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type")
             .eq("status", "active")
             .order("vehicle_number");
           if (data) setVehicles(data);
@@ -224,27 +226,49 @@ export default function FleetFinancialsTab() {
     if (!selectedVehicleId) return;
     
     const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+    
+    // Load Driver 1 compensation
     if (!vehicle?.driver_1_id) {
       setDriverCompensation(null);
-      return;
+    } else {
+      const { data, error } = await supabase
+        .from("applications")
+        .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info")
+        .eq("id", vehicle.driver_1_id)
+        .single();
+
+      if (data) {
+        const personalInfo = typeof data.personal_info === 'string' 
+          ? JSON.parse(data.personal_info) 
+          : data.personal_info;
+        setDriverCompensation({ ...data, personal_info: personalInfo });
+      }
+      if (error) {
+        console.error("Error loading driver 1 compensation:", error);
+        setDriverCompensation(null);
+      }
     }
 
-    const { data, error } = await supabase
-      .from("applications")
-      .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info")
-      .eq("id", vehicle.driver_1_id)
-      .single();
+    // Load Driver 2 compensation
+    if (!vehicle?.driver_2_id) {
+      setDriver2Compensation(null);
+    } else {
+      const { data, error } = await supabase
+        .from("applications")
+        .select("id, pay_method, pay_method_active, weekly_salary, hourly_rate, hours_per_week, pay_per_mile, load_percentage, base_salary, personal_info")
+        .eq("id", vehicle.driver_2_id)
+        .single();
 
-    if (data) {
-      // Parse personal_info JSON if needed
-      const personalInfo = typeof data.personal_info === 'string' 
-        ? JSON.parse(data.personal_info) 
-        : data.personal_info;
-      setDriverCompensation({ ...data, personal_info: personalInfo });
-    }
-    if (error) {
-      console.error("Error loading driver compensation:", error);
-      setDriverCompensation(null);
+      if (data) {
+        const personalInfo = typeof data.personal_info === 'string' 
+          ? JSON.parse(data.personal_info) 
+          : data.personal_info;
+        setDriver2Compensation({ ...data, personal_info: personalInfo });
+      }
+      if (error) {
+        console.error("Error loading driver 2 compensation:", error);
+        setDriver2Compensation(null);
+      }
     }
   };
 
@@ -252,7 +276,7 @@ export default function FleetFinancialsTab() {
     setLoading(true);
     try {
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type, contractor_percentage").eq("status", "active").order("vehicle_number"),
+        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, driver_2_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type, contractor_percentage").eq("status", "active").order("vehicle_number"),
         supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
         supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
         supabase.from("customers").select("id, name").eq("status", "active"),
@@ -491,7 +515,7 @@ export default function FleetFinancialsTab() {
       dispatcherPay = payload * (dispatcher.pay_percentage / 100);
     }
 
-    // Driver pay calculation based on active pay method
+    // Driver 1 pay calculation based on active pay method
     if (driverCompensation?.pay_method_active) {
       const payMethod = driverCompensation.pay_method || 'salary';
       const weeksInMonth = daysInMonth / 7;
@@ -523,6 +547,34 @@ export default function FleetFinancialsTab() {
       }
     }
 
+    // Driver 2 pay calculation based on active pay method (same formula as Driver 1)
+    let driver2Pay = 0;
+    if (driver2Compensation?.pay_method_active) {
+      const payMethod = driver2Compensation.pay_method || 'salary';
+      const weeksInMonth = daysInMonth / 7;
+      
+      switch (payMethod) {
+        case 'salary':
+          driver2Pay = (driver2Compensation.weekly_salary || 0) * weeksInMonth;
+          break;
+        case 'hourly':
+          const hoursPerWeek2 = driver2Compensation.hours_per_week || 40;
+          driver2Pay = (driver2Compensation.hourly_rate || 0) * hoursPerWeek2 * weeksInMonth;
+          break;
+        case 'mileage':
+          driver2Pay = (driver2Compensation.pay_per_mile || 0) * totalMiles;
+          break;
+        case 'percentage':
+          driver2Pay = payload * ((driver2Compensation.load_percentage || 0) / 100);
+          break;
+        case 'hybrid':
+          const baseSalary2 = (driver2Compensation.base_salary || 0) * weeksInMonth;
+          const mileagePay2 = (driver2Compensation.pay_per_mile || 0) * totalMiles;
+          driver2Pay = baseSalary2 + mileagePay2;
+          break;
+      }
+    }
+
     const dollarPerMile = totalMiles > 0 ? payload / totalMiles : 0;
     const carrierPay = payload;
     const carrierPerMile = totalMiles > 0 ? payload / totalMiles : 0;
@@ -532,7 +584,7 @@ export default function FleetFinancialsTab() {
       ? selectedVehicle.cents_per_mile * totalMiles
       : 0;
     
-    const netProfit = payload - factoring - dispatcherPay - driverPay - workmanComp - fuel - tolls - rental - rentalPerMileCost - insuranceCost - vehicleCost - other;
+    const netProfit = payload - factoring - dispatcherPay - driverPay - driver2Pay - workmanComp - fuel - tolls - rental - rentalPerMileCost - insuranceCost - vehicleCost - other;
 
     return {
       payload,
@@ -543,6 +595,7 @@ export default function FleetFinancialsTab() {
       factoring,
       dispatcherPay,
       driverPay,
+      driver2Pay,
       workmanComp,
       fuel,
       tolls,
@@ -563,8 +616,14 @@ export default function FleetFinancialsTab() {
         ? `${driverCompensation.personal_info.firstName || ''} ${driverCompensation.personal_info.lastName || ''}`.trim() || null
         : null,
       driverPayPercentage: driverCompensation?.load_percentage || null,
+      driver2PayMethod: driver2Compensation?.pay_method || null,
+      driver2PayActive: driver2Compensation?.pay_method_active || false,
+      driver2Name: driver2Compensation?.personal_info
+        ? `${driver2Compensation.personal_info.firstName || ''} ${driver2Compensation.personal_info.lastName || ''}`.trim() || null
+        : null,
+      driver2PayPercentage: driver2Compensation?.load_percentage || null,
     };
-  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon, selectedVehicle, driverCompensation]);
+  }, [loads, dispatchers, selectedMonth, milesPerGallon, dollarPerGallon, selectedVehicle, driverCompensation, driver2Compensation]);
 
   const getCustomerName = (customerId: string | null) => {
     if (!customerId) return "-";
@@ -604,6 +663,30 @@ export default function FleetFinancialsTab() {
         // Base salary + percentage
         const percentagePay = rate * ((driverCompensation.load_percentage || 0) / 100);
         return percentagePay; // Base salary is fixed, so just show percentage portion per load
+      default:
+        return 0;
+    }
+  };
+
+  // Calculate driver 2 pay based on toggled pay method (same formula as driver 1)
+  const getDriver2Pay = (load: Load) => {
+    if (!driver2Compensation?.pay_method_active || !driver2Compensation?.pay_method) return 0;
+    
+    const rate = load.rate || 0;
+    const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+    
+    switch (driver2Compensation.pay_method) {
+      case 'percentage':
+        return rate * ((driver2Compensation.load_percentage || 0) / 100);
+      case 'mileage':
+        return totalMiles * (driver2Compensation.pay_per_mile || 0);
+      case 'salary':
+        return 0;
+      case 'hourly':
+        return 0;
+      case 'hybrid':
+        const percentagePay = rate * ((driver2Compensation.load_percentage || 0) / 100);
+        return percentagePay;
       default:
         return 0;
     }
@@ -649,10 +732,11 @@ export default function FleetFinancialsTab() {
         const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
         const drvPay = getDriverPay(load);
+        const drv2Pay = getDriver2Pay(load);
         // Only apply rental and insurance to the first load of the day
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
         const loadInsurance = loadIndex === 0 ? dailyInsurance : 0;
-        weekTotal += rate - factoring - dispPay - drvPay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
+        weekTotal += rate - factoring - dispPay - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
       });
       // Add empty day costs (only if no loads on this day)
       if (dailyData[i].loads.length === 0) {
@@ -686,10 +770,11 @@ export default function FleetFinancialsTab() {
         const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
         const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
         const drvPay = getDriverPay(load);
+        const drv2Pay = getDriver2Pay(load);
         // Only apply rental/insurance to first load of day
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
         const loadInsurance = loadIndex === 0 ? dailyInsurance : 0;
-        weekTotal += carrierPayAmount - drvPay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
+        weekTotal += carrierPayAmount - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - DAILY_OTHER_COST;
       });
       // Add empty day costs
       if (dailyData[i].loads.length === 0) {
@@ -1100,6 +1185,7 @@ export default function FleetFinancialsTab() {
             getCustomerName={getCustomerName}
             getDispatcherPay={getDispatcherPay}
             getDriverPay={getDriverPay}
+            getDriver2Pay={getDriver2Pay}
             getDispatcherName={getDispatcherName}
             getWeeklyTotal={getWeeklyTotal}
             getWeeklyCarrierNet={getWeeklyCarrierNet}

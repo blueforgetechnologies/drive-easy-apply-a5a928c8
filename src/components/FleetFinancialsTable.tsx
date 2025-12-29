@@ -70,6 +70,7 @@ interface Totals {
   factoring: number;
   dispatcherPay: number;
   driverPay: number;
+  driver2Pay: number;
   workmanComp: number;
   fuel: number;
   tolls: number;
@@ -88,6 +89,10 @@ interface Totals {
   driverPayActive: boolean;
   driverName: string | null;
   driverPayPercentage: number | null;
+  driver2PayMethod: string | null;
+  driver2PayActive: boolean;
+  driver2Name: string | null;
+  driver2PayPercentage: number | null;
 }
 
 type FormulaName = "carr_net" | "my_net" | "brokering_net";
@@ -105,6 +110,7 @@ interface FleetFinancialsTableProps {
   getCustomerName: (customerId: string | null) => string;
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
+  getDriver2Pay: (load: Load) => number;
   getDispatcherName: (dispatcherId: string | null) => string;
   getWeeklyTotal: (endIndex: number) => number;
   getWeeklyCarrierNet: (endIndex: number) => number;
@@ -256,6 +262,7 @@ function CellValue({
   getCustomerName,
   getDispatcherPay,
   getDriverPay,
+  getDriver2Pay,
   getDispatcherName,
   navigate,
   draggedColumn,
@@ -278,6 +285,7 @@ function CellValue({
   getCustomerName: (customerId: string | null) => string;
   getDispatcherPay: (load: Load) => number;
   getDriverPay: (load: Load) => number;
+  getDriver2Pay: (load: Load) => number;
   getDispatcherName: (dispatcherId: string | null) => string;
   navigate: (path: string) => void;
   draggedColumn: string | null;
@@ -504,6 +512,39 @@ function CellValue({
                   <div className="font-semibold">{totals.driverName || "No driver assigned"}</div>
                   {totals.driverPayPercentage != null && totals.driverPayMethod === "percentage" && (
                     <div className="text-muted-foreground">Pay Rate: {totals.driverPayPercentage}%</div>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </TableCell>
+      );
+    case "drv1_name":
+      return (
+        <TableCell className={cn("text-left text-xs truncate max-w-[85px] !px-2 !py-0.5", dragClass)} title={totals.driverName || ""}>
+          {totals.driverName || "-"}
+        </TableCell>
+      );
+    case "drv2_name":
+      return (
+        <TableCell className={cn("text-left text-xs truncate max-w-[85px] !px-2 !py-0.5", dragClass)} title={totals.driver2Name || ""}>
+          {totals.driver2Name || "-"}
+        </TableCell>
+      );
+    case "drv2_pay":
+      const drv2Pay = getDriver2Pay(load);
+      return (
+        <TableCell className={cn("text-right text-muted-foreground !px-2 !py-0.5", expenseRailClass, dragClass)}>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">{formatCurrency(drv2Pay)}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[250px]">
+                <div className="text-xs space-y-1">
+                  <div className="font-semibold">{totals.driver2Name || "No driver 2 assigned"}</div>
+                  {totals.driver2PayPercentage != null && totals.driver2PayMethod === "percentage" && (
+                    <div className="text-muted-foreground">Pay Rate: {totals.driver2PayPercentage}%</div>
                   )}
                 </div>
               </TooltipContent>
@@ -972,6 +1013,50 @@ function FooterCellValue({
           </TooltipProvider>
         </td>
       );
+    case "drv1_name":
+      return (
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
+          <div className="text-[10px] text-muted-foreground">DRV1</div>
+          <div className="font-bold text-xs truncate max-w-[85px]">{totals.driverName || "-"}</div>
+        </td>
+      );
+    case "drv2_name":
+      return (
+        <td className={cn("px-2 py-2 text-center", dragClass)}>
+          <div className="text-[10px] text-muted-foreground">DRV2</div>
+          <div className="font-bold text-xs truncate max-w-[85px]">{totals.driver2Name || "-"}</div>
+        </td>
+      );
+    case "drv2_pay":
+      return (
+        <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-help">
+                  <div className="text-[10px] text-muted-foreground">
+                    Drv2 Pay{totals.driver2PayMethod === "percentage" && totals.driver2PayPercentage ? ` (${totals.driver2PayPercentage}%)` : ""}
+                  </div>
+                  <div className={cn("font-bold", totals.driver2PayActive ? "text-foreground" : "text-muted-foreground")}>
+                    {formatCurrency(totals.driver2Pay)}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[250px]">
+                <div className="text-xs space-y-1">
+                  <div className="font-semibold">{totals.driver2Name || "No driver 2 assigned"}</div>
+                  {totals.driver2PayPercentage != null && totals.driver2PayMethod === "percentage" && (
+                    <div className="text-muted-foreground">Pay Rate: {totals.driver2PayPercentage}%</div>
+                  )}
+                  {totals.driver2PayMethod && (
+                    <div className="text-muted-foreground capitalize">Method: {totals.driver2PayMethod}</div>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </td>
+      );
     case "wcomp":
       return (
         <td className={cn("px-2 py-2 text-center", expenseRailClass, dragClass)}>
@@ -1085,6 +1170,7 @@ export function FleetFinancialsTable({
   getCustomerName,
   getDispatcherPay,
   getDriverPay,
+  getDriver2Pay,
   getDispatcherName,
   getWeeklyTotal,
   getWeeklyCarrierNet,
@@ -1307,6 +1393,7 @@ export function FleetFinancialsTable({
                         getCustomerName={getCustomerName}
                         getDispatcherPay={getDispatcherPay}
                         getDriverPay={getDriverPay}
+                        getDriver2Pay={getDriver2Pay}
                         getDispatcherName={getDispatcherName}
                         navigate={navigate}
                         draggedColumn={draggedColumn}
