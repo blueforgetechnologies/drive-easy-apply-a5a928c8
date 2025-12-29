@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, differenceInYears } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
-import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
+import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
 interface Application {
   id: string;
   personal_info: any;
@@ -53,6 +53,8 @@ export default function DriversTab() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const ROWS_PER_PAGE = 50;
 
   useEffect(() => {
@@ -245,6 +247,96 @@ export default function DriversTab() {
     }
   };
 
+  const handleDeleteDriver = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this driver? This action cannot be undone.")) {
+      return;
+    }
+    
+    try {
+      // First, unassign driver from any vehicles
+      await supabase
+        .from("vehicles")
+        .update({ driver_1_id: null })
+        .eq("driver_1_id", id);
+      
+      await supabase
+        .from("vehicles")
+        .update({ driver_2_id: null })
+        .eq("driver_2_id", id);
+
+      const { error } = await supabase
+        .from("applications")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Driver deleted successfully");
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete driver: " + error.message);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDrivers.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedDrivers.size} driver(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const ids = Array.from(selectedDrivers);
+      
+      // First, unassign drivers from any vehicles
+      for (const id of ids) {
+        await supabase
+          .from("vehicles")
+          .update({ driver_1_id: null })
+          .eq("driver_1_id", id);
+        
+        await supabase
+          .from("vehicles")
+          .update({ driver_2_id: null })
+          .eq("driver_2_id", id);
+      }
+
+      const { error } = await supabase
+        .from("applications")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+      toast.success(`${selectedDrivers.size} driver(s) deleted successfully`);
+      setSelectedDrivers(new Set());
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete drivers: " + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleDriverSelection = (id: string) => {
+    setSelectedDrivers(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllDrivers = () => {
+    if (selectedDrivers.size === paginatedApplications.length) {
+      setSelectedDrivers(new Set());
+    } else {
+      setSelectedDrivers(new Set(paginatedApplications.map(app => app.id)));
+    }
+  };
+
   const filteredApplications = applications.filter((app) => {
     const personalInfo = app.personal_info || {};
     const fullName = `${personalInfo.firstName || ""} ${personalInfo.lastName || ""}`.toLowerCase();
@@ -264,9 +356,10 @@ export default function DriversTab() {
     currentPage * ROWS_PER_PAGE
   );
 
-  // Reset to page 1 when filter or search changes
+  // Reset to page 1 and clear selection when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedDrivers(new Set());
   }, [filter, searchQuery]);
 
   if (loading) {
@@ -449,6 +542,35 @@ export default function DriversTab() {
 
       {(filter === "active" || filter === "inactive" || filter === "pending" || filter === "all") && (
         <Card className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+          {/* Bulk Action Bar */}
+          {selectedDrivers.size > 0 && (
+            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 dark:bg-blue-950/50 border-b">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">
+                  {selectedDrivers.size} driver{selectedDrivers.size > 1 ? 's' : ''} selected
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDrivers(new Set())}
+                  className="h-7 px-2"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="h-7"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {isDeleting ? 'Deleting...' : `Delete ${selectedDrivers.size}`}
+              </Button>
+            </div>
+          )}
           <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
             {filteredApplications.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
@@ -460,6 +582,12 @@ export default function DriversTab() {
                 <Table className="text-sm">
                   <TableHeader>
                     <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                      <TableHead className="py-2 px-2 w-[40px]">
+                        <Checkbox
+                          checked={paginatedApplications.length > 0 && selectedDrivers.size === paginatedApplications.length}
+                          onCheckedChange={toggleAllDrivers}
+                        />
+                      </TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Status</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Name/Phone</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Vehicle</TableHead>
@@ -472,7 +600,7 @@ export default function DriversTab() {
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">SS#</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">App/DD</TableHead>
                       <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Hired/Term</TableHead>
-                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">Actions</TableHead>
+                      <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -485,7 +613,13 @@ export default function DriversTab() {
                         : null;
                       
                       return (
-                        <TableRow key={app.id} className="h-10 cursor-pointer hover:bg-muted/50" onClick={() => viewApplication(app.id)}>
+                        <TableRow key={app.id} className={`h-10 cursor-pointer hover:bg-muted/50 ${selectedDrivers.has(app.id) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`} onClick={() => viewApplication(app.id)}>
+                          <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedDrivers.has(app.id)}
+                              onCheckedChange={() => toggleDriverSelection(app.id)}
+                            />
+                          </TableCell>
                           <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
                               <div 
@@ -593,7 +727,7 @@ export default function DriversTab() {
                               {app.termination_date ? format(new Date(app.termination_date), "MM/dd/yyyy") : "N/A"}
                             </div>
                           </TableCell>
-                          <TableCell className="py-1 px-2">
+                          <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex gap-1">
                               <Button
                                 onClick={() => viewApplication(app.id)}
@@ -609,6 +743,14 @@ export default function DriversTab() {
                                 className="h-6 w-6"
                               >
                                 <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                onClick={() => handleDeleteDriver(app.id)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </TableCell>
