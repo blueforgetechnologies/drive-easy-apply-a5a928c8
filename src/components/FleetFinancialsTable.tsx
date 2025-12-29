@@ -320,6 +320,7 @@ function CellValue({
   const factoring = rate * (factoringPercentage / 100);
   const dispPay = getDispatcherPay(load);
   const drvPay = getDriverPay(load);
+  const drv2Pay = getDriver2Pay(load);
   const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
   const isBusinessDay = !isWeekend(day.date);
   // Rental, insurance, and other costs only apply to business days (Mon-Fri)
@@ -422,11 +423,12 @@ function CellValue({
     ? selectedVehicle.cents_per_mile * totalM
     : 0;
 
+  // Collapsed expense excludes: MPG (display only), DRV1 name, DRV2 name (text columns, not expenses)
   const collapsedExpenseTotal = 
-    (expenseGroupColumns.includes("mpg") ? (totalM > 0 ? totalM / milesPerGallon : 0) : 0) + // MPG as gallons used
     (expenseGroupColumns.includes("factor") ? factoring : 0) +
     (expenseGroupColumns.includes("disp_pay") ? dispPay : 0) +
     (expenseGroupColumns.includes("drv_pay") ? drvPay : 0) +
+    (expenseGroupColumns.includes("drv2_pay") ? drv2Pay : 0) +
     (expenseGroupColumns.includes("wcomp") ? wcomp : 0) +
     (expenseGroupColumns.includes("fuel") ? fuelCost : 0) +
     (expenseGroupColumns.includes("tolls") ? tolls : 0) +
