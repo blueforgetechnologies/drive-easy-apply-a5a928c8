@@ -322,10 +322,10 @@ function CellValue({
   const drvPay = getDriverPay(load);
   const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
   const isBusinessDay = !isWeekend(day.date);
-  // Rental only applies to business days (Mon-Fri), but insurance applies to ALL days
+  // Rental and insurance only apply to business days (Mon-Fri)
   // Only apply daily costs to the first load of the day to avoid duplication
   const dailyRental = isBusinessDay && loadIndex === 0 ? totals.dailyRentalRate : 0;
-  const dailyInsurance = loadIndex === 0 ? totals.dailyInsuranceRate : 0;
+  const dailyInsurance = isBusinessDay && loadIndex === 0 ? totals.dailyInsuranceRate : 0;
   const isToday = isSameDay(day.date, new Date());
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -733,9 +733,9 @@ function EmptyDayCellValue({
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const isBusinessDay = !isWeekend(day.date);
-  // Rental only applies to business days, but insurance applies to ALL days
+  // Rental and insurance only apply to business days (Mon-Fri)
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
-  const dailyInsurance = totals.dailyInsuranceRate; // Applies to all days
+  const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
   const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
   const isToday = isSameDay(day.date, new Date());
   const isFutureDate = isAfter(startOfDay(day.date), startOfDay(new Date()));
