@@ -322,10 +322,11 @@ function CellValue({
   const drvPay = getDriverPay(load);
   const fuelCost = totalM > 0 ? (totalM / milesPerGallon) * dollarPerGallon : 0;
   const isBusinessDay = !isWeekend(day.date);
-  // Rental and insurance only apply to business days (Mon-Fri)
+  // Rental, insurance, and other costs only apply to business days (Mon-Fri)
   // Only apply daily costs to the first load of the day to avoid duplication
   const dailyRental = isBusinessDay && loadIndex === 0 ? totals.dailyRentalRate : 0;
   const dailyInsurance = isBusinessDay && loadIndex === 0 ? totals.dailyInsuranceRate : 0;
+  const dailyOther = isBusinessDay && loadIndex === 0 ? DAILY_OTHER_COST : 0;
   const isToday = isSameDay(day.date, new Date());
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
@@ -363,7 +364,7 @@ function CellValue({
     insur: dailyInsurance,
     tolls: tolls,
     wcomp: wcomp,
-    other: DAILY_OTHER_COST,
+    other: dailyOther,
     rental_per_mile: isLeased && selectedVehicle?.cents_per_mile
       ? selectedVehicle.cents_per_mile * totalM
       : 0,
@@ -386,7 +387,7 @@ function CellValue({
     dailyRental -
     loadRcpm -
     dailyInsurance -
-    DAILY_OTHER_COST;
+    dailyOther;
   
   // Use DB-stored carrier_rate for Carrier NET calculation (always, regardless of approval)
   const defaultCarrierNet =
@@ -398,7 +399,7 @@ function CellValue({
     dailyRental -
     loadRcpm -
     dailyInsurance -
-    DAILY_OTHER_COST;
+    dailyOther;
   
   const defaultBrokeringNet = rate - carrierPayAmount - dispPay - factoring;
   
@@ -432,7 +433,7 @@ function CellValue({
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
     (expenseGroupColumns.includes("rental_per_mile") ? loadRentalPerMileCost : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
-    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
+    (expenseGroupColumns.includes("other") ? dailyOther : 0) +
     (expenseGroupColumns.includes("carr_pay") ? carrierPayAmount : 0) +
     (expenseGroupColumns.includes("carr_dollar_per_mile") ? carrierPerMile : 0);
 
@@ -733,10 +734,11 @@ function EmptyDayCellValue({
   const isDraggedColumn = draggedColumn === column.id;
   const isDropTarget = dragOverColumn === column.id && dragOverColumn !== draggedColumn;
   const isBusinessDay = !isWeekend(day.date);
-  // Rental and insurance only apply to business days (Mon-Fri)
+  // Rental, insurance, and other costs only apply to business days (Mon-Fri)
   const dailyRental = isBusinessDay ? totals.dailyRentalRate : 0;
   const dailyInsurance = isBusinessDay ? totals.dailyInsuranceRate : 0;
-  const emptyDayNet = -(dailyRental + dailyInsurance + DAILY_OTHER_COST);
+  const dailyOtherCost = isBusinessDay ? DAILY_OTHER_COST : 0;
+  const emptyDayNet = -(dailyRental + dailyInsurance + dailyOtherCost);
   const isToday = isSameDay(day.date, new Date());
   const isFutureDate = isAfter(startOfDay(day.date), startOfDay(new Date()));
   const dayName = format(day.date, "EEE");
@@ -757,13 +759,13 @@ function EmptyDayCellValue({
   };
   const expenseRailClass = getExpenseRailClass();
   
-  // Calculate collapsed expenses total for empty days (only rental/insurance apply)
+  // Calculate collapsed expenses total for empty days (only rental/insurance/other apply on business days)
   // Only show collapsed expenses for dates up to today (not future dates)
   // Note: net, carr_net, brokering_net are RESULT columns, not expenses - they should NOT be included in collapsed sum
   const collapsedExpenseTotal = isFutureDate ? 0 : (
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
-    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0)
+    (expenseGroupColumns.includes("other") ? dailyOtherCost : 0)
   );
   switch (column.id) {
     case "truck_expense":
@@ -802,13 +804,13 @@ function EmptyDayCellValue({
     case "net":
       return (
         <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {isFutureDate || (!isBusinessDay && emptyDayNet === 0) ? "" : formatCurrency(emptyDayNet)}
+          {isFutureDate || !isBusinessDay ? "" : formatCurrency(emptyDayNet)}
         </TableCell>
       );
     case "carr_net":
       return (
         <TableCell className={cn("text-right font-bold text-destructive !px-2 !py-0.5", expenseRailClass, dragClass)}>
-          {isFutureDate || (!isBusinessDay && emptyDayNet === 0) ? "" : formatCurrency(emptyDayNet)}
+          {isFutureDate || !isBusinessDay ? "" : formatCurrency(emptyDayNet)}
         </TableCell>
       );
     default:
