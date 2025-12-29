@@ -4788,7 +4788,7 @@ export default function LoadHunterTab() {
                           <TableHead className="w-[60px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Empty<br/>Loaded</TableHead>
                           <TableHead className="w-[100px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Vehicle Type<br/>Weight</TableHead>
                           <TableHead className="w-[70px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Pieces<br/>Dims</TableHead>
-                          <TableHead className="w-[45px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Avail</TableHead>
+                          <TableHead className="w-[45px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Avail<br/>Posted</TableHead>
                           <TableHead className="w-[65px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Source</TableHead>
                           {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
                             <TableHead className="w-[85px] py-2 text-[12px] leading-[1.1] text-white font-semibold tracking-wide">Actions</TableHead>
@@ -5265,6 +5265,9 @@ export default function LoadHunterTab() {
                                 ) : (
                                   <div className="text-[13px] leading-tight whitespace-nowrap text-muted-foreground">—</div>
                                 )}
+                                <div className="text-[12px] font-medium leading-tight whitespace-nowrap text-green-600 mt-0.5">
+                                  {data.rate ? `$${Number(data.rate).toLocaleString()}` : '—'}
+                                </div>
                               </TableCell>
                               <TableCell className="py-1">
                                 {(() => {
