@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -86,6 +87,10 @@ const LoadEmailDetail = ({
     created_at: string;
   } | null>(null);
   const [checkingExistingBid, setCheckingExistingBid] = useState(false);
+
+  // Low bid warning dialog
+  const [showLowBidWarning, setShowLowBidWarning] = useState(false);
+  const [pendingBidAmount, setPendingBidAmount] = useState("");
 
   // Presence tracking - who else is viewing this match
   const [otherViewers, setOtherViewers] = useState<{name: string, email: string}[]>([]);
@@ -1401,6 +1406,16 @@ const LoadEmailDetail = ({
                     return;
                   }
                   setBidError(null);
+                  
+                  // Check if bidding below posted rate
+                  const postedRate = parseFloat(String(data.rate || '0').replace(/[^0-9.]/g, '')) || 0;
+                  if (postedRate > 0 && bidValue < postedRate) {
+                    // Show warning dialog
+                    setPendingBidAmount(finalBid);
+                    setShowLowBidWarning(true);
+                    return;
+                  }
+                  
                   setBidAmount(finalBid);
                   setShowBidCardOnMap(true);
                 }} className="w-full bg-green-600 hover:bg-green-700 h-11 font-semibold">
@@ -2240,6 +2255,30 @@ const LoadEmailDetail = ({
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    {/* Low bid warning dialog */}
+    <AlertDialog open={showLowBidWarning} onOpenChange={setShowLowBidWarning}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Bidding Below Posted Rate</AlertDialogTitle>
+          <AlertDialogDescription>
+            This load is posted for <span className="font-bold text-foreground">${Number(data.rate || 0).toLocaleString()}</span> and you are bidding <span className="font-bold text-foreground">${Number(pendingBidAmount || 0).toLocaleString()}</span>.
+            <br /><br />
+            Are you sure you want to bid below the posted rate?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setShowLowBidWarning(false)}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => {
+            setBidAmount(pendingBidAmount);
+            setShowBidCardOnMap(true);
+            setShowLowBidWarning(false);
+          }} className="bg-green-600 hover:bg-green-700">
+            Yes, Continue
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>;
 };
 export default LoadEmailDetail;
