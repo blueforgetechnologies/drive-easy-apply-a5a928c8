@@ -209,20 +209,28 @@ export default function LoadDetail() {
       const requiresApproval = assignedVehicle?.requires_load_approval === true;
       const assignedChanged = originalAssignedVehicleIdRef.current !== assignedVehicleId;
       
-      // Check if contractor truck with auto-approval (requires_load_approval = false)
+      // Check truck type and auto-approval settings
       const isContractorTruck = assignedVehicle?.truck_type === 'contractor_truck';
+      const isMyTruck = assignedVehicle?.truck_type === 'my_truck' || !assignedVehicle?.truck_type;
       const contractorPercentage = assignedVehicle?.contractor_percentage || 0;
-      const shouldAutoApprove = isContractorTruck && !requiresApproval && assignedChanged;
+      const shouldAutoApproveContractor = isContractorTruck && !requiresApproval && assignedChanged;
+      const shouldAutoApproveMyTruck = isMyTruck && assignedChanged;
       
-      // Calculate carrier_rate from contractor percentage if auto-approving
+      // Calculate carrier_rate based on truck type
       let carrierRateToSave = load.carrier_rate;
       let carrierApprovedToSave = load.carrier_approved;
       let approvedPayloadToSave = load.approved_payload;
       
       if (assignedChanged) {
-        if (shouldAutoApprove) {
+        const loadRate = parseFloat(load.rate) || 0;
+        
+        if (shouldAutoApproveMyTruck) {
+          // "My Truck" gets 100% of the rate automatically
+          carrierRateToSave = loadRate;
+          carrierApprovedToSave = true;
+          approvedPayloadToSave = loadRate;
+        } else if (shouldAutoApproveContractor) {
           // Auto-approve using contractor percentage
-          const loadRate = parseFloat(load.rate) || 0;
           carrierRateToSave = loadRate * (contractorPercentage / 100);
           carrierApprovedToSave = true;
           approvedPayloadToSave = loadRate; // Track the rate at time of approval
