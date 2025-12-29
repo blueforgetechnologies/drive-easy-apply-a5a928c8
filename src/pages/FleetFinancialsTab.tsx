@@ -707,13 +707,16 @@ export default function FleetFinancialsTab() {
     return value.toFixed(decimals);
   };
 
-  // Calculate weekly totals - sum the last 7 days
+  // Calculate weekly totals - sum the last 7 days using Payment Calculator formula
   const getWeeklyTotal = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
     const dailyInsurance = totals.dailyInsuranceRate;
     const today = startOfDay(new Date());
     let daysProcessed = 0;
+    const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+    const assetOwnership = selectedVehicle?.asset_ownership?.toLowerCase() || 'owned';
+    const isLeased = assetOwnership === 'leased';
     
     for (let i = endIndex; i >= 0 && daysProcessed < 7; i--, daysProcessed++) {
       const dayDate = dailyData[i].date;
@@ -733,11 +736,37 @@ export default function FleetFinancialsTab() {
         const dispPay = getDispatcherPay(load);
         const drvPay = getDriverPay(load);
         const drv2Pay = getDriver2Pay(load);
+        const carrierPayAmount = load.carrier_rate || rate;
         // Only apply rental, insurance, and other costs to the first load of the day, business days only
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
         const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
         const loadOtherCost = loadIndex === 0 && isBusinessDay ? DAILY_OTHER_COST : 0;
-        weekTotal += rate - factoring - dispPay - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - loadOtherCost;
+        const loadRcpm = isLeased && selectedVehicle?.cents_per_mile ? selectedVehicle.cents_per_mile * totalMiles : 0;
+        
+        // Build formula values
+        const formulaValues: Record<string, number> = {
+          payload: rate,
+          carr_pay: carrierPayAmount,
+          disp_pay: dispPay,
+          drv_pay: drvPay,
+          drv2_pay: drv2Pay,
+          factor: factoring,
+          fuel: fuelCost,
+          rental: loadRental,
+          insur: loadInsurance,
+          tolls: 0,
+          wcomp: 0,
+          other: loadOtherCost,
+          rental_per_mile: loadRcpm,
+        };
+        
+        // Use formula if configured, otherwise use default calculation
+        const myNetResult = calculateFormula("my_net", formulaValues);
+        if (myNetResult !== null) {
+          weekTotal += myNetResult;
+        } else {
+          weekTotal += rate - factoring - dispPay - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - loadOtherCost - loadRcpm;
+        }
       });
       // Add empty day costs (only if no loads on this day), only on business days
       if (dailyData[i].loads.length === 0 && isBusinessDay) {
@@ -748,13 +777,16 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
-  // Calculate weekly Carrier NET totals - use DB-stored carrier_rate for all loads
+  // Calculate weekly Carrier NET totals - use Payment Calculator formula
   const getWeeklyCarrierNet = (endIndex: number) => {
     let weekTotal = 0;
     const dailyRental = totals.dailyRentalRate;
     const dailyInsurance = totals.dailyInsuranceRate;
     const today = startOfDay(new Date());
     let daysProcessed = 0;
+    const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+    const assetOwnership = selectedVehicle?.asset_ownership?.toLowerCase() || 'owned';
+    const isLeased = assetOwnership === 'leased';
     
     for (let i = endIndex; i >= 0 && daysProcessed < 7; i--, daysProcessed++) {
       const dayDate = dailyData[i].date;
@@ -767,17 +799,44 @@ export default function FleetFinancialsTab() {
       const dayRentalCost = isBusinessDay ? dailyRental : 0;
       
       dailyData[i].loads.forEach((load, loadIndex) => {
-        // Use DB-stored carrier_rate (calculated from contractor % or manually set)
-        const carrierPayAmount = load.carrier_rate || load.rate || 0;
+        const rate = load.rate || 0;
+        const carrierPayAmount = load.carrier_rate || rate;
         const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
         const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
+        const factoring = rate * (factoringPercentage / 100);
+        const dispPay = getDispatcherPay(load);
         const drvPay = getDriverPay(load);
         const drv2Pay = getDriver2Pay(load);
         // Only apply rental/insurance/other to first load of day, business days only
         const loadRental = loadIndex === 0 ? dayRentalCost : 0;
         const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
         const loadOtherCost = loadIndex === 0 && isBusinessDay ? DAILY_OTHER_COST : 0;
-        weekTotal += carrierPayAmount - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - loadOtherCost;
+        const loadRcpm = isLeased && selectedVehicle?.cents_per_mile ? selectedVehicle.cents_per_mile * totalMiles : 0;
+        
+        // Build formula values
+        const formulaValues: Record<string, number> = {
+          payload: rate,
+          carr_pay: carrierPayAmount,
+          disp_pay: dispPay,
+          drv_pay: drvPay,
+          drv2_pay: drv2Pay,
+          factor: factoring,
+          fuel: fuelCost,
+          rental: loadRental,
+          insur: loadInsurance,
+          tolls: 0,
+          wcomp: 0,
+          other: loadOtherCost,
+          rental_per_mile: loadRcpm,
+        };
+        
+        // Use formula if configured, otherwise use default calculation
+        const carrNetResult = calculateFormula("carr_net", formulaValues);
+        if (carrNetResult !== null) {
+          weekTotal += carrNetResult;
+        } else {
+          weekTotal += carrierPayAmount - drvPay - drv2Pay - fuelCost - loadRental - loadInsurance - loadOtherCost - loadRcpm;
+        }
       });
       // Add empty day costs, only on business days
       if (dailyData[i].loads.length === 0 && isBusinessDay) {
@@ -788,11 +847,16 @@ export default function FleetFinancialsTab() {
     return weekTotal;
   };
 
-  // Calculate weekly Brokering NET totals - use DB-stored carrier_rate for all loads
+  // Calculate weekly Brokering NET totals - use Payment Calculator formula
   const getWeeklyBrokeringNet = (endIndex: number) => {
     let weekTotal = 0;
     const today = startOfDay(new Date());
     let daysProcessed = 0;
+    const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+    const assetOwnership = selectedVehicle?.asset_ownership?.toLowerCase() || 'owned';
+    const isLeased = assetOwnership === 'leased';
+    const dailyRental = totals.dailyRentalRate;
+    const dailyInsurance = totals.dailyInsuranceRate;
     
     for (let i = endIndex; i >= 0 && daysProcessed < 7; i--, daysProcessed++) {
       const dayDate = dailyData[i].date;
@@ -801,13 +865,47 @@ export default function FleetFinancialsTab() {
       // Skip future dates
       if (isFutureDate) continue;
       
-      dailyData[i].loads.forEach(load => {
-        // Use DB-stored carrier_rate (calculated from contractor % or manually set)
+      const isBusinessDay = !isWeekend(dayDate);
+      const dayRentalCost = isBusinessDay ? dailyRental : 0;
+      
+      dailyData[i].loads.forEach((load, loadIndex) => {
         const rate = load.rate || 0;
         const carrierPayAmount = load.carrier_rate || rate;
+        const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+        const fuelCost = totalMiles > 0 ? (totalMiles / milesPerGallon) * dollarPerGallon : 0;
         const factoring = rate * (factoringPercentage / 100);
         const dispPay = getDispatcherPay(load);
-        weekTotal += rate - carrierPayAmount - dispPay - factoring;
+        const drvPay = getDriverPay(load);
+        const drv2Pay = getDriver2Pay(load);
+        const loadRental = loadIndex === 0 ? dayRentalCost : 0;
+        const loadInsurance = loadIndex === 0 && isBusinessDay ? dailyInsurance : 0;
+        const loadOtherCost = loadIndex === 0 && isBusinessDay ? DAILY_OTHER_COST : 0;
+        const loadRcpm = isLeased && selectedVehicle?.cents_per_mile ? selectedVehicle.cents_per_mile * totalMiles : 0;
+        
+        // Build formula values
+        const formulaValues: Record<string, number> = {
+          payload: rate,
+          carr_pay: carrierPayAmount,
+          disp_pay: dispPay,
+          drv_pay: drvPay,
+          drv2_pay: drv2Pay,
+          factor: factoring,
+          fuel: fuelCost,
+          rental: loadRental,
+          insur: loadInsurance,
+          tolls: 0,
+          wcomp: 0,
+          other: loadOtherCost,
+          rental_per_mile: loadRcpm,
+        };
+        
+        // Use formula if configured, otherwise use default calculation
+        const brokeringNetResult = calculateFormula("brokering_net", formulaValues);
+        if (brokeringNetResult !== null) {
+          weekTotal += brokeringNetResult;
+        } else {
+          weekTotal += rate - carrierPayAmount - dispPay - factoring;
+        }
       });
     }
     return weekTotal;
