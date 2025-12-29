@@ -415,6 +415,7 @@ function CellValue({
   
 
   // Calculate collapsed expenses total - sum of all selected expense columns
+  // Note: net, carr_net, brokering_net are RESULT columns, not expenses - they should NOT be included in collapsed sum
   // Calculate rental per mile cost for this load ($ per mile × total miles) - only for leased vehicles
   const loadRentalPerMileCost = isLeased && selectedVehicle?.cents_per_mile
     ? selectedVehicle.cents_per_mile * totalM
@@ -433,10 +434,7 @@ function CellValue({
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
     (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
     (expenseGroupColumns.includes("carr_pay") ? carrierPayAmount : 0) +
-    (expenseGroupColumns.includes("carr_dollar_per_mile") ? carrierPerMile : 0) +
-    (expenseGroupColumns.includes("net") ? myNet : 0) +
-    (expenseGroupColumns.includes("carr_net") ? carrierNet : 0) +
-    (expenseGroupColumns.includes("brokering_net") ? brokeringNet : 0);
+    (expenseGroupColumns.includes("carr_dollar_per_mile") ? carrierPerMile : 0);
 
   switch (column.id) {
     case "truck_expense":
@@ -761,12 +759,11 @@ function EmptyDayCellValue({
   
   // Calculate collapsed expenses total for empty days (only rental/insurance apply)
   // Only show collapsed expenses for dates up to today (not future dates)
+  // Note: net, carr_net, brokering_net are RESULT columns, not expenses - they should NOT be included in collapsed sum
   const collapsedExpenseTotal = isFutureDate ? 0 : (
     (expenseGroupColumns.includes("rental") ? dailyRental : 0) +
     (expenseGroupColumns.includes("insur") ? dailyInsurance : 0) +
-    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0) +
-    (expenseGroupColumns.includes("net") ? emptyDayNet : 0) +
-    (expenseGroupColumns.includes("carr_net") ? emptyDayNet : 0)
+    (expenseGroupColumns.includes("other") ? DAILY_OTHER_COST : 0)
   );
   switch (column.id) {
     case "truck_expense":
@@ -856,10 +853,10 @@ function FooterCellValue({
   };
   const expenseRailClass = getExpenseRailClass();
   
-  // Calculate collapsed expenses total for footer - sum all selected columns
-  // Note: carrierNet and brokeringNet need to be calculated since they're not in totals
+  // Calculate collapsed expenses total for footer - sum all selected expense columns
+  // Note: net, carr_net, brokering_net are RESULT columns, not expenses - they should NOT be included in collapsed sum
+  // However, carrierNetTotal is still needed for rendering the Carr NET footer cell
   const carrierNetTotal = totals.carrierPay - totals.driverPay - totals.workmanComp - totals.fuel - totals.tolls - totals.rental - totals.insuranceCost - totals.other;
-  const brokeringNetTotal = totals.payload - totals.carrierPay - totals.dispatcherPay - totals.factoring;
   
   const collapsedExpenseFooterTotal = 
     (expenseGroupColumns.includes("mpg") ? (totals.totalMiles > 0 ? totals.totalMiles / milesPerGallon : 0) : 0) +
@@ -874,10 +871,7 @@ function FooterCellValue({
     (expenseGroupColumns.includes("insur") ? totals.insuranceCost : 0) +
     (expenseGroupColumns.includes("other") ? totals.other : 0) +
     (expenseGroupColumns.includes("carr_pay") ? totals.carrierPay : 0) +
-    (expenseGroupColumns.includes("carr_dollar_per_mile") ? (totals.loadedMiles > 0 ? totals.carrierPay / totals.loadedMiles : 0) : 0) +
-    (expenseGroupColumns.includes("net") ? totals.netProfit : 0) +
-    (expenseGroupColumns.includes("carr_net") ? carrierNetTotal : 0) +
-    (expenseGroupColumns.includes("brokering_net") ? brokeringNetTotal : 0);
+    (expenseGroupColumns.includes("carr_dollar_per_mile") ? (totals.loadedMiles > 0 ? totals.carrierPay / totals.loadedMiles : 0) : 0);
   
   switch (column.id) {
     case "truck_expense":
