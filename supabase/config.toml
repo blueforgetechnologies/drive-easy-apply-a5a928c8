@@ -119,3 +119,6 @@ verify_jwt = true
 
 [functions.inspector-feature-flags]
 verify_jwt = true
+
+[functions.inspector-load-hunter-health]
+verify_jwt = true
