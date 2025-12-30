@@ -40,14 +40,27 @@ interface Tenant {
   release_channel: string;
   is_paused: boolean;
   rate_limit_per_minute: number;
+  rate_limit_per_day: number;
   max_users: number;
   max_vehicles: number;
   max_hunt_plans: number;
   created_at: string;
+  api_key: string | null;
   // Computed counts
   user_count?: number;
   vehicle_count?: number;
   hunt_plan_count?: number;
+  // Rate limit usage
+  minute_usage?: number;
+  day_usage?: number;
+}
+
+interface TenantFeatureFlag {
+  id: string;
+  tenant_id: string;
+  feature_flag_id: string;
+  enabled: boolean;
+  feature_flag?: FeatureFlag;
 }
 
 interface FeatureFlag {
@@ -88,12 +101,16 @@ export default function PlatformAdminTab() {
   // Dialogs
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
+  const [showTenantSettings, setShowTenantSettings] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [tenantFeatureFlags, setTenantFeatureFlags] = useState<TenantFeatureFlag[]>([]);
   
   // Form state
   const [newTenantName, setNewTenantName] = useState("");
   const [newTenantSlug, setNewTenantSlug] = useState("");
+  const [editRateLimitMinute, setEditRateLimitMinute] = useState(60);
+  const [editRateLimitDay, setEditRateLimitDay] = useState(10000);
 
   useEffect(() => {
     checkAdminAccess();
@@ -155,20 +172,42 @@ export default function PlatformAdminTab() {
       return;
     }
 
-    // Get counts for each tenant
+    // Get counts and rate limit usage for each tenant
     const tenantsWithCounts = await Promise.all((data || []).map(async (tenant) => {
-      const [userCount, vehicleCount, huntCount] = await Promise.all([
-        supabase.from("tenant_users").select("id", { count: "exact" }).eq("tenant_id", tenant.id),
-        // These would need tenant_id columns added - for now show 0
-        Promise.resolve({ count: 0 }),
-        Promise.resolve({ count: 0 })
-      ]);
+      // Get user count
+      const { count: userCount } = await supabase
+        .from("tenant_users")
+        .select("id", { count: "exact" })
+        .eq("tenant_id", tenant.id);
+      
+      // Get today's rate limit usage
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const minuteStart = new Date();
+      minuteStart.setSeconds(0, 0);
+      
+      const { data: rateLimits } = await supabase
+        .from("tenant_rate_limits")
+        .select("window_type, request_count, window_start")
+        .eq("tenant_id", tenant.id)
+        .in("window_type", ["minute", "day"])
+        .gte("window_start", dayStart.toISOString());
+      
+      const dayUsage = rateLimits?.find(r => r.window_type === "day")?.request_count || 0;
+      // Get the most recent minute entry
+      const minuteEntries = rateLimits?.filter(r => r.window_type === "minute") || [];
+      const latestMinute = minuteEntries.sort((a, b) => 
+        new Date(b.window_start).getTime() - new Date(a.window_start).getTime()
+      )[0];
+      const minuteUsage = latestMinute?.request_count || 0;
 
       return {
         ...tenant,
-        user_count: userCount.count || 0,
-        vehicle_count: vehicleCount.count || 0,
-        hunt_plan_count: huntCount.count || 0
+        user_count: userCount || 0,
+        vehicle_count: 0,
+        hunt_plan_count: 0,
+        minute_usage: minuteUsage,
+        day_usage: dayUsage,
       };
     }));
 
@@ -302,6 +341,88 @@ export default function PlatformAdminTab() {
       toast.success("Release channel updated");
       await loadTenants();
     }
+  };
+
+  const handleOpenTenantSettings = async (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setEditRateLimitMinute(tenant.rate_limit_per_minute || 60);
+    setEditRateLimitDay(tenant.rate_limit_per_day || 10000);
+    
+    // Load tenant-specific feature flags
+    const { data } = await supabase
+      .from("tenant_feature_flags")
+      .select("*, feature_flag:feature_flags(*)")
+      .eq("tenant_id", tenant.id);
+    
+    setTenantFeatureFlags(data || []);
+    setShowTenantSettings(true);
+  };
+
+  const handleSaveTenantSettings = async () => {
+    if (!selectedTenant) return;
+
+    const { error } = await supabase
+      .from("tenants")
+      .update({
+        rate_limit_per_minute: editRateLimitMinute,
+        rate_limit_per_day: editRateLimitDay,
+      })
+      .eq("id", selectedTenant.id);
+
+    if (error) {
+      toast.error(`Failed to update settings: ${error.message}`);
+    } else {
+      toast.success("Tenant settings updated");
+      setShowTenantSettings(false);
+      await loadTenants();
+    }
+  };
+
+  const handleToggleTenantFeatureFlag = async (flagId: string, currentlyEnabled: boolean) => {
+    if (!selectedTenant) return;
+
+    // Check if override exists
+    const existing = tenantFeatureFlags.find(tf => tf.feature_flag_id === flagId);
+    
+    if (existing) {
+      // Update existing override
+      const { error } = await supabase
+        .from("tenant_feature_flags")
+        .update({ enabled: !currentlyEnabled })
+        .eq("id", existing.id);
+      
+      if (error) {
+        toast.error(`Failed to update: ${error.message}`);
+        return;
+      }
+    } else {
+      // Create new override
+      const { error } = await supabase
+        .from("tenant_feature_flags")
+        .insert({
+          tenant_id: selectedTenant.id,
+          feature_flag_id: flagId,
+          enabled: !currentlyEnabled,
+        });
+      
+      if (error) {
+        toast.error(`Failed to create override: ${error.message}`);
+        return;
+      }
+    }
+
+    toast.success("Feature flag updated for tenant");
+    // Reload tenant feature flags
+    const { data } = await supabase
+      .from("tenant_feature_flags")
+      .select("*, feature_flag:feature_flags(*)")
+      .eq("tenant_id", selectedTenant.id);
+    setTenantFeatureFlags(data || []);
+  };
+
+  const getTenantFlagEnabled = (flagId: string, defaultEnabled: boolean): boolean => {
+    const override = tenantFeatureFlags.find(tf => tf.feature_flag_id === flagId);
+    return override ? override.enabled : defaultEnabled;
   };
 
   if (loading) {
@@ -492,8 +613,8 @@ export default function PlatformAdminTab() {
                   <TableHead>Status</TableHead>
                   <TableHead>Release Channel</TableHead>
                   <TableHead className="text-center">Users</TableHead>
-                  <TableHead className="text-center">Vehicles</TableHead>
-                  <TableHead className="text-center">Hunts</TableHead>
+                  <TableHead className="text-center">Rate Limit</TableHead>
+                  <TableHead className="text-center">Usage Today</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -532,8 +653,24 @@ export default function PlatformAdminTab() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-center">{tenant.user_count}</TableCell>
-                    <TableCell className="text-center">{tenant.vehicle_count}</TableCell>
-                    <TableCell className="text-center">{tenant.hunt_plan_count}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="text-xs">
+                        <span>{tenant.rate_limit_per_minute || 60}/min</span>
+                        <br />
+                        <span className="text-muted-foreground">{tenant.rate_limit_per_day || 10000}/day</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="text-xs">
+                        <span className={tenant.minute_usage && tenant.minute_usage > (tenant.rate_limit_per_minute || 60) * 0.8 ? "text-orange-500" : ""}>
+                          {tenant.minute_usage || 0}/min
+                        </span>
+                        <br />
+                        <span className={tenant.day_usage && tenant.day_usage > (tenant.rate_limit_per_day || 10000) * 0.8 ? "text-orange-500" : "text-muted-foreground"}>
+                          {tenant.day_usage || 0}/day
+                        </span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(tenant.created_at).toLocaleDateString()}
                     </TableCell>
@@ -558,6 +695,13 @@ export default function PlatformAdminTab() {
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleOpenTenantSettings(tenant)}
+                        >
+                          <Settings className="h-4 w-4 text-muted-foreground" />
+                        </Button>
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -642,6 +786,107 @@ export default function PlatformAdminTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Tenant Settings Dialog */}
+      <Dialog open={showTenantSettings} onOpenChange={setShowTenantSettings}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              {selectedTenant?.name} Settings
+            </DialogTitle>
+            <DialogDescription>
+              Configure rate limits and feature flags for this tenant
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Rate Limits */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Rate Limits
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="rate-minute">Requests per Minute</Label>
+                  <Input
+                    id="rate-minute"
+                    type="number"
+                    value={editRateLimitMinute}
+                    onChange={(e) => setEditRateLimitMinute(parseInt(e.target.value) || 60)}
+                    min={1}
+                    max={1000}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Current usage: {selectedTenant?.minute_usage || 0}/min
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="rate-day">Requests per Day</Label>
+                  <Input
+                    id="rate-day"
+                    type="number"
+                    value={editRateLimitDay}
+                    onChange={(e) => setEditRateLimitDay(parseInt(e.target.value) || 10000)}
+                    min={100}
+                    max={100000}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Current usage: {selectedTenant?.day_usage || 0}/day
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Feature Flags */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Flag className="h-4 w-4" />
+                Feature Flags (Tenant Override)
+              </h3>
+              <div className="space-y-3">
+                {featureFlags.map((flag) => {
+                  const isEnabled = getTenantFlagEnabled(flag.id, flag.default_enabled);
+                  const hasOverride = tenantFeatureFlags.some(tf => tf.feature_flag_id === flag.id);
+                  
+                  return (
+                    <div 
+                      key={flag.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{flag.name}</span>
+                          {hasOverride && (
+                            <Badge variant="outline" className="text-xs">Override</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{flag.description}</p>
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => handleToggleTenantFeatureFlag(flag.id, isEnabled)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTenantSettings(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTenantSettings}>
+              Save Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
