@@ -3805,6 +3805,50 @@ export type Database = {
           },
         ]
       }
+      tenant_invitations: {
+        Row: {
+          accepted_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_at: string
+          invited_by: string
+          role: string
+          tenant_id: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invited_at?: string
+          invited_by: string
+          role?: string
+          tenant_id: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string
+          role?: string
+          tenant_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_rate_limits: {
         Row: {
           created_at: string | null
@@ -3887,16 +3931,19 @@ export type Database = {
           daily_usage_reset_at: string | null
           id: string
           is_paused: boolean | null
+          logo_url: string | null
           max_hunt_plans: number | null
           max_users: number | null
           max_vehicles: number | null
           name: string
+          primary_color: string | null
           rate_limit_per_day: number | null
           rate_limit_per_minute: number | null
           release_channel: Database["public"]["Enums"]["release_channel"]
           settings: Json | null
           slug: string
           status: Database["public"]["Enums"]["tenant_status"]
+          timezone: string | null
           updated_at: string
           webhook_secret: string | null
         }
@@ -3908,16 +3955,19 @@ export type Database = {
           daily_usage_reset_at?: string | null
           id?: string
           is_paused?: boolean | null
+          logo_url?: string | null
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
           name: string
+          primary_color?: string | null
           rate_limit_per_day?: number | null
           rate_limit_per_minute?: number | null
           release_channel?: Database["public"]["Enums"]["release_channel"]
           settings?: Json | null
           slug: string
           status?: Database["public"]["Enums"]["tenant_status"]
+          timezone?: string | null
           updated_at?: string
           webhook_secret?: string | null
         }
@@ -3929,16 +3979,19 @@ export type Database = {
           daily_usage_reset_at?: string | null
           id?: string
           is_paused?: boolean | null
+          logo_url?: string | null
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
           name?: string
+          primary_color?: string | null
           rate_limit_per_day?: number | null
           rate_limit_per_minute?: number | null
           release_channel?: Database["public"]["Enums"]["release_channel"]
           settings?: Json | null
           slug?: string
           status?: Database["public"]["Enums"]["tenant_status"]
+          timezone?: string | null
           updated_at?: string
           webhook_secret?: string | null
         }
@@ -4513,6 +4566,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_tenant_invitation: { Args: { p_token: string }; Returns: Json }
       archive_old_load_emails: { Args: never; Returns: number }
       archive_old_load_emails_batched: {
         Args: { batch_size?: number }
