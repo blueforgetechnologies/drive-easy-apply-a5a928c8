@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,7 +19,24 @@ serve(async (req) => {
   );
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, tenant_id } = await req.json();
+    
+    // Feature gate: check if AI parsing is enabled for tenant
+    if (tenant_id) {
+      const aiEnabled = await isFeatureEnabled({
+        tenant_id,
+        flag_key: 'load_hunter_ai_parsing',
+        serviceClient: supabase,
+      });
+      
+      if (!aiEnabled) {
+        console.log(`[test-ai] AI features disabled for tenant ${tenant_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Feature disabled', flag_key: 'load_hunter_ai_parsing', reason: 'release_channel' }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,7 +52,29 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const data: BidEmailRequest = await req.json();
+    const data: BidEmailRequest & { tenant_id?: string } = await req.json();
+    
+    // Initialize Supabase for feature check
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Feature gate: check if bid automation is enabled for tenant
+    if (data.tenant_id) {
+      const bidEnabled = await isFeatureEnabled({
+        tenant_id: data.tenant_id,
+        flag_key: 'bid_automation',
+        serviceClient: supabase,
+      });
+      
+      if (!bidEnabled) {
+        console.log(`[send-bid-email] Bid automation disabled for tenant ${data.tenant_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Feature disabled', flag_key: 'bid_automation', reason: 'release_channel' }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     
     // Normalize email domain to lowercase for Resend domain verification compatibility
     const normalizedFromEmail = data.from_email?.toLowerCase() || 'dispatch@nexustechsolution.com';

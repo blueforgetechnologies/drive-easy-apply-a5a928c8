@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,15 +11,37 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  
+  // Initialize Supabase for feature check
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    const { documentBase64, fileName, mimeType } = await req.json();
+    const { documentBase64, fileName, mimeType, tenant_id } = await req.json();
 
     if (!documentBase64) {
       return new Response(
         JSON.stringify({ success: false, error: 'Document content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    
+    // Feature gate: check if AI parsing is enabled for tenant
+    if (tenant_id) {
+      const aiParsingEnabled = await isFeatureEnabled({
+        tenant_id,
+        flag_key: 'load_hunter_ai_parsing',
+        serviceClient: supabase,
+      });
+      
+      if (!aiParsingEnabled) {
+        console.log(`[parse-rate-confirmation] AI parsing disabled for tenant ${tenant_id}`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Feature disabled', flag_key: 'load_hunter_ai_parsing', reason: 'release_channel' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
