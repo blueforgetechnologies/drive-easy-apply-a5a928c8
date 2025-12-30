@@ -274,7 +274,9 @@ export function ReleaseControlTab() {
   ];
 
   async function invokeEdgeFunctionRaw(endpoint: string, accessToken: string, body: any) {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`;
+    // Use a backend proxy that ALWAYS responds 200, and reports the *real* status in JSON.
+    // This avoids Lovable's global runtime overlay being triggered by expected 403 responses.
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inspector-invoke-proxy`;
 
     const res = await fetch(url, {
       method: "POST",
@@ -282,18 +284,21 @@ export function ReleaseControlTab() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ endpoint, body }),
     });
 
-    let payload: any = null;
     const text = await res.text();
+    let payload: any = null;
     try {
       payload = text ? JSON.parse(text) : {};
     } catch {
       payload = text;
     }
 
-    return { status: res.status, body: payload };
+    const status = typeof payload?.status === "number" ? payload.status : res.status;
+    const responseBody = payload && typeof payload === "object" && "body" in payload ? payload.body : payload;
+
+    return { status, body: responseBody };
   }
 
   async function runVerificationTest(
