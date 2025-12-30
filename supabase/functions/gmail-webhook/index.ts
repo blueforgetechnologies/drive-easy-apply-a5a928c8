@@ -85,6 +85,22 @@ async function checkRateLimit(
   };
 }
 
+// Check if a feature is enabled for a tenant
+async function isFeatureEnabled(tenantId: string, featureKey: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_feature_enabled', {
+    _tenant_id: tenantId,
+    _feature_key: featureKey,
+  });
+  
+  if (error) {
+    console.error(`[gmail-webhook] Feature flag check failed for ${featureKey}:`, error);
+    // Default to enabled on error to avoid blocking
+    return true;
+  }
+  
+  return data === true;
+}
+
 // Generate deterministic dedupe key for tenant-scoped deduplication
 function generateDedupeKey(gmailMessageId: string): string {
   // For now, dedupe_key is the gmail_message_id
@@ -195,6 +211,16 @@ serve(async (req) => {
         dayCount: rateCheck.dayCount,
       }), {
         status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Check if Load Hunter is enabled for this tenant
+    const loadHunterEnabled = await isFeatureEnabled(tenantId, 'load_hunter_enabled');
+    if (!loadHunterEnabled) {
+      console.log(`[gmail-webhook] Load Hunter disabled for tenant ${tenantId}`);
+      return new Response(JSON.stringify({ queued: 0, featureDisabled: true }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
