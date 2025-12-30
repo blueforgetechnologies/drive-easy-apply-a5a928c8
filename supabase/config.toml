@@ -128,3 +128,33 @@ verify_jwt = true
 
 [functions.inspector-release-control]
 verify_jwt = true
+
+[functions.inspector-invoke-proxy]
+verify_jwt = true
+
+[functions.inspector-billing]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.stripe-create-checkout-session]
+verify_jwt = true
+
+[functions.stripe-customer-portal]
+verify_jwt = true
+
+[functions.admin-tenant-create]
+verify_jwt = true
+
+[functions.admin-tenant-update]
+verify_jwt = true
+
+[functions.admin-tenant-suspend]
+verify_jwt = true
+
+[functions.admin-start-impersonation]
+verify_jwt = true
+
+[functions.admin-stop-impersonation]
+verify_jwt = true
