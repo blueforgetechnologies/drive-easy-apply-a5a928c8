@@ -15,10 +15,26 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     
+    // Safely extract overrideTenantId from body (for admin verification tests)
+    let overrideTenantId: string | undefined;
+    let requestBody: any = {};
+    
+    try {
+      const bodyText = await req.text();
+      if (bodyText) {
+        requestBody = JSON.parse(bodyText);
+        overrideTenantId = requestBody.overrideTenantId;
+      }
+    } catch (e) {
+      // Empty or invalid body is fine
+      console.log('[test-ai] Body parsing note:', e instanceof Error ? e.message : 'empty body');
+    }
+    
     // Feature gate FIRST - derive tenant from auth, check ai_parsing_enabled
     const gateResult = await assertFeatureEnabled({
       flag_key: 'ai_parsing_enabled',
       authHeader,
+      overrideTenantId,
     });
     
     if (!gateResult.allowed) {
@@ -26,8 +42,8 @@ serve(async (req) => {
       return gateResult.response!;
     }
 
-    // Parse request body after gate passes
-    const { prompt } = await req.json();
+    // Get prompt from body (after gate passes)
+    const { prompt } = requestBody;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

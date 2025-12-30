@@ -43,6 +43,8 @@ interface BidEmailRequest {
   vehicle_line?: string;
   help_line?: string;
   order_line?: string;
+  // Admin override for verification
+  overrideTenantId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -54,10 +56,26 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const authHeader = req.headers.get('Authorization');
     
+    // Safely extract overrideTenantId from body (for admin verification tests)
+    let overrideTenantId: string | undefined;
+    let requestBody: any = {};
+    
+    try {
+      const bodyText = await req.text();
+      if (bodyText) {
+        requestBody = JSON.parse(bodyText);
+        overrideTenantId = requestBody.overrideTenantId;
+      }
+    } catch (e) {
+      // Empty or invalid body is fine - we'll validate required fields later
+      console.log('[send-bid-email] Body parsing note:', e instanceof Error ? e.message : 'empty body');
+    }
+    
     // Feature gate FIRST - derive tenant from auth, check bid_automation_enabled
     const gateResult = await assertFeatureEnabled({
       flag_key: 'bid_automation_enabled',
       authHeader,
+      overrideTenantId,
     });
     
     if (!gateResult.allowed) {
@@ -65,8 +83,16 @@ const handler = async (req: Request): Promise<Response> => {
       return gateResult.response!;
     }
 
-    // Parse request body after gate passes
-    const data: BidEmailRequest = await req.json();
+    // Cast to typed request after gate passes
+    const data: BidEmailRequest = requestBody;
+    
+    // Validate required fields
+    if (!data.to || !data.subject) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: to, subject" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     console.log(`[send-bid-email] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
     
@@ -101,17 +127,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Use editable lines if provided, otherwise fall back to defaults
     const greetingLine = data.greeting_line || defaultGreeting;
     const blankLine = data.blank_line || '';
-    const vehicleLine = data.vehicle_line || data.vehicle_description;
+    const vehicleLine = data.vehicle_line || data.vehicle_description || '';
     const helpLine = data.help_line || 'Please let me know if I can help on this load:';
-    const orderLine = data.order_line || `Order Number: ${data.order_number} [${data.origin_city}, ${data.origin_state} to ${data.dest_city}, ${data.dest_state}]`;
+    const orderLine = data.order_line || `Order Number: ${data.order_number || 'N/A'} [${data.origin_city || '?'}, ${data.origin_state || '?'} to ${data.dest_city || '?'}, ${data.dest_state || '?'}]`;
 
     // Build the HTML email body
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
         <p style="margin: 0 0 20px 0;">
-          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold; margin-right: 8px;">Rate: $ ${data.bid_amount}</span>
-          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold; margin-right: 8px;">MC#: ${data.mc_number}</span>
-          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number}</span>
+          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold; margin-right: 8px;">Rate: $ ${data.bid_amount || 'TBD'}</span>
+          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold; margin-right: 8px;">MC#: ${data.mc_number || 'N/A'}</span>
+          <span style="background-color: #FFFF00; display: inline-block; padding: 4px 8px; font-weight: bold;">USDOT#: ${data.dot_number || 'N/A'}</span>
         </p>
         
         <p style="margin-top: 20px;">${greetingLine}</p>
@@ -127,36 +153,36 @@ const handler = async (req: Request): Promise<Response> => {
         ${selectedTemplatesHtml}
         
         <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px; line-height: 1.4;">
-          <p style="margin: 0 0 2px 0;"><strong>Truck Carries:</strong> ${data.equipment_details}</p>
-          <p style="margin: 0 0 2px 0;"><strong>Truck Size:</strong> ${data.truck_dimensions}</p>
-          <p style="margin: 0 0 2px 0;"><strong>Door Type and Size:</strong> ${data.door_dimensions}</p>
-          <p style="margin: 0;"><strong>Truck Features:</strong> ${data.truck_features}</p>
+          <p style="margin: 0 0 2px 0;"><strong>Truck Carries:</strong> ${data.equipment_details || 'N/A'}</p>
+          <p style="margin: 0 0 2px 0;"><strong>Truck Size:</strong> ${data.truck_dimensions || 'N/A'}</p>
+          <p style="margin: 0 0 2px 0;"><strong>Door Type and Size:</strong> ${data.door_dimensions || 'N/A'}</p>
+          <p style="margin: 0;"><strong>Truck Features:</strong> ${data.truck_features || 'N/A'}</p>
         </div>
         
         <table style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; width: 100%;">
           <tr>
             <td style="vertical-align: bottom;">
-              <p style="font-weight: bold; margin: 0;">${data.dispatcher_name}</p>
-              <p style="margin: 4px 0;">Dispatch • ${data.company_name}</p>
-              <p style="font-weight: bold; margin: 4px 0;">MC#: ${data.mc_number} • USDOT#: ${data.dot_number}</p>
-              <p style="margin: 4px 0;">${data.company_address}</p>
-              <p style="margin: 4px 0;">Cell: <strong>${data.company_phone}</strong> • ${data.from_email}</p>
+              <p style="font-weight: bold; margin: 0;">${data.dispatcher_name || 'Dispatcher'}</p>
+              <p style="margin: 4px 0;">Dispatch • ${data.company_name || 'Company'}</p>
+              <p style="font-weight: bold; margin: 4px 0;">MC#: ${data.mc_number || 'N/A'} • USDOT#: ${data.dot_number || 'N/A'}</p>
+              <p style="margin: 4px 0;">${data.company_address || ''}</p>
+              <p style="margin: 4px 0;">Cell: <strong>${data.company_phone || 'N/A'}</strong> • ${data.from_email || ''}</p>
             </td>
             ${data.company_logo_url ? `<td style="vertical-align: bottom; text-align: left; padding-left: 0;"><img src="${data.company_logo_url}" alt="${data.company_name}" style="max-height: 70px; max-width: 180px;" /></td>` : ''}
           </tr>
         </table>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-          <p style="color: #666; font-size: 12px;">Reference #: ${data.reference_id}</p>
+          <p style="color: #666; font-size: 12px;">Reference #: ${data.reference_id || 'N/A'}</p>
         </div>
       </div>
     `;
 
     // Build plain text version
     const textBody = `
-Rate: $ ${data.bid_amount}
-MC#: ${data.mc_number}
-USDOT#: ${data.dot_number}
+Rate: $ ${data.bid_amount || 'TBD'}
+MC#: ${data.mc_number || 'N/A'}
+USDOT#: ${data.dot_number || 'N/A'}
 
 ${greetingLine}
 ${blankLine ? `\n${blankLine}` : ''}
@@ -166,21 +192,21 @@ ${helpLine}
 
 ${orderLine}
 
-Truck Carries: ${data.equipment_details}
-Truck Size: ${data.truck_dimensions}
-Door Type and Size: ${data.door_dimensions}
-Truck Features: ${data.truck_features}
+Truck Carries: ${data.equipment_details || 'N/A'}
+Truck Size: ${data.truck_dimensions || 'N/A'}
+Door Type and Size: ${data.door_dimensions || 'N/A'}
+Truck Features: ${data.truck_features || 'N/A'}
 ${selectedTemplatesText}
 ---
-${data.dispatcher_name}
+${data.dispatcher_name || 'Dispatcher'}
 Dispatch
-${data.company_name}
-MC#: ${data.mc_number} USDOT#: ${data.dot_number}
-${data.company_address}
-Cell: ${data.company_phone}
-Email: ${data.from_email}
+${data.company_name || 'Company'}
+MC#: ${data.mc_number || 'N/A'} USDOT#: ${data.dot_number || 'N/A'}
+${data.company_address || ''}
+Cell: ${data.company_phone || 'N/A'}
+Email: ${data.from_email || ''}
 
-Reference #: ${data.reference_id}
+Reference #: ${data.reference_id || 'N/A'}
     `.trim();
 
     // Build Resend API request
@@ -190,7 +216,7 @@ Reference #: ${data.reference_id}
     }
 
     const emailPayload: any = {
-      from: `${data.company_name} <${normalizedFromEmail}>`,
+      from: `${data.company_name || 'Company'} <${normalizedFromEmail}>`,
       to: [data.to],
       subject: data.subject,
       html: htmlBody,

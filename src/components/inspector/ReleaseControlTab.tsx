@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, RefreshCw, Check, Settings2, ArrowRight, Info, Shield, ShieldX, Eye, Play } from "lucide-react";
+import { Loader2, RefreshCw, Check, Settings2, ArrowRight, Info, Shield, ShieldX, Eye, Play, Zap, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,6 +34,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface VerificationTestResult {
+  endpoint: string;
+  flagKey: string;
+  status: number;
+  body: any;
+  elapsedMs: number;
+  success: boolean;
+}
 
 interface GateTestResult {
   endpoint: string;
@@ -92,6 +101,11 @@ export function ReleaseControlTab() {
 
   // Proof section - selected tenant for detailed view
   const [proofTenantId, setProofTenantId] = useState<string>("__none__");
+
+  // Verification section state
+  const [verifyTenantId, setVerifyTenantId] = useState<string>("__none__");
+  const [verificationResults, setVerificationResults] = useState<VerificationTestResult[]>([]);
+  const [testingEndpoint, setTestingEndpoint] = useState<string | null>(null);
 
   async function fetchReleaseData() {
     setLoading(true);
@@ -246,6 +260,124 @@ export function ReleaseControlTab() {
   // Separate enabled and disabled flags for proof section
   const enabledFlags = proofTenant?.flag_resolutions.filter(f => f.enabled) || [];
   const disabledFlags = proofTenant?.flag_resolutions.filter(f => !f.enabled) || [];
+
+  // Get verification tenant data
+  const verifyTenant = verifyTenantId !== "__none__"
+    ? data?.tenants.find(t => t.tenant_id === verifyTenantId)
+    : null;
+
+  // Verification test endpoints
+  const verificationEndpoints = [
+    { name: "Geocode", endpoint: "geocode", flagKey: "geocoding_enabled", testBody: { query: "Chicago, IL" } },
+    { name: "Test AI", endpoint: "test-ai", flagKey: "ai_parsing_enabled", testBody: { prompt: "Say hello" } },
+    { name: "Bid Email", endpoint: "send-bid-email", flagKey: "bid_automation_enabled", testBody: { to: "test@example.com", subject: "Test" } },
+  ];
+
+  async function runVerificationTest(endpoint: string, flagKey: string, testBody: any) {
+    if (verifyTenantId === "__none__") {
+      toast.error("Please select a tenant first");
+      return;
+    }
+
+    setTestingEndpoint(endpoint);
+    const startTime = Date.now();
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const { data: result, error: fnError } = await supabase.functions.invoke(
+        endpoint,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: {
+            ...testBody,
+            overrideTenantId: verifyTenantId,
+          },
+        }
+      );
+
+      const elapsedMs = Date.now() - startTime;
+
+      // Determine actual status from result
+      let status = 200;
+      let body = result;
+      
+      if (fnError) {
+        // Parse the error to get actual status
+        if (fnError.message?.includes('403')) status = 403;
+        else if (fnError.message?.includes('401')) status = 401;
+        else if (fnError.message?.includes('404')) status = 404;
+        else status = 500;
+        body = { error: fnError.message, context: fnError.context };
+      } else if (result?.error) {
+        status = result.reason ? 403 : 400;
+      }
+
+      const testResult: VerificationTestResult = {
+        endpoint,
+        flagKey,
+        status,
+        body,
+        elapsedMs,
+        success: status === 200,
+      };
+
+      setVerificationResults(prev => {
+        // Replace existing result for same endpoint, or add new
+        const filtered = prev.filter(r => r.endpoint !== endpoint);
+        return [...filtered, testResult];
+      });
+
+      if (status === 200) {
+        toast.success(`${endpoint}: Allowed (200)`);
+      } else if (status === 403) {
+        toast.info(`${endpoint}: Blocked (403) - ${result?.reason || 'Feature disabled'}`);
+      } else {
+        toast.error(`${endpoint}: Error (${status})`);
+      }
+
+    } catch (err) {
+      const elapsedMs = Date.now() - startTime;
+      console.error(`Verification test error for ${endpoint}:`, err);
+      
+      setVerificationResults(prev => {
+        const filtered = prev.filter(r => r.endpoint !== endpoint);
+        return [...filtered, {
+          endpoint,
+          flagKey,
+          status: 500,
+          body: { error: err instanceof Error ? err.message : 'Unknown error' },
+          elapsedMs,
+          success: false,
+        }];
+      });
+      
+      toast.error(`${endpoint} test failed`);
+    } finally {
+      setTestingEndpoint(null);
+    }
+  }
+
+  async function runAllVerificationTests() {
+    if (verifyTenantId === "__none__") {
+      toast.error("Please select a tenant first");
+      return;
+    }
+
+    setVerificationResults([]);
+    
+    for (const ep of verificationEndpoints) {
+      await runVerificationTest(ep.endpoint, ep.flagKey, ep.testBody);
+    }
+  }
+
+  function getResultForEndpoint(endpoint: string): VerificationTestResult | undefined {
+    return verificationResults.find(r => r.endpoint === endpoint);
+  }
 
   if (error) {
     return (
@@ -443,6 +575,153 @@ export function ReleaseControlTab() {
                 </Card>
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live Verification Section */}
+      <Card className="border-blue-500/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-blue-500" />
+            Live Feature Gate Verification
+          </CardTitle>
+          <CardDescription>
+            Test edge function feature gates in real-time. Select a tenant and test each gated endpoint.
+            This uses the overrideTenantId mechanism (platform admin only) to simulate requests as if from that tenant.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Tenant Selection */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="text-sm font-medium">Test as Tenant:</label>
+              <Select value={verifyTenantId} onValueChange={(v) => { setVerifyTenantId(v); setVerificationResults([]); }}>
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Select a tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">-- Select a tenant --</SelectItem>
+                  {data?.tenants.map((tenant) => (
+                    <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
+                      {tenant.tenant_name} ({tenant.release_channel})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {verifyTenant && (
+                <div className="flex items-center gap-2">
+                  {getChannelBadge(verifyTenant.release_channel)}
+                  <span className="text-xs text-muted-foreground">
+                    Expected: {verifyTenant.release_channel === 'general' ? '403 Blocked' : '200 Allowed'}
+                  </span>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runAllVerificationTests}
+                disabled={verifyTenantId === "__none__" || testingEndpoint !== null}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Run All Tests
+              </Button>
+            </div>
+
+            {/* Test Buttons */}
+            {verifyTenantId !== "__none__" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                {verificationEndpoints.map((ep) => {
+                  const result = getResultForEndpoint(ep.endpoint);
+                  const isRunning = testingEndpoint === ep.endpoint;
+                  
+                  return (
+                    <Card key={ep.endpoint} className={`${result ? (result.status === 200 ? 'border-green-500/50' : result.status === 403 ? 'border-amber-500/50' : 'border-red-500/50') : 'border-border'}`}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center justify-between">
+                          <span>{ep.name}</span>
+                          {result && (
+                            result.status === 200 ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            ) : result.status === 403 ? (
+                              <Shield className="w-4 h-4 text-amber-500" />
+                            ) : (
+                              <AlertTriangle className="w-4 h-4 text-red-500" />
+                            )
+                          )}
+                        </CardTitle>
+                        <CardDescription className="text-xs font-mono">{ep.flagKey}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => runVerificationTest(ep.endpoint, ep.flagKey, ep.testBody)}
+                          disabled={isRunning}
+                        >
+                          {isRunning ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Testing...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-4 h-4 mr-2" />
+                              Test {ep.name}
+                            </>
+                          )}
+                        </Button>
+                        
+                        {result && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1">
+                                <Badge variant={result.status === 200 ? "default" : result.status === 403 ? "secondary" : "destructive"} className="text-xs">
+                                  {result.status}
+                                </Badge>
+                                {result.status === 200 && <span className="text-green-600">Allowed</span>}
+                                {result.status === 403 && <span className="text-amber-600">Blocked</span>}
+                                {result.status !== 200 && result.status !== 403 && <span className="text-red-600">Error</span>}
+                              </span>
+                              <span className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                {result.elapsedMs}ms
+                              </span>
+                            </div>
+                            
+                            {result.body?.reason && (
+                              <p className="text-xs text-muted-foreground">
+                                Reason: <span className="font-mono">{result.body.reason}</span>
+                              </p>
+                            )}
+                            
+                            <ScrollArea className="h-[80px] mt-2">
+                              <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
+                                {JSON.stringify(result.body, null, 2)}
+                              </pre>
+                            </ScrollArea>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Expected Results Guide */}
+            <div className="flex items-start gap-2 text-xs text-muted-foreground mt-4 p-3 bg-muted/50 rounded-lg">
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium mb-1">Expected Results:</p>
+                <ul className="space-y-0.5">
+                  <li>• <span className="text-green-600 font-medium">Internal/Pilot</span> tenants → 200 (Allowed)</li>
+                  <li>• <span className="text-amber-600 font-medium">General</span> tenants → 403 with reason="release_channel"</li>
+                  <li>• <span className="text-purple-600 font-medium">Tenant Override</span> can enable/disable per-tenant regardless of channel</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

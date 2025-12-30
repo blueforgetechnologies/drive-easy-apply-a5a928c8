@@ -58,8 +58,35 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const requestBody = await req.json();
+    // Safely extract overrideTenantId from body (for admin verification tests)
+    let overrideTenantId: string | undefined;
+    let requestBody: any = {};
+    
+    try {
+      const bodyText = await req.text();
+      if (bodyText) {
+        requestBody = JSON.parse(bodyText);
+        overrideTenantId = requestBody.overrideTenantId;
+      }
+    } catch (e) {
+      // Empty or invalid body is fine - we'll check required fields later
+      console.log('[geocode] Body parsing note:', e instanceof Error ? e.message : 'empty body');
+    }
+
+    // Feature gate FIRST - derive tenant from auth and check geocoding_enabled
+    // This blocks the API call BEFORE any expensive operations
+    const gateResult = await assertFeatureEnabled({
+      flag_key: 'geocoding_enabled',
+      authHeader,
+      overrideTenantId,
+    });
+    
+    if (!gateResult.allowed) {
+      console.log(`[geocode] Feature disabled: ${gateResult.reason}`);
+      return gateResult.response!;
+    }
+
+    // Now validate required fields
     const { query, city, state, zip } = requestBody;
     
     // Build location query
@@ -73,18 +100,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'No location query provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Feature gate: derive tenant from auth and check geocoding_enabled
-    // This blocks the API call BEFORE any expensive operations
-    const gateResult = await assertFeatureEnabled({
-      flag_key: 'geocoding_enabled',
-      authHeader,
-    });
-    
-    if (!gateResult.allowed) {
-      console.log(`[geocode] Feature disabled: ${gateResult.reason}`);
-      return gateResult.response!;
     }
 
     const normalizedKey = normalizeLocationKey(locationQuery);
