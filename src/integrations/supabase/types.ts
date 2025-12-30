@@ -947,6 +947,7 @@ export type Database = {
       email_queue: {
         Row: {
           attempts: number
+          dedupe_key: string | null
           gmail_history_id: string | null
           gmail_message_id: string
           id: string
@@ -954,9 +955,11 @@ export type Database = {
           processed_at: string | null
           queued_at: string
           status: string
+          tenant_id: string | null
         }
         Insert: {
           attempts?: number
+          dedupe_key?: string | null
           gmail_history_id?: string | null
           gmail_message_id: string
           id?: string
@@ -964,9 +967,11 @@ export type Database = {
           processed_at?: string | null
           queued_at?: string
           status?: string
+          tenant_id?: string | null
         }
         Update: {
           attempts?: number
+          dedupe_key?: string | null
           gmail_history_id?: string | null
           gmail_message_id?: string
           id?: string
@@ -974,8 +979,17 @@ export type Database = {
           processed_at?: string | null
           queued_at?: string
           status?: string
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_tracking: {
         Row: {
@@ -4459,6 +4473,7 @@ export type Database = {
         Args: { target_date: string }
         Returns: string
       }
+      get_default_tenant_id: { Args: never; Returns: string }
       get_email_queue_pending_count: { Args: never; Returns: number }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_permission: {
