@@ -3805,6 +3805,41 @@ export type Database = {
           },
         ]
       }
+      tenant_rate_limits: {
+        Row: {
+          created_at: string | null
+          id: string
+          request_count: number | null
+          tenant_id: string | null
+          window_start: string
+          window_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          request_count?: number | null
+          tenant_id?: string | null
+          window_start: string
+          window_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          request_count?: number | null
+          tenant_id?: string | null
+          window_start?: string
+          window_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_rate_limits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_users: {
         Row: {
           created_at: string
@@ -3848,12 +3883,15 @@ export type Database = {
           api_key: string | null
           api_key_hash: string | null
           created_at: string
+          daily_usage_count: number | null
+          daily_usage_reset_at: string | null
           id: string
           is_paused: boolean | null
           max_hunt_plans: number | null
           max_users: number | null
           max_vehicles: number | null
           name: string
+          rate_limit_per_day: number | null
           rate_limit_per_minute: number | null
           release_channel: Database["public"]["Enums"]["release_channel"]
           settings: Json | null
@@ -3866,12 +3904,15 @@ export type Database = {
           api_key?: string | null
           api_key_hash?: string | null
           created_at?: string
+          daily_usage_count?: number | null
+          daily_usage_reset_at?: string | null
           id?: string
           is_paused?: boolean | null
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
           name: string
+          rate_limit_per_day?: number | null
           rate_limit_per_minute?: number | null
           release_channel?: Database["public"]["Enums"]["release_channel"]
           settings?: Json | null
@@ -3884,12 +3925,15 @@ export type Database = {
           api_key?: string | null
           api_key_hash?: string | null
           created_at?: string
+          daily_usage_count?: number | null
+          daily_usage_reset_at?: string | null
           id?: string
           is_paused?: boolean | null
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
           name?: string
+          rate_limit_per_day?: number | null
           rate_limit_per_minute?: number | null
           release_channel?: Database["public"]["Enums"]["release_channel"]
           settings?: Json | null
@@ -4475,8 +4519,17 @@ export type Database = {
         Returns: number
       }
       can_manage_roles: { Args: { _user_id: string }; Returns: boolean }
+      check_tenant_rate_limit: {
+        Args: {
+          p_limit_per_day?: number
+          p_limit_per_minute?: number
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
+      cleanup_tenant_rate_limits: { Args: never; Returns: number }
       cleanup_vehicle_location_history: { Args: never; Returns: number }
       generate_load_id_for_date: {
         Args: { target_date: string }

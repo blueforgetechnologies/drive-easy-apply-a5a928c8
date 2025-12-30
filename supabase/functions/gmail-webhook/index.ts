@@ -15,18 +15,31 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Tenant info including rate limits
+interface TenantInfo {
+  tenantId: string | null;
+  isPaused: boolean;
+  rateLimitPerMinute: number;
+  rateLimitPerDay: number;
+}
+
 // Get tenant ID from API key or use default tenant
-async function getTenantId(apiKey: string | null): Promise<{ tenantId: string | null; isPaused: boolean }> {
+async function getTenantId(apiKey: string | null): Promise<TenantInfo> {
   // If API key provided, look up the tenant
   if (apiKey) {
     const { data: tenant, error } = await supabase
       .from('tenants')
-      .select('id, is_paused')
+      .select('id, is_paused, rate_limit_per_minute, rate_limit_per_day')
       .eq('api_key', apiKey)
       .maybeSingle();
     
     if (tenant) {
-      return { tenantId: tenant.id, isPaused: tenant.is_paused || false };
+      return { 
+        tenantId: tenant.id, 
+        isPaused: tenant.is_paused || false,
+        rateLimitPerMinute: tenant.rate_limit_per_minute || 60,
+        rateLimitPerDay: tenant.rate_limit_per_day || 10000,
+      };
     }
     console.warn('[gmail-webhook] Invalid API key provided, falling back to default tenant');
   }
@@ -34,13 +47,41 @@ async function getTenantId(apiKey: string | null): Promise<{ tenantId: string | 
   // Fall back to default tenant for single-tenant mode
   const { data: defaultTenant } = await supabase
     .from('tenants')
-    .select('id, is_paused')
+    .select('id, is_paused, rate_limit_per_minute, rate_limit_per_day')
     .eq('slug', 'default')
     .maybeSingle();
   
   return { 
     tenantId: defaultTenant?.id || null, 
-    isPaused: defaultTenant?.is_paused || false 
+    isPaused: defaultTenant?.is_paused || false,
+    rateLimitPerMinute: defaultTenant?.rate_limit_per_minute || 60,
+    rateLimitPerDay: defaultTenant?.rate_limit_per_day || 10000,
+  };
+}
+
+// Check tenant rate limit using atomic DB function
+async function checkRateLimit(
+  tenantId: string, 
+  limitPerMinute: number, 
+  limitPerDay: number
+): Promise<{ allowed: boolean; reason: string | null; minuteCount: number; dayCount: number }> {
+  const { data, error } = await supabase.rpc('check_tenant_rate_limit', {
+    p_tenant_id: tenantId,
+    p_limit_per_minute: limitPerMinute,
+    p_limit_per_day: limitPerDay,
+  });
+  
+  if (error) {
+    console.error('[gmail-webhook] Rate limit check failed:', error);
+    // Allow on error to avoid blocking legitimate traffic
+    return { allowed: true, reason: null, minuteCount: 0, dayCount: 0 };
+  }
+  
+  return {
+    allowed: data.allowed,
+    reason: data.reason,
+    minuteCount: data.minute_count,
+    dayCount: data.day_count,
   };
 }
 
@@ -124,7 +165,7 @@ serve(async (req) => {
 
     // Get tenant from API key header or use default
     const tenantApiKey = req.headers.get('x-tenant-api-key');
-    const { tenantId, isPaused } = await getTenantId(tenantApiKey);
+    const { tenantId, isPaused, rateLimitPerMinute, rateLimitPerDay } = await getTenantId(tenantApiKey);
     
     if (!tenantId) {
       console.error('[gmail-webhook] No tenant found');
@@ -143,7 +184,22 @@ serve(async (req) => {
       });
     }
     
-    console.log(`[gmail-webhook] Processing for tenant: ${tenantId}`);
+    // Check rate limit before processing
+    const rateCheck = await checkRateLimit(tenantId, rateLimitPerMinute, rateLimitPerDay);
+    if (!rateCheck.allowed) {
+      console.warn(`[gmail-webhook] Rate limit exceeded for tenant ${tenantId}: ${rateCheck.reason}`);
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded',
+        reason: rateCheck.reason,
+        minuteCount: rateCheck.minuteCount,
+        dayCount: rateCheck.dayCount,
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log(`[gmail-webhook] Processing for tenant: ${tenantId} (${rateCheck.minuteCount}/min, ${rateCheck.dayCount}/day)`);
 
     // Track Pub/Sub usage
     supabase
