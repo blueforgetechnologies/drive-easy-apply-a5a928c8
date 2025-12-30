@@ -1158,8 +1158,20 @@ serve(async (req) => {
       }
     };
 
-    // Helper function for hunt matching - now tenant-aware
+    // Helper function for hunt matching - now tenant-aware with feature flag check
     const matchLoadToHunts = async (loadEmailId: string, loadId: string, parsedData: any, tenantId: string | null) => {
+      // Check if matching is enabled for this tenant
+      if (tenantId) {
+        const { data: matchingEnabled } = await supabase.rpc('is_feature_enabled', {
+          _tenant_id: tenantId,
+          _feature_key: 'load_hunter_matching',
+        });
+        
+        if (matchingEnabled === false) {
+          console.log(`[process-email-queue] Matching disabled for tenant ${tenantId}`);
+          return;
+        }
+      }
       // Only match hunts for the same tenant
       const huntQuery = supabase
         .from('hunt_plans')
