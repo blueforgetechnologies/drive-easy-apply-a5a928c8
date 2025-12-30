@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Loader2, Building2, Users, Truck, Target, RefreshCw, Flag, Check, X, Minus } from "lucide-react";
+import { 
+  Shield, Loader2, Building2, Users, Truck, Target, RefreshCw, Flag, Check, X, Minus,
+  Mail, Zap, MapPin, Brain, AlertTriangle, Clock, Activity
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +51,32 @@ interface FeatureFlagResolution {
   is_killswitch: boolean;
 }
 
+interface LoadHunterHealth {
+  total_emails_received: number;
+  unique_emails_processed: number;
+  deduped_emails_count: number;
+  dedupe_rate_percentage: number;
+  loads_created: number;
+  loads_matched: number;
+  active_hunts_count: number;
+  average_processing_time_ms: number | null;
+  geocoding_requests_count: number;
+  geocoding_cache_hits: number;
+  geocoding_cache_hit_rate: number;
+  ai_parsing_calls_count: number;
+  ingestion_enabled: boolean;
+  webhook_enabled: boolean;
+  last_error_at: string | null;
+  errors_last_24h: number;
+  queue_pending_count: number;
+  queue_failed_count: number;
+  oldest_pending_at: string | null;
+  queue_lag_seconds: number | null;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  time_window: string;
+}
+
 export default function Inspector() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -59,11 +88,17 @@ export default function Inspector() {
   const [tenantsError, setTenantsError] = useState<string | null>(null);
 
   // Feature flags state
-  const [selectedTenantId, setSelectedTenantId] = useState<string>("");
+  const [selectedFlagsTenantId, setSelectedFlagsTenantId] = useState<string>("");
   const [featureFlags, setFeatureFlags] = useState<FeatureFlagResolution[]>([]);
   const [fetchingFlags, setFetchingFlags] = useState(false);
   const [flagsError, setFlagsError] = useState<string | null>(null);
   const [selectedTenantChannel, setSelectedTenantChannel] = useState<string | null>(null);
+
+  // Load Hunter health state
+  const [selectedHealthTenantId, setSelectedHealthTenantId] = useState<string>("");
+  const [loadHunterHealth, setLoadHunterHealth] = useState<LoadHunterHealth | null>(null);
+  const [fetchingHealth, setFetchingHealth] = useState(false);
+  const [healthError, setHealthError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -131,13 +166,10 @@ export default function Inspector() {
       }
 
       const { data, error: fnError } = await supabase.functions.invoke("inspector-tenants", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (fnError) {
-        console.error("Error calling inspector-tenants:", fnError);
         setTenantsError(fnError.message || "Failed to fetch tenant data");
         return;
       }
@@ -169,13 +201,10 @@ export default function Inspector() {
 
       const queryParams = tenantId ? `?tenant_id=${tenantId}` : "";
       const { data, error: fnError } = await supabase.functions.invoke(`inspector-feature-flags${queryParams}`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (fnError) {
-        console.error("Error calling inspector-feature-flags:", fnError);
         setFlagsError(fnError.message || "Failed to fetch feature flags");
         return;
       }
@@ -195,13 +224,53 @@ export default function Inspector() {
     }
   }
 
-  function handleTenantSelect(tenantId: string) {
-    setSelectedTenantId(tenantId);
+  async function fetchLoadHunterHealth(tenantId?: string) {
+    setFetchingHealth(true);
+    setHealthError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setHealthError("Not authenticated");
+        return;
+      }
+
+      const queryParams = tenantId ? `?tenant_id=${tenantId}` : "";
+      const { data, error: fnError } = await supabase.functions.invoke(`inspector-load-hunter-health${queryParams}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (fnError) {
+        setHealthError(fnError.message || "Failed to fetch Load Hunter health");
+        return;
+      }
+
+      if (data?.error) {
+        setHealthError(data.error);
+        return;
+      }
+
+      setLoadHunterHealth(data?.health || null);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setHealthError("An unexpected error occurred");
+    } finally {
+      setFetchingHealth(false);
+    }
+  }
+
+  function handleFlagsTenantSelect(tenantId: string) {
+    setSelectedFlagsTenantId(tenantId);
     if (tenantId) {
       fetchFeatureFlags(tenantId);
     } else {
       fetchFeatureFlags();
     }
+  }
+
+  function handleHealthTenantSelect(tenantId: string) {
+    setSelectedHealthTenantId(tenantId);
+    fetchLoadHunterHealth(tenantId || undefined);
   }
 
   function getStatusBadge(status: string | null) {
@@ -260,11 +329,50 @@ export default function Inspector() {
     );
   }
 
+  function getHealthStatus(health: LoadHunterHealth | null): 'healthy' | 'warning' | 'critical' {
+    if (!health) return 'warning';
+    
+    // Critical conditions
+    if (!health.ingestion_enabled || !health.webhook_enabled) return 'critical';
+    if (health.errors_last_24h > 10) return 'critical';
+    if (health.queue_pending_count > 100) return 'critical';
+    if ((health.queue_lag_seconds || 0) > 300) return 'critical';
+    
+    // Warning conditions
+    if (health.errors_last_24h > 0) return 'warning';
+    if (health.queue_pending_count > 20) return 'warning';
+    if ((health.queue_lag_seconds || 0) > 60) return 'warning';
+    if (health.geocoding_cache_hit_rate < 50) return 'warning';
+    
+    return 'healthy';
+  }
+
+  function getHealthStatusBadge(status: 'healthy' | 'warning' | 'critical') {
+    switch (status) {
+      case 'healthy':
+        return <Badge className="bg-green-600">Healthy</Badge>;
+      case 'warning':
+        return <Badge className="bg-yellow-500 text-black">Warning</Badge>;
+      case 'critical':
+        return <Badge variant="destructive">Critical</Badge>;
+    }
+  }
+
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
+    });
+  }
+
+  function formatDateTime(dateString: string | null) {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   }
 
@@ -290,6 +398,8 @@ export default function Inspector() {
     return null;
   }
 
+  const healthStatus = getHealthStatus(loadHunterHealth);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -308,23 +418,21 @@ export default function Inspector() {
             <Flag className="w-4 h-4" />
             Feature Flags
           </TabsTrigger>
+          <TabsTrigger value="load-hunter" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Load Hunter Health
+          </TabsTrigger>
         </TabsList>
 
         {/* Tenants Tab */}
         <TabsContent value="tenants" className="space-y-4">
           <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchTenants}
-              disabled={fetchingTenants}
-            >
+            <Button variant="outline" size="sm" onClick={fetchTenants} disabled={fetchingTenants}>
               <RefreshCw className={`w-4 h-4 mr-2 ${fetchingTenants ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
 
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
@@ -337,7 +445,6 @@ export default function Inspector() {
                 <p className="text-2xl font-bold">{tenants.length}</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -349,7 +456,6 @@ export default function Inspector() {
                 <p className="text-2xl font-bold">{totals.users}</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -361,7 +467,6 @@ export default function Inspector() {
                 <p className="text-2xl font-bold">{totals.drivers}</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -373,7 +478,6 @@ export default function Inspector() {
                 <p className="text-2xl font-bold">{totals.vehicles}</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -430,9 +534,7 @@ export default function Inspector() {
                         <TableCell className="text-right">{tenant.metrics.drivers_count}</TableCell>
                         <TableCell className="text-right">{tenant.metrics.vehicles_count}</TableCell>
                         <TableCell className="text-right">{tenant.metrics.active_hunts_count}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(tenant.created_at)}
-                        </TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(tenant.created_at)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -447,7 +549,7 @@ export default function Inspector() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-64">
-                <Select value={selectedTenantId} onValueChange={handleTenantSelect}>
+                <Select value={selectedFlagsTenantId} onValueChange={handleFlagsTenantSelect}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a tenant..." />
                   </SelectTrigger>
@@ -467,12 +569,7 @@ export default function Inspector() {
                 </div>
               )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchFeatureFlags(selectedTenantId || undefined)}
-              disabled={fetchingFlags}
-            >
+            <Button variant="outline" size="sm" onClick={() => fetchFeatureFlags(selectedFlagsTenantId || undefined)} disabled={fetchingFlags}>
               <RefreshCw className={`w-4 h-4 mr-2 ${fetchingFlags ? "animate-spin" : ""}`} />
               Refresh
             </Button>
@@ -491,9 +588,9 @@ export default function Inspector() {
               <CardTitle className="flex items-center gap-2">
                 <Flag className="w-5 h-5" />
                 Feature Flags Resolution
-                {selectedTenantId && (
+                {selectedFlagsTenantId && (
                   <span className="text-sm font-normal text-muted-foreground ml-2">
-                    for {tenants.find(t => t.tenant_id === selectedTenantId)?.tenant_name}
+                    for {tenants.find(t => t.tenant_id === selectedFlagsTenantId)?.tenant_name}
                   </span>
                 )}
               </CardTitle>
@@ -505,19 +602,8 @@ export default function Inspector() {
                 </div>
               ) : featureFlags.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    {selectedTenantId 
-                      ? "No feature flags found. Click refresh to load."
-                      : "Select a tenant to view feature flag resolution, or refresh to see global defaults."
-                    }
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => fetchFeatureFlags(selectedTenantId || undefined)}
-                    disabled={fetchingFlags}
-                  >
+                  <p className="text-muted-foreground">Select a tenant or refresh to view feature flags.</p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchFeatureFlags(selectedFlagsTenantId || undefined)} disabled={fetchingFlags}>
                     Load Feature Flags
                   </Button>
                 </div>
@@ -541,30 +627,20 @@ export default function Inspector() {
                         <TableCell className="font-mono text-sm">{flag.flag_key}</TableCell>
                         <TableCell>{flag.flag_name}</TableCell>
                         <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            {getBooleanIcon(flag.effective_value)}
-                          </div>
+                          <div className="flex justify-center">{getBooleanIcon(flag.effective_value)}</div>
                         </TableCell>
                         <TableCell>{getSourceBadge(flag.source)}</TableCell>
                         <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            {getBooleanIcon(flag.tenant_override_value)}
-                          </div>
+                          <div className="flex justify-center">{getBooleanIcon(flag.tenant_override_value)}</div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            {getBooleanIcon(flag.release_channel_value)}
-                          </div>
+                          <div className="flex justify-center">{getBooleanIcon(flag.release_channel_value)}</div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            {getBooleanIcon(flag.global_default)}
-                          </div>
+                          <div className="flex justify-center">{getBooleanIcon(flag.global_default)}</div>
                         </TableCell>
                         <TableCell className="text-center">
-                          {flag.is_killswitch && (
-                            <Badge variant="destructive" className="text-xs">KS</Badge>
-                          )}
+                          {flag.is_killswitch && <Badge variant="destructive" className="text-xs">KS</Badge>}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -574,7 +650,6 @@ export default function Inspector() {
             </CardContent>
           </Card>
 
-          {/* Legend */}
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-wrap gap-6 text-sm">
@@ -597,6 +672,282 @@ export default function Inspector() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Load Hunter Health Tab */}
+        <TabsContent value="load-hunter" className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="w-64">
+              <Select value={selectedHealthTenantId} onValueChange={handleHealthTenantSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All tenants" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All tenants</SelectItem>
+                  {tenants.map((tenant) => (
+                    <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
+                      {tenant.tenant_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => fetchLoadHunterHealth(selectedHealthTenantId || undefined)} disabled={fetchingHealth}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${fetchingHealth ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {healthError && (
+            <Card className="border-destructive">
+              <CardContent className="pt-6">
+                <p className="text-destructive">{healthError}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {fetchingHealth && !loadHunterHealth ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : !loadHunterHealth ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-muted-foreground">Click refresh to load Load Hunter health data.</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchLoadHunterHealth(selectedHealthTenantId || undefined)}>
+                  Load Health Data
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Health Status Banner */}
+              <Card className={healthStatus === 'critical' ? 'border-destructive' : healthStatus === 'warning' ? 'border-yellow-500' : 'border-green-500'}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Activity className="w-6 h-6" />
+                      <div>
+                        <h3 className="font-semibold">System Status</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {loadHunterHealth.tenant_name || "All Tenants"} • Today (UTC)
+                        </p>
+                      </div>
+                    </div>
+                    {getHealthStatusBadge(healthStatus)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Emails Received
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{loadHunterHealth.total_emails_received.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Processed
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{loadHunterHealth.unique_emails_processed.toLocaleString()}</p>
+                    {loadHunterHealth.dedupe_rate_percentage > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {loadHunterHealth.deduped_emails_count} deduped ({loadHunterHealth.dedupe_rate_percentage}%)
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Geocoding
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{loadHunterHealth.geocoding_requests_count.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {loadHunterHealth.geocoding_cache_hits} cache hits ({loadHunterHealth.geocoding_cache_hit_rate}%)
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Brain className="w-4 h-4" />
+                      AI Parsing
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{loadHunterHealth.ai_parsing_calls_count.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Health Indicators & Queue Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="w-5 h-5" />
+                      Health Indicators
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">Ingestion Enabled</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.ingestion_enabled ? (
+                              <Badge className="bg-green-600">Yes</Badge>
+                            ) : (
+                              <Badge variant="destructive">No</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Webhook Enabled</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.webhook_enabled ? (
+                              <Badge className="bg-green-600">Yes</Badge>
+                            ) : (
+                              <Badge variant="destructive">No</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Errors (24h)</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.errors_last_24h > 0 ? (
+                              <Badge variant="destructive">{loadHunterHealth.errors_last_24h}</Badge>
+                            ) : (
+                              <Badge variant="outline">0</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Last Error</TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatDateTime(loadHunterHealth.last_error_at)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Avg Processing Time</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.average_processing_time_ms !== null 
+                              ? `${loadHunterHealth.average_processing_time_ms}ms`
+                              : "—"}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Queue Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">Pending Items</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.queue_pending_count > 20 ? (
+                              <Badge className="bg-yellow-500 text-black">{loadHunterHealth.queue_pending_count}</Badge>
+                            ) : loadHunterHealth.queue_pending_count > 0 ? (
+                              <Badge variant="secondary">{loadHunterHealth.queue_pending_count}</Badge>
+                            ) : (
+                              <Badge variant="outline">0</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Failed Items</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.queue_failed_count > 0 ? (
+                              <Badge variant="destructive">{loadHunterHealth.queue_failed_count}</Badge>
+                            ) : (
+                              <Badge variant="outline">0</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Queue Lag</TableCell>
+                          <TableCell className="text-right">
+                            {loadHunterHealth.queue_lag_seconds !== null ? (
+                              loadHunterHealth.queue_lag_seconds > 60 ? (
+                                <Badge className="bg-yellow-500 text-black">{loadHunterHealth.queue_lag_seconds}s</Badge>
+                              ) : (
+                                <span>{loadHunterHealth.queue_lag_seconds}s</span>
+                              )
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Oldest Pending</TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatDateTime(loadHunterHealth.oldest_pending_at)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Active Hunts</TableCell>
+                          <TableCell className="text-right">{loadHunterHealth.active_hunts_count}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Load Processing Metrics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    Load Processing Metrics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-8">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold">{loadHunterHealth.loads_created}</p>
+                      <p className="text-sm text-muted-foreground">Loads Created</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold">{loadHunterHealth.loads_matched}</p>
+                      <p className="text-sm text-muted-foreground">Matches Generated</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold">{loadHunterHealth.active_hunts_count}</p>
+                      <p className="text-sm text-muted-foreground">Active Hunt Plans</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>
