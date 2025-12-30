@@ -27,8 +27,10 @@ import {
   Flag,
   RefreshCw,
   BarChart3,
-  ShieldCheck
+  ShieldCheck,
+  Copy
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Tenant {
   id: string;
@@ -536,17 +538,38 @@ export default function PlatformAdminTab() {
                       {new Date(tenant.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleTogglePause(tenant)}
-                      >
-                        {tenant.is_paused ? (
-                          <Play className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Pause className="h-4 w-4 text-orange-500" />
-                        )}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(tenant.id);
+                                  toast.success("Tenant ID copied to clipboard");
+                                }}
+                              >
+                                <Copy className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs font-mono">{tenant.id}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleTogglePause(tenant)}
+                        >
+                          {tenant.is_paused ? (
+                            <Play className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Pause className="h-4 w-4 text-orange-500" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
