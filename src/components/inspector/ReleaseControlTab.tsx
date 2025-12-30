@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, RefreshCw, Check, Settings2, ArrowRight, Info } from "lucide-react";
+import { Loader2, RefreshCw, Check, Settings2, ArrowRight, Info, Shield, ShieldX, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,6 +33,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface FlagResolution {
+  flag_key: string;
+  flag_name: string;
+  enabled: boolean;
+  source: 'tenant_override' | 'release_channel' | 'global_default' | 'killswitch';
+}
 
 interface TenantReleaseInfo {
   tenant_id: string;
@@ -42,6 +50,7 @@ interface TenantReleaseInfo {
   features_from_channel: string[];
   features_from_override: string[];
   all_effective_features: string[];
+  flag_resolutions: FlagResolution[];
 }
 
 interface FeatureFlagInfo {
@@ -74,6 +83,9 @@ export function ReleaseControlTab() {
   const [selectedTenant, setSelectedTenant] = useState<TenantReleaseInfo | null>(null);
   const [newChannel, setNewChannel] = useState<string>("");
   const [updating, setUpdating] = useState(false);
+
+  // Proof section - selected tenant for detailed view
+  const [proofTenantId, setProofTenantId] = useState<string>("__none__");
 
   async function fetchReleaseData() {
     setLoading(true);
@@ -200,7 +212,31 @@ export function ReleaseControlTab() {
     }
   }
 
+  function getSourceBadge(source: string) {
+    switch (source) {
+      case "tenant_override":
+        return <Badge variant="outline" className="border-purple-500 text-purple-600 text-xs">Override</Badge>;
+      case "release_channel":
+        return <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">Channel</Badge>;
+      case "global_default":
+        return <Badge variant="outline" className="border-muted-foreground text-muted-foreground text-xs">Global</Badge>;
+      case "killswitch":
+        return <Badge variant="destructive" className="text-xs">Killed</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">{source}</Badge>;
+    }
+  }
+
   const channelOrder = ["internal", "pilot", "general"];
+
+  // Get proof tenant data
+  const proofTenant = proofTenantId !== "__none__" 
+    ? data?.tenants.find(t => t.tenant_id === proofTenantId) 
+    : null;
+
+  // Separate enabled and disabled flags for proof section
+  const enabledFlags = proofTenant?.flag_resolutions.filter(f => f.enabled) || [];
+  const disabledFlags = proofTenant?.flag_resolutions.filter(f => !f.enabled) || [];
 
   if (error) {
     return (
@@ -287,6 +323,117 @@ export function ReleaseControlTab() {
               </div>
               <p className="text-xs text-muted-foreground mt-2">Full release</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Feature Flag Proof Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            Feature Flag Proof
+          </CardTitle>
+          <CardDescription>
+            Select a tenant to see their effective feature flags and resolution sources
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium">Select Tenant:</label>
+              <Select value={proofTenantId} onValueChange={setProofTenantId}>
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Select a tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">-- Select a tenant --</SelectItem>
+                  {data?.tenants.map((tenant) => (
+                    <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
+                      {tenant.tenant_name} ({tenant.release_channel})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {proofTenant && (
+                <div className="flex items-center gap-2">
+                  {getChannelBadge(proofTenant.release_channel)}
+                  {getStatusBadge(proofTenant.status)}
+                </div>
+              )}
+            </div>
+
+            {proofTenant && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {/* Enabled Flags */}
+                <Card className="border-green-500/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-green-600" />
+                      <span className="text-green-600">Enabled Features ({enabledFlags.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[200px]">
+                      {enabledFlags.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">No enabled features</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {enabledFlags.slice(0, 10).map((flag) => (
+                            <div key={flag.flag_key} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                              <div>
+                                <p className="text-sm font-medium">{flag.flag_name}</p>
+                                <p className="text-xs text-muted-foreground">{flag.flag_key}</p>
+                              </div>
+                              {getSourceBadge(flag.source)}
+                            </div>
+                          ))}
+                          {enabledFlags.length > 10 && (
+                            <p className="text-xs text-muted-foreground pt-2">
+                              + {enabledFlags.length - 10} more...
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Disabled Flags */}
+                <Card className="border-red-500/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <ShieldX className="w-4 h-4 text-red-600" />
+                      <span className="text-red-600">Disabled Features ({disabledFlags.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[200px]">
+                      {disabledFlags.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">No disabled features</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {disabledFlags.slice(0, 10).map((flag) => (
+                            <div key={flag.flag_key} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                              <div>
+                                <p className="text-sm font-medium">{flag.flag_name}</p>
+                                <p className="text-xs text-muted-foreground">{flag.flag_key}</p>
+                              </div>
+                              {getSourceBadge(flag.source)}
+                            </div>
+                          ))}
+                          {disabledFlags.length > 10 && (
+                            <p className="text-xs text-muted-foreground pt-2">
+                              + {disabledFlags.length - 10} more...
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

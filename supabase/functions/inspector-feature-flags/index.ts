@@ -16,24 +16,6 @@ interface FeatureFlagResolution {
   is_killswitch: boolean;
 }
 
-interface ReleaseChannelDefaults {
-  [key: string]: { [flagKey: string]: boolean };
-}
-
-// Release channel defaults - features are rolled out progressively
-// internal → pilot → general
-const RELEASE_CHANNEL_DEFAULTS: ReleaseChannelDefaults = {
-  internal: {
-    // Internal gets all experimental features
-  },
-  pilot: {
-    // Pilot gets stable beta features
-  },
-  general: {
-    // General gets fully stable features only
-  },
-};
-
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -117,6 +99,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch release channel defaults from database
+    const { data: channelDefaultsRaw, error: channelDefaultsError } = await serviceClient
+      .from('release_channel_feature_flags')
+      .select('release_channel, feature_flag_id, enabled');
+
+    if (channelDefaultsError) {
+      console.error('Error fetching channel defaults:', channelDefaultsError);
+    }
+
+    // Build channel defaults map: channel -> flagId -> enabled
+    const channelDefaultsMap = new Map<string, Map<string, boolean>>();
+    for (const row of (channelDefaultsRaw || [])) {
+      if (!channelDefaultsMap.has(row.release_channel)) {
+        channelDefaultsMap.set(row.release_channel, new Map());
+      }
+      channelDefaultsMap.get(row.release_channel)!.set(row.feature_flag_id, row.enabled);
+    }
+
     // If tenant_id is provided, get tenant details and overrides
     let tenantOverrides: Map<string, boolean> = new Map();
     let releaseChannel: string | null = null;
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      releaseChannel = tenant?.release_channel || null;
+      releaseChannel = tenant?.release_channel || 'general';
 
       // Get tenant-specific overrides
       const { data: overrides, error: overridesError } = await serviceClient
@@ -160,12 +160,12 @@ Deno.serve(async (req) => {
       const globalDefault = flag.default_enabled ?? false;
       const isKillswitch = flag.is_killswitch ?? false;
 
-      // Check release channel defaults
+      // Check release channel defaults from database
       let releaseChannelValue: boolean | null = null;
-      if (releaseChannel && RELEASE_CHANNEL_DEFAULTS[releaseChannel]) {
-        const channelDefaults = RELEASE_CHANNEL_DEFAULTS[releaseChannel];
-        if (flag.key in channelDefaults) {
-          releaseChannelValue = channelDefaults[flag.key];
+      if (releaseChannel && channelDefaultsMap.has(releaseChannel)) {
+        const channelDefaults = channelDefaultsMap.get(releaseChannel)!;
+        if (channelDefaults.has(flag.id)) {
+          releaseChannelValue = channelDefaults.get(flag.id)!;
         }
       }
 
