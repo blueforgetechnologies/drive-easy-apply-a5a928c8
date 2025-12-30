@@ -3385,6 +3385,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_platform_admin: boolean
           notes: string | null
           phone: string | null
           phone_secondary: string | null
@@ -3402,6 +3403,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_platform_admin?: boolean
           notes?: string | null
           phone?: string | null
           phone_secondary?: string | null
@@ -3419,6 +3421,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_platform_admin?: boolean
           notes?: string | null
           phone?: string | null
           phone_secondary?: string | null
@@ -4647,6 +4650,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_user_platform_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "dispatcher" | "driver"
