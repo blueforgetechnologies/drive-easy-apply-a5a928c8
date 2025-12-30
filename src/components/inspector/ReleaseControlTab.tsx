@@ -427,8 +427,25 @@ export function ReleaseControlTab() {
   }
 
   function getResultForEndpoint(endpoint: string): VerificationTestResult | undefined {
-    return verificationResults.find(r => r.endpoint === endpoint);
+    return verificationResults.find((r) => r.endpoint === endpoint);
   }
+
+  function safeStringify(value: any) {
+    try {
+      if (value === undefined) return "—";
+      if (typeof value === "string") return value;
+      return JSON.stringify(value, null, 2);
+    } catch (err) {
+      // Never let rendering crash the Inspector (prevents Lovable's global error overlay)
+      console.error("Failed to stringify verification payload", err, value);
+      try {
+        return String(value);
+      } catch {
+        return "[unprintable]";
+      }
+    }
+  }
+
 
   if (error) {
     return (
@@ -749,7 +766,7 @@ export function ReleaseControlTab() {
                             
                             <ScrollArea className="h-[80px] mt-2">
                               <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-                                {JSON.stringify(result.body, null, 2)}
+                                {safeStringify(result.body)}
                               </pre>
                             </ScrollArea>
                           </div>
