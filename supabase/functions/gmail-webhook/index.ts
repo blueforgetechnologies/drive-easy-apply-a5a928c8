@@ -51,6 +51,36 @@ function generateDedupeKey(gmailMessageId: string): string {
   return gmailMessageId;
 }
 
+// Store raw payload to object storage for audit compliance
+async function storeRawPayload(
+  tenantId: string, 
+  gmailMessageId: string, 
+  payload: any
+): Promise<string | null> {
+  try {
+    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const filePath = `${tenantId}/${timestamp}/${gmailMessageId}.json`;
+    
+    const { error } = await supabase.storage
+      .from('email-payloads')
+      .upload(filePath, JSON.stringify(payload), {
+        contentType: 'application/json',
+        upsert: true, // Allow overwrite for retries
+      });
+    
+    if (error) {
+      console.error(`[gmail-webhook] Failed to store payload for ${gmailMessageId}:`, error);
+      return null;
+    }
+    
+    console.log(`📦 Stored raw payload: ${filePath}`);
+    return filePath;
+  } catch (err) {
+    console.error(`[gmail-webhook] Storage error:`, err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -230,13 +260,30 @@ serve(async (req) => {
 
     console.log(`📧 Queuing ${messages.length} messages for tenant ${tenantId}`);
 
-    // Queue messages with tenant_id and dedupe_key - fast upsert, NO parsing
-    const queueItems = messages.map((m: any) => ({
-      gmail_message_id: m.id,
+    // Store raw payloads in background and build queue items
+    const payloadPromises = messages.map(async (m: any) => {
+      // Store raw message reference (minimal data - full content fetched later)
+      const rawPayload = {
+        messageId: m.id,
+        threadId: m.threadId,
+        historyId,
+        receivedAt: new Date().toISOString(),
+        tenantId,
+      };
+      const payloadUrl = await storeRawPayload(tenantId!, m.id, rawPayload);
+      return { message: m, payloadUrl };
+    });
+    
+    const payloadResults = await Promise.all(payloadPromises);
+    
+    // Queue messages with tenant_id, dedupe_key, and payload_url
+    const queueItems = payloadResults.map(({ message, payloadUrl }) => ({
+      gmail_message_id: message.id,
       gmail_history_id: historyId,
       status: 'pending',
       tenant_id: tenantId,
-      dedupe_key: generateDedupeKey(m.id),
+      dedupe_key: generateDedupeKey(message.id),
+      payload_url: payloadUrl,
     }));
 
     // Use upsert with tenant-scoped dedupe key to prevent duplicates
