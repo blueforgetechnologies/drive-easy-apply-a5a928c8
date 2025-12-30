@@ -94,7 +94,15 @@ Deno.serve(async (req) => {
 
     // Handle POST for updating release channel
     if (method === 'POST') {
-      const body = await req.json();
+      let body: any = {};
+      try {
+        const bodyText = await req.text();
+        if (bodyText) {
+          body = JSON.parse(bodyText);
+        }
+      } catch (e) {
+        // Body might be empty or invalid
+      }
       const { tenant_id, release_channel } = body;
 
       if (!tenant_id || !release_channel) {

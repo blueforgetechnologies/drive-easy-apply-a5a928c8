@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +45,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Initialize Supabase early for feature check
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
     const clientIp = req.headers.get('x-forwarded-for') || 'unknown';
     
@@ -74,10 +80,26 @@ serve(async (req) => {
     const normalizedKey = normalizeLocationKey(locationQuery);
     console.log(`📍 Geocode request: "${locationQuery}" -> normalized: "${normalizedKey}"`);
 
-    // Initialize Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Check if tenant_id is provided in request (for feature gating)
+    const requestBody = { query, city, state, zip };
+    const tenantId = (requestBody as any).tenant_id;
+    
+    // If tenant_id provided, check feature flag
+    if (tenantId) {
+      const geocodingEnabled = await isFeatureEnabled({
+        tenant_id: tenantId,
+        flag_key: 'load_hunter_geocoding',
+        serviceClient: supabase,
+      });
+      
+      if (!geocodingEnabled) {
+        console.log(`[geocode] Geocoding disabled for tenant ${tenantId}`);
+        return new Response(
+          JSON.stringify({ error: 'Feature disabled', flag_key: 'load_hunter_geocoding', reason: 'release_channel' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Check cache first
     const { data: cached } = await supabase

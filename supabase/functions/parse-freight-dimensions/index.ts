@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +42,28 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, textInput, userId } = await req.json();
+    const { imageBase64, textInput, userId, tenant_id } = await req.json();
+    
+    // Feature gate: check if AI parsing is enabled for tenant
+    if (tenant_id) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const aiEnabled = await isFeatureEnabled({
+        tenant_id,
+        flag_key: 'load_hunter_ai_parsing',
+        serviceClient: supabase,
+      });
+      
+      if (!aiEnabled) {
+        console.log(`[parse-freight-dimensions] AI parsing disabled for tenant ${tenant_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Feature disabled', flag_key: 'load_hunter_ai_parsing', reason: 'release_channel' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Handle text input with AI fallback (when regex parsing fails)
     if (textInput) {

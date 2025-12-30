@@ -201,7 +201,7 @@ export async function assertFeatureEnabled(options: {
 export async function isFeatureEnabled(options: {
   tenant_id: string;
   flag_key: string;
-  serviceClient: ReturnType<typeof createClient>;
+  serviceClient: any; // Use any to avoid Supabase client type issues across versions
 }): Promise<boolean> {
   const { tenant_id, flag_key, serviceClient } = options;
 
