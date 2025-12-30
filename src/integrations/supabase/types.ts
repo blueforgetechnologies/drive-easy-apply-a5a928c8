@@ -4030,6 +4030,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_action_registry: {
+        Row: {
+          action_key: string
+          action_type: string
+          backend_target: string | null
+          created_at: string
+          description: string | null
+          enabled: boolean
+          feature_flag_key: string | null
+          id: string
+          last_verified_at: string | null
+          tenant_scope: string
+          ui_location: string
+          updated_at: string
+        }
+        Insert: {
+          action_key: string
+          action_type: string
+          backend_target?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          feature_flag_key?: string | null
+          id?: string
+          last_verified_at?: string | null
+          tenant_scope?: string
+          ui_location: string
+          updated_at?: string
+        }
+        Update: {
+          action_key?: string
+          action_type?: string
+          backend_target?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          feature_flag_key?: string | null
+          id?: string
+          last_verified_at?: string | null
+          tenant_scope?: string
+          ui_location?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_cost_settings: {
         Row: {
           cloud_calibrated_rate: number | null
