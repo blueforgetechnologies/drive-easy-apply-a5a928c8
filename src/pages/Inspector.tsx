@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Shield, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { checkPlatformAdminStatus } from "@/lib/platform-admin";
 
 export default function Inspector() {
   const navigate = useNavigate();
@@ -24,20 +23,25 @@ export default function Inspector() {
         return;
       }
 
-      // Check platform admin status
-      const { isPlatformAdmin, error } = await checkPlatformAdminStatus();
+      // Check admin role (Platform Admin)
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
 
       if (!mounted) return;
 
-      if (error) {
-        console.error("Error checking admin status:", error);
+      if (roleError) {
+        console.error("Error checking admin role:", roleError);
         toast.error("Access denied");
         navigate("/dashboard", { replace: true });
         return;
       }
 
-      if (!isPlatformAdmin) {
-        toast.error("Access denied - Platform admin privileges required");
+      if (!roleData) {
+        toast.error("Platform Admin access required");
         navigate("/dashboard", { replace: true });
         return;
       }
