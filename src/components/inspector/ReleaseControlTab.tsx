@@ -273,95 +273,96 @@ export function ReleaseControlTab() {
     { name: "Bid Email", endpoint: "send-bid-email", flagKey: "bid_automation_enabled", testBody: { to: "test@example.com", subject: "Test" } },
   ];
 
-  async function runVerificationTest(endpoint: string, flagKey: string, testBody: any) {
+  async function runVerificationTest(endpoint: string, flagKey: string, testBody: any): Promise<VerificationTestResult> {
+    const startTime = Date.now();
+    
+    // Get session - if not authenticated, return error result (don't throw)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return {
+        endpoint,
+        flagKey,
+        status: 401,
+        body: { error: 'Not authenticated' },
+        elapsedMs: Date.now() - startTime,
+        success: false,
+      };
+    }
+
+    const { data: invokeResult, error: fnError } = await supabase.functions.invoke(
+      endpoint,
+      {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: {
+          ...testBody,
+          overrideTenantId: verifyTenantId,
+        },
+      }
+    );
+
+    const elapsedMs = Date.now() - startTime;
+
+    // Supabase functions.invoke() returns non-2xx responses in error.context
+    // This is NOT an app error - it's a valid response we need to parse
+    let status = 200;
+    let payload: any = invokeResult;
+
+    if (fnError) {
+      const ctx: any = (fnError as any).context;
+      status = ctx?.status ?? 500;
+      payload = ctx?.body;
+      
+      // Try to parse body if it's a string
+      if (typeof payload === "string") {
+        try { payload = JSON.parse(payload); } catch {}
+      }
+    }
+
+    // Determine expected status based on tenant's release channel
+    const tenantChannel = verifyTenant?.release_channel || 'general';
+    const expectedStatus = tenantChannel === 'general' ? 403 : 200;
+    
+    // 200 and 403 are both valid expected outcomes - only other statuses are "unexpected"
+    const isExpectedOutcome = status === 200 || status === 403;
+    const passed = status === expectedStatus;
+
+    return {
+      endpoint,
+      flagKey,
+      status,
+      body: payload,
+      elapsedMs,
+      success: passed,
+    };
+  }
+
+  async function runSingleTest(endpoint: string, flagKey: string, testBody: any) {
     if (verifyTenantId === "__none__") {
       toast.error("Please select a tenant first");
       return;
     }
 
     setTestingEndpoint(endpoint);
-    const startTime = Date.now();
+    
+    const result = await runVerificationTest(endpoint, flagKey, testBody);
+    
+    setVerificationResults(prev => {
+      const filtered = prev.filter(r => r.endpoint !== endpoint);
+      return [...filtered, result];
+    });
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Not authenticated");
-        return;
-      }
-
-      const { data: invokeResult, error: fnError } = await supabase.functions.invoke(
-        endpoint,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body: {
-            ...testBody,
-            overrideTenantId: verifyTenantId,
-          },
-        }
-      );
-
-      const elapsedMs = Date.now() - startTime;
-
-      // Supabase functions.invoke() returns non-2xx responses in error.context
-      let status = 200;
-      let payload: any = invokeResult;
-
-      if (fnError) {
-        const ctx: any = (fnError as any).context;
-        status = ctx?.status ?? 500;
-        payload = ctx?.body;
-        
-        // Try to parse body if it's a string
-        if (typeof payload === "string") {
-          try { payload = JSON.parse(payload); } catch {}
-        }
-      }
-
-      // Determine expected status based on tenant's release channel (from component state 'data')
-      const tenantChannel = verifyTenant?.release_channel || 'general';
-      const expectedStatus = tenantChannel === 'general' ? 403 : 200;
-      const passed = status === expectedStatus;
-
-      const testResult: VerificationTestResult = {
-        endpoint,
-        flagKey,
-        status,
-        body: payload,
-        elapsedMs,
-        success: passed,
-      };
-
-      setVerificationResults(prev => {
-        const filtered = prev.filter(r => r.endpoint !== endpoint);
-        return [...filtered, testResult];
-      });
-
-      if (passed) {
-        toast.success(`${endpoint}: ${status === 200 ? 'Allowed' : 'Blocked'} (${status}) - PASS`);
-      } else {
-        toast.error(`${endpoint}: Got ${status}, expected ${expectedStatus} - FAIL`);
-      }
-
-    } catch (err) {
-      const elapsedMs = Date.now() - startTime;
-      console.error(`Verification test error for ${endpoint}:`, err);
-      
-      setVerificationResults(prev => {
-        const filtered = prev.filter(r => r.endpoint !== endpoint);
-        return [...filtered, {
-          endpoint,
-          flagKey,
-          status: 500,
-          body: { error: err instanceof Error ? err.message : 'Unknown error' },
-          elapsedMs,
-          success: false,
-        }];
-      });
-      
-      toast.error(`${endpoint} test failed`);
-    } finally {
-      setTestingEndpoint(null);
+    // Show toast based on result
+    if (result.success) {
+      toast.success(`${endpoint}: ${result.status === 200 ? 'Allowed' : 'Blocked'} (${result.status}) - PASS`);
+    } else if (result.status === 200 || result.status === 403) {
+      // Valid response but wrong for this channel
+      toast.error(`${endpoint}: Got ${result.status}, expected ${verifyTenant?.release_channel === 'general' ? 403 : 200} - FAIL`);
+    } else {
+      // Unexpected status (500, 401, etc.)
+      toast.error(`${endpoint}: Unexpected error (${result.status})`);
     }
+    
+    setTestingEndpoint(null);
   }
 
   async function runAllVerificationTests() {
@@ -371,10 +372,43 @@ export function ReleaseControlTab() {
     }
 
     setVerificationResults([]);
+    setTestingEndpoint("all");
     
-    for (const ep of verificationEndpoints) {
-      await runVerificationTest(ep.endpoint, ep.flagKey, ep.testBody);
+    // Use Promise.allSettled so one failure doesn't stop others
+    const promises = verificationEndpoints.map(ep => 
+      runVerificationTest(ep.endpoint, ep.flagKey, ep.testBody)
+    );
+    
+    const results = await Promise.allSettled(promises);
+    
+    const testResults: VerificationTestResult[] = results.map((result, idx) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        // Promise rejected (shouldn't happen, but handle gracefully)
+        return {
+          endpoint: verificationEndpoints[idx].endpoint,
+          flagKey: verificationEndpoints[idx].flagKey,
+          status: 500,
+          body: { error: result.reason?.message || 'Unknown error' },
+          elapsedMs: 0,
+          success: false,
+        };
+      }
+    });
+    
+    setVerificationResults(testResults);
+    
+    const passCount = testResults.filter(r => r.success).length;
+    const totalCount = testResults.length;
+    
+    if (passCount === totalCount) {
+      toast.success(`All ${totalCount} tests passed`);
+    } else {
+      toast.info(`${passCount}/${totalCount} tests passed`);
     }
+    
+    setTestingEndpoint(null);
   }
 
   function getResultForEndpoint(endpoint: string): VerificationTestResult | undefined {
@@ -659,7 +693,7 @@ export function ReleaseControlTab() {
                           variant="outline"
                           size="sm"
                           className="w-full"
-                          onClick={() => runVerificationTest(ep.endpoint, ep.flagKey, ep.testBody)}
+                          onClick={() => runSingleTest(ep.endpoint, ep.flagKey, ep.testBody)}
                           disabled={isRunning}
                         >
                           {isRunning ? (
