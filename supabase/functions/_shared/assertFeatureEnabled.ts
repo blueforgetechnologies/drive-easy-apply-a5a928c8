@@ -6,6 +6,7 @@ export interface FeatureGateResult {
   response?: Response;
   tenant_id?: string;
   user_id?: string;
+  limit_value?: number | null;
 }
 
 const corsHeaders = {
@@ -17,11 +18,12 @@ const corsHeaders = {
  * Server-side feature gate helper.
  * DERIVES tenant_id from auth context (never trusts client-provided tenant_id).
  * 
- * Resolution order:
+ * Resolution order (extended for Phase 5):
  * 1. Killswitch (if globally disabled, always OFF)
- * 2. Tenant override (if exists)
- * 3. Release channel default (from release_channel_feature_flags table)
- * 4. Global default
+ * 2. Plan/Billing constraint (if plan blocks feature, OFF)
+ * 3. Tenant override (if exists)
+ * 4. Release channel default (from release_channel_feature_flags table)
+ * 5. Global default
  * 
  * IMPORTANT: This function NEVER throws. All failure paths return a proper Response.
  * 
@@ -31,8 +33,9 @@ export async function assertFeatureEnabled(options: {
   flag_key: string;
   authHeader: string | null;
   overrideTenantId?: string; // ONLY for platform admins to test other tenants
+  checkPlanConstraints?: boolean; // Default true - check plan/billing constraints
 }): Promise<FeatureGateResult> {
-  const { flag_key, authHeader, overrideTenantId } = options;
+  const { flag_key, authHeader, overrideTenantId, checkPlanConstraints = true } = options;
 
   try {
     // Verify auth header exists
@@ -200,7 +203,7 @@ export async function assertFeatureEnabled(options: {
     const globalDefault = flag.default_enabled ?? false;
     const isKillswitch = flag.is_killswitch ?? false;
 
-    // Killswitch check - if globally disabled via killswitch, always OFF
+    // 1. Killswitch check - if globally disabled via killswitch, always OFF
     if (isKillswitch && !globalDefault) {
       console.log(`[assertFeatureEnabled] Feature '${flag_key}' is killed globally`);
       return {
@@ -215,10 +218,51 @@ export async function assertFeatureEnabled(options: {
       };
     }
 
-    // Get tenant's release channel
+    // 2. Plan/Billing constraint check (NEW in Phase 5)
+    if (checkPlanConstraints) {
+      const { data: planCheck, error: planCheckError } = await serviceClient
+        .rpc('check_plan_feature_access', {
+          p_tenant_id: tenant_id,
+          p_feature_key: flag_key
+        });
+
+      if (planCheckError) {
+        console.warn('[assertFeatureEnabled] Plan check error:', planCheckError.message);
+        // Don't block on plan check errors, continue to other checks
+      } else if (planCheck) {
+        const planResult = planCheck as { allowed: boolean; reason: string; limit_value: number | null };
+        
+        if (!planResult.allowed) {
+          console.log(`[assertFeatureEnabled] Feature '${flag_key}' blocked by plan: ${planResult.reason}`);
+          return {
+            allowed: false,
+            reason: `plan_${planResult.reason}`,
+            tenant_id,
+            user_id: user.id,
+            limit_value: planResult.limit_value,
+            response: new Response(
+              JSON.stringify({ 
+                error: 'Feature not available on current plan', 
+                flag_key, 
+                reason: `plan_${planResult.reason}`,
+                upgrade_required: true
+              }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            ),
+          };
+        }
+        
+        // Store limit_value for caller to use
+        if (planResult.limit_value !== null) {
+          console.log(`[assertFeatureEnabled] Feature '${flag_key}' has plan limit: ${planResult.limit_value}`);
+        }
+      }
+    }
+
+    // Get tenant's release channel and suspension status
     const { data: tenant, error: tenantError } = await serviceClient
       .from('tenants')
-      .select('release_channel')
+      .select('release_channel, is_paused, status')
       .eq('id', tenant_id)
       .maybeSingle();
 
@@ -240,9 +284,24 @@ export async function assertFeatureEnabled(options: {
       };
     }
 
+    // Check if tenant is suspended/paused
+    if (tenant.is_paused || tenant.status === 'suspended') {
+      console.log(`[assertFeatureEnabled] Tenant '${tenant_id}' is suspended`);
+      return {
+        allowed: false,
+        reason: 'tenant_suspended',
+        tenant_id,
+        user_id: user.id,
+        response: new Response(
+          JSON.stringify({ error: 'Tenant suspended', tenant_id, reason: 'tenant_suspended' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ),
+      };
+    }
+
     const releaseChannel = tenant.release_channel || 'general';
 
-    // Check for tenant-specific override
+    // 3. Check for tenant-specific override
     const { data: tenantOverride, error: overrideError } = await serviceClient
       .from('tenant_feature_flags')
       .select('enabled')
@@ -274,7 +333,7 @@ export async function assertFeatureEnabled(options: {
       return { allowed: true, tenant_id, user_id: user.id };
     }
 
-    // Check release channel default from database
+    // 4. Check release channel default from database
     const { data: channelDefault, error: channelError } = await serviceClient
       .from('release_channel_feature_flags')
       .select('enabled')
@@ -306,7 +365,7 @@ export async function assertFeatureEnabled(options: {
       return { allowed: true, tenant_id, user_id: user.id };
     }
 
-    // Fall back to global default
+    // 5. Fall back to global default
     console.log(`[assertFeatureEnabled] Global default for '${flag_key}': ${globalDefault}`);
     
     if (!globalDefault) {
@@ -333,6 +392,76 @@ export async function assertFeatureEnabled(options: {
       response: new Response(
         JSON.stringify({ error: 'Feature gate error', reason: 'internal_gate_error' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      ),
+    };
+  }
+}
+
+/**
+ * Assert platform admin access (for admin-only edge functions)
+ */
+export async function assertPlatformAdmin(authHeader: string | null): Promise<{
+  allowed: boolean;
+  user_id?: string;
+  response?: Response;
+}> {
+  try {
+    if (!authHeader) {
+      return {
+        allowed: false,
+        response: new Response(
+          JSON.stringify({ error: 'Unauthorized', reason: 'missing_auth' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ),
+      };
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return {
+        allowed: false,
+        response: new Response(
+          JSON.stringify({ error: 'Unauthorized', reason: 'auth_failed' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ),
+      };
+    }
+
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: profile, error: profileError } = await serviceClient
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError || !profile?.is_platform_admin) {
+      return {
+        allowed: false,
+        user_id: user.id,
+        response: new Response(
+          JSON.stringify({ error: 'Forbidden - Platform admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ),
+      };
+    }
+
+    return { allowed: true, user_id: user.id };
+  } catch (err) {
+    console.error('[assertPlatformAdmin] Unexpected error:', err);
+    return {
+      allowed: false,
+      response: new Response(
+        JSON.stringify({ error: 'Internal error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       ),
     };
   }
