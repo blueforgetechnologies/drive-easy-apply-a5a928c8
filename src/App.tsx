@@ -61,6 +61,7 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="/install-app" element={<InstallApp />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/inspector" element={<Inspector />} />
           <Route path="/dashboard" element={<Navigate to="/dashboard/business" replace />} />
           <Route path="/dashboard/map" element={<DashboardLayout><MapTab /></DashboardLayout>} />
           <Route path="/dashboard/load-hunter" element={<DashboardLayout><LoadHunterTab /></DashboardLayout>} />
