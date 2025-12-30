@@ -432,11 +432,10 @@ export function ReleaseControlTab() {
 
   function safeStringify(value: any) {
     try {
-      if (value === undefined) return "—";
+      if (value === undefined || value === null) return "—";
       if (typeof value === "string") return value;
       return JSON.stringify(value, null, 2);
     } catch (err) {
-      // Never let rendering crash the Inspector (prevents Lovable's global error overlay)
       console.error("Failed to stringify verification payload", err, value);
       try {
         return String(value);
