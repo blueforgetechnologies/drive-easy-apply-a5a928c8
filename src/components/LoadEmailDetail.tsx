@@ -2120,6 +2120,15 @@ const LoadEmailDetail = ({
                           return;
                         }
                         setBidError(null);
+
+                        // Check if bidding below posted rate (use posted_amount, fallback to rate)
+                        const postedRate = parseFloat(String(data.posted_amount || data.rate || '0').replace(/[^0-9.]/g, '')) || 0;
+                        if (postedRate > 0 && bidValue < postedRate) {
+                          setPendingBidAmount(finalBid);
+                          setShowLowBidWarning(true);
+                          return;
+                        }
+
                         setBidAmount(finalBid);
                         setShowBidCardOnMap(true);
                       }} className="bg-green-500 hover:bg-green-600 h-6 px-3 text-xs font-semibold rounded-full m-0.5">
