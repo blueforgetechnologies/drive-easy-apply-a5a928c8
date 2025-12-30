@@ -102,7 +102,11 @@ export default function PlatformAdminTab() {
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   const [showTenantSettings, setShowTenantSettings] = useState(false);
+  const [showFeatureFlagConfirm, setShowFeatureFlagConfirm] = useState(false);
+  const [showReleaseChannelConfirm, setShowReleaseChannelConfirm] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [selectedFlag, setSelectedFlag] = useState<FeatureFlag | null>(null);
+  const [pendingReleaseChannel, setPendingReleaseChannel] = useState<{ tenantId: string; channel: string } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [tenantFeatureFlags, setTenantFeatureFlags] = useState<TenantFeatureFlag[]>([]);
   
@@ -315,25 +319,46 @@ export default function PlatformAdminTab() {
     setSelectedTenant(null);
   };
 
-  const handleToggleFeatureFlag = async (flag: FeatureFlag) => {
+  const handleToggleFeatureFlag = (flag: FeatureFlag) => {
+    setSelectedFlag(flag);
+    setShowFeatureFlagConfirm(true);
+  };
+
+  const confirmToggleFeatureFlag = async () => {
+    if (!selectedFlag) return;
+
     const { error } = await supabase
       .from("feature_flags")
-      .update({ default_enabled: !flag.default_enabled })
-      .eq("id", flag.id);
+      .update({ default_enabled: !selectedFlag.default_enabled })
+      .eq("id", selectedFlag.id);
 
     if (error) {
       toast.error(`Failed to update flag: ${error.message}`);
     } else {
-      toast.success(`${flag.name} ${flag.default_enabled ? "disabled" : "enabled"} globally`);
+      toast.success(`${selectedFlag.name} ${selectedFlag.default_enabled ? "disabled" : "enabled"} globally`);
       await loadFeatureFlags();
+    }
+
+    setShowFeatureFlagConfirm(false);
+    setSelectedFlag(null);
+  };
+
+  const handleUpdateReleaseChannel = (tenantId: string, channel: string) => {
+    const tenant = tenants.find(t => t.id === tenantId);
+    if (tenant && tenant.release_channel !== channel) {
+      setPendingReleaseChannel({ tenantId, channel });
+      setSelectedTenant(tenant);
+      setShowReleaseChannelConfirm(true);
     }
   };
 
-  const handleUpdateReleaseChannel = async (tenantId: string, channel: string) => {
+  const confirmUpdateReleaseChannel = async () => {
+    if (!pendingReleaseChannel) return;
+
     const { error } = await supabase
       .from("tenants")
-      .update({ release_channel: channel as "internal" | "pilot" | "general" })
-      .eq("id", tenantId);
+      .update({ release_channel: pendingReleaseChannel.channel as "internal" | "pilot" | "general" })
+      .eq("id", pendingReleaseChannel.tenantId);
 
     if (error) {
       toast.error(`Failed to update channel: ${error.message}`);
@@ -341,6 +366,10 @@ export default function PlatformAdminTab() {
       toast.success("Release channel updated");
       await loadTenants();
     }
+
+    setShowReleaseChannelConfirm(false);
+    setPendingReleaseChannel(null);
+    setSelectedTenant(null);
   };
 
   const handleOpenTenantSettings = async (tenant: Tenant) => {
@@ -782,6 +811,60 @@ export default function PlatformAdminTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmTogglePause}>
               {selectedTenant?.is_paused ? "Resume" : "Pause"} Tenant
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Feature Flag Confirmation Dialog */}
+      <AlertDialog open={showFeatureFlagConfirm} onOpenChange={setShowFeatureFlagConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedFlag?.default_enabled ? "Disable" : "Enable"} Feature Flag Globally?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedFlag?.default_enabled 
+                ? `This will disable "${selectedFlag?.name}" for ALL tenants that don't have an override. This may affect active users.`
+                : `This will enable "${selectedFlag?.name}" for ALL tenants that don't have an override.`
+              }
+              {selectedFlag?.is_killswitch && (
+                <span className="block mt-2 text-destructive font-medium">
+                  ⚠️ This is a killswitch flag - changes take immediate effect.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmToggleFeatureFlag}>
+              {selectedFlag?.default_enabled ? "Disable" : "Enable"} Globally
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Release Channel Confirmation Dialog */}
+      <AlertDialog open={showReleaseChannelConfirm} onOpenChange={setShowReleaseChannelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Change Release Channel?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Change "{selectedTenant?.name}" from <strong>{selectedTenant?.release_channel}</strong> to <strong>{pendingReleaseChannel?.channel}</strong>?
+              {pendingReleaseChannel?.channel === "internal" && (
+                <span className="block mt-2">This tenant will receive internal/beta features first.</span>
+              )}
+              {pendingReleaseChannel?.channel === "general" && selectedTenant?.release_channel === "internal" && (
+                <span className="block mt-2 text-amber-600">Moving to general may remove access to beta features.</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingReleaseChannel(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUpdateReleaseChannel}>
+              Change Channel
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
