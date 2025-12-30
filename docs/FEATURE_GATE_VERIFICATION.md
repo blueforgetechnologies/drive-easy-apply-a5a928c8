@@ -1,8 +1,13 @@
 # Feature Gate Verification – Developer Notes
 
+> **Owner:** Platform / Release Control  
+> **Status:** 🔒 Locked – do not refactor casually
+
+---
+
 ## Purpose
 
-This document explains why the feature-gate verification system is structured the way it is and what must not be changed to avoid regressions such as global error popups or false failures.
+This document explains why the feature-gate verification system is structured the way it is and what **must not be changed** to avoid regressions such as global error popups or false failures.
 
 **This applies to:**
 - Inspector → Release Control
@@ -13,9 +18,9 @@ This document explains why the feature-gate verification system is structured th
 
 ## Key Principle
 
-> **A 403 from a feature gate is a valid expected result, not an error.**
+> ### A 403 from a feature gate is a valid expected result, not an error.
 
-The UI, SDK, and browser must never treat expected 403 responses as runtime failures.
+The UI, SDK, and browser must **never** treat expected 403 responses as runtime failures.
 
 ---
 
@@ -24,11 +29,12 @@ The UI, SDK, and browser must never treat expected 403 responses as runtime fail
 ### 1. Never let the browser receive raw 403 responses for verification tests
 
 - `supabase.functions.invoke()` treats non-2xx responses as errors
-- Lovable's global error boundary will display a Runtime Error popup if a 403 escapes
+- Lovable's global error boundary will display a **Runtime Error** popup if a 403 escapes
 
 **Solution used:**
+
 - All verification calls go through an admin-only proxy (`inspector-invoke-proxy`)
-- The proxy always returns HTTP 200
+- The proxy **always** returns HTTP 200
 - The real status is returned inside JSON:
 
 ```json
@@ -62,17 +68,19 @@ return new Response(
 ### 3. `assertFeatureEnabled` must never throw
 
 The shared feature gate helper:
-- Wraps everything in try/catch
+
+- Wraps everything in `try/catch`
 - Uses `.maybeSingle()` instead of `.single()`
 - Always returns `{ allowed, response? }`
 
-**If this function throws, it is a bug.**
+> **If this function throws, it is a bug.**
 
 ---
 
 ### 4. Never use `JSON.stringify()` directly in render paths
 
 This will crash the Inspector UI if the payload contains:
+
 - non-serializable objects
 - Response-like objects
 - circular references
@@ -84,7 +92,7 @@ safeStringify(value)
 ```
 
 This helper must:
-- never throw
+- **never throw**
 - gracefully stringify unknown payloads
 
 ---
@@ -93,16 +101,16 @@ This helper must:
 
 | Tenant Channel    | Expected Result |
 |-------------------|-----------------|
-| general           | 403 Blocked     |
-| pilot             | 200 Allowed     |
-| internal          | 200 Allowed     |
+| `general`         | 403 Blocked     |
+| `pilot`           | 200 Allowed     |
+| `internal`        | 200 Allowed     |
 | tenant override   | Override wins   |
 
-A test passes when the result matches the expected channel behavior.
+A test **passes** when the result matches the expected channel behavior.
 
 ---
 
-## Why this matters
+## Why This Matters
 
 **Without these rules:**
 - Lovable shows runtime error overlays
@@ -116,18 +124,79 @@ A test passes when the result matches the expected channel behavior.
 
 ---
 
-## If you change anything here
+## Pre-Merge Checklist
 
-Before merging changes, verify:
+Before merging any changes to this system, verify:
 
 - [ ] General tenant → all tests return 403 (PASS)
 - [ ] Pilot tenant → all tests return 200 (PASS)
 - [ ] No runtime popup appears
 - [ ] Inspector renders payload safely
 
-**If any of the above fail, revert.**
+> **If any of the above fail, revert immediately.**
 
 ---
 
-**Owner:** Platform / Release Control  
-**Status:** 🔒 Locked – do not refactor casually
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Inspector UI (Release Control)              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐    HTTP 200 always    ┌──────────────────┐   │
+│   │ Verification │ ──────────────────▶  │ invoke-proxy     │   │
+│   │ Test Runner  │                      │ (Edge Function)  │   │
+│   └─────────────┘                       └────────┬─────────┘   │
+│         │                                        │              │
+│         │ { status: 403, body: {...} }           │              │
+│         ▼                                        ▼              │
+│   ┌─────────────┐                       ┌──────────────────┐   │
+│   │ safeStringify│                      │ Target Function  │   │
+│   │ (no throws)  │                      │ (geocode, etc)   │   │
+│   └─────────────┘                       └────────┬─────────┘   │
+│                                                  │              │
+│                                                  ▼              │
+│                                         ┌──────────────────┐   │
+│                                         │assertFeatureEnabled│  │
+│                                         │ (never throws)   │   │
+│                                         └──────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Related Files
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/inspector-invoke-proxy/index.ts` | HTTP 200 wrapper proxy |
+| `supabase/functions/_shared/assertFeatureEnabled.ts` | Feature gate helper |
+| `src/components/inspector/ReleaseControlTab.tsx` | Verification UI |
+
+---
+
+## Quick Reference
+
+```typescript
+// ✅ CORRECT: Use proxy for verification
+const result = await invokeEdgeFunctionRaw('inspector-invoke-proxy', token, {
+  endpoint: 'geocode',
+  body: testPayload,
+  overrideTenantId: tenantId
+});
+// result.status contains actual status (200 or 403)
+
+// ❌ WRONG: Direct invoke causes error overlays
+const { data, error } = await supabase.functions.invoke('geocode', {...});
+// 403 triggers global error handler!
+```
+
+```typescript
+// ✅ CORRECT: Safe rendering
+<pre>{safeStringify(result.body)}</pre>
+
+// ❌ WRONG: Can throw on non-serializable objects
+<pre>{JSON.stringify(result.body, null, 2)}</pre>
+```
