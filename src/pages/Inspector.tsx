@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Shield, Loader2, Building2, Users, Truck, Target, RefreshCw, Flag, Check, X, Minus,
-  Mail, Zap, MapPin, Brain, AlertTriangle, Clock, Activity
+  Mail, Zap, MapPin, Brain, AlertTriangle, Clock, Activity, MousePointer2, ExternalLink,
+  Navigation, Database, LayoutGrid
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +78,32 @@ interface LoadHunterHealth {
   time_window: string;
 }
 
+interface UIActionHealth {
+  action: {
+    id: string;
+    action_key: string;
+    ui_location: string;
+    action_type: string;
+    backend_target: string | null;
+    enabled: boolean;
+    feature_flag_key: string | null;
+    tenant_scope: string;
+    description: string | null;
+    last_verified_at: string;
+  };
+  status: "healthy" | "broken" | "disabled";
+  issues: string[];
+  backend_exists: boolean;
+  feature_flag_enabled: boolean | null;
+}
+
+interface UIActionsSummary {
+  total: number;
+  healthy: number;
+  broken: number;
+  disabled: number;
+}
+
 export default function Inspector() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -99,6 +126,12 @@ export default function Inspector() {
   const [loadHunterHealth, setLoadHunterHealth] = useState<LoadHunterHealth | null>(null);
   const [fetchingHealth, setFetchingHealth] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
+
+  // UI Actions state
+  const [uiActions, setUIActions] = useState<UIActionHealth[]>([]);
+  const [uiActionsSummary, setUIActionsSummary] = useState<UIActionsSummary | null>(null);
+  const [fetchingActions, setFetchingActions] = useState(false);
+  const [actionsError, setActionsError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -259,6 +292,41 @@ export default function Inspector() {
     }
   }
 
+  async function fetchUIActions() {
+    setFetchingActions(true);
+    setActionsError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setActionsError("Not authenticated");
+        return;
+      }
+
+      const { data, error: fnError } = await supabase.functions.invoke("inspector-ui-actions", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (fnError) {
+        setActionsError(fnError.message || "Failed to fetch UI actions");
+        return;
+      }
+
+      if (data?.error) {
+        setActionsError(data.error);
+        return;
+      }
+
+      setUIActions(data?.actions || []);
+      setUIActionsSummary(data?.summary || null);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setActionsError("An unexpected error occurred");
+    } finally {
+      setFetchingActions(false);
+    }
+  }
+
   function handleFlagsTenantSelect(tenantId: string) {
     setSelectedFlagsTenantId(tenantId);
     if (tenantId) {
@@ -358,6 +426,34 @@ export default function Inspector() {
     }
   }
 
+  function getActionStatusBadge(status: 'healthy' | 'broken' | 'disabled') {
+    switch (status) {
+      case 'healthy':
+        return <Badge className="bg-green-600">Healthy</Badge>;
+      case 'broken':
+        return <Badge variant="destructive">Broken</Badge>;
+      case 'disabled':
+        return <Badge variant="outline" className="text-muted-foreground">Disabled</Badge>;
+    }
+  }
+
+  function getActionTypeIcon(type: string) {
+    switch (type) {
+      case 'navigate':
+        return <Navigation className="w-4 h-4 text-blue-500" />;
+      case 'api_call':
+        return <Zap className="w-4 h-4 text-orange-500" />;
+      case 'mutation':
+        return <Database className="w-4 h-4 text-purple-500" />;
+      case 'modal':
+        return <LayoutGrid className="w-4 h-4 text-green-500" />;
+      case 'external_link':
+        return <ExternalLink className="w-4 h-4 text-cyan-500" />;
+      default:
+        return <MousePointer2 className="w-4 h-4 text-muted-foreground" />;
+    }
+  }
+
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -421,6 +517,10 @@ export default function Inspector() {
           <TabsTrigger value="load-hunter" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
             Load Hunter Health
+          </TabsTrigger>
+          <TabsTrigger value="ui-actions" className="flex items-center gap-2">
+            <MousePointer2 className="w-4 h-4" />
+            UI Actions
           </TabsTrigger>
         </TabsList>
 
@@ -948,6 +1048,169 @@ export default function Inspector() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        {/* UI Actions Tab */}
+        <TabsContent value="ui-actions" className="space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={fetchUIActions} disabled={fetchingActions}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${fetchingActions ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {actionsError && (
+            <Card className="border-destructive">
+              <CardContent className="pt-6">
+                <p className="text-destructive">{actionsError}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Summary Cards */}
+          {uiActionsSummary && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <MousePointer2 className="w-4 h-4" />
+                    Total Actions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{uiActionsSummary.total}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-green-500/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-green-600 flex items-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Healthy
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-green-600">{uiActionsSummary.healthy}</p>
+                </CardContent>
+              </Card>
+              <Card className={uiActionsSummary.broken > 0 ? "border-destructive" : ""}>
+                <CardHeader className="pb-2">
+                  <CardTitle className={`text-sm font-medium flex items-center gap-2 ${uiActionsSummary.broken > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                    <AlertTriangle className="w-4 h-4" />
+                    Broken
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className={`text-2xl font-bold ${uiActionsSummary.broken > 0 ? "text-destructive" : ""}`}>{uiActionsSummary.broken}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <X className="w-4 h-4" />
+                    Disabled
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-muted-foreground">{uiActionsSummary.disabled}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MousePointer2 className="w-5 h-5" />
+                UI Action Registry
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {fetchingActions && uiActions.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : uiActions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Click refresh to load UI actions registry.</p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={fetchUIActions} disabled={fetchingActions}>
+                    Load UI Actions
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Action Key</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead className="text-center">Type</TableHead>
+                      <TableHead>Backend Target</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead>Feature Flag</TableHead>
+                      <TableHead>Issues</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {uiActions.map((item) => (
+                      <TableRow 
+                        key={item.action.id} 
+                        className={item.status === 'broken' ? 'bg-destructive/10' : ''}
+                      >
+                        <TableCell className="font-mono text-sm">{item.action.action_key}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.action.ui_location}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {getActionTypeIcon(item.action.action_type)}
+                            <span className="text-xs text-muted-foreground">{item.action.action_type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{item.action.backend_target || "—"}</TableCell>
+                        <TableCell className="text-center">{getActionStatusBadge(item.status)}</TableCell>
+                        <TableCell className="text-xs">{item.action.feature_flag_key || "—"}</TableCell>
+                        <TableCell>
+                          {item.issues.length > 0 ? (
+                            <div className="flex items-start gap-1">
+                              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                              <span className="text-xs text-destructive">{item.issues.join("; ")}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Legend */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-blue-500" />
+                  <span>Navigate</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-orange-500" />
+                  <span>API Call</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-purple-500" />
+                  <span>Mutation</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-green-500" />
+                  <span>Modal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4 text-cyan-500" />
+                  <span>External Link</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
