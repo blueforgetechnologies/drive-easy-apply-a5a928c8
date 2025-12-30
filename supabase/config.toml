@@ -113,3 +113,6 @@ verify_jwt = true
 
 [functions.elevenlabs-sfx]
 verify_jwt = true
+
+[functions.inspector-tenants]
+verify_jwt = true
