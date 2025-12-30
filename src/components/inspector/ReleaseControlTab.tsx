@@ -273,12 +273,36 @@ export function ReleaseControlTab() {
     { name: "Bid Email", endpoint: "send-bid-email", flagKey: "bid_automation_enabled", testBody: { to: "test@example.com", subject: "Test" } },
   ];
 
+  async function invokeEdgeFunctionRaw(endpoint: string, accessToken: string, body: any) {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    let payload: any = null;
+    const text = await res.text();
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      payload = text;
+    }
+
+    return { status: res.status, body: payload };
+  }
+
   async function runVerificationTest(
     endpoint: string,
     flagKey: string,
     testBody: any
   ): Promise<VerificationTestResult> {
     const startTime = Date.now();
+
     let session: any = null;
     try {
       const { data } = await supabase.auth.getSession();
@@ -309,32 +333,16 @@ export function ReleaseControlTab() {
     let payload: any = null;
 
     try {
-      const { data: invokeResult, error: fnError } =
-        await supabase.functions.invoke(endpoint, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body: {
-            ...testBody,
-            overrideTenantId: verifyTenantId,
-          },
-        });
+      const result = await invokeEdgeFunctionRaw(endpoint, session.access_token, {
+        ...testBody,
+        overrideTenantId: verifyTenantId,
+      });
 
-      if (fnError) {
-        const ctx: any = (fnError as any).context;
-        status = ctx?.status ?? 500;
-        payload = ctx?.body;
-        if (typeof payload === "string") {
-          try { payload = JSON.parse(payload); } catch {}
-        }
-      } else {
-        payload = invokeResult;
-      }
-    } catch (invokeError: any) {
-      const ctx = invokeError?.context;
-      status = ctx?.status ?? 500;
-      payload = ctx?.body ?? { error: invokeError?.message || "Unknown error" };
-      if (typeof payload === "string") {
-        try { payload = JSON.parse(payload); } catch {}
-      }
+      status = result.status;
+      payload = result.body;
+    } catch (err: any) {
+      status = 500;
+      payload = { error: err?.message || "Unknown error" };
     }
 
     const elapsedMs = Date.now() - startTime;
