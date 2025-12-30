@@ -5,19 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Release channel defaults - MUST mirror useFeatureFlags.ts and inspector-feature-flags
-const RELEASE_CHANNEL_DEFAULTS: Record<string, Record<string, boolean>> = {
-  internal: {
-    // Internal gets all experimental features
-  },
-  pilot: {
-    // Pilot gets stable beta features
-  },
-  general: {
-    // General gets fully stable features only
-  },
-};
-
 interface TenantReleaseInfo {
   tenant_id: string;
   tenant_name: string;
@@ -26,6 +13,14 @@ interface TenantReleaseInfo {
   features_from_channel: string[];
   features_from_override: string[];
   all_effective_features: string[];
+  flag_resolutions: FlagResolution[];
+}
+
+interface FlagResolution {
+  flag_key: string;
+  flag_name: string;
+  enabled: boolean;
+  source: 'tenant_override' | 'release_channel' | 'global_default' | 'killswitch';
 }
 
 Deno.serve(async (req) => {
@@ -200,6 +195,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch release channel defaults from database
+    const { data: channelDefaultsRaw, error: channelDefaultsError } = await serviceClient
+      .from('release_channel_feature_flags')
+      .select('release_channel, feature_flag_id, enabled');
+
+    if (channelDefaultsError) {
+      console.error('Error fetching channel defaults:', channelDefaultsError);
+    }
+
+    // Build channel defaults map: channel -> flagId -> enabled
+    const channelDefaultsMap = new Map<string, Map<string, boolean>>();
+    for (const row of (channelDefaultsRaw || [])) {
+      if (!channelDefaultsMap.has(row.release_channel)) {
+        channelDefaultsMap.set(row.release_channel, new Map());
+      }
+      channelDefaultsMap.get(row.release_channel)!.set(row.feature_flag_id, row.enabled);
+    }
+
     // Fetch all tenant feature flag overrides
     const { data: allOverrides, error: overridesError } = await serviceClient
       .from('tenant_feature_flags')
@@ -209,24 +222,23 @@ Deno.serve(async (req) => {
       console.error('Error fetching overrides:', overridesError);
     }
 
-    // Build flag ID to key map
+    // Build flag ID to key/name map
     const flagIdToKey = new Map<string, string>();
     const flagKeyToName = new Map<string, string>();
+    const flagIdToInfo = new Map<string, { key: string; name: string; default_enabled: boolean; is_killswitch: boolean }>();
     for (const flag of (featureFlags || [])) {
       flagIdToKey.set(flag.id, flag.key);
       flagKeyToName.set(flag.key, flag.name);
+      flagIdToInfo.set(flag.id, flag);
     }
 
-    // Build override map per tenant
+    // Build override map per tenant: tenant -> flagId -> enabled
     const tenantOverridesMap = new Map<string, Map<string, boolean>>();
     for (const override of (allOverrides || [])) {
       if (!tenantOverridesMap.has(override.tenant_id)) {
         tenantOverridesMap.set(override.tenant_id, new Map());
       }
-      const flagKey = flagIdToKey.get(override.feature_flag_id);
-      if (flagKey) {
-        tenantOverridesMap.get(override.tenant_id)!.set(flagKey, override.enabled);
-      }
+      tenantOverridesMap.get(override.tenant_id)!.set(override.feature_flag_id, override.enabled);
     }
 
     // Build release info for each tenant
@@ -234,12 +246,13 @@ Deno.serve(async (req) => {
 
     for (const tenant of (tenants || [])) {
       const channel = tenant.release_channel || 'general';
-      const channelDefaults = RELEASE_CHANNEL_DEFAULTS[channel] || {};
+      const channelDefaults = channelDefaultsMap.get(channel) || new Map();
       const overrides = tenantOverridesMap.get(tenant.id) || new Map();
 
       const featuresFromChannel: string[] = [];
       const featuresFromOverride: string[] = [];
       const allEffectiveFeatures: string[] = [];
+      const flagResolutions: FlagResolution[] = [];
 
       for (const flag of (featureFlags || [])) {
         const globalDefault = flag.default_enabled ?? false;
@@ -247,31 +260,44 @@ Deno.serve(async (req) => {
 
         // Killswitch check
         if (isKillswitch && !globalDefault) {
-          continue; // Feature is killed, skip
+          flagResolutions.push({
+            flag_key: flag.key,
+            flag_name: flag.name,
+            enabled: false,
+            source: 'killswitch',
+          });
+          continue;
         }
 
-        const channelValue = flag.key in channelDefaults ? channelDefaults[flag.key] : null;
-        const overrideValue = overrides.has(flag.key) ? overrides.get(flag.key) : null;
+        const channelValue = channelDefaults.has(flag.id) ? channelDefaults.get(flag.id) : null;
+        const overrideValue = overrides.has(flag.id) ? overrides.get(flag.id) : null;
 
         let effectiveValue: boolean;
-        let source: string;
+        let source: 'tenant_override' | 'release_channel' | 'global_default';
 
         if (overrideValue !== null) {
           effectiveValue = overrideValue;
-          source = 'override';
+          source = 'tenant_override';
         } else if (channelValue !== null) {
           effectiveValue = channelValue;
-          source = 'channel';
+          source = 'release_channel';
         } else {
           effectiveValue = globalDefault;
-          source = 'global';
+          source = 'global_default';
         }
+
+        flagResolutions.push({
+          flag_key: flag.key,
+          flag_name: flag.name,
+          enabled: effectiveValue,
+          source,
+        });
 
         if (effectiveValue) {
           allEffectiveFeatures.push(flag.key);
-          if (source === 'channel') {
+          if (source === 'release_channel') {
             featuresFromChannel.push(flag.key);
-          } else if (source === 'override') {
+          } else if (source === 'tenant_override') {
             featuresFromOverride.push(flag.key);
           }
         }
@@ -285,6 +311,7 @@ Deno.serve(async (req) => {
         features_from_channel: featuresFromChannel,
         features_from_override: featuresFromOverride,
         all_effective_features: allEffectiveFeatures,
+        flag_resolutions: flagResolutions,
       });
     }
 
@@ -294,6 +321,18 @@ Deno.serve(async (req) => {
       pilot: tenants?.filter(t => t.release_channel === 'pilot').length || 0,
       general: tenants?.filter(t => (t.release_channel || 'general') === 'general').length || 0,
     };
+
+    // Build channel defaults for response (readable format)
+    const releaseChannelDefaults: Record<string, Record<string, boolean>> = {};
+    for (const [channel, flagMap] of channelDefaultsMap) {
+      releaseChannelDefaults[channel] = {};
+      for (const [flagId, enabled] of flagMap) {
+        const flagKey = flagIdToKey.get(flagId);
+        if (flagKey) {
+          releaseChannelDefaults[channel][flagKey] = enabled;
+        }
+      }
+    }
 
     console.log(`Returning release info for ${releaseInfo.length} tenants`);
 
@@ -307,7 +346,7 @@ Deno.serve(async (req) => {
           default_enabled: f.default_enabled,
           is_killswitch: f.is_killswitch,
         })),
-        release_channel_defaults: RELEASE_CHANNEL_DEFAULTS,
+        release_channel_defaults: releaseChannelDefaults,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

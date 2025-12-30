@@ -3457,6 +3457,41 @@ export type Database = {
         }
         Relationships: []
       }
+      release_channel_feature_flags: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature_flag_id: string
+          id: string
+          release_channel: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature_flag_id: string
+          id?: string
+          release_channel: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature_flag_id?: string
+          id?: string
+          release_channel?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_channel_feature_flags_feature_flag_id_fkey"
+            columns: ["feature_flag_id"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string | null

@@ -1,27 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// Release channel defaults - features are rolled out progressively
-// internal → pilot → general
-// This MUST mirror the logic in inspector-feature-flags edge function
-const RELEASE_CHANNEL_DEFAULTS: Record<string, Record<string, boolean>> = {
-  internal: {
-    // Internal gets all experimental features
-  },
-  pilot: {
-    // Pilot gets stable beta features
-  },
-  general: {
-    // General gets fully stable features only
-  },
-};
-
 interface FeatureFlag {
   id: string;
   key: string;
   name: string;
   default_enabled: boolean;
   is_killswitch: boolean;
+}
+
+interface ReleaseChannelDefault {
+  feature_flag_id: string;
+  enabled: boolean;
 }
 
 interface TenantFeatureOverride {
@@ -49,7 +39,7 @@ interface UseFeatureFlagsResult {
  * Uses the SAME resolution logic as the backend:
  * 1. Killswitch check (if globally disabled via killswitch, always OFF)
  * 2. Tenant override (if exists)
- * 3. Release channel default (if exists)
+ * 3. Release channel default (from release_channel_feature_flags table)
  * 4. Global default
  */
 export function useFeatureFlags(tenantId?: string): UseFeatureFlagsResult {
@@ -82,6 +72,24 @@ export function useFeatureFlags(tenantId?: string): UseFeatureFlagsResult {
         return;
       }
 
+      // Fetch release channel defaults from database
+      const { data: channelDefaultsRaw, error: channelDefaultsError } = await supabase
+        .from("release_channel_feature_flags")
+        .select("release_channel, feature_flag_id, enabled");
+
+      if (channelDefaultsError) {
+        console.error("Error fetching channel defaults:", channelDefaultsError);
+      }
+
+      // Build channel defaults map: channel -> flagId -> enabled
+      const channelDefaultsMap = new Map<string, Map<string, boolean>>();
+      for (const row of (channelDefaultsRaw || [])) {
+        if (!channelDefaultsMap.has(row.release_channel)) {
+          channelDefaultsMap.set(row.release_channel, new Map());
+        }
+        channelDefaultsMap.get(row.release_channel)!.set(row.feature_flag_id, row.enabled);
+      }
+
       // Get tenant's release channel and overrides if tenantId provided
       let tenantChannel: string | null = null;
       const tenantOverrides = new Map<string, boolean>();
@@ -95,8 +103,8 @@ export function useFeatureFlags(tenantId?: string): UseFeatureFlagsResult {
           .single();
 
         if (!tenantError && tenant) {
-          tenantChannel = tenant.release_channel;
-          setReleaseChannel(tenant.release_channel);
+          tenantChannel = tenant.release_channel || 'general';
+          setReleaseChannel(tenantChannel);
         }
 
         // Fetch tenant-specific overrides
@@ -120,12 +128,12 @@ export function useFeatureFlags(tenantId?: string): UseFeatureFlagsResult {
         const globalDefault = flag.default_enabled ?? false;
         const isKillswitch = flag.is_killswitch ?? false;
 
-        // Check release channel defaults
+        // Check release channel defaults from database
         let releaseChannelValue: boolean | null = null;
-        if (tenantChannel && RELEASE_CHANNEL_DEFAULTS[tenantChannel]) {
-          const channelDefaults = RELEASE_CHANNEL_DEFAULTS[tenantChannel];
-          if (flag.key in channelDefaults) {
-            releaseChannelValue = channelDefaults[flag.key];
+        if (tenantChannel && channelDefaultsMap.has(tenantChannel)) {
+          const channelDefaults = channelDefaultsMap.get(tenantChannel)!;
+          if (channelDefaults.has(flag.id)) {
+            releaseChannelValue = channelDefaults.get(flag.id)!;
           }
         }
 
