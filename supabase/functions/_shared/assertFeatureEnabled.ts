@@ -4,6 +4,8 @@ export interface FeatureGateResult {
   allowed: boolean;
   reason?: string;
   response?: Response;
+  tenant_id?: string;
+  user_id?: string;
 }
 
 const corsHeaders = {
@@ -13,7 +15,7 @@ const corsHeaders = {
 
 /**
  * Server-side feature gate helper.
- * Verifies caller identity and checks if a feature is enabled for a tenant.
+ * DERIVES tenant_id from auth context (never trusts client-provided tenant_id).
  * 
  * Resolution order:
  * 1. Killswitch (if globally disabled, always OFF)
@@ -24,11 +26,11 @@ const corsHeaders = {
  * @returns FeatureGateResult with allowed=true if feature is enabled, or a 403 Response if blocked
  */
 export async function assertFeatureEnabled(options: {
-  tenant_id: string;
   flag_key: string;
   authHeader: string | null;
+  overrideTenantId?: string; // ONLY for platform admins to test other tenants
 }): Promise<FeatureGateResult> {
-  const { tenant_id, flag_key, authHeader } = options;
+  const { flag_key, authHeader, overrideTenantId } = options;
 
   // Verify auth header exists
   if (!authHeader) {
@@ -68,6 +70,75 @@ export async function assertFeatureEnabled(options: {
   // Use service role for privileged lookups
   const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
+  // DERIVE tenant_id from user's membership (NOT from client)
+  let tenant_id: string | null = null;
+  let isPlatformAdmin = false;
+
+  // Check if user is platform admin
+  const { data: profile } = await serviceClient
+    .from('profiles')
+    .select('is_platform_admin')
+    .eq('id', user.id)
+    .single();
+
+  isPlatformAdmin = profile?.is_platform_admin === true;
+
+  // If platform admin and overrideTenantId provided, use that (for testing)
+  if (isPlatformAdmin && overrideTenantId) {
+    // Validate the override tenant exists
+    const { data: tenantCheck } = await serviceClient
+      .from('tenants')
+      .select('id')
+      .eq('id', overrideTenantId)
+      .single();
+    
+    if (tenantCheck) {
+      tenant_id = overrideTenantId;
+      console.log(`[assertFeatureEnabled] Platform admin using override tenant: ${tenant_id}`);
+    }
+  }
+
+  // If no override, derive from user's tenant membership
+  if (!tenant_id) {
+    const { data: membership } = await serviceClient
+      .from('tenant_users')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+
+    tenant_id = membership?.tenant_id || null;
+  }
+
+  // If still no tenant, user has no tenant access
+  if (!tenant_id) {
+    console.log(`[assertFeatureEnabled] User ${user.id} has no tenant membership`);
+    // Platform admins without tenant membership still need to pass - use default tenant
+    if (isPlatformAdmin) {
+      const { data: defaultTenant } = await serviceClient
+        .from('tenants')
+        .select('id')
+        .eq('slug', 'default')
+        .single();
+      tenant_id = defaultTenant?.id || null;
+    }
+    
+    if (!tenant_id) {
+      return {
+        allowed: false,
+        reason: 'User has no tenant membership',
+        user_id: user.id,
+        response: new Response(
+          JSON.stringify({ error: 'No tenant access', reason: 'User is not a member of any tenant' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ),
+      };
+    }
+  }
+
+  console.log(`[assertFeatureEnabled] Checking flag '${flag_key}' for tenant ${tenant_id}, user ${user.id}`);
+
   // Get the feature flag
   const { data: flag, error: flagError } = await serviceClient
     .from('feature_flags')
@@ -81,6 +152,8 @@ export async function assertFeatureEnabled(options: {
     return {
       allowed: false,
       reason: `Feature flag '${flag_key}' not found`,
+      tenant_id,
+      user_id: user.id,
       response: new Response(
         JSON.stringify({ error: 'Feature not available', flag_key }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -97,6 +170,8 @@ export async function assertFeatureEnabled(options: {
     return {
       allowed: false,
       reason: 'Feature is disabled globally (killswitch)',
+      tenant_id,
+      user_id: user.id,
       response: new Response(
         JSON.stringify({ error: 'Feature disabled', flag_key, reason: 'killswitch' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -116,6 +191,8 @@ export async function assertFeatureEnabled(options: {
     return {
       allowed: false,
       reason: 'Tenant not found',
+      tenant_id,
+      user_id: user.id,
       response: new Response(
         JSON.stringify({ error: 'Tenant not found', tenant_id }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -141,6 +218,8 @@ export async function assertFeatureEnabled(options: {
       return {
         allowed: false,
         reason: 'Feature disabled by tenant override',
+        tenant_id,
+        user_id: user.id,
         response: new Response(
           JSON.stringify({ error: 'Feature disabled', flag_key, reason: 'tenant_override' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -148,7 +227,7 @@ export async function assertFeatureEnabled(options: {
       };
     }
     
-    return { allowed: true };
+    return { allowed: true, tenant_id, user_id: user.id };
   }
 
   // Check release channel default from database
@@ -167,6 +246,8 @@ export async function assertFeatureEnabled(options: {
       return {
         allowed: false,
         reason: `Feature disabled for '${releaseChannel}' release channel`,
+        tenant_id,
+        user_id: user.id,
         response: new Response(
           JSON.stringify({ error: 'Feature disabled', flag_key, reason: 'release_channel', channel: releaseChannel }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,7 +255,7 @@ export async function assertFeatureEnabled(options: {
       };
     }
     
-    return { allowed: true };
+    return { allowed: true, tenant_id, user_id: user.id };
   }
 
   // Fall back to global default
@@ -184,6 +265,8 @@ export async function assertFeatureEnabled(options: {
     return {
       allowed: false,
       reason: 'Feature disabled by global default',
+      tenant_id,
+      user_id: user.id,
       response: new Response(
         JSON.stringify({ error: 'Feature disabled', flag_key, reason: 'global_default' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -191,82 +274,5 @@ export async function assertFeatureEnabled(options: {
     };
   }
 
-  return { allowed: true };
-}
-
-/**
- * Simplified helper for quick feature checks without blocking response.
- * Returns just the boolean result.
- */
-export async function isFeatureEnabled(options: {
-  tenant_id: string;
-  flag_key: string;
-  serviceClient: any; // Use any to avoid Supabase client type issues across versions
-}): Promise<boolean> {
-  const { tenant_id, flag_key, serviceClient } = options;
-
-  try {
-    // Get the feature flag
-    const { data: flag, error: flagError } = await serviceClient
-      .from('feature_flags')
-      .select('id, key, default_enabled, is_killswitch')
-      .eq('key', flag_key)
-      .single();
-
-    if (flagError || !flag) {
-      return false;
-    }
-
-    // Cast to avoid type inference issues
-    const flagData = flag as { id: string; key: string; default_enabled: boolean | null; is_killswitch: boolean | null };
-    const globalDefault = flagData.default_enabled ?? false;
-    const isKillswitch = flagData.is_killswitch ?? false;
-
-    // Killswitch check
-    if (isKillswitch && !globalDefault) {
-      return false;
-    }
-
-    // Get tenant's release channel
-    const { data: tenant } = await serviceClient
-      .from('tenants')
-      .select('release_channel')
-      .eq('id', tenant_id)
-      .single();
-
-    const tenantData = tenant as { release_channel: string | null } | null;
-    const releaseChannel = tenantData?.release_channel || 'general';
-
-    // Check for tenant-specific override
-    const { data: tenantOverride } = await serviceClient
-      .from('tenant_feature_flags')
-      .select('enabled')
-      .eq('tenant_id', tenant_id)
-      .eq('feature_flag_id', flagData.id)
-      .single();
-
-    const overrideData = tenantOverride as { enabled: boolean } | null;
-    if (overrideData !== null && overrideData !== undefined) {
-      return overrideData.enabled;
-    }
-
-    // Check release channel default from database
-    const { data: channelDefault } = await serviceClient
-      .from('release_channel_feature_flags')
-      .select('enabled')
-      .eq('release_channel', releaseChannel)
-      .eq('feature_flag_id', flagData.id)
-      .single();
-
-    const channelData = channelDefault as { enabled: boolean } | null;
-    if (channelData !== null && channelData !== undefined) {
-      return channelData.enabled;
-    }
-
-    // Fall back to global default
-    return globalDefault;
-  } catch (error) {
-    console.error('[isFeatureEnabled] Error:', error);
-    return false;
-  }
+  return { allowed: true, tenant_id, user_id: user.id };
 }

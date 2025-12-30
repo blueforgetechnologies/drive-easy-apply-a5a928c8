@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
+import { assertFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,28 +42,23 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, textInput, userId, tenant_id } = await req.json();
+    const authHeader = req.headers.get('Authorization');
     
-    // Feature gate: check if AI parsing is enabled for tenant
-    if (tenant_id) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      const aiEnabled = await isFeatureEnabled({
-        tenant_id,
-        flag_key: 'load_hunter_ai_parsing',
-        serviceClient: supabase,
-      });
-      
-      if (!aiEnabled) {
-        console.log(`[parse-freight-dimensions] AI parsing disabled for tenant ${tenant_id}`);
-        return new Response(
-          JSON.stringify({ error: 'Feature disabled', flag_key: 'load_hunter_ai_parsing', reason: 'release_channel' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // Feature gate FIRST - derive tenant from auth, check ai_parsing_enabled
+    const gateResult = await assertFeatureEnabled({
+      flag_key: 'ai_parsing_enabled',
+      authHeader,
+    });
+    
+    if (!gateResult.allowed) {
+      console.log(`[parse-freight-dimensions] Feature disabled: ${gateResult.reason}`);
+      return gateResult.response!;
     }
+
+    // Parse request body after gate passes
+    const { imageBase64, textInput } = await req.json();
+    
+    console.log(`[parse-freight-dimensions] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
 
     // Handle text input with AI fallback (when regex parsing fails)
     if (textInput) {
@@ -141,7 +136,7 @@ Rules:
         usage.prompt_tokens || 0,
         usage.completion_tokens || 0,
         usage.total_tokens || 0,
-        userId
+        gateResult.user_id
       );
 
       if (content.includes('NO_DIMENSIONS_FOUND')) {
@@ -246,7 +241,7 @@ Rules:
       usage.prompt_tokens || 0,
       usage.completion_tokens || 0,
       usage.total_tokens || 0,
-      userId
+      gateResult.user_id
     );
 
     if (content.includes('NO_DIMENSIONS_FOUND')) {

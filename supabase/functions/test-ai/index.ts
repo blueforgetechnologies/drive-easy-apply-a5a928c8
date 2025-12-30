@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
+import { assertFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,37 +12,29 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Service client for tracking
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-
   try {
-    const { prompt, tenant_id } = await req.json();
+    const authHeader = req.headers.get('Authorization');
     
-    // Feature gate: check if AI parsing is enabled for tenant
-    if (tenant_id) {
-      const aiEnabled = await isFeatureEnabled({
-        tenant_id,
-        flag_key: 'load_hunter_ai_parsing',
-        serviceClient: supabase,
-      });
-      
-      if (!aiEnabled) {
-        console.log(`[test-ai] AI features disabled for tenant ${tenant_id}`);
-        return new Response(
-          JSON.stringify({ error: 'Feature disabled', flag_key: 'load_hunter_ai_parsing', reason: 'release_channel' }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    // Feature gate FIRST - derive tenant from auth, check ai_parsing_enabled
+    const gateResult = await assertFeatureEnabled({
+      flag_key: 'ai_parsing_enabled',
+      authHeader,
+    });
+    
+    if (!gateResult.allowed) {
+      console.log(`[test-ai] Feature disabled: ${gateResult.reason}`);
+      return gateResult.response!;
     }
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
+    // Parse request body after gate passes
+    const { prompt } = await req.json();
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    console.log(`[test-ai] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
     console.log("Testing Lovable AI with prompt:", prompt);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -90,7 +82,12 @@ serve(async (req) => {
     const completionTokens = usage.completion_tokens || 0;
     const totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
-    // Track AI usage
+    // Track AI usage with service client
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    
     await supabase
       .from('ai_usage_tracking')
       .insert({
@@ -98,6 +95,7 @@ serve(async (req) => {
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,
         total_tokens: totalTokens,
+        user_id: gateResult.user_id,
       });
     console.log('📊 Lovable AI usage tracked:', { promptTokens, completionTokens, totalTokens });
 
@@ -108,7 +106,8 @@ serve(async (req) => {
         success: true, 
         response: aiResponse,
         model: "google/gemini-2.5-flash",
-        usage: { promptTokens, completionTokens, totalTokens }
+        usage: { promptTokens, completionTokens, totalTokens },
+        tenant_id: gateResult.tenant_id,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
