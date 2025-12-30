@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
+import { TenantSwitcher } from "./TenantSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -352,7 +353,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <div className="max-w-[1630px] mx-auto px-3 sm:px-5 py-2 sm:py-2.5">
           <div className="flex justify-between items-center gap-3">
-            {/* Left: Logo + Desktop Nav */}
+            {/* Left: Logo + Tenant Switcher + Desktop Nav */}
             <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
               <h1 
                 className="text-xl sm:text-2xl font-bold text-white whitespace-nowrap"
@@ -360,6 +361,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 TMS
               </h1>
+              
+              {/* Tenant Switcher */}
+              <div className="hidden sm:block">
+                <TenantSwitcher />
+              </div>
               
               {/* Desktop Navigation - Hidden on mobile */}
               <div className="hidden md:flex items-center gap-2 overflow-x-auto">
