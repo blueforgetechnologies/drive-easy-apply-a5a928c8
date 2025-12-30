@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   Shield, Loader2, Building2, Users, Truck, Target, RefreshCw, Flag, Check, X, Minus,
   Mail, Zap, MapPin, Brain, AlertTriangle, Clock, Activity, MousePointer2, ExternalLink,
-  Navigation, Database, LayoutGrid
+  Navigation, Database, LayoutGrid, Rocket
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ReleaseControlTab } from "@/components/inspector/ReleaseControlTab";
 
 interface TenantMetrics {
   tenant_id: string;
@@ -521,6 +522,10 @@ export default function Inspector() {
           <TabsTrigger value="ui-actions" className="flex items-center gap-2">
             <MousePointer2 className="w-4 h-4" />
             UI Actions
+          </TabsTrigger>
+          <TabsTrigger value="release-control" className="flex items-center gap-2">
+            <Rocket className="w-4 h-4" />
+            Release Control
           </TabsTrigger>
         </TabsList>
 
@@ -1211,6 +1216,11 @@ export default function Inspector() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Release Control Tab */}
+        <TabsContent value="release-control">
+          <ReleaseControlTab />
         </TabsContent>
       </Tabs>
     </div>
