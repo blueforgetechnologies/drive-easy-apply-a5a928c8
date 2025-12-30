@@ -100,7 +100,10 @@ export function ReleaseControlTab() {
 
       const { data: result, error: fnError } = await supabase.functions.invoke(
         "inspector-release-control",
-        { headers: { Authorization: `Bearer ${session.access_token}` } }
+        { 
+          method: "GET",
+          headers: { Authorization: `Bearer ${session.access_token}` } 
+        }
       );
 
       if (fnError) {
