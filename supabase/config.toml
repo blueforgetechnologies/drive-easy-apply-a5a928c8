@@ -125,3 +125,6 @@ verify_jwt = true
 
 [functions.inspector-ui-actions]
 verify_jwt = true
+
+[functions.inspector-release-control]
+verify_jwt = true
