@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
+import { assertFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,29 +52,23 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const data: BidEmailRequest & { tenant_id?: string } = await req.json();
+    const authHeader = req.headers.get('Authorization');
     
-    // Initialize Supabase for feature check
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Feature gate FIRST - derive tenant from auth, check bid_automation_enabled
+    const gateResult = await assertFeatureEnabled({
+      flag_key: 'bid_automation_enabled',
+      authHeader,
+    });
     
-    // Feature gate: check if bid automation is enabled for tenant
-    if (data.tenant_id) {
-      const bidEnabled = await isFeatureEnabled({
-        tenant_id: data.tenant_id,
-        flag_key: 'bid_automation',
-        serviceClient: supabase,
-      });
-      
-      if (!bidEnabled) {
-        console.log(`[send-bid-email] Bid automation disabled for tenant ${data.tenant_id}`);
-        return new Response(
-          JSON.stringify({ error: 'Feature disabled', flag_key: 'bid_automation', reason: 'release_channel' }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (!gateResult.allowed) {
+      console.log(`[send-bid-email] Feature disabled: ${gateResult.reason}`);
+      return gateResult.response!;
     }
+
+    // Parse request body after gate passes
+    const data: BidEmailRequest = await req.json();
+    
+    console.log(`[send-bid-email] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
     
     // Normalize email domain to lowercase for Resend domain verification compatibility
     const normalizedFromEmail = data.from_email?.toLowerCase() || 'dispatch@nexustechsolution.com';
@@ -222,39 +216,33 @@ Reference #: ${data.reference_id}
 
     const result = await response.json();
 
+    // Service client for tracking
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     if (!response.ok) {
       console.error("Resend API error:", result);
       // Track failed send
-      try {
-        const supabase = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-        await supabase.from("email_send_tracking").insert({
-          email_type: "bid_sent",
-          recipient_email: data.to,
-          success: false,
-          month_year: new Date().toISOString().slice(0, 7),
-        });
-      } catch (e) { console.error("Failed to track email:", e); }
+      await supabase.from("email_send_tracking").insert({
+        email_type: "bid_sent",
+        recipient_email: data.to,
+        success: false,
+        month_year: new Date().toISOString().slice(0, 7),
+      });
       throw new Error(result.message || "Failed to send email");
     }
 
     console.log("Email sent successfully:", result);
 
     // Track successful send
-    try {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-      await supabase.from("email_send_tracking").insert({
-        email_type: "bid_sent",
-        recipient_email: data.to,
-        success: true,
-        month_year: new Date().toISOString().slice(0, 7),
-      });
-    } catch (e) { console.error("Failed to track email:", e); }
+    await supabase.from("email_send_tracking").insert({
+      email_type: "bid_sent",
+      recipient_email: data.to,
+      success: true,
+      month_year: new Date().toISOString().slice(0, 7),
+    });
 
     return new Response(JSON.stringify(result), {
       status: 200,

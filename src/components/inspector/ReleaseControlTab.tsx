@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, RefreshCw, Check, Settings2, ArrowRight, Info, Shield, ShieldX, Eye } from "lucide-react";
+import { Loader2, RefreshCw, Check, Settings2, ArrowRight, Info, Shield, ShieldX, Eye, Play } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,6 +34,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface GateTestResult {
+  endpoint: string;
+  status: number;
+  body: any;
+}
 
 interface FlagResolution {
   flag_key: string;

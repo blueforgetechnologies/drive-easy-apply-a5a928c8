@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { isFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
+import { assertFeatureEnabled } from '../_shared/assertFeatureEnabled.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,14 +11,23 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  
-  // Initialize Supabase for feature check
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    const { documentBase64, fileName, mimeType, tenant_id } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    
+    // Feature gate FIRST - derive tenant from auth, check ai_parsing_enabled
+    const gateResult = await assertFeatureEnabled({
+      flag_key: 'ai_parsing_enabled',
+      authHeader,
+    });
+    
+    if (!gateResult.allowed) {
+      console.log(`[parse-rate-confirmation] Feature disabled: ${gateResult.reason}`);
+      return gateResult.response!;
+    }
+
+    // Parse request body after gate passes
+    const { documentBase64, fileName, mimeType } = await req.json();
 
     if (!documentBase64) {
       return new Response(
@@ -27,22 +36,7 @@ serve(async (req) => {
       );
     }
     
-    // Feature gate: check if AI parsing is enabled for tenant
-    if (tenant_id) {
-      const aiParsingEnabled = await isFeatureEnabled({
-        tenant_id,
-        flag_key: 'load_hunter_ai_parsing',
-        serviceClient: supabase,
-      });
-      
-      if (!aiParsingEnabled) {
-        console.log(`[parse-rate-confirmation] AI parsing disabled for tenant ${tenant_id}`);
-        return new Response(
-          JSON.stringify({ success: false, error: 'Feature disabled', flag_key: 'load_hunter_ai_parsing', reason: 'release_channel' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    console.log(`[parse-rate-confirmation] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -338,68 +332,64 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
         });
       }
     }
-
-    // Sort stops by sequence and assign sequences if missing
+    
+    // Also populate legacy fields from stops for backwards compatibility
     if (extractedData.stops && extractedData.stops.length > 0) {
-      extractedData.stops.sort((a: any, b: any) => (a.stop_sequence || 0) - (b.stop_sequence || 0));
-      extractedData.stops.forEach((stop: any, index: number) => {
-        if (!stop.stop_sequence) stop.stop_sequence = index + 1;
-      });
+      const pickupStop = extractedData.stops.find((s: any) => s.stop_type === 'pickup');
+      const deliveryStop = extractedData.stops.find((s: any) => s.stop_type === 'delivery');
       
-      // IMPORTANT: Populate legacy shipper/receiver fields from stops array for backwards compatibility
-      // This ensures the form mapping in LoadsTab works correctly
-      const firstPickup = extractedData.stops.find((s: any) => s.stop_type === 'pickup');
-      const lastDelivery = [...extractedData.stops].reverse().find((s: any) => s.stop_type === 'delivery');
-      
-      if (firstPickup) {
-        extractedData.shipper_name = extractedData.shipper_name || firstPickup.location_name;
-        extractedData.shipper_address = extractedData.shipper_address || firstPickup.location_address;
-        extractedData.shipper_city = extractedData.shipper_city || firstPickup.location_city;
-        extractedData.shipper_state = extractedData.shipper_state || firstPickup.location_state;
-        extractedData.shipper_zip = extractedData.shipper_zip || firstPickup.location_zip;
-        extractedData.shipper_contact = extractedData.shipper_contact || firstPickup.contact_name;
-        extractedData.shipper_phone = extractedData.shipper_phone || firstPickup.contact_phone;
-        extractedData.shipper_email = extractedData.shipper_email || firstPickup.contact_email;
-        extractedData.pickup_date = extractedData.pickup_date || firstPickup.scheduled_date;
-        extractedData.pickup_time = extractedData.pickup_time || firstPickup.scheduled_time;
+      if (pickupStop) {
+        extractedData.shipper_name = extractedData.shipper_name || pickupStop.location_name;
+        extractedData.shipper_address = extractedData.shipper_address || pickupStop.location_address;
+        extractedData.shipper_city = extractedData.shipper_city || pickupStop.location_city;
+        extractedData.shipper_state = extractedData.shipper_state || pickupStop.location_state;
+        extractedData.shipper_zip = extractedData.shipper_zip || pickupStop.location_zip;
+        extractedData.pickup_date = extractedData.pickup_date || pickupStop.scheduled_date;
+        extractedData.pickup_time = extractedData.pickup_time || pickupStop.scheduled_time;
       }
       
-      if (lastDelivery) {
-        extractedData.receiver_name = extractedData.receiver_name || lastDelivery.location_name;
-        extractedData.receiver_address = extractedData.receiver_address || lastDelivery.location_address;
-        extractedData.receiver_city = extractedData.receiver_city || lastDelivery.location_city;
-        extractedData.receiver_state = extractedData.receiver_state || lastDelivery.location_state;
-        extractedData.receiver_zip = extractedData.receiver_zip || lastDelivery.location_zip;
-        extractedData.receiver_contact = extractedData.receiver_contact || lastDelivery.contact_name;
-        extractedData.receiver_phone = extractedData.receiver_phone || lastDelivery.contact_phone;
-        extractedData.receiver_email = extractedData.receiver_email || lastDelivery.contact_email;
-        extractedData.delivery_date = extractedData.delivery_date || lastDelivery.scheduled_date;
-        extractedData.delivery_time = extractedData.delivery_time || lastDelivery.scheduled_time;
+      if (deliveryStop) {
+        extractedData.receiver_name = extractedData.receiver_name || deliveryStop.location_name;
+        extractedData.receiver_address = extractedData.receiver_address || deliveryStop.location_address;
+        extractedData.receiver_city = extractedData.receiver_city || deliveryStop.location_city;
+        extractedData.receiver_state = extractedData.receiver_state || deliveryStop.location_state;
+        extractedData.receiver_zip = extractedData.receiver_zip || deliveryStop.location_zip;
+        extractedData.delivery_date = extractedData.delivery_date || deliveryStop.scheduled_date;
+        extractedData.delivery_time = extractedData.delivery_time || deliveryStop.scheduled_time;
       }
     }
 
-    // BILLING PARTY FALLBACK: If no billing party found, default to broker/customer info
-    if (!extractedData.billing_party_name) {
-      extractedData.billing_party_name = extractedData.customer_name;
-      extractedData.billing_party_address = extractedData.customer_address;
-      extractedData.billing_party_city = extractedData.customer_city;
-      extractedData.billing_party_state = extractedData.customer_state;
-      extractedData.billing_party_zip = extractedData.customer_zip;
-      extractedData.billing_party_contact = extractedData.customer_contact;
-      extractedData.billing_party_phone = extractedData.customer_phone;
-      extractedData.billing_party_email = extractedData.customer_email;
-    }
+    // Track AI usage
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const usage = data.usage || {};
+    await supabase.from('ai_usage_tracking').insert({
+      model: 'google/gemini-2.5-flash',
+      feature: 'parse_rate_confirmation',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total_tokens: usage.total_tokens || 0,
+      user_id: gateResult.user_id,
+    });
 
-    console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
+    console.log('Successfully extracted load data:', {
+      customer_load_id: extractedData.customer_load_id,
+      customer_name: extractedData.customer_name,
+      rate: extractedData.rate,
+      stops_count: extractedData.stops?.length || 0,
+    });
 
     return new Response(
       JSON.stringify({ success: true, data: extractedData }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
-    console.error('Error parsing rate confirmation:', error);
+    console.error('Error in parse-rate-confirmation:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Failed to parse document' }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
