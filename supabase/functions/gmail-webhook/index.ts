@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-api-key',
 };
 
 // Google Pub/Sub push requests use this User-Agent prefix
@@ -14,6 +14,42 @@ const GOOGLE_PUBSUB_USER_AGENT_PREFIX = "CloudPubSub-Google";
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Get tenant ID from API key or use default tenant
+async function getTenantId(apiKey: string | null): Promise<{ tenantId: string | null; isPaused: boolean }> {
+  // If API key provided, look up the tenant
+  if (apiKey) {
+    const { data: tenant, error } = await supabase
+      .from('tenants')
+      .select('id, is_paused')
+      .eq('api_key', apiKey)
+      .maybeSingle();
+    
+    if (tenant) {
+      return { tenantId: tenant.id, isPaused: tenant.is_paused || false };
+    }
+    console.warn('[gmail-webhook] Invalid API key provided, falling back to default tenant');
+  }
+  
+  // Fall back to default tenant for single-tenant mode
+  const { data: defaultTenant } = await supabase
+    .from('tenants')
+    .select('id, is_paused')
+    .eq('slug', 'default')
+    .maybeSingle();
+  
+  return { 
+    tenantId: defaultTenant?.id || null, 
+    isPaused: defaultTenant?.is_paused || false 
+  };
+}
+
+// Generate deterministic dedupe key for tenant-scoped deduplication
+function generateDedupeKey(gmailMessageId: string): string {
+  // For now, dedupe_key is the gmail_message_id
+  // In future, could include additional factors like email hash
+  return gmailMessageId;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -55,6 +91,29 @@ serve(async (req) => {
     }
 
     console.log('[gmail-webhook] Request validated as Pub/Sub notification');
+
+    // Get tenant from API key header or use default
+    const tenantApiKey = req.headers.get('x-tenant-api-key');
+    const { tenantId, isPaused } = await getTenantId(tenantApiKey);
+    
+    if (!tenantId) {
+      console.error('[gmail-webhook] No tenant found');
+      return new Response(JSON.stringify({ error: 'No tenant configured' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Check if tenant is paused (kill switch)
+    if (isPaused) {
+      console.log(`[gmail-webhook] Tenant ${tenantId} is paused, skipping ingestion`);
+      return new Response(JSON.stringify({ queued: 0, paused: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log(`[gmail-webhook] Processing for tenant: ${tenantId}`);
 
     // Track Pub/Sub usage
     supabase
@@ -163,27 +222,41 @@ serve(async (req) => {
 
     if (messages.length === 0) {
       console.log('No new messages');
-      return new Response(JSON.stringify({ queued: 0 }), {
+      return new Response(JSON.stringify({ queued: 0, tenantId }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`📧 Queuing ${messages.length} messages`);
+    console.log(`📧 Queuing ${messages.length} messages for tenant ${tenantId}`);
 
-    // Queue messages - fast upsert, NO parsing
+    // Queue messages with tenant_id and dedupe_key - fast upsert, NO parsing
     const queueItems = messages.map((m: any) => ({
       gmail_message_id: m.id,
       gmail_history_id: historyId,
       status: 'pending',
+      tenant_id: tenantId,
+      dedupe_key: generateDedupeKey(m.id),
     }));
 
-    const { error: queueError } = await supabase
+    // Use upsert with tenant-scoped dedupe key to prevent duplicates
+    const { data: upsertResult, error: queueError } = await supabase
       .from('email_queue')
-      .upsert(queueItems, { onConflict: 'gmail_message_id', ignoreDuplicates: true });
+      .upsert(queueItems, { 
+        onConflict: 'gmail_message_id', 
+        ignoreDuplicates: true 
+      })
+      .select('id');
 
     if (queueError) {
       console.error('Queue error:', queueError);
+    }
+    
+    const actualQueued = upsertResult?.length || 0;
+    const deduplicated = messages.length - actualQueued;
+    
+    if (deduplicated > 0) {
+      console.log(`🔄 Deduplicated ${deduplicated} messages (already in queue)`);
     }
 
     // Mark messages as read in background - don't block response
@@ -199,9 +272,14 @@ serve(async (req) => {
     ));
 
     const elapsed = Date.now() - startTime;
-    console.log(`✅ Queued ${messages.length} in ${elapsed}ms`);
+    console.log(`✅ Queued ${actualQueued} (${deduplicated} deduped) in ${elapsed}ms for tenant ${tenantId}`);
 
-    return new Response(JSON.stringify({ queued: messages.length, elapsed }), {
+    return new Response(JSON.stringify({ 
+      queued: actualQueued, 
+      deduplicated, 
+      tenantId, 
+      elapsed 
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

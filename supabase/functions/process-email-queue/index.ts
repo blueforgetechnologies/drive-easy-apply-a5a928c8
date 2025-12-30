@@ -1064,15 +1064,19 @@ serve(async (req) => {
         const fromName = fromMatch ? fromMatch[1].trim() : from;
         const fromEmail = fromMatch ? fromMatch[2] : from;
 
+        // Get tenant_id early for customer creation
+        const queueTenantId = item.tenant_id;
+
         // For Full Circle TMS: create/update customer with MC# if broker_company is present
         if (isFullCircleTMS && parsedData.broker_company) {
           const customerName = parsedData.broker_company;
           
-          // Check if customer exists
+          // Check if customer exists for this tenant
           const { data: existingCustomer } = await supabase
             .from('customers')
             .select('id, mc_number')
             .ilike('name', customerName)
+            .eq('tenant_id', queueTenantId)
             .maybeSingle();
           
           if (existingCustomer) {
@@ -1085,7 +1089,7 @@ serve(async (req) => {
               console.log(`📋 Updated customer ${customerName} with MC# ${parsedData.mc_number}`);
             }
           } else {
-            // Create new customer with MC#
+            // Create new customer with MC# and tenant_id
             await supabase
               .from('customers')
               .insert({
@@ -1097,12 +1101,16 @@ serve(async (req) => {
                 city: parsedData.broker_city || null,
                 state: parsedData.broker_state || null,
                 zip: parsedData.broker_zip || null,
+                tenant_id: queueTenantId, // Include tenant_id
               });
-            console.log(`📋 Created customer ${customerName} with MC# ${parsedData.mc_number}`);
+            console.log(`📋 Created customer ${customerName} with MC# ${parsedData.mc_number} for tenant ${queueTenantId}`);
           }
         }
 
-        // Insert into load_emails
+        // Get tenant_id from queue item (propagate to load_emails)
+        const tenantId = item.tenant_id;
+
+        // Insert into load_emails with tenant_id
         const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
           .upsert({
@@ -1120,6 +1128,7 @@ serve(async (req) => {
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
             email_source: emailSource,
+            tenant_id: tenantId, // Propagate tenant_id from queue
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();
@@ -1132,9 +1141,9 @@ serve(async (req) => {
           .update({ status: 'completed', processed_at: new Date().toISOString() })
           .eq('id', item.id);
 
-        // Hunt matching (fire and forget for speed)
+        // Hunt matching (fire and forget for speed) - include tenant_id
         if (insertedEmail && parsedData.pickup_coordinates && parsedData.vehicle_type) {
-          matchLoadToHunts(insertedEmail.id, insertedEmail.load_id, parsedData).catch(() => {});
+          matchLoadToHunts(insertedEmail.id, insertedEmail.load_id, parsedData, tenantId).catch(() => {});
         }
 
         return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id };
@@ -1148,12 +1157,20 @@ serve(async (req) => {
       }
     };
 
-    // Helper function for hunt matching
-    const matchLoadToHunts = async (loadEmailId: string, loadId: string, parsedData: any) => {
-      const { data: enabledHunts } = await supabase
+    // Helper function for hunt matching - now tenant-aware
+    const matchLoadToHunts = async (loadEmailId: string, loadId: string, parsedData: any, tenantId: string | null) => {
+      // Only match hunts for the same tenant
+      const huntQuery = supabase
         .from('hunt_plans')
-        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity')
+        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity, tenant_id')
         .eq('enabled', true);
+      
+      // Filter by tenant if provided
+      if (tenantId) {
+        huntQuery.eq('tenant_id', tenantId);
+      }
+      
+      const { data: enabledHunts } = await huntQuery;
 
       if (!enabledHunts?.length) return;
 
@@ -1230,6 +1247,7 @@ serve(async (req) => {
           is_active: true,
           match_status: 'active',
           matched_at: new Date().toISOString(),
+          tenant_id: tenantId, // Include tenant_id for multi-tenant isolation
         });
       }
     };
