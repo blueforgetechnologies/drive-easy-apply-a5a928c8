@@ -273,60 +273,55 @@ export function ReleaseControlTab() {
     { name: "Bid Email", endpoint: "send-bid-email", flagKey: "bid_automation_enabled", testBody: { to: "test@example.com", subject: "Test" } },
   ];
 
-  async function runVerificationTest(endpoint: string, flagKey: string, testBody: any): Promise<VerificationTestResult> {
+  async function runVerificationTest(
+    endpoint: string,
+    flagKey: string,
+    testBody: any
+  ): Promise<VerificationTestResult> {
     const startTime = Date.now();
-    
-    // Get session - if not authenticated, return error result (don't throw)
-    let session;
+    let session: any = null;
     try {
       const { data } = await supabase.auth.getSession();
-      session = data.session;
+      session = data?.session ?? null;
     } catch {
       return {
         endpoint,
         flagKey,
         status: 401,
-        body: { error: 'Auth error' },
+        body: { error: "Auth error" },
         elapsedMs: Date.now() - startTime,
         success: false,
       };
     }
-    
+
     if (!session) {
       return {
         endpoint,
         flagKey,
         status: 401,
-        body: { error: 'Not authenticated' },
+        body: { error: "Not authenticated" },
         elapsedMs: Date.now() - startTime,
         success: false,
       };
     }
 
-    // Wrap entire invoke in try-catch to prevent ANY error from bubbling to global handler
     let status = 200;
     let payload: any = null;
-    
+
     try {
-      const { data: invokeResult, error: fnError } = await supabase.functions.invoke(
-        endpoint,
-        {
+      const { data: invokeResult, error: fnError } =
+        await supabase.functions.invoke(endpoint, {
           headers: { Authorization: `Bearer ${session.access_token}` },
           body: {
             ...testBody,
             overrideTenantId: verifyTenantId,
           },
-        }
-      );
+        });
 
-      // Supabase functions.invoke() returns non-2xx responses in error object
-      // This is NOT an app error - it's a valid response we need to parse
       if (fnError) {
         const ctx: any = (fnError as any).context;
         status = ctx?.status ?? 500;
         payload = ctx?.body;
-        
-        // Try to parse body if it's a string
         if (typeof payload === "string") {
           try { payload = JSON.parse(payload); } catch {}
         }
@@ -334,23 +329,17 @@ export function ReleaseControlTab() {
         payload = invokeResult;
       }
     } catch (invokeError: any) {
-      // Catch any thrown errors from the SDK itself
-      // Extract status from error if possible
       const ctx = invokeError?.context;
       status = ctx?.status ?? 500;
-      payload = ctx?.body ?? { error: invokeError?.message || 'Unknown error' };
-      
+      payload = ctx?.body ?? { error: invokeError?.message || "Unknown error" };
       if (typeof payload === "string") {
         try { payload = JSON.parse(payload); } catch {}
       }
     }
 
     const elapsedMs = Date.now() - startTime;
-
-    // Determine expected status based on tenant's release channel
-    const tenantChannel = verifyTenant?.release_channel || 'general';
-    const expectedStatus = tenantChannel === 'general' ? 403 : 200;
-    const passed = status === expectedStatus;
+    const tenantChannel = verifyTenant?.release_channel || "general";
+    const expectedStatus = tenantChannel === "general" ? 403 : 200;
 
     return {
       endpoint,
@@ -358,7 +347,7 @@ export function ReleaseControlTab() {
       status,
       body: payload,
       elapsedMs,
-      success: passed,
+      success: status === expectedStatus,
     };
   }
 
