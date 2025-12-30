@@ -289,7 +289,7 @@ export function ReleaseControlTab() {
         return;
       }
 
-      const { data: result, error: fnError } = await supabase.functions.invoke(
+      const { data: invokeResult, error: fnError } = await supabase.functions.invoke(
         endpoint,
         {
           headers: { Authorization: `Bearer ${session.access_token}` },
@@ -302,42 +302,44 @@ export function ReleaseControlTab() {
 
       const elapsedMs = Date.now() - startTime;
 
-      // Determine actual status from result
+      // Supabase functions.invoke() returns non-2xx responses in error.context
       let status = 200;
-      let body = result;
-      
+      let payload: any = invokeResult;
+
       if (fnError) {
-        // Parse the error to get actual status
-        if (fnError.message?.includes('403')) status = 403;
-        else if (fnError.message?.includes('401')) status = 401;
-        else if (fnError.message?.includes('404')) status = 404;
-        else status = 500;
-        body = { error: fnError.message, context: fnError.context };
-      } else if (result?.error) {
-        status = result.reason ? 403 : 400;
+        const ctx: any = (fnError as any).context;
+        status = ctx?.status ?? 500;
+        payload = ctx?.body;
+        
+        // Try to parse body if it's a string
+        if (typeof payload === "string") {
+          try { payload = JSON.parse(payload); } catch {}
+        }
       }
+
+      // Determine expected status based on tenant's release channel (from component state 'data')
+      const tenantChannel = verifyTenant?.release_channel || 'general';
+      const expectedStatus = tenantChannel === 'general' ? 403 : 200;
+      const passed = status === expectedStatus;
 
       const testResult: VerificationTestResult = {
         endpoint,
         flagKey,
         status,
-        body,
+        body: payload,
         elapsedMs,
-        success: status === 200,
+        success: passed,
       };
 
       setVerificationResults(prev => {
-        // Replace existing result for same endpoint, or add new
         const filtered = prev.filter(r => r.endpoint !== endpoint);
         return [...filtered, testResult];
       });
 
-      if (status === 200) {
-        toast.success(`${endpoint}: Allowed (200)`);
-      } else if (status === 403) {
-        toast.info(`${endpoint}: Blocked (403) - ${result?.reason || 'Feature disabled'}`);
+      if (passed) {
+        toast.success(`${endpoint}: ${status === 200 ? 'Allowed' : 'Blocked'} (${status}) - PASS`);
       } else {
-        toast.error(`${endpoint}: Error (${status})`);
+        toast.error(`${endpoint}: Got ${status}, expected ${expectedStatus} - FAIL`);
       }
 
     } catch (err) {
