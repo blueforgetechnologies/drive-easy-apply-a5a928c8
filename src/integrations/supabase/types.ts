@@ -1098,6 +1098,93 @@ export type Database = {
           },
         ]
       }
+      feature_flag_audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          feature_flag_id: string | null
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          old_value: Json | null
+          tenant_id: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          feature_flag_id?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          tenant_id?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          feature_flag_id?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flag_audit_log_feature_flag_id_fkey"
+            columns: ["feature_flag_id"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_flag_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          default_enabled: boolean | null
+          description: string | null
+          id: string
+          is_killswitch: boolean | null
+          key: string
+          name: string
+          requires_role: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_enabled?: boolean | null
+          description?: string | null
+          id?: string
+          is_killswitch?: boolean | null
+          key: string
+          name: string
+          requires_role?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_enabled?: boolean | null
+          description?: string | null
+          id?: string
+          is_killswitch?: boolean | null
+          key?: string
+          name?: string
+          requires_role?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gcp_usage_baselines: {
         Row: {
           created_at: string
@@ -3575,6 +3662,149 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_feature_flags: {
+        Row: {
+          enabled: boolean
+          enabled_at: string | null
+          enabled_by: string | null
+          enabled_for_roles: string[] | null
+          feature_flag_id: string
+          id: string
+          notes: string | null
+          tenant_id: string
+        }
+        Insert: {
+          enabled: boolean
+          enabled_at?: string | null
+          enabled_by?: string | null
+          enabled_for_roles?: string[] | null
+          feature_flag_id: string
+          id?: string
+          notes?: string | null
+          tenant_id: string
+        }
+        Update: {
+          enabled?: boolean
+          enabled_at?: string | null
+          enabled_by?: string | null
+          enabled_for_roles?: string[] | null
+          feature_flag_id?: string
+          id?: string
+          notes?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_feature_flags_feature_flag_id_fkey"
+            columns: ["feature_flag_id"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_feature_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_users: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          role: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          role?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          role?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          api_key: string | null
+          api_key_hash: string | null
+          created_at: string
+          id: string
+          is_paused: boolean | null
+          max_hunt_plans: number | null
+          max_users: number | null
+          max_vehicles: number | null
+          name: string
+          rate_limit_per_minute: number | null
+          release_channel: Database["public"]["Enums"]["release_channel"]
+          settings: Json | null
+          slug: string
+          status: Database["public"]["Enums"]["tenant_status"]
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          api_key_hash?: string | null
+          created_at?: string
+          id?: string
+          is_paused?: boolean | null
+          max_hunt_plans?: number | null
+          max_users?: number | null
+          max_vehicles?: number | null
+          name: string
+          rate_limit_per_minute?: number | null
+          release_channel?: Database["public"]["Enums"]["release_channel"]
+          settings?: Json | null
+          slug: string
+          status?: Database["public"]["Enums"]["tenant_status"]
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          api_key_hash?: string | null
+          created_at?: string
+          id?: string
+          is_paused?: boolean | null
+          max_hunt_plans?: number | null
+          max_users?: number | null
+          max_vehicles?: number | null
+          name?: string
+          rate_limit_per_minute?: number | null
+          release_channel?: Database["public"]["Enums"]["release_channel"]
+          settings?: Json | null
+          slug?: string
+          status?: Database["public"]["Enums"]["tenant_status"]
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: []
+      }
       user_cost_settings: {
         Row: {
           cloud_calibrated_rate: number | null
@@ -4148,6 +4378,7 @@ export type Database = {
         Returns: string
       }
       get_email_queue_pending_count: { Args: never; Returns: number }
+      get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_permission: {
         Args: { _permission_code: string; _user_id: string }
         Returns: boolean
@@ -4159,11 +4390,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_tenant_role: {
+        Args: { _role: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_email_invited: { Args: { check_email: string }; Returns: boolean }
+      is_feature_enabled: {
+        Args: { _feature_key: string; _tenant_id: string; _user_role?: string }
+        Returns: boolean
+      }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_tenant_member: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "dispatcher" | "driver"
       email_source: "sylectus" | "fullcircle" | "123loadboard" | "truckstop"
+      release_channel: "internal" | "pilot" | "general"
+      tenant_status: "active" | "suspended" | "trial" | "churned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4293,6 +4539,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user", "dispatcher", "driver"],
       email_source: ["sylectus", "fullcircle", "123loadboard", "truckstop"],
+      release_channel: ["internal", "pilot", "general"],
+      tenant_status: ["active", "suspended", "trial", "churned"],
     },
   },
 } as const
