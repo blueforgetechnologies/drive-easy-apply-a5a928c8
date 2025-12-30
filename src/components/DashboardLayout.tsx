@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser, Eye, LayoutDashboard, DollarSign, Wallet } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser, Eye, LayoutDashboard, DollarSign, Wallet, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
@@ -502,6 +502,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       >
                         <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground" />
                         My Dashboard
+                      </button>
+                    )}
+                    {userRoles.includes('admin') && (
+                      <button 
+                        onClick={() => navigate('/dashboard/platform-admin')} 
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                        Platform Admin
                       </button>
                     )}
                     <button 
