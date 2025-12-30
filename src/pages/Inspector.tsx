@@ -649,12 +649,12 @@ export default function Inspector() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-64">
-                <Select value={selectedFlagsTenantId} onValueChange={handleFlagsTenantSelect}>
+              <Select value={selectedFlagsTenantId || "__global__"} onValueChange={(v) => handleFlagsTenantSelect(v === "__global__" ? "" : v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a tenant..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Global (no tenant)</SelectItem>
+                    <SelectItem value="__global__">Global (no tenant)</SelectItem>
                     {tenants.map((tenant) => (
                       <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
                         {tenant.tenant_name}
@@ -778,12 +778,12 @@ export default function Inspector() {
         <TabsContent value="load-hunter" className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="w-64">
-              <Select value={selectedHealthTenantId} onValueChange={handleHealthTenantSelect}>
+              <Select value={selectedHealthTenantId || "__all__"} onValueChange={(v) => handleHealthTenantSelect(v === "__all__" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All tenants" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All tenants</SelectItem>
+                  <SelectItem value="__all__">All tenants</SelectItem>
                   {tenants.map((tenant) => (
                     <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
                       {tenant.tenant_name}
