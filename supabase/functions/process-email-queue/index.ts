@@ -1110,7 +1110,7 @@ serve(async (req) => {
         // Get tenant_id from queue item (propagate to load_emails)
         const tenantId = item.tenant_id;
 
-        // Insert into load_emails with tenant_id
+        // Insert into load_emails with tenant_id and raw_payload_url for audit trail
         const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
           .upsert({
@@ -1129,6 +1129,7 @@ serve(async (req) => {
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
             email_source: emailSource,
             tenant_id: tenantId, // Propagate tenant_id from queue
+            raw_payload_url: item.payload_url || null, // Audit trail reference
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();

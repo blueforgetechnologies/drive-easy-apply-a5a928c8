@@ -952,6 +952,7 @@ export type Database = {
           gmail_message_id: string
           id: string
           last_error: string | null
+          payload_url: string | null
           processed_at: string | null
           queued_at: string
           status: string
@@ -964,6 +965,7 @@ export type Database = {
           gmail_message_id: string
           id?: string
           last_error?: string | null
+          payload_url?: string | null
           processed_at?: string | null
           queued_at?: string
           status?: string
@@ -976,6 +978,7 @@ export type Database = {
           gmail_message_id?: string
           id?: string
           last_error?: string | null
+          payload_url?: string | null
           processed_at?: string | null
           queued_at?: string
           status?: string
@@ -1792,6 +1795,7 @@ export type Database = {
           load_id: string | null
           marked_missed_at: string | null
           parsed_data: Json | null
+          raw_payload_url: string | null
           received_at: string
           status: string
           subject: string | null
@@ -1815,6 +1819,7 @@ export type Database = {
           load_id?: string | null
           marked_missed_at?: string | null
           parsed_data?: Json | null
+          raw_payload_url?: string | null
           received_at: string
           status?: string
           subject?: string | null
@@ -1838,6 +1843,7 @@ export type Database = {
           load_id?: string | null
           marked_missed_at?: string | null
           parsed_data?: Json | null
+          raw_payload_url?: string | null
           received_at?: string
           status?: string
           subject?: string | null
@@ -1882,6 +1888,7 @@ export type Database = {
           original_id: string
           original_updated_at: string
           parsed_data: Json | null
+          raw_payload_url: string | null
           received_at: string
           status: string
           subject: string | null
@@ -1906,6 +1913,7 @@ export type Database = {
           original_id: string
           original_updated_at: string
           parsed_data?: Json | null
+          raw_payload_url?: string | null
           received_at: string
           status: string
           subject?: string | null
@@ -1930,6 +1938,7 @@ export type Database = {
           original_id?: string
           original_updated_at?: string
           parsed_data?: Json | null
+          raw_payload_url?: string | null
           received_at?: string
           status?: string
           subject?: string | null
