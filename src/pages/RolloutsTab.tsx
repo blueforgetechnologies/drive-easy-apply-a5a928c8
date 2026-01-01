@@ -33,11 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Fragment } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -415,7 +411,7 @@ export default function RolloutsTab() {
                 const hasOverrides = data.tenantOverrides.some(o => o.feature_flag_id === flag.id);
                 
                 return (
-                  <Collapsible key={flag.id} open={isExpanded} onOpenChange={() => toggleFlagExpanded(flag.id)}>
+                  <Fragment key={flag.id}>
                     <TableRow className={isExpanded ? 'bg-muted/50' : ''}>
                       <TableCell className="w-[200px] min-w-[200px]">
                         <div className="flex items-center gap-2">
@@ -462,19 +458,22 @@ export default function RolloutsTab() {
                         );
                       })}
                       <TableCell className="w-[50px]">
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </CollapsibleTrigger>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => toggleFlagExpanded(flag.id)}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
                       </TableCell>
                     </TableRow>
-                    <CollapsibleContent asChild>
-                      <TableRow className="bg-muted/30">
+                    {isExpanded && (
+                      <TableRow key={`${flag.id}-details`} className="bg-muted/30">
                         <TableCell colSpan={6} className="py-4">
                           <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
@@ -521,8 +520,8 @@ export default function RolloutsTab() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    </CollapsibleContent>
-                  </Collapsible>
+                    )}
+                  </Fragment>
                 );
               })}
             </TableBody>
