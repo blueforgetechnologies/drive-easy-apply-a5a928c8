@@ -167,3 +167,9 @@ verify_jwt = true
 
 [functions.debug-tenant-data]
 verify_jwt = true
+
+[functions.tenant-seed-data]
+verify_jwt = true
+
+[functions.tenant-counts]
+verify_jwt = true
