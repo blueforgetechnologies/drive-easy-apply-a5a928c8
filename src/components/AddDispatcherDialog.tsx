@@ -6,12 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTenantId } from "@/hooks/useTenantId";
 
 interface AddDispatcherDialogProps {
   onDispatcherAdded?: (dispatcherId: string) => void;
 }
 
 export function AddDispatcherDialog({ onDispatcherAdded }: AddDispatcherDialogProps) {
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,6 +32,11 @@ export function AddDispatcherDialog({ onDispatcherAdded }: AddDispatcherDialogPr
       return;
     }
 
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -41,6 +48,7 @@ export function AddDispatcherDialog({ onDispatcherAdded }: AddDispatcherDialogPr
           phone: formData.phone || null,
           address: formData.address || null,
           status: "active",
+          tenant_id: tenantId,
         }])
         .select()
         .single();

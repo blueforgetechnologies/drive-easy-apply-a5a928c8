@@ -24,10 +24,12 @@ import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { EditEntityDialog } from "@/components/EditEntityDialog";
 import { LoadDocuments } from "@/components/LoadDocuments";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
+import { useTenantId } from "@/hooks/useTenantId";
 
 export default function LoadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const tenantId = useTenantId();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [load, setLoad] = useState<any>(null);
@@ -503,10 +505,16 @@ export default function LoadDetail() {
 
   const handleAddExpense = async () => {
     try {
+      if (!tenantId) {
+        toast.error("No tenant selected");
+        return;
+      }
+      
       const { error } = await supabase.from("load_expenses").insert([{
         load_id: id,
         ...newExpense,
         amount: parseFloat(newExpense.amount),
+        tenant_id: tenantId,
       }]);
       
       if (error) throw error;
@@ -886,6 +894,7 @@ export default function LoadDetail() {
                               state: data.state || null,
                               zip: data.zip || null,
                               status: "active",
+                              tenant_id: tenantId,
                             }])
                             .select()
                             .single();
@@ -1072,6 +1081,7 @@ export default function LoadDetail() {
                           state: data.state || null,
                           zip: data.zip || null,
                           status: "active",
+                          tenant_id: tenantId,
                         }])
                         .select()
                         .single();
@@ -1183,6 +1193,7 @@ export default function LoadDetail() {
                           state: data.state || null,
                           zip: data.zip || null,
                           status: "active",
+                          tenant_id: tenantId,
                         }])
                         .select()
                         .single();
@@ -1307,6 +1318,7 @@ export default function LoadDetail() {
                           state: data.state || null,
                           zip: data.zip || null,
                           status: "active",
+                          tenant_id: tenantId,
                         }])
                         .select()
                         .single();

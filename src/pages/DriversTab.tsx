@@ -14,6 +14,7 @@ import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
 import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 interface Application {
   id: string;
   personal_info: any;

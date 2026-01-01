@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus } from "lucide-react";
+import { useTenantId } from "@/hooks/useTenantId";
 
 export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: string) => void }) {
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,12 +22,18 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { data, error } = await supabase
         .from("applications")
-        .insert({
+        .insert([{
           personal_info: {
             firstName: formData.firstName,
             lastName: formData.lastName,
@@ -36,6 +44,7 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: 
           driver_status: "active",
           status: "pending",
           submitted_at: new Date().toISOString(),
+          tenant_id: tenantId,
           // Initialize required JSONB fields with defaults
           payroll_policy: {},
           license_info: {},
@@ -49,7 +58,7 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: 
           document_upload: {},
           employment_history: {},
           driving_history: {},
-        })
+        }])
         .select()
         .single();
 

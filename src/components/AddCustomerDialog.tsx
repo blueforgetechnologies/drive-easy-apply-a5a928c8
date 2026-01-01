@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTenantId } from "@/hooks/useTenantId";
 
 interface AddCustomerDialogProps {
   onCustomerAdded?: (customerId: string) => void;
@@ -13,6 +14,7 @@ interface AddCustomerDialogProps {
 }
 
 export function AddCustomerDialog({ onCustomerAdded, children }: AddCustomerDialogProps) {
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -81,6 +83,11 @@ export function AddCustomerDialog({ onCustomerAdded, children }: AddCustomerDial
       return;
     }
 
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -97,6 +104,7 @@ export function AddCustomerDialog({ onCustomerAdded, children }: AddCustomerDial
           dot_number: formData.dot_number || null,
           mc_number: formData.mc_number || null,
           status: "active",
+          tenant_id: tenantId,
         }])
         .select()
         .single();

@@ -151,7 +151,7 @@ export type Database = {
           status: string | null
           stop_pay: number | null
           submitted_at: string | null
-          tenant_id: string | null
+          tenant_id: string
           termination_date: string | null
           vehicle_note: string | null
           weekend_premium: number | null
@@ -218,7 +218,7 @@ export type Database = {
           status?: string | null
           stop_pay?: number | null
           submitted_at?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           termination_date?: string | null
           vehicle_note?: string | null
           weekend_premium?: number | null
@@ -285,7 +285,7 @@ export type Database = {
           status?: string | null
           stop_pay?: number | null
           submitted_at?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           termination_date?: string | null
           vehicle_note?: string | null
           weekend_premium?: number | null
@@ -527,7 +527,7 @@ export type Database = {
           safety_rating: string | null
           show_in_fleet_financials: boolean
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
         }
         Insert: {
@@ -558,7 +558,7 @@ export type Database = {
           safety_rating?: string | null
           show_in_fleet_financials?: boolean
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
         }
         Update: {
@@ -589,7 +589,7 @@ export type Database = {
           safety_rating?: string | null
           show_in_fleet_financials?: boolean
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -761,7 +761,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           role: string | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
         }
         Insert: {
@@ -775,7 +775,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           role?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
         }
         Update: {
@@ -789,7 +789,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           role?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -855,7 +855,7 @@ export type Database = {
           phone_secondary: string | null
           state: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
           zip: string | null
         }
@@ -881,7 +881,7 @@ export type Database = {
           phone_secondary?: string | null
           state?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
           zip?: string | null
         }
@@ -907,7 +907,7 @@ export type Database = {
           phone_secondary?: string | null
           state?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
           zip?: string | null
         }
@@ -975,7 +975,7 @@ export type Database = {
           role: string | null
           show_all_tab: boolean | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           termination_date: string | null
           updated_at: string | null
           user_id: string | null
@@ -1009,7 +1009,7 @@ export type Database = {
           role?: string | null
           show_all_tab?: boolean | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           termination_date?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -1043,7 +1043,7 @@ export type Database = {
           role?: string | null
           show_all_tab?: boolean | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           termination_date?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -1074,7 +1074,7 @@ export type Database = {
           invited_by: string
           name: string | null
           opened_at: string | null
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           application_started_at?: string | null
@@ -1084,7 +1084,7 @@ export type Database = {
           invited_by: string
           name?: string | null
           opened_at?: string | null
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           application_started_at?: string | null
@@ -1094,7 +1094,7 @@ export type Database = {
           invited_by?: string
           name?: string | null
           opened_at?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -1262,7 +1262,7 @@ export type Database = {
           payment_method: string | null
           receipt_url: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           vehicle_id: string | null
         }
         Insert: {
@@ -1280,7 +1280,7 @@ export type Database = {
           payment_method?: string | null
           receipt_url?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           vehicle_id?: string | null
         }
         Update: {
@@ -1298,7 +1298,7 @@ export type Database = {
           payment_method?: string | null
           receipt_url?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           vehicle_id?: string | null
         }
         Relationships: [
@@ -1596,7 +1596,7 @@ export type Database = {
           plan_name: string
           regional_bounds: Json | null
           sources: Database["public"]["Enums"]["email_source"][] | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
           vehicle_id: string
           vehicle_size: string | null
@@ -1624,7 +1624,7 @@ export type Database = {
           plan_name: string
           regional_bounds?: Json | null
           sources?: Database["public"]["Enums"]["email_source"][] | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
           vehicle_id: string
           vehicle_size?: string | null
@@ -1652,7 +1652,7 @@ export type Database = {
           plan_name?: string
           regional_bounds?: Json | null
           sources?: Database["public"]["Enums"]["email_source"][] | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
           vehicle_id?: string
           vehicle_size?: string | null
@@ -1757,7 +1757,7 @@ export type Database = {
           status: string | null
           subtotal: number | null
           tax: number | null
-          tenant_id: string | null
+          tenant_id: string
           total_amount: number | null
           updated_at: string | null
         }
@@ -1786,7 +1786,7 @@ export type Database = {
           status?: string | null
           subtotal?: number | null
           tax?: number | null
-          tenant_id?: string | null
+          tenant_id: string
           total_amount?: number | null
           updated_at?: string | null
         }
@@ -1815,7 +1815,7 @@ export type Database = {
           status?: string | null
           subtotal?: number | null
           tax?: number | null
-          tenant_id?: string | null
+          tenant_id?: string
           total_amount?: number | null
           updated_at?: string | null
         }
@@ -2152,7 +2152,7 @@ export type Database = {
           notes: string | null
           paid_by: string | null
           receipt_url: string | null
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           amount: number
@@ -2166,7 +2166,7 @@ export type Database = {
           notes?: string | null
           paid_by?: string | null
           receipt_url?: string | null
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           amount?: number
@@ -2180,7 +2180,7 @@ export type Database = {
           notes?: string | null
           paid_by?: string | null
           receipt_url?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -2611,7 +2611,7 @@ export type Database = {
           status: string | null
           team_required: boolean | null
           temperature_required: string | null
-          tenant_id: string | null
+          tenant_id: string
           total_charges: number | null
           total_cost: number | null
           total_revenue: number | null
@@ -2738,7 +2738,7 @@ export type Database = {
           status?: string | null
           team_required?: boolean | null
           temperature_required?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           total_charges?: number | null
           total_cost?: number | null
           total_revenue?: number | null
@@ -2865,7 +2865,7 @@ export type Database = {
           status?: string | null
           team_required?: boolean | null
           temperature_required?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           total_charges?: number | null
           total_cost?: number | null
           total_revenue?: number | null
@@ -2969,7 +2969,7 @@ export type Database = {
           pickup_instructions: string | null
           state: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           type: string | null
           updated_at: string | null
           zip: string | null
@@ -2989,7 +2989,7 @@ export type Database = {
           pickup_instructions?: string | null
           state?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           type?: string | null
           updated_at?: string | null
           zip?: string | null
@@ -3009,7 +3009,7 @@ export type Database = {
           pickup_instructions?: string | null
           state?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           type?: string | null
           updated_at?: string | null
           zip?: string | null
@@ -3477,7 +3477,7 @@ export type Database = {
           phone: string | null
           routing_number: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           type: string | null
           updated_at: string | null
         }
@@ -3493,7 +3493,7 @@ export type Database = {
           phone?: string | null
           routing_number?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           type?: string | null
           updated_at?: string | null
         }
@@ -3509,7 +3509,7 @@ export type Database = {
           phone?: string | null
           routing_number?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           type?: string | null
           updated_at?: string | null
         }
@@ -3967,7 +3967,7 @@ export type Database = {
           settlement_number: string
           settlement_type: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           total_deductions: number | null
           total_loads: number | null
           total_miles: number | null
@@ -4005,7 +4005,7 @@ export type Database = {
           settlement_number: string
           settlement_type?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           total_deductions?: number | null
           total_loads?: number | null
           total_miles?: number | null
@@ -4043,7 +4043,7 @@ export type Database = {
           settlement_number?: string
           settlement_type?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           total_deductions?: number | null
           total_loads?: number | null
           total_miles?: number | null
@@ -4758,7 +4758,7 @@ export type Database = {
           suspension: string | null
           team: boolean | null
           temp_control: boolean | null
-          tenant_id: string | null
+          tenant_id: string
           toll_device_sn: string | null
           tracking_device_imei: string | null
           trailer_tracking: boolean | null
@@ -4861,7 +4861,7 @@ export type Database = {
           suspension?: string | null
           team?: boolean | null
           temp_control?: boolean | null
-          tenant_id?: string | null
+          tenant_id: string
           toll_device_sn?: string | null
           tracking_device_imei?: string | null
           trailer_tracking?: boolean | null
@@ -4964,7 +4964,7 @@ export type Database = {
           suspension?: string | null
           team?: boolean | null
           temp_control?: boolean | null
-          tenant_id?: string | null
+          tenant_id?: string
           toll_device_sn?: string | null
           tracking_device_imei?: string | null
           trailer_tracking?: boolean | null

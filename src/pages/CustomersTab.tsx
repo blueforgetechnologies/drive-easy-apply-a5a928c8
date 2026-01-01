@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMer
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useRef } from "react";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Customer {
   id: string;
