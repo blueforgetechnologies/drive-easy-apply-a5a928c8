@@ -2086,7 +2086,8 @@ export default function LoadHunterTab() {
         dispatcher_name: currentDispatcherInfo ? `${currentDispatcherInfo.first_name} ${currentDispatcherInfo.last_name}` : null,
         dispatcher_email: currentDispatcherInfo?.email || null,
         action_type: actionType,
-        action_details: actionDetails || null
+        action_details: actionDetails || null,
+        tenant_id: tenantId!
       });
       if (error) {
         console.error('❌ Error inserting action history:', error);

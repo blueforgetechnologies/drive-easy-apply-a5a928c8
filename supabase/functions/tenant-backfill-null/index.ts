@@ -64,6 +64,33 @@ const BACKFILL_RULES: Record<string, {
   invoices: { strategy: 'from_default', description: 'Use default tenant' },
   settlements: { strategy: 'from_default', description: 'Use default tenant' },
   expenses: { strategy: 'from_default', description: 'Use default tenant' },
+  // Newly tenant-scoped tables (Phase 1 migration)
+  load_bids: {
+    strategy: 'from_relation',
+    relation_table: 'vehicles',
+    relation_column: 'vehicle_id',
+    relation_tenant_column: 'tenant_id',
+    description: 'Derive from vehicle',
+  },
+  match_action_history: {
+    strategy: 'from_relation',
+    relation_table: 'load_hunt_matches',
+    relation_column: 'match_id',
+    relation_tenant_column: 'tenant_id',
+    description: 'Derive from match -> hunt_plan',
+  },
+  map_load_tracking: {
+    strategy: 'from_default',
+    description: 'Use default tenant for historical tracking data',
+  },
+  audit_logs: {
+    strategy: 'from_default',
+    description: 'Use default tenant for historical audit logs',
+  },
+  load_emails: {
+    strategy: 'from_default',
+    description: 'Use default tenant for historical emails',
+  },
 };
 
 interface BackfillRequest {

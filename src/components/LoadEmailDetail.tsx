@@ -15,6 +15,7 @@ import LoadRouteMap from "@/components/LoadRouteMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 interface MatchHistoryEntry {
   id: string;
   dispatcher_name: string | null;
@@ -54,6 +55,7 @@ const LoadEmailDetail = ({
   onShowAlternativeMatches
 }: LoadEmailDetailProps) => {
   const isMobile = useIsMobile();
+  const { tenantId } = useTenantFilter();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
   const [bidError, setBidError] = useState<string | null>(null);
@@ -358,7 +360,8 @@ const LoadEmailDetail = ({
         dispatcher_name: currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : null,
         dispatcher_email: currentDispatcher?.email || null,
         action_type: actionType,
-        action_details: actionDetails || null
+        action_details: actionDetails || null,
+        tenant_id: tenantId!
       });
       if (error) {
         console.error('📊 Error inserting action:', error);
@@ -1078,7 +1081,8 @@ const LoadEmailDetail = ({
             carrier_id: bidAsCarrier?.id,
             bid_amount: bidRateNum,
             to_email: toEmail,
-            status: isDuplicate ? 'duplicate' : 'sent'
+            status: isDuplicate ? 'duplicate' : 'sent',
+            tenant_id: tenantId!
           });
         
         if (bidError) {
