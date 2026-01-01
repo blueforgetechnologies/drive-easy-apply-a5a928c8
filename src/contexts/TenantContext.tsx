@@ -58,8 +58,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [impersonatedTenant, setImpersonatedTenant] = useState<Tenant | null>(null);
   const validationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const previousEffectiveTenantIdRef = useRef<string | null>(null);
+  const isValidatingRef = useRef(false);
 
-  // Clear impersonation and invalidate queries
+  // Clear impersonation without invalidating queries (let effectiveTenant change trigger that)
   const clearImpersonation = useCallback((reason?: string) => {
     localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
     setImpersonatedTenant(null);
@@ -67,10 +68,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (reason) {
       toast.info(`Impersonation ended: ${reason}`);
     }
-    
-    // Invalidate all queries when impersonation ends
-    queryClient.invalidateQueries();
-  }, [queryClient]);
+  }, []);
 
   // Validate impersonation session via edge function
   const validateImpersonationSession = useCallback(async (sessionId: string): Promise<ImpersonationSession | null> => {
@@ -78,6 +76,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.functions.invoke('admin-get-impersonation-session', {
         body: { session_id: sessionId },
       });
+
+      // Handle 403 - session not owned by this admin
+      if (error?.message?.includes('403') || error?.message?.includes('forbidden')) {
+        console.log('[TenantContext] Impersonation session forbidden - not owner');
+        return null;
+      }
 
       if (error) {
         console.error('[TenantContext] Error validating impersonation session:', error);
@@ -108,16 +112,27 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   // Check for active impersonation session
   const checkImpersonation = useCallback(async () => {
-    const stored = localStorage.getItem(IMPERSONATION_STORAGE_KEY);
-    if (!stored) {
-      if (impersonatedTenant) {
-        clearImpersonation();
-      }
-      return;
-    }
+    // Prevent concurrent validation
+    if (isValidatingRef.current) return;
+    isValidatingRef.current = true;
 
     try {
-      const storedSession = JSON.parse(stored);
+      const stored = localStorage.getItem(IMPERSONATION_STORAGE_KEY);
+      if (!stored) {
+        if (impersonatedTenant) {
+          clearImpersonation();
+        }
+        return;
+      }
+
+      let storedSession: ImpersonationSession;
+      try {
+        storedSession = JSON.parse(stored);
+      } catch {
+        clearImpersonation('Invalid session data');
+        return;
+      }
+
       const sessionId = storedSession?.session_id;
       
       if (!sessionId) {
@@ -140,26 +155,31 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Update state with authoritative server data
-      setImpersonatedTenant({
-        id: validatedSession.tenant_id,
-        name: validatedSession.tenant_name,
-        slug: validatedSession.tenant_slug,
-        release_channel: validatedSession.release_channel,
-        status: validatedSession.status,
-      });
+      // Only update state if tenant_id changed OR impersonatedTenant is null
+      const newTenantId = validatedSession.tenant_id;
+      const currentTenantId = impersonatedTenant?.id;
+      
+      if (currentTenantId !== newTenantId) {
+        setImpersonatedTenant({
+          id: validatedSession.tenant_id,
+          name: validatedSession.tenant_name,
+          slug: validatedSession.tenant_slug,
+          release_channel: validatedSession.release_channel,
+          status: validatedSession.status,
+        });
 
-      // Update localStorage with authoritative data
-      localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(validatedSession));
-    } catch {
-      clearImpersonation('Failed to parse session');
+        // Update localStorage with authoritative data
+        localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(validatedSession));
+      }
+    } finally {
+      isValidatingRef.current = false;
     }
   }, [impersonatedTenant, clearImpersonation, validateImpersonationSession]);
 
   // Set up validation interval when impersonating
   useEffect(() => {
     if (impersonatedTenant) {
-      // Start periodic validation
+      // Start periodic validation (only validates, doesn't invalidate queries)
       validationIntervalRef.current = setInterval(checkImpersonation, VALIDATION_INTERVAL_MS);
     } else {
       // Clear interval when not impersonating
@@ -208,12 +228,14 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return impersonatedTenant || currentTenant;
   }, [impersonatedTenant, currentTenant]);
 
-  // Invalidate queries when effective tenant changes
+  // Invalidate queries ONLY when effective tenant ID changes
   useEffect(() => {
     const newEffectiveId = effectiveTenant?.id || null;
+    const previousId = previousEffectiveTenantIdRef.current;
     
-    if (previousEffectiveTenantIdRef.current !== null && previousEffectiveTenantIdRef.current !== newEffectiveId) {
-      console.log('[TenantContext] Effective tenant changed, invalidating queries');
+    // Only invalidate if we had a previous value and it changed
+    if (previousId !== null && previousId !== newEffectiveId) {
+      console.log('[TenantContext] Effective tenant changed from', previousId, 'to', newEffectiveId, '- invalidating queries');
       queryClient.invalidateQueries();
     }
     
@@ -348,12 +370,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       console.log('[TenantContext] Switching tenant to:', membership.tenant.name);
       setCurrentTenant(membership.tenant);
       localStorage.setItem(STORAGE_KEY, tenantId);
-      
-      // Invalidate all queries to force refetch with new tenant context
-      console.log('[TenantContext] Invalidating all queries');
-      queryClient.invalidateQueries();
+      // Note: Query invalidation happens via the effectiveTenant change effect
     }
-  }, [memberships, queryClient, impersonatedTenant]);
+  }, [memberships, impersonatedTenant]);
 
   const getCurrentRole = useCallback(() => {
     if (!currentTenant) return null;

@@ -28,6 +28,64 @@ interface RemoveTenantOverrideRequest {
 
 type RolloutRequest = SetChannelDefaultRequest | SetTenantOverrideRequest | RemoveTenantOverrideRequest;
 
+interface FeatureFlag {
+  id: string;
+  key: string;
+  name: string;
+  is_killswitch: boolean;
+  default_enabled: boolean;
+}
+
+// Safe audit log writer - tries tenant_audit_log first, falls back to audit_logs
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function writeAudit(
+  serviceClient: any,
+  params: {
+    tenant_id: string | null;
+    admin_user_id: string;
+    action: string;
+    metadata: Record<string, unknown>;
+  }
+) {
+  try {
+    // Try tenant_audit_log first
+    const { error: tenantAuditError } = await serviceClient
+      .from('tenant_audit_log')
+      .insert({
+        tenant_id: params.tenant_id,
+        action: params.action,
+        changed_by: params.admin_user_id,
+        old_value: params.metadata.old_value || null,
+        new_value: params.metadata.new_value || null,
+      });
+
+    if (!tenantAuditError) {
+      console.log(`[platform-rollout-control] Audit logged to tenant_audit_log: ${params.action}`);
+      return;
+    }
+
+    // Fallback to audit_logs
+    const { error: auditError } = await serviceClient
+      .from('audit_logs')
+      .insert({
+        user_id: params.admin_user_id,
+        action: params.action,
+        entity_type: 'feature_flag',
+        entity_id: params.metadata.feature_flag_id as string || 'system',
+        new_value: JSON.stringify(params.metadata),
+      });
+
+    if (auditError) {
+      console.error('[platform-rollout-control] Failed to write audit log:', auditError);
+    } else {
+      console.log(`[platform-rollout-control] Audit logged to audit_logs: ${params.action}`);
+    }
+  } catch (err) {
+    // Never fail the main action due to audit logging
+    console.error('[platform-rollout-control] Audit logging error (non-fatal):', err);
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -76,6 +134,46 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Helper to fetch and validate flag with killswitch check
+    async function getFeatureFlagWithKillswitchCheck(
+      featureFlagId: string,
+      enableAttempt: boolean
+    ): Promise<{ flag: FeatureFlag | null; error?: Response }> {
+      const { data: flag, error: flagError } = await serviceClient
+        .from('feature_flags')
+        .select('id, key, name, is_killswitch, default_enabled')
+        .eq('id', featureFlagId)
+        .single();
+
+      if (flagError || !flag) {
+        return {
+          flag: null,
+          error: new Response(
+            JSON.stringify({ error: 'Feature flag not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        };
+      }
+
+      // KILLSWITCH RULE: If is_killswitch=true AND default_enabled=false, cannot enable anywhere
+      if (flag.is_killswitch && !flag.default_enabled && enableAttempt) {
+        console.log(`[platform-rollout-control] Blocked enabling killswitch flag: ${flag.key}`);
+        return {
+          flag: null,
+          error: new Response(
+            JSON.stringify({ 
+              error: 'killswitch_cannot_enable', 
+              flag_key: flag.key,
+              message: `Cannot enable "${flag.name}" - killswitch is globally disabled`
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        };
+      }
+
+      return { flag: flag as FeatureFlag };
+    }
+
     // Handle each action type
     switch (action) {
       case 'set_channel_default': {
@@ -97,19 +195,9 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Validate feature flag exists
-        const { data: flag, error: flagError } = await serviceClient
-          .from('feature_flags')
-          .select('id, key, name')
-          .eq('id', feature_flag_id)
-          .single();
-
-        if (flagError || !flag) {
-          return new Response(
-            JSON.stringify({ error: 'Feature flag not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+        // Validate feature flag exists and check killswitch
+        const { flag, error: flagCheckError } = await getFeatureFlagWithKillswitchCheck(feature_flag_id, enabled);
+        if (flagCheckError) return flagCheckError;
 
         // Get current value for audit log
         const { data: existingDefault } = await serviceClient
@@ -141,15 +229,20 @@ Deno.serve(async (req) => {
         }
 
         // Audit log
-        await serviceClient.from('feature_flag_audit_log').insert({
-          feature_flag_id,
+        await writeAudit(serviceClient, {
+          tenant_id: null, // Channel defaults are global
+          admin_user_id: adminUserId,
           action: 'channel_default_change',
-          changed_by: adminUserId,
-          old_value: { enabled: oldValue, release_channel },
-          new_value: { enabled, release_channel },
+          metadata: {
+            feature_flag_id,
+            flag_key: flag!.key,
+            release_channel,
+            old_value: { enabled: oldValue },
+            new_value: { enabled },
+          },
         });
 
-        console.log(`[platform-rollout-control] Admin ${adminUserId} set channel default: ${flag.key} on ${release_channel} = ${enabled}`);
+        console.log(`[platform-rollout-control] Admin ${adminUserId} set channel default: ${flag!.key} on ${release_channel} = ${enabled}`);
 
         return new Response(
           JSON.stringify({ 
@@ -174,19 +267,9 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Validate feature flag exists
-        const { data: flag, error: flagError } = await serviceClient
-          .from('feature_flags')
-          .select('id, key, name')
-          .eq('id', feature_flag_id)
-          .single();
-
-        if (flagError || !flag) {
-          return new Response(
-            JSON.stringify({ error: 'Feature flag not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+        // Validate feature flag exists and check killswitch
+        const { flag, error: flagCheckError } = await getFeatureFlagWithKillswitchCheck(feature_flag_id, enabled);
+        if (flagCheckError) return flagCheckError;
 
         // Validate tenant exists
         const { data: tenant, error: tenantError } = await serviceClient
@@ -232,16 +315,20 @@ Deno.serve(async (req) => {
         }
 
         // Audit log
-        await serviceClient.from('feature_flag_audit_log').insert({
-          feature_flag_id,
-          action: 'tenant_override_change',
-          changed_by: adminUserId,
+        await writeAudit(serviceClient, {
           tenant_id,
-          old_value: { enabled: oldValue },
-          new_value: { enabled },
+          admin_user_id: adminUserId,
+          action: 'tenant_override_change',
+          metadata: {
+            feature_flag_id,
+            flag_key: flag!.key,
+            tenant_name: tenant.name,
+            old_value: { enabled: oldValue },
+            new_value: { enabled },
+          },
         });
 
-        console.log(`[platform-rollout-control] Admin ${adminUserId} set tenant override: ${flag.key} for ${tenant.name} = ${enabled}`);
+        console.log(`[platform-rollout-control] Admin ${adminUserId} set tenant override: ${flag!.key} for ${tenant.name} = ${enabled}`);
 
         return new Response(
           JSON.stringify({ 
@@ -266,7 +353,7 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Validate feature flag exists
+        // Validate feature flag exists (no killswitch check needed for removal)
         const { data: flag, error: flagError } = await serviceClient
           .from('feature_flags')
           .select('id, key, name')
@@ -325,13 +412,17 @@ Deno.serve(async (req) => {
         }
 
         // Audit log
-        await serviceClient.from('feature_flag_audit_log').insert({
-          feature_flag_id,
-          action: 'tenant_override_removed',
-          changed_by: adminUserId,
+        await writeAudit(serviceClient, {
           tenant_id,
-          old_value: { enabled: existingOverride.enabled },
-          new_value: null,
+          admin_user_id: adminUserId,
+          action: 'tenant_override_removed',
+          metadata: {
+            feature_flag_id,
+            flag_key: flag.key,
+            tenant_name: tenant.name,
+            old_value: { enabled: existingOverride.enabled },
+            new_value: null,
+          },
         });
 
         console.log(`[platform-rollout-control] Admin ${adminUserId} removed tenant override: ${flag.key} for ${tenant.name}`);
