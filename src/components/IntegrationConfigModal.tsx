@@ -23,19 +23,14 @@ interface ProviderConfig {
   settingsFields?: ProviderField[];
 }
 
-const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+// Field configurations for each provider (UI-only, for form rendering)
+const PROVIDER_FIELDS: Record<string, { fields: ProviderField[]; settingsFields?: ProviderField[] }> = {
   samsara: {
-    id: "samsara",
-    name: "Samsara API",
-    description: "Vehicle telematics and fleet tracking integration",
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "Enter your Samsara API key", isSecret: true },
     ],
   },
   resend: {
-    id: "resend",
-    name: "Resend Email",
-    description: "Transactional email service for notifications",
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "re_xxxxxx...", isSecret: true },
     ],
@@ -44,30 +39,18 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     ],
   },
   mapbox: {
-    id: "mapbox",
-    name: "Mapbox",
-    description: "Maps and geocoding services",
     fields: [
       { name: "token", label: "Access Token", type: "password", placeholder: "pk.xxxxxx...", isSecret: true },
     ],
   },
   weather: {
-    id: "weather",
-    name: "Weather API",
-    description: "Real-time weather data for locations",
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "Enter your Weather API key", isSecret: true },
     ],
   },
   highway: {
-    id: "highway",
-    name: "Highway",
-    description: "Carrier identity verification and fraud prevention",
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "Enter your Highway API key", isSecret: true },
-    ],
-    settingsFields: [
-      { name: "base_url", label: "Base URL (optional)", type: "text", placeholder: "https://api.highway.com" },
     ],
   },
 };
@@ -76,6 +59,8 @@ interface IntegrationConfigModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   provider: string;
+  providerName: string;
+  providerDescription: string;
   tenantId: string;
   existingHint?: string | null;
   existingSettings?: Record<string, unknown> | null;
@@ -86,12 +71,14 @@ export function IntegrationConfigModal({
   open,
   onOpenChange,
   provider,
+  providerName,
+  providerDescription,
   tenantId,
   existingHint,
   existingSettings,
   onSuccess,
 }: IntegrationConfigModalProps) {
-  const config = PROVIDER_CONFIGS[provider];
+  const fieldConfig = PROVIDER_FIELDS[provider];
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [settings, setSettings] = useState<Record<string, string>>(
     (existingSettings as Record<string, string>) || {}
@@ -100,7 +87,7 @@ export function IntegrationConfigModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
 
-  if (!config) {
+  if (!fieldConfig) {
     return null;
   }
 
@@ -134,7 +121,7 @@ export function IntegrationConfigModal({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success(`${config.name} configuration saved`);
+      toast.success(`${providerName} configuration saved`);
       onSuccess();
       onOpenChange(false);
     } catch (error) {
@@ -183,13 +170,13 @@ export function IntegrationConfigModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Configure {config.name}</DialogTitle>
-          <DialogDescription>{config.description}</DialogDescription>
+          <DialogTitle>Configure {providerName}</DialogTitle>
+          <DialogDescription>{providerDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Credential fields */}
-          {config.fields.map((field) => (
+          {fieldConfig.fields.map((field) => (
             <div key={field.name} className="space-y-2">
               <Label htmlFor={field.name}>{field.label}</Label>
               <div className="relative">
@@ -228,7 +215,7 @@ export function IntegrationConfigModal({
           ))}
 
           {/* Settings fields (non-secret) */}
-          {config.settingsFields?.map((field) => (
+          {fieldConfig.settingsFields?.map((field) => (
             <div key={field.name} className="space-y-2">
               <Label htmlFor={field.name}>{field.label}</Label>
               <Input

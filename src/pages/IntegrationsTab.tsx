@@ -322,14 +322,16 @@ export default function IntegrationsTab() {
       </div>
 
       {/* Configuration Modal */}
-      {selectedProvider && (
+      {selectedProvider && selectedIntegration && (
         <IntegrationConfigModal
           open={configModalOpen}
           onOpenChange={setConfigModalOpen}
           provider={selectedProvider}
+          providerName={selectedIntegration.name}
+          providerDescription={selectedIntegration.description}
           tenantId={tenantId!}
-          existingHint={selectedIntegration?.credentials_hint}
-          existingSettings={selectedIntegration?.settings}
+          existingHint={selectedIntegration.credentials_hint}
+          existingSettings={selectedIntegration.settings}
           onSuccess={loadIntegrations}
         />
       )}

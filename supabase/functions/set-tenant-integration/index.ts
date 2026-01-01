@@ -128,6 +128,7 @@ serve(async (req) => {
       provider,
       is_enabled: is_enabled ?? true,
       settings: settings || {},
+      sync_status: 'pending', // Always set to pending when credentials change
       updated_at: new Date().toISOString(),
     };
 

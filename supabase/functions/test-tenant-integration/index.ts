@@ -31,97 +31,132 @@ async function decrypt(ciphertext: string, masterKey: string): Promise<string> {
 }
 
 // Provider-specific test functions
+// Sanitize error messages to prevent credential leakage
+function sanitizeError(message: string): string {
+  // Truncate to 500 chars max
+  let sanitized = message.slice(0, 500);
+  
+  // Remove anything that looks like an API key or token
+  sanitized = sanitized.replace(/[a-zA-Z0-9_-]{20,}/g, '[REDACTED]');
+  sanitized = sanitized.replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
+  sanitized = sanitized.replace(/api[_-]?key[=:]\s*\S+/gi, 'api_key=[REDACTED]');
+  sanitized = sanitized.replace(/token[=:]\s*\S+/gi, 'token=[REDACTED]');
+  
+  return sanitized || 'Unknown error';
+}
+
 async function testSamsara(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
+  const apiKey = credentials.api_key;
+  if (!apiKey) {
+    return { success: false, message: 'API key not configured' };
+  }
+  
   try {
     const response = await fetch('https://api.samsara.com/fleet/vehicles?limit=1', {
       headers: {
-        'Authorization': `Bearer ${credentials.api_key}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
     });
     
     if (response.ok) {
-      return { success: true, message: 'Successfully connected to Samsara API' };
+      const data = await response.json();
+      const vehicleCount = data.data?.length || 0;
+      return { success: true, message: `Connected. Found ${vehicleCount} vehicles.` };
+    } else if (response.status === 401) {
+      return { success: false, message: 'Invalid API key' };
     }
-    return { success: false, message: `Samsara API returned ${response.status}: ${response.statusText}` };
+    return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return { success: false, message: 'Connection failed' };
   }
 }
 
 async function testResend(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
+  const apiKey = credentials.api_key;
+  if (!apiKey) {
+    return { success: false, message: 'API key not configured' };
+  }
+  
   try {
-    // Validate key format
-    if (!credentials.api_key?.startsWith('re_')) {
-      return { success: false, message: 'Invalid Resend API key format (should start with re_)' };
-    }
-    
-    // Test with domains endpoint (doesn't send email)
     const response = await fetch('https://api.resend.com/domains', {
-      headers: {
-        'Authorization': `Bearer ${credentials.api_key}`,
-      },
+      headers: { 'Authorization': `Bearer ${apiKey}` },
     });
     
     if (response.ok) {
-      return { success: true, message: 'Successfully connected to Resend API' };
+      return { success: true, message: 'API key validated successfully' };
+    } else if (response.status === 401) {
+      return { success: false, message: 'Invalid API key' };
     }
-    return { success: false, message: `Resend API returned ${response.status}: ${response.statusText}` };
+    return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return { success: false, message: 'Connection failed' };
   }
 }
 
 async function testMapbox(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
+  const token = credentials.token;
+  if (!token) {
+    return { success: false, message: 'Access token not configured' };
+  }
+  
   try {
     const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/test.json?access_token=${credentials.token}`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/test.json?access_token=${token}&limit=1`
     );
     
     if (response.ok) {
-      return { success: true, message: 'Successfully connected to Mapbox API' };
+      return { success: true, message: 'Token validated successfully' };
+    } else if (response.status === 401) {
+      return { success: false, message: 'Invalid access token' };
     }
-    return { success: false, message: `Mapbox API returned ${response.status}: ${response.statusText}` };
+    return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return { success: false, message: 'Connection failed' };
   }
 }
 
 async function testWeather(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
+  const apiKey = credentials.api_key;
+  if (!apiKey) {
+    return { success: false, message: 'API key not configured' };
+  }
+  
   try {
     const response = await fetch(
-      `http://api.weatherapi.com/v1/current.json?key=${credentials.api_key}&q=40.7128,-74.0060&aqi=no`
+      `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=New York`
     );
     
     if (response.ok) {
-      return { success: true, message: 'Successfully connected to Weather API' };
+      return { success: true, message: 'API key validated successfully' };
+    } else if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid API key' };
     }
-    return { success: false, message: `Weather API returned ${response.status}: ${response.statusText}` };
+    return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return { success: false, message: 'Connection failed' };
   }
 }
 
 async function testHighway(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
+  const apiKey = credentials.api_key;
+  if (!apiKey) {
+    return { success: false, message: 'API key not configured' };
+  }
+  
   try {
-    const baseUrl = credentials.base_url || 'https://api.highway.com';
-    const response = await fetch(`${baseUrl}/v1/health`, {
-      headers: {
-        'Authorization': `Bearer ${credentials.api_key}`,
-        'Content-Type': 'application/json',
-      },
+    const response = await fetch('https://api.highway.com/v2/carriers?limit=1', {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
     });
     
     if (response.ok) {
-      return { success: true, message: 'Successfully connected to Highway API' };
+      return { success: true, message: 'API key validated successfully' };
+    } else if (response.status === 401) {
+      return { success: false, message: 'Invalid API key' };
     }
-    // Highway might return 404 for health endpoint, try another
-    if (response.status === 404) {
-      return { success: true, message: 'Highway API key appears valid (health endpoint not available)' };
-    }
-    return { success: false, message: `Highway API returned ${response.status}: ${response.statusText}` };
+    return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return { success: false, message: 'Connection failed' };
   }
 }
 
