@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import VehiclesTab from "./VehiclesTab";
 import CarriersTab from "./CarriersTab";
 import PayeesTab from "./PayeesTab";
@@ -12,8 +12,9 @@ import CustomersTab from "./CustomersTab";
 export default function BusinessManagerTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState<string>("assets");
-  const [assetAlertCount, setAssetAlertCount] = useState<number>(0);
-  const [carrierAlertCount, setCarrierAlertCount] = useState<number>(0);
+  
+  // Use tenant-scoped alert counts hook
+  const { vehicleAlerts: assetAlertCount, carrierAlerts: carrierAlertCount } = useTenantAlertCounts();
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
@@ -21,60 +22,7 @@ export default function BusinessManagerTab() {
     if (subTab && validSubTabs.includes(subTab)) {
       setActiveSubTab(subTab);
     }
-    loadAlerts();
   }, [searchParams]);
-
-  const loadAlerts = async () => {
-    // Load vehicle alerts
-    const { data: vehicles } = await supabase
-      .from("vehicles")
-      .select("oil_change_remaining, insurance_expiry, registration_expiry")
-      .eq("status", "active");
-
-    let vehicleCount = 0;
-    if (vehicles) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      vehicles.forEach(vehicle => {
-        // Oil change due or overdue
-        if (vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0) {
-          vehicleCount++;
-        }
-        // Insurance expired
-        if (vehicle.insurance_expiry) {
-          const insuranceDate = new Date(vehicle.insurance_expiry);
-          insuranceDate.setHours(0, 0, 0, 0);
-          if (insuranceDate < today) {
-            vehicleCount++;
-          }
-        }
-        // Registration expired
-        if (vehicle.registration_expiry) {
-          const registrationDate = new Date(vehicle.registration_expiry);
-          registrationDate.setHours(0, 0, 0, 0);
-          if (registrationDate < today) {
-            vehicleCount++;
-          }
-        }
-      });
-    }
-    setAssetAlertCount(vehicleCount);
-
-    // Load carrier alerts (NOT AUTHORIZED status for active/pending carriers)
-    const { data: carriers } = await supabase
-      .from("carriers")
-      .select("safer_status, status")
-      .in("status", ["active", "pending"]);
-
-    let carrierCount = 0;
-    if (carriers) {
-      carrierCount = carriers.filter(
-        (carrier) => carrier.safer_status?.toUpperCase().includes("NOT AUTHORIZED")
-      ).length;
-    }
-    setCarrierAlertCount(carrierCount);
-  };
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);

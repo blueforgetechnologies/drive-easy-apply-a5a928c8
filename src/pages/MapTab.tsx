@@ -96,7 +96,10 @@ const MapTab = () => {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara');
+      // Pass tenantId to sync only this tenant's vehicles
+      const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara', {
+        body: { tenant_id: tenantId }
+      });
 
       if (error) {
         console.error('Sync error:', error);
@@ -105,7 +108,9 @@ const MapTab = () => {
       }
 
       if (data?.success) {
-        toast.success(`Successfully synced ${data.results.updated} vehicles`);
+        const results = data.results?.[0] || data.results || {};
+        const updated = results.updated ?? 0;
+        toast.success(`Successfully synced ${updated} vehicles`);
         // Reload vehicles after sync
         await loadVehicles();
       }

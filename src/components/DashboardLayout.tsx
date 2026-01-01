@@ -17,6 +17,7 @@ import { ImpersonateTenantDialog } from "./ImpersonateTenantDialog";
 import { TenantDebugBanner } from "./TenantDebugBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenantContext } from "@/contexts/TenantContext";
+import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -32,7 +33,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [userEmail, setUserEmail] = useState<string>("");
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("drivers");
-  const [alertCount, setAlertCount] = useState<number>(0);
+  // Use tenant-scoped alert counts hook
+  const { totalBusinessAlerts: alertCount } = useTenantAlertCounts();
   const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
   const [unmappedTypesCount, setUnmappedTypesCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -76,7 +78,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!authReady || !authUserId) return;
 
     loadUserProfile();
-    loadAlerts();
+    // Alert counts now handled by useTenantAlertCounts hook
     loadIntegrationAlerts();
     loadUnmappedTypesCount();
 
@@ -160,58 +162,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     toast.success(newValue ? "All Loads tab enabled" : "All Loads tab disabled");
   };
 
-  const loadAlerts = async () => {
-    // Load vehicle alerts
-    const { data: vehicles } = await supabase
-      .from("vehicles")
-      .select("oil_change_remaining, insurance_expiry, registration_expiry")
-      .eq("status", "active");
+  // Alert counts are now handled by useTenantAlertCounts hook
 
-    let vehicleCount = 0;
-    if (vehicles) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      vehicles.forEach(vehicle => {
-        // Oil change due or overdue
-        if (vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0) {
-          vehicleCount++;
-        }
-        // Insurance expired
-        if (vehicle.insurance_expiry) {
-          const insuranceDate = new Date(vehicle.insurance_expiry);
-          insuranceDate.setHours(0, 0, 0, 0);
-          if (insuranceDate < today) {
-            vehicleCount++;
-          }
-        }
-        // Registration expired
-        if (vehicle.registration_expiry) {
-          const registrationDate = new Date(vehicle.registration_expiry);
-          registrationDate.setHours(0, 0, 0, 0);
-          if (registrationDate < today) {
-            vehicleCount++;
-          }
-        }
-      });
-    }
-
-    // Load carrier alerts (NOT AUTHORIZED status for active/pending carriers)
-    const { data: carriers } = await supabase
-      .from("carriers")
-      .select("safer_status, status")
-      .in("status", ["active", "pending"]);
-
-    let carrierCount = 0;
-    if (carriers) {
-      carrierCount = carriers.filter(
-        (carrier) => carrier.safer_status?.toUpperCase().includes("NOT AUTHORIZED")
-      ).length;
-    }
-
-    // Combine both counts for Business tab
-    setAlertCount(vehicleCount + carrierCount);
-  };
 
   const loadIntegrationAlerts = async () => {
     try {
