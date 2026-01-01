@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, FileText, DollarSign, CheckCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Settlement {
   id: string;
@@ -43,6 +44,7 @@ interface Driver {
 export default function SettlementsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const filter = searchParams.get("filter") || "pending";
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -65,16 +67,24 @@ export default function SettlementsTab() {
   useEffect(() => {
     loadData();
     loadDrivers();
-  }, [filter]);
+  }, [filter, tenantId, shouldFilter]);
 
   const loadData = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("settlements" as any)
         .select("*")
         .eq("status", filter)
         .order("created_at", { ascending: false });
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setSettlements((data as any) || []);
@@ -87,11 +97,19 @@ export default function SettlementsTab() {
   };
 
   const loadDrivers = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("applications" as any)
         .select("id, personal_info, pay_method, pay_per_mile, weekly_salary")
         .eq("driver_status", "active");
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setDrivers((data as any) || []);
