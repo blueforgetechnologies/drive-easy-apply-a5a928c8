@@ -27,7 +27,10 @@ export function useTenantContext() {
   const loadMemberships = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('[TenantContext] Current user:', user?.id, user?.email);
+      
       if (!user) {
+        console.log('[TenantContext] No user, clearing memberships');
         setMemberships([]);
         setCurrentTenant(null);
         setLoading(false);
@@ -36,6 +39,7 @@ export function useTenantContext() {
 
       // Check platform admin status
       const { data: adminCheck } = await supabase.rpc('is_platform_admin', { _user_id: user.id });
+      console.log('[TenantContext] Platform admin check:', adminCheck);
       setIsPlatformAdmin(!!adminCheck);
 
       // Get user's tenant memberships with extended tenant fields
@@ -56,6 +60,12 @@ export function useTenantContext() {
         .eq('user_id', user.id)
         .eq('is_active', true);
 
+      console.log('[TenantContext] tenant_users query result:', { 
+        count: tenantUsers?.length ?? 0, 
+        error: error?.message,
+        data: tenantUsers 
+      });
+
       if (error) throw error;
 
       const membershipList: TenantMembership[] = (tenantUsers || [])
@@ -64,6 +74,8 @@ export function useTenantContext() {
           tenant: tu.tenant as unknown as Tenant,
           role: tu.role
         }));
+      
+      console.log('[TenantContext] Processed memberships:', membershipList.length);
 
       setMemberships(membershipList);
 
@@ -99,14 +111,17 @@ export function useTenantContext() {
 
       // Persist and set
       if (selectedTenant) {
+        console.log('[TenantContext] Selected tenant:', selectedTenant.name, selectedTenant.id);
+        console.log('[TenantContext] Writing to localStorage:', STORAGE_KEY, selectedTenant.id);
         localStorage.setItem(STORAGE_KEY, selectedTenant.id);
         setCurrentTenant(selectedTenant);
       } else {
+        console.log('[TenantContext] No tenant selected, clearing localStorage');
         localStorage.removeItem(STORAGE_KEY);
         setCurrentTenant(null);
       }
     } catch (err) {
-      console.error('Error loading tenant memberships:', err);
+      console.error('[TenantContext] Error loading tenant memberships:', err);
     } finally {
       setLoading(false);
     }
