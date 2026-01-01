@@ -14,20 +14,22 @@ import { supabase } from "@/integrations/supabase/client";
 export const TENANT_OWNED_TABLES = [
   "vehicles",
   "loads",
+  "load_documents",
+  "load_expenses",
   "customers",
   "carriers",
   "payees",
   "dispatchers",
+  "drivers",
   "locations",
   "applications",
   "driver_invites",
   "invoices",
+  "invoice_loads",
   "expenses",
   "settlements",
-  "load_expenses",
   "hunt_plans",
   "contacts",
-  "invoice_loads",
 ] as const;
 
 export type TenantOwnedTable = typeof TENANT_OWNED_TABLES[number];

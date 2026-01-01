@@ -42,6 +42,11 @@ interface UseTenantQueryResult {
   isPlatformAdmin: boolean;
   
   /**
+   * Whether "show all tenants" is enabled (platform admin only).
+   */
+  showAllTenants: boolean;
+  
+  /**
    * Whether tenant is ready (has ID and should filter, or bypass is allowed).
    */
   isReady: boolean;
@@ -63,7 +68,7 @@ interface UseTenantQueryResult {
  * await supabase.from("vehicles").insert(withTenant({ vehicle_number: "123" }));
  */
 export function useTenantQuery(): UseTenantQueryResult {
-  const { tenantId, shouldFilter, isPlatformAdmin } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
   
   const context = { tenantId, shouldFilter };
   
@@ -74,6 +79,7 @@ export function useTenantQuery(): UseTenantQueryResult {
     tenantId,
     shouldFilter,
     isPlatformAdmin,
+    showAllTenants,
     isReady: !shouldFilter || !!tenantId,
   };
 }
