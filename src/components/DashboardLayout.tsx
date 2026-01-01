@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { TenantSwitcher } from "./TenantSwitcher";
+import { TenantIndicator } from "./TenantIndicator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -466,8 +467,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Sheet>
             </div>
 
-            {/* Right: User info + Logout */}
+            {/* Right: Tenant Indicator + User info + Logout */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Tenant Context Indicator */}
+              <div className="hidden sm:block">
+                <TenantIndicator />
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <button 
