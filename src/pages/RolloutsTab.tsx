@@ -398,14 +398,14 @@ export default function RolloutsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[250px]">Feature</TableHead>
-                <TableHead className="text-center">Global Default</TableHead>
-                <TableHead className="text-center">Internal</TableHead>
-                <TableHead className="text-center">Pilot</TableHead>
-                <TableHead className="text-center">General</TableHead>
+                <TableHead className="w-[200px]">Feature</TableHead>
+                <TableHead className="w-[120px] text-center">Global Default</TableHead>
+                <TableHead className="w-[100px] text-center">Internal</TableHead>
+                <TableHead className="w-[100px] text-center">Pilot</TableHead>
+                <TableHead className="w-[100px] text-center">General</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
