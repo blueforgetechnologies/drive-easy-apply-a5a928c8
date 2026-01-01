@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users, User, Mail, Phone, Building2, CreditCard, Check, Briefcase, Truck, Factory } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users, User, Mail, Phone, Building2, CreditCard, Check, Briefcase, Truck, Factory, Copy, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
@@ -113,24 +114,36 @@ export default function PayeesTab() {
     address: "",
   });
 
-  useEffect(() => {
-    loadData();
-  }, [filter]);
+  const { tenantId, shouldFilter } = useTenantFilter();
 
   useEffect(() => {
-    // Load dispatchers and drivers when dialog opens
+    loadData();
+  }, [filter, tenantId, shouldFilter]);
+
+  useEffect(() => {
     if (dialogOpen) {
       loadExistingUsers();
     }
-  }, [dialogOpen]);
+  }, [dialogOpen, tenantId, shouldFilter]);
 
   const loadExistingUsers = async () => {
     try {
+      let dispatchersQuery = supabase.from("dispatchers").select("id, first_name, last_name, email, phone, address").eq("status", "active");
+      let driversQuery = supabase.from("applications").select("id, personal_info, bank_name, routing_number, checking_number, driver_address, cell_phone");
+      let carriersQuery = supabase.from("carriers").select("id, name, email, phone, address, contact_name").eq("status", "active");
+      
+      // Apply tenant filter to tenant-scoped tables
+      if (shouldFilter && tenantId) {
+        dispatchersQuery = dispatchersQuery.eq("tenant_id", tenantId);
+        driversQuery = driversQuery.eq("tenant_id", tenantId);
+        carriersQuery = carriersQuery.eq("tenant_id", tenantId);
+      }
+      
       const [dispatchersRes, driversRes, usersRes, carriersRes] = await Promise.all([
-        supabase.from("dispatchers").select("id, first_name, last_name, email, phone, address").eq("status", "active"),
-        supabase.from("applications").select("id, personal_info, bank_name, routing_number, checking_number, driver_address, cell_phone"),
+        dispatchersQuery,
+        driversQuery,
         supabase.from("profiles").select("id, full_name, email, phone, address, city, state, zip"),
-        supabase.from("carriers").select("id, name, email, phone, address, contact_name").eq("status", "active")
+        carriersQuery
       ]);
       
       if (dispatchersRes.data) setDispatchers(dispatchersRes.data);
@@ -142,6 +155,11 @@ export default function PayeesTab() {
     }
   };
 
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    toast.success("ID copied to clipboard");
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -149,6 +167,11 @@ export default function PayeesTab() {
         .from("payees" as any)
         .select("*")
         .order("created_at", { ascending: false });
+      
+      // Apply tenant filter
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
       
       if (filter !== "all") {
         query = query.eq("status", filter);
@@ -168,12 +191,19 @@ export default function PayeesTab() {
 
   const handleAddPayee = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from("payees" as any)
         .insert({
           ...formData,
           status: "active",
+          tenant_id: tenantId,
         });
 
       if (error) throw error;
@@ -191,7 +221,7 @@ export default function PayeesTab() {
       return;
     }
 
-    let payeeData: Partial<Payee> = { status: "active", payment_method: "direct_deposit" };
+    let payeeData: Partial<Payee> = { status: "active", payment_method: "direct_deposit", tenant_id: tenantId } as any;
 
     if (selectedSourceType === "dispatcher") {
       const dispatcher = dispatchers.find(d => d.id === selectedSourceId);
@@ -1026,6 +1056,7 @@ export default function PayeesTab() {
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">ID</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[120px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Name</div>
@@ -1050,6 +1081,9 @@ export default function PayeesTab() {
                       className="h-10 cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => handleOpenPayeeDetail(payee)}
                     >
+                      <TableCell className="py-1 px-2 font-mono text-xs text-muted-foreground">
+                        {payee.id.slice(0, 8)}…
+                      </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <div className={cn(
@@ -1094,14 +1128,30 @@ export default function PayeesTab() {
                       </TableCell>
                       <TableCell className="py-1 px-2 hidden xl:table-cell text-muted-foreground text-xs">{payee.address || "N/A"}</TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-6 w-6"
-                          onClick={() => handleOpenPayeeDetail(payee)}
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleCopyId(payee.id)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenPayeeDetail(payee)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeletePayee(payee.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}

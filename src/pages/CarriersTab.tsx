@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight, LayoutDashboard, Copy, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -56,9 +57,11 @@ export default function CarriersTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const ROWS_PER_PAGE = 50;
 
+  const { tenantId, shouldFilter } = useTenantFilter();
+
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, [filter, tenantId, shouldFilter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -67,6 +70,11 @@ export default function CarriersTab() {
         .from("carriers" as any)
         .select("*")
         .order("created_at", { ascending: false });
+      
+      // Apply tenant filter
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
       
       if (filter !== "all") {
         query = query.eq("status", filter);
@@ -84,14 +92,26 @@ export default function CarriersTab() {
     }
   };
 
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    toast.success("ID copied to clipboard");
+  };
+
   const handleAddCarrier = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from("carriers" as any)
         .insert({
           ...formData,
           status: "active",
+          tenant_id: tenantId,
         });
 
       if (error) throw error;
@@ -555,6 +575,7 @@ export default function CarriersTab() {
                         />
                       </TableHead>
                     )}
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">ID</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[70px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Carrier Name</div>
@@ -591,6 +612,9 @@ export default function CarriersTab() {
                           />
                         </TableCell>
                       )}
+                      <TableCell className="py-1 px-2 font-mono text-xs text-muted-foreground">
+                        {carrier.id.slice(0, 8)}…
+                      </TableCell>
                       <TableCell 
                         className="py-1 px-2"
                         onClick={(e) => e.stopPropagation()}
@@ -673,18 +697,30 @@ export default function CarriersTab() {
                         />
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 gap-1.5 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard/carrier-dashboard?carrier=${carrier.id}`);
-                          }}
-                        >
-                          <LayoutDashboard className="h-3.5 w-3.5" />
-                          Dashboard
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleCopyId(carrier.id)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/dashboard/carrier-dashboard?carrier=${carrier.id}`)}>
+                              <LayoutDashboard className="h-4 w-4 mr-2" />
+                              Dashboard
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteCarrier(carrier.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
