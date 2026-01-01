@@ -125,6 +125,10 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
 
       setSession(newSession);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+      
+      // Dispatch event to notify TenantContext
+      window.dispatchEvent(new CustomEvent('impersonation-changed'));
+      
       toast.success(`Now impersonating ${data.session.tenant_name}`);
       return true;
     } catch (err) {
@@ -157,6 +161,10 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
 
       setSession(null);
       localStorage.removeItem(STORAGE_KEY);
+      
+      // Dispatch event to notify TenantContext
+      window.dispatchEvent(new CustomEvent('impersonation-changed'));
+      
       toast.success('Impersonation session ended');
       return true;
     } catch (err) {

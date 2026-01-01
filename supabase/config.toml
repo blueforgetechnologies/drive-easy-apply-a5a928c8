@@ -158,3 +158,9 @@ verify_jwt = true
 
 [functions.admin-stop-impersonation]
 verify_jwt = true
+
+[functions.admin-get-impersonation-session]
+verify_jwt = true
+
+[functions.platform-rollout-control]
+verify_jwt = true
