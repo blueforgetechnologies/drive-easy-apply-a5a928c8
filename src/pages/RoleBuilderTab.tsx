@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Shield, Users, Trash2, Edit, Save, X, ChevronRight } from "lucide-react";
+import { Plus, Shield, Users, Trash2, Edit, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Permission {
@@ -21,6 +21,7 @@ interface Permission {
   category: string;
   permission_type: string;
   sort_order: number;
+  tenant_id: string | null;
 }
 
 interface CustomRole {
@@ -29,11 +30,13 @@ interface CustomRole {
   description: string | null;
   is_system_role: boolean;
   created_at: string;
+  tenant_id: string | null;
 }
 
 interface RolePermission {
   role_id: string;
   permission_id: string;
+  tenant_id: string | null;
 }
 
 interface UserWithRole {
@@ -41,11 +44,11 @@ interface UserWithRole {
   user_id: string;
   role_id: string;
   assigned_at: string;
-  user_name?: string;
-  user_email?: string;
+  tenant_id: string | null;
 }
 
 export default function RoleBuilderTab() {
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
@@ -61,17 +64,43 @@ export default function RoleBuilderTab() {
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (tenantId || !shouldFilter) {
+      loadData();
+    }
+  }, [tenantId, shouldFilter]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      // Load permissions (global + tenant-specific)
+      let permQuery = supabase.from("permissions").select("*").order("sort_order");
+      if (shouldFilter && tenantId) {
+        permQuery = permQuery.or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
+      }
+      
+      // Load roles (global + tenant-specific)
+      let roleQuery = supabase.from("custom_roles").select("*").order("name");
+      if (shouldFilter && tenantId) {
+        roleQuery = roleQuery.or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
+      }
+      
+      // Load role permissions
+      let rpQuery = supabase.from("role_permissions").select("*");
+      if (shouldFilter && tenantId) {
+        rpQuery = rpQuery.or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
+      }
+      
+      // Load user role assignments
+      let urQuery = supabase.from("user_custom_roles").select("*");
+      if (shouldFilter && tenantId) {
+        urQuery = urQuery.or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
+      }
+
       const [permRes, roleRes, rpRes, urRes] = await Promise.all([
-        supabase.from("permissions").select("*").order("sort_order"),
-        supabase.from("custom_roles").select("*").order("name"),
-        supabase.from("role_permissions").select("*"),
-        supabase.from("user_custom_roles").select("*")
+        permQuery,
+        roleQuery,
+        rpQuery,
+        urQuery
       ]);
 
       if (permRes.data) setPermissions(permRes.data);
@@ -188,16 +217,21 @@ export default function RoleBuilderTab() {
         if (error) throw error;
         roleId = editingRole.id;
 
-        // Delete existing permissions
+        // Delete existing permissions for this role
         await supabase
           .from("role_permissions")
           .delete()
           .eq("role_id", roleId);
       } else {
-        // Create new role
+        // Create new role with tenant_id
+        const roleData: any = { name: roleName, description: roleDescription };
+        if (shouldFilter && tenantId) {
+          roleData.tenant_id = tenantId;
+        }
+        
         const { data, error } = await supabase
           .from("custom_roles")
-          .insert({ name: roleName, description: roleDescription })
+          .insert(roleData)
           .select()
           .single();
         
@@ -207,10 +241,16 @@ export default function RoleBuilderTab() {
 
       // Insert new permissions
       if (selectedPermissions.size > 0) {
-        const permissionInserts = Array.from(selectedPermissions).map(permId => ({
-          role_id: roleId,
-          permission_id: permId
-        }));
+        const permissionInserts = Array.from(selectedPermissions).map(permId => {
+          const insert: any = {
+            role_id: roleId,
+            permission_id: permId
+          };
+          if (shouldFilter && tenantId) {
+            insert.tenant_id = tenantId;
+          }
+          return insert;
+        });
 
         const { error: permError } = await supabase
           .from("role_permissions")
@@ -256,6 +296,14 @@ export default function RoleBuilderTab() {
   const getUsersWithRole = (roleId: string) => {
     return userRoles.filter(ur => ur.role_id === roleId);
   };
+
+  if (!tenantId && shouldFilter) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Please select a tenant to manage roles.</div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -315,6 +363,9 @@ export default function RoleBuilderTab() {
                             <span className="font-medium">{role.name}</span>
                             {role.is_system_role && (
                               <Badge variant="secondary" className="text-xs">System</Badge>
+                            )}
+                            {!role.tenant_id && (
+                              <Badge variant="outline" className="text-xs">Global</Badge>
                             )}
                           </div>
                           {role.description && (
@@ -478,38 +529,33 @@ export default function RoleBuilderTab() {
 
         <TabsContent value="permissions" className="mt-4">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">All Available Permissions</CardTitle>
-              <CardDescription>These are all the features and tabs that can be assigned to roles</CardDescription>
+            <CardHeader>
+              <CardTitle>All Available Permissions</CardTitle>
+              <CardDescription>
+                Reference list of all permissions that can be assigned to roles
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-6">
                 {Object.entries(groupedPermissions).map(([category, { tabs, features }]) => (
-                  <Card key={category} className="border">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">{getCategoryLabel(category)}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {tabs.map(perm => (
-                        <div key={perm.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded">
-                          <Shield className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">{perm.name}</span>
-                          <Badge variant="secondary" className="text-[10px] h-4 ml-auto">Tab</Badge>
-                        </div>
-                      ))}
-                      {features.map(perm => (
-                        <div key={perm.id} className="flex items-start gap-2 p-2 hover:bg-muted/30 rounded">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div key={category}>
+                    <h3 className="font-semibold text-lg mb-3">{getCategoryLabel(category)}</h3>
+                    <div className="grid gap-2">
+                      {[...tabs, ...features].map(perm => (
+                        <div key={perm.id} className="flex items-center justify-between p-2 border rounded">
                           <div>
-                            <span className="text-sm">{perm.name}</span>
+                            <span className="font-medium">{perm.name}</span>
                             {perm.description && (
                               <p className="text-xs text-muted-foreground">{perm.description}</p>
                             )}
                           </div>
+                          <Badge variant={perm.permission_type === 'tab' ? 'default' : 'secondary'}>
+                            {perm.permission_type}
+                          </Badge>
                         </div>
                       ))}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>

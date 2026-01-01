@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import * as pdfjsLib from "pdfjs-dist";
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 export default function CompanyProfileTab() {
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -22,30 +24,51 @@ export default function CompanyProfileTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadCompanyProfile();
-    loadCarriers();
-  }, []);
+    if (tenantId || !shouldFilter) {
+      loadCompanyProfile();
+      loadCarriers();
+    }
+  }, [tenantId, shouldFilter]);
 
   const loadCarriers = async () => {
+    if (!tenantId && shouldFilter) return;
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("carriers")
         .select("id, name, dot_number")
         .eq("status", "active")
         .order("name");
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       setCarriers(data || []);
     } catch (error) {
       console.error("Failed to load carriers:", error);
     }
   };
+
   const loadCompanyProfile = async () => {
+    if (!tenantId && shouldFilter) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("company_profile")
         .select("*")
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+      
+      const { data, error } = await query.maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
       
@@ -79,6 +102,7 @@ export default function CompanyProfileTab() {
           factoring_contact_name: "",
           factoring_contact_email: "",
           factoring_contact_phone: "",
+          tenant_id: tenantId,
         });
       }
     } catch (error: any) {
@@ -90,20 +114,30 @@ export default function CompanyProfileTab() {
   };
 
   const handleSave = async () => {
+    if (!tenantId && shouldFilter) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
     setSaving(true);
     try {
+      const profileData = {
+        ...profile,
+        tenant_id: tenantId,
+      };
+      
       if (profile.id) {
         // Update existing profile
         const { error } = await supabase
           .from("company_profile")
-          .update(profile)
+          .update(profileData)
           .eq("id", profile.id);
         if (error) throw error;
       } else {
         // Insert new profile
         const { data, error } = await supabase
           .from("company_profile")
-          .insert([profile])
+          .insert([profileData])
           .select()
           .single();
         if (error) throw error;
@@ -124,7 +158,7 @@ export default function CompanyProfileTab() {
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const page = await pdf.getPage(1);
     
-    const scale = 2; // Higher scale for better quality
+    const scale = 2;
     const viewport = page.getViewport({ scale });
     
     const canvas = document.createElement('canvas');
@@ -154,13 +188,11 @@ export default function CompanyProfileTab() {
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf';
 
-    // Validate file type
     if (!isImage && !isPdf) {
       toast.error('Please upload an image or PDF file');
       return;
     }
 
-    // Validate file size (max 10MB for PDFs, 5MB for images)
     const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error(isPdf ? 'PDF must be less than 10MB' : 'Image must be less than 5MB');
@@ -172,24 +204,21 @@ export default function CompanyProfileTab() {
       let fileToUpload: Blob = file;
       let fileName: string;
 
-      // Convert PDF to image if needed
       if (isPdf) {
         toast.info('Converting PDF to image...');
         fileToUpload = await convertPdfToImage(file);
-        fileName = `company-logo-${Date.now()}.png`;
+        fileName = `company-logo-${tenantId || 'default'}-${Date.now()}.png`;
       } else {
         const fileExt = file.name.split('.').pop();
-        fileName = `company-logo-${Date.now()}.${fileExt}`;
+        fileName = `company-logo-${tenantId || 'default'}-${Date.now()}.${fileExt}`;
       }
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('company-logos')
         .upload(fileName, fileToUpload, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('company-logos')
         .getPublicUrl(fileName);
@@ -214,6 +243,14 @@ export default function CompanyProfileTab() {
   const updateField = (field: string, value: any) => {
     setProfile((prev: any) => ({ ...prev, [field]: value }));
   };
+
+  if (!tenantId && shouldFilter) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-muted-foreground">Please select a tenant to view company profile.</div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -504,84 +541,87 @@ export default function CompanyProfileTab() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* System Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" />
+            System Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <div>
-              <Label>Default Payment Terms</Label>
-              <Input
-                value={profile?.billing_terms || ""}
-                onChange={(e) => updateField("billing_terms", e.target.value)}
-                placeholder="Net 30"
-              />
-            </div>
-
-            <div>
-              <Label>Remittance Information</Label>
-              <Textarea
-                value={profile?.remittance_info || ""}
-                onChange={(e) => updateField("remittance_info", e.target.value)}
-                placeholder="Payment instructions..."
-                rows={4}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              System Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Default Carrier (for new loads)</Label>
+              <Label>Default Carrier</Label>
               <Select 
-                value={profile?.default_carrier_id || "none"} 
-                onValueChange={(value) => updateField("default_carrier_id", value === "none" ? null : value)}
+                value={profile?.default_carrier_id || ""} 
+                onValueChange={(value) => updateField("default_carrier_id", value || null)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select default carrier" />
                 </SelectTrigger>
-                <SelectContent className="bg-background">
-                  <SelectItem value="none">None</SelectItem>
+                <SelectContent>
                   {carriers.map((carrier) => (
                     <SelectItem key={carrier.id} value={carrier.id}>
-                      {carrier.name} {carrier.dot_number ? `(${carrier.dot_number})` : ""}
+                      {carrier.name} {carrier.dot_number ? `(DOT: ${carrier.dot_number})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                This carrier will be automatically assigned when creating new loads manually
-              </p>
             </div>
-
             <div>
               <Label>Default Currency</Label>
-              <Input
-                value={profile?.default_currency || "USD"}
-                onChange={(e) => updateField("default_currency", e.target.value)}
-                maxLength={3}
-              />
+              <Select 
+                value={profile?.default_currency || "USD"} 
+                onValueChange={(value) => updateField("default_currency", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
             <div>
               <Label>Default Timezone</Label>
-              <Input
-                value={profile?.default_timezone || "America/New_York"}
-                onChange={(e) => updateField("default_timezone", e.target.value)}
-                placeholder="America/New_York"
-              />
+              <Select 
+                value={profile?.default_timezone || "America/New_York"} 
+                onValueChange={(value) => updateField("default_timezone", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                  <SelectItem value="America/Chicago">Central Time</SelectItem>
+                  <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                  <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <div>
+            <Label>Billing Terms</Label>
+            <Textarea
+              value={profile?.billing_terms || ""}
+              onChange={(e) => updateField("billing_terms", e.target.value)}
+              placeholder="Enter your standard billing terms..."
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label>Remittance Info</Label>
+            <Textarea
+              value={profile?.remittance_info || ""}
+              onChange={(e) => updateField("remittance_info", e.target.value)}
+              placeholder="Enter remittance information for invoices..."
+              rows={3}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
