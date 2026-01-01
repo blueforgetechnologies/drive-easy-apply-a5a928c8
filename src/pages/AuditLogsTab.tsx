@@ -1,24 +1,26 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search } from "lucide-react";
 import { format } from "date-fns";
+import { useTenantQuery } from "@/hooks/useTenantQuery";
 
 export default function AuditLogsTab() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const { query, isReady, tenantId } = useTenantQuery();
 
   useEffect(() => {
-    loadAuditLogs();
-  }, []);
+    if (isReady) {
+      loadAuditLogs();
+    }
+  }, [isReady, tenantId]);
 
   const loadAuditLogs = async () => {
     try {
-      const { data, error } = await supabase
-        .from("audit_logs")
+      const { data, error } = await query("audit_logs")
         .select("*")
         .order("timestamp", { ascending: false })
         .limit(500);

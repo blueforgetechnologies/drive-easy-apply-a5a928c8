@@ -2045,7 +2045,7 @@ export type Database = {
           received_at: string
           status: string
           subject: string | null
-          tenant_id: string | null
+          tenant_id: string
           thread_id: string | null
           updated_at: string
         }
@@ -2069,7 +2069,7 @@ export type Database = {
           received_at: string
           status?: string
           subject?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           thread_id?: string | null
           updated_at?: string
         }
@@ -2093,7 +2093,7 @@ export type Database = {
           received_at?: string
           status?: string
           subject?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           thread_id?: string | null
           updated_at?: string
         }

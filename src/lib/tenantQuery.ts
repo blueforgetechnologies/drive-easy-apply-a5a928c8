@@ -19,6 +19,7 @@ export const TENANT_OWNED_TABLES = [
   "load_expenses",
   "load_stops",
   "load_hunt_matches",
+  "load_emails",
   "customers",
   "carriers",
   "payees",
@@ -44,6 +45,11 @@ export const TENANT_OWNED_TABLES = [
   "tenant_integrations",
   "vehicle_integrations",
   "tenant_preferences",
+  // Newly tenant-scoped tables (Phase 1 migration)
+  "load_bids",
+  "match_action_history",
+  "map_load_tracking",
+  "audit_logs",
 ] as const;
 
 export type TenantOwnedTable = typeof TENANT_OWNED_TABLES[number];
