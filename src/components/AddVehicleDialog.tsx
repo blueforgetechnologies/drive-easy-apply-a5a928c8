@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTenantId } from "@/hooks/useTenantId";
 
 interface AddVehicleDialogProps {
   onVehicleAdded?: (vehicleId: string) => void;
 }
 
 export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,6 +35,11 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
       return;
     }
 
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -46,6 +53,7 @@ export function AddVehicleDialog({ onVehicleAdded }: AddVehicleDialogProps) {
           license_plate: formData.license_plate || null,
           asset_type: formData.asset_type,
           status: "active",
+          tenant_id: tenantId,
         }])
         .select()
         .single();

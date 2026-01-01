@@ -268,13 +268,18 @@ export default function VehiclesTab() {
 
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("vehicles")
-        .insert({
+        .insert([{
           ...formData,
           status: "active",
-        });
+          tenant_id: tenantId,
+        }]);
 
       if (error) throw error;
       toast.success("Asset added successfully");

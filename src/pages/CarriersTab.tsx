@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Carrier {
   id: string;

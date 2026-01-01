@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, Edit, Trash2, FileText, User, ChevronLeft, ChevronRight, Mail, Loader2, Phone, MapPin, Calendar } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Dispatcher {
   id: string;
@@ -38,6 +39,7 @@ interface Dispatcher {
 export default function DispatchersTab() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
@@ -78,9 +80,11 @@ export default function DispatchersTab() {
 
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, [filter, tenantId]);
 
   const loadData = async () => {
+    if (!tenantId && shouldFilter) return;
+    
     setLoading(true);
     try {
       let query = supabase
@@ -90,6 +94,10 @@ export default function DispatchersTab() {
       
       if (filter !== "all") {
         query = query.eq("status", filter);
+      }
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
       }
       
       const { data, error } = await query;
@@ -106,14 +114,21 @@ export default function DispatchersTab() {
 
   const handleAddDispatcher = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from("dispatchers")
-        .insert({
+        .insert([{
           ...formData,
           status: "active",
           hire_date: new Date().toISOString().split('T')[0],
-        });
+          tenant_id: tenantId,
+        }]);
 
       if (error) throw error;
       toast.success("Dispatcher added successfully");

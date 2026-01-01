@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Search, MapPin, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 export default function LocationsTab() {
   const navigate = useNavigate();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [locations, setLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,14 +36,20 @@ export default function LocationsTab() {
 
   useEffect(() => {
     loadLocations();
-  }, [activeFilter]);
+  }, [activeFilter, tenantId]);
 
   const loadLocations = async () => {
+    if (!tenantId && shouldFilter) return;
+    
     try {
       let query = supabase.from("locations").select("*").order("name");
       
       if (activeFilter !== "all") {
         query = query.eq("status", activeFilter);
+      }
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
       }
       
       const { data, error } = await query;
@@ -56,8 +64,16 @@ export default function LocationsTab() {
   };
 
   const handleAddLocation = async () => {
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
     try {
-      const { error } = await supabase.from("locations").insert([newLocation]);
+      const { error } = await supabase.from("locations").insert([{
+        ...newLocation,
+        tenant_id: tenantId,
+      }]);
       if (error) throw error;
       toast.success("Location added successfully");
       setDialogOpen(false);

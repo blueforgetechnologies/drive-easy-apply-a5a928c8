@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserPlus, Check, X, Building2, Phone, Mail, MapPin } from "lucide-react";
+import { useTenantId } from "@/hooks/useTenantId";
 
 interface ExtractedCustomerData {
   customer_name?: string;
@@ -25,11 +26,17 @@ interface NewCustomerPromptProps {
 }
 
 export function NewCustomerPrompt({ extractedData, onCustomerAdded, onDismiss }: NewCustomerPromptProps) {
+  const tenantId = useTenantId();
   const [loading, setLoading] = useState(false);
 
   const handleAddCustomer = async () => {
     if (!extractedData.customer_name) {
       toast.error("Customer name is required");
+      return;
+    }
+
+    if (!tenantId) {
+      toast.error("No tenant selected");
       return;
     }
 
@@ -48,6 +55,7 @@ export function NewCustomerPrompt({ extractedData, onCustomerAdded, onDismiss }:
           zip: extractedData.customer_zip || null,
           mc_number: extractedData.customer_mc_number || null,
           status: "active",
+          tenant_id: tenantId,
         }])
         .select()
         .single();
