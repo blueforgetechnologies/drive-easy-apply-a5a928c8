@@ -49,6 +49,7 @@ import ToolsTab from "./pages/ToolsTab";
 import AuditDetail from "./pages/AuditDetail";
 import PlatformAdminTab from "./pages/PlatformAdminTab";
 import Inspector from "./pages/Inspector";
+import DebugTenantDataTab from "./pages/DebugTenantDataTab";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ const App = () => (
               <Route path="/dashboard/duplicate-customers" element={<DashboardLayout><DuplicateCustomersTab /></DashboardLayout>} />
               <Route path="/dashboard/platform-admin" element={<DashboardLayout><PlatformAdminTab /></DashboardLayout>} />
               <Route path="/dashboard/inspector" element={<DashboardLayout><Inspector /></DashboardLayout>} />
+              <Route path="/dashboard/debug/tenant-data" element={<DashboardLayout><DebugTenantDataTab /></DashboardLayout>} />
               <Route path="/system-prompt" element={<SystemPromptExport />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

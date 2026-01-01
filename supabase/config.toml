@@ -164,3 +164,6 @@ verify_jwt = true
 
 [functions.platform-rollout-control]
 verify_jwt = true
+
+[functions.debug-tenant-data]
+verify_jwt = true
