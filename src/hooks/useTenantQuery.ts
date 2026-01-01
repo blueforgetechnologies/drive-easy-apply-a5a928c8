@@ -70,7 +70,8 @@ interface UseTenantQueryResult {
 export function useTenantQuery(): UseTenantQueryResult {
   const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
   
-  const context = { tenantId, shouldFilter };
+  // Full context passed to all tenant query utilities - SINGLE SOURCE OF TRUTH
+  const context = { tenantId, shouldFilter, isPlatformAdmin, showAllTenants };
   
   return {
     query: (tableName, options) => tenantQuery(tableName, context, options),

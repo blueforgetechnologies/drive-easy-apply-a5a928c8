@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,7 @@ interface HighwayData {
 export default function CarrierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [carrier, setCarrier] = useState<CarrierData | null>(null);
@@ -95,16 +97,22 @@ export default function CarrierDetail() {
   useEffect(() => {
     loadCarrier();
     loadPayees();
-  }, [id]);
+  }, [id, tenantId, shouldFilter]);
 
   const loadPayees = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("payees")
         .select("id, name, type, payment_method, bank_name, email, phone, address, status")
         .eq("status", "active")
         .order("name");
 
+      // Apply tenant filter
+      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setPayees(data || []);
     } catch (error: any) {

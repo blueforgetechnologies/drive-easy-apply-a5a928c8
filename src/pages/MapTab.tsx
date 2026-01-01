@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { Button } from '@/components/ui/button';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
 import { useVehicleHistory, LocationPoint } from '@/hooks/useVehicleHistory';
@@ -15,6 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const MapTab = () => {
   useMapLoadTracker('MapTab');
   const isMobile = useIsMobile();
+  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -44,13 +46,21 @@ const MapTab = () => {
     return () => {
       clearInterval(refreshInterval);
     };
-  }, []);
+  }, [tenantId, shouldFilter, isPlatformAdmin, showAllTenants]);
 
   const loadVehicles = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('vehicles')
       .select('*')
       .not('last_location', 'is', null);
+
+    // Apply tenant filter using centralized logic
+    // Platform admin with "All Tenants" enabled bypasses filtering
+    if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setVehicles(data);

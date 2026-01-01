@@ -44,17 +44,40 @@ export function isTenantOwnedTable(tableName: string): tableName is TenantOwnedT
 /**
  * Options for tenant query
  */
-interface TenantQueryOptions {
+export interface TenantQueryOptions {
   /** Bypass tenant filtering (ONLY for platform admin debug pages) */
   bypassTenantFilter?: boolean;
 }
 
 /**
  * Context for tenant filtering - must be passed by the calling component
+ * This is the SINGLE SOURCE OF TRUTH for tenant filtering decisions.
  */
-interface TenantContext {
+export interface TenantContext {
   tenantId: string | null;
   shouldFilter: boolean;
+  /** Platform admin flag - if true AND showAllTenants is true, bypass filtering */
+  isPlatformAdmin?: boolean;
+  /** Show all tenants toggle - only effective for platform admins */
+  showAllTenants?: boolean;
+}
+
+/**
+ * Determines if tenant filtering should be applied.
+ * This is the SINGLE SOURCE OF TRUTH for filtering logic.
+ * 
+ * Returns true (apply filter) when:
+ * - shouldFilter is true AND
+ * - tenantId exists AND
+ * - NOT (isPlatformAdmin AND showAllTenants)
+ */
+export function shouldApplyTenantFilter(context: TenantContext): boolean {
+  // Platform admin with "All Tenants" enabled bypasses filtering
+  if (context.isPlatformAdmin && context.showAllTenants) {
+    return false;
+  }
+  // Apply filter when shouldFilter is true and tenantId exists
+  return context.shouldFilter && !!context.tenantId;
 }
 
 /**
@@ -80,20 +103,24 @@ export function tenantQuery<T extends string>(
   const query = supabase.from(tableName as any);
   
   // Check if this is a tenant-owned table that needs filtering
-  if (isTenantOwnedTable(tableName) && context.shouldFilter && context.tenantId && !options.bypassTenantFilter) {
+  // Use shouldApplyTenantFilter as the SINGLE SOURCE OF TRUTH
+  const applyFilter = isTenantOwnedTable(tableName) && 
+                      !options.bypassTenantFilter && 
+                      shouldApplyTenantFilter(context);
+  
+  if (applyFilter && context.tenantId) {
     // Return a query builder that will automatically have tenant filter applied
-    // Note: The actual .eq() is applied when creating specific queries
     return {
-      select: (columns?: string, options?: Parameters<typeof query.select>[1]) => 
-        query.select(columns, options).eq("tenant_id", context.tenantId!),
-      insert: (values: any, options?: any) => 
-        query.insert(values, options),
-      update: (values: any, options?: any) => 
-        query.update(values, options).eq("tenant_id", context.tenantId!),
-      delete: (options?: any) => 
-        query.delete(options).eq("tenant_id", context.tenantId!),
-      upsert: (values: any, options?: any) => 
-        query.upsert(values, options),
+      select: (columns?: string, opts?: Parameters<typeof query.select>[1]) => 
+        query.select(columns, opts).eq("tenant_id", context.tenantId!),
+      insert: (values: any, opts?: any) => 
+        query.insert(values, opts),
+      update: (values: any, opts?: any) => 
+        query.update(values, opts).eq("tenant_id", context.tenantId!),
+      delete: (opts?: any) => 
+        query.delete(opts).eq("tenant_id", context.tenantId!),
+      upsert: (values: any, opts?: any) => 
+        query.upsert(values, opts),
     };
   }
   
@@ -115,21 +142,22 @@ export function tenantQuery<T extends string>(
 /**
  * Apply tenant filter to an existing query builder.
  * Use this when you need more control over the query construction.
+ * Uses shouldApplyTenantFilter as the SINGLE SOURCE OF TRUTH.
  * 
  * @param query - An existing Supabase query builder
  * @param context - The tenant context from useTenantFilter()
  * @returns The query with tenant filter applied (if applicable)
  * 
  * @example
- * const { tenantId, shouldFilter } = useTenantFilter();
+ * const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
  * let query = supabase.from("vehicles").select("*").eq("status", "active");
- * query = applyTenantFilter(query, { tenantId, shouldFilter });
+ * query = applyTenantFilter(query, { tenantId, shouldFilter, isPlatformAdmin, showAllTenants });
  */
 export function applyTenantFilter<T>(
   query: T,
   context: TenantContext
 ): T {
-  if (context.shouldFilter && context.tenantId) {
+  if (shouldApplyTenantFilter(context) && context.tenantId) {
     return (query as any).eq("tenant_id", context.tenantId);
   }
   return query;

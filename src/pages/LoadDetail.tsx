@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,12 +25,11 @@ import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { EditEntityDialog } from "@/components/EditEntityDialog";
 import { LoadDocuments } from "@/components/LoadDocuments";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
-import { useTenantId } from "@/hooks/useTenantId";
 
 export default function LoadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const tenantId = useTenantId();
+  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [load, setLoad] = useState<any>(null);
@@ -81,22 +81,43 @@ export default function LoadDetail() {
     if (id) {
       loadData();
     }
-  }, [id]);
+  }, [id, tenantId, shouldFilter]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      // Build tenant-filtered queries for tenant-owned tables
+      const shouldApplyFilter = !(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId;
+      
+      // Base queries
+      let driversQuery = supabase.from("applications").select("id, personal_info").eq("driver_status", "active");
+      let vehiclesQuery = supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval, carrier, truck_type, contractor_percentage").eq("status", "active");
+      let dispatchersQuery = supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active");
+      let locationsQuery = supabase.from("locations").select("*").eq("status", "active");
+      let carriersQuery = supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active");
+      let customersQuery = supabase.from("customers").select("id, name, contact_name, phone, email, address, city, state, zip").eq("status", "active");
+      
+      // Apply tenant filter to all tenant-owned tables
+      if (shouldApplyFilter) {
+        driversQuery = driversQuery.eq("tenant_id", tenantId);
+        vehiclesQuery = vehiclesQuery.eq("tenant_id", tenantId);
+        dispatchersQuery = dispatchersQuery.eq("tenant_id", tenantId);
+        locationsQuery = locationsQuery.eq("tenant_id", tenantId);
+        carriersQuery = carriersQuery.eq("tenant_id", tenantId);
+        customersQuery = customersQuery.eq("tenant_id", tenantId);
+      }
+      
       const [loadRes, stopsRes, expensesRes, docsRes, driversRes, vehiclesRes, dispatchersRes, locationsRes, carriersRes, customersRes, companyProfileRes] = await Promise.all([
         supabase.from("loads").select("*").eq("id", id).single(),
         supabase.from("load_stops").select("*").eq("load_id", id).order("stop_sequence"),
         supabase.from("load_expenses").select("*").eq("load_id", id).order("incurred_date", { ascending: false }),
         supabase.from("load_documents").select("*").eq("load_id", id).order("uploaded_at", { ascending: false }),
-        supabase.from("applications").select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles").select("id, vehicle_number, make, model, driver_1_id, asset_type, vehicle_size, asset_subtype, requires_load_approval, carrier, truck_type, contractor_percentage").eq("status", "active"),
-        supabase.from("dispatchers").select("id, first_name, last_name").eq("status", "active"),
-        supabase.from("locations").select("*").eq("status", "active"),
-        supabase.from("carriers").select("id, name, dot_number, mc_number, safer_status, safety_rating").eq("status", "active"),
-        supabase.from("customers").select("id, name, contact_name, phone, email, address, city, state, zip").eq("status", "active"),
+        driversQuery,
+        vehiclesQuery,
+        dispatchersQuery,
+        locationsQuery,
+        carriersQuery,
+        customersQuery,
         supabase.from("company_profile").select("factoring_company_name, factoring_company_address, factoring_company_city, factoring_company_state, factoring_company_zip, factoring_contact_name, factoring_contact_email").limit(1).single(),
       ]);
 
