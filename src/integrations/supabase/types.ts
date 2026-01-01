@@ -328,6 +328,7 @@ export type Database = {
           new_value: string | null
           notes: string | null
           old_value: string | null
+          tenant_id: string
           timestamp: string | null
           user_id: string | null
           user_name: string | null
@@ -342,6 +343,7 @@ export type Database = {
           new_value?: string | null
           notes?: string | null
           old_value?: string | null
+          tenant_id: string
           timestamp?: string | null
           user_id?: string | null
           user_name?: string | null
@@ -356,11 +358,20 @@ export type Database = {
           new_value?: string | null
           notes?: string | null
           old_value?: string | null
+          tenant_id?: string
           timestamp?: string | null
           user_id?: string | null
           user_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       billing_customers: {
         Row: {
@@ -1872,6 +1883,7 @@ export type Database = {
           load_id: string
           match_id: string | null
           status: string | null
+          tenant_id: string
           to_email: string | null
           updated_at: string
           vehicle_id: string | null
@@ -1886,6 +1898,7 @@ export type Database = {
           load_id: string
           match_id?: string | null
           status?: string | null
+          tenant_id: string
           to_email?: string | null
           updated_at?: string
           vehicle_id?: string | null
@@ -1900,6 +1913,7 @@ export type Database = {
           load_id?: string
           match_id?: string | null
           status?: string | null
+          tenant_id?: string
           to_email?: string | null
           updated_at?: string
           vehicle_id?: string | null
@@ -1939,6 +1953,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "unreviewed_matches"
             referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "load_bids_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "load_bids_vehicle_id_fkey"
@@ -3173,6 +3194,7 @@ export type Database = {
           created_at: string
           id: string
           month_year: string | null
+          tenant_id: string
           user_id: string | null
         }
         Insert: {
@@ -3180,6 +3202,7 @@ export type Database = {
           created_at?: string
           id?: string
           month_year?: string | null
+          tenant_id: string
           user_id?: string | null
         }
         Update: {
@@ -3187,9 +3210,18 @@ export type Database = {
           created_at?: string
           id?: string
           month_year?: string | null
+          tenant_id?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "map_load_tracking_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mapbox_billing_history: {
         Row: {
@@ -3294,6 +3326,7 @@ export type Database = {
           dispatcher_name: string | null
           id: string
           match_id: string
+          tenant_id: string
         }
         Insert: {
           action_details?: Json | null
@@ -3304,6 +3337,7 @@ export type Database = {
           dispatcher_name?: string | null
           id?: string
           match_id: string
+          tenant_id: string
         }
         Update: {
           action_details?: Json | null
@@ -3314,6 +3348,7 @@ export type Database = {
           dispatcher_name?: string | null
           id?: string
           match_id?: string
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -3336,6 +3371,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "unreviewed_matches"
             referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "match_action_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
         ]
       }
