@@ -398,14 +398,14 @@ export default function RolloutsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table className="table-fixed">
+          <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">Feature</TableHead>
-                <TableHead className="w-[120px] text-center">Global Default</TableHead>
-                <TableHead className="w-[100px] text-center">Internal</TableHead>
-                <TableHead className="w-[100px] text-center">Pilot</TableHead>
-                <TableHead className="w-[100px] text-center">General</TableHead>
+                <TableHead className="w-[200px] min-w-[200px]">Feature</TableHead>
+                <TableHead className="w-[140px] min-w-[140px] text-center">Global Default</TableHead>
+                <TableHead className="w-[120px] min-w-[120px] text-center">Internal</TableHead>
+                <TableHead className="w-[120px] min-w-[120px] text-center">Pilot</TableHead>
+                <TableHead className="w-[120px] min-w-[120px] text-center">General</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -417,7 +417,7 @@ export default function RolloutsTab() {
                 return (
                   <Collapsible key={flag.id} open={isExpanded} onOpenChange={() => toggleFlagExpanded(flag.id)}>
                     <TableRow className={isExpanded ? 'bg-muted/50' : ''}>
-                      <TableCell>
+                      <TableCell className="w-[200px] min-w-[200px]">
                         <div className="flex items-center gap-2">
                           <div>
                             <p className="font-medium">{flag.name}</p>
@@ -433,7 +433,7 @@ export default function RolloutsTab() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="w-[140px] min-w-[140px] text-center">
                         {flag.default_enabled ? (
                           <Check className="h-4 w-4 text-green-600 mx-auto" />
                         ) : (
@@ -446,7 +446,7 @@ export default function RolloutsTab() {
                         const isUpdating = updating === `${flag.id}-${channel}`;
                         
                         return (
-                          <TableCell key={channel} className="text-center">
+                          <TableCell key={channel} className="w-[120px] min-w-[120px] text-center">
                             <div className="flex flex-col items-center gap-1">
                               <Switch
                                 checked={effective}
@@ -461,7 +461,7 @@ export default function RolloutsTab() {
                           </TableCell>
                         );
                       })}
-                      <TableCell>
+                      <TableCell className="w-[50px]">
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
                             {isExpanded ? (
