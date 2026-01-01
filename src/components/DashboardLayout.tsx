@@ -14,6 +14,7 @@ import { TenantSwitcher } from "./TenantSwitcher";
 import { TenantRequired } from "./TenantRequired";
 import { ImpersonationBanner } from "./ImpersonationBanner";
 import { ImpersonateTenantDialog } from "./ImpersonateTenantDialog";
+import { TenantDebugBanner } from "./TenantDebugBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
@@ -635,6 +636,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         open={impersonateDialogOpen} 
         onOpenChange={setImpersonateDialogOpen} 
       />
+      
+      {/* Dev-only tenant debug banner */}
+      <TenantDebugBanner />
     </div>
   );
 }

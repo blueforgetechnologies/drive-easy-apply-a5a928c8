@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, Download, ShieldCheck } from "lucide-react";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 interface Vehicle {
   id: string;
   vehicle_number: string | null;
@@ -44,6 +45,7 @@ interface Vehicle {
 export default function VehiclesTab() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -74,11 +76,13 @@ export default function VehiclesTab() {
     license_plate: "",
   });
 
-  // Reload data when filter/sortOrder changes
+  // Reload data when filter/sortOrder/tenant changes
   useEffect(() => {
-    loadData();
-    loadAvailableDriversAndDispatchers();
-  }, [filter, sortOrder]);
+    if (tenantId || !shouldFilter) {
+      loadData();
+      loadAvailableDriversAndDispatchers();
+    }
+  }, [filter, sortOrder, tenantId, shouldFilter]);
 
   // Reload data when navigating back to this tab (e.g., after editing a vehicle)
   useEffect(() => {
@@ -121,9 +125,16 @@ export default function VehiclesTab() {
   };
 
   const loadData = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     setLoading(true);
     try {
       let query = supabase.from("vehicles").select("*");
+      
+      // Apply tenant filter unless showAllTenants is enabled
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
       
       // Apply status filter (if not "all")
       if (filter !== "all") {

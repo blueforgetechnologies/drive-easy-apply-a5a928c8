@@ -20,7 +20,7 @@ import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { PDFImageViewer } from "@/components/PDFImageViewer";
 import { CarrierRateHistoryDialog } from "@/components/CarrierRateHistoryDialog";
-import { useTenantContext } from "@/contexts/TenantContext";
+import { useTenantFilter } from '@/hooks/useTenantFilter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,7 +93,7 @@ interface Load {
 export default function LoadsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentTenant } = useTenantContext();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const filter = searchParams.get("filter") || "all";
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,11 +241,11 @@ export default function LoadsTab() {
 
   // Reload when tenant changes
   useEffect(() => {
-    if (currentTenant?.id) {
+    if (tenantId || !shouldFilter) {
       loadData();
       loadDriversAndVehicles();
     }
-  }, [currentTenant?.id]);
+  }, [tenantId, shouldFilter]);
 
   // Set default carrier in form when loaded
   useEffect(() => {
@@ -347,12 +347,12 @@ export default function LoadsTab() {
   }, [customers]);
 
   const loadData = async () => {
-    if (!currentTenant?.id) return;
+    if (shouldFilter && !tenantId) return;
     
     setLoading(true);
     try {
       // Always fetch ALL loads to get accurate counts for tabs
-      const query = supabase
+      let query = supabase
         .from("loads" as any)
         .select(`
           *,
@@ -363,8 +363,12 @@ export default function LoadsTab() {
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name),
           load_owner:dispatchers!load_owner_id(first_name, last_name)
         `)
-        .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: false });
+      
+      // Apply tenant filter unless showAllTenants is enabled
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
       
       const { data, error } = await query;
 
