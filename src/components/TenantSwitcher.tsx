@@ -45,18 +45,23 @@ function getChannelBadge(channel: string) {
 
 export function TenantSwitcher() {
   const { 
-    currentTenant, 
     effectiveTenant,
     memberships, 
     loading, 
     isPlatformAdmin, 
     switchTenant, 
-    getCurrentRole,
     isImpersonating,
   } = useTenantContext();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
+
+  // Compute role from memberships using effectiveTenant.id (not currentTenant)
+  const displayRole = useMemo(() => {
+    if (!effectiveTenant?.id) return null;
+    const m = memberships.find(x => x.tenant.id === effectiveTenant.id);
+    return m?.role ?? null;
+  }, [memberships, effectiveTenant?.id]);
 
   // Sort memberships by channel order, then by name
   const sortedMemberships = useMemo(() => {
@@ -122,7 +127,6 @@ export function TenantSwitcher() {
   }
 
   const displayTenant = effectiveTenant;
-  const currentRole = getCurrentRole();
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
