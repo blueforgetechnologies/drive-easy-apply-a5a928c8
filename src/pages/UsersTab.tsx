@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +14,17 @@ import { ChevronLeft, ChevronRight, KeyRound, Mail, RotateCw, Search, Trash2 } f
 
 const ROWS_PER_PAGE = 10;
 
-interface Profile {
+interface TenantUser {
   id: string;
-  email: string;
-  full_name: string | null;
-  created_at: string;
-  roles?: string[];
+  user_id: string;
+  role: string;
+  is_active: boolean;
+  joined_at: string;
+  profile?: {
+    id: string;
+    email: string;
+    full_name: string | null;
+  };
 }
 
 interface Invite {
@@ -26,6 +32,7 @@ interface Invite {
   email: string;
   invited_at: string;
   accepted_at: string | null;
+  tenant_id: string | null;
 }
 
 interface LoginHistory {
@@ -43,8 +50,9 @@ interface LoginHistory {
 export default function UsersTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const filter = searchParams.get("filter") || "active";
-  const [users, setUsers] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<TenantUser[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +60,11 @@ export default function UsersTab() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    loadData();
-    setCurrentPage(1);
-  }, [filter]);
+    if (tenantId || !shouldFilter) {
+      loadData();
+      setCurrentPage(1);
+    }
+  }, [filter, tenantId, shouldFilter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -72,57 +82,79 @@ export default function UsersTab() {
   };
 
   const loadActiveUsers = async () => {
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    if (!tenantId && shouldFilter) return;
 
-    if (profilesError) {
+    // Get users from tenant_users for the current tenant
+    let query = supabase
+      .from("tenant_users")
+      .select(`
+        id,
+        user_id,
+        role,
+        is_active,
+        joined_at,
+        profiles:user_id (
+          id,
+          email,
+          full_name
+        )
+      `)
+      .eq("is_active", true)
+      .order("joined_at", { ascending: false });
+
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
       toast.error("Error loading users");
+      console.error(error);
       return;
     }
 
-    // Get ALL roles for all users
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("user_id, role");
+    // Transform the data to flatten profile info
+    const transformedUsers = (data || []).map((tu: any) => ({
+      ...tu,
+      profile: tu.profiles,
+    }));
 
-    // Build a map of user_id -> roles[]
-    const userRolesMap = new Map<string, string[]>();
-    rolesData?.forEach((r) => {
-      const existing = userRolesMap.get(r.user_id) || [];
-      existing.push(r.role);
-      userRolesMap.set(r.user_id, existing);
-    });
+    setUsers(transformedUsers);
 
-    // Active users = users who have at least one role
-    const activeUsers = profilesData?.filter((p) => userRolesMap.has(p.id)).map((p) => ({
-      ...p,
-      roles: userRolesMap.get(p.id) || [],
-    })) || [];
-    
-    setUsers(activeUsers);
+    // Load login history for active users
+    const userIds = transformedUsers.map(u => u.user_id);
+    if (userIds.length > 0) {
+      const { data: historyData } = await supabase
+        .from("login_history")
+        .select("*")
+        .in("user_id", userIds)
+        .order("logged_in_at", { ascending: false })
+        .limit(50);
 
-    const { data: historyData } = await supabase
-      .from("login_history")
-      .select("*")
-      .order("logged_in_at", { ascending: false })
-      .limit(50);
-
-    if (historyData) {
-      const enrichedHistory = historyData.map((h) => ({
-        ...h,
-        profile: activeUsers.find((u) => u.id === h.user_id),
-      }));
-      setLoginHistory(enrichedHistory);
+      if (historyData) {
+        const enrichedHistory = historyData.map((h) => ({
+          ...h,
+          profile: transformedUsers.find((u) => u.user_id === h.user_id)?.profile,
+        }));
+        setLoginHistory(enrichedHistory);
+      }
     }
   };
 
   const loadInvitations = async () => {
-    const { data, error } = await supabase
+    if (!tenantId && shouldFilter) return;
+
+    let query = supabase
       .from("invites")
       .select("*")
       .order("invited_at", { ascending: false });
+
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error("Error loading invitations");
@@ -132,36 +164,50 @@ export default function UsersTab() {
   };
 
   const loadInactiveUsers = async () => {
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    if (!tenantId && shouldFilter) return;
 
-    if (profilesError) {
+    // Get inactive users from tenant_users for the current tenant
+    let query = supabase
+      .from("tenant_users")
+      .select(`
+        id,
+        user_id,
+        role,
+        is_active,
+        joined_at,
+        profiles:user_id (
+          id,
+          email,
+          full_name
+        )
+      `)
+      .eq("is_active", false)
+      .order("joined_at", { ascending: false });
+
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
       toast.error("Error loading users");
+      console.error(error);
       return;
     }
 
-    // Get ALL roles for all users
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("user_id, role");
+    const transformedUsers = (data || []).map((tu: any) => ({
+      ...tu,
+      profile: tu.profiles,
+    }));
 
-    const usersWithRoles = new Set(rolesData?.map((r) => r.user_id) || []);
-    
-    // Inactive users = users without any role
-    const inactiveUsers = profilesData?.filter((p) => !usersWithRoles.has(p.id)).map((p) => ({
-      ...p,
-      roles: [],
-    })) || [];
-    
-    setUsers(inactiveUsers);
+    setUsers(transformedUsers);
   };
 
   const handleResendInvite = async (invite: Invite) => {
     try {
       const { error } = await supabase.functions.invoke("send-invite", {
-        body: { email: invite.email },
+        body: { email: invite.email, tenantId },
       });
 
       if (error) throw error;
@@ -199,26 +245,28 @@ export default function UsersTab() {
     }
   };
 
-  const handleSendLogin = async (user: Profile) => {
+  const handleSendLogin = async (user: TenantUser) => {
+    if (!user.profile) return;
+    
     try {
       const { error } = await supabase.functions.invoke("send-user-login", {
         body: {
-          userId: user.id,
-          userEmail: user.email,
-          userName: user.full_name || user.email,
+          userId: user.user_id,
+          userEmail: user.profile.email,
+          userName: user.profile.full_name || user.profile.email,
         },
       });
 
       if (error) throw error;
-      toast.success(`Login credentials sent to ${user.email}`);
+      toast.success(`Login credentials sent to ${user.profile.email}`);
     } catch (error: any) {
       toast.error("Failed to send login: " + error.message);
     }
   };
 
   const filteredUsers = users.filter((user) => {
-    const fullName = (user.full_name || "").toLowerCase();
-    const email = user.email.toLowerCase();
+    const fullName = (user.profile?.full_name || "").toLowerCase();
+    const email = (user.profile?.email || "").toLowerCase();
     return fullName.includes(searchQuery.toLowerCase()) || email.includes(searchQuery.toLowerCase());
   });
 
@@ -248,6 +296,14 @@ export default function UsersTab() {
     (currentPage - 1) * ROWS_PER_PAGE,
     currentPage * ROWS_PER_PAGE
   );
+
+  if (!tenantId && shouldFilter) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Please select a tenant to view users.
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -412,7 +468,7 @@ export default function UsersTab() {
             <CardHeader>
               <CardTitle>{filter === "active" ? "Active" : "Inactive"} Users</CardTitle>
               <CardDescription>
-                {filter === "active" ? "Team members with assigned roles" : "Users without any role assigned"}
+                {filter === "active" ? "Team members with access to this organization" : "Users without active access"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -428,7 +484,7 @@ export default function UsersTab() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Roles</TableHead>
+                          <TableHead>Role</TableHead>
                           <TableHead>Joined</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -438,36 +494,25 @@ export default function UsersTab() {
                           <TableRow 
                             key={user.id} 
                             className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => navigate(`/dashboard/user/${user.id}`)}
+                            onClick={() => navigate(`/dashboard/user/${user.user_id}`)}
                           >
-                            <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
-                            <TableCell>{user.email}</TableCell>
+                            <TableCell className="font-medium">{user.profile?.full_name || "N/A"}</TableCell>
+                            <TableCell>{user.profile?.email || "N/A"}</TableCell>
                             <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {user.roles && user.roles.length > 0 ? (
-                                  user.roles.map((role) => (
-                                    <span 
-                                      key={role}
-                                      className={
-                                        role === "admin" 
-                                          ? "badge-glossy-primary" 
-                                          : role === "dispatcher" 
-                                          ? "badge-glossy-success"
-                                          : role === "driver"
-                                          ? "badge-glossy-warning"
-                                          : "badge-glossy-muted"
-                                      }
-                                    >
-                                      {role}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <Badge variant="secondary">No role</Badge>
-                                )}
-                              </div>
+                              <Badge 
+                                className={
+                                  user.role === "owner" 
+                                    ? "badge-glossy-primary" 
+                                    : user.role === "admin" 
+                                    ? "badge-glossy-success"
+                                    : "badge-glossy-muted"
+                                }
+                              >
+                                {user.role}
+                              </Badge>
                             </TableCell>
                             <TableCell>
-                              {format(new Date(user.created_at), "MM/dd/yyyy")}
+                              {format(new Date(user.joined_at), "MM/dd/yyyy")}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -481,13 +526,13 @@ export default function UsersTab() {
                                   Send Login
                                 </Button>
                                 <Button
-                                  onClick={() => handleResetPassword(user.email)}
+                                  onClick={() => user.profile && handleResetPassword(user.profile.email)}
                                   size="sm"
                                   variant="outline"
                                   className="gap-2"
                                 >
                                   <KeyRound className="h-4 w-4" />
-                                  Reset
+                                  Reset Password
                                 </Button>
                               </div>
                             </TableCell>
@@ -532,66 +577,36 @@ export default function UsersTab() {
           {filter === "active" && loginHistory.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Recent Login Activity</CardTitle>
-                <CardDescription>Track when users logged in and from where</CardDescription>
+                <CardTitle>Recent Login History</CardTitle>
+                <CardDescription>Latest login activity for your team</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-64 overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>User</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Login Time</TableHead>
+                        <TableHead>Time</TableHead>
                         <TableHead>IP Address</TableHead>
                         <TableHead>Location</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedHistory.map((log) => (
-                        <TableRow key={log.id}>
+                      {paginatedHistory.map((history) => (
+                        <TableRow key={history.id}>
                           <TableCell className="font-medium">
-                            {log.profile?.full_name || "Unknown"}
+                            {history.profile?.full_name || history.profile?.email || "Unknown"}
                           </TableCell>
-                          <TableCell>{log.profile?.email || "N/A"}</TableCell>
                           <TableCell>
-                            {format(new Date(log.logged_in_at), "MM/dd/yyyy h:mm a")}
+                            {format(new Date(history.logged_in_at), "MM/dd/yyyy HH:mm")}
                           </TableCell>
-                          <TableCell>{log.ip_address || "N/A"}</TableCell>
-                          <TableCell>{log.location || "N/A"}</TableCell>
+                          <TableCell>{history.ip_address || "N/A"}</TableCell>
+                          <TableCell>{history.location || "N/A"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-                {totalHistoryPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30 mt-2">
-                    <span className="text-xs text-muted-foreground">
-                      Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}-{Math.min(currentPage * ROWS_PER_PAGE, totalHistory)} of {totalHistory}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="h-6 w-6 p-0"
-                      >
-                        <ChevronLeft className="h-3 w-3" />
-                      </Button>
-                      <span className="text-xs">Page {currentPage} of {totalHistoryPages}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalHistoryPages, p + 1))}
-                        disabled={currentPage >= totalHistoryPages}
-                        className="h-6 w-6 p-0"
-                      >
-                        <ChevronRight className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}

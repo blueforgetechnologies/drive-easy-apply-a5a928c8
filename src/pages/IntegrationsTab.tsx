@@ -6,19 +6,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail } from "lucide-react";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Integration {
   id: string;
   name: string;
   description: string;
-  status: "operational" | "degraded" | "down" | "checking";
+  status: "operational" | "degraded" | "down" | "checking" | "not_configured";
   lastChecked?: string;
   error?: string;
 }
 
+interface TenantIntegration {
+  id: string;
+  provider: string;
+  is_enabled: boolean;
+  last_sync_at: string | null;
+  sync_status: string;
+  error_message: string | null;
+}
+
 export default function IntegrationsTab() {
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [integrations, setIntegrations] = useState<Integration[]>([
     {
       id: "samsara",
@@ -51,25 +62,45 @@ export default function IntegrationsTab() {
       status: "checking",
     },
   ]);
+  const [tenantIntegrations, setTenantIntegrations] = useState<TenantIntegration[]>([]);
   const [isChecking, setIsChecking] = useState(false);
   const [emailConfigOpen, setEmailConfigOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("P.D@talbilogistics.com");
+  const [emailAddress, setEmailAddress] = useState("");
   const [emailProvider, setEmailProvider] = useState("gmail");
   const [isSettingUpPush, setIsSettingUpPush] = useState(false);
   const [pushStatus, setPushStatus] = useState<"unknown" | "active" | "error">("unknown");
 
   useEffect(() => {
     checkAllIntegrations();
+    if (tenantId) {
+      loadTenantIntegrations();
+    }
     // Check every 5 minutes
     const interval = setInterval(checkAllIntegrations, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tenantId]);
+
+  const loadTenantIntegrations = async () => {
+    if (!tenantId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("tenant_integrations")
+        .select("*")
+        .eq("tenant_id", tenantId);
+      
+      if (error) throw error;
+      setTenantIntegrations(data || []);
+    } catch (error) {
+      console.error("Error loading tenant integrations:", error);
+    }
+  };
 
   const setupGmailPush = async () => {
     setIsSettingUpPush(true);
     try {
       const { data, error } = await supabase.functions.invoke('gmail-auth', {
-        body: { action: 'setup-push' }
+        body: { action: 'setup-push', tenantId }
       });
       
       if (error) throw error;
@@ -97,7 +128,9 @@ export default function IntegrationsTab() {
     setIsChecking(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('check-integrations');
+      const { data, error } = await supabase.functions.invoke('check-integrations', {
+        body: { tenantId }
+      });
       
       if (error) throw error;
       
@@ -125,6 +158,8 @@ export default function IntegrationsTab() {
         return <XCircle className="h-5 w-5 text-red-500" />;
       case "checking":
         return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
+      case "not_configured":
+        return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
       default:
         return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
     }
@@ -140,23 +175,59 @@ export default function IntegrationsTab() {
         return <Badge variant="destructive">Down</Badge>;
       case "checking":
         return <Badge variant="outline">Checking...</Badge>;
+      case "not_configured":
+        return <Badge variant="secondary">Not Configured</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
   };
 
-  const handleSaveEmailConfig = () => {
+  const handleSaveEmailConfig = async () => {
     if (!emailAddress) {
       toast.error("Please enter an email address");
       return;
     }
-    toast.success("Email configuration saved");
-    setEmailConfigOpen(false);
+    
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
+    try {
+      // Save email config as a tenant integration
+      const { error } = await supabase
+        .from("tenant_integrations")
+        .upsert({
+          tenant_id: tenantId,
+          provider: "gmail",
+          is_enabled: true,
+          settings: { email_address: emailAddress, provider: emailProvider },
+        }, {
+          onConflict: 'tenant_id,provider'
+        });
+      
+      if (error) throw error;
+      
+      toast.success("Email configuration saved");
+      setEmailConfigOpen(false);
+      loadTenantIntegrations();
+    } catch (error) {
+      console.error("Error saving email config:", error);
+      toast.error("Failed to save email configuration");
+    }
   };
 
   const failedIntegrationsCount = integrations.filter(
     (i) => i.status === "down" || i.status === "degraded"
   ).length;
+
+  if (!tenantId && shouldFilter) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Please select a tenant to manage integrations.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -164,7 +235,7 @@ export default function IntegrationsTab() {
         <div>
           <h2 className="text-xl font-bold">API Integrations</h2>
           <p className="text-sm text-muted-foreground">
-            Monitor the status of all connected APIs and services
+            Monitor and configure integrations for this organization
           </p>
         </div>
         <Button
@@ -203,7 +274,7 @@ export default function IntegrationsTab() {
           <div className="flex items-start justify-between">
             <div>
               <CardTitle className="text-base">Email Configuration</CardTitle>
-              <CardDescription>Configure Load Hunter email integration</CardDescription>
+              <CardDescription>Configure Load Hunter email integration for this organization</CardDescription>
             </div>
             <Dialog open={emailConfigOpen} onOpenChange={setEmailConfigOpen}>
               <DialogTrigger asChild>
@@ -253,14 +324,16 @@ export default function IntegrationsTab() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Email Address:</span>
-              <span className="font-medium">{emailAddress}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Provider:</span>
-              <span className="font-medium capitalize">{emailProvider}</span>
-            </div>
+            {tenantIntegrations.find(ti => ti.provider === "gmail") ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge className="bg-green-500">Configured</Badge>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground">Not configured for this organization</p>
+            )}
           </div>
         </CardContent>
       </Card>

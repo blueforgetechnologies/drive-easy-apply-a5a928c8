@@ -12,10 +12,13 @@ import { supabase } from "@/integrations/supabase/client";
  * Queries to these tables MUST include tenant_id filtering.
  */
 export const TENANT_OWNED_TABLES = [
+  // Core business entities
   "vehicles",
   "loads",
   "load_documents",
   "load_expenses",
+  "load_stops",
+  "load_hunt_matches",
   "customers",
   "carriers",
   "payees",
@@ -30,6 +33,17 @@ export const TENANT_OWNED_TABLES = [
   "settlements",
   "hunt_plans",
   "contacts",
+  "maintenance_records",
+  // Settings module tables (now tenant-scoped)
+  "company_profile",
+  "invites",
+  "custom_roles",
+  "role_permissions",
+  "user_custom_roles",
+  // Integration tables
+  "tenant_integrations",
+  "vehicle_integrations",
+  "tenant_preferences",
 ] as const;
 
 export type TenantOwnedTable = typeof TENANT_OWNED_TABLES[number];
