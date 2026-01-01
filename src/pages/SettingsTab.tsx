@@ -75,10 +75,3 @@ export default function SettingsTab() {
     </div>
   );
 }
-        <TabsContent value="preferences" className="mt-4">
-          <PreferencesTab />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
