@@ -173,3 +173,6 @@ verify_jwt = true
 
 [functions.tenant-counts]
 verify_jwt = true
+
+[functions.tenant-isolation-audit]
+verify_jwt = true
