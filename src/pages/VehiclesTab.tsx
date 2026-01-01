@@ -99,22 +99,36 @@ export default function VehiclesTab() {
   }, [filter, sortOrder]);
 
   const loadAvailableDriversAndDispatchers = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     try {
-      // Load drivers
-      const { data: driversData, error: driversError } = await supabase
+      // Load drivers - must filter by tenant
+      let driversQuery = supabase
         .from("applications")
         .select("id, personal_info, driver_status")
         .in("driver_status", ["Active", "active", "ACTIVE"]);
+      
+      if (shouldFilter && tenantId) {
+        driversQuery = driversQuery.eq("tenant_id", tenantId);
+      }
+
+      const { data: driversData, error: driversError } = await driversQuery;
 
       if (!driversError && driversData) {
         setAvailableDrivers(driversData);
       }
 
-      // Load dispatchers
-      const { data: dispatchersData, error: dispatchersError } = await supabase
+      // Load dispatchers - must filter by tenant
+      let dispatchersQuery = supabase
         .from("dispatchers")
         .select("id, first_name, last_name, status")
         .in("status", ["Active", "active", "ACTIVE"]);
+      
+      if (shouldFilter && tenantId) {
+        dispatchersQuery = dispatchersQuery.eq("tenant_id", tenantId);
+      }
+
+      const { data: dispatchersData, error: dispatchersError } = await dispatchersQuery;
 
       if (!dispatchersError && dispatchersData) {
         setAvailableDispatchers(dispatchersData);

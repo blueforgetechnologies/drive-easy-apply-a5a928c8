@@ -46,6 +46,7 @@ export default function CustomersTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "active";
   const typeFilter = (searchParams.get("type") || "all") as CustomerTypeFilter;
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -166,17 +167,27 @@ export default function CustomersTab() {
   });
 
   useEffect(() => {
-    loadData();
-  }, [filter, typeFilter]);
+    if (tenantId || !shouldFilter) {
+      loadData();
+    }
+  }, [filter, typeFilter, tenantId, shouldFilter]);
 
   const loadData = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     setLoading(true);
     try {
-      // Get all customers for duplicate detection
-      const { data: allData, error: allError } = await supabase
+      // Get all customers for duplicate detection (must be tenant-scoped)
+      let allQuery = supabase
         .from("customers" as any)
         .select("id, name")
         .order("name", { ascending: true });
+      
+      if (shouldFilter && tenantId) {
+        allQuery = allQuery.eq("tenant_id", tenantId);
+      }
+
+      const { data: allData, error: allError } = await allQuery;
 
       if (!allError && allData) {
         setTotalCustomerCount(allData.length);
@@ -194,6 +205,11 @@ export default function CustomersTab() {
       
       if (typeFilter !== "all") {
         query = query.eq("customer_type", typeFilter);
+      }
+      
+      // CRITICAL: Apply tenant filter
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
       }
 
       const { data, error } = await query;

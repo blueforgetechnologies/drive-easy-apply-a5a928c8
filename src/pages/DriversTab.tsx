@@ -57,10 +57,13 @@ export default function DriversTab() {
   const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const ROWS_PER_PAGE = 50;
+  const { tenantId, shouldFilter } = useTenantFilter();
 
   useEffect(() => {
-    loadData();
-  }, [filter]);
+    if (tenantId || !shouldFilter) {
+      loadData();
+    }
+  }, [filter, tenantId, shouldFilter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -85,16 +88,21 @@ export default function DriversTab() {
   };
 
   const loadVehicles = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("vehicles")
       .select("id, vehicle_number, driver_1_id, driver_2_id")
       .eq("status", "active");
+    
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setVehicles(data);
     }
   };
-
   const getVehicleForDriver = (applicationId: string): string | null => {
     const vehicle = vehicles.find(
       v => v.driver_1_id === applicationId || v.driver_2_id === applicationId
@@ -103,11 +111,17 @@ export default function DriversTab() {
   };
 
   const loadAllDrivers = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
       .order("submitted_at", { ascending: false });
+    
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error("Error loading drivers");
@@ -117,12 +131,18 @@ export default function DriversTab() {
   };
 
   const loadActiveDrivers = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
       .eq("driver_status", "active")
       .order("submitted_at", { ascending: false });
+    
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error("Error loading active drivers");
@@ -132,12 +152,18 @@ export default function DriversTab() {
   };
 
   const loadPendingDrivers = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
       .eq("driver_status", "pending")
       .order("submitted_at", { ascending: false });
+    
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error("Error loading pending drivers");
@@ -147,10 +173,16 @@ export default function DriversTab() {
   };
 
   const loadInvitations = async () => {
-    const { data: invitesData, error: invitesError } = await supabase
+    let invitesQuery = supabase
       .from("driver_invites")
       .select("*")
       .order("invited_at", { ascending: false });
+    
+    if (shouldFilter && tenantId) {
+      invitesQuery = invitesQuery.eq("tenant_id", tenantId);
+    }
+
+    const { data: invitesData, error: invitesError } = await invitesQuery;
 
     if (invitesError) {
       toast.error("Error loading invitations");
@@ -158,10 +190,16 @@ export default function DriversTab() {
     }
 
     // Check for completed applications
-    const { data: applicationsData, error: appsError } = await supabase
+    let applicationsQuery = supabase
       .from("applications")
       .select("id, personal_info, submitted_at, driver_status")
       .not("submitted_at", "is", null);
+    
+    if (shouldFilter && tenantId) {
+      applicationsQuery = applicationsQuery.eq("tenant_id", tenantId);
+    }
+
+    const { data: applicationsData, error: appsError } = await applicationsQuery;
 
     if (appsError) {
       console.error("Error loading applications:", appsError);
@@ -184,12 +222,18 @@ export default function DriversTab() {
   };
 
   const loadInactiveDrivers = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
       .eq("driver_status", "inactive")
       .order("submitted_at", { ascending: false });
+    
+    if (shouldFilter && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error("Error loading inactive drivers");
