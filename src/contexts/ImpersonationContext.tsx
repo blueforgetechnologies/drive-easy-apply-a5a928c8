@@ -24,6 +24,11 @@ interface ImpersonationContextValue {
 
 const ImpersonationContext = createContext<ImpersonationContextValue | null>(null);
 
+// Dispatch event to notify TenantContext and other listeners
+function dispatchImpersonationEvent() {
+  window.dispatchEvent(new Event('impersonation-changed'));
+}
+
 export function ImpersonationProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<ImpersonationSession | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,6 +72,7 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         // Session expired
         setSession(null);
         localStorage.removeItem(STORAGE_KEY);
+        dispatchImpersonationEvent();
         toast.info('Impersonation session expired');
         return false;
       }
@@ -123,11 +129,14 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         reason,
       };
 
-      setSession(newSession);
+      // 1. Set localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
       
-      // Dispatch event to notify TenantContext
-      window.dispatchEvent(new CustomEvent('impersonation-changed'));
+      // 2. Update local state
+      setSession(newSession);
+      
+      // 3. Dispatch event to notify TenantContext
+      dispatchImpersonationEvent();
       
       toast.success(`Now impersonating ${data.session.tenant_name}`);
       return true;
@@ -159,11 +168,14 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      setSession(null);
+      // 1. Clear localStorage
       localStorage.removeItem(STORAGE_KEY);
       
-      // Dispatch event to notify TenantContext
-      window.dispatchEvent(new CustomEvent('impersonation-changed'));
+      // 2. Clear local state
+      setSession(null);
+      
+      // 3. Dispatch event to notify TenantContext
+      dispatchImpersonationEvent();
       
       toast.success('Impersonation session ended');
       return true;

@@ -12,7 +12,8 @@ const corsHeaders = {
  * 2. Not expired
  * 3. Owned by the requesting platform admin
  * 
- * Returns authoritative tenant info if valid, or null if invalid.
+ * SECURITY: Returns 403 for sessions not owned by the requesting admin
+ * to avoid leaking session existence.
  */
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -95,17 +96,17 @@ Deno.serve(async (req) => {
     if (!session) {
       console.log(`[admin-get-impersonation-session] Session ${session_id} not found`);
       return new Response(
-        JSON.stringify({ valid: false, reason: 'session_not_found' }),
+        JSON.stringify({ valid: false, reason: 'not_found' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Session not owned by this admin
+    // SECURITY: Session not owned by this admin - return 403 (don't leak existence)
     if (session.admin_user_id !== adminUserId) {
-      console.log(`[admin-get-impersonation-session] Session ${session_id} not owned by admin ${adminUserId}`);
+      console.log(`[admin-get-impersonation-session] Session ${session_id} not owned by admin ${adminUserId} - returning 403`);
       return new Response(
-        JSON.stringify({ valid: false, reason: 'not_owner' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
     if (session.revoked_at) {
       console.log(`[admin-get-impersonation-session] Session ${session_id} was revoked`);
       return new Response(
-        JSON.stringify({ valid: false, reason: 'revoked' }),
+        JSON.stringify({ valid: false, reason: 'expired_or_revoked' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -123,7 +124,7 @@ Deno.serve(async (req) => {
     if (expiresAt <= Date.now()) {
       console.log(`[admin-get-impersonation-session] Session ${session_id} has expired`);
       return new Response(
-        JSON.stringify({ valid: false, reason: 'expired' }),
+        JSON.stringify({ valid: false, reason: 'expired_or_revoked' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
     if (!tenant) {
       console.log(`[admin-get-impersonation-session] Tenant for session ${session_id} not found`);
       return new Response(
-        JSON.stringify({ valid: false, reason: 'tenant_not_found' }),
+        JSON.stringify({ valid: false, reason: 'not_found' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
