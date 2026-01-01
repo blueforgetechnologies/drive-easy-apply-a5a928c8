@@ -1810,14 +1810,29 @@ export default function LoadHunterTab() {
   };
 
   // Load unreviewed matches efficiently from database view (server-side filtering)
+  // CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
   const loadUnreviewedMatches = async (retries = 3) => {
-    console.log('🚀 Loading unreviewed matches from view...');
+    console.log('🚀 Loading unreviewed matches from view...', { tenantId, shouldFilter });
+    
+    // Reset to empty if no tenant context yet
+    if (shouldFilter && !tenantId) {
+      console.log('⏳ No tenant context yet, showing empty matches');
+      setUnreviewedViewData([]);
+      return;
+    }
+    
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("unreviewed_matches")
-          .select("*")
-          .limit(500);
+          .select("*");
+        
+        // Apply tenant filter - the view now exposes tenant_id from hunt_plans
+        if (shouldFilter && tenantId) {
+          query = query.eq("tenant_id", tenantId);
+        }
+        
+        const { data, error } = await query.limit(500);
 
         if (error) {
           console.error(`🚀 Attempt ${attempt} failed:`, error);
@@ -1829,7 +1844,7 @@ export default function LoadHunterTab() {
           continue;
         }
         
-        console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view`);
+        console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view (tenant: ${tenantId})`);
         console.log('📊 Sample match:', data?.[0]);
         console.log('📊 Current myVehicleIds:', myVehicleIds);
         console.log('📊 Current activeMode:', activeMode);

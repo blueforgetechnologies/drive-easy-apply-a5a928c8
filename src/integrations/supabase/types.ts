@@ -5239,10 +5239,18 @@ export type Database = {
           plan_name: string | null
           received_at: string | null
           subject: string | null
+          tenant_id: string | null
           vehicle_id: string | null
           vehicle_size: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "hunt_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "load_hunt_matches_hunt_plan_id_fkey"
             columns: ["hunt_plan_id"]
