@@ -1,7 +1,7 @@
 import { Building2, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useTenantContext } from "@/hooks/useTenantContext";
+import { useTenantContext } from "@/contexts/TenantContext";
 import {
   Tooltip,
   TooltipContent,

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'tms.currentTenantId';
@@ -18,7 +19,20 @@ interface TenantMembership {
   role: string;
 }
 
-export function useTenantContext() {
+interface TenantContextValue {
+  currentTenant: Tenant | null;
+  memberships: TenantMembership[];
+  loading: boolean;
+  isPlatformAdmin: boolean;
+  switchTenant: (tenantId: string) => void;
+  getCurrentRole: () => string | null;
+  refreshMemberships: () => Promise<void>;
+}
+
+const TenantContext = createContext<TenantContextValue | null>(null);
+
+export function TenantProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [memberships, setMemberships] = useState<TenantMembership[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,10 +154,15 @@ export function useTenantContext() {
   const switchTenant = useCallback((tenantId: string) => {
     const membership = memberships.find(m => m.tenant.id === tenantId);
     if (membership) {
+      console.log('[TenantContext] Switching tenant to:', membership.tenant.name);
       setCurrentTenant(membership.tenant);
       localStorage.setItem(STORAGE_KEY, tenantId);
+      
+      // Invalidate all queries to force refetch with new tenant context
+      console.log('[TenantContext] Invalidating all queries');
+      queryClient.invalidateQueries();
     }
-  }, [memberships]);
+  }, [memberships, queryClient]);
 
   const getCurrentRole = useCallback(() => {
     if (!currentTenant) return null;
@@ -151,13 +170,28 @@ export function useTenantContext() {
     return membership?.role || null;
   }, [currentTenant, memberships]);
 
-  return {
-    currentTenant,
-    memberships,
-    loading,
-    isPlatformAdmin,
-    switchTenant,
-    getCurrentRole,
-    refreshMemberships: loadMemberships
-  };
+  return (
+    <TenantContext.Provider value={{
+      currentTenant,
+      memberships,
+      loading,
+      isPlatformAdmin,
+      switchTenant,
+      getCurrentRole,
+      refreshMemberships: loadMemberships
+    }}>
+      {children}
+    </TenantContext.Provider>
+  );
 }
+
+export function useTenantContext() {
+  const context = useContext(TenantContext);
+  if (!context) {
+    throw new Error('useTenantContext must be used within a TenantProvider');
+  }
+  return context;
+}
+
+// Re-export types for convenience
+export type { Tenant, TenantMembership };

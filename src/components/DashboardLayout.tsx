@@ -11,6 +11,7 @@ import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { TenantSwitcher } from "./TenantSwitcher";
 import { TenantIndicator } from "./TenantIndicator";
+import { TenantRequired } from "./TenantRequired";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -592,7 +593,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         location.pathname.includes('/load-hunter') ? "pb-4" : "pb-20 md:pb-4",
         location.pathname.includes('/fleet-financials') && "min-h-0 overflow-hidden",
       )}>
-        {children}
+        {/* Platform Admin and Inspector are exempt from tenant requirement */}
+        {location.pathname.includes('/platform-admin') || location.pathname.includes('/inspector') ? (
+          children
+        ) : (
+          <TenantRequired>
+            {children}
+          </TenantRequired>
+        )}
       </main>
 
       {/* Mobile Bottom Navigation - Hidden on Load Hunter for more screen space */}
