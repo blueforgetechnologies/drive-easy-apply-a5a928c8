@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const STORAGE_KEY = 'tms.currentTenantId';
 const IMPERSONATION_STORAGE_KEY = 'tms.adminImpersonationSession';
+const VALIDATION_INTERVAL_MS = 30000; // 30 seconds
 
 interface Tenant {
   id: string;
@@ -25,6 +27,8 @@ interface ImpersonationSession {
   tenant_id: string;
   tenant_name: string;
   tenant_slug: string;
+  release_channel: string;
+  status: string;
   expires_at: string;
   reason: string;
 }
@@ -52,62 +56,169 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [impersonatedTenant, setImpersonatedTenant] = useState<Tenant | null>(null);
+  const validationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const previousEffectiveTenantIdRef = useRef<string | null>(null);
+
+  // Clear impersonation and invalidate queries
+  const clearImpersonation = useCallback((reason?: string) => {
+    localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    setImpersonatedTenant(null);
+    
+    if (reason) {
+      toast.info(`Impersonation ended: ${reason}`);
+    }
+    
+    // Invalidate all queries when impersonation ends
+    queryClient.invalidateQueries();
+  }, [queryClient]);
+
+  // Validate impersonation session via edge function
+  const validateImpersonationSession = useCallback(async (sessionId: string): Promise<ImpersonationSession | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-get-impersonation-session', {
+        body: { session_id: sessionId },
+      });
+
+      if (error) {
+        console.error('[TenantContext] Error validating impersonation session:', error);
+        return null;
+      }
+
+      if (!data?.valid) {
+        console.log('[TenantContext] Impersonation session invalid:', data?.reason);
+        return null;
+      }
+
+      // Return authoritative session from server
+      return {
+        session_id: data.session.id,
+        tenant_id: data.session.tenant_id,
+        tenant_name: data.session.tenant_name,
+        tenant_slug: data.session.tenant_slug,
+        release_channel: data.session.release_channel || 'unknown',
+        status: data.session.status || 'active',
+        expires_at: data.session.expires_at,
+        reason: data.session.reason,
+      };
+    } catch (err) {
+      console.error('[TenantContext] Failed to validate impersonation session:', err);
+      return null;
+    }
+  }, []);
 
   // Check for active impersonation session
   const checkImpersonation = useCallback(async () => {
     const stored = localStorage.getItem(IMPERSONATION_STORAGE_KEY);
     if (!stored) {
-      setImpersonatedTenant(null);
+      if (impersonatedTenant) {
+        clearImpersonation();
+      }
       return;
     }
 
     try {
-      const session: ImpersonationSession = JSON.parse(stored);
-      const expiresAt = new Date(session.expires_at).getTime();
+      const storedSession = JSON.parse(stored);
+      const sessionId = storedSession?.session_id;
       
-      if (expiresAt <= Date.now()) {
-        localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-        setImpersonatedTenant(null);
+      if (!sessionId) {
+        clearImpersonation('Invalid session data');
         return;
       }
 
-      // Create a tenant object from impersonation session
-      setImpersonatedTenant({
-        id: session.tenant_id,
-        name: session.tenant_name,
-        slug: session.tenant_slug,
-        release_channel: 'unknown',
-        status: 'active',
-      });
-    } catch {
-      localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-      setImpersonatedTenant(null);
-    }
-  }, []);
+      // Quick client-side expiration check first
+      const expiresAt = new Date(storedSession.expires_at).getTime();
+      if (expiresAt <= Date.now()) {
+        clearImpersonation('Session expired');
+        return;
+      }
 
-  // Listen for impersonation changes
+      // Validate with server
+      const validatedSession = await validateImpersonationSession(sessionId);
+      
+      if (!validatedSession) {
+        clearImpersonation('Session no longer valid');
+        return;
+      }
+
+      // Update state with authoritative server data
+      setImpersonatedTenant({
+        id: validatedSession.tenant_id,
+        name: validatedSession.tenant_name,
+        slug: validatedSession.tenant_slug,
+        release_channel: validatedSession.release_channel,
+        status: validatedSession.status,
+      });
+
+      // Update localStorage with authoritative data
+      localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(validatedSession));
+    } catch {
+      clearImpersonation('Failed to parse session');
+    }
+  }, [impersonatedTenant, clearImpersonation, validateImpersonationSession]);
+
+  // Set up validation interval when impersonating
   useEffect(() => {
+    if (impersonatedTenant) {
+      // Start periodic validation
+      validationIntervalRef.current = setInterval(checkImpersonation, VALIDATION_INTERVAL_MS);
+    } else {
+      // Clear interval when not impersonating
+      if (validationIntervalRef.current) {
+        clearInterval(validationIntervalRef.current);
+        validationIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (validationIntervalRef.current) {
+        clearInterval(validationIntervalRef.current);
+        validationIntervalRef.current = null;
+      }
+    };
+  }, [impersonatedTenant, checkImpersonation]);
+
+  // Listen for impersonation changes from ImpersonationContext
+  useEffect(() => {
+    // Initial check on mount
     checkImpersonation();
 
-    // Listen for storage changes (impersonation start/stop)
+    // Listen for storage changes (impersonation start/stop from other components)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === IMPERSONATION_STORAGE_KEY) {
         checkImpersonation();
-        // Invalidate queries when impersonation changes
-        queryClient.invalidateQueries();
       }
     };
 
+    // Listen for custom events (same-window impersonation changes)
+    const handleImpersonationChange = () => {
+      checkImpersonation();
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    
-    // Also check periodically for expiration
-    const interval = setInterval(checkImpersonation, 10000);
+    window.addEventListener('impersonation-changed', handleImpersonationChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
+      window.removeEventListener('impersonation-changed', handleImpersonationChange);
     };
-  }, [checkImpersonation, queryClient]);
+  }, [checkImpersonation]);
+
+  // Compute effective tenant (impersonated takes priority)
+  const effectiveTenant = useMemo(() => {
+    return impersonatedTenant || currentTenant;
+  }, [impersonatedTenant, currentTenant]);
+
+  // Invalidate queries when effective tenant changes
+  useEffect(() => {
+    const newEffectiveId = effectiveTenant?.id || null;
+    
+    if (previousEffectiveTenantIdRef.current !== null && previousEffectiveTenantIdRef.current !== newEffectiveId) {
+      console.log('[TenantContext] Effective tenant changed, invalidating queries');
+      queryClient.invalidateQueries();
+    }
+    
+    previousEffectiveTenantIdRef.current = newEffectiveId;
+  }, [effectiveTenant?.id, queryClient]);
 
   const loadMemberships = useCallback(async () => {
     try {
@@ -197,7 +308,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       // Persist and set
       if (selectedTenant) {
         console.log('[TenantContext] Selected tenant:', selectedTenant.name, selectedTenant.id);
-        console.log('[TenantContext] Writing to localStorage:', STORAGE_KEY, selectedTenant.id);
         localStorage.setItem(STORAGE_KEY, selectedTenant.id);
         setCurrentTenant(selectedTenant);
       } else {
@@ -229,6 +339,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     // Don't allow switching while impersonating
     if (impersonatedTenant) {
       console.warn('[TenantContext] Cannot switch tenants while impersonating');
+      toast.warning('Cannot switch tenants while impersonating. Stop impersonation first.');
       return;
     }
 
@@ -249,11 +360,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     const membership = memberships.find(m => m.tenant.id === currentTenant.id);
     return membership?.role || null;
   }, [currentTenant, memberships]);
-
-  // Compute effective tenant (impersonated takes priority)
-  const effectiveTenant = useMemo(() => {
-    return impersonatedTenant || currentTenant;
-  }, [impersonatedTenant, currentTenant]);
 
   const isImpersonating = !!impersonatedTenant;
 

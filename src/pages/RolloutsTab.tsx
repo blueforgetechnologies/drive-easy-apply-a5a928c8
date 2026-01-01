@@ -164,22 +164,18 @@ export default function RolloutsTab() {
     setUpdating(`${flagId}-${channel}`);
     
     try {
-      if (currentValue === null) {
-        // Create new channel default
-        const { error } = await supabase.from('release_channel_feature_flags').insert({
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'set_channel_default',
           feature_flag_id: flagId,
           release_channel: channel,
           enabled: newValue,
-        });
-        if (error) throw error;
-      } else {
-        // Update existing
-        const { error } = await supabase
-          .from('release_channel_feature_flags')
-          .update({ enabled: newValue })
-          .eq('feature_flag_id', flagId)
-          .eq('release_channel', channel);
-        if (error) throw error;
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to update channel default');
+        return;
       }
       
       toast.success(`Channel default updated`);
@@ -194,29 +190,25 @@ export default function RolloutsTab() {
 
   async function toggleTenantOverride(flagId: string, tenantId: string, currentValue: boolean | null) {
     const tenantName = data?.tenants.find(t => t.id === tenantId)?.name || 'tenant';
+    const newValue = currentValue === null ? true : !currentValue;
     setUpdating(`${flagId}-${tenantId}`);
     
     try {
-      if (currentValue === null) {
-        // Create override (toggle to ON)
-        const { error } = await supabase.from('tenant_feature_flags').insert({
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'set_tenant_override',
           feature_flag_id: flagId,
           tenant_id: tenantId,
-          enabled: true,
-        });
-        if (error) throw error;
-        toast.success(`Override created for ${tenantName}`);
-      } else {
-        // Toggle existing override
-        const { error } = await supabase
-          .from('tenant_feature_flags')
-          .update({ enabled: !currentValue })
-          .eq('feature_flag_id', flagId)
-          .eq('tenant_id', tenantId);
-        if (error) throw error;
-        toast.success(`Override updated for ${tenantName}`);
+          enabled: newValue,
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to update tenant override');
+        return;
       }
       
+      toast.success(currentValue === null ? `Override created for ${tenantName}` : `Override updated for ${tenantName}`);
       await loadData();
     } catch (err) {
       console.error('Error updating tenant override:', err);
@@ -231,13 +223,19 @@ export default function RolloutsTab() {
     setUpdating(`${flagId}-${tenantId}-remove`);
     
     try {
-      const { error } = await supabase
-        .from('tenant_feature_flags')
-        .delete()
-        .eq('feature_flag_id', flagId)
-        .eq('tenant_id', tenantId);
-        
-      if (error) throw error;
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'remove_tenant_override',
+          feature_flag_id: flagId,
+          tenant_id: tenantId,
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to remove override');
+        return;
+      }
+      
       toast.success(`Override removed for ${tenantName}`);
       await loadData();
     } catch (err) {
@@ -259,14 +257,7 @@ export default function RolloutsTab() {
     
     setUpdating('channel');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Not authenticated');
-        return;
-      }
-
       const { data: result, error } = await supabase.functions.invoke('inspector-release-control', {
-        method: 'POST',
         body: {
           tenant_id: selectedTenant.id,
           release_channel: newChannel,
