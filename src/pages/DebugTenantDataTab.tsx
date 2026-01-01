@@ -45,6 +45,10 @@ export default function DebugTenantDataTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("[DebugTenantData] tenantId:", tenantId, "effectiveTenant:", effectiveTenant);
+  }, [tenantId, effectiveTenant]);
+
+  useEffect(() => {
     // Redirect non-admins
     if (!isPlatformAdmin) {
       toast.error("Platform admin access required");
@@ -105,6 +109,15 @@ export default function DebugTenantDataTab() {
           </p>
         </div>
       </div>
+
+      {!tenantId && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive">
+          <p className="font-medium">No effective tenant id available</p>
+          <p className="text-sm text-destructive/80">
+            Select a tenant in the tenant switcher; scoped counts will not update until a tenant is selected.
+          </p>
+        </div>
+      )}
 
       {/* Current Context Card */}
       <Card>

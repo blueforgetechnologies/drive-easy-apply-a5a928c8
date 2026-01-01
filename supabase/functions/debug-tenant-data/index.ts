@@ -41,13 +41,21 @@ Deno.serve(async (req) => {
       requestedTenantId = req.headers.get("x-tenant-id");
     }
 
+    console.log("[debug-tenant-data] requestedTenantId:", requestedTenantId);
+
     // Validate tenant_id if provided
     if (requestedTenantId && !isValidUUID(requestedTenantId)) {
       console.error("[debug-tenant-data] Invalid tenant_id format:", requestedTenantId);
-      return new Response(JSON.stringify({ error: "invalid_tenant_id", message: "tenant_id must be a valid UUID" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "invalid_tenant_id",
+          message: "tenant_id must be a valid UUID",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Create user client to verify identity
@@ -59,7 +67,10 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await userClient.auth.getUser();
     if (userError || !user) {
       console.error("[debug-tenant-data] User auth failed:", userError?.message);
       return new Response(JSON.stringify({ error: "unauthorized" }), {
@@ -68,11 +79,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[debug-tenant-data] User ${user.id} requesting tenant data, effective tenant: ${requestedTenantId || 'none'}`);
+    console.log(
+      `[debug-tenant-data] User ${user.id} requesting tenant data, effective tenant: ${requestedTenantId || "none"}`
+    );
 
     // Verify platform admin using service role
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-    
+
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("is_platform_admin")
@@ -89,7 +102,7 @@ Deno.serve(async (req) => {
 
     console.log("[debug-tenant-data] Platform admin verified, fetching counts");
 
-    // Fetch vehicle counts by tenant (global)
+    // Fetch vehicle tenant_id list (global)
     const { data: vehicleCounts, error: vehicleError } = await serviceClient
       .from("vehicles")
       .select("tenant_id");
@@ -98,7 +111,7 @@ Deno.serve(async (req) => {
       console.error("[debug-tenant-data] Vehicle query error:", vehicleError.message);
     }
 
-    // Fetch load counts by tenant (global)
+    // Fetch load tenant_id list (global)
     const { data: loadCounts, error: loadError } = await serviceClient
       .from("loads")
       .select("tenant_id");
@@ -138,7 +151,7 @@ Deno.serve(async (req) => {
     });
 
     // Build global results
-    const results: Array<{
+    const global: Array<{
       tenant_id: string;
       tenant_name: string;
       tenant_slug: string;
@@ -147,10 +160,9 @@ Deno.serve(async (req) => {
       count: number;
     }> = [];
 
-    // Add vehicle counts
     for (const [tid, count] of Object.entries(vehiclesByTenant)) {
       const tenant = tenantMap[tid];
-      results.push({
+      global.push({
         tenant_id: tid,
         tenant_name: tenant?.name || (tid === "NULL" ? "(no tenant)" : "Unknown"),
         tenant_slug: tenant?.slug || "-",
@@ -160,10 +172,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Add load counts
     for (const [tid, count] of Object.entries(loadsByTenant)) {
       const tenant = tenantMap[tid];
-      results.push({
+      global.push({
         tenant_id: tid,
         tenant_name: tenant?.name || (tid === "NULL" ? "(no tenant)" : "Unknown"),
         tenant_slug: tenant?.slug || "-",
@@ -173,8 +184,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Sort by tenant_name, then entity
-    results.sort((a, b) => {
+    global.sort((a, b) => {
       if (a.tenant_name !== b.tenant_name) return a.tenant_name.localeCompare(b.tenant_name);
       return a.entity.localeCompare(b.entity);
     });
@@ -199,19 +209,18 @@ Deno.serve(async (req) => {
         loads: loadCount,
       };
 
-      console.log(`[debug-tenant-data] Current tenant ${requestedTenantId}: ${vehicleCount} vehicles, ${loadCount} loads`);
+      console.log(
+        `[debug-tenant-data] Current tenant ${requestedTenantId}: ${vehicleCount} vehicles, ${loadCount} loads`
+      );
     }
 
-    console.log(`[debug-tenant-data] Returning ${results.length} global rows`);
+    console.log(`[debug-tenant-data] Returning ${global.length} global rows`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        // Global counts by tenant
-        global_counts_by_tenant: results,
-        // Current tenant scoped counts
+        global_counts_by_tenant: global,
         current_tenant_counts: currentTenantCounts,
-        // Totals
         totals: {
           vehicles: Object.values(vehiclesByTenant).reduce((a, b) => a + b, 0),
           loads: Object.values(loadsByTenant).reduce((a, b) => a + b, 0),
