@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { ChevronLeft, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ReviewSubmitProps {
   data: any;
@@ -15,6 +15,23 @@ interface ReviewSubmitProps {
 
 export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+
+  // Fetch tenant_id from the invite
+  useEffect(() => {
+    const fetchTenantId = async () => {
+      if (!data?.inviteId) return;
+      const { data: invite } = await supabase
+        .from('driver_invites')
+        .select('tenant_id')
+        .eq('id', data.inviteId)
+        .single();
+      if (invite?.tenant_id) {
+        setTenantId(invite.tenant_id);
+      }
+    };
+    fetchTenantId();
+  }, [data?.inviteId]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -25,6 +42,10 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       // Validate invite ID is present
       if (!data?.inviteId) {
         throw new Error("Invalid invitation. Please use a valid invite link.");
+      }
+
+      if (!tenantId) {
+        throw new Error("Could not determine tenant. Please try again.");
       }
 
       // First, mark the invite as used
@@ -38,11 +59,12 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         // Continue anyway - the RLS policy will catch invalid invites
       }
 
-      // Save to database with invite_id
+      // Save to database with invite_id and tenant_id
       const { error: dbError } = await supabase
         .from('applications')
         .insert({
           invite_id: data.inviteId,
+          tenant_id: tenantId,
           personal_info: data.personalInfo,
           payroll_policy: data.payrollPolicy || {},
           license_info: data.licenseInfo,

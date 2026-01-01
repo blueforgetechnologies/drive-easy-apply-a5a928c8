@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
+import { useTenantId } from "@/hooks/useTenantId";
 interface BookLoadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +30,7 @@ export function BookLoadDialog({
   currentDispatcherId,
   onBookingComplete,
 }: BookLoadDialogProps) {
+  const tenantId = useTenantId();
   const [rate, setRate] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [dispatcherId, setDispatcherId] = useState("");
@@ -220,6 +221,7 @@ export function BookLoadDialog({
           bid_placed_by: match.bid_by || null,
           
           created_at: new Date().toISOString(),
+          tenant_id: tenantId,
         })
         .select()
         .single();

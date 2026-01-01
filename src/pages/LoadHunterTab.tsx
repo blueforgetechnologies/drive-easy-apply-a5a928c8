@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantId } from "@/hooks/useTenantId";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
@@ -111,6 +112,7 @@ interface HuntPlan {
 export default function LoadHunterTab() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const tenantId = useTenantId();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
@@ -2402,6 +2404,7 @@ export default function LoadHunterTab() {
           enabled: true,
           floor_load_id: floorLoadId,
           initial_match_done: false,
+          tenant_id: tenantId,
         })
         .select()
         .single();
