@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const STORAGE_KEY = 'tms.currentTenantId';
+
 interface Tenant {
   id: string;
   name: string;
   slug: string;
   logo_url?: string;
   primary_color?: string;
+  release_channel: string;
+  status: string;
 }
 
 interface TenantMembership {
@@ -34,7 +38,7 @@ export function useTenantContext() {
       const { data: adminCheck } = await supabase.rpc('is_platform_admin', { _user_id: user.id });
       setIsPlatformAdmin(!!adminCheck);
 
-      // Get user's tenant memberships
+      // Get user's tenant memberships with extended tenant fields
       const { data: tenantUsers, error } = await supabase
         .from('tenant_users')
         .select(`
@@ -44,7 +48,9 @@ export function useTenantContext() {
             name,
             slug,
             logo_url,
-            primary_color
+            primary_color,
+            release_channel,
+            status
           )
         `)
         .eq('user_id', user.id)
@@ -61,15 +67,43 @@ export function useTenantContext() {
 
       setMemberships(membershipList);
 
-      // Set current tenant from localStorage or first available
-      const savedTenantId = localStorage.getItem('currentTenantId');
-      const savedTenant = membershipList.find(m => m.tenant.id === savedTenantId);
-      
-      if (savedTenant) {
-        setCurrentTenant(savedTenant.tenant);
-      } else if (membershipList.length > 0) {
-        setCurrentTenant(membershipList[0].tenant);
-        localStorage.setItem('currentTenantId', membershipList[0].tenant.id);
+      // Determine current tenant with priority logic
+      const savedTenantId = localStorage.getItem(STORAGE_KEY);
+      let selectedTenant: Tenant | null = null;
+
+      // Priority 1: localStorage value if valid
+      if (savedTenantId) {
+        const savedMembership = membershipList.find(m => m.tenant.id === savedTenantId);
+        if (savedMembership) {
+          selectedTenant = savedMembership.tenant;
+        }
+      }
+
+      // Priority 2: Exactly one tenant
+      if (!selectedTenant && membershipList.length === 1) {
+        selectedTenant = membershipList[0].tenant;
+      }
+
+      // Priority 3: Tenant with slug "default"
+      if (!selectedTenant) {
+        const defaultTenant = membershipList.find(m => m.tenant.slug === 'default');
+        if (defaultTenant) {
+          selectedTenant = defaultTenant.tenant;
+        }
+      }
+
+      // Priority 4: First tenant in list
+      if (!selectedTenant && membershipList.length > 0) {
+        selectedTenant = membershipList[0].tenant;
+      }
+
+      // Persist and set
+      if (selectedTenant) {
+        localStorage.setItem(STORAGE_KEY, selectedTenant.id);
+        setCurrentTenant(selectedTenant);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+        setCurrentTenant(null);
       }
     } catch (err) {
       console.error('Error loading tenant memberships:', err);
@@ -92,7 +126,7 @@ export function useTenantContext() {
     const membership = memberships.find(m => m.tenant.id === tenantId);
     if (membership) {
       setCurrentTenant(membership.tenant);
-      localStorage.setItem('currentTenantId', tenantId);
+      localStorage.setItem(STORAGE_KEY, tenantId);
     }
   }, [memberships]);
 
