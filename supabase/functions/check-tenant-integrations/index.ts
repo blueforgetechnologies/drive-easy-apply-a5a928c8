@@ -6,6 +6,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// SINGLE SOURCE OF TRUTH: Provider catalog lives only in this edge function
+// UI renders whatever this function returns - no duplication
+const PROVIDER_CATALOG = [
+  { 
+    id: 'samsara', 
+    name: 'Samsara API', 
+    description: 'Vehicle telematics and fleet tracking',
+    icon: 'truck'
+  },
+  { 
+    id: 'resend', 
+    name: 'Resend Email', 
+    description: 'Transactional email service',
+    icon: 'mail'
+  },
+  { 
+    id: 'mapbox', 
+    name: 'Mapbox', 
+    description: 'Maps and geocoding services',
+    icon: 'map'
+  },
+  { 
+    id: 'weather', 
+    name: 'Weather API', 
+    description: 'Real-time weather data for locations',
+    icon: 'cloud'
+  },
+  { 
+    id: 'highway', 
+    name: 'Highway', 
+    description: 'Carrier identity verification and fraud prevention',
+    icon: 'shield'
+  },
+  { 
+    id: 'gmail', 
+    name: 'Gmail', 
+    description: 'Email integration for Load Hunter',
+    icon: 'inbox'
+  },
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -26,6 +67,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
+    // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(
@@ -34,11 +76,40 @@ serve(async (req) => {
       );
     }
 
+    // Get tenant_id from request body (optional for platform admins)
     const body = await req.json().catch(() => ({}));
-    const { tenant_id } = body;
+    let { tenant_id } = body;
 
-    // If tenant_id provided, verify access
-    if (tenant_id) {
+    // If no tenant_id provided, derive from user's membership
+    if (!tenant_id) {
+      const { data: membership } = await supabase
+        .from('tenant_users')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      
+      tenant_id = membership?.tenant_id;
+    }
+
+    if (!tenant_id) {
+      return new Response(
+        JSON.stringify({ error: 'No tenant context available' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify tenant access (assertTenantAccess equivalent)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('id', user.id)
+      .single();
+    
+    const isPlatformAdmin = profile?.is_platform_admin === true;
+
+    if (!isPlatformAdmin) {
       const { data: membership } = await supabase
         .from('tenant_users')
         .select('role')
@@ -48,31 +119,18 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!membership) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_platform_admin')
-          .eq('id', user.id)
-          .single();
-        
-        if (!profile?.is_platform_admin) {
-          return new Response(
-            JSON.stringify({ error: 'Access denied to this tenant' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+        return new Response(
+          JSON.stringify({ error: 'Access denied to this tenant' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
-    // Use the safe view that excludes credentials
-    let query = supabase
+    // Query the SAFE view (never exposes credentials_encrypted)
+    const { data: configuredIntegrations, error: fetchError } = await supabase
       .from('tenant_integrations_safe')
-      .select('*');
-
-    if (tenant_id) {
-      query = query.eq('tenant_id', tenant_id);
-    }
-
-    const { data: integrations, error: fetchError } = await query;
+      .select('*')
+      .eq('tenant_id', tenant_id);
 
     if (fetchError) {
       console.error('Error fetching integrations:', fetchError);
@@ -82,27 +140,19 @@ serve(async (req) => {
       );
     }
 
-    // Define all available providers with metadata
-    const allProviders = [
-      { id: 'samsara', name: 'Samsara API', description: 'Vehicle telematics and fleet tracking' },
-      { id: 'resend', name: 'Resend Email', description: 'Transactional email service' },
-      { id: 'mapbox', name: 'Mapbox', description: 'Maps and geocoding services' },
-      { id: 'weather', name: 'Weather API', description: 'Real-time weather data for locations' },
-      { id: 'highway', name: 'Highway', description: 'Carrier identity verification and fraud prevention' },
-      { id: 'gmail', name: 'Gmail', description: 'Email integration for Load Hunter' },
-    ];
-
-    // Merge configured integrations with all available providers
-    const result = allProviders.map(provider => {
-      const configured = integrations?.find(i => i.provider === provider.id);
+    // SERVER-SIDE CATALOG MERGE: Combine catalog with configured data
+    // This ensures Talbi (zero rows) still sees all providers
+    const integrations = PROVIDER_CATALOG.map(provider => {
+      const configured = configuredIntegrations?.find(i => i.provider === provider.id);
       
       if (configured) {
         return {
           id: provider.id,
           name: provider.name,
           description: provider.description,
-          is_configured: true,
-          is_enabled: configured.is_enabled,
+          icon: provider.icon,
+          is_configured: configured.is_configured === true,
+          is_enabled: configured.is_enabled ?? false,
           credentials_hint: configured.credentials_hint,
           settings: configured.settings,
           sync_status: configured.sync_status || 'unknown',
@@ -112,10 +162,12 @@ serve(async (req) => {
         };
       }
       
+      // Not configured - return catalog defaults
       return {
         id: provider.id,
         name: provider.name,
         description: provider.description,
+        icon: provider.icon,
         is_configured: false,
         is_enabled: false,
         credentials_hint: null,
@@ -128,13 +180,15 @@ serve(async (req) => {
     });
 
     // Count issues for badge
-    const issueCount = result.filter(
+    const issueCount = integrations.filter(
       i => i.is_configured && i.is_enabled && (i.sync_status === 'failed' || i.sync_status === 'partial')
     ).length;
 
+    console.log(`[check-tenant-integrations] tenant=${tenant_id} providers=${integrations.length} issues=${issueCount}`);
+
     return new Response(
       JSON.stringify({ 
-        integrations: result,
+        integrations,
         issue_count: issueCount
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -5270,6 +5270,7 @@ export type Database = {
           credentials_hint: string | null
           error_message: string | null
           id: string | null
+          is_configured: boolean | null
           is_enabled: boolean | null
           last_checked_at: string | null
           last_sync_at: string | null
@@ -5284,6 +5285,7 @@ export type Database = {
           credentials_hint?: string | null
           error_message?: string | null
           id?: string | null
+          is_configured?: never
           is_enabled?: boolean | null
           last_checked_at?: string | null
           last_sync_at?: string | null
@@ -5298,6 +5300,7 @@ export type Database = {
           credentials_hint?: string | null
           error_message?: string | null
           id?: string | null
+          is_configured?: never
           is_enabled?: boolean | null
           last_checked_at?: string | null
           last_sync_at?: string | null
