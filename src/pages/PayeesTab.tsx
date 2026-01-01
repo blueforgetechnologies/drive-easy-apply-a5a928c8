@@ -1081,8 +1081,18 @@ export default function PayeesTab() {
                       className="h-10 cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => handleOpenPayeeDetail(payee)}
                     >
-                      <TableCell className="py-1 px-2 font-mono text-xs text-muted-foreground">
-                        {payee.id.slice(0, 8)}…
+                      <TableCell className="py-1 px-2">
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs text-muted-foreground">{payee.id.slice(0, 8)}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            onClick={(e) => { e.stopPropagation(); handleCopyId(payee.id); }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">

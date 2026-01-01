@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ import MaintenanceReminderDialog from "@/components/MaintenanceReminderDialog";
 export default function VehicleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<any>({});
@@ -40,7 +42,7 @@ export default function VehicleDetail() {
     loadDispatchers();
     loadCarriers();
     loadPayees();
-  }, [id]);
+  }, [id, tenantId, shouldFilter]);
 
   const loadVehicle = async () => {
     try {
@@ -105,11 +107,17 @@ export default function VehicleDetail() {
 
   const loadDrivers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('applications')
         .select('id, personal_info, driver_status')
         .in('driver_status', ['Active', 'active', 'ACTIVE']);
       
+      // Apply tenant filter
+      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       setDrivers(data || []);
     } catch (error) {
@@ -119,11 +127,17 @@ export default function VehicleDetail() {
 
   const loadDispatchers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('dispatchers')
         .select('id, first_name, last_name, status')
         .in('status', ['Active', 'active', 'ACTIVE']);
       
+      // Apply tenant filter
+      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       setDispatchers(data || []);
     } catch (error) {
@@ -133,11 +147,17 @@ export default function VehicleDetail() {
 
   const loadCarriers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('carriers')
         .select('id, name, status')
         .in('status', ['Active', 'active', 'ACTIVE']);
       
+      // Apply tenant filter
+      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       setCarriers(data || []);
     } catch (error) {
@@ -147,11 +167,17 @@ export default function VehicleDetail() {
 
   const loadPayees = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('payees')
         .select('id, name, status')
         .in('status', ['Active', 'active', 'ACTIVE']);
       
+      // Apply tenant filter
+      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       setPayees(data || []);
     } catch (error) {
