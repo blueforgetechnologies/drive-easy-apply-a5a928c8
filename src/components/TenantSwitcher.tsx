@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useTenantContext } from '@/hooks/useTenantContext';
+import { useTenantContext } from '@/contexts/TenantContext';
 
 export function TenantSwitcher() {
   const { currentTenant, memberships, loading, isPlatformAdmin, switchTenant, getCurrentRole } = useTenantContext();

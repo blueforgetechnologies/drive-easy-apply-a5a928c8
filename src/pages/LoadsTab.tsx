@@ -20,6 +20,7 @@ import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { PDFImageViewer } from "@/components/PDFImageViewer";
 import { CarrierRateHistoryDialog } from "@/components/CarrierRateHistoryDialog";
+import { useTenantContext } from "@/contexts/TenantContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +93,7 @@ interface Load {
 export default function LoadsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { currentTenant } = useTenantContext();
   const filter = searchParams.get("filter") || "all";
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,10 +239,13 @@ export default function LoadsTab() {
   const [defaultCarrierId, setDefaultCarrierId] = useState<string | null>(null);
   const [currentUserDispatcherId, setCurrentUserDispatcherId] = useState<string | null>(null);
 
+  // Reload when tenant changes
   useEffect(() => {
-    loadData();
-    loadDriversAndVehicles();
-  }, []);
+    if (currentTenant?.id) {
+      loadData();
+      loadDriversAndVehicles();
+    }
+  }, [currentTenant?.id]);
 
   // Set default carrier in form when loaded
   useEffect(() => {
@@ -342,6 +347,8 @@ export default function LoadsTab() {
   }, [customers]);
 
   const loadData = async () => {
+    if (!currentTenant?.id) return;
+    
     setLoading(true);
     try {
       // Always fetch ALL loads to get accurate counts for tabs
@@ -356,6 +363,7 @@ export default function LoadsTab() {
           dispatcher:dispatchers!assigned_dispatcher_id(first_name, last_name),
           load_owner:dispatchers!load_owner_id(first_name, last_name)
         `)
+        .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: false });
       
       const { data, error } = await query;
