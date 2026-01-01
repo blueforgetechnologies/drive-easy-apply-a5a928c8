@@ -18,6 +18,7 @@ import { TenantDebugBanner } from "./TenantDebugBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
+import { useIntegrationsAlertsCount } from "@/hooks/useIntegrationsAlertsCount";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -33,9 +34,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [userEmail, setUserEmail] = useState<string>("");
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("drivers");
-  // Use tenant-scoped alert counts hook
+  // Use tenant-scoped alert counts hooks
   const { totalBusinessAlerts: alertCount } = useTenantAlertCounts();
-  const [integrationAlertCount, setIntegrationAlertCount] = useState<number>(0);
+  const { totalAlerts: integrationAlertCount } = useIntegrationsAlertsCount();
   const [unmappedTypesCount, setUnmappedTypesCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAllTab, setShowAllTab] = useState<boolean>(() => {
@@ -78,8 +79,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!authReady || !authUserId) return;
 
     loadUserProfile();
-    // Alert counts now handled by useTenantAlertCounts hook
-    loadIntegrationAlerts();
+    // Alert counts now handled by tenant-scoped hooks
     loadUnmappedTypesCount();
 
     // Detect active tab from URL
@@ -90,9 +90,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setActiveTab(tabFromUrl);
     }
 
-    // Check integration status every 5 minutes
+    // Check unmapped types every 5 minutes
     const interval = setInterval(() => {
-      loadIntegrationAlerts();
       loadUnmappedTypesCount();
     }, 5 * 60 * 1000);
 
@@ -162,28 +161,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     toast.success(newValue ? "All Loads tab enabled" : "All Loads tab disabled");
   };
 
-  // Alert counts are now handled by useTenantAlertCounts hook
-
-
-  const loadIntegrationAlerts = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('check-integrations');
-      
-      if (error) {
-        console.error("Error checking integrations:", error);
-        return;
-      }
-      
-      if (data && data.integrations) {
-        const failedCount = data.integrations.filter(
-          (i: any) => i.status === "down" || i.status === "degraded"
-        ).length;
-        setIntegrationAlertCount(failedCount);
-      }
-    } catch (error) {
-      console.error("Error loading integration alerts:", error);
-    }
-  };
+  // Alert counts are now handled by tenant-scoped hooks
 
   const loadUnmappedTypesCount = async () => {
     try {

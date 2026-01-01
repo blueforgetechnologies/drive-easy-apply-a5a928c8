@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,96 +17,83 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with service role for admin access
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Parse request body
     let requestedTenantId: string | undefined;
     try {
       const body: SyncRequest = await req.json();
       requestedTenantId = body.tenant_id;
     } catch {
-      // No body or invalid JSON - will use global API key fallback
+      // No body or invalid JSON
     }
+
+    // CRITICAL: Validate caller has access to the requested tenant
+    if (requestedTenantId) {
+      const authHeader = req.headers.get('Authorization');
+      const accessCheck = await assertTenantAccess(authHeader, requestedTenantId);
+      
+      if (!accessCheck.allowed) {
+        console.log(`[sync-vehicles-samsara] Access denied for tenant ${requestedTenantId}`);
+        return accessCheck.response!;
+      }
+      
+      console.log(`[sync-vehicles-samsara] Access granted for tenant ${requestedTenantId} (user: ${accessCheck.user_id})`);
+    }
+
+    // ONLY after access check passes, use service role for privileged operations
+    const supabase = getServiceClient();
 
     // Determine which tenants to sync
     let tenantsToSync: { id: string; apiKey: string }[] = [];
 
     if (requestedTenantId) {
-      // Sync specific tenant - get their API key from tenant_integrations
-      const { data: integration, error: intError } = await supabase
-        .from('tenant_integrations')
-        .select('credentials_encrypted, settings')
-        .eq('tenant_id', requestedTenantId)
-        .eq('provider', 'samsara')
-        .eq('is_enabled', true)
-        .single();
-
-      if (intError || !integration) {
-        // Fall back to global API key for this tenant
-        const globalKey = Deno.env.get("SAMSARA_API_KEY");
-        if (globalKey) {
-          tenantsToSync.push({ id: requestedTenantId, apiKey: globalKey.trim() });
-        } else {
-          return new Response(
-            JSON.stringify({ error: `No Samsara integration found for tenant ${requestedTenantId}` }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } else {
-        // Use tenant-specific API key
-        const apiKey = (integration.credentials_encrypted as any)?.api_key;
-        if (apiKey) {
-          tenantsToSync.push({ id: requestedTenantId, apiKey: apiKey.trim() });
-        } else {
-          // Fall back to global
-          const globalKey = Deno.env.get("SAMSARA_API_KEY");
-          if (globalKey) {
-            tenantsToSync.push({ id: requestedTenantId, apiKey: globalKey.trim() });
-          }
-        }
+      // Sync specific tenant - get their API key
+      const apiKey = await getTenantSamsaraApiKey(supabase, requestedTenantId);
+      
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: `No Samsara API key configured for tenant ${requestedTenantId}` }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+      
+      tenantsToSync.push({ id: requestedTenantId, apiKey });
     } else {
-      // No specific tenant - check for tenant-specific integrations first
+      // No specific tenant - this is a scheduled job, get all tenants with Samsara enabled
+      // For scheduled jobs, no auth header is present, so we process all configured tenants
       const { data: integrations } = await supabase
         .from('tenant_integrations')
-        .select('tenant_id, credentials_encrypted')
+        .select('tenant_id')
         .eq('provider', 'samsara')
         .eq('is_enabled', true);
 
       if (integrations && integrations.length > 0) {
-        // Sync each tenant with their own credentials
         for (const int of integrations) {
-          const apiKey = (int.credentials_encrypted as any)?.api_key;
+          const apiKey = await getTenantSamsaraApiKey(supabase, int.tenant_id);
           if (apiKey) {
-            tenantsToSync.push({ id: int.tenant_id, apiKey: apiKey.trim() });
+            tenantsToSync.push({ id: int.tenant_id, apiKey });
           }
         }
       }
 
-      // If no tenant-specific integrations, use global key for all tenants
+      // If no tenant-specific integrations, use global key for default tenant
       if (tenantsToSync.length === 0) {
         const globalKey = Deno.env.get("SAMSARA_API_KEY");
         if (!globalKey) {
           return new Response(
-            JSON.stringify({ error: 'No Samsara integrations configured and no global API key' }),
+            JSON.stringify({ error: 'No Samsara integrations configured' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Get all distinct tenant_ids from vehicles table
-        const { data: tenantData } = await supabase
-          .from('vehicles')
-          .select('tenant_id')
-          .not('vin', 'is', null);
+        // Get default tenant
+        const { data: defaultTenant } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('slug', 'default')
+          .single();
 
-        const uniqueTenantIds = [...new Set(tenantData?.map(v => v.tenant_id) || [])];
-        for (const tenantId of uniqueTenantIds) {
-          if (tenantId) {
-            tenantsToSync.push({ id: tenantId, apiKey: globalKey.trim() });
-          }
+        if (defaultTenant) {
+          tenantsToSync.push({ id: defaultTenant.id, apiKey: globalKey.trim() });
         }
       }
     }
@@ -139,6 +127,63 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Get Samsara API key for a tenant.
+ * Priority:
+ * 1. Supabase secret named 'samsara_api_{tenant_slug}' (preferred)
+ * 2. Global SAMSARA_API_KEY environment variable (fallback)
+ */
+async function getTenantSamsaraApiKey(
+  supabase: any,
+  tenantId: string
+): Promise<string | null> {
+  try {
+    // Get tenant slug for secret naming
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('slug')
+      .eq('id', tenantId)
+      .single();
+
+    if (!tenant) {
+      console.warn(`Tenant ${tenantId} not found`);
+      return null;
+    }
+
+    // Try to get tenant-specific secret from environment
+    // Secret naming convention: samsara_api_{slug} (underscores for dashes)
+    const secretName = `samsara_api_${tenant.slug.replace(/-/g, '_')}`;
+    const tenantApiKey = Deno.env.get(secretName);
+    
+    if (tenantApiKey) {
+      console.log(`Using tenant-specific Samsara key for ${tenant.slug}`);
+      return tenantApiKey.trim();
+    }
+
+    // Check tenant_integrations for enabled Samsara
+    const { data: integration } = await supabase
+      .from('tenant_integrations')
+      .select('is_enabled')
+      .eq('tenant_id', tenantId)
+      .eq('provider', 'samsara')
+      .single();
+
+    // If tenant has Samsara integration enabled, fall back to global key
+    if (integration?.is_enabled) {
+      const globalKey = Deno.env.get("SAMSARA_API_KEY");
+      if (globalKey) {
+        console.log(`Using global Samsara key for ${tenant.slug}`);
+        return globalKey.trim();
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Error getting Samsara API key for tenant ${tenantId}:`, error);
+    return null;
+  }
+}
 
 async function syncTenantVehicles(
   supabase: any,
@@ -178,6 +223,18 @@ async function syncTenantVehicles(
     if (!samsaraStatsResponse.ok) {
       const errorText = await samsaraStatsResponse.text();
       console.error(`Samsara API error for tenant ${tenantId}:`, samsaraStatsResponse.status, errorText);
+      
+      // Update integration status on failure
+      await supabase
+        .from('tenant_integrations')
+        .update({
+          sync_status: 'failed',
+          error_message: `API error: ${samsaraStatsResponse.status}`,
+          last_sync_at: new Date().toISOString()
+        })
+        .eq('tenant_id', tenantId)
+        .eq('provider', 'samsara');
+      
       return { 
         error: 'Failed to fetch Samsara data',
         status: samsaraStatsResponse.status,
