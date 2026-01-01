@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser, Eye, LayoutDashboard, DollarSign, Wallet, ShieldCheck, Shield } from "lucide-react";
+import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser, Eye, LayoutDashboard, DollarSign, Wallet, ShieldCheck, Shield, Building2, Rocket } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import MobileNav from "./MobileNav";
@@ -12,7 +12,10 @@ import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { TenantSwitcher } from "./TenantSwitcher";
 import { TenantIndicator } from "./TenantIndicator";
 import { TenantRequired } from "./TenantRequired";
+import { ImpersonationBanner } from "./ImpersonationBanner";
+import { ImpersonateTenantDialog } from "./ImpersonateTenantDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTenantContext } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -38,6 +41,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [dispatcherId, setDispatcherId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
+  const { isPlatformAdmin, isImpersonating } = useTenantContext();
 
   // Keep UI in sync with auth state (fixes "logged in but UI not updating")
   useEffect(() => {
@@ -346,6 +351,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           : "min-h-screen",
       )}
     >
+      {/* Impersonation Banner - always on top */}
+      <ImpersonationBanner />
       <header 
         className="sticky top-0 z-40 border-b border-white/20"
         style={{
@@ -532,6 +539,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           <Shield className="h-3.5 w-3.5 text-muted-foreground" />
                           Inspector
                         </button>
+                        <button 
+                          onClick={() => navigate('/dashboard/rollouts')} 
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                        >
+                          <Rocket className="h-3.5 w-3.5 text-muted-foreground" />
+                          Rollouts
+                        </button>
+                        {isPlatformAdmin && !isImpersonating && (
+                          <button 
+                            onClick={() => setImpersonateDialogOpen(true)} 
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors text-left text-amber-700 dark:text-amber-400"
+                          >
+                            <Building2 className="h-3.5 w-3.5" />
+                            Impersonate Tenant
+                          </button>
+                        )}
                       </>
                     )}
                     <button 
@@ -610,6 +633,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mapbox Usage Alert - checks on login */}
       <MapboxUsageAlert />
+      
+      {/* Impersonate Tenant Dialog */}
+      <ImpersonateTenantDialog 
+        open={impersonateDialogOpen} 
+        onOpenChange={setImpersonateDialogOpen} 
+      />
     </div>
   );
 }
