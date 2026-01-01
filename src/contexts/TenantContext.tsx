@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'tms.currentTenantId';
+const IMPERSONATION_STORAGE_KEY = 'tms.adminImpersonationSession';
 
 interface Tenant {
   id: string;
@@ -19,6 +20,15 @@ interface TenantMembership {
   role: string;
 }
 
+interface ImpersonationSession {
+  session_id: string;
+  tenant_id: string;
+  tenant_name: string;
+  tenant_slug: string;
+  expires_at: string;
+  reason: string;
+}
+
 interface TenantContextValue {
   currentTenant: Tenant | null;
   memberships: TenantMembership[];
@@ -27,6 +37,10 @@ interface TenantContextValue {
   switchTenant: (tenantId: string) => void;
   getCurrentRole: () => string | null;
   refreshMemberships: () => Promise<void>;
+  // Impersonation
+  isImpersonating: boolean;
+  impersonatedTenant: Tenant | null;
+  effectiveTenant: Tenant | null; // Returns impersonated tenant if active, otherwise currentTenant
 }
 
 const TenantContext = createContext<TenantContextValue | null>(null);
@@ -37,6 +51,63 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [memberships, setMemberships] = useState<TenantMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [impersonatedTenant, setImpersonatedTenant] = useState<Tenant | null>(null);
+
+  // Check for active impersonation session
+  const checkImpersonation = useCallback(async () => {
+    const stored = localStorage.getItem(IMPERSONATION_STORAGE_KEY);
+    if (!stored) {
+      setImpersonatedTenant(null);
+      return;
+    }
+
+    try {
+      const session: ImpersonationSession = JSON.parse(stored);
+      const expiresAt = new Date(session.expires_at).getTime();
+      
+      if (expiresAt <= Date.now()) {
+        localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+        setImpersonatedTenant(null);
+        return;
+      }
+
+      // Create a tenant object from impersonation session
+      setImpersonatedTenant({
+        id: session.tenant_id,
+        name: session.tenant_name,
+        slug: session.tenant_slug,
+        release_channel: 'unknown',
+        status: 'active',
+      });
+    } catch {
+      localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+      setImpersonatedTenant(null);
+    }
+  }, []);
+
+  // Listen for impersonation changes
+  useEffect(() => {
+    checkImpersonation();
+
+    // Listen for storage changes (impersonation start/stop)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === IMPERSONATION_STORAGE_KEY) {
+        checkImpersonation();
+        // Invalidate queries when impersonation changes
+        queryClient.invalidateQueries();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically for expiration
+    const interval = setInterval(checkImpersonation, 10000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [checkImpersonation, queryClient]);
 
   const loadMemberships = useCallback(async () => {
     try {
@@ -134,12 +205,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(STORAGE_KEY);
         setCurrentTenant(null);
       }
+
+      // Check impersonation status
+      await checkImpersonation();
     } catch (err) {
       console.error('[TenantContext] Error loading tenant memberships:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkImpersonation]);
 
   useEffect(() => {
     loadMemberships();
@@ -152,6 +226,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [loadMemberships]);
 
   const switchTenant = useCallback((tenantId: string) => {
+    // Don't allow switching while impersonating
+    if (impersonatedTenant) {
+      console.warn('[TenantContext] Cannot switch tenants while impersonating');
+      return;
+    }
+
     const membership = memberships.find(m => m.tenant.id === tenantId);
     if (membership) {
       console.log('[TenantContext] Switching tenant to:', membership.tenant.name);
@@ -162,13 +242,20 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       console.log('[TenantContext] Invalidating all queries');
       queryClient.invalidateQueries();
     }
-  }, [memberships, queryClient]);
+  }, [memberships, queryClient, impersonatedTenant]);
 
   const getCurrentRole = useCallback(() => {
     if (!currentTenant) return null;
     const membership = memberships.find(m => m.tenant.id === currentTenant.id);
     return membership?.role || null;
   }, [currentTenant, memberships]);
+
+  // Compute effective tenant (impersonated takes priority)
+  const effectiveTenant = useMemo(() => {
+    return impersonatedTenant || currentTenant;
+  }, [impersonatedTenant, currentTenant]);
+
+  const isImpersonating = !!impersonatedTenant;
 
   return (
     <TenantContext.Provider value={{
@@ -178,7 +265,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       isPlatformAdmin,
       switchTenant,
       getCurrentRole,
-      refreshMemberships: loadMemberships
+      refreshMemberships: loadMemberships,
+      isImpersonating,
+      impersonatedTenant,
+      effectiveTenant,
     }}>
       {children}
     </TenantContext.Provider>
