@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/contexts/TenantContext";
-import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Shield, Database, Trash2, Wrench, AlertCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Shield, Database, Trash2, Wrench, AlertCircle, Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface TableAudit {
@@ -26,19 +27,41 @@ interface TableAudit {
   issues: string[];
 }
 
+interface RlsTestResult {
+  table_name: string;
+  rls_enforced: boolean;
+  rows_returned_via_rls: number;
+  rows_for_tenant: number;
+  leaked_rows: number;
+  status: 'pass' | 'fail';
+  message: string;
+}
+
 interface AuditResult {
   success: boolean;
   audited_at: string;
+  mode: string;
   requested_tenant_id: string | null;
   requested_tenant_name: string | null;
-  results: TableAudit[];
-  summary: {
-    total_tables: number;
-    green_tables: number;
-    yellow_tables: number;
-    red_tables: number;
-    total_null_rows: number;
-    total_leaked_rows: number;
+  schema_audit?: {
+    results: TableAudit[];
+    summary: {
+      total_tables: number;
+      green_tables: number;
+      yellow_tables: number;
+      red_tables: number;
+      total_null_rows: number;
+      total_other_tenant_rows: number;
+    };
+  };
+  rls_test?: {
+    results: RlsTestResult[];
+    summary: {
+      total_tables_tested: number;
+      passed: number;
+      failed: number;
+      total_leaked_rows: number;
+    };
   };
 }
 
@@ -47,6 +70,7 @@ export default function IsolationAuditTab() {
   const [loading, setLoading] = useState(false);
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'schema' | 'rls'>('rls');
   
   // Remediation dialogs
   const [wipeDialogOpen, setWipeDialogOpen] = useState(false);
@@ -64,7 +88,7 @@ export default function IsolationAuditTab() {
       console.log("[IsolationAudit] Running audit for tenant:", effectiveTenant?.id);
       
       const { data, error: fnError } = await supabase.functions.invoke("tenant-isolation-audit", {
-        body: { tenant_id: effectiveTenant?.id },
+        body: { tenant_id: effectiveTenant?.id, mode: 'both' },
       });
 
       if (fnError) throw fnError;
@@ -96,7 +120,7 @@ export default function IsolationAuditTab() {
       toast.success(`Wiped ${data.total_deleted} rows`);
       setWipeDialogOpen(false);
       setWipeConfirmText("");
-      runAudit(); // Refresh
+      runAudit();
     } catch (err: any) {
       toast.error("Wipe failed: " + (err.message || "Unknown error"));
     } finally {
@@ -122,7 +146,7 @@ export default function IsolationAuditTab() {
         toast.info(`Dry run: Would update ${data.total_updated} rows, skip ${data.total_skipped}`);
       } else {
         toast.success(`Backfilled ${data.total_updated} rows`);
-        runAudit(); // Refresh
+        runAudit();
       }
       setBackfillDialogOpen(false);
     } catch (err: any) {
@@ -148,28 +172,6 @@ export default function IsolationAuditTab() {
       </Card>
     );
   }
-
-  const getStatusIcon = (status: 'green' | 'yellow' | 'red') => {
-    switch (status) {
-      case 'green':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'yellow':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-      case 'red':
-        return <XCircle className="h-4 w-4 text-destructive" />;
-    }
-  };
-
-  const getStatusBadge = (status: 'green' | 'yellow' | 'red') => {
-    switch (status) {
-      case 'green':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">ISOLATED</Badge>;
-      case 'yellow':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">NULL DATA</Badge>;
-      case 'red':
-        return <Badge variant="destructive">LEAK DETECTED</Badge>;
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -212,163 +214,294 @@ export default function IsolationAuditTab() {
         </Card>
       )}
 
-      {/* Summary */}
       {auditResult && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{auditResult.summary.total_tables}</div>
-                <p className="text-sm text-muted-foreground">Tables</p>
-              </CardContent>
-            </Card>
-            <Card className="border-green-200">
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-green-600">{auditResult.summary.green_tables}</div>
-                <p className="text-sm text-muted-foreground">Isolated</p>
-              </CardContent>
-            </Card>
-            <Card className={auditResult.summary.yellow_tables > 0 ? "border-yellow-500" : ""}>
-              <CardContent className="pt-4">
-                <div className={`text-2xl font-bold ${auditResult.summary.yellow_tables > 0 ? "text-yellow-600" : "text-muted-foreground"}`}>
-                  {auditResult.summary.yellow_tables}
-                </div>
-                <p className="text-sm text-muted-foreground">With NULLs</p>
-              </CardContent>
-            </Card>
-            <Card className={auditResult.summary.red_tables > 0 ? "border-destructive" : ""}>
-              <CardContent className="pt-4">
-                <div className={`text-2xl font-bold ${auditResult.summary.red_tables > 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                  {auditResult.summary.red_tables}
-                </div>
-                <p className="text-sm text-muted-foreground">Leaking</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className={`text-2xl font-bold ${auditResult.summary.total_null_rows > 0 ? "text-yellow-600" : ""}`}>
-                  {auditResult.summary.total_null_rows}
-                </div>
-                <p className="text-sm text-muted-foreground">NULL Rows</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className={`text-2xl font-bold ${auditResult.summary.total_leaked_rows > 0 ? "text-destructive" : ""}`}>
-                  {auditResult.summary.total_leaked_rows}
-                </div>
-                <p className="text-sm text-muted-foreground">Leaked Rows</p>
-              </CardContent>
-            </Card>
-          </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'schema' | 'rls')}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="rls" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              RLS Enforcement
+            </TabsTrigger>
+            <TabsTrigger value="schema" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Schema Audit
+            </TabsTrigger>
+          </TabsList>
 
-          <p className="text-xs text-muted-foreground">
-            Audited at: {new Date(auditResult.audited_at).toLocaleString()} • 
-            Tenant: {auditResult.requested_tenant_name} ({auditResult.requested_tenant_id})
-          </p>
+          {/* RLS Enforcement Tab */}
+          <TabsContent value="rls" className="space-y-4">
+            {auditResult.rls_test && (
+              <>
+                {/* RLS Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold">{auditResult.rls_test.summary.total_tables_tested}</div>
+                      <p className="text-sm text-muted-foreground">Tables Tested</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-green-200">
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold text-green-600">{auditResult.rls_test.summary.passed}</div>
+                      <p className="text-sm text-muted-foreground">RLS Enforced</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={auditResult.rls_test.summary.failed > 0 ? "border-destructive" : ""}>
+                    <CardContent className="pt-4">
+                      <div className={`text-2xl font-bold ${auditResult.rls_test.summary.failed > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {auditResult.rls_test.summary.failed}
+                      </div>
+                      <p className="text-sm text-muted-foreground">RLS Failures</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={auditResult.rls_test.summary.total_leaked_rows > 0 ? "border-destructive" : ""}>
+                    <CardContent className="pt-4">
+                      <div className={`text-2xl font-bold ${auditResult.rls_test.summary.total_leaked_rows > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {auditResult.rls_test.summary.total_leaked_rows}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Leaked Rows</p>
+                    </CardContent>
+                  </Card>
+                </div>
 
-          {/* Detailed Results */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Table-by-Table Results</CardTitle>
-              <CardDescription>
-                <span className="inline-flex items-center gap-1"><CheckCircle className="h-3 w-3 text-green-500" /> GREEN = Isolated</span>
-                <span className="inline-flex items-center gap-1 ml-4"><AlertCircle className="h-3 w-3 text-yellow-500" /> YELLOW = Has NULLs</span>
-                <span className="inline-flex items-center gap-1 ml-4"><XCircle className="h-3 w-3 text-destructive" /> RED = Data Leak</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Status</TableHead>
-                      <TableHead>Table</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">This Tenant</TableHead>
-                      <TableHead className="text-right">Other Tenants</TableHead>
-                      <TableHead className="text-right">NULL tenant_id</TableHead>
-                      <TableHead>Issues</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditResult.results.map((table) => (
-                      <TableRow
-                        key={table.table_name}
-                        className={
-                          table.status === 'red' ? "bg-destructive/5" :
-                          table.status === 'yellow' ? "bg-yellow-50 dark:bg-yellow-900/10" : ""
-                        }
-                      >
-                        <TableCell>{getStatusIcon(table.status)}</TableCell>
-                        <TableCell className="font-mono text-sm">{table.table_name}</TableCell>
-                        <TableCell className="text-right">{table.total_rows}</TableCell>
-                        <TableCell className="text-right font-medium text-green-600">
-                          {table.rows_for_requested_tenant}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {table.rows_for_other_tenants > 0 ? (
-                            <span className="text-destructive font-bold">{table.rows_for_other_tenants}</span>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {table.rows_with_null_tenant_id > 0 ? (
-                            <span className="text-yellow-600 font-medium">{table.rows_with_null_tenant_id}</span>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {table.issues.length === 0 ? (
-                            <span className="text-green-600 text-sm">✓ Clean</span>
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              {table.issues.map((issue, idx) => (
-                                <span key={idx} className="text-xs text-muted-foreground">{issue}</span>
-                              ))}
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sample IDs for investigation */}
-          {auditResult.results.some(t => t.null_sample_ids.length > 0 || t.other_tenant_sample_ids.length > 0) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Sample Row IDs for Investigation</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {auditResult.results
-                  .filter(t => t.null_sample_ids.length > 0 || t.other_tenant_sample_ids.length > 0)
-                  .map((table) => (
-                    <div key={table.table_name} className="border rounded p-3">
-                      <div className="font-mono text-sm font-medium mb-2">{table.table_name}</div>
-                      {table.null_sample_ids.length > 0 && (
-                        <div className="text-xs">
-                          <span className="text-yellow-600 font-medium">NULL tenant_id: </span>
-                          {table.null_sample_ids.join(', ')}
-                        </div>
-                      )}
-                      {table.other_tenant_sample_ids.length > 0 && (
-                        <div className="text-xs mt-1">
-                          <span className="text-destructive font-medium">Other tenants: </span>
-                          {table.other_tenant_sample_ids.join(', ')}
-                        </div>
-                      )}
+                <Card className="bg-muted/30">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="h-5 w-5 text-primary mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium">How RLS Testing Works</p>
+                        <p className="text-muted-foreground">
+                          Queries are executed using your user session (NOT service role). 
+                          RLS policies should automatically restrict results to the current tenant. 
+                          A "leak" is when rows from <strong>other tenants</strong> are returned.
+                        </p>
+                      </div>
                     </div>
-                  ))}
-              </CardContent>
-            </Card>
-          )}
-        </>
+                  </CardContent>
+                </Card>
+
+                {/* RLS Test Results */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>RLS Enforcement Test Results</CardTitle>
+                    <CardDescription>
+                      Queries executed WITHOUT tenant_id filter - RLS should restrict to current tenant automatically
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">Status</TableHead>
+                          <TableHead>Table</TableHead>
+                          <TableHead className="text-right">Rows Returned</TableHead>
+                          <TableHead className="text-right">Leaked Rows</TableHead>
+                          <TableHead>Message</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {auditResult.rls_test.results.map((test) => (
+                          <TableRow
+                            key={test.table_name}
+                            className={test.status === 'fail' ? "bg-destructive/5" : ""}
+                          >
+                            <TableCell>
+                              {test.status === 'pass' ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              )}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{test.table_name}</TableCell>
+                            <TableCell className="text-right">{test.rows_returned_via_rls}</TableCell>
+                            <TableCell className="text-right">
+                              {test.leaked_rows > 0 ? (
+                                <span className="text-destructive font-bold">{test.leaked_rows}</span>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {test.status === 'pass' ? (
+                                <span className="text-green-600">{test.message}</span>
+                              ) : (
+                                <span className="text-destructive">{test.message}</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+
+          {/* Schema Audit Tab */}
+          <TabsContent value="schema" className="space-y-4">
+            {auditResult.schema_audit && (
+              <>
+                {/* Schema Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold">{auditResult.schema_audit.summary.total_tables}</div>
+                      <p className="text-sm text-muted-foreground">Tables</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-green-200">
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold text-green-600">{auditResult.schema_audit.summary.green_tables}</div>
+                      <p className="text-sm text-muted-foreground">Clean</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={auditResult.schema_audit.summary.yellow_tables > 0 ? "border-yellow-500" : ""}>
+                    <CardContent className="pt-4">
+                      <div className={`text-2xl font-bold ${auditResult.schema_audit.summary.yellow_tables > 0 ? "text-yellow-600" : "text-muted-foreground"}`}>
+                        {auditResult.schema_audit.summary.yellow_tables}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Has NULLs</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className={`text-2xl font-bold ${auditResult.schema_audit.summary.total_null_rows > 0 ? "text-yellow-600" : ""}`}>
+                        {auditResult.schema_audit.summary.total_null_rows}
+                      </div>
+                      <p className="text-sm text-muted-foreground">NULL Rows</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold text-muted-foreground">
+                        {auditResult.schema_audit.summary.total_other_tenant_rows}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Other Tenants</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="bg-muted/30">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <Database className="h-5 w-5 text-primary mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium">Understanding Schema Audit</p>
+                        <p className="text-muted-foreground">
+                          "Other Tenants" count is <strong>normal</strong> in a multi-tenant shared database. 
+                          This audit uses service role to see all data. 
+                          The RLS Enforcement tab tests that normal users can only see their own tenant's data.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <p className="text-xs text-muted-foreground">
+                  Audited at: {new Date(auditResult.audited_at).toLocaleString()} • 
+                  Tenant: {auditResult.requested_tenant_name} ({auditResult.requested_tenant_id})
+                </p>
+
+                {/* Schema Results Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Table-by-Table Schema Status</CardTitle>
+                    <CardDescription>
+                      <span className="inline-flex items-center gap-1"><CheckCircle className="h-3 w-3 text-green-500" /> GREEN = No NULLs</span>
+                      <span className="inline-flex items-center gap-1 ml-4"><AlertCircle className="h-3 w-3 text-yellow-500" /> YELLOW = Has NULLs</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[50px]">Status</TableHead>
+                            <TableHead>Table</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">This Tenant</TableHead>
+                            <TableHead className="text-right">Other Tenants</TableHead>
+                            <TableHead className="text-right">NULL tenant_id</TableHead>
+                            <TableHead>Issues</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {auditResult.schema_audit.results.map((table) => (
+                            <TableRow
+                              key={table.table_name}
+                              className={
+                                table.status === 'red' ? "bg-destructive/5" :
+                                table.status === 'yellow' ? "bg-yellow-50 dark:bg-yellow-900/10" : ""
+                              }
+                            >
+                              <TableCell>
+                                {table.status === 'green' ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : table.status === 'yellow' ? (
+                                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-destructive" />
+                                )}
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">{table.table_name}</TableCell>
+                              <TableCell className="text-right">{table.total_rows}</TableCell>
+                              <TableCell className="text-right font-medium text-green-600">
+                                {table.rows_for_requested_tenant}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {table.rows_for_other_tenants}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {table.rows_with_null_tenant_id > 0 ? (
+                                  <span className="text-yellow-600 font-medium">{table.rows_with_null_tenant_id}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">0</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {table.issues.length === 0 ? (
+                                  <span className="text-green-600 text-sm">✓ Clean</span>
+                                ) : (
+                                  <div className="flex flex-col gap-1">
+                                    {table.issues.map((issue, idx) => (
+                                      <span key={idx} className="text-xs text-muted-foreground">{issue}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sample IDs for investigation */}
+                {auditResult.schema_audit.results.some(t => t.null_sample_ids.length > 0) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Sample Row IDs with NULL tenant_id</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {auditResult.schema_audit.results
+                        .filter(t => t.null_sample_ids.length > 0)
+                        .map((table) => (
+                          <div key={table.table_name} className="border rounded p-3">
+                            <div className="font-mono text-sm font-medium mb-2">{table.table_name}</div>
+                            <div className="text-xs">
+                              <span className="text-yellow-600 font-medium">NULL tenant_id: </span>
+                              {table.null_sample_ids.join(', ')}
+                            </div>
+                          </div>
+                        ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Wipe Dialog */}
