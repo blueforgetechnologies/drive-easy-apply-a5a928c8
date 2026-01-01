@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useTenantId } from "@/hooks/useTenantId";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
@@ -35,6 +35,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface Vehicle {
   id: string;
+  tenant_id: string;
   vehicle_number: string | null;
   carrier: string | null;
   bid_as: string | null;
@@ -112,7 +113,7 @@ interface HuntPlan {
 export default function LoadHunterTab() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const tenantId = useTenantId();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
@@ -1125,10 +1126,17 @@ export default function LoadHunterTab() {
     const dispatcherId = currentDispatcherIdRef.current;
     if (!dispatcherId) return;
     
-    const { data: assignedVehicles } = await supabase
+    let query = supabase
       .from('vehicles')
       .select('id, vehicle_number')
       .eq('primary_dispatcher_id', dispatcherId);
+    
+    // Apply tenant filter
+    if (shouldFilter && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data: assignedVehicles } = await query;
     
     if (assignedVehicles) {
       setMyVehicleIds(assignedVehicles.map(v => v.id));
@@ -1152,12 +1160,17 @@ export default function LoadHunterTab() {
       console.log('🔍 Current user:', user?.email);
       
       if (user?.email) {
-        // Check if user is a dispatcher
-        const { data: dispatcher, error: dispatcherError } = await supabase
+        // Check if user is a dispatcher - apply tenant filter
+        let dispatcherQuery = supabase
           .from('dispatchers')
           .select('id, first_name, last_name, email, show_all_tab')
-          .ilike('email', user.email)
-          .single();
+          .ilike('email', user.email);
+        
+        if (shouldFilter && tenantId) {
+          dispatcherQuery = dispatcherQuery.eq('tenant_id', tenantId);
+        }
+
+        const { data: dispatcher, error: dispatcherError } = await dispatcherQuery.maybeSingle();
         
         console.log('🔍 Dispatcher lookup:', { dispatcher, error: dispatcherError });
         
@@ -1167,11 +1180,17 @@ export default function LoadHunterTab() {
           currentDispatcherIdRef.current = dispatcher.id;
           console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
           
-          // Get vehicles assigned to this dispatcher
-          const { data: assignedVehicles, error: vehiclesError } = await supabase
+          // Get vehicles assigned to this dispatcher - apply tenant filter
+          let vehiclesQuery = supabase
             .from('vehicles')
             .select('id, vehicle_number')
             .eq('primary_dispatcher_id', dispatcher.id);
+          
+          if (shouldFilter && tenantId) {
+            vehiclesQuery = vehiclesQuery.eq('tenant_id', tenantId);
+          }
+
+          const { data: assignedVehicles, error: vehiclesError } = await vehiclesQuery;
           
           console.log('🔍 Assigned vehicles:', { assignedVehicles, error: vehiclesError });
           
@@ -1185,7 +1204,7 @@ export default function LoadHunterTab() {
       }
     };
     fetchUserDispatcherInfo();
-  }, []);
+  }, [tenantId, shouldFilter]);
 
   useEffect(() => {
     loadVehicles();
@@ -1283,7 +1302,7 @@ export default function LoadHunterTab() {
       supabase.removeChannel(matchesChannel);
       supabase.removeChannel(vehiclesChannel);
     };
-  }, []);
+  }, [tenantId, shouldFilter]);
 
   // DISABLED: Sound notifications - not supposed to notify
   // Sound and system notifications have been disabled per user request
@@ -1375,11 +1394,18 @@ export default function LoadHunterTab() {
 
   const loadVehicles = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vehicles")
         .select("*")
         .in("status", ["active", "available"])
         .order("vehicle_number", { ascending: true });
+
+      // Apply tenant filter
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setVehicles(data || []);
@@ -1396,10 +1422,17 @@ export default function LoadHunterTab() {
 
   const loadDrivers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("applications")
         .select("id, personal_info, vehicle_note")
         .eq("driver_status", "active");
+
+      // Apply tenant filter
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setDrivers(data || []);
@@ -1410,10 +1443,17 @@ export default function LoadHunterTab() {
 
   const loadAllDispatchers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("dispatchers")
         .select("id, first_name, last_name")
         .in("status", ["active", "Active", "ACTIVE"]);
+
+      // Apply tenant filter
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setAllDispatchers(data || []);
@@ -1425,10 +1465,16 @@ export default function LoadHunterTab() {
   const loadCarriersAndPayees = async () => {
     try {
       // Load carriers
-      const { data: carriersData, error: carriersError } = await supabase
+      let carriersQuery = supabase
         .from("carriers")
         .select("id, name")
         .in("status", ["active", "Active", "ACTIVE"]);
+
+      if (shouldFilter && tenantId) {
+        carriersQuery = carriersQuery.eq("tenant_id", tenantId);
+      }
+
+      const { data: carriersData, error: carriersError } = await carriersQuery;
 
       if (!carriersError && carriersData) {
         const cMap: Record<string, string> = {};
@@ -1439,10 +1485,16 @@ export default function LoadHunterTab() {
       }
 
       // Load payees
-      const { data: payeesData, error: payeesError } = await supabase
+      let payeesQuery = supabase
         .from("payees")
         .select("id, name")
         .in("status", ["active", "Active", "ACTIVE"]);
+
+      if (shouldFilter && tenantId) {
+        payeesQuery = payeesQuery.eq("tenant_id", tenantId);
+      }
+
+      const { data: payeesData, error: payeesError } = await payeesQuery;
 
       if (!payeesError && payeesData) {
         const pMap: Record<string, string> = {};
@@ -1545,11 +1597,18 @@ export default function LoadHunterTab() {
     console.log('🎯 Loading hunt plans...');
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("hunt_plans")
           .select("*")
           .not('plan_name', 'ilike', '[DELETED]%')
           .order("created_at", { ascending: false });
+
+        // Apply tenant filter
+        if (shouldFilter && tenantId) {
+          query = query.eq("tenant_id", tenantId);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
           console.error(`🎯 Attempt ${attempt} failed:`, error);
@@ -3518,6 +3577,7 @@ export default function LoadHunterTab() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-0.5 pr-16">
                       <div className="font-medium text-sm leading-tight text-carved truncate">
+                        <span className="text-[10px] text-muted-foreground font-mono mr-1">[{vehicle.tenant_id?.slice(0, 6)}]</span>
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
                       <div className="text-xs text-carved-light leading-tight truncate">
