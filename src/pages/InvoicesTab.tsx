@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2 } from "lucide-react";
 import InvoicePreview from "@/components/InvoicePreview";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Invoice {
   id: string;
@@ -65,6 +66,7 @@ interface PendingLoad {
 export default function InvoicesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const filter = searchParams.get("filter") || "pending";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [pendingLoads, setPendingLoads] = useState<PendingLoad[]>([]);
@@ -83,14 +85,16 @@ export default function InvoicesTab() {
   useEffect(() => {
     loadData();
     loadCustomers();
-  }, [filter]);
+  }, [filter, tenantId, shouldFilter]);
 
   const loadData = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     setLoading(true);
     try {
       if (filter === "pending") {
         // Load pending invoices from loads table
-        const { data, error } = await supabase
+        let query = supabase
           .from("loads")
           .select(`
             id,
@@ -112,17 +116,29 @@ export default function InvoicesTab() {
           `)
           .eq("financial_status", "pending_invoice")
           .order("completed_at", { ascending: false });
+        
+        if (shouldFilter && tenantId) {
+          query = query.eq("tenant_id", tenantId);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         setPendingLoads((data as PendingLoad[]) || []);
         setInvoices([]);
       } else {
         // Load regular invoices
-        const { data, error } = await supabase
+        let query = supabase
           .from("invoices" as any)
           .select("*")
           .eq("status", filter)
           .order("created_at", { ascending: false });
+        
+        if (shouldFilter && tenantId) {
+          query = query.eq("tenant_id", tenantId);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         setInvoices((data as any) || []);
@@ -159,12 +175,20 @@ export default function InvoicesTab() {
   };
 
   const loadCustomers = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("customers" as any)
         .select("*")
         .eq("status", "active")
         .order("name", { ascending: true });
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setCustomers((data as any) || []);

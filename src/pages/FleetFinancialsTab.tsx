@@ -20,6 +20,7 @@ import { TruckExpenseConfigDialog } from "@/components/TruckExpenseConfigDialog"
 import { usePaymentFormulas } from "@/hooks/usePaymentFormulas";
 import { PaymentFormulaBuilder } from "@/components/PaymentFormulaBuilder";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -119,6 +120,7 @@ const DRIVER_PAY_RATE = 0; // per load or percentage
 
 export default function FleetFinancialsTab() {
   const navigate = useNavigate();
+  const { tenantId, shouldFilter } = useTenantFilter();
   const { 
     resetColumns, 
     isEditMode, 
@@ -187,10 +189,10 @@ export default function FleetFinancialsTab() {
   const [carrierSearch, setCarrierSearch] = useState("");
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string[]>(["active"]);
 
-  // Load all data on mount
+  // Load all data on mount and when tenant changes
   useEffect(() => {
     loadData();
-  }, []);
+  }, [tenantId, shouldFilter]);
 
   // Refetch vehicles when page gains focus (to get updated truck_type after changes in VehicleDetail)
   useEffect(() => {
@@ -273,13 +275,27 @@ export default function FleetFinancialsTab() {
   };
 
   const loadData = async () => {
+    if (shouldFilter && !tenantId) return;
+    
     setLoading(true);
     try {
+      let vehiclesQuery = supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, driver_2_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type, contractor_percentage").eq("status", "active").order("vehicle_number");
+      let carriersQuery = supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name");
+      let dispatchersQuery = supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active");
+      let customersQuery = supabase.from("customers").select("id, name").eq("status", "active");
+      
+      if (shouldFilter && tenantId) {
+        vehiclesQuery = vehiclesQuery.eq("tenant_id", tenantId);
+        carriersQuery = carriersQuery.eq("tenant_id", tenantId);
+        dispatchersQuery = dispatchersQuery.eq("tenant_id", tenantId);
+        customersQuery = customersQuery.eq("tenant_id", tenantId);
+      }
+      
       const [vehiclesRes, carriersRes, dispatchersRes, customersRes, companyRes] = await Promise.all([
-        supabase.from("vehicles").select("id, vehicle_number, carrier, insurance_cost_per_month, monthly_payment, weekly_payment, driver_1_id, driver_2_id, requires_load_approval, asset_ownership, cents_per_mile, truck_type, contractor_percentage").eq("status", "active").order("vehicle_number"),
-        supabase.from("carriers").select("id, name, status, show_in_fleet_financials").eq("show_in_fleet_financials", true).order("name"),
-        supabase.from("dispatchers").select("id, first_name, last_name, pay_percentage").eq("status", "active"),
-        supabase.from("customers").select("id, name").eq("status", "active"),
+        vehiclesQuery,
+        carriersQuery,
+        dispatchersQuery,
+        customersQuery,
         supabase.from("company_profile").select("factoring_percentage").limit(1).single(),
       ]);
 
