@@ -5061,6 +5061,10 @@ export type Database = {
         Args: { batch_size?: number }
         Returns: number
       }
+      can_access_tenant: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_roles: { Args: { _user_id: string }; Returns: boolean }
       check_plan_feature_access: {
         Args: { p_feature_key: string; p_tenant_id: string }
