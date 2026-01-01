@@ -19,9 +19,17 @@ interface TenantDataRow {
   count: number;
 }
 
+interface CurrentTenantCounts {
+  tenant_id: string | null;
+  tenant_name: string | null;
+  vehicles: number;
+  loads: number;
+}
+
 interface DebugData {
   success: boolean;
-  results: TenantDataRow[];
+  global_counts_by_tenant: TenantDataRow[];
+  current_tenant_counts: CurrentTenantCounts | null;
   totals: {
     vehicles: number;
     loads: number;
@@ -43,15 +51,24 @@ export default function DebugTenantDataTab() {
       navigate("/dashboard");
       return;
     }
-    loadData();
   }, [isPlatformAdmin]);
+
+  // Reload when effective tenant changes
+  useEffect(() => {
+    if (isPlatformAdmin) {
+      loadData();
+    }
+  }, [isPlatformAdmin, tenantId]);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
       const { data: result, error: fnError } = await supabase.functions.invoke(
-        "debug-tenant-data"
+        "debug-tenant-data",
+        {
+          body: { tenant_id: tenantId },
+        }
       );
 
       if (fnError) {
@@ -136,6 +153,52 @@ export default function DebugTenantDataTab() {
         </CardContent>
       </Card>
 
+      {/* Effective Tenant Scoped Counts - THIS SHOULD CHANGE WHEN SWITCHING TENANTS */}
+      <Card className="border-primary/50 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Database className="h-5 w-5 text-primary" />
+            Effective Tenant Scoped Counts
+            <Badge variant="outline" className="ml-2 text-xs">
+              Should change on tenant switch
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-muted-foreground">Loading...</div>
+          ) : data?.current_tenant_counts ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Tenant</p>
+                <p className="font-medium">{data.current_tenant_counts.tenant_name}</p>
+                <p className="text-[10px] font-mono text-muted-foreground truncate">
+                  {data.current_tenant_counts.tenant_id}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Vehicles</p>
+                <p className="text-3xl font-bold text-primary">{data.current_tenant_counts.vehicles}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Loads</p>
+                <p className="text-3xl font-bold text-primary">{data.current_tenant_counts.loads}</p>
+              </div>
+              <div className="flex items-center">
+                <div className="text-xs text-muted-foreground">
+                  <p>Compare these with UI counts.</p>
+                  <p className="mt-1">If they match = queries are correct.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-amber-600 text-sm">
+              No tenant selected — select a tenant to see scoped counts
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Interpretation Guide */}
       <Card className="border-amber-500/50 bg-amber-500/5">
         <CardContent className="py-4">
@@ -143,15 +206,15 @@ export default function DebugTenantDataTab() {
             <Database className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
             <div className="text-sm space-y-1">
               <p>
-                <strong>If counts do NOT change when switching tenants →</strong>{" "}
-                <span className="text-destructive">Data is shared (isolation broken)</span>
+                <strong>If "Effective Tenant Scoped Counts" do NOT change when switching tenants →</strong>{" "}
+                <span className="text-destructive">Bug: tenant_id not being passed or data is shared</span>
               </p>
               <p>
                 <strong>If counts change when switching tenants →</strong>{" "}
-                <span className="text-green-600">UI queries may be wrong (or data is isolated)</span>
+                <span className="text-green-600">Data is isolated correctly per tenant</span>
               </p>
               <p className="text-muted-foreground">
-                Compare these server-side counts with what you see in the UI after switching tenants.
+                Compare the scoped counts above with what you see in the Vehicles/Loads tabs.
               </p>
             </div>
           </div>
@@ -208,14 +271,14 @@ export default function DebugTenantDataTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.results.length === 0 ? (
+                    {data.global_counts_by_tenant.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No data found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      data.results.map((row, idx) => {
+                      data.global_counts_by_tenant.map((row, idx) => {
                         const isCurrentTenant = row.tenant_id === tenantId;
                         return (
                           <TableRow

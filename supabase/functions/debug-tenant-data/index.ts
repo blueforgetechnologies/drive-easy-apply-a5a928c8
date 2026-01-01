@@ -5,6 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Simple UUID validation
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -17,6 +23,29 @@ Deno.serve(async (req) => {
       console.error("[debug-tenant-data] No Authorization header");
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Parse request body for tenant_id
+    let requestedTenantId: string | null = null;
+    try {
+      const body = await req.json();
+      requestedTenantId = body.tenant_id || null;
+    } catch {
+      // No body or invalid JSON
+    }
+
+    // Also check header as fallback
+    if (!requestedTenantId) {
+      requestedTenantId = req.headers.get("x-tenant-id");
+    }
+
+    // Validate tenant_id if provided
+    if (requestedTenantId && !isValidUUID(requestedTenantId)) {
+      console.error("[debug-tenant-data] Invalid tenant_id format:", requestedTenantId);
+      return new Response(JSON.stringify({ error: "invalid_tenant_id", message: "tenant_id must be a valid UUID" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -39,7 +68,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[debug-tenant-data] User ${user.id} requesting tenant data`);
+    console.log(`[debug-tenant-data] User ${user.id} requesting tenant data, effective tenant: ${requestedTenantId || 'none'}`);
 
     // Verify platform admin using service role
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -60,7 +89,7 @@ Deno.serve(async (req) => {
 
     console.log("[debug-tenant-data] Platform admin verified, fetching counts");
 
-    // Fetch vehicle counts by tenant
+    // Fetch vehicle counts by tenant (global)
     const { data: vehicleCounts, error: vehicleError } = await serviceClient
       .from("vehicles")
       .select("tenant_id");
@@ -69,7 +98,7 @@ Deno.serve(async (req) => {
       console.error("[debug-tenant-data] Vehicle query error:", vehicleError.message);
     }
 
-    // Fetch load counts by tenant
+    // Fetch load counts by tenant (global)
     const { data: loadCounts, error: loadError } = await serviceClient
       .from("loads")
       .select("tenant_id");
@@ -108,7 +137,7 @@ Deno.serve(async (req) => {
       tenantMap[t.id] = t;
     });
 
-    // Build response
+    // Build global results
     const results: Array<{
       tenant_id: string;
       tenant_name: string;
@@ -150,12 +179,39 @@ Deno.serve(async (req) => {
       return a.entity.localeCompare(b.entity);
     });
 
-    console.log(`[debug-tenant-data] Returning ${results.length} rows`);
+    // Calculate current tenant scoped counts
+    let currentTenantCounts: {
+      tenant_id: string | null;
+      tenant_name: string | null;
+      vehicles: number;
+      loads: number;
+    } | null = null;
+
+    if (requestedTenantId) {
+      const vehicleCount = vehiclesByTenant[requestedTenantId] || 0;
+      const loadCount = loadsByTenant[requestedTenantId] || 0;
+      const tenantInfo = tenantMap[requestedTenantId];
+
+      currentTenantCounts = {
+        tenant_id: requestedTenantId,
+        tenant_name: tenantInfo?.name || "Unknown",
+        vehicles: vehicleCount,
+        loads: loadCount,
+      };
+
+      console.log(`[debug-tenant-data] Current tenant ${requestedTenantId}: ${vehicleCount} vehicles, ${loadCount} loads`);
+    }
+
+    console.log(`[debug-tenant-data] Returning ${results.length} global rows`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        results,
+        // Global counts by tenant
+        global_counts_by_tenant: results,
+        // Current tenant scoped counts
+        current_tenant_counts: currentTenantCounts,
+        // Totals
         totals: {
           vehicles: Object.values(vehiclesByTenant).reduce((a, b) => a + b, 0),
           loads: Object.values(loadsByTenant).reduce((a, b) => a + b, 0),
