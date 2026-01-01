@@ -4255,10 +4255,12 @@ export type Database = {
       tenant_integrations: {
         Row: {
           created_at: string | null
-          credentials_encrypted: Json | null
+          credentials_encrypted: string | null
+          credentials_hint: string | null
           error_message: string | null
           id: string
           is_enabled: boolean | null
+          last_checked_at: string | null
           last_sync_at: string | null
           provider: string
           settings: Json | null
@@ -4268,10 +4270,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          credentials_encrypted?: Json | null
+          credentials_encrypted?: string | null
+          credentials_hint?: string | null
           error_message?: string | null
           id?: string
           is_enabled?: boolean | null
+          last_checked_at?: string | null
           last_sync_at?: string | null
           provider: string
           settings?: Json | null
@@ -4281,10 +4285,12 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          credentials_encrypted?: Json | null
+          credentials_encrypted?: string | null
+          credentials_hint?: string | null
           error_message?: string | null
           id?: string
           is_enabled?: boolean | null
+          last_checked_at?: string | null
           last_sync_at?: string | null
           provider?: string
           settings?: Json | null
@@ -5216,6 +5222,59 @@ export type Database = {
       }
     }
     Views: {
+      tenant_integrations_safe: {
+        Row: {
+          created_at: string | null
+          credentials_hint: string | null
+          error_message: string | null
+          id: string | null
+          is_enabled: boolean | null
+          last_checked_at: string | null
+          last_sync_at: string | null
+          provider: string | null
+          settings: Json | null
+          sync_status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credentials_hint?: string | null
+          error_message?: string | null
+          id?: string | null
+          is_enabled?: boolean | null
+          last_checked_at?: string | null
+          last_sync_at?: string | null
+          provider?: string | null
+          settings?: Json | null
+          sync_status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credentials_hint?: string | null
+          error_message?: string | null
+          id?: string | null
+          is_enabled?: boolean | null
+          last_checked_at?: string | null
+          last_sync_at?: string | null
+          provider?: string | null
+          settings?: Json | null
+          sync_status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unreviewed_matches: {
         Row: {
           distance_miles: number | null

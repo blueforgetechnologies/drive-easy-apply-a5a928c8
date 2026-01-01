@@ -176,3 +176,18 @@ verify_jwt = true
 
 [functions.tenant-isolation-audit]
 verify_jwt = true
+
+[functions.tenant-wipe-test-data]
+verify_jwt = true
+
+[functions.tenant-backfill-null]
+verify_jwt = true
+
+[functions.set-tenant-integration]
+verify_jwt = true
+
+[functions.test-tenant-integration]
+verify_jwt = true
+
+[functions.check-tenant-integrations]
+verify_jwt = true
