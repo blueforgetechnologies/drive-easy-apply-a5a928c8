@@ -412,6 +412,7 @@ export default function LoadDetail() {
           safer_status: data.safer_status || null,
           safety_rating: data.safety_rating || null,
           status: "active",
+          tenant_id: tenantId,
         })
         .select()
         .single();

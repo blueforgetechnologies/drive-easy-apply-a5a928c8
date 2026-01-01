@@ -785,6 +785,7 @@ export default function LoadsTab() {
           state: additionalData.state || null,
           zip: additionalData.zip || null,
           status: "active",
+          tenant_id: tenantId,
         })
         .select()
         .single();
