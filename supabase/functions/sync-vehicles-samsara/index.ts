@@ -6,299 +6,125 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface SyncRequest {
+  tenant_id?: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get Samsara API key
-    const SAMSARA_API_KEY = Deno.env.get("SAMSARA_API_KEY");
-    if (!SAMSARA_API_KEY) {
-      console.error('SAMSARA_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ error: 'Samsara API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate and trim API key
-    const trimmedKey = SAMSARA_API_KEY.trim();
-    console.log('Starting Samsara sync with API key length:', trimmedKey.length);
-
-    // Initialize Supabase client
+    // Initialize Supabase client with service role for admin access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch all vehicles from database (include oil_change_due for recalculation)
-    const { data: dbVehicles, error: dbError } = await supabase
-      .from('vehicles')
-      .select('id, vin, vehicle_number, oil_change_due')
-      .not('vin', 'is', null);
-
-    if (dbError) {
-      console.error('Error fetching vehicles from database:', dbError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch vehicles from database' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs in database`);
-
-    // Fetch vehicle stats from Samsara (GPS, odometer, fuel) using stats/feed endpoint
-    const samsaraStatsResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
-      {
-        headers: {
-          'Authorization': `Bearer ${trimmedKey}`,
-          'Accept': 'application/json',
-        },
-      }
-    );
-
-    if (!samsaraStatsResponse.ok) {
-      const errorText = await samsaraStatsResponse.text();
-      console.error('Samsara stats API error:', samsaraStatsResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to fetch Samsara stats data',
-          status: samsaraStatsResponse.status,
-          details: errorText
-        }),
-        { status: samsaraStatsResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const samsaraStatsData = await samsaraStatsResponse.json();
-    const samsaraVehicles = samsaraStatsData.data || [];
-    console.log(`Found ${samsaraVehicles.length} vehicles in Samsara stats feed`);
-
-    // Fetch fault codes separately using the /stats snapshot endpoint (faultCodes type)
-    let faultCodesByVin = new Map<string, string[]>();
+    // Parse request body
+    let requestedTenantId: string | undefined;
     try {
-      const faultCodesResponse = await fetch(
-        'https://api.samsara.com/fleet/vehicles/stats?types=faultCodes',
-        {
-          headers: {
-            'Authorization': `Bearer ${trimmedKey}`,
-            'Accept': 'application/json',
-          },
-        }
-      );
-
-      if (faultCodesResponse.ok) {
-        const faultCodesData = await faultCodesResponse.json();
-        const faultVehicles = faultCodesData.data || [];
-        console.log(`Found ${faultVehicles.length} vehicles in fault codes response`);
-        
-        // Debug: Log a sample vehicle structure
-        if (faultVehicles.length > 0) {
-          console.log('Sample fault vehicle structure:', JSON.stringify(faultVehicles[0], null, 2));
-        }
-        
-        // Build map of VIN -> fault codes
-        for (const vehicle of faultVehicles) {
-          const vin = vehicle.externalIds?.["samsara.vin"];
-          if (!vin) continue;
-          
-          const faultCodes: string[] = [];
-          
-          // Check for faultCodes array in vehicle data (can be array or single object)
-          const faultCodesData = vehicle.faultCodes;
-          const faultCodesArray = Array.isArray(faultCodesData) ? faultCodesData : (faultCodesData ? [faultCodesData] : []);
-          
-          for (const faultReading of faultCodesArray) {
-            // Handle J1939 fault codes (heavy duty vehicles)
-            // Structure: j1939.diagnosticTroubleCodes[]
-            if (faultReading.j1939?.diagnosticTroubleCodes) {
-              for (const dtc of faultReading.j1939.diagnosticTroubleCodes) {
-                const spnId = dtc.spnId || '';
-                const fmiId = dtc.fmiId || '';
-                const description = dtc.spnDescription || dtc.fmiDescription || '';
-                const faultStr = `SPN ${spnId} FMI ${fmiId}${description ? ': ' + description : ''}`;
-                faultCodes.push(faultStr);
-              }
-            }
-            
-            // Check J1939 check engine lights
-            if (faultReading.j1939?.checkEngineLights) {
-              const lights = faultReading.j1939.checkEngineLights;
-              if (lights.emissionsIsOn || lights.protectIsOn || lights.stopIsOn || lights.warningIsOn) {
-                const activeLights: string[] = [];
-                if (lights.emissionsIsOn) activeLights.push('Emissions');
-                if (lights.protectIsOn) activeLights.push('Protect');
-                if (lights.stopIsOn) activeLights.push('Stop');
-                if (lights.warningIsOn) activeLights.push('Warning');
-                faultCodes.push(`Check Engine Light: ${activeLights.join(', ')}`);
-              }
-            }
-            
-            // Handle OBD-II fault codes (passenger/light duty vehicles)
-            // Structure: obdii.diagnosticTroubleCodes[].confirmedDtcs[], pendingDtcs[], permanentDtcs[]
-            if (faultReading.obdii?.diagnosticTroubleCodes) {
-              for (const dtcGroup of faultReading.obdii.diagnosticTroubleCodes) {
-                // Confirmed DTCs (most important - cause check engine light)
-                if (dtcGroup.confirmedDtcs) {
-                  for (const dtc of dtcGroup.confirmedDtcs) {
-                    const code = dtc.dtcShortCode || dtc.dtcId || '';
-                    const description = dtc.dtcDescription || '';
-                    const faultStr = `${code}${description ? ': ' + description : ''}`;
-                    if (faultStr.trim()) faultCodes.push(faultStr);
-                  }
-                }
-                // Pending DTCs
-                if (dtcGroup.pendingDtcs) {
-                  for (const dtc of dtcGroup.pendingDtcs) {
-                    const code = dtc.dtcShortCode || dtc.dtcId || '';
-                    const description = dtc.dtcDescription || '';
-                    const faultStr = `PENDING: ${code}${description ? ': ' + description : ''}`;
-                    if (faultStr.trim()) faultCodes.push(faultStr);
-                  }
-                }
-                // Permanent DTCs
-                if (dtcGroup.permanentDtcs) {
-                  for (const dtc of dtcGroup.permanentDtcs) {
-                    const code = dtc.dtcShortCode || dtc.dtcId || '';
-                    const description = dtc.dtcDescription || '';
-                    const faultStr = `PERMANENT: ${code}${description ? ': ' + description : ''}`;
-                    if (faultStr.trim()) faultCodes.push(faultStr);
-                  }
-                }
-              }
-            }
-            
-            // Check OBD-II check engine light
-            if (faultReading.obdii?.checkEngineLightIsOn) {
-              faultCodes.push('Check Engine Light: ON');
-            }
-          }
-          
-          // Remove duplicates
-          const uniqueFaults = [...new Set(faultCodes)];
-          
-          if (uniqueFaults.length > 0) {
-            console.log(`Vehicle VIN ${vin}: ${uniqueFaults.length} fault codes found:`, uniqueFaults);
-            faultCodesByVin.set(vin, uniqueFaults);
-          }
-        }
-        console.log(`Total vehicles with fault codes: ${faultCodesByVin.size}`);
-      } else {
-        const errorText = await faultCodesResponse.text();
-        console.warn('Failed to fetch fault codes (non-blocking):', faultCodesResponse.status, errorText);
-      }
-    } catch (faultError) {
-      console.warn('Error fetching fault codes (non-blocking):', faultError);
+      const body: SyncRequest = await req.json();
+      requestedTenantId = body.tenant_id;
+    } catch {
+      // No body or invalid JSON - will use global API key fallback
     }
 
-    // Create VIN to Samsara vehicle map for quick lookup
-    const samsaraByVin = new Map();
-    samsaraVehicles.forEach((v: any) => {
-      const vin = v.externalIds?.["samsara.vin"];
-      if (vin) {
-        samsaraByVin.set(vin, v);
-      }
-    });
+    // Determine which tenants to sync
+    let tenantsToSync: { id: string; apiKey: string }[] = [];
 
-    // Sync each vehicle
-    const results = {
-      total: dbVehicles?.length || 0,
-      matched: 0,
-      updated: 0,
-      notFound: [] as string[],
-      errors: [] as any[],
-      faultCodesFound: faultCodesByVin.size,
-    };
+    if (requestedTenantId) {
+      // Sync specific tenant - get their API key from tenant_integrations
+      const { data: integration, error: intError } = await supabase
+        .from('tenant_integrations')
+        .select('credentials_encrypted, settings')
+        .eq('tenant_id', requestedTenantId)
+        .eq('provider', 'samsara')
+        .eq('is_enabled', true)
+        .single();
 
-    for (const dbVehicle of dbVehicles || []) {
-      const samsaraVehicle = samsaraByVin.get(dbVehicle.vin);
-      
-      if (!samsaraVehicle) {
-        results.notFound.push(dbVehicle.vin);
-        console.log(`Vehicle not found in Samsara: ${dbVehicle.vin}`);
-        continue;
-      }
-
-      results.matched++;
-
-      // Prepare update data
-      const updateData: any = {
-        last_updated: new Date().toISOString(),
-      };
-
-      // Extract odometer from obdOdometerMeters array (convert meters to miles)
-      if (samsaraVehicle.obdOdometerMeters?.[0]?.value) {
-        const newOdometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
-        updateData.odometer = newOdometer;
-        console.log(`Vehicle ${dbVehicle.vehicle_number}: new odometer = ${newOdometer}`);
-        
-        // Recalculate oil_change_remaining if oil_change_due is set
-        if (dbVehicle.oil_change_due) {
-          const newRemaining = dbVehicle.oil_change_due - newOdometer;
-          updateData.oil_change_remaining = newRemaining;
-          console.log(`Vehicle ${dbVehicle.vehicle_number}: oil_change_due=${dbVehicle.oil_change_due}, new_remaining=${newRemaining}`);
+      if (intError || !integration) {
+        // Fall back to global API key for this tenant
+        const globalKey = Deno.env.get("SAMSARA_API_KEY");
+        if (globalKey) {
+          tenantsToSync.push({ id: requestedTenantId, apiKey: globalKey.trim() });
+        } else {
+          return new Response(
+            JSON.stringify({ error: `No Samsara integration found for tenant ${requestedTenantId}` }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
       } else {
-        console.log(`Vehicle ${dbVehicle.vehicle_number}: no odometer data from Samsara`);
+        // Use tenant-specific API key
+        const apiKey = (integration.credentials_encrypted as any)?.api_key;
+        if (apiKey) {
+          tenantsToSync.push({ id: requestedTenantId, apiKey: apiKey.trim() });
+        } else {
+          // Fall back to global
+          const globalKey = Deno.env.get("SAMSARA_API_KEY");
+          if (globalKey) {
+            tenantsToSync.push({ id: requestedTenantId, apiKey: globalKey.trim() });
+          }
+        }
       }
+    } else {
+      // No specific tenant - check for tenant-specific integrations first
+      const { data: integrations } = await supabase
+        .from('tenant_integrations')
+        .select('tenant_id, credentials_encrypted')
+        .eq('provider', 'samsara')
+        .eq('is_enabled', true);
 
-      // Extract speed from GPS array (round to integer)
-      if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
-        updateData.speed = Math.round(samsaraVehicle.gps[0].speedMilesPerHour);
-        updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
-      }
-
-      // Extract location from GPS array - store both coordinates and address
-      if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
-        const lat = samsaraVehicle.gps[0].latitude;
-        const lng = samsaraVehicle.gps[0].longitude;
-        // Store coordinates in parseable format for map markers: "lat, lng"
-        updateData.last_location = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        
-        // Store reverse geocoded address from Samsara in separate field
-        if (samsaraVehicle.gps[0].reverseGeo?.formattedLocation) {
-          updateData.formatted_address = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
+      if (integrations && integrations.length > 0) {
+        // Sync each tenant with their own credentials
+        for (const int of integrations) {
+          const apiKey = (int.credentials_encrypted as any)?.api_key;
+          if (apiKey) {
+            tenantsToSync.push({ id: int.tenant_id, apiKey: apiKey.trim() });
+          }
         }
       }
 
-      // Get fault codes for this vehicle from the separate fault codes call
-      const vehicleFaultCodes = faultCodesByVin.get(dbVehicle.vin) || [];
-      updateData.fault_codes = vehicleFaultCodes;
-      
-      if (vehicleFaultCodes.length > 0) {
-        console.log(`Vehicle ${dbVehicle.vehicle_number}: setting ${vehicleFaultCodes.length} fault codes`);
-      }
+      // If no tenant-specific integrations, use global key for all tenants
+      if (tenantsToSync.length === 0) {
+        const globalKey = Deno.env.get("SAMSARA_API_KEY");
+        if (!globalKey) {
+          return new Response(
+            JSON.stringify({ error: 'No Samsara integrations configured and no global API key' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
-      // Store Samsara provider info
-      updateData.provider = 'Samsara';
-      updateData.provider_id = samsaraVehicle.id;
+        // Get all distinct tenant_ids from vehicles table
+        const { data: tenantData } = await supabase
+          .from('vehicles')
+          .select('tenant_id')
+          .not('vin', 'is', null);
 
-      // Update vehicle in database
-      const { error: updateError } = await supabase
-        .from('vehicles')
-        .update(updateData)
-        .eq('id', dbVehicle.id);
-
-      if (updateError) {
-        console.error(`Error updating vehicle ${dbVehicle.vin}:`, updateError);
-        results.errors.push({
-          vin: dbVehicle.vin,
-          error: updateError.message
-        });
-      } else {
-        results.updated++;
-        console.log(`Updated vehicle ${dbVehicle.vin} (${dbVehicle.vehicle_number || 'no unit ID'})`);
+        const uniqueTenantIds = [...new Set(tenantData?.map(v => v.tenant_id) || [])];
+        for (const tenantId of uniqueTenantIds) {
+          if (tenantId) {
+            tenantsToSync.push({ id: tenantId, apiKey: globalKey.trim() });
+          }
+        }
       }
     }
 
-    console.log('Sync completed:', results);
+    console.log(`Starting Samsara sync for ${tenantsToSync.length} tenant(s)`);
+
+    const allResults: any[] = [];
+
+    for (const { id: tenantId, apiKey } of tenantsToSync) {
+      console.log(`Syncing tenant: ${tenantId}`);
+      const result = await syncTenantVehicles(supabase, tenantId, apiKey);
+      allResults.push({ tenant_id: tenantId, ...result });
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Successfully synced ${results.updated} of ${results.total} vehicles (${results.faultCodesFound} with fault codes)`,
-        results
+        message: `Synced ${allResults.length} tenant(s)`,
+        results: allResults
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -313,3 +139,236 @@ serve(async (req) => {
     );
   }
 });
+
+async function syncTenantVehicles(
+  supabase: any,
+  tenantId: string,
+  apiKey: string
+) {
+  try {
+    // Fetch vehicles for this tenant only
+    const { data: dbVehicles, error: dbError } = await supabase
+      .from('vehicles')
+      .select('id, vin, vehicle_number, oil_change_due')
+      .eq('tenant_id', tenantId)
+      .not('vin', 'is', null);
+
+    if (dbError) {
+      console.error(`Error fetching vehicles for tenant ${tenantId}:`, dbError);
+      return { error: 'Failed to fetch vehicles from database', details: dbError.message };
+    }
+
+    console.log(`Found ${dbVehicles?.length || 0} vehicles with VINs for tenant ${tenantId}`);
+
+    if (!dbVehicles || dbVehicles.length === 0) {
+      return { matched: 0, updated: 0, notFound: [], message: 'No vehicles with VINs found' };
+    }
+
+    // Fetch vehicle stats from Samsara
+    const samsaraStatsResponse = await fetch(
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    if (!samsaraStatsResponse.ok) {
+      const errorText = await samsaraStatsResponse.text();
+      console.error(`Samsara API error for tenant ${tenantId}:`, samsaraStatsResponse.status, errorText);
+      return { 
+        error: 'Failed to fetch Samsara data',
+        status: samsaraStatsResponse.status,
+        details: errorText
+      };
+    }
+
+    const samsaraStatsData = await samsaraStatsResponse.json();
+    const samsaraVehicles = samsaraStatsData.data || [];
+
+    // Fetch fault codes
+    let faultCodesByVin = new Map<string, string[]>();
+    try {
+      const faultCodesResponse = await fetch(
+        'https://api.samsara.com/fleet/vehicles/stats?types=faultCodes',
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (faultCodesResponse.ok) {
+        const faultCodesData = await faultCodesResponse.json();
+        const faultVehicles = faultCodesData.data || [];
+        
+        for (const vehicle of faultVehicles) {
+          const vin = vehicle.externalIds?.["samsara.vin"];
+          if (!vin) continue;
+          
+          const faultCodes = extractFaultCodes(vehicle);
+          if (faultCodes.length > 0) {
+            faultCodesByVin.set(vin, faultCodes);
+          }
+        }
+      }
+    } catch (faultError) {
+      console.warn(`Error fetching fault codes for tenant ${tenantId}:`, faultError);
+    }
+
+    // Create VIN to Samsara vehicle map
+    const samsaraByVin = new Map();
+    samsaraVehicles.forEach((v: any) => {
+      const vin = v.externalIds?.["samsara.vin"];
+      if (vin) samsaraByVin.set(vin, v);
+    });
+
+    // Sync results
+    const results = {
+      total: dbVehicles.length,
+      matched: 0,
+      updated: 0,
+      notFound: [] as string[],
+      errors: [] as any[],
+      faultCodesFound: faultCodesByVin.size,
+    };
+
+    for (const dbVehicle of dbVehicles) {
+      const samsaraVehicle = samsaraByVin.get(dbVehicle.vin);
+      
+      if (!samsaraVehicle) {
+        results.notFound.push(dbVehicle.vin);
+        continue;
+      }
+
+      results.matched++;
+
+      const updateData: any = {
+        last_updated: new Date().toISOString(),
+      };
+
+      // Extract odometer
+      if (samsaraVehicle.obdOdometerMeters?.[0]?.value) {
+        const newOdometer = Math.round(samsaraVehicle.obdOdometerMeters[0].value / 1609.34);
+        updateData.odometer = newOdometer;
+        
+        if (dbVehicle.oil_change_due) {
+          updateData.oil_change_remaining = dbVehicle.oil_change_due - newOdometer;
+        }
+      }
+
+      // Extract speed and location
+      if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
+        updateData.speed = Math.round(samsaraVehicle.gps[0].speedMilesPerHour);
+        updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
+      }
+
+      if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
+        const lat = samsaraVehicle.gps[0].latitude;
+        const lng = samsaraVehicle.gps[0].longitude;
+        updateData.last_location = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        
+        if (samsaraVehicle.gps[0].reverseGeo?.formattedLocation) {
+          updateData.formatted_address = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
+        }
+      }
+
+      // Fault codes
+      updateData.fault_codes = faultCodesByVin.get(dbVehicle.vin) || [];
+
+      // Provider info
+      updateData.provider = 'Samsara';
+      updateData.provider_id = samsaraVehicle.id;
+
+      // Update vehicle - scoped to tenant for safety
+      const { error: updateError } = await supabase
+        .from('vehicles')
+        .update(updateData)
+        .eq('id', dbVehicle.id)
+        .eq('tenant_id', tenantId);
+
+      if (updateError) {
+        results.errors.push({ vin: dbVehicle.vin, error: updateError.message });
+      } else {
+        results.updated++;
+      }
+    }
+
+    // Update sync status in tenant_integrations
+    await supabase
+      .from('tenant_integrations')
+      .update({
+        last_sync_at: new Date().toISOString(),
+        sync_status: results.errors.length > 0 ? 'partial' : 'success',
+        error_message: results.errors.length > 0 ? `${results.errors.length} vehicle(s) failed` : null
+      })
+      .eq('tenant_id', tenantId)
+      .eq('provider', 'samsara');
+
+    return results;
+  } catch (error) {
+    console.error(`Error syncing tenant ${tenantId}:`, error);
+    return { error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+function extractFaultCodes(vehicle: any): string[] {
+  const faultCodes: string[] = [];
+  const faultCodesData = vehicle.faultCodes;
+  const faultCodesArray = Array.isArray(faultCodesData) ? faultCodesData : (faultCodesData ? [faultCodesData] : []);
+  
+  for (const faultReading of faultCodesArray) {
+    // J1939 fault codes
+    if (faultReading.j1939?.diagnosticTroubleCodes) {
+      for (const dtc of faultReading.j1939.diagnosticTroubleCodes) {
+        const spnId = dtc.spnId || '';
+        const fmiId = dtc.fmiId || '';
+        const description = dtc.spnDescription || dtc.fmiDescription || '';
+        faultCodes.push(`SPN ${spnId} FMI ${fmiId}${description ? ': ' + description : ''}`);
+      }
+    }
+    
+    // J1939 check engine lights
+    if (faultReading.j1939?.checkEngineLights) {
+      const lights = faultReading.j1939.checkEngineLights;
+      if (lights.emissionsIsOn || lights.protectIsOn || lights.stopIsOn || lights.warningIsOn) {
+        const activeLights: string[] = [];
+        if (lights.emissionsIsOn) activeLights.push('Emissions');
+        if (lights.protectIsOn) activeLights.push('Protect');
+        if (lights.stopIsOn) activeLights.push('Stop');
+        if (lights.warningIsOn) activeLights.push('Warning');
+        faultCodes.push(`Check Engine Light: ${activeLights.join(', ')}`);
+      }
+    }
+    
+    // OBD-II fault codes
+    if (faultReading.obdii?.diagnosticTroubleCodes) {
+      for (const dtcGroup of faultReading.obdii.diagnosticTroubleCodes) {
+        for (const dtc of (dtcGroup.confirmedDtcs || [])) {
+          const code = dtc.dtcShortCode || dtc.dtcId || '';
+          const description = dtc.dtcDescription || '';
+          if (code || description) faultCodes.push(`${code}${description ? ': ' + description : ''}`);
+        }
+        for (const dtc of (dtcGroup.pendingDtcs || [])) {
+          const code = dtc.dtcShortCode || dtc.dtcId || '';
+          const description = dtc.dtcDescription || '';
+          if (code || description) faultCodes.push(`PENDING: ${code}${description ? ': ' + description : ''}`);
+        }
+        for (const dtc of (dtcGroup.permanentDtcs || [])) {
+          const code = dtc.dtcShortCode || dtc.dtcId || '';
+          const description = dtc.dtcDescription || '';
+          if (code || description) faultCodes.push(`PERMANENT: ${code}${description ? ': ' + description : ''}`);
+        }
+      }
+    }
+    
+    if (faultReading.obdii?.checkEngineLightIsOn) {
+      faultCodes.push('Check Engine Light: ON');
+    }
+  }
+  
+  return [...new Set(faultCodes)];
+}
