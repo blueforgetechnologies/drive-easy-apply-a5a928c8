@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useTenantContext } from "@/contexts/TenantContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ export default function UsersTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { tenantId, shouldFilter } = useTenantFilter();
+  const { effectiveTenant } = useTenantContext();
   const filter = searchParams.get("filter") || "active";
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -84,6 +86,14 @@ export default function UsersTab() {
   const fetchTenantUsersWithProfiles = async (active: boolean): Promise<TenantUser[]> => {
     if (!tenantId && shouldFilter) return [];
 
+    // DEBUG: Log tenant context for verification
+    console.log("[UsersTab] Fetching users with:", {
+      effectiveTenantId: tenantId,
+      effectiveTenantName: effectiveTenant?.name,
+      shouldFilter,
+      isActive: active,
+    });
+
     let query = supabase
       .from("tenant_users")
       .select(
@@ -103,6 +113,13 @@ export default function UsersTab() {
     }
 
     const { data: tenantUsers, error: tenantUsersError } = await query;
+
+    // DEBUG: Log query results
+    console.log("[UsersTab] Query returned:", {
+      count: tenantUsers?.length ?? 0,
+      tenantId,
+      error: tenantUsersError?.message,
+    });
 
     if (tenantUsersError) {
       throw tenantUsersError;
@@ -302,7 +319,15 @@ export default function UsersTab() {
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">User Management</h2>
+        <div>
+          <h2 className="text-2xl font-bold">User Management</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Viewing users for:{" "}
+            <Badge variant="outline" className="ml-1 font-medium">
+              {effectiveTenant?.name || "All Tenants"}
+            </Badge>
+          </p>
+        </div>
         <InviteUserDialog />
       </div>
 
