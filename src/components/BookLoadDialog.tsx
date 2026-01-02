@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useTenantId } from "@/hooks/useTenantId";
+import { useTenantQuery } from "@/hooks/useTenantQuery";
 interface BookLoadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,7 +30,7 @@ export function BookLoadDialog({
   currentDispatcherId,
   onBookingComplete,
 }: BookLoadDialogProps) {
-  const tenantId = useTenantId();
+  const { query, tenantId, isReady } = useTenantQuery();
   const [rate, setRate] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [dispatcherId, setDispatcherId] = useState("");
@@ -106,9 +106,9 @@ export function BookLoadDialog({
       let customerId: string | null = null;
 
       try {
+        // Use tenant-scoped query to only find customers within the current tenant
         if (customerName) {
-          const { data } = await supabase
-            .from('customers')
+          const { data } = await query('customers')
             .select('id')
             .ilike('name', customerName)
             .limit(1);
@@ -117,8 +117,7 @@ export function BookLoadDialog({
         }
 
         if (!customerId && customerEmail) {
-          const { data } = await supabase
-            .from('customers')
+          const { data } = await query('customers')
             .select('id')
             .ilike('email', customerEmail)
             .limit(1);
