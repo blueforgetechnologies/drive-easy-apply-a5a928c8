@@ -19,7 +19,7 @@ interface TenantUser {
   user_id: string;
   role: string;
   is_active: boolean;
-  joined_at: string;
+  created_at: string;
   profile?: {
     id: string;
     email: string;
@@ -92,7 +92,7 @@ export default function UsersTab() {
         user_id,
         role,
         is_active,
-        joined_at,
+        created_at,
         profiles:user_id (
           id,
           email,
@@ -100,7 +100,7 @@ export default function UsersTab() {
         )
       `)
       .eq("is_active", true)
-      .order("joined_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (shouldFilter && tenantId) {
       query = query.eq("tenant_id", tenantId);
@@ -174,7 +174,7 @@ export default function UsersTab() {
         user_id,
         role,
         is_active,
-        joined_at,
+        created_at,
         profiles:user_id (
           id,
           email,
@@ -182,7 +182,7 @@ export default function UsersTab() {
         )
       `)
       .eq("is_active", false)
-      .order("joined_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (shouldFilter && tenantId) {
       query = query.eq("tenant_id", tenantId);
@@ -512,7 +512,7 @@ export default function UsersTab() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {format(new Date(user.joined_at), "MM/dd/yyyy")}
+                              {format(new Date(user.created_at), "MM/dd/yyyy")}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
