@@ -68,10 +68,18 @@ interface UseTenantQueryResult {
  * await supabase.from("vehicles").insert(withTenant({ vehicle_number: "123" }));
  */
 export function useTenantQuery(): UseTenantQueryResult {
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isInternalChannel, canUseAllTenantsMode } = useTenantFilter();
   
   // Full context passed to all tenant query utilities - SINGLE SOURCE OF TRUTH
-  const context = { tenantId, shouldFilter, isPlatformAdmin, showAllTenants };
+  // SECURITY: Include all fields required for proper authorization checks
+  const context = { 
+    tenantId, 
+    shouldFilter, 
+    isPlatformAdmin, 
+    showAllTenants,
+    isInternalChannel,
+    canUseAllTenantsMode,
+  };
   
   return {
     query: (tableName, options) => tenantQuery(tableName, context, options),
