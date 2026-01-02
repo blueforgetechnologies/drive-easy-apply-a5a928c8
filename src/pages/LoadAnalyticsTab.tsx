@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantContext } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer, ChevronDown, Check } from "lucide-react";
+import { TrendingUp, Calendar, Loader2, Map as MapIcon, BarChart3, Mail, Globe, RefreshCw, Timer, ChevronDown, Check, ShieldAlert } from "lucide-react";
 import { format, getDay, getHours, parseISO, subDays, subHours, subMonths, subYears, startOfDay, endOfDay } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import mapboxgl from 'mapbox-gl';
@@ -161,6 +163,8 @@ const findMatchingRangeKey = (start: Date, end: Date): DateRangeKey | null => {
 };
 
 export default function LoadAnalyticsTab() {
+  const navigate = useNavigate();
+  const { isPlatformAdmin, loading: tenantLoading } = useTenantContext();
   const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
   const [totalEmailCount, setTotalEmailCount] = useState<number>(0);
   const [geocodeCache, setGeocodeCache] = useState<GeocodeData[]>([]);
@@ -211,12 +215,28 @@ export default function LoadAnalyticsTab() {
     setEndDate(end);
   }, []);
 
+  // Authorization check - Analytics is internal only (platform admins)
+  // Show access denied if not authorized
+  if (!tenantLoading && !isPlatformAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <ShieldAlert className="h-16 w-16 text-destructive" />
+        <h2 className="text-2xl font-bold">Access Denied</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Analytics is an internal feature. You don't have permission to access this page.
+        </p>
+        <Button onClick={() => navigate("/dashboard/loads")}>Go to Loads</Button>
+      </div>
+    );
+  }
+
   // Initial load
   useEffect(() => {
+    if (!isPlatformAdmin) return;
     loadAnalyticsData();
     loadMapboxToken();
     loadGeocodeCache();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, isPlatformAdmin]);
 
   // Auto-refresh interval
   useEffect(() => {

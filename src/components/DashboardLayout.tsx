@@ -252,6 +252,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   // Primary nav items - most frequently used
+  // Analytics and Usage tabs are internal-only (platform admin)
   const primaryNavItems = [
     { value: "map", icon: Map, label: "Map" },
     { value: "load-hunter", icon: Target, label: "Load Hunter" },
@@ -260,9 +261,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "carrier-dashboard", icon: Briefcase, label: "Carrier's Dashboard" },
     { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
     { value: "accounting", icon: Calculator, label: "Accounting" },
-    { value: "analytics", icon: TrendingUp, label: "Analytics" },
+    // Analytics is internal-only - only show for platform admins
+    ...(isPlatformAdmin ? [{ value: "analytics", icon: TrendingUp, label: "Analytics" }] : []),
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
-    { value: "usage", icon: DollarSign, label: "Usage" },
+    // Usage is internal-only - only show for platform admins  
+    ...(isPlatformAdmin ? [{ value: "usage", icon: DollarSign, label: "Usage" }] : []),
     { value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount },
   ];
 
