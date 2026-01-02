@@ -175,3 +175,71 @@ export function getServiceClient() {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   return createClient(supabaseUrl, supabaseServiceKey);
 }
+
+/**
+ * Derive the effective tenant_id from JWT when not provided in request body.
+ * Returns the user's first active tenant membership.
+ * 
+ * Use this before assertTenantAccess when tenant_id is optional in request.
+ */
+export async function deriveTenantFromJWT(
+  authHeader: string | null
+): Promise<{ tenant_id: string | null; user_id: string | null; error?: Response }> {
+  if (!authHeader) {
+    return {
+      tenant_id: null,
+      user_id: null,
+      error: new Response(
+        JSON.stringify({ error: 'Unauthorized', reason: 'missing_auth' }),
+        { status: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' } }
+      ),
+    };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+    return {
+      tenant_id: null,
+      user_id: null,
+      error: new Response(
+        JSON.stringify({ error: 'Configuration error' }),
+        { status: 500, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' } }
+      ),
+    };
+  }
+
+  // Verify user identity using their JWT
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error: authError } = await userClient.auth.getUser();
+  if (authError || !user) {
+    return {
+      tenant_id: null,
+      user_id: null,
+      error: new Response(
+        JSON.stringify({ error: 'Unauthorized', reason: 'auth_failed' }),
+        { status: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' } }
+      ),
+    };
+  }
+
+  // Use service role to find user's first active tenant
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: membership } = await serviceClient
+    .from('tenant_users')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    tenant_id: membership?.tenant_id || null,
+    user_id: user.id,
+  };
+}
