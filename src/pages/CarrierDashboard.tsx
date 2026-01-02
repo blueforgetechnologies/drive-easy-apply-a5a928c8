@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantQuery } from "@/hooks/useTenantQuery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export default function CarrierDashboard() {
   const dispatcherFromUrl = searchParams.get("dispatcher");
   const dashboardFromUrl = searchParams.get("dashboard") as DashboardType | null;
   
+  const { query, tenantId, isReady } = useTenantQuery();
   const [dashboardType, setDashboardType] = useState<DashboardType>(dashboardFromUrl || (dispatcherFromUrl ? "dispatcher" : "carrier"));
   const [loading, setLoading] = useState(true);
   
@@ -88,17 +90,19 @@ export default function CarrierDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
+    if (!isReady) return;
     loadCarriers();
     loadDispatchers();
-  }, []);
+  }, [isReady, tenantId]);
 
   useEffect(() => {
+    if (!isReady) return;
     if (dashboardType === "carrier" && carriers.length > 0) {
       loadCarrierData();
     } else if (dashboardType === "dispatcher" && dispatchers.length > 0) {
       loadDispatcherData();
     }
-  }, [selectedCarrier, selectedDispatcher, carriers, dispatchers, dashboardType]);
+  }, [selectedCarrier, selectedDispatcher, carriers, dispatchers, dashboardType, isReady, tenantId]);
 
   const handleDashboardSwitch = (type: DashboardType) => {
     setDashboardType(type);
@@ -132,39 +136,39 @@ export default function CarrierDashboard() {
   };
 
   const loadCarriers = async () => {
+    if (!isReady) return;
     try {
-      const { data, error } = await supabase
-        .from("carriers")
+      const { data, error } = await query("carriers")
         .select("id, name, status")
         .order("name");
 
       if (error) throw error;
-      setCarriers(data || []);
+      setCarriers((data as unknown as Carrier[]) || []);
     } catch (error) {
       console.error("Error loading carriers:", error);
     }
   };
 
   const loadDispatchers = async () => {
+    if (!isReady) return;
     try {
-      const { data, error } = await supabase
-        .from("dispatchers")
+      const { data, error } = await query("dispatchers")
         .select("id, first_name, last_name, status, pay_percentage")
         .order("first_name");
 
       if (error) throw error;
-      setDispatchers(data || []);
+      setDispatchers((data as unknown as Dispatcher[]) || []);
     } catch (error) {
       console.error("Error loading dispatchers:", error);
     }
   };
 
   const loadCarrierData = async () => {
+    if (!isReady) return;
     setLoading(true);
     try {
-      // Load vehicles for selected carrier(s)
-      let vehicleQuery = supabase
-        .from("vehicles")
+      // Load vehicles for selected carrier(s) - tenant scoped
+      let vehicleQuery = query("vehicles")
         .select("id, vehicle_number, asset_type, carrier, requires_load_approval, truck_type, contractor_percentage")
         .eq("status", "active");
 
@@ -175,10 +179,11 @@ export default function CarrierDashboard() {
       const { data: vehicleData, error: vehicleError } = await vehicleQuery;
       if (vehicleError) throw vehicleError;
 
-      setVehicles(vehicleData || []);
+      const typedVehicleData = (vehicleData as unknown as Vehicle[]) || [];
+      setVehicles(typedVehicleData);
 
       // Get vehicle IDs
-      const vehicleIds = (vehicleData || []).map(v => v.id);
+      const vehicleIds = typedVehicleData.map(v => v.id);
 
       if (vehicleIds.length === 0) {
         setLoads([]);
@@ -186,21 +191,22 @@ export default function CarrierDashboard() {
         return;
       }
 
-      // Load loads assigned to these vehicles
-      const { data: loadData, error: loadError } = await supabase
-        .from("loads")
+      // Load loads assigned to these vehicles - tenant scoped
+      const { data: loadData, error: loadError } = await query("loads")
         .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, carrier_approved, carrier_rate, customers(name)")
         .in("assigned_vehicle_id", vehicleIds)
         .order("pickup_date", { ascending: false });
 
       if (loadError) throw loadError;
       
+      const typedLoadData = (loadData as unknown as Load[]) || [];
+      
       // Filter out loads that require approval but haven't been approved yet
-      const vehiclesRequiringApproval = (vehicleData || [])
+      const vehiclesRequiringApproval = typedVehicleData
         .filter(v => v.requires_load_approval)
         .map(v => v.id);
       
-      const filteredLoadData = (loadData || []).filter(load => {
+      const filteredLoadData = typedLoadData.filter(load => {
         // If vehicle requires approval, only show if carrier_approved is true
         if (vehiclesRequiringApproval.includes(load.assigned_vehicle_id || '')) {
           return load.carrier_approved === true;
@@ -217,11 +223,11 @@ export default function CarrierDashboard() {
   };
 
   const loadDispatcherData = async () => {
+    if (!isReady) return;
     setLoading(true);
     try {
-      // Load loads for selected dispatcher(s)
-      let loadQuery = supabase
-        .from("loads")
+      // Load loads for selected dispatcher(s) - tenant scoped
+      let loadQuery = query("loads")
         .select("id, load_number, status, rate, pickup_city, pickup_state, pickup_date, delivery_city, delivery_state, delivery_date, assigned_vehicle_id, assigned_dispatcher_id, carrier_id, broker_name, customer_id, carrier_approved, carrier_rate, customers(name)")
         .order("pickup_date", { ascending: false });
 
@@ -238,19 +244,18 @@ export default function CarrierDashboard() {
       const { data: loadData, error: loadError } = await loadQuery;
       if (loadError) throw loadError;
 
-      setLoads((loadData || []) as Load[]);
+      setLoads((loadData as unknown as Load[]) || []);
 
       // Get unique vehicle IDs from loads
-      const vehicleIds = [...new Set((loadData || []).map(l => l.assigned_vehicle_id).filter(Boolean))] as string[];
+      const vehicleIds = [...new Set((loadData as unknown as Load[] || []).map(l => l.assigned_vehicle_id).filter(Boolean))] as string[];
       
       if (vehicleIds.length > 0) {
-        const { data: vehicleData, error: vehicleError } = await supabase
-          .from("vehicles")
+        const { data: vehicleData, error: vehicleError } = await query("vehicles")
           .select("id, vehicle_number, asset_type, carrier, requires_load_approval, truck_type, contractor_percentage")
           .in("id", vehicleIds);
 
         if (vehicleError) throw vehicleError;
-        setVehicles(vehicleData || []);
+        setVehicles((vehicleData as unknown as Vehicle[]) || []);
       } else {
         setVehicles([]);
       }

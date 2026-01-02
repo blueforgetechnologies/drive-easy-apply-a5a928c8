@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantQuery } from "@/hooks/useTenantQuery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ interface VehicleWithFaults {
 export default function MaintenanceTab() {
   const [searchParams] = useSearchParams();
   const vehicleIdFromUrl = searchParams.get('vehicle');
+  const { query, tenantId, isReady } = useTenantQuery();
   const [records, setRecords] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<VehicleBasic[]>([]);
   const [allVehicles, setAllVehicles] = useState<VehicleWithFaults[]>([]);
@@ -66,10 +68,11 @@ export default function MaintenanceTab() {
   });
 
   useEffect(() => {
+    if (!isReady) return;
     loadMaintenanceRecords();
     loadVehicles();
     loadAllVehiclesWithFaults();
-  }, []);
+  }, [isReady, tenantId]);
 
   // Auto-select vehicle from URL parameter
   useEffect(() => {
@@ -83,9 +86,9 @@ export default function MaintenanceTab() {
   }, [vehicleIdFromUrl, allVehicles]);
 
   const loadMaintenanceRecords = async () => {
+    if (!isReady) return;
     try {
-      const { data, error } = await supabase
-        .from("maintenance_records")
+      const { data, error } = await query("maintenance_records")
         .select("*, vehicles(vehicle_number, make, model)")
         .order("service_date", { ascending: false });
 
@@ -100,38 +103,44 @@ export default function MaintenanceTab() {
   };
 
   const loadVehicles = async () => {
+    if (!isReady) return;
     try {
-      const { data, error } = await supabase
-        .from("vehicles")
+      const { data, error } = await query("vehicles")
         .select("id, vehicle_number, make, model")
         .eq("status", "active")
         .order("vehicle_number");
 
       if (error) throw error;
-      setVehicles(data || []);
+      setVehicles((data as unknown as VehicleBasic[]) || []);
     } catch (error: any) {
       console.error("Failed to load vehicles:", error);
     }
   };
 
   const loadAllVehiclesWithFaults = async () => {
+    if (!isReady) return;
     try {
-      const { data, error } = await supabase
-        .from("vehicles")
+      const { data, error } = await query("vehicles")
         .select("id, vehicle_number, make, model, fault_codes, last_updated, formatted_address, odometer")
         .order("vehicle_number");
 
       if (error) throw error;
-      setAllVehicles(data || []);
+      setAllVehicles((data as unknown as VehicleWithFaults[]) || []);
     } catch (error: any) {
       console.error("Failed to load vehicles with faults:", error);
     }
   };
 
   const handleSyncSamsara = async () => {
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara');
+      const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara', {
+        body: { tenant_id: tenantId }
+      });
       if (error) throw error;
       toast.success(data.message || "Vehicles synced successfully");
       await loadAllVehiclesWithFaults();
@@ -144,9 +153,14 @@ export default function MaintenanceTab() {
   };
 
   const handleAddRecord = async () => {
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
     try {
       const { error } = await supabase.from("maintenance_records").insert([{
         ...newRecord,
+        tenant_id: tenantId,
         cost: newRecord.cost ? parseFloat(newRecord.cost) : null,
         odometer: newRecord.odometer ? parseInt(newRecord.odometer) : null,
         next_service_odometer: newRecord.next_service_odometer ? parseInt(newRecord.next_service_odometer) : null,
