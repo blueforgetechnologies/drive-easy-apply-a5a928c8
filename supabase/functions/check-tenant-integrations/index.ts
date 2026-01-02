@@ -117,11 +117,9 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader! } }
     });
 
-    // Step 6: Query tenant_integrations_safe using auth-bound client (RLS enforced)
+    // Step 6: Query integrations via SECURITY DEFINER function (tenant access validated inside function)
     const { data: configuredIntegrations, error: fetchError } = await authClient
-      .from('tenant_integrations_safe')
-      .select('*')
-      .eq('tenant_id', tenant_id);
+      .rpc('get_tenant_integrations_safe', { p_tenant_id: tenant_id });
 
     if (fetchError) {
       console.error('[check-tenant-integrations] Error fetching integrations:', fetchError);
@@ -132,8 +130,21 @@ serve(async (req) => {
     }
 
     // Step 7: Merge catalog with configured data
+    interface ConfiguredIntegration {
+      id: string;
+      tenant_id: string;
+      provider: string;
+      is_enabled: boolean;
+      credentials_hint: string | null;
+      settings: Record<string, unknown> | null;
+      sync_status: string | null;
+      error_message: string | null;
+      last_checked_at: string | null;
+      last_sync_at: string | null;
+      is_configured: boolean;
+    }
     const integrations = PROVIDER_CATALOG.map(provider => {
-      const configured = configuredIntegrations?.find(i => i.provider === provider.id);
+      const configured = (configuredIntegrations as ConfiguredIntegration[] | null)?.find(i => i.provider === provider.id);
       
       if (configured) {
         return {
