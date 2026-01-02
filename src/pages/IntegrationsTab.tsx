@@ -8,6 +8,15 @@ import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as Set
 import { toast } from "sonner";
 import { IntegrationConfigModal } from "@/components/IntegrationConfigModal";
 
+// Field definition from edge function
+interface FieldDef {
+  key: string;
+  label: string;
+  type: 'password' | 'text' | 'email';
+  placeholder: string;
+  required: boolean;
+}
+
 interface Integration {
   id: string;
   name: string;
@@ -16,10 +25,12 @@ interface Integration {
   is_enabled: boolean;
   credentials_hint: string | null;
   settings: Record<string, unknown> | null;
-  sync_status: "success" | "failed" | "partial" | "unknown" | "not_configured";
+  sync_status: "healthy" | "failed" | "partial" | "pending" | "disabled" | "not_configured";
   error_message: string | null;
   last_checked_at: string | null;
   last_sync_at: string | null;
+  credentialFields: FieldDef[];
+  settingsFields: FieldDef[];
 }
 
 export default function IntegrationsTab() {
@@ -84,8 +95,12 @@ export default function IntegrationsTab() {
 
       if (error) throw error;
 
-      if (data?.status === "success") {
+      if (data?.status === "healthy") {
         toast.success(`${integration.name} test successful`, {
+          description: data.message,
+        });
+      } else if (data?.status === "disabled") {
+        toast.info(`${integration.name} is disabled`, {
           description: data.message,
         });
       } else {
@@ -134,12 +149,14 @@ export default function IntegrationsTab() {
       return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
     }
     switch (status) {
-      case "success":
+      case "healthy":
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case "failed":
         return <XCircle className="h-5 w-5 text-red-500" />;
       case "partial":
         return <AlertCircle className="h-5 w-5 text-yellow-500" />;
+      case "pending":
+        return <AlertCircle className="h-5 w-5 text-blue-500" />;
       default:
         return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
     }
@@ -153,12 +170,16 @@ export default function IntegrationsTab() {
       return <Badge variant="outline">Disabled</Badge>;
     }
     switch (status) {
-      case "success":
+      case "healthy":
         return <Badge className="bg-green-500">Operational</Badge>;
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       case "partial":
         return <Badge className="bg-yellow-500">Degraded</Badge>;
+      case "pending":
+        return <Badge className="bg-blue-500">Pending</Badge>;
+      case "disabled":
+        return <Badge variant="outline">Disabled</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
@@ -332,6 +353,8 @@ export default function IntegrationsTab() {
           tenantId={tenantId!}
           existingHint={selectedIntegration.credentials_hint}
           existingSettings={selectedIntegration.settings}
+          credentialFields={selectedIntegration.credentialFields || []}
+          settingsFields={selectedIntegration.settingsFields || []}
           onSuccess={loadIntegrations}
         />
       )}

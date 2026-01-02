@@ -1,49 +1,87 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// SINGLE SOURCE OF TRUTH: Provider catalog lives only in this edge function
-// UI renders whatever this function returns - no duplication
+// Field definition for dynamic form rendering
+interface FieldDef {
+  key: string;
+  label: string;
+  type: 'password' | 'text' | 'email';
+  placeholder: string;
+  required: boolean;
+}
+
+// SINGLE SOURCE OF TRUTH: Provider catalog with field schemas
+// UI renders forms from these definitions - no local catalog
 const PROVIDER_CATALOG = [
   { 
     id: 'samsara', 
     name: 'Samsara API', 
     description: 'Vehicle telematics and fleet tracking',
-    icon: 'truck'
+    icon: 'truck',
+    credentialFields: [
+      { key: 'api_key', label: 'API Key', type: 'password' as const, placeholder: 'Enter your Samsara API key', required: true }
+    ],
+    settingsFields: [] as FieldDef[]
   },
   { 
     id: 'resend', 
     name: 'Resend Email', 
     description: 'Transactional email service',
-    icon: 'mail'
+    icon: 'mail',
+    credentialFields: [
+      { key: 'api_key', label: 'API Key', type: 'password' as const, placeholder: 're_xxxxxx...', required: true }
+    ],
+    settingsFields: [
+      { key: 'from_email', label: 'From Email', type: 'email' as const, placeholder: 'noreply@yourdomain.com', required: true }
+    ]
   },
   { 
     id: 'mapbox', 
     name: 'Mapbox', 
     description: 'Maps and geocoding services',
-    icon: 'map'
+    icon: 'map',
+    credentialFields: [
+      { key: 'token', label: 'Access Token', type: 'password' as const, placeholder: 'pk.xxxxxx...', required: true }
+    ],
+    settingsFields: [] as FieldDef[]
   },
   { 
     id: 'weather', 
     name: 'Weather API', 
     description: 'Real-time weather data for locations',
-    icon: 'cloud'
+    icon: 'cloud',
+    credentialFields: [
+      { key: 'api_key', label: 'API Key', type: 'password' as const, placeholder: 'Enter your Weather API key', required: true }
+    ],
+    settingsFields: [] as FieldDef[]
   },
   { 
     id: 'highway', 
     name: 'Highway', 
     description: 'Carrier identity verification and fraud prevention',
-    icon: 'shield'
+    icon: 'shield',
+    credentialFields: [
+      { key: 'api_key', label: 'API Key', type: 'password' as const, placeholder: 'Enter your Highway API key', required: true }
+    ],
+    settingsFields: [] as FieldDef[]
   },
   { 
     id: 'gmail', 
     name: 'Gmail', 
     description: 'Email integration for Load Hunter',
-    icon: 'inbox'
+    icon: 'inbox',
+    credentialFields: [
+      { key: 'client_id', label: 'Client ID', type: 'text' as const, placeholder: 'Google OAuth Client ID', required: true },
+      { key: 'client_secret', label: 'Client Secret', type: 'password' as const, placeholder: 'Google OAuth Client Secret', required: true }
+    ],
+    settingsFields: [
+      { key: 'watch_email', label: 'Email to Watch', type: 'email' as const, placeholder: 'loads@yourdomain.com', required: true }
+    ]
   },
 ];
 
@@ -53,36 +91,34 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get tenant_id from request body (optional for platform admins)
+    // Parse body first to get tenant_id
     const body = await req.json().catch(() => ({}));
     let { tenant_id } = body;
 
-    // If no tenant_id provided, derive from user's membership
+    const authHeader = req.headers.get('Authorization');
+
+    // If no tenant_id provided, we need to derive it from user's membership
+    // But we still need to validate auth first
     if (!tenant_id) {
-      const { data: membership } = await supabase
+      // Create user client to get user and derive tenant
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader || '' } }
+      });
+
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get user's first active tenant
+      const serviceClient = getServiceClient();
+      const { data: membership } = await serviceClient
         .from('tenant_users')
         .select('tenant_id')
         .eq('user_id', user.id)
@@ -100,34 +136,17 @@ serve(async (req) => {
       );
     }
 
-    // Verify tenant access (assertTenantAccess equivalent)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_platform_admin')
-      .eq('id', user.id)
-      .single();
-    
-    const isPlatformAdmin = profile?.is_platform_admin === true;
-
-    if (!isPlatformAdmin) {
-      const { data: membership } = await supabase
-        .from('tenant_users')
-        .select('role')
-        .eq('tenant_id', tenant_id)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!membership) {
-        return new Response(
-          JSON.stringify({ error: 'Access denied to this tenant' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // CONSTRAINT A: Use assertTenantAccess
+    const accessCheck = await assertTenantAccess(authHeader, tenant_id);
+    if (!accessCheck.allowed) {
+      return accessCheck.response!;
     }
 
+    // Use service role client for querying the safe view
+    const adminClient = getServiceClient();
+
     // Query the SAFE view (never exposes credentials_encrypted)
-    const { data: configuredIntegrations, error: fetchError } = await supabase
+    const { data: configuredIntegrations, error: fetchError } = await adminClient
       .from('tenant_integrations_safe')
       .select('*')
       .eq('tenant_id', tenant_id);
@@ -141,7 +160,6 @@ serve(async (req) => {
     }
 
     // SERVER-SIDE CATALOG MERGE: Combine catalog with configured data
-    // This ensures Talbi (zero rows) still sees all providers
     const integrations = PROVIDER_CATALOG.map(provider => {
       const configured = configuredIntegrations?.find(i => i.provider === provider.id);
       
@@ -151,11 +169,13 @@ serve(async (req) => {
           name: provider.name,
           description: provider.description,
           icon: provider.icon,
+          credentialFields: provider.credentialFields,
+          settingsFields: provider.settingsFields,
           is_configured: configured.is_configured === true,
           is_enabled: configured.is_enabled ?? false,
           credentials_hint: configured.credentials_hint,
           settings: configured.settings,
-          sync_status: configured.sync_status || 'unknown',
+          sync_status: configured.sync_status || 'not_configured',
           error_message: configured.error_message,
           last_checked_at: configured.last_checked_at,
           last_sync_at: configured.last_sync_at,
@@ -168,6 +188,8 @@ serve(async (req) => {
         name: provider.name,
         description: provider.description,
         icon: provider.icon,
+        credentialFields: provider.credentialFields,
+        settingsFields: provider.settingsFields,
         is_configured: false,
         is_enabled: false,
         credentials_hint: null,

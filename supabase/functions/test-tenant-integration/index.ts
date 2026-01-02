@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,133 +30,96 @@ async function decrypt(ciphertext: string, masterKey: string): Promise<string> {
   return decoder.decode(decrypted);
 }
 
-// Provider-specific test functions
 // Sanitize error messages to prevent credential leakage
 function sanitizeError(message: string): string {
-  // Truncate to 500 chars max
   let sanitized = message.slice(0, 500);
-  
-  // Remove anything that looks like an API key or token
   sanitized = sanitized.replace(/[a-zA-Z0-9_-]{20,}/g, '[REDACTED]');
   sanitized = sanitized.replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
   sanitized = sanitized.replace(/api[_-]?key[=:]\s*\S+/gi, 'api_key=[REDACTED]');
   sanitized = sanitized.replace(/token[=:]\s*\S+/gi, 'token=[REDACTED]');
-  
   return sanitized || 'Unknown error';
 }
 
+// Provider-specific test functions
 async function testSamsara(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
   const apiKey = credentials.api_key;
-  if (!apiKey) {
-    return { success: false, message: 'API key not configured' };
-  }
+  if (!apiKey) return { success: false, message: 'API key not configured' };
   
   try {
     const response = await fetch('https://api.samsara.com/fleet/vehicles?limit=1', {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     });
     
     if (response.ok) {
       const data = await response.json();
-      const vehicleCount = data.data?.length || 0;
-      return { success: true, message: `Connected. Found ${vehicleCount} vehicles.` };
+      return { success: true, message: `Connected. Found ${data.data?.length || 0} vehicles.` };
     } else if (response.status === 401) {
       return { success: false, message: 'Invalid API key' };
     }
     return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: 'Connection failed' };
+    return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
   }
 }
 
 async function testResend(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
   const apiKey = credentials.api_key;
-  if (!apiKey) {
-    return { success: false, message: 'API key not configured' };
-  }
+  if (!apiKey) return { success: false, message: 'API key not configured' };
   
   try {
     const response = await fetch('https://api.resend.com/domains', {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     });
     
-    if (response.ok) {
-      return { success: true, message: 'API key validated successfully' };
-    } else if (response.status === 401) {
-      return { success: false, message: 'Invalid API key' };
-    }
+    if (response.ok) return { success: true, message: 'API key validated successfully' };
+    if (response.status === 401) return { success: false, message: 'Invalid API key' };
     return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: 'Connection failed' };
+    return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
   }
 }
 
 async function testMapbox(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
   const token = credentials.token;
-  if (!token) {
-    return { success: false, message: 'Access token not configured' };
-  }
+  if (!token) return { success: false, message: 'Access token not configured' };
   
   try {
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/test.json?access_token=${token}&limit=1`
-    );
-    
-    if (response.ok) {
-      return { success: true, message: 'Token validated successfully' };
-    } else if (response.status === 401) {
-      return { success: false, message: 'Invalid access token' };
-    }
+    const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/test.json?access_token=${token}&limit=1`);
+    if (response.ok) return { success: true, message: 'Token validated successfully' };
+    if (response.status === 401) return { success: false, message: 'Invalid access token' };
     return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: 'Connection failed' };
+    return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
   }
 }
 
 async function testWeather(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
   const apiKey = credentials.api_key;
-  if (!apiKey) {
-    return { success: false, message: 'API key not configured' };
-  }
+  if (!apiKey) return { success: false, message: 'API key not configured' };
   
   try {
-    const response = await fetch(
-      `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=New York`
-    );
-    
-    if (response.ok) {
-      return { success: true, message: 'API key validated successfully' };
-    } else if (response.status === 401 || response.status === 403) {
-      return { success: false, message: 'Invalid API key' };
-    }
+    const response = await fetch(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=New York`);
+    if (response.ok) return { success: true, message: 'API key validated successfully' };
+    if (response.status === 401 || response.status === 403) return { success: false, message: 'Invalid API key' };
     return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: 'Connection failed' };
+    return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
   }
 }
 
 async function testHighway(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
   const apiKey = credentials.api_key;
-  if (!apiKey) {
-    return { success: false, message: 'API key not configured' };
-  }
+  if (!apiKey) return { success: false, message: 'API key not configured' };
   
   try {
     const response = await fetch('https://api.highway.com/v2/carriers?limit=1', {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     });
-    
-    if (response.ok) {
-      return { success: true, message: 'API key validated successfully' };
-    } else if (response.status === 401) {
-      return { success: false, message: 'Invalid API key' };
-    }
+    if (response.ok) return { success: true, message: 'API key validated successfully' };
+    if (response.status === 401) return { success: false, message: 'Invalid API key' };
     return { success: false, message: `API error: ${response.status}` };
   } catch (error) {
-    return { success: false, message: 'Connection failed' };
+    return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
   }
 }
 
@@ -166,60 +129,22 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const body = await req.json();
     const { tenant_id, provider } = body;
 
-    if (!tenant_id || !provider) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields: tenant_id, provider' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // CONSTRAINT A: Use assertTenantAccess at the top
+    const authHeader = req.headers.get('Authorization');
+    const accessCheck = await assertTenantAccess(authHeader, tenant_id);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response!;
     }
 
-    // Verify user has access to tenant
-    const { data: membership } = await supabase
-      .from('tenant_users')
-      .select('role')
-      .eq('tenant_id', tenant_id)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (!membership) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_platform_admin')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profile?.is_platform_admin) {
-        return new Response(
-          JSON.stringify({ error: 'Access denied to this tenant' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (!provider) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required field: provider' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get master key
@@ -231,9 +156,8 @@ serve(async (req) => {
       );
     }
 
-    // Get integration with service role to access encrypted credentials
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    // Use service role client after access verified
+    const adminClient = getServiceClient();
 
     const { data: integration, error: fetchError } = await adminClient
       .from('tenant_integrations')
@@ -246,6 +170,17 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Integration not configured' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // CONSTRAINT B: If disabled, do not test - preserve 'disabled' status
+    if (integration.is_enabled === false) {
+      return new Response(
+        JSON.stringify({ 
+          status: 'disabled',
+          message: 'Integration is disabled. Enable it before testing.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -292,22 +227,22 @@ serve(async (req) => {
         result = { success: false, message: `Unknown provider: ${provider}` };
     }
 
-    // Update the integration status
+    // CONSTRAINT B: pass => 'healthy' + clear error; fail => 'failed' + sanitized error
     await adminClient
       .from('tenant_integrations')
       .update({
-        sync_status: result.success ? 'success' : 'failed',
-        error_message: result.success ? null : result.message,
+        sync_status: result.success ? 'healthy' : 'failed',
+        error_message: result.success ? null : sanitizeError(result.message),
         last_checked_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', integration.id);
 
-    console.log(`Integration test for ${provider} (tenant ${tenant_id}): ${result.success ? 'SUCCESS' : 'FAILED'}`);
+    console.log(`[test-tenant-integration] provider=${provider} tenant=${tenant_id} result=${result.success ? 'healthy' : 'failed'}`);
 
     return new Response(
       JSON.stringify({ 
-        status: result.success ? 'success' : 'failed',
+        status: result.success ? 'healthy' : 'failed',
         message: result.message
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

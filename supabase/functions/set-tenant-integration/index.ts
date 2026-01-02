@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,63 +53,22 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create Supabase client with user's JWT
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify the user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const body = await req.json();
     const { tenant_id, provider, is_enabled, credentials, settings } = body;
 
-    if (!tenant_id || !provider) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields: tenant_id, provider' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // CONSTRAINT A: Use assertTenantAccess at the top
+    const authHeader = req.headers.get('Authorization');
+    const accessCheck = await assertTenantAccess(authHeader, tenant_id);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response!;
     }
 
-    // Verify user has access to tenant
-    const { data: membership, error: membershipError } = await supabase
-      .from('tenant_users')
-      .select('role')
-      .eq('tenant_id', tenant_id)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (membershipError || !membership) {
-      // Also check if platform admin
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_platform_admin')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profile?.is_platform_admin) {
-        return new Response(
-          JSON.stringify({ error: 'Access denied to this tenant' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (!provider) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required field: provider' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get master key for encryption
@@ -122,26 +81,33 @@ serve(async (req) => {
       );
     }
 
+    // Use service role client after access verified
+    const adminClient = getServiceClient();
+
+    // Check if this is a status change to disabled
+    const isDisabling = is_enabled === false;
+
     // Prepare data for upsert
     const updateData: Record<string, unknown> = {
       tenant_id,
       provider,
       is_enabled: is_enabled ?? true,
       settings: settings || {},
-      sync_status: 'pending', // Always set to pending when credentials change
       updated_at: new Date().toISOString(),
     };
 
-    // Encrypt credentials if provided
-    if (credentials && Object.keys(credentials).length > 0) {
+    // CONSTRAINT B: sync_status contract enforcement
+    if (isDisabling) {
+      // When disabling, set status to 'disabled'
+      updateData.sync_status = 'disabled';
+    } else if (credentials && Object.keys(credentials).length > 0) {
+      // Credentials changed/added => sync_status='pending', clear error_message
       const encrypted = await encrypt(JSON.stringify(credentials), masterKey);
       updateData.credentials_encrypted = encrypted;
       updateData.credentials_hint = generateHint(credentials);
+      updateData.sync_status = 'pending';
+      updateData.error_message = null;
     }
-
-    // Use service role for the actual write (since we've verified access)
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data, error } = await adminClient
       .from('tenant_integrations')
@@ -159,7 +125,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Integration ${provider} configured for tenant ${tenant_id} by user ${user.id}`);
+    console.log(`[set-tenant-integration] provider=${provider} tenant=${tenant_id} user=${accessCheck.user_id} sync_status=${data.sync_status}`);
 
     return new Response(
       JSON.stringify({ 

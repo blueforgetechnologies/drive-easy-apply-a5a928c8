@@ -7,53 +7,14 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface ProviderField {
-  name: string;
+// Field definition from edge function
+interface FieldDef {
+  key: string;
   label: string;
-  type: "password" | "text" | "email";
+  type: 'password' | 'text' | 'email';
   placeholder: string;
-  isSecret?: boolean;
+  required: boolean;
 }
-
-interface ProviderConfig {
-  id: string;
-  name: string;
-  description: string;
-  fields: ProviderField[];
-  settingsFields?: ProviderField[];
-}
-
-// Field configurations for each provider (UI-only, for form rendering)
-const PROVIDER_FIELDS: Record<string, { fields: ProviderField[]; settingsFields?: ProviderField[] }> = {
-  samsara: {
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "Enter your Samsara API key", isSecret: true },
-    ],
-  },
-  resend: {
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "re_xxxxxx...", isSecret: true },
-    ],
-    settingsFields: [
-      { name: "from_email", label: "From Email", type: "email", placeholder: "noreply@yourdomain.com" },
-    ],
-  },
-  mapbox: {
-    fields: [
-      { name: "token", label: "Access Token", type: "password", placeholder: "pk.xxxxxx...", isSecret: true },
-    ],
-  },
-  weather: {
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "Enter your Weather API key", isSecret: true },
-    ],
-  },
-  highway: {
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "Enter your Highway API key", isSecret: true },
-    ],
-  },
-};
 
 interface IntegrationConfigModalProps {
   open: boolean;
@@ -64,6 +25,9 @@ interface IntegrationConfigModalProps {
   tenantId: string;
   existingHint?: string | null;
   existingSettings?: Record<string, unknown> | null;
+  // Fields from edge catalog - UI renders these, no local catalog
+  credentialFields: FieldDef[];
+  settingsFields: FieldDef[];
   onSuccess: () => void;
 }
 
@@ -76,9 +40,10 @@ export function IntegrationConfigModal({
   tenantId,
   existingHint,
   existingSettings,
+  credentialFields,
+  settingsFields,
   onSuccess,
 }: IntegrationConfigModalProps) {
-  const fieldConfig = PROVIDER_FIELDS[provider];
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [settings, setSettings] = useState<Record<string, string>>(
     (existingSettings as Record<string, string>) || {}
@@ -87,7 +52,8 @@ export function IntegrationConfigModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
 
-  if (!fieldConfig) {
+  // If no credential fields, this provider isn't configurable
+  if (!credentialFields || credentialFields.length === 0) {
     return null;
   }
 
@@ -109,7 +75,7 @@ export function IntegrationConfigModal({
         settings,
       };
 
-      // Only include credentials if new ones were entered
+      // Only include credentials if new ones were entered (write-only, never echo)
       if (hasNewCredentials) {
         payload.credentials = credentials;
       }
@@ -143,8 +109,12 @@ export function IntegrationConfigModal({
 
       if (error) throw error;
 
-      if (data?.status === "success") {
+      if (data?.status === "healthy") {
         toast.success("Connection test successful", {
+          description: data.message,
+        });
+      } else if (data?.status === "disabled") {
+        toast.info("Integration is disabled", {
           description: data.message,
         });
       } else {
@@ -162,9 +132,11 @@ export function IntegrationConfigModal({
     }
   };
 
-  const toggleSecretVisibility = (fieldName: string) => {
-    setShowSecrets(prev => ({ ...prev, [fieldName]: !prev[fieldName] }));
+  const toggleSecretVisibility = (fieldKey: string) => {
+    setShowSecrets(prev => ({ ...prev, [fieldKey]: !prev[fieldKey] }));
   };
+
+  const isSecretField = (type: string) => type === 'password';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,30 +147,30 @@ export function IntegrationConfigModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Credential fields */}
-          {fieldConfig.fields.map((field) => (
-            <div key={field.name} className="space-y-2">
-              <Label htmlFor={field.name}>{field.label}</Label>
+          {/* Credential fields - rendered from edge catalog */}
+          {credentialFields.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={field.key}>{field.label}</Label>
               <div className="relative">
                 <Input
-                  id={field.name}
-                  type={field.isSecret && !showSecrets[field.name] ? "password" : "text"}
+                  id={field.key}
+                  type={isSecretField(field.type) && !showSecrets[field.key] ? "password" : "text"}
                   placeholder={existingHint ? `Current: ${existingHint}` : field.placeholder}
-                  value={credentials[field.name] || ""}
+                  value={credentials[field.key] || ""}
                   onChange={(e) =>
-                    setCredentials((prev) => ({ ...prev, [field.name]: e.target.value }))
+                    setCredentials((prev) => ({ ...prev, [field.key]: e.target.value }))
                   }
                   className="pr-10"
                 />
-                {field.isSecret && (
+                {isSecretField(field.type) && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => toggleSecretVisibility(field.name)}
+                    onClick={() => toggleSecretVisibility(field.key)}
                   >
-                    {showSecrets[field.name] ? (
+                    {showSecrets[field.key] ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
                     ) : (
                       <Eye className="h-4 w-4 text-muted-foreground" />
@@ -214,17 +186,17 @@ export function IntegrationConfigModal({
             </div>
           ))}
 
-          {/* Settings fields (non-secret) */}
-          {fieldConfig.settingsFields?.map((field) => (
-            <div key={field.name} className="space-y-2">
-              <Label htmlFor={field.name}>{field.label}</Label>
+          {/* Settings fields (non-secret) - rendered from edge catalog */}
+          {settingsFields?.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={field.key}>{field.label}</Label>
               <Input
-                id={field.name}
-                type={field.type}
+                id={field.key}
+                type={field.type === 'email' ? 'email' : 'text'}
                 placeholder={field.placeholder}
-                value={settings[field.name] || ""}
+                value={settings[field.key] || ""}
                 onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, [field.name]: e.target.value }))
+                  setSettings((prev) => ({ ...prev, [field.key]: e.target.value }))
                 }
               />
             </div>
