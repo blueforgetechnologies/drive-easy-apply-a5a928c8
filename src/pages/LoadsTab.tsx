@@ -20,7 +20,7 @@ import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { PDFImageViewer } from "@/components/PDFImageViewer";
 import { CarrierRateHistoryDialog } from "@/components/CarrierRateHistoryDialog";
-import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,7 +93,7 @@ interface Load {
 export default function LoadsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { tenantId, shouldFilter } = useTenantFilter();
+  const { query, withTenant, tenantId, shouldFilter, isReady } = useTenantQuery();
   const filter = searchParams.get("filter") || "all";
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,13 +239,13 @@ export default function LoadsTab() {
   const [defaultCarrierId, setDefaultCarrierId] = useState<string | null>(null);
   const [currentUserDispatcherId, setCurrentUserDispatcherId] = useState<string | null>(null);
 
-  // Reload when tenant changes
+  // Reload when tenant changes - use isReady for proper guard
   useEffect(() => {
-    if (tenantId || !shouldFilter) {
+    if (isReady) {
       loadData();
       loadDriversAndVehicles();
     }
-  }, [tenantId, shouldFilter]);
+  }, [tenantId, isReady]);
 
   // Set default carrier in form when loaded
   useEffect(() => {
@@ -255,17 +255,21 @@ export default function LoadsTab() {
   }, [defaultCarrierId]);
 
   const loadDriversAndVehicles = async () => {
+    // Guard: wait until tenant context is ready
+    if (!isReady) return;
+    
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Use tenant-scoped queries for all tenant-owned tables
       const [driversResult, vehiclesResult, customersResult, companyProfileResult, dispatcherResult, vehiclesApprovalResult] = await Promise.all([
-        supabase.from("applications" as any).select("id, personal_info").eq("driver_status", "active"),
-        supabase.from("vehicles" as any).select("id, vehicle_number, requires_load_approval").eq("status", "active"),
-        supabase.from("customers" as any).select("id, name, contact_name, mc_number, email, phone").eq("status", "active"),
+        query("applications").select("id, personal_info").eq("driver_status", "active"),
+        query("vehicles").select("id, vehicle_number, requires_load_approval").eq("status", "active"),
+        query("customers").select("id, name, contact_name, mc_number, email, phone, city, state").eq("status", "active"),
         supabase.from("company_profile").select("default_carrier_id").limit(1).maybeSingle(),
-        user?.id ? supabase.from("dispatchers").select("id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
-        supabase.from("vehicles" as any).select("id").eq("requires_load_approval", true),
+        user?.id ? query("dispatchers").select("id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+        query("vehicles").select("id").eq("requires_load_approval", true),
       ]);
       
       if (driversResult.data) setDrivers(driversResult.data);
@@ -274,11 +278,11 @@ export default function LoadsTab() {
       if (vehiclesApprovalResult.data) {
         setVehiclesRequiringApproval(vehiclesApprovalResult.data.map((v: any) => v.id));
       }
-      if (companyProfileResult.data?.default_carrier_id) {
-        setDefaultCarrierId(companyProfileResult.data.default_carrier_id);
+      if (companyProfileResult.data && 'default_carrier_id' in companyProfileResult.data) {
+        setDefaultCarrierId((companyProfileResult.data as any).default_carrier_id);
       }
-      if (dispatcherResult.data?.id) {
-        setCurrentUserDispatcherId(dispatcherResult.data.id);
+      if (dispatcherResult.data && 'id' in dispatcherResult.data) {
+        setCurrentUserDispatcherId((dispatcherResult.data as any).id);
       }
     } catch (error) {
       console.error("Error loading drivers/vehicles/customers:", error);
@@ -347,13 +351,12 @@ export default function LoadsTab() {
   }, [customers]);
 
   const loadData = async () => {
-    if (shouldFilter && !tenantId) return;
+    if (!isReady) return;
     
     setLoading(true);
     try {
-      // Always fetch ALL loads to get accurate counts for tabs
-      let query = supabase
-        .from("loads" as any)
+      // Always fetch ALL loads to get accurate counts for tabs (use tenant-scoped query helper)
+      let loadsQuery = query("loads")
         .select(`
           *,
           vehicle:vehicles!assigned_vehicle_id(vehicle_number, requires_load_approval, truck_type, contractor_percentage),
@@ -365,12 +368,7 @@ export default function LoadsTab() {
         `)
         .order("created_at", { ascending: false });
       
-      // Apply tenant filter unless showAllTenants is enabled
-      if (shouldFilter && tenantId) {
-        query = query.eq("tenant_id", tenantId);
-      }
-      
-      const { data, error } = await query;
+      const { data, error } = await loadsQuery;
 
       if (error) {
         toast.error("Error loading loads");
@@ -379,11 +377,10 @@ export default function LoadsTab() {
       }
       setLoads((data as any) || []);
       
-      // Fetch documents for all loads
+      // Fetch documents for all loads (tenant-scoped)
       if (data && data.length > 0) {
         const loadIds = data.map((l: any) => l.id);
-        const { data: docsData } = await supabase
-          .from("load_documents")
+        const { data: docsData } = await query("load_documents")
           .select("id, load_id, document_type, file_name, file_url")
           .in("load_id", loadIds);
         
@@ -772,10 +769,15 @@ export default function LoadsTab() {
   };
 
   const handleAddNewCustomer = async (name: string, additionalData: Record<string, string>) => {
+    if (!tenantId) {
+      toast.error("Cannot create customer: tenant context not available");
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from("customers")
-        .insert({
+        .insert(withTenant({
           name,
           contact_name: additionalData.contact_name || null,
           phone: additionalData.phone || null,
@@ -785,8 +787,7 @@ export default function LoadsTab() {
           state: additionalData.state || null,
           zip: additionalData.zip || null,
           status: "active",
-          tenant_id: tenantId,
-        })
+        }))
         .select()
         .single();
 
