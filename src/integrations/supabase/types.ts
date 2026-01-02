@@ -5264,62 +5264,6 @@ export type Database = {
       }
     }
     Views: {
-      tenant_integrations_safe: {
-        Row: {
-          created_at: string | null
-          credentials_hint: string | null
-          error_message: string | null
-          id: string | null
-          is_configured: boolean | null
-          is_enabled: boolean | null
-          last_checked_at: string | null
-          last_sync_at: string | null
-          provider: string | null
-          settings: Json | null
-          sync_status: string | null
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          credentials_hint?: string | null
-          error_message?: string | null
-          id?: string | null
-          is_configured?: never
-          is_enabled?: boolean | null
-          last_checked_at?: string | null
-          last_sync_at?: string | null
-          provider?: string | null
-          settings?: Json | null
-          sync_status?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          credentials_hint?: string | null
-          error_message?: string | null
-          id?: string | null
-          is_configured?: never
-          is_enabled?: boolean | null
-          last_checked_at?: string | null
-          last_sync_at?: string | null
-          provider?: string | null
-          settings?: Json | null
-          sync_status?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tenant_integrations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       unreviewed_matches: {
         Row: {
           distance_miles: number | null
@@ -5414,6 +5358,22 @@ export type Database = {
       get_current_tenant_id: { Args: never; Returns: string }
       get_default_tenant_id: { Args: never; Returns: string }
       get_email_queue_pending_count: { Args: never; Returns: number }
+      get_tenant_integrations_safe: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          credentials_hint: string
+          error_message: string
+          id: string
+          is_configured: boolean
+          is_enabled: boolean
+          last_checked_at: string
+          last_sync_at: string
+          provider: string
+          settings: Json
+          sync_status: string
+          tenant_id: string
+        }[]
+      }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_permission: {
         Args: { _permission_code: string; _user_id: string }
