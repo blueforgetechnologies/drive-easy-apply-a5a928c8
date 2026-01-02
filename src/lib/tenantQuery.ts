@@ -65,7 +65,7 @@ export function isTenantOwnedTable(tableName: string): tableName is TenantOwnedT
  * Options for tenant query
  */
 export interface TenantQueryOptions {
-  /** Bypass tenant filtering (ONLY for platform admin debug pages) */
+  /** Bypass tenant filtering (ONLY for platform admin debug pages in internal channel) */
   bypassTenantFilter?: boolean;
 }
 
@@ -76,10 +76,42 @@ export interface TenantQueryOptions {
 export interface TenantContext {
   tenantId: string | null;
   shouldFilter: boolean;
-  /** Platform admin flag - if true AND showAllTenants is true, bypass filtering */
+  /** Platform admin flag - required for bypass */
   isPlatformAdmin?: boolean;
-  /** Show all tenants toggle - only effective for platform admins */
+  /** Show all tenants toggle - only effective for platform admins in internal channel */
   showAllTenants?: boolean;
+  /** Whether current tenant is in internal release channel */
+  isInternalChannel?: boolean;
+  /** Whether bypass is allowed (computed: isPlatformAdmin AND isInternalChannel) */
+  canUseAllTenantsMode?: boolean;
+}
+
+/**
+ * SECURITY: Hard check for "All Tenants" bypass authorization.
+ * Returns true ONLY if:
+ * - User is a platform admin AND
+ * - Current tenant is in "internal" release channel AND
+ * - showAllTenants is explicitly enabled
+ * 
+ * Any other combination returns false (apply tenant filter).
+ */
+function isAllTenantsBypassAuthorized(context: TenantContext): boolean {
+  // SECURITY: Triple check - all three conditions must be true
+  const authorized = !!(
+    context.isPlatformAdmin && 
+    context.isInternalChannel && 
+    context.showAllTenants
+  );
+  
+  // SECURITY: Log bypass attempts for audit trail
+  if (context.showAllTenants && !authorized) {
+    console.error(
+      '[TenantQuery] BLOCKED: Unauthorized All Tenants bypass attempt.',
+      { isPlatformAdmin: context.isPlatformAdmin, isInternalChannel: context.isInternalChannel }
+    );
+  }
+  
+  return authorized;
 }
 
 /**
@@ -87,13 +119,13 @@ export interface TenantContext {
  * This is the SINGLE SOURCE OF TRUTH for filtering logic.
  * 
  * Returns true (apply filter) when:
+ * - NOT authorized for All Tenants bypass AND
  * - shouldFilter is true AND
- * - tenantId exists AND
- * - NOT (isPlatformAdmin AND showAllTenants)
+ * - tenantId exists
  */
 export function shouldApplyTenantFilter(context: TenantContext): boolean {
-  // Platform admin with "All Tenants" enabled bypasses filtering
-  if (context.isPlatformAdmin && context.showAllTenants) {
+  // SECURITY: Check for authorized bypass first
+  if (isAllTenantsBypassAuthorized(context)) {
     return false;
   }
   // Apply filter when shouldFilter is true and tenantId exists
