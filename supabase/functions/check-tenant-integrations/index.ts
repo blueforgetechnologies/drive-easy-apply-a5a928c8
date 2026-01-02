@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
+import { assertTenantAccess, getServiceClient, deriveTenantFromJWT } from "../_shared/assertTenantAccess.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -91,42 +91,17 @@ serve(async (req) => {
   }
 
   try {
-    // Parse body first to get tenant_id
+    const authHeader = req.headers.get('Authorization');
     const body = await req.json().catch(() => ({}));
     let { tenant_id } = body;
 
-    const authHeader = req.headers.get('Authorization');
-
-    // If no tenant_id provided, we need to derive it from user's membership
-    // But we still need to validate auth first
+    // Step 1: Derive tenant from JWT if not provided (shared helper)
     if (!tenant_id) {
-      // Create user client to get user and derive tenant
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader || '' } }
-      });
-
-      const { data: { user }, error: authError } = await userClient.auth.getUser();
-      if (authError || !user) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      const derived = await deriveTenantFromJWT(authHeader);
+      if (derived.error) {
+        return derived.error;
       }
-
-      // Get user's first active tenant
-      const serviceClient = getServiceClient();
-      const { data: membership } = await serviceClient
-        .from('tenant_users')
-        .select('tenant_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      
-      tenant_id = membership?.tenant_id;
+      tenant_id = derived.tenant_id;
     }
 
     if (!tenant_id) {
@@ -136,13 +111,13 @@ serve(async (req) => {
       );
     }
 
-    // CONSTRAINT A: Use assertTenantAccess
+    // Step 2: CONSTRAINT A - assertTenantAccess immediately after derivation
     const accessCheck = await assertTenantAccess(authHeader, tenant_id);
     if (!accessCheck.allowed) {
       return accessCheck.response!;
     }
 
-    // Use service role client for querying the safe view
+    // Step 3: Only after allowed=true, use service-role for queries
     const adminClient = getServiceClient();
 
     // Query the SAFE view (never exposes credentials_encrypted)
