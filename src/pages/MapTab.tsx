@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { Button } from '@/components/ui/button';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
 import { useVehicleHistory, LocationPoint } from '@/hooks/useVehicleHistory';
@@ -16,7 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const MapTab = () => {
   useMapLoadTracker('MapTab');
   const isMobile = useIsMobile();
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { query, tenantId, isReady, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantQuery();
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -33,38 +33,82 @@ const MapTab = () => {
   const [showLegend, setShowLegend] = useState(false);
   const [historyMode, setHistoryMode] = useState(false);
   
+  // Track previous tenant for cleanup
+  const prevTenantIdRef = useRef<string | null>(null);
+  
+  // Separate ref to track if initial bounds have been set
+  const initialBoundsSet = useRef(false);
+  
   // Vehicle history hook
   const vehicleHistory = useVehicleHistory();
+
+  // SECURITY: Clear all markers and state when tenant changes
+  const clearAllMarkers = useCallback(() => {
+    console.log('[MapTab] Clearing all markers and state');
+    markersRef.current.forEach(({ marker }) => marker.remove());
+    markersRef.current.clear();
+    historyMarkersRef.current.forEach(marker => marker.remove());
+    historyMarkersRef.current = [];
+    setVehicles([]);
+    setSelectedVehicle(null);
+    initialBoundsSet.current = false; // Reset bounds so new tenant data fits properly
+    
+    // Clear history layers if they exist
+    if (map.current) {
+      if (map.current.getLayer('history-line')) {
+        map.current.removeLayer('history-line');
+      }
+      if (map.current.getSource('history-line')) {
+        map.current.removeSource('history-line');
+      }
+    }
+  }, []);
+
+  // SECURITY: Effect to detect tenant change and clear stale data
   useEffect(() => {
+    if (prevTenantIdRef.current !== null && prevTenantIdRef.current !== tenantId) {
+      console.log(`[MapTab] Tenant changed: ${prevTenantIdRef.current} -> ${tenantId} - clearing markers`);
+      clearAllMarkers();
+    }
+    prevTenantIdRef.current = tenantId;
+  }, [tenantId, clearAllMarkers]);
+
+  useEffect(() => {
+    // SECURITY: Don't load until tenant context is ready
+    if (!isReady) {
+      console.log('[MapTab] Tenant context not ready, skipping load');
+      return;
+    }
+    
     loadVehicles();
     
     // Auto-refresh vehicle positions every 30 seconds
     const refreshInterval = setInterval(() => {
-      loadVehicles();
+      if (isReady) loadVehicles();
     }, 30000);
 
     return () => {
       clearInterval(refreshInterval);
     };
-  }, [tenantId, shouldFilter, isPlatformAdmin, showAllTenants]);
+  }, [tenantId, isReady]);
 
   const loadVehicles = async () => {
-    let query = supabase
-      .from('vehicles')
+    if (!isReady) return;
+    
+    // DEV LOG: Tenant isolation debugging
+    console.log('[MapTab] loadVehicles:', { tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isReady });
+    
+    // SECURITY: Use tenant-scoped query helper
+    const { data, error } = await query('vehicles')
       .select('*')
       .not('last_location', 'is', null);
 
-    // Apply tenant filter using centralized logic
-    // Platform admin with "All Tenants" enabled bypasses filtering
-    if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
-      query = query.eq('tenant_id', tenantId);
-    }
-
-    const { data, error } = await query;
-
     if (!error && data) {
+      console.log(`[MapTab] Loaded ${data.length} vehicles for tenant: ${tenantId}`);
       setVehicles(data);
       setLastUpdate(new Date());
+    } else if (error) {
+      console.error('[MapTab] Error loading vehicles:', error);
     }
   };
 
@@ -409,8 +453,6 @@ const MapTab = () => {
     }
   };
 
-  // Separate ref to track if initial bounds have been set
-  const initialBoundsSet = useRef(false);
 
   useEffect(() => {
     if (!map.current || vehicles.length === 0) return;
