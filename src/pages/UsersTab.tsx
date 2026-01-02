@@ -81,64 +81,84 @@ export default function UsersTab() {
     }
   };
 
-  const loadActiveUsers = async () => {
-    if (!tenantId && shouldFilter) return;
+  const fetchTenantUsersWithProfiles = async (active: boolean): Promise<TenantUser[]> => {
+    if (!tenantId && shouldFilter) return [];
 
-    // Get users from tenant_users for the current tenant
     let query = supabase
       .from("tenant_users")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         role,
         is_active,
-        created_at,
-        profiles:user_id (
-          id,
-          email,
-          full_name
-        )
-      `)
-      .eq("is_active", true)
+        created_at
+      `
+      )
+      .eq("is_active", active)
       .order("created_at", { ascending: false });
 
     if (shouldFilter && tenantId) {
       query = query.eq("tenant_id", tenantId);
     }
 
-    const { data, error } = await query;
+    const { data: tenantUsers, error: tenantUsersError } = await query;
 
-    if (error) {
-      toast.error("Error loading users");
-      console.error(error);
-      return;
+    if (tenantUsersError) {
+      throw tenantUsersError;
     }
 
-    // Transform the data to flatten profile info
-    const transformedUsers = (data || []).map((tu: any) => ({
-      ...tu,
-      profile: tu.profiles,
-    }));
+    const userIds = Array.from(new Set((tenantUsers || []).map((tu) => tu.user_id)));
 
-    setUsers(transformedUsers);
+    const profilesById: Record<string, TenantUser["profile"]> = {};
 
-    // Load login history for active users
-    const userIds = transformedUsers.map(u => u.user_id);
     if (userIds.length > 0) {
-      const { data: historyData } = await supabase
-        .from("login_history")
-        .select("*")
-        .in("user_id", userIds)
-        .order("logged_in_at", { ascending: false })
-        .limit(50);
+      const { data: profileRows, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,email,full_name")
+        .in("id", userIds);
 
-      if (historyData) {
-        const enrichedHistory = historyData.map((h) => ({
-          ...h,
-          profile: transformedUsers.find((u) => u.user_id === h.user_id)?.profile,
-        }));
-        setLoginHistory(enrichedHistory);
+      if (profilesError) {
+        throw profilesError;
       }
+
+      (profileRows || []).forEach((p) => {
+        profilesById[p.id] = { id: p.id, email: p.email, full_name: p.full_name };
+      });
+    }
+
+    return (tenantUsers || []).map((tu) => ({
+      ...tu,
+      profile: profilesById[tu.user_id],
+    }));
+  };
+
+  const loadActiveUsers = async () => {
+    try {
+      const transformedUsers = await fetchTenantUsersWithProfiles(true);
+      setUsers(transformedUsers);
+
+      // Load login history for active users
+      const userIds = transformedUsers.map((u) => u.user_id);
+      if (userIds.length > 0) {
+        const { data: historyData } = await supabase
+          .from("login_history")
+          .select("*")
+          .in("user_id", userIds)
+          .order("logged_in_at", { ascending: false })
+          .limit(50);
+
+        if (historyData) {
+          const enrichedHistory = historyData.map((h) => ({
+            ...h,
+            profile: transformedUsers.find((u) => u.user_id === h.user_id)?.profile,
+          }));
+          setLoginHistory(enrichedHistory);
+        }
+      }
+    } catch (error) {
+      toast.error("Error loading users");
+      console.error(error);
     }
   };
 
@@ -164,44 +184,13 @@ export default function UsersTab() {
   };
 
   const loadInactiveUsers = async () => {
-    if (!tenantId && shouldFilter) return;
-
-    // Get inactive users from tenant_users for the current tenant
-    let query = supabase
-      .from("tenant_users")
-      .select(`
-        id,
-        user_id,
-        role,
-        is_active,
-        created_at,
-        profiles:user_id (
-          id,
-          email,
-          full_name
-        )
-      `)
-      .eq("is_active", false)
-      .order("created_at", { ascending: false });
-
-    if (shouldFilter && tenantId) {
-      query = query.eq("tenant_id", tenantId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
+    try {
+      const transformedUsers = await fetchTenantUsersWithProfiles(false);
+      setUsers(transformedUsers);
+    } catch (error) {
       toast.error("Error loading users");
       console.error(error);
-      return;
     }
-
-    const transformedUsers = (data || []).map((tu: any) => ({
-      ...tu,
-      profile: tu.profiles,
-    }));
-
-    setUsers(transformedUsers);
   };
 
   const handleResendInvite = async (invite: Invite) => {
