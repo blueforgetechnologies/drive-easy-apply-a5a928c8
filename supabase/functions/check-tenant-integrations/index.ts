@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { assertTenantAccess, getServiceClient, deriveTenantFromJWT } from "../_shared/assertTenantAccess.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { assertTenantAccess } from "../_shared/assertTenantAccess.ts";
+import { deriveTenantFromJWT } from "../_shared/deriveTenantFromJWT.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +18,7 @@ interface FieldDef {
 }
 
 // SINGLE SOURCE OF TRUTH: Provider catalog with field schemas
-// UI renders forms from these definitions - no local catalog
+// Gmail removed for MVP - requires OAuth flow implementation
 const PROVIDER_CATALOG = [
   { 
     id: 'samsara', 
@@ -70,19 +72,6 @@ const PROVIDER_CATALOG = [
     ],
     settingsFields: [] as FieldDef[]
   },
-  { 
-    id: 'gmail', 
-    name: 'Gmail', 
-    description: 'Email integration for Load Hunter',
-    icon: 'inbox',
-    credentialFields: [
-      { key: 'client_id', label: 'Client ID', type: 'text' as const, placeholder: 'Google OAuth Client ID', required: true },
-      { key: 'client_secret', label: 'Client Secret', type: 'password' as const, placeholder: 'Google OAuth Client Secret', required: true }
-    ],
-    settingsFields: [
-      { key: 'watch_email', label: 'Email to Watch', type: 'email' as const, placeholder: 'loads@yourdomain.com', required: true }
-    ]
-  },
 ];
 
 serve(async (req) => {
@@ -91,11 +80,14 @@ serve(async (req) => {
   }
 
   try {
+    // Step 1: Parse auth header
     const authHeader = req.headers.get('Authorization');
+    
+    // Step 2: Parse optional tenant_id from request body
     const body = await req.json().catch(() => ({}));
     let { tenant_id } = body;
 
-    // Step 1: Derive tenant from JWT if not provided (shared helper)
+    // Step 3: If tenant_id is missing, derive from JWT
     if (!tenant_id) {
       const derived = await deriveTenantFromJWT(authHeader);
       if (derived.error) {
@@ -111,30 +103,35 @@ serve(async (req) => {
       );
     }
 
-    // Step 2: CONSTRAINT A - assertTenantAccess immediately after derivation
+    // Step 4: Call assertTenantAccess
     const accessCheck = await assertTenantAccess(authHeader, tenant_id);
     if (!accessCheck.allowed) {
       return accessCheck.response!;
     }
 
-    // Step 3: Only after allowed=true, use service-role for queries
-    const adminClient = getServiceClient();
+    // Step 5: Create auth-bound client (anon key + Authorization header)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader! } }
+    });
 
-    // Query the SAFE view (never exposes credentials_encrypted)
-    const { data: configuredIntegrations, error: fetchError } = await adminClient
+    // Step 6: Query tenant_integrations_safe using auth-bound client (RLS enforced)
+    const { data: configuredIntegrations, error: fetchError } = await authClient
       .from('tenant_integrations_safe')
       .select('*')
       .eq('tenant_id', tenant_id);
 
     if (fetchError) {
-      console.error('Error fetching integrations:', fetchError);
+      console.error('[check-tenant-integrations] Error fetching integrations:', fetchError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch integrations' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // SERVER-SIDE CATALOG MERGE: Combine catalog with configured data
+    // Step 7: Merge catalog with configured data
     const integrations = PROVIDER_CATALOG.map(provider => {
       const configured = configuredIntegrations?.find(i => i.provider === provider.id);
       
@@ -192,7 +189,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in check-tenant-integrations:', error);
+    console.error('[check-tenant-integrations] Error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
