@@ -1,0 +1,31 @@
+# Email Queue Worker - Docker Compose
+# 
+# Runs 2 worker instances for redundancy.
+# Scale with: docker compose up --scale worker=4
+
+version: '3.8'
+
+services:
+  worker:
+    build: .
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - GMAIL_CLIENT_ID=${GMAIL_CLIENT_ID}
+      - GMAIL_CLIENT_SECRET=${GMAIL_CLIENT_SECRET}
+      - VITE_MAPBOX_TOKEN=${VITE_MAPBOX_TOKEN}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

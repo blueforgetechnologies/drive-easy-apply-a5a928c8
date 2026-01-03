@@ -1148,6 +1148,7 @@ export type Database = {
           last_error: string | null
           payload_url: string | null
           processed_at: string | null
+          processing_started_at: string | null
           queued_at: string
           status: string
           tenant_id: string | null
@@ -1161,6 +1162,7 @@ export type Database = {
           last_error?: string | null
           payload_url?: string | null
           processed_at?: string | null
+          processing_started_at?: string | null
           queued_at?: string
           status?: string
           tenant_id?: string | null
@@ -1174,6 +1176,7 @@ export type Database = {
           last_error?: string | null
           payload_url?: string | null
           processed_at?: string | null
+          processing_started_at?: string | null
           queued_at?: string
           status?: string
           tenant_id?: string | null
@@ -5347,10 +5350,27 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_email_queue_batch: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          attempts: number
+          gmail_history_id: string
+          gmail_message_id: string
+          id: string
+          payload_url: string
+          queued_at: string
+          tenant_id: string
+        }[]
+      }
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
       cleanup_tenant_rate_limits: { Args: never; Returns: number }
       cleanup_vehicle_location_history: { Args: never; Returns: number }
+      complete_email_queue_item: { Args: { p_id: string }; Returns: undefined }
+      fail_email_queue_item: {
+        Args: { p_attempts: number; p_error: string; p_id: string }
+        Returns: undefined
+      }
       generate_load_id_for_date: {
         Args: { target_date: string }
         Returns: string
@@ -5401,6 +5421,7 @@ export type Database = {
         Returns: boolean
       }
       is_user_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      reset_stale_email_queue: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "user" | "dispatcher" | "driver"
