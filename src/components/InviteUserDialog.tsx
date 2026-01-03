@@ -14,12 +14,14 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UserPlus } from "lucide-react";
+import { useTenantContext } from "@/contexts/TenantContext";
 
 export function InviteUserDialog() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { effectiveTenant } = useTenantContext();
 
   const handleInvite = async () => {
     if (!email || !email.includes("@")) {
@@ -49,6 +51,7 @@ export function InviteUserDialog() {
         .insert({
           email: email.toLowerCase(),
           invited_by: user.id,
+          tenant_id: effectiveTenant?.id || null,
         });
 
       if (insertError) {
