@@ -1141,7 +1141,11 @@ export type Database = {
       email_queue: {
         Row: {
           attempts: number
+          body_html: string | null
+          body_text: string | null
           dedupe_key: string | null
+          from_email: string | null
+          from_name: string | null
           gmail_history_id: string | null
           gmail_message_id: string
           id: string
@@ -1151,11 +1155,17 @@ export type Database = {
           processing_started_at: string | null
           queued_at: string
           status: string
+          subject: string | null
           tenant_id: string | null
+          to_email: string | null
         }
         Insert: {
           attempts?: number
+          body_html?: string | null
+          body_text?: string | null
           dedupe_key?: string | null
+          from_email?: string | null
+          from_name?: string | null
           gmail_history_id?: string | null
           gmail_message_id: string
           id?: string
@@ -1165,11 +1175,17 @@ export type Database = {
           processing_started_at?: string | null
           queued_at?: string
           status?: string
+          subject?: string | null
           tenant_id?: string | null
+          to_email?: string | null
         }
         Update: {
           attempts?: number
+          body_html?: string | null
+          body_text?: string | null
           dedupe_key?: string | null
+          from_email?: string | null
+          from_name?: string | null
           gmail_history_id?: string | null
           gmail_message_id?: string
           id?: string
@@ -1179,7 +1195,9 @@ export type Database = {
           processing_started_at?: string | null
           queued_at?: string
           status?: string
+          subject?: string | null
           tenant_id?: string | null
+          to_email?: string | null
         }
         Relationships: [
           {
@@ -5366,7 +5384,9 @@ export type Database = {
       cleanup_pubsub_tracking: { Args: never; Returns: number }
       cleanup_tenant_rate_limits: { Args: never; Returns: number }
       cleanup_vehicle_location_history: { Args: never; Returns: number }
-      complete_email_queue_item: { Args: { p_id: string }; Returns: undefined }
+      complete_email_queue_item:
+        | { Args: { p_id: string }; Returns: undefined }
+        | { Args: { p_id: string; p_status?: string }; Returns: undefined }
       fail_email_queue_item: {
         Args: { p_attempts: number; p_error: string; p_id: string }
         Returns: undefined

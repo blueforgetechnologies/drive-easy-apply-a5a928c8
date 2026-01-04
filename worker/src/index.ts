@@ -1,7 +1,8 @@
 /**
  * Email Queue Worker
  * 
- * High-performance email processor for multi-tenant TMS.
+ * High-performance outbound email processor for multi-tenant TMS.
+ * Sends emails via Resend API.
  * Designed for VPS deployment with multiple concurrent workers.
  * 
  * Features:
@@ -12,7 +13,7 @@
  * - Structured logging with metrics
  * 
  * Usage:
- *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm start
+ *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... RESEND_API_KEY=... npm start
  */
 
 import 'dotenv/config';
@@ -26,7 +27,7 @@ import { processQueueItem } from './process.js';
 
 const CONFIG = {
   // Queue polling
-  LOOP_INTERVAL_MS: 3000,          // Check queue every 3 seconds (well under 20s requirement)
+  LOOP_INTERVAL_MS: 3000,          // Check queue every 3 seconds
   BATCH_SIZE: 25,                  // Items per batch claim
   CONCURRENT_LIMIT: 5,             // Max concurrent processing within a batch
   MAX_RETRIES: 3,                  // Retries before marking as failed
@@ -48,8 +49,8 @@ const CONFIG = {
 interface WorkerMetrics {
   startedAt: Date;
   loopCount: number;
-  itemsProcessed: number;
-  itemsFailed: number;
+  emailsSent: number;
+  emailsFailed: number;
   lastBatchTime: number;
   lastBatchSize: number;
   staleResetCount: number;
@@ -60,8 +61,8 @@ interface WorkerMetrics {
 const METRICS: WorkerMetrics = {
   startedAt: new Date(),
   loopCount: 0,
-  itemsProcessed: 0,
-  itemsFailed: 0,
+  emailsSent: 0,
+  emailsFailed: 0,
   lastBatchTime: 0,
   lastBatchSize: 0,
   staleResetCount: 0,
@@ -122,8 +123,8 @@ function startHealthServer(): void {
         uptime_human: formatUptime(uptimeMs),
         metrics: {
           loops: METRICS.loopCount,
-          items_processed: METRICS.itemsProcessed,
-          items_failed: METRICS.itemsFailed,
+          emails_sent: METRICS.emailsSent,
+          emails_failed: METRICS.emailsFailed,
           last_batch_size: METRICS.lastBatchSize,
           last_batch_time_ms: METRICS.lastBatchTime,
           stale_resets: METRICS.staleResetCount,
@@ -148,12 +149,12 @@ function startHealthServer(): void {
         `# HELP worker_uptime_seconds Worker uptime in seconds`,
         `# TYPE worker_uptime_seconds gauge`,
         `worker_uptime_seconds ${(Date.now() - METRICS.startedAt.getTime()) / 1000}`,
-        `# HELP worker_items_processed_total Total items processed`,
-        `# TYPE worker_items_processed_total counter`,
-        `worker_items_processed_total ${METRICS.itemsProcessed}`,
-        `# HELP worker_items_failed_total Total items failed`,
-        `# TYPE worker_items_failed_total counter`,
-        `worker_items_failed_total ${METRICS.itemsFailed}`,
+        `# HELP worker_emails_sent_total Total emails sent`,
+        `# TYPE worker_emails_sent_total counter`,
+        `worker_emails_sent_total ${METRICS.emailsSent}`,
+        `# HELP worker_emails_failed_total Total emails failed`,
+        `# TYPE worker_emails_failed_total counter`,
+        `worker_emails_failed_total ${METRICS.emailsFailed}`,
         `# HELP worker_loops_total Total loop iterations`,
         `# TYPE worker_loops_total counter`,
         `worker_loops_total ${METRICS.loopCount}`,
@@ -194,7 +195,7 @@ function formatUptime(ms: number): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function workerLoop(): Promise<void> {
-  log('info', 'Starting email queue worker', {
+  log('info', 'Starting email queue worker (Resend)', {
     batch_size: CONFIG.BATCH_SIZE,
     interval_ms: CONFIG.LOOP_INTERVAL_MS,
     concurrent: CONFIG.CONCURRENT_LIMIT,
@@ -205,8 +206,8 @@ async function workerLoop(): Promise<void> {
     METRICS.lastHeartbeat = new Date();
     log('info', 'Heartbeat', {
       loops: METRICS.loopCount,
-      processed: METRICS.itemsProcessed,
-      failed: METRICS.itemsFailed,
+      sent: METRICS.emailsSent,
+      failed: METRICS.emailsFailed,
     });
   }, 60000);
 
@@ -248,27 +249,33 @@ async function workerLoop(): Promise<void> {
               const result = await processQueueItem(item);
 
               if (result.success) {
-                await completeItem(item.id);
-                METRICS.itemsProcessed++;
-                log('info', `Processed email`, {
-                  gmail_id: item.gmail_message_id.substring(0, 12),
-                  load_id: result.loadId,
+                await completeItem(item.id, 'sent');
+                METRICS.emailsSent++;
+                log('info', `Email sent`, {
+                  id: item.id.substring(0, 8),
+                  to: item.to_email,
+                  email_sent: true,
+                  message_id: result.messageId,
                   duration_ms: Date.now() - itemStart,
                 });
               } else {
                 const newAttempts = item.attempts + 1;
                 await failItem(item.id, result.error || 'Unknown error', newAttempts);
-                METRICS.itemsFailed++;
+                METRICS.emailsFailed++;
 
                 if (newAttempts >= CONFIG.MAX_RETRIES) {
                   log('error', `Email permanently failed`, {
-                    gmail_id: item.gmail_message_id,
+                    id: item.id,
+                    to: item.to_email,
+                    email_sent: false,
                     error: result.error,
                     attempts: newAttempts,
                   });
                 } else {
                   log('warn', `Email failed, will retry`, {
-                    gmail_id: item.gmail_message_id,
+                    id: item.id,
+                    to: item.to_email,
+                    email_sent: false,
                     error: result.error,
                     attempts: newAttempts,
                   });
@@ -278,9 +285,11 @@ async function workerLoop(): Promise<void> {
               const errorMessage = error instanceof Error ? error.message : String(error);
               const newAttempts = item.attempts + 1;
               await failItem(item.id, errorMessage, newAttempts);
-              METRICS.itemsFailed++;
-              log('error', `Exception processing email`, {
-                gmail_id: item.gmail_message_id,
+              METRICS.emailsFailed++;
+              log('error', `Exception sending email`, {
+                id: item.id,
+                to: item.to_email,
+                email_sent: false,
                 error: errorMessage,
                 attempts: newAttempts,
               });
@@ -307,8 +316,8 @@ async function workerLoop(): Promise<void> {
 
   clearInterval(heartbeatInterval);
   log('info', 'Worker shutdown complete', {
-    total_processed: METRICS.itemsProcessed,
-    total_failed: METRICS.itemsFailed,
+    total_sent: METRICS.emailsSent,
+    total_failed: METRICS.emailsFailed,
   });
 }
 
@@ -349,12 +358,17 @@ function setupShutdownHandlers(): void {
 
 // Validate required environment variables
 function validateEnv(): void {
-  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY'];
   const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
     console.error(`Missing required environment variables: ${missing.join(', ')}`);
     process.exit(1);
+  }
+
+  // Optional but recommended
+  if (!process.env.RESEND_FROM_EMAIL) {
+    console.warn('RESEND_FROM_EMAIL not set, will use default sender');
   }
 }
 
