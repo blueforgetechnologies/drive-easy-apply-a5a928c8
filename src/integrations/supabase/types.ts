@@ -5372,12 +5372,18 @@ export type Database = {
         Args: { p_batch_size?: number }
         Returns: {
           attempts: number
+          body_html: string
+          body_text: string
+          from_email: string
+          from_name: string
           gmail_history_id: string
           gmail_message_id: string
           id: string
           payload_url: string
           queued_at: string
+          subject: string
           tenant_id: string
+          to_email: string
         }[]
       }
       cleanup_email_queue: { Args: never; Returns: number }
