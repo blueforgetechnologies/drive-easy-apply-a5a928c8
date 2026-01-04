@@ -8,6 +8,13 @@ export interface QueueItem {
   payload_url: string | null;
   attempts: number;
   queued_at: string;
+  // Outbound email fields
+  to_email: string | null;
+  subject: string | null;
+  body_html: string | null;
+  body_text: string | null;
+  from_email: string | null;
+  from_name: string | null;
 }
 
 /**
@@ -28,10 +35,13 @@ export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
 }
 
 /**
- * Mark a queue item as completed.
+ * Mark a queue item as sent/completed.
  */
-export async function completeItem(id: string): Promise<void> {
-  const { error } = await supabase.rpc('complete_email_queue_item', { p_id: id });
+export async function completeItem(id: string, status: string = 'sent'): Promise<void> {
+  const { error } = await supabase.rpc('complete_email_queue_item', { 
+    p_id: id,
+    p_status: status,
+  });
   
   if (error) {
     console.error(`[claim] Error completing item ${id}:`, error);
