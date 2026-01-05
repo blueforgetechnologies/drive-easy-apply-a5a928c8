@@ -51,7 +51,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   
   // Use unified feature gate for Analytics - combines tenant enablement + user access
   const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
-  
+
+  const showAnalytics =
+    !analyticsGate.isLoading &&
+    analyticsGate.isEnabledForTenant === true &&
+    analyticsGate.canUserAccess === true;
+
   // Debug: log analytics gate resolution for nav gating verification
   useEffect(() => {
     if (!analyticsGate.isLoading) {
@@ -64,10 +69,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         releaseChannel: effectiveTenant?.release_channel,
       });
     }
-  }, [analyticsGate.isLoading, analyticsGate.isAccessible, effectiveTenant?.name, effectiveTenant?.release_channel]);
-  
-  const canAccessAnalytics = analyticsGate.isAccessible;
-  const analyticsAccessLoading = analyticsGate.isLoading;
+  }, [
+    analyticsGate.isLoading,
+    analyticsGate.isEnabledForTenant,
+    analyticsGate.canUserAccess,
+    effectiveTenant?.name,
+    effectiveTenant?.release_channel,
+  ]);
 
   // Keep UI in sync with auth state (fixes "logged in but UI not updating")
   useEffect(() => {
@@ -273,7 +281,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   // Primary nav items - most frequently used
-  // Analytics is configurable - show for platform admins OR users with explicit grant
+  // Analytics is configurable - show only when tenant-level enablement is ON AND user has access
   const primaryNavItems = [
     { value: "map", icon: Map, label: "Map" },
     { value: "load-hunter", icon: Target, label: "Load Hunter" },
@@ -282,8 +290,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "carrier-dashboard", icon: Briefcase, label: "Carrier's Dashboard" },
     { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
     { value: "accounting", icon: Calculator, label: "Accounting" },
-    // Analytics - show for users with access (platform admin OR explicit grant)
-    ...(canAccessAnalytics && !analyticsAccessLoading ? [{ value: "analytics", icon: TrendingUp, label: "Analytics" }] : []),
+    // Analytics - hide unless fully accessible (no nav leak / no flicker while loading)
+    ...(showAnalytics ? [{ value: "analytics", icon: TrendingUp, label: "Analytics" }] : []),
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     // Usage is internal-only - only show for platform admins  
     ...(isPlatformAdmin ? [{ value: "usage", icon: DollarSign, label: "Usage" }] : []),
