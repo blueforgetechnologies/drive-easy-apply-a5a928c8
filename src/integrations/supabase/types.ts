@@ -4267,6 +4267,44 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_feature_access: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          feature_key: string
+          id: string
+          is_enabled: boolean
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          feature_key: string
+          id?: string
+          is_enabled?: boolean
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_feature_access_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_feature_flags: {
         Row: {
           enabled: boolean
@@ -5350,6 +5388,10 @@ export type Database = {
       archive_old_load_emails_batched: {
         Args: { batch_size?: number }
         Returns: number
+      }
+      can_access_feature: {
+        Args: { p_feature_key: string; p_tenant_id: string; p_user_id: string }
+        Returns: boolean
       }
       can_access_tenant: {
         Args: { _tenant_id: string; _user_id: string }

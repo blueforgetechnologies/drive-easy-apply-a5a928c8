@@ -7,6 +7,7 @@ import LocationsTab from "./LocationsTab";
 import RoleBuilderTab from "./RoleBuilderTab";
 import PreferencesTab from "./PreferencesTab";
 import IntegrationsTab from "./IntegrationsTab";
+import { FeatureAccessManager } from "@/components/FeatureAccessManager";
 
 export default function SettingsTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,7 +15,7 @@ export default function SettingsTab() {
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
-    const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations"];
+    const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access"];
     if (subTab && validSubTabs.includes(subTab)) {
       setActiveSubTab(subTab);
     }
@@ -45,6 +46,7 @@ export default function SettingsTab() {
             <TabsTrigger value="roles" className="text-xs sm:text-sm">Role Builder</TabsTrigger>
             <TabsTrigger value="preferences" className="text-xs sm:text-sm">Preferences</TabsTrigger>
             <TabsTrigger value="integrations" className="text-xs sm:text-sm">Integrations</TabsTrigger>
+            <TabsTrigger value="access" className="text-xs sm:text-sm">Feature Access</TabsTrigger>
           </TabsList>
         </div>
 
@@ -70,6 +72,10 @@ export default function SettingsTab() {
 
         <TabsContent value="integrations" className="mt-4">
           <IntegrationsTab />
+        </TabsContent>
+
+        <TabsContent value="access" className="mt-4">
+          <FeatureAccessManager />
         </TabsContent>
       </Tabs>
     </div>
