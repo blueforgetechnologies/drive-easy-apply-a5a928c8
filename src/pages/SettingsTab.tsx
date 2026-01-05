@@ -8,18 +8,63 @@ import RoleBuilderTab from "./RoleBuilderTab";
 import PreferencesTab from "./PreferencesTab";
 import IntegrationsTab from "./IntegrationsTab";
 import { FeatureAccessManager } from "@/components/FeatureAccessManager";
+import { useTenantContext } from "@/contexts/TenantContext";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function SettingsTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState<string>("users");
+  const { isPlatformAdmin } = useTenantContext();
+  const { tenantId } = useTenantFilter();
+  const [canManageAccess, setCanManageAccess] = useState(false);
+
+  // Check if user can see Feature Access tab
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (isPlatformAdmin) {
+        setCanManageAccess(true);
+        return;
+      }
+
+      if (!tenantId) {
+        setCanManageAccess(false);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCanManageAccess(false);
+        return;
+      }
+
+      // Check if user is admin/owner in this tenant
+      const { data } = await supabase
+        .from("tenant_users")
+        .select("role")
+        .eq("tenant_id", tenantId)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      setCanManageAccess(data?.role === "admin" || data?.role === "owner");
+    };
+
+    checkPermission();
+  }, [isPlatformAdmin, tenantId]);
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
     const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access"];
     if (subTab && validSubTabs.includes(subTab)) {
-      setActiveSubTab(subTab);
+      // Only allow access subtab if user can manage it
+      if (subTab === "access" && !canManageAccess) {
+        setActiveSubTab("users");
+      } else {
+        setActiveSubTab(subTab);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, canManageAccess]);
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
@@ -46,7 +91,9 @@ export default function SettingsTab() {
             <TabsTrigger value="roles" className="text-xs sm:text-sm">Role Builder</TabsTrigger>
             <TabsTrigger value="preferences" className="text-xs sm:text-sm">Preferences</TabsTrigger>
             <TabsTrigger value="integrations" className="text-xs sm:text-sm">Integrations</TabsTrigger>
-            <TabsTrigger value="access" className="text-xs sm:text-sm">Feature Access</TabsTrigger>
+            {canManageAccess && (
+              <TabsTrigger value="access" className="text-xs sm:text-sm">Feature Access</TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -74,9 +121,11 @@ export default function SettingsTab() {
           <IntegrationsTab />
         </TabsContent>
 
-        <TabsContent value="access" className="mt-4">
-          <FeatureAccessManager />
-        </TabsContent>
+        {canManageAccess && (
+          <TabsContent value="access" className="mt-4">
+            <FeatureAccessManager />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
