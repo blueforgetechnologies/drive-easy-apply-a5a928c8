@@ -220,31 +220,6 @@ export default function LoadAnalyticsTab() {
     setEndDate(end);
   }, []);
 
-  // Authorization check - GUARD AT TOP before any effects/queries
-  // Show loading while checking access
-  if (accessLoading || tenantLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground">Checking access...</p>
-      </div>
-    );
-  }
-
-  // Show access denied if not authorized
-  if (!canAccessAnalytics) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <ShieldAlert className="h-16 w-16 text-destructive" />
-        <h2 className="text-2xl font-bold">Access Denied</h2>
-        <p className="text-muted-foreground text-center max-w-md">
-          You don't have permission to access Analytics. Contact your administrator to request access.
-        </p>
-        <Button onClick={() => navigate("/dashboard/loads")}>Go to Loads</Button>
-      </div>
-    );
-  }
-
   // Initial load - only run if authorized
   useEffect(() => {
     if (!canAccessAnalytics) return;
@@ -1209,6 +1184,30 @@ export default function LoadAnalyticsTab() {
     const busiestHour = hourOfDayData.reduce((max, h) => h.count > max.count ? h : max, hourOfDayData[0]);
     return { busiestDay: busiestDay.label, busiestHour: busiestHour.label };
   }, [dayOfWeekData, hourOfDayData]);
+
+  // Authorization check - after all hooks have been called
+  if (accessLoading || tenantLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground">Checking access...</p>
+      </div>
+    );
+  }
+
+  // Show access denied if not authorized
+  if (!canAccessAnalytics) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <ShieldAlert className="h-16 w-16 text-destructive" />
+        <h2 className="text-2xl font-bold">Access Denied</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          You don't have permission to access Analytics. Contact your administrator to request access.
+        </p>
+        <Button onClick={() => navigate("/dashboard/loads")}>Go to Loads</Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
