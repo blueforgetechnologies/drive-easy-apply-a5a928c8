@@ -28,9 +28,11 @@ import {
   RefreshCw,
   BarChart3,
   ShieldCheck,
-  Copy
+  Copy,
+  Eye
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 interface Tenant {
   id: string;
@@ -84,6 +86,7 @@ interface PlatformStats {
 
 export default function PlatformAdminTab() {
   const navigate = useNavigate();
+  const { startImpersonation, isImpersonating, loading: impersonationLoading } = useImpersonation();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -104,6 +107,8 @@ export default function PlatformAdminTab() {
   const [showTenantSettings, setShowTenantSettings] = useState(false);
   const [showFeatureFlagConfirm, setShowFeatureFlagConfirm] = useState(false);
   const [showReleaseChannelConfirm, setShowReleaseChannelConfirm] = useState(false);
+  const [showImpersonateDialog, setShowImpersonateDialog] = useState(false);
+  const [impersonateReason, setImpersonateReason] = useState("");
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [selectedFlag, setSelectedFlag] = useState<FeatureFlag | null>(null);
   const [pendingReleaseChannel, setPendingReleaseChannel] = useState<{ tenantId: string; channel: string } | null>(null);
@@ -115,6 +120,28 @@ export default function PlatformAdminTab() {
   const [newTenantSlug, setNewTenantSlug] = useState("");
   const [editRateLimitMinute, setEditRateLimitMinute] = useState(60);
   const [editRateLimitDay, setEditRateLimitDay] = useState(10000);
+
+  // Handle impersonation start
+  const handleStartImpersonation = async () => {
+    if (!selectedTenant || !impersonateReason || impersonateReason.length < 10) {
+      toast.error("Please provide a reason (at least 10 characters)");
+      return;
+    }
+    
+    const success = await startImpersonation(selectedTenant.id, impersonateReason, 30);
+    if (success) {
+      setShowImpersonateDialog(false);
+      setImpersonateReason("");
+      setSelectedTenant(null);
+      navigate("/dashboard/loads"); // Navigate to a tenant page
+    }
+  };
+
+  const openImpersonateDialog = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setImpersonateReason("");
+    setShowImpersonateDialog(true);
+  };
 
   useEffect(() => {
     checkAdminAccess();
@@ -724,6 +751,27 @@ export default function PlatformAdminTab() {
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+                        {/* View as Tenant button */}
+                        {!isImpersonating && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => openImpersonateDialog(tenant)}
+                                  disabled={impersonationLoading}
+                                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View as this tenant</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -966,6 +1014,89 @@ export default function PlatformAdminTab() {
             </Button>
             <Button onClick={handleSaveTenantSettings}>
               Save Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Impersonation Dialog */}
+      <Dialog open={showImpersonateDialog} onOpenChange={setShowImpersonateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-purple-600" />
+              View as Tenant
+            </DialogTitle>
+            <DialogDescription>
+              You're about to impersonate <strong>{selectedTenant?.name}</strong>.
+              This will let you see exactly what users in this tenant see.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-800 dark:text-amber-200">This action is audited</p>
+                  <p className="text-amber-700 dark:text-amber-300 mt-1">
+                    Your impersonation session will be logged with your user ID, tenant ID, reason, and timestamps.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="impersonate-reason">Reason for impersonation *</Label>
+              <Input 
+                id="impersonate-reason"
+                value={impersonateReason}
+                onChange={(e) => setImpersonateReason(e.target.value)}
+                placeholder="e.g., Investigating support ticket #1234"
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimum 10 characters required
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Tenant</p>
+                <p className="font-medium">{selectedTenant?.name}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Release Channel</p>
+                <Badge variant="outline" className="capitalize">
+                  {selectedTenant?.release_channel}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowImpersonateDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleStartImpersonation}
+              disabled={impersonationLoading || impersonateReason.length < 10}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {impersonationLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Start Impersonation
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

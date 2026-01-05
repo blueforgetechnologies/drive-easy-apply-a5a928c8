@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/contexts/TenantContext";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -167,8 +167,10 @@ export default function LoadAnalyticsTab() {
   const navigate = useNavigate();
   const { isPlatformAdmin, loading: tenantLoading } = useTenantContext();
   
-  // Use feature access hook - single source of truth
-  const { canAccess: canAccessAnalytics, isLoading: accessLoading } = useFeatureAccess({ featureKey: "analytics" });
+  // Use unified feature gate - combines tenant enablement + user access
+  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
+  const canAccessAnalytics = analyticsGate.isAccessible;
+  const accessLoading = analyticsGate.isLoading;
   
   const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
   const [totalEmailCount, setTotalEmailCount] = useState<number>(0);
