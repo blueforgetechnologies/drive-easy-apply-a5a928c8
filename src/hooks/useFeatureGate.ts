@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/contexts/TenantContext";
 
@@ -203,6 +203,8 @@ export function useFeatureGate({ featureKey, requiresUserGrant = true }: Feature
   const prevTenantRef = useRef<string | undefined>(effectiveTenant?.id);
   
   useEffect(() => {
+    if (tenantLoading) return;
+
     // If tenant changed, reset state immediately before running check
     if (prevTenantRef.current !== effectiveTenant?.id) {
       setIsEnabledForTenant(false);
@@ -210,10 +212,10 @@ export function useFeatureGate({ featureKey, requiresUserGrant = true }: Feature
       setIsLoading(true);
       prevTenantRef.current = effectiveTenant?.id;
     }
-    
+
     // Run the gate check
     checkGate();
-  }, [checkGate, effectiveTenant?.id]);
+  }, [checkGate, effectiveTenant?.id, tenantLoading]);
 
   // Combined access: feature enabled at tenant level AND user has access
   const isAccessible = useMemo(() => {
