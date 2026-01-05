@@ -47,10 +47,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [authReady, setAuthReady] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
-  const { isPlatformAdmin, isImpersonating } = useTenantContext();
+  const { isPlatformAdmin, isImpersonating, effectiveTenant } = useTenantContext();
   
   // Use unified feature gate for Analytics - combines tenant enablement + user access
   const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
+  
+  // Debug: log analytics gate resolution for nav gating verification
+  useEffect(() => {
+    if (!analyticsGate.isLoading) {
+      console.log("[DashboardLayout] Analytics gate resolved:", {
+        isEnabledForTenant: analyticsGate.isEnabledForTenant,
+        canUserAccess: analyticsGate.canUserAccess,
+        isAccessible: analyticsGate.isAccessible,
+        resolution: analyticsGate.resolution,
+        tenantName: effectiveTenant?.name,
+        releaseChannel: effectiveTenant?.release_channel,
+      });
+    }
+  }, [analyticsGate.isLoading, analyticsGate.isAccessible, effectiveTenant?.name, effectiveTenant?.release_channel]);
+  
   const canAccessAnalytics = analyticsGate.isAccessible;
   const analyticsAccessLoading = analyticsGate.isLoading;
 
