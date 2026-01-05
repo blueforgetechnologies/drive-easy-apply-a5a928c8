@@ -201,6 +201,9 @@ export default function LoadAnalyticsTab() {
 
   // Handle date filter change - use cached data instantly if available
   const handleDateChange = useCallback((start: Date, end: Date, rangeKey?: string) => {
+    // Hard gate: never process date changes if not authorized
+    if (accessLoading || tenantLoading || !canAccessAnalytics) return;
+    
     // If a range key is provided and we have cached data, use it immediately
     if (rangeKey && analyticsCache.has(rangeKey)) {
       const cached = analyticsCache.get(rangeKey)!;
@@ -218,26 +221,32 @@ export default function LoadAnalyticsTab() {
     setCurrentRangeKey(rangeKey || null);
     setStartDate(start);
     setEndDate(end);
-  }, []);
+  }, [canAccessAnalytics, accessLoading, tenantLoading]);
 
-  // Initial load - only run if authorized
+  // Initial load - only run if fully authorized (not loading, and has access)
   useEffect(() => {
+    if (accessLoading || tenantLoading) return;
     if (!canAccessAnalytics) return;
     loadAnalyticsData();
     loadMapboxToken();
     loadGeocodeCache();
-  }, [startDate, endDate, canAccessAnalytics]);
+  }, [startDate, endDate, canAccessAnalytics, accessLoading, tenantLoading]);
 
-  // Auto-refresh interval
+  // Auto-refresh interval - gated by access
   useEffect(() => {
+    if (accessLoading || tenantLoading) return;
+    if (!canAccessAnalytics) return;
+    
     const interval = setInterval(() => {
       refreshData();
     }, refreshInterval * 1000);
 
     return () => clearInterval(interval);
-  }, [refreshInterval, startDate, endDate]);
+  }, [refreshInterval, startDate, endDate, canAccessAnalytics, accessLoading, tenantLoading]);
 
   const refreshData = async () => {
+    // Hard gate: never refresh if not authorized
+    if (accessLoading || tenantLoading || !canAccessAnalytics) return;
     setIsRefreshing(true);
     await loadAnalyticsData();
     setLastRefresh(new Date());
@@ -416,8 +425,11 @@ export default function LoadAnalyticsTab() {
     return null;
   }, []);
 
-  // Main load function - uses cache or fetches
+  // Main load function - uses cache or fetches (gated by access)
   const loadAnalyticsData = async () => {
+    // Hard gate: never load data if not authorized
+    if (accessLoading || tenantLoading || !canAccessAnalytics) return;
+    
     // Check cache first
     const cached = getCachedData(startDate, endDate);
     if (cached) {
@@ -462,6 +474,8 @@ export default function LoadAnalyticsTab() {
 
   // Background prefetch for larger date ranges - sequential to show progressive loading
   const prefetchDateRanges = useCallback(async () => {
+    // Hard gate: never prefetch if not authorized
+    if (accessLoading || tenantLoading || !canAccessAnalytics) return;
     if (prefetchingRef.current) return;
     prefetchingRef.current = true;
     
@@ -493,8 +507,10 @@ export default function LoadAnalyticsTab() {
     prefetchingRef.current = false;
   }, []);
 
-  // Start prefetching after initial load
+  // Start prefetching after initial load - gated by access
   useEffect(() => {
+    if (accessLoading || tenantLoading) return;
+    if (!canAccessAnalytics) return;
     if (!isLoading && loadEmails.length > 0) {
       // Start prefetching after 2 seconds
       const timer = setTimeout(() => {
@@ -502,7 +518,7 @@ export default function LoadAnalyticsTab() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, loadEmails.length, prefetchDateRanges]);
+  }, [isLoading, loadEmails.length, prefetchDateRanges, canAccessAnalytics, accessLoading, tenantLoading]);
 
   // Build geocode lookup map
   const geocodeLookup = useMemo(() => {
