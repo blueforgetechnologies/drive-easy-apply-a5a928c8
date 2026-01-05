@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/contexts/TenantContext";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -165,6 +166,10 @@ const findMatchingRangeKey = (start: Date, end: Date): DateRangeKey | null => {
 export default function LoadAnalyticsTab() {
   const navigate = useNavigate();
   const { isPlatformAdmin, loading: tenantLoading } = useTenantContext();
+  
+  // Use feature access hook - single source of truth
+  const { canAccess: canAccessAnalytics, isLoading: accessLoading } = useFeatureAccess({ featureKey: "analytics" });
+  
   const [loadEmails, setLoadEmails] = useState<LoadEmailData[]>([]);
   const [totalEmailCount, setTotalEmailCount] = useState<number>(0);
   const [geocodeCache, setGeocodeCache] = useState<GeocodeData[]>([]);
@@ -215,28 +220,38 @@ export default function LoadAnalyticsTab() {
     setEndDate(end);
   }, []);
 
-  // Authorization check - Analytics is internal only (platform admins)
+  // Authorization check - GUARD AT TOP before any effects/queries
+  // Show loading while checking access
+  if (accessLoading || tenantLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground">Checking access...</p>
+      </div>
+    );
+  }
+
   // Show access denied if not authorized
-  if (!tenantLoading && !isPlatformAdmin) {
+  if (!canAccessAnalytics) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <ShieldAlert className="h-16 w-16 text-destructive" />
         <h2 className="text-2xl font-bold">Access Denied</h2>
         <p className="text-muted-foreground text-center max-w-md">
-          Analytics is an internal feature. You don't have permission to access this page.
+          You don't have permission to access Analytics. Contact your administrator to request access.
         </p>
         <Button onClick={() => navigate("/dashboard/loads")}>Go to Loads</Button>
       </div>
     );
   }
 
-  // Initial load
+  // Initial load - only run if authorized
   useEffect(() => {
-    if (!isPlatformAdmin) return;
+    if (!canAccessAnalytics) return;
     loadAnalyticsData();
     loadMapboxToken();
     loadGeocodeCache();
-  }, [startDate, endDate, isPlatformAdmin]);
+  }, [startDate, endDate, canAccessAnalytics]);
 
   // Auto-refresh interval
   useEffect(() => {

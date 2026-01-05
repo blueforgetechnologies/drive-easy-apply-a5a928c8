@@ -50,6 +50,8 @@ export const TENANT_OWNED_TABLES = [
   "match_action_history",
   "map_load_tracking",
   "audit_logs",
+  // Feature access control
+  "tenant_feature_access",
 ] as const;
 
 export type TenantOwnedTable = typeof TENANT_OWNED_TABLES[number];

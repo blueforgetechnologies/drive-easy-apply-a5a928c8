@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import { useIntegrationsAlertsCount } from "@/hooks/useIntegrationsAlertsCount";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -47,6 +48,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
   const { isPlatformAdmin, isImpersonating } = useTenantContext();
+  
+  // Check analytics access - platform admins or users with explicit grant
+  const { canAccess: canAccessAnalytics, isLoading: analyticsAccessLoading } = useFeatureAccess({ featureKey: "analytics" });
 
   // Keep UI in sync with auth state (fixes "logged in but UI not updating")
   useEffect(() => {
@@ -252,7 +256,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   // Primary nav items - most frequently used
-  // Analytics and Usage tabs are internal-only (platform admin)
+  // Analytics is configurable - show for platform admins OR users with explicit grant
   const primaryNavItems = [
     { value: "map", icon: Map, label: "Map" },
     { value: "load-hunter", icon: Target, label: "Load Hunter" },
@@ -261,8 +265,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { value: "carrier-dashboard", icon: Briefcase, label: "Carrier's Dashboard" },
     { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
     { value: "accounting", icon: Calculator, label: "Accounting" },
-    // Analytics is internal-only - only show for platform admins
-    ...(isPlatformAdmin ? [{ value: "analytics", icon: TrendingUp, label: "Analytics" }] : []),
+    // Analytics - show for users with access (platform admin OR explicit grant)
+    ...(canAccessAnalytics && !analyticsAccessLoading ? [{ value: "analytics", icon: TrendingUp, label: "Analytics" }] : []),
     { value: "maintenance", icon: Wrench, label: "Maintenance" },
     // Usage is internal-only - only show for platform admins  
     ...(isPlatformAdmin ? [{ value: "usage", icon: DollarSign, label: "Usage" }] : []),
