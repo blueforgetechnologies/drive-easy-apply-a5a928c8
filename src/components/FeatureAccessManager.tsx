@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, ShieldCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, TrendingUp, ShieldCheck, Zap, MapPin, Bot } from "lucide-react";
 import { toast } from "sonner";
 
 interface TenantUserWithAccess {
@@ -20,19 +21,44 @@ interface TenantUserWithAccess {
     full_name: string | null;
     is_platform_admin?: boolean;
   };
-  analyticsAccess: boolean;
+  featureAccess: Record<string, boolean>; // featureKey -> enabled
 }
 
-const FEATURE_KEYS = [
-  { key: "analytics", label: "Analytics", icon: TrendingUp, description: "Access to load analytics dashboard" },
+// All features that can be granted per-user
+const GRANTABLE_FEATURES = [
+  { 
+    key: "analytics", 
+    label: "Analytics", 
+    icon: TrendingUp, 
+    description: "Load analytics dashboard",
+    color: "text-blue-500"
+  },
+  { 
+    key: "ai_parsing_enabled", 
+    label: "AI Parsing", 
+    icon: Bot, 
+    description: "AI-powered email parsing",
+    color: "text-purple-500"
+  },
+  { 
+    key: "geocoding_enabled", 
+    label: "Geocoding", 
+    icon: MapPin, 
+    description: "Location geocoding",
+    color: "text-green-500"
+  },
 ] as const;
 
+type FeatureKey = typeof GRANTABLE_FEATURES[number]['key'];
+
 export function FeatureAccessManager() {
-  const { isPlatformAdmin, effectiveTenant } = useTenantContext();
+  const { isPlatformAdmin, effectiveTenant, memberships } = useTenantContext();
   const { tenantId, shouldFilter } = useTenantFilter();
   const [users, setUsers] = useState<TenantUserWithAccess[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [tenants, setTenants] = useState<Array<{ id: string; name: string; slug: string }>>([]);
 
   // Only show for platform admins or tenant admins/owners
   const [canManage, setCanManage] = useState(false);
@@ -40,6 +66,33 @@ export function FeatureAccessManager() {
   useEffect(() => {
     checkManagePermission();
   }, [isPlatformAdmin, tenantId]);
+
+  // Load tenants for platform admins
+  useEffect(() => {
+    if (isPlatformAdmin) {
+      loadTenants();
+    }
+  }, [isPlatformAdmin]);
+
+  // Set initial selected tenant
+  useEffect(() => {
+    if (isPlatformAdmin && tenants.length > 0 && !selectedTenantId) {
+      setSelectedTenantId(tenants[0].id);
+    } else if (!isPlatformAdmin && tenantId) {
+      setSelectedTenantId(tenantId);
+    }
+  }, [isPlatformAdmin, tenants, tenantId, selectedTenantId]);
+
+  const loadTenants = async () => {
+    const { data, error } = await supabase
+      .from("tenants")
+      .select("id, name, slug")
+      .order("name");
+    
+    if (!error && data) {
+      setTenants(data);
+    }
+  };
 
   const checkManagePermission = async () => {
     if (isPlatformAdmin) {
@@ -71,7 +124,9 @@ export function FeatureAccessManager() {
   };
 
   const loadUsers = useCallback(async () => {
-    if (!tenantId && shouldFilter) {
+    const targetTenantId = selectedTenantId;
+    
+    if (!targetTenantId) {
       setUsers([]);
       setLoading(false);
       return;
@@ -79,18 +134,14 @@ export function FeatureAccessManager() {
 
     setLoading(true);
     try {
-      // Build query for tenant users
-      let query = supabase
+      // Get tenant users
+      const { data: tenantUsers, error: tuError } = await supabase
         .from("tenant_users")
         .select("id, user_id, role, is_active")
+        .eq("tenant_id", targetTenantId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
-      if (shouldFilter && tenantId) {
-        query = query.eq("tenant_id", tenantId);
-      }
-
-      const { data: tenantUsers, error: tuError } = await query;
       if (tuError) throw tuError;
 
       if (!tenantUsers?.length) {
@@ -113,29 +164,29 @@ export function FeatureAccessManager() {
         profilesById[p.id] = p;
       });
 
-      // Get feature access grants
-      let accessQuery = supabase
+      // Get all feature access grants for this tenant
+      const { data: accessGrants, error: aError } = await supabase
         .from("tenant_feature_access")
         .select("user_id, feature_key, is_enabled")
-        .eq("feature_key", "analytics")
+        .eq("tenant_id", targetTenantId)
         .eq("is_enabled", true)
         .in("user_id", userIds);
 
-      if (shouldFilter && tenantId) {
-        accessQuery = accessQuery.eq("tenant_id", tenantId);
-      }
-
-      const { data: accessGrants, error: aError } = await accessQuery;
       if (aError) throw aError;
 
-      const usersWithAnalytics = new Set(
-        (accessGrants || []).map(g => g.user_id)
-      );
+      // Build feature access map per user
+      const userFeatureAccess: Record<string, Record<string, boolean>> = {};
+      (accessGrants || []).forEach(g => {
+        if (!userFeatureAccess[g.user_id]) {
+          userFeatureAccess[g.user_id] = {};
+        }
+        userFeatureAccess[g.user_id][g.feature_key] = g.is_enabled;
+      });
 
       const result: TenantUserWithAccess[] = tenantUsers.map(tu => ({
         ...tu,
         profile: profilesById[tu.user_id],
-        analyticsAccess: usersWithAnalytics.has(tu.user_id),
+        featureAccess: userFeatureAccess[tu.user_id] || {},
       }));
 
       setUsers(result);
@@ -145,51 +196,56 @@ export function FeatureAccessManager() {
     } finally {
       setLoading(false);
     }
-  }, [tenantId, shouldFilter]);
+  }, [selectedTenantId]);
 
   useEffect(() => {
-    if (canManage) {
+    if (canManage && selectedTenantId) {
       loadUsers();
     }
-  }, [canManage, loadUsers]);
+  }, [canManage, selectedTenantId, loadUsers]);
 
-  const toggleAnalyticsAccess = async (user: TenantUserWithAccess) => {
-    if (!tenantId) {
+  const toggleFeatureAccess = async (user: TenantUserWithAccess, featureKey: FeatureKey) => {
+    if (!selectedTenantId) {
       toast.error("No tenant selected");
       return;
     }
 
-    setUpdating(user.user_id);
+    const updateKey = `${user.user_id}-${featureKey}`;
+    setUpdating(updateKey);
     
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) throw new Error("Not authenticated");
 
-      if (user.analyticsAccess) {
+      const currentlyEnabled = user.featureAccess[featureKey] || false;
+
+      if (currentlyEnabled) {
         // Revoke access - delete the row
         const { error } = await supabase
           .from("tenant_feature_access")
           .delete()
-          .eq("tenant_id", tenantId)
+          .eq("tenant_id", selectedTenantId)
           .eq("user_id", user.user_id)
-          .eq("feature_key", "analytics");
+          .eq("feature_key", featureKey);
 
         if (error) throw error;
         
         // Update local state
         setUsers(prev => prev.map(u => 
-          u.user_id === user.user_id ? { ...u, analyticsAccess: false } : u
+          u.user_id === user.user_id 
+            ? { ...u, featureAccess: { ...u.featureAccess, [featureKey]: false } } 
+            : u
         ));
         
-        toast.success(`Analytics access revoked for ${user.profile?.full_name || user.profile?.email}`);
+        toast.success(`Access revoked for ${user.profile?.full_name || user.profile?.email}`);
       } else {
         // Grant access - upsert the row
         const { error } = await supabase
           .from("tenant_feature_access")
           .upsert({
-            tenant_id: tenantId,
+            tenant_id: selectedTenantId,
             user_id: user.user_id,
-            feature_key: "analytics",
+            feature_key: featureKey,
             is_enabled: true,
             created_by: currentUser.id,
           }, {
@@ -200,10 +256,12 @@ export function FeatureAccessManager() {
         
         // Update local state
         setUsers(prev => prev.map(u => 
-          u.user_id === user.user_id ? { ...u, analyticsAccess: true } : u
+          u.user_id === user.user_id 
+            ? { ...u, featureAccess: { ...u.featureAccess, [featureKey]: true } } 
+            : u
         ));
         
-        toast.success(`Analytics access granted to ${user.profile?.full_name || user.profile?.email}`);
+        toast.success(`Access granted to ${user.profile?.full_name || user.profile?.email}`);
       }
     } catch (error: any) {
       console.error("Error toggling access:", error);
@@ -217,56 +275,68 @@ export function FeatureAccessManager() {
     return null;
   }
 
-  if (!tenantId && shouldFilter) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            Feature Access
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-4">
-            Please select a tenant to manage feature access.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const currentTenantName = tenants.find(t => t.id === selectedTenantId)?.name 
+    || effectiveTenant?.name 
+    || "this tenant";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5" />
-          Feature Access
-        </CardTitle>
-        <CardDescription>
-          Grant or revoke access to premium features for users in {effectiveTenant?.name || "this tenant"}
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Feature Access Control
+            </CardTitle>
+            <CardDescription>
+              Grant or revoke access to premium features for users
+            </CardDescription>
+          </div>
+          
+          {/* Tenant selector for platform admins */}
+          {isPlatformAdmin && tenants.length > 0 && (
+            <Select value={selectedTenantId || ""} onValueChange={setSelectedTenantId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select tenant" />
+              </SelectTrigger>
+              <SelectContent>
+                {tenants.map(tenant => (
+                  <SelectItem key={tenant.id} value={tenant.id}>
+                    {tenant.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {!selectedTenantId ? (
+          <p className="text-muted-foreground text-center py-4">
+            Please select a tenant to manage feature access.
+          </p>
+        ) : loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : users.length === 0 ? (
           <p className="text-muted-foreground text-center py-4">
-            No active users found in this tenant.
+            No active users found in {currentTenantName}.
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="text-center">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <TrendingUp className="h-4 w-4" />
-                    Analytics
-                  </div>
-                </TableHead>
+                <TableHead className="w-[250px]">User</TableHead>
+                <TableHead className="w-[100px]">Role</TableHead>
+                {GRANTABLE_FEATURES.map(feature => (
+                  <TableHead key={feature.key} className="text-center w-[120px]">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <feature.icon className={`h-4 w-4 ${feature.color}`} />
+                      <span className="text-xs">{feature.label}</span>
+                    </div>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -295,22 +365,24 @@ export function FeatureAccessManager() {
                         {user.role}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center">
-                      {isPlatformAdminUser ? (
-                        <Badge className="bg-green-600">Always</Badge>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          {updating === user.user_id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Switch
-                              checked={user.analyticsAccess}
-                              onCheckedChange={() => toggleAnalyticsAccess(user)}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </TableCell>
+                    {GRANTABLE_FEATURES.map(feature => (
+                      <TableCell key={feature.key} className="text-center">
+                        {isPlatformAdminUser ? (
+                          <Badge className="bg-green-600 text-xs">Always</Badge>
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            {updating === `${user.user_id}-${feature.key}` ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Switch
+                                checked={user.featureAccess[feature.key] || false}
+                                onCheckedChange={() => toggleFeatureAccess(user, feature.key)}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 );
               })}

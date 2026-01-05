@@ -19,7 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import { useIntegrationsAlertsCount } from "@/hooks/useIntegrationsAlertsCount";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -49,8 +49,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
   const { isPlatformAdmin, isImpersonating } = useTenantContext();
   
-  // Check analytics access - platform admins or users with explicit grant
-  const { canAccess: canAccessAnalytics, isLoading: analyticsAccessLoading } = useFeatureAccess({ featureKey: "analytics" });
+  // Use unified feature gate for Analytics - combines tenant enablement + user access
+  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
+  const canAccessAnalytics = analyticsGate.isAccessible;
+  const analyticsAccessLoading = analyticsGate.isLoading;
 
   // Keep UI in sync with auth state (fixes "logged in but UI not updating")
   useEffect(() => {
