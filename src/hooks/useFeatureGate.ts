@@ -183,6 +183,11 @@ export function useFeatureGate({ featureKey, requiresUserGrant = true }: Feature
       setCanUserAccess(userAllowed);
       setResolution({ tenantSource, userSource });
 
+      // Debug logging for nav gating verification
+      if (featureKey === 'analytics') {
+        console.log(`[useFeatureGate] analytics: tenantEnabled=${tenantEnabled} (${tenantSource}), userAllowed=${userAllowed} (${userSource}), isAccessible=${tenantEnabled && userAllowed}`);
+      }
+
     } catch (error) {
       console.error("[useFeatureGate] Error checking gate:", error);
       setIsEnabledForTenant(false);
@@ -196,6 +201,13 @@ export function useFeatureGate({ featureKey, requiresUserGrant = true }: Feature
   useEffect(() => {
     checkGate();
   }, [checkGate]);
+
+  // Reset state when tenant changes to prevent stale access during transition
+  useEffect(() => {
+    setIsEnabledForTenant(false);
+    setCanUserAccess(false);
+    setIsLoading(true);
+  }, [effectiveTenant?.id]);
 
   // Combined access: feature enabled at tenant level AND user has access
   const isAccessible = useMemo(() => {
