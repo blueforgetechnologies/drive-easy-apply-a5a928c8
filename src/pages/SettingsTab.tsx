@@ -8,6 +8,7 @@ import RoleBuilderTab from "./RoleBuilderTab";
 import PreferencesTab from "./PreferencesTab";
 import IntegrationsTab from "./IntegrationsTab";
 import { FeatureAccessManager } from "@/components/FeatureAccessManager";
+import { GmailTenantMapping } from "@/components/GmailTenantMapping";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,8 +17,11 @@ export default function SettingsTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState<string>("users");
   const { isPlatformAdmin } = useTenantContext();
-  const { tenantId } = useTenantFilter();
+  const { tenantId, isInternalChannel } = useTenantFilter();
   const [canManageAccess, setCanManageAccess] = useState(false);
+
+  // Gmail mapping visible only to platform admins in internal channel
+  const canSeeGmailMapping = isPlatformAdmin && isInternalChannel;
 
   // Check if user can see Feature Access tab
   useEffect(() => {
@@ -55,16 +59,18 @@ export default function SettingsTab() {
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
-    const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access"];
+    const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access", "gmail-mapping"];
     if (subTab && validSubTabs.includes(subTab)) {
       // Only allow access subtab if user can manage it
       if (subTab === "access" && !canManageAccess) {
+        setActiveSubTab("users");
+      } else if (subTab === "gmail-mapping" && !canSeeGmailMapping) {
         setActiveSubTab("users");
       } else {
         setActiveSubTab(subTab);
       }
     }
-  }, [searchParams, canManageAccess]);
+  }, [searchParams, canManageAccess, canSeeGmailMapping]);
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
@@ -93,6 +99,9 @@ export default function SettingsTab() {
             <TabsTrigger value="integrations" className="text-xs sm:text-sm">Integrations</TabsTrigger>
             {canManageAccess && (
               <TabsTrigger value="access" className="text-xs sm:text-sm">Feature Access</TabsTrigger>
+            )}
+            {canSeeGmailMapping && (
+              <TabsTrigger value="gmail-mapping" className="text-xs sm:text-sm">Gmail Mapping</TabsTrigger>
             )}
           </TabsList>
         </div>
@@ -124,6 +133,12 @@ export default function SettingsTab() {
         {canManageAccess && (
           <TabsContent value="access" className="mt-4">
             <FeatureAccessManager />
+          </TabsContent>
+        )}
+
+        {canSeeGmailMapping && (
+          <TabsContent value="gmail-mapping" className="mt-4">
+            <GmailTenantMapping />
           </TabsContent>
         )}
       </Tabs>
