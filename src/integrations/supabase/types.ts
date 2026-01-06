@@ -1602,6 +1602,7 @@ export type Database = {
           created_at: string | null
           id: string
           refresh_token: string
+          tenant_id: string | null
           token_expiry: string
           updated_at: string | null
           user_email: string
@@ -1611,6 +1612,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           refresh_token: string
+          tenant_id?: string | null
           token_expiry: string
           updated_at?: string | null
           user_email: string
@@ -1620,11 +1622,20 @@ export type Database = {
           created_at?: string | null
           id?: string
           refresh_token?: string
+          tenant_id?: string | null
           token_expiry?: string
           updated_at?: string | null
           user_email?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "gmail_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hunt_plans: {
         Row: {
@@ -4182,6 +4193,7 @@ export type Database = {
           is_active: boolean | null
           last_alerted_amount: number | null
           last_alerted_at: string | null
+          tenant_id: string | null
           total_spent: number | null
           updated_at: string
           user_email: string
@@ -4193,6 +4205,7 @@ export type Database = {
           is_active?: boolean | null
           last_alerted_amount?: number | null
           last_alerted_at?: string | null
+          tenant_id?: string | null
           total_spent?: number | null
           updated_at?: string
           user_email: string
@@ -4204,11 +4217,20 @@ export type Database = {
           is_active?: boolean | null
           last_alerted_amount?: number | null
           last_alerted_at?: string | null
+          tenant_id?: string | null
           total_spent?: number | null
           updated_at?: string
           user_email?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "spend_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sylectus_type_config: {
         Row: {
