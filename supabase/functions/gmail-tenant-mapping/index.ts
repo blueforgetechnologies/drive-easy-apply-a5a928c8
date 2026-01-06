@@ -1,4 +1,3 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { deriveTenantFromJWT, assertTenantAccess, getServiceClient } from '../_shared/assertTenantAccess.ts'
 
 const corsHeaders = {
@@ -14,6 +13,15 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
+
+    // Guard: Return 401 if Authorization header is missing
+    if (!authHeader) {
+      console.log('[gmail-tenant-mapping] Missing Authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Missing Authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Step 1: Derive tenant_id + user_id from JWT
     const derived = await deriveTenantFromJWT(authHeader);
@@ -42,10 +50,10 @@ Deno.serve(async (req) => {
     // Step 3: Get service client AFTER security checks pass
     const serviceClient = getServiceClient();
 
-    // Step 4: Check platform admin status
+    // Step 4: Check platform admin status and get user email in one query
     const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
-      .select('is_platform_admin')
+      .select('is_platform_admin, email')
       .eq('id', userId)
       .single();
 
@@ -64,6 +72,8 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const actorEmail = profile.email || userId;
 
     // Step 5: Verify actor's tenant is in internal release channel
     const { data: actorTenant, error: tenantError } = await serviceClient
@@ -93,15 +103,6 @@ Deno.serve(async (req) => {
     // Parse request body
     const body = await req.json().catch(() => ({}));
     const action = body.action as string;
-
-    // Get actor email for audit logging
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader! } }
-    });
-    const { data: { user } } = await userClient.auth.getUser();
-    const actorEmail = user?.email || 'unknown';
 
     if (action === 'list') {
       // Fetch gmail_tokens and tenants
@@ -153,6 +154,23 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Validate newTenantId exists if provided
+      if (newTenantId) {
+        const { data: targetTenant, error: targetTenantError } = await serviceClient
+          .from('tenants')
+          .select('id')
+          .eq('id', newTenantId)
+          .single();
+
+        if (targetTenantError || !targetTenant) {
+          console.log('[gmail-tenant-mapping] Invalid tenant_id:', newTenantId);
+          return new Response(
+            JSON.stringify({ error: 'Invalid tenant_id - tenant not found' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       // Fetch current token state for audit log
       const { data: currentToken, error: fetchError } = await serviceClient
         .from('gmail_tokens')
@@ -202,14 +220,15 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Build detailed audit notes with all mapping details
-      const auditNotes = JSON.stringify({
+      // Build human-readable audit notes with JSON payload
+      const auditPayload = {
         gmail_user_email: currentToken.user_email,
         old_tenant_id: currentToken.tenant_id || null,
         old_tenant_name: oldTenantName,
         new_tenant_id: newTenantId || null,
         new_tenant_name: newTenantName
-      });
+      };
+      const auditNotes = `Gmail tenant mapping changed: ${currentToken.user_email} from "${oldTenantName}" to "${newTenantName}" | ${JSON.stringify(auditPayload)}`;
 
       // Log to audit_logs
       // CRITICAL: tenant_id MUST be the actor's effective tenant (derived from JWT)
