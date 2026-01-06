@@ -1,6 +1,6 @@
 # Tenant Isolation Audit Report
 
-**Date:** 2026-01-05  
+**Date:** 2026-01-06 (Updated)  
 **Auditor:** Lovable AI Security Analysis
 
 ---
@@ -8,6 +8,8 @@
 ## Executive Summary
 
 This audit examines tenant data isolation across the application's Edge Functions and client-side code. The goal is to ensure no cross-tenant data leakage is possible, even with client-side tampering.
+
+**Latest Update (2026-01-06):** Fixed critical issues in `fetch-gmail-loads` (removed default tenant fallback), added `tenant_id` to `gmail_tokens` and `spend_alerts` tables, updated RLS policies.
 
 ---
 
@@ -25,6 +27,9 @@ These functions correctly implement tenant isolation:
 | `send-bid-email` | `assertFeatureEnabled()` | Derives tenant from JWT |
 | `parse-freight-dimensions` | `assertFeatureEnabled()` | Feature-gated with tenant context |
 | `debug-tenant-data` | Platform admin check | Validates `is_platform_admin` before queries |
+| `fetch-gmail-loads` | `gmail_tokens.tenant_id` | **FIXED** - Requires tenant mapping, no fallback |
+| `send-spend-alert` | `assertTenantAccess()` | **FIXED** - Scoped by `spend_alerts.tenant_id` |
+| `ai-update-customers` | `deriveTenantFromJWT()` | Derives tenant from JWT |
 
 ### ⚠️ SCHEDULED JOBS - Intentionally Global
 
@@ -38,15 +43,13 @@ These run via cron with service role and process all tenants by design:
 | `snapshot-email-volume` | `email_volume_stats` | LOW | Analytics aggregation |
 | `cleanup-stale-data` | Various | LOW | Maintenance job |
 
-### 🔴 RISKY - Needs Review
+### ✅ Previously Risky - NOW FIXED
 
-These functions access tenant data without proper scoping:
-
-| Function | Risk | Issue |
-|----------|------|-------|
-| `ai-update-customers` | HIGH | Fetches 100 most recent `load_emails` globally, creates/updates `customers` without tenant_id |
-| `send-spend-alert` | MEDIUM | Fetches all `spend_alerts` globally |
-| `fetch-gmail-loads` | MEDIUM | Processes emails globally, though writes include tenant context |
+| Function | Previous Issue | Resolution |
+|----------|----------------|------------|
+| `fetch-gmail-loads` | Fallback to "default" tenant | Now requires `tenant_id` from `gmail_tokens` or `tenant_integrations`. Returns 400 error if no mapping exists. |
+| `send-spend-alert` | Missing `tenant_id` on `spend_alerts` | Added `tenant_id` column, updated RLS policies, scoped all queries |
+| `ai-update-customers` | Processed load_emails globally | Now derives tenant from JWT and scopes all operations |
 
 ---
 

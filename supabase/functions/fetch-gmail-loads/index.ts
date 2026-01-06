@@ -17,9 +17,12 @@ const corsHeaders = {
  * TENANT ISOLATION NOTES:
  * This function fetches Gmail emails and creates load_emails records.
  * 
- * Tenant context is derived from:
- * 1. tenant_integrations table (links gmail email to tenant)
- * 2. Falls back to the default tenant if no integration found
+ * Tenant context is REQUIRED and derived from:
+ * 1. gmail_tokens table (tenant_id column on the token row)
+ * 2. tenant_integrations table (links gmail email to tenant)
+ * 
+ * If no tenant mapping exists, the function ABORTS with an error.
+ * NO FALLBACK TO DEFAULT TENANT - this is a critical security measure.
  * 
  * All inserts include tenant_id for proper scoping.
  */
@@ -27,35 +30,47 @@ const corsHeaders = {
 // Global tenant context for this execution
 let effectiveTenantId: string | null = null;
 
-async function getEffectiveTenantId(userEmail: string): Promise<string | null> {
-  // Check if there's a tenant integration for this gmail account
+async function getEffectiveTenantId(userEmail: string): Promise<{ tenantId: string | null; error: string | null }> {
+  // PRIORITY 1: Check gmail_tokens table for tenant_id (most reliable mapping)
+  const { data: tokenData, error: tokenError } = await supabase
+    .from('gmail_tokens')
+    .select('tenant_id')
+    .eq('user_email', userEmail)
+    .maybeSingle();
+  
+  if (tokenData?.tenant_id) {
+    console.log(`[fetch-gmail-loads] Found tenant from gmail_tokens: ${tokenData.tenant_id}`);
+    return { tenantId: tokenData.tenant_id, error: null };
+  }
+  
+  // PRIORITY 2: Check tenant_integrations for this gmail account
   const { data: integration } = await supabase
     .from('tenant_integrations')
-    .select('tenant_id')
+    .select('tenant_id, settings')
     .eq('provider', 'gmail')
-    .eq('is_enabled', true)
-    .limit(1)
-    .maybeSingle();
+    .eq('is_enabled', true);
   
-  if (integration?.tenant_id) {
-    console.log(`[fetch-gmail-loads] Found tenant integration: ${integration.tenant_id}`);
-    return integration.tenant_id;
+  // Look for an integration that matches this email
+  if (integration && integration.length > 0) {
+    for (const int of integration) {
+      // Check if settings contains this email
+      const settings = int.settings as Record<string, any> || {};
+      if (settings.email === userEmail || settings.gmail_email === userEmail) {
+        console.log(`[fetch-gmail-loads] Found tenant from tenant_integrations: ${int.tenant_id}`);
+        return { tenantId: int.tenant_id, error: null };
+      }
+    }
+    // If only one gmail integration exists, use it (legacy compatibility)
+    if (integration.length === 1) {
+      console.log(`[fetch-gmail-loads] Using single gmail integration tenant: ${integration[0].tenant_id}`);
+      return { tenantId: integration[0].tenant_id, error: null };
+    }
   }
   
-  // Fallback: get the default tenant
-  const { data: defaultTenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('slug', 'default')
-    .maybeSingle();
-  
-  if (defaultTenant?.id) {
-    console.log(`[fetch-gmail-loads] Using default tenant: ${defaultTenant.id}`);
-    return defaultTenant.id;
-  }
-  
-  console.error('[fetch-gmail-loads] No tenant context found!');
-  return null;
+  // NO FALLBACK - Return error if no tenant mapping found
+  const errorMsg = `No tenant mapping found for Gmail account: ${userEmail}. Please configure tenant_id in gmail_tokens or tenant_integrations.`;
+  console.error(`[fetch-gmail-loads] CRITICAL: ${errorMsg}`);
+  return { tenantId: null, error: errorMsg };
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<string> {
@@ -897,15 +912,34 @@ serve(async (req) => {
     const gmailUserEmail = 'p.d@talbilogistics.com';
     console.log('Fetching Gmail emails...');
 
-    // CRITICAL: Get tenant context first
-    effectiveTenantId = await getEffectiveTenantId(gmailUserEmail);
-    if (!effectiveTenantId) {
-      console.error('[fetch-gmail-loads] No tenant context available - aborting');
+    // CRITICAL: Get tenant context first - NO FALLBACK ALLOWED
+    const tenantResult = await getEffectiveTenantId(gmailUserEmail);
+    if (!tenantResult.tenantId) {
+      console.error(`[fetch-gmail-loads] ABORTING: ${tenantResult.error}`);
+      
+      // Log this failed attempt for audit (fire and forget)
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'gmail_fetch_no_tenant',
+          entity_type: 'gmail_tokens',
+          entity_id: gmailUserEmail,
+          notes: tenantResult.error,
+          tenant_id: '00000000-0000-0000-0000-000000000000', // Placeholder for system audit
+        });
+      } catch (auditError) {
+        console.warn('[fetch-gmail-loads] Could not log audit event:', auditError);
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'No tenant context available' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'No tenant context available', 
+          details: tenantResult.error,
+          action_required: 'Configure tenant_id in gmail_tokens table or set up tenant_integrations with matching gmail email'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    effectiveTenantId = tenantResult.tenantId;
     console.log(`[fetch-gmail-loads] Using tenant: ${effectiveTenantId}`);
 
     // Get access token

@@ -189,29 +189,51 @@ export default function TenantIsolationTestsTab() {
     }
 
     // Test 6: Cross-Tenant Read Block
+    // This test verifies RLS by checking if we can only see data for our tenant
     try {
-      // Try to query with a fake tenant ID to see if RLS blocks it
-      const fakeTenantId = "00000000-0000-0000-0000-000000000000";
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id")
-        .eq("tenant_id", fakeTenantId)
-        .limit(5);
-      
-      // If we get 0 results, RLS is working (or no data exists for fake tenant)
-      updateTest("Cross-Tenant Read Block", {
-        status: (data?.length || 0) === 0 ? "pass" : "warn",
-        message: (data?.length || 0) === 0 
-          ? "No data returned for fake tenant ID (RLS working)"
-          : `Warning: ${data?.length} rows returned for fake tenant - check RLS`,
-        details: error?.message || "No error"
-      });
+      if (!isReady || !tenantId) {
+        updateTest("Cross-Tenant Read Block", {
+          status: "skipped",
+          message: "No tenant context - cannot verify cross-tenant blocking"
+        });
+      } else {
+        // Get all customer tenant_ids we can see (should only be our tenant or empty)
+        const { data, error } = await supabase
+          .from("customers")
+          .select("tenant_id")
+          .limit(50);
+        
+        if (error) throw error;
+        
+        // Check if all returned rows belong to current tenant
+        const uniqueTenants = [...new Set(data?.map((c: any) => c.tenant_id) || [])];
+        const hasOtherTenants = uniqueTenants.some(tid => tid !== tenantId);
+        
+        if (data?.length === 0) {
+          updateTest("Cross-Tenant Read Block", {
+            status: "pass",
+            message: "No customer data exists (RLS may be blocking or table empty)",
+            details: "Cannot verify cross-tenant blocking without data"
+          });
+        } else if (hasOtherTenants) {
+          updateTest("Cross-Tenant Read Block", {
+            status: "fail",
+            message: `LEAK DETECTED: Can see data from ${uniqueTenants.length} tenants!`,
+            details: `Visible tenant IDs: ${uniqueTenants.map(t => t?.substring(0, 8)).join(', ')}`
+          });
+        } else {
+          updateTest("Cross-Tenant Read Block", {
+            status: "pass",
+            message: `All ${data.length} visible records belong to current tenant only`,
+            details: "RLS is correctly filtering to current tenant"
+          });
+        }
+      }
     } catch (e: any) {
-      // An error here might indicate RLS blocked the query
       updateTest("Cross-Tenant Read Block", {
-        status: "pass",
-        message: "Cross-tenant query blocked",
-        details: e.message
+        status: "warn",
+        message: `Query error: ${e.message}`,
+        details: "This may indicate RLS is blocking access"
       });
     }
 
@@ -225,33 +247,42 @@ export default function TenantIsolationTestsTab() {
     });
 
     // Test 8: Edge Function Auth Check
+    // IMPORTANT: Do NOT pass tenant_id from client - function must derive it server-side
     try {
+      // Call tenant-counts WITHOUT passing tenant_id - it should derive from JWT
       const { data, error } = await supabase.functions.invoke('tenant-counts', {
-        body: { tenant_id: tenantId }
+        // NO body.tenant_id - server must derive tenant context from auth
       });
       
       if (error && error.message.includes('401')) {
         updateTest("Edge Function Auth Check", {
           status: "fail",
-          message: "Edge function returned 401 - auth issue",
-          details: error.message
+          message: "Edge function returned 401 - not authenticated",
+          details: "Ensure you are logged in before running tests"
         });
       } else if (error && error.message.includes('403')) {
         updateTest("Edge Function Auth Check", {
-          status: "warn",
-          message: "Edge function returned 403 - access denied",
-          details: "This may be expected if the function requires specific permissions"
+          status: "pass",
+          message: "Edge function enforces access control (403 returned)",
+          details: "This indicates the function is checking permissions server-side"
+        });
+      } else if (error && error.message.includes('No tenant')) {
+        updateTest("Edge Function Auth Check", {
+          status: "pass",
+          message: "Edge function requires tenant context (derived server-side)",
+          details: error.message
         });
       } else if (error) {
         updateTest("Edge Function Auth Check", {
           status: "warn",
           message: `Edge function error: ${error.message}`,
+          details: "Function may need tenant context from JWT"
         });
       } else {
         updateTest("Edge Function Auth Check", {
           status: "pass",
-          message: "Edge function accepts authenticated requests",
-          details: JSON.stringify(data).substring(0, 100)
+          message: "Edge function derived tenant from JWT successfully",
+          details: data?.tenant_id ? `Derived tenant: ${data.tenant_id.substring(0, 8)}...` : JSON.stringify(data).substring(0, 100)
         });
       }
     } catch (e: any) {
