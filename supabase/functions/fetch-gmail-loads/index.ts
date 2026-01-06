@@ -940,7 +940,9 @@ serve(async (req) => {
       );
     }
     effectiveTenantId = tenantResult.tenantId;
-    console.log(`[fetch-gmail-loads] Using tenant: ${effectiveTenantId}`);
+    
+    // DEBUG: Log tenant isolation context (no email bodies)
+    console.log(`[TENANT-ISOLATION-DEBUG] gmail_user_email=${gmailUserEmail}, effectiveTenantId=${effectiveTenantId}`);
 
     // Get access token
     const accessToken = await getAccessToken(gmailUserEmail);
@@ -1080,7 +1082,8 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Successfully processed ${processedCount} new emails for tenant ${effectiveTenantId}`);
+    // DEBUG: Log final count for tenant isolation verification
+    console.log(`[TENANT-ISOLATION-DEBUG] gmail_user_email=${gmailUserEmail}, effectiveTenantId=${effectiveTenantId}, inserted_load_emails_count=${processedCount}`);
 
     return new Response(
       JSON.stringify({ 
