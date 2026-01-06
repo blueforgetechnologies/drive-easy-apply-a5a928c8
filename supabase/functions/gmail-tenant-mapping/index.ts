@@ -1,22 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { deriveTenantFromJWT, assertTenantAccess, getServiceClient } from '../_shared/assertTenantAccess.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface GmailToken {
-  id: string;
-  user_email: string;
-  tenant_id: string | null;
-  created_at: string;
-  updated_at: string | null;
-}
-
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
 }
 
 Deno.serve(async (req) => {
@@ -26,44 +13,40 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get authorization header
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.log('[gmail-tenant-mapping] Missing authorization header');
+
+    // Step 1: Derive tenant_id + user_id from JWT
+    const derived = await deriveTenantFromJWT(authHeader);
+    if (derived.error) {
+      console.log('[gmail-tenant-mapping] JWT derivation failed');
+      return derived.error;
+    }
+
+    const { tenant_id: actorTenantId, user_id: userId } = derived;
+
+    if (!actorTenantId) {
+      console.log('[gmail-tenant-mapping] No active tenant membership for user:', userId);
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Forbidden - No active tenant membership' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    // Verify user identity using their JWT
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      console.log('[gmail-tenant-mapping] User auth failed:', userError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Step 2: Assert tenant access (validates membership or platform admin)
+    const accessResult = await assertTenantAccess(authHeader, actorTenantId);
+    if (!accessResult.allowed) {
+      console.log('[gmail-tenant-mapping] Tenant access denied:', accessResult.reason);
+      return accessResult.response!;
     }
 
-    console.log('[gmail-tenant-mapping] User authenticated:', user.id);
+    // Step 3: Get service client AFTER security checks pass
+    const serviceClient = getServiceClient();
 
-    // Use service role client for privileged operations
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Check platform admin status via profiles.is_platform_admin
+    // Step 4: Check platform admin status
     const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
       .select('is_platform_admin')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (profileError) {
@@ -75,44 +58,50 @@ Deno.serve(async (req) => {
     }
 
     if (!profile?.is_platform_admin) {
-      console.log('[gmail-tenant-mapping] Access denied - user is not platform admin');
+      console.log('[gmail-tenant-mapping] Access denied - user is not platform admin:', userId);
       return new Response(
         JSON.stringify({ error: 'Forbidden - Platform admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check release channel - must be internal
-    const { data: tenantUser, error: tenantUserError } = await serviceClient
-      .from('tenant_users')
-      .select('tenant_id, tenants!inner(release_channel)')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
+    // Step 5: Verify actor's tenant is in internal release channel
+    const { data: actorTenant, error: tenantError } = await serviceClient
+      .from('tenants')
+      .select('id, release_channel')
+      .eq('id', actorTenantId)
+      .single();
 
-    if (tenantUserError) {
-      console.error('[gmail-tenant-mapping] Error checking release channel:', tenantUserError);
+    if (tenantError || !actorTenant) {
+      console.error('[gmail-tenant-mapping] Error fetching actor tenant:', tenantError);
       return new Response(
-        JSON.stringify({ error: 'Failed to verify release channel' }),
+        JSON.stringify({ error: 'Failed to verify tenant' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const releaseChannel = (tenantUser?.tenants as any)?.release_channel;
-    if (releaseChannel !== 'internal') {
-      console.log('[gmail-tenant-mapping] Access denied - not in internal channel:', releaseChannel);
+    if (actorTenant.release_channel !== 'internal') {
+      console.log('[gmail-tenant-mapping] Access denied - actor tenant not in internal channel:', actorTenant.release_channel);
       return new Response(
         JSON.stringify({ error: 'Forbidden - Internal release channel required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[gmail-tenant-mapping] Platform admin in internal channel verified');
+    console.log('[gmail-tenant-mapping] Platform admin in internal channel verified:', userId, 'tenant:', actorTenantId);
 
     // Parse request body
     const body = await req.json().catch(() => ({}));
     const action = body.action as string;
+
+    // Get actor email for audit logging
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader! } }
+    });
+    const { data: { user } } = await userClient.auth.getUser();
+    const actorEmail = user?.email || 'unknown';
 
     if (action === 'list') {
       // Fetch gmail_tokens and tenants
@@ -200,12 +189,12 @@ Deno.serve(async (req) => {
       let oldTenantName = 'None';
       let newTenantName = 'None';
       
-      if (currentToken.tenant_id || newTenantId) {
-        const tenantIds = [currentToken.tenant_id, newTenantId].filter(Boolean);
+      const tenantIdsToFetch = [currentToken.tenant_id, newTenantId].filter(Boolean) as string[];
+      if (tenantIdsToFetch.length > 0) {
         const { data: tenantNames } = await serviceClient
           .from('tenants')
           .select('id, name')
-          .in('id', tenantIds);
+          .in('id', tenantIdsToFetch);
         
         if (tenantNames) {
           oldTenantName = tenantNames.find(t => t.id === currentToken.tenant_id)?.name || 'None';
@@ -213,34 +202,37 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Get actor's tenant_id for audit log (their active membership)
-      // Use the actor's tenant if available, otherwise use the new tenant being assigned
-      // This ensures we have a valid tenant_id for the audit log
-      const actorTenantId = tenantUser?.tenant_id || newTenantId || currentToken.tenant_id;
+      // Build detailed audit notes with all mapping details
+      const auditNotes = JSON.stringify({
+        gmail_user_email: currentToken.user_email,
+        old_tenant_id: currentToken.tenant_id || null,
+        old_tenant_name: oldTenantName,
+        new_tenant_id: newTenantId || null,
+        new_tenant_name: newTenantName
+      });
 
-      // Log to audit_logs - use actor's tenant or the affected tenant
-      // IMPORTANT: Do NOT fallback to arbitrary tenant
-      const auditNotes = `Gmail account ${currentToken.user_email} tenant mapping changed from "${oldTenantName}" to "${newTenantName}"`;
-      
+      // Log to audit_logs
+      // CRITICAL: tenant_id MUST be the actor's effective tenant (derived from JWT)
+      // NOT the target tenant being assigned to the gmail token
       const { error: auditError } = await serviceClient
         .from('audit_logs')
         .insert({
           entity_type: 'gmail_tokens',
           entity_id: tokenId,
           action: 'set_tenant',
-          old_value: currentToken.tenant_id || 'null',
-          new_value: newTenantId || 'null',
+          old_value: currentToken.tenant_id || null,
+          new_value: newTenantId || null,
           notes: auditNotes,
-          user_id: user.id,
-          user_name: user.email,
-          // Use actor's tenant (the admin performing the action)
-          // This is the correct approach - audit under the actor's tenant
-          tenant_id: actorTenantId
+          user_id: userId,
+          user_name: actorEmail,
+          tenant_id: actorTenantId // Actor's effective tenant - NOT the target tenant
         });
 
       if (auditError) {
         // Log but don't fail the operation
         console.warn('[gmail-tenant-mapping] Audit log failed:', auditError);
+      } else {
+        console.log('[gmail-tenant-mapping] Audit logged under actor tenant:', actorTenantId);
       }
 
       console.log(`[gmail-tenant-mapping] Updated token ${tokenId}: ${currentToken.tenant_id} -> ${newTenantId}`);
