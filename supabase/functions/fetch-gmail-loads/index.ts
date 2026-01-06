@@ -13,6 +13,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * TENANT ISOLATION NOTES:
+ * This function fetches Gmail emails and creates load_emails records.
+ * 
+ * Tenant context is derived from:
+ * 1. tenant_integrations table (links gmail email to tenant)
+ * 2. Falls back to the default tenant if no integration found
+ * 
+ * All inserts include tenant_id for proper scoping.
+ */
+
+// Global tenant context for this execution
+let effectiveTenantId: string | null = null;
+
+async function getEffectiveTenantId(userEmail: string): Promise<string | null> {
+  // Check if there's a tenant integration for this gmail account
+  const { data: integration } = await supabase
+    .from('tenant_integrations')
+    .select('tenant_id')
+    .eq('provider', 'gmail')
+    .eq('is_enabled', true)
+    .limit(1)
+    .maybeSingle();
+  
+  if (integration?.tenant_id) {
+    console.log(`[fetch-gmail-loads] Found tenant integration: ${integration.tenant_id}`);
+    return integration.tenant_id;
+  }
+  
+  // Fallback: get the default tenant
+  const { data: defaultTenant } = await supabase
+    .from('tenants')
+    .select('id')
+    .eq('slug', 'default')
+    .maybeSingle();
+  
+  if (defaultTenant?.id) {
+    console.log(`[fetch-gmail-loads] Using default tenant: ${defaultTenant.id}`);
+    return defaultTenant.id;
+  }
+  
+  console.error('[fetch-gmail-loads] No tenant context found!');
+  return null;
+}
+
 async function refreshAccessToken(refreshToken: string): Promise<string> {
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -792,7 +837,7 @@ async function matchLoadToHunts(loadEmailId: string, loadId: string, parsedData:
   }
 }
 
-async function ensureCustomerExists(parsedData: any): Promise<void> {
+async function ensureCustomerExists(parsedData: any, tenantId: string): Promise<void> {
   // Use broker_company as the customer name (broker company is the customer)
   const customerName = parsedData?.broker_company || parsedData?.customer;
   
@@ -805,10 +850,11 @@ async function ensureCustomerExists(parsedData: any): Promise<void> {
   }
 
   try {
-    // Check if customer already exists (case-insensitive)
+    // CRITICAL: Check if customer already exists FOR THIS TENANT (case-insensitive)
     const { data: existing, error: checkError } = await supabase
       .from('customers')
       .select('id')
+      .eq('tenant_id', tenantId) // TENANT SCOPING
       .ilike('name', customerName.trim())
       .maybeSingle();
 
@@ -817,7 +863,7 @@ async function ensureCustomerExists(parsedData: any): Promise<void> {
       return;
     }
 
-    // If customer doesn't exist, create it
+    // If customer doesn't exist for this tenant, create it
     if (!existing) {
       const { error: insertError } = await supabase
         .from('customers')
@@ -827,13 +873,14 @@ async function ensureCustomerExists(parsedData: any): Promise<void> {
           email: parsedData?.broker_email || null,
           phone: parsedData?.broker_phone || null,
           status: 'active',
-          notes: 'Auto-imported from load email'
+          notes: 'Auto-imported from load email',
+          tenant_id: tenantId, // CRITICAL: Include tenant_id
         });
 
       if (insertError) {
         console.error('Error creating customer:', insertError);
       } else {
-        console.log(`Created new customer: ${customerName}`);
+        console.log(`Created new customer: ${customerName} for tenant ${tenantId}`);
       }
     }
   } catch (error) {
@@ -847,10 +894,22 @@ serve(async (req) => {
   }
 
   try {
+    const gmailUserEmail = 'p.d@talbilogistics.com';
     console.log('Fetching Gmail emails...');
 
+    // CRITICAL: Get tenant context first
+    effectiveTenantId = await getEffectiveTenantId(gmailUserEmail);
+    if (!effectiveTenantId) {
+      console.error('[fetch-gmail-loads] No tenant context available - aborting');
+      return new Response(
+        JSON.stringify({ error: 'No tenant context available' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    console.log(`[fetch-gmail-loads] Using tenant: ${effectiveTenantId}`);
+
     // Get access token
-    const accessToken = await getAccessToken('p.d@talbilogistics.com');
+    const accessToken = await getAccessToken(gmailUserEmail);
     console.log('Access token retrieved');
 
     // Fetch unread messages from inbox
@@ -866,7 +925,7 @@ serve(async (req) => {
 
     if (!messagesData.messages || messagesData.messages.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No new emails found', count: 0 }),
+        JSON.stringify({ message: 'No new emails found', count: 0, tenant_id: effectiveTenantId }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -934,8 +993,10 @@ serve(async (req) => {
           }
         }
 
-        // Check and create customer if needed
-        await ensureCustomerExists(parsedData);
+        // Check and create customer if needed (with tenant context)
+        if (effectiveTenantId) {
+          await ensureCustomerExists(parsedData, effectiveTenantId);
+        }
 
         // Check if email already exists
         const { data: existing } = await supabase
@@ -945,7 +1006,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!existing) {
-          // Insert into database with correct email_source
+          // CRITICAL: Insert with tenant_id for proper scoping
           const { data: inserted, error: insertError } = await supabase
             .from('load_emails')
             .insert({
@@ -961,6 +1022,7 @@ serve(async (req) => {
               expires_at: parsedData.expires_at || null,
               status: 'new',
               email_source: emailSource,
+              tenant_id: effectiveTenantId, // CRITICAL: Include tenant_id
             })
             .select('id, load_id')
             .single();
@@ -969,7 +1031,7 @@ serve(async (req) => {
             console.error('Error inserting email:', insertError);
           } else {
             processedCount++;
-            console.log(`Processed email: ${subject}`);
+            console.log(`Processed email for tenant ${effectiveTenantId}: ${subject}`);
             
             // Run hunt matching if we have coordinates and vehicle type
             if (inserted && parsedData.pickup_coordinates && parsedData.vehicle_type) {
@@ -984,12 +1046,13 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Successfully processed ${processedCount} new emails`);
+    console.log(`Successfully processed ${processedCount} new emails for tenant ${effectiveTenantId}`);
 
     return new Response(
       JSON.stringify({ 
         message: 'Emails fetched successfully', 
-        count: processedCount 
+        count: processedCount,
+        tenant_id: effectiveTenantId,
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

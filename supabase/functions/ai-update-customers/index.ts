@@ -1,33 +1,73 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { assertTenantAccess, getServiceClient, deriveTenantFromJWT } from "../_shared/assertTenantAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * AI-powered customer extraction from load emails.
+ * 
+ * TENANT ISOLATION:
+ * - Derives tenant_id from JWT (server-side, never from client)
+ * - Only processes load_emails belonging to the effective tenant
+ * - Only creates/updates customers within the effective tenant
+ * - Writes audit log on completion
+ * 
+ * Tables touched:
+ * - load_emails (READ) - scoped by tenant_id
+ * - customers (READ/WRITE) - scoped by tenant_id
+ * - audit_logs (WRITE) - scoped by tenant_id
+ */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const authHeader = req.headers.get("Authorization");
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Step 1: Derive tenant from JWT (server-side truth)
+    const { tenant_id, user_id, error: derivationError } = await deriveTenantFromJWT(authHeader);
+    
+    if (derivationError) {
+      return derivationError;
+    }
+    
+    if (!tenant_id) {
+      console.error("[ai-update-customers] No tenant context available");
+      return new Response(
+        JSON.stringify({ error: "No tenant context. User must belong to a tenant." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Step 2: Verify user has access to this tenant
+    const access = await assertTenantAccess(authHeader, tenant_id);
+    if (!access.allowed) {
+      return access.response!;
+    }
+    
+    console.log(`[ai-update-customers] Processing for tenant: ${tenant_id}, user: ${user_id}`);
+    
+    // Step 3: Use service client for privileged operations (after access verified)
+    const supabase = getServiceClient();
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
 
-    console.log("Fetching load emails...");
+    // CRITICAL: Only fetch emails for this tenant
+    console.log(`Fetching load emails for tenant ${tenant_id}...`);
     const { data: emails, error: emailsError } = await supabase
       .from("load_emails")
       .select("*")
+      .eq("tenant_id", tenant_id) // TENANT SCOPING
       .order("received_at", { ascending: false })
-      .limit(100); // Process only 100 most recent emails to avoid timeout
+      .limit(100);
 
     if (emailsError) throw emailsError;
 
-    console.log(`Processing ${emails?.length || 0} emails with AI...`);
+    console.log(`Processing ${emails?.length || 0} emails with AI for tenant ${tenant_id}...`);
 
     const processedCustomers = new Map();
     let created = 0;
@@ -129,18 +169,19 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Extracted ${processedCustomers.size} unique customers`);
+    console.log(`Extracted ${processedCustomers.size} unique customers for tenant ${tenant_id}`);
 
-    // Fetch existing customers
+    // CRITICAL: Only fetch existing customers for this tenant
     const { data: existingCustomers } = await supabase
       .from("customers")
-      .select("id, name");
+      .select("id, name")
+      .eq("tenant_id", tenant_id); // TENANT SCOPING
 
     const existingMap = new Map(
       existingCustomers?.map(c => [c.name.toLowerCase().trim(), c.id]) || []
     );
 
-    // Insert or update customers
+    // Insert or update customers WITH tenant_id
     for (const [key, customerData] of processedCustomers) {
       const existingId = existingMap.get(key);
 
@@ -158,14 +199,18 @@ serve(async (req) => {
         state: customerData.state || null,
         zip: customerData.zip || null,
         status: 'active',
-        customer_type: 'broker'  // Auto-imported from load emails = brokers
+        customer_type: 'broker',
+        tenant_id: tenant_id, // CRITICAL: Always include tenant_id
       };
 
       if (existingId) {
+        // Update existing - don't change tenant_id
+        const { tenant_id: _, ...updateRecord } = record;
         const { error } = await supabase
           .from("customers")
-          .update(record)
-          .eq("id", existingId);
+          .update(updateRecord)
+          .eq("id", existingId)
+          .eq("tenant_id", tenant_id); // DOUBLE-CHECK tenant ownership
         
         if (!error) updated++;
       } else {
@@ -177,11 +222,22 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Customer update complete: ${created} created, ${updated} updated, ${errors} errors`);
+    // Step 4: Write audit log
+    await supabase.from("audit_logs").insert({
+      tenant_id: tenant_id,
+      user_id: user_id,
+      entity_type: "ai_update_customers",
+      entity_id: tenant_id,
+      action: "bulk_update",
+      notes: `AI customer update: ${created} created, ${updated} updated, ${errors} errors, ${processed} emails processed`,
+    });
+
+    console.log(`[ai-update-customers] Complete for tenant ${tenant_id}: ${created} created, ${updated} updated, ${errors} errors`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
+        tenant_id,
         created,
         updated,
         processed,

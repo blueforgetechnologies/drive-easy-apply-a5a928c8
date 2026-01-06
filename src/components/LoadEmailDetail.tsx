@@ -297,14 +297,16 @@ const LoadEmailDetail = ({
   // Fetch company profile, current dispatcher, and bid_as carrier for email signature
   useEffect(() => {
     const fetchProfileData = async () => {
+      if (!tenantId) return; // Wait for tenant context
+      
       try {
-        // Fetch company profile (fallback)
+        // Fetch company profile for this tenant
         const {
           data: profile
-        } = await supabase.from('company_profile').select('*').single();
+        } = await supabase.from('company_profile').select('*').eq('tenant_id', tenantId).single();
         if (profile) setCompanyProfile(profile);
 
-        // Fetch current user's dispatcher info
+        // Fetch current user's dispatcher info - scoped to tenant
         const {
           data: {
             user
@@ -313,7 +315,11 @@ const LoadEmailDetail = ({
         if (user?.email) {
           const {
             data: dispatcher
-          } = await supabase.from('dispatchers').select('*').ilike('email', user.email).single();
+          } = await supabase.from('dispatchers')
+            .select('*')
+            .eq('tenant_id', tenantId) // CRITICAL: Tenant scoping
+            .ilike('email', user.email)
+            .single();
           if (dispatcher) setCurrentDispatcher(dispatcher);
         }
       } catch (e) {
@@ -321,7 +327,7 @@ const LoadEmailDetail = ({
       }
     };
     fetchProfileData();
-  }, []);
+  }, [tenantId]); // Re-run when tenant changes
 
   // Fetch match history
   const fetchMatchHistory = async () => {
@@ -556,6 +562,8 @@ const LoadEmailDetail = ({
   // Fetch the carrier from the vehicle's bid_as field
   useEffect(() => {
     const fetchBidAsCarrier = async () => {
+      if (!tenantId) return; // Wait for tenant context
+      
       if (vehicle?.bid_as) {
         console.log('Fetching bid_as carrier for vehicle:', vehicle.id, 'bid_as:', vehicle.bid_as);
         try {
@@ -563,7 +571,11 @@ const LoadEmailDetail = ({
           const {
             data: carrier,
             error
-          } = await supabase.from('carriers').select('*').eq('id', vehicle.bid_as).maybeSingle();
+          } = await supabase.from('carriers')
+            .select('*')
+            .eq('id', vehicle.bid_as)
+            .eq('tenant_id', tenantId) // TENANT SCOPING
+            .maybeSingle();
           console.log('Carrier fetch result:', {
             carrier,
             error
@@ -582,17 +594,23 @@ const LoadEmailDetail = ({
       }
     };
     fetchBidAsCarrier();
-  }, [vehicle?.bid_as]);
+  }, [vehicle?.bid_as, tenantId]);
 
   // Fetch the vehicle's carrier for safety status display
   useEffect(() => {
     const fetchVehicleCarrier = async () => {
+      if (!tenantId) return; // Wait for tenant context
+      
       if (vehicle?.carrier) {
         try {
           const {
             data: carrier,
             error
-          } = await supabase.from('carriers').select('id, name, safer_status, safety_rating').eq('id', vehicle.carrier).maybeSingle();
+          } = await supabase.from('carriers')
+            .select('id, name, safer_status, safety_rating')
+            .eq('id', vehicle.carrier)
+            .eq('tenant_id', tenantId) // TENANT SCOPING
+            .maybeSingle();
           if (!error && carrier) {
             setVehicleCarrier(carrier);
           }
@@ -604,7 +622,7 @@ const LoadEmailDetail = ({
       }
     };
     fetchVehicleCarrier();
-  }, [vehicle?.carrier]);
+  }, [vehicle?.carrier, tenantId]);
 
   // Use asset's Vehicle Size / Asset Subtype from the matched vehicle; if no asset matched, show "(NOT FOUND)"
   const truckLengthFeet = vehicle?.vehicle_size; // Use feet from vehicle_size field
