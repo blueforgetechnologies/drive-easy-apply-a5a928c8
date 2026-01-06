@@ -32,7 +32,7 @@ export function GmailTenantMapping() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
 
-  // Security gate
+  // Client-side gate (server enforces the real security)
   const canAccess = isPlatformAdmin && isInternalChannel;
 
   useEffect(() => {
@@ -44,28 +44,31 @@ export function GmailTenantMapping() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tokensRes, tenantsRes] = await Promise.all([
-        supabase
-          .from("gmail_tokens")
-          .select("id, user_email, tenant_id, created_at, updated_at")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("tenants")
-          .select("id, name, slug")
-          .order("name")
-      ]);
+      const { data, error } = await supabase.functions.invoke("gmail-tenant-mapping", {
+        body: { action: "list" }
+      });
 
-      if (tokensRes.error) {
-        toast.error(`Failed to load Gmail tokens: ${tokensRes.error.message}`);
-        return;
-      }
-      if (tenantsRes.error) {
-        toast.error(`Failed to load tenants: ${tenantsRes.error.message}`);
+      if (error) {
+        console.error("Edge function error:", error);
+        toast.error(`Failed to load data: ${error.message}`);
         return;
       }
 
-      setGmailTokens(tokensRes.data || []);
-      setTenants(tenantsRes.data || []);
+      if (data?.error) {
+        // Handle 401/403 from edge function
+        if (data.error.includes("Forbidden") || data.error.includes("Unauthorized")) {
+          toast.error("Access denied: You don't have permission to access this feature.");
+        } else {
+          toast.error(`Failed to load data: ${data.error}`);
+        }
+        return;
+      }
+
+      setGmailTokens(data?.tokens || []);
+      setTenants(data?.tenants || []);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast.error("Failed to load Gmail mapping data");
     } finally {
       setLoading(false);
     }
@@ -84,51 +87,45 @@ export function GmailTenantMapping() {
 
     setSaving(token.id);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const tenantIdValue = newTenantId || null;
+      const { data, error } = await supabase.functions.invoke("gmail-tenant-mapping", {
+        body: { 
+          action: "update",
+          token_id: token.id,
+          tenant_id: newTenantId || null
+        }
+      });
 
-      // Update gmail_tokens
-      const { error: updateError } = await supabase
-        .from("gmail_tokens")
-        .update({ tenant_id: tenantIdValue })
-        .eq("id", token.id);
-
-      if (updateError) {
-        toast.error(`Failed to update: ${updateError.message}`);
+      if (error) {
+        console.error("Edge function error:", error);
+        toast.error(`Failed to update: ${error.message}`);
         return;
       }
 
-      // Log to audit_logs
-      const tenant = tenants.find(t => t.id === tenantIdValue);
-      const { error: auditError } = await supabase
-        .from("audit_logs")
-        .insert({
-          entity_type: "gmail_tokens",
-          entity_id: token.id,
-          action: "set_tenant",
-          old_value: token.tenant_id || "null",
-          new_value: tenantIdValue || "null",
-          notes: `Gmail account ${token.user_email} mapped to tenant: ${tenant?.name || "None"}`,
-          user_id: user?.id,
-          user_name: user?.email,
-          tenant_id: tenantIdValue || token.tenant_id || tenants[0]?.id // Use a valid tenant for audit
-        });
-
-      if (auditError) {
-        console.warn("Audit log failed:", auditError);
+      if (data?.error) {
+        if (data.error.includes("Forbidden")) {
+          toast.error("Access denied: Platform admin in internal channel required.");
+        } else if (data.error.includes("Unauthorized")) {
+          toast.error("Session expired. Please refresh and try again.");
+        } else {
+          toast.error(`Failed to update: ${data.error}`);
+        }
+        return;
       }
 
       toast.success(`Tenant mapping updated for ${token.user_email}`);
       
       // Update local state
       setGmailTokens(prev => prev.map(t => 
-        t.id === token.id ? { ...t, tenant_id: tenantIdValue } : t
+        t.id === token.id ? { ...t, tenant_id: newTenantId || null } : t
       ));
       setPendingChanges(prev => {
         const next = { ...prev };
         delete next[token.id];
         return next;
       });
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast.error("Failed to update tenant mapping");
     } finally {
       setSaving(null);
     }
