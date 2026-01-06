@@ -309,7 +309,13 @@ async function workerLoop(): Promise<void> {
       await sleep(500);
     } catch (error) {
       METRICS.isHealthy = false;
-      log('error', 'Loop error', { error: String(error) });
+      // Log full error details instead of [object Object]
+      const errorDetails = error instanceof Error 
+        ? { message: error.message, name: error.name, stack: error.stack }
+        : typeof error === 'object' && error !== null
+          ? JSON.parse(JSON.stringify(error))
+          : { raw: String(error) };
+      log('error', 'Loop error', errorDetails);
       await sleep(5000); // Wait longer on errors
     }
   }
