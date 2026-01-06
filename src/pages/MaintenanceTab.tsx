@@ -157,10 +157,15 @@ export default function MaintenanceTab() {
       toast.error("No tenant selected");
       return;
     }
+    if (!isReady) {
+      toast.error("Tenant context not ready");
+      return;
+    }
     try {
+      // Use the query helper with withTenant for proper tenant scoping
       const { error } = await supabase.from("maintenance_records").insert([{
         ...newRecord,
-        tenant_id: tenantId,
+        tenant_id: tenantId, // Explicit tenant_id
         cost: newRecord.cost ? parseFloat(newRecord.cost) : null,
         odometer: newRecord.odometer ? parseInt(newRecord.odometer) : null,
         next_service_odometer: newRecord.next_service_odometer ? parseInt(newRecord.next_service_odometer) : null,
