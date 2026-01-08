@@ -531,34 +531,9 @@ export default function LoadHunterTab() {
     }
   }, [loadEmails.length, huntPlans]);
 
-  // Process email queue every 20 seconds - cursor-based pagination (never goes older than floor)
-  useEffect(() => {
-    const processQueue = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('process-email-queue');
-        if (error) {
-          console.error('📧 Queue processor error:', error);
-          return;
-        }
-        if (data?.processed > 0) {
-          console.log(`📧 Queue processed: ${data.processed} emails, checkpoint: ${data.checkpoint}, lastLoadId: ${data.lastLoadId}`);
-          // Refresh ALL data after processing so new emails show immediately
-          loadLoadEmails();
-          loadUnreviewedMatches();
-        } else {
-          console.log('📭 No new emails to process');
-        }
-      } catch (e) {
-        console.error('📧 Queue processor exception:', e);
-      }
-    };
-    
-    // Process immediately, then every 20 seconds
-    processQueue();
-    const interval = setInterval(processQueue, 20 * 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // VPS WORKERS NOW HANDLE EMAIL QUEUE PROCESSING
+  // UI no longer polls process-email-queue - workers claim from email_queue table directly
+  // This eliminates Edge Function costs and prevents Gmail API 429 rate limits
 
   // BACKUP: Periodic re-match every 60 seconds (reduced from 20s for cost savings)
   // Primary matching is handled by gmail-webhook and realtime subscriptions
