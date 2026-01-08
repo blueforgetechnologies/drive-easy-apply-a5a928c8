@@ -143,7 +143,6 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
       markers.current.forEach(marker => marker.remove());
       markers.current = [];
 
-      const coordinates: [number, number][] = [];
       const bounds = new mapboxgl.LngLatBounds();
 
       // Use optimized stops if available, otherwise use original stops
@@ -151,16 +150,22 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
         ? optimizedStops 
         : [...stops].sort((a, b) => (a.stop_sequence || 0) - (b.stop_sequence || 0));
 
-      // Process all stops
-      for (let index = 0; index < stopsToDisplay.length; index++) {
-        const stop = stopsToDisplay[index];
+      // Filter stops that have location data
+      const validStops = stopsToDisplay.filter(
+        stop => stop.location_city && stop.location_state
+      );
+
+      // PARALLEL geocode all stops at once for speed
+      const geocodePromises = validStops.map(stop => geocodeAddress(stop));
+      const geocodeResults = await Promise.all(geocodePromises);
+
+      // Build coordinates array and markers
+      const coordinates: [number, number][] = [];
+      
+      geocodeResults.forEach((coords, index) => {
+        if (!coords || !map.current) return;
         
-        // Skip stops without location data
-        if (!stop.location_city || !stop.location_state) continue;
-
-        const coords = await geocodeAddress(stop);
-        if (!coords) continue;
-
+        const stop = validStops[index];
         coordinates.push(coords);
         bounds.extend(coords);
 
@@ -214,7 +219,7 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
           .addTo(map.current!);
 
         markers.current.push(marker);
-      }
+      });
 
       // Draw route and fit bounds after all markers
       if (coordinates.length > 1) {
