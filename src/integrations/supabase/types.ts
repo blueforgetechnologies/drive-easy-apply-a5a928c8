@@ -5356,6 +5356,7 @@ export type Database = {
           notes: string | null
           paused: boolean
           per_request_delay_ms: number
+          restart_requested_at: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -5371,6 +5372,7 @@ export type Database = {
           notes?: string | null
           paused?: boolean
           per_request_delay_ms?: number
+          restart_requested_at?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -5386,6 +5388,7 @@ export type Database = {
           notes?: string | null
           paused?: boolean
           per_request_delay_ms?: number
+          restart_requested_at?: string | null
           updated_at?: string
           updated_by?: string | null
         }
