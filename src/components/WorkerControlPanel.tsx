@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
@@ -21,8 +22,12 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
-  Activity
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  BarChart3
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from "recharts";
 
 interface WorkerConfig {
   id: string;
@@ -48,6 +53,16 @@ interface QueueStats {
   failed_today: number;
 }
 
+interface VolumeDataPoint {
+  hour: string;
+  hourLabel: string;
+  received: number;
+  processed: number;
+  failed: number;
+  pending: number;
+  matches: number;
+}
+
 export function WorkerControlPanel() {
   const [config, setConfig] = useState<WorkerConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +70,9 @@ export function WorkerControlPanel() {
   const [restarting, setRestarting] = useState(false);
   const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
+  const [chartOpen, setChartOpen] = useState(true);
+  const [loadingChart, setLoadingChart] = useState(true);
   const loadConfig = async () => {
     try {
       const { data, error } = await supabase
@@ -112,12 +130,53 @@ export function WorkerControlPanel() {
     }
   };
 
+  const loadVolumeData = async () => {
+    try {
+      setLoadingChart(true);
+      const { data, error } = await supabase
+        .from("email_volume_stats")
+        .select("*")
+        .order("hour_start", { ascending: true })
+        .limit(48); // Last 48 hours
+
+      if (error) throw error;
+
+      const formattedData: VolumeDataPoint[] = (data || []).map((row) => {
+        const date = new Date(row.hour_start);
+        return {
+          hour: row.hour_start,
+          hourLabel: date.toLocaleString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            hour: 'numeric',
+            hour12: true 
+          }),
+          received: row.emails_received || 0,
+          processed: row.emails_processed || 0,
+          failed: row.emails_failed || 0,
+          pending: row.emails_pending || 0,
+          matches: row.matches_count || 0,
+        };
+      });
+
+      setVolumeData(formattedData);
+    } catch (error) {
+      console.error("Error loading volume data:", error);
+    } finally {
+      setLoadingChart(false);
+    }
+  };
+
   useEffect(() => {
     loadConfig();
     loadQueueStats();
+    loadVolumeData();
     
     // Refresh stats every 30 seconds
-    const interval = setInterval(loadQueueStats, 30000);
+    const interval = setInterval(() => {
+      loadQueueStats();
+      loadVolumeData();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -292,6 +351,162 @@ export function WorkerControlPanel() {
           </Card>
         </div>
       )}
+
+      {/* Email Volume Chart - Collapsible */}
+      <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  <div>
+                    <CardTitle className="text-base">Email Volume Trends</CardTitle>
+                    <CardDescription>
+                      Visual overview of email processing activity over time
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {chartOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              {loadingChart ? (
+                <div className="flex items-center justify-center h-64">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : volumeData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mb-2 opacity-50" />
+                  <p>No volume data available yet</p>
+                  <p className="text-sm">Data will appear as emails are processed</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Main Chart */}
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={volumeData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="receivedGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="processedGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="failedGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="hourLabel" 
+                          tick={{ fontSize: 11 }} 
+                          tickLine={false}
+                          axisLine={false}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 11 }} 
+                          tickLine={false}
+                          axisLine={false}
+                          width={50}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                          }}
+                          labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                        />
+                        <Legend 
+                          verticalAlign="top" 
+                          height={36}
+                          iconType="circle"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="received"
+                          name="📥 Received"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={2}
+                          fill="url(#receivedGradient)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="processed"
+                          name="✅ Processed"
+                          stroke="#22c55e"
+                          strokeWidth={2}
+                          fill="url(#processedGradient)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="failed"
+                          name="❌ Failed"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          fill="url(#failedGradient)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Legend Explanation */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-primary mt-1 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">Received</p>
+                        <p className="text-xs text-muted-foreground">
+                          Emails ingested from Gmail/other sources and added to the processing queue
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mt-1 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">Processed</p>
+                        <p className="text-xs text-muted-foreground">
+                          Emails successfully parsed and matched to loads or archived
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-red-500 mt-1 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">Failed</p>
+                        <p className="text-xs text-muted-foreground">
+                          Emails that couldn't be processed due to errors (API limits, parsing issues)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chart Tips */}
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>📊 Reading the Chart:</strong> A healthy system shows <strong>Received ≈ Processed</strong> over time. 
+                      If <strong>Received &gt;&gt; Processed</strong>, workers may be too slow or paused. 
+                      If <strong>Failed</strong> spikes, check for API rate limits or configuration issues above.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Master Controls */}
       <Card>
