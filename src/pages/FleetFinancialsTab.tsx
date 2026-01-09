@@ -6,7 +6,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, subMonths, isWeekend, isAfter, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings, Layers, ChevronDown, ChevronRight, Calculator } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Fuel, Save, RotateCcw, Settings, Layers, ChevronDown, ChevronRight, Calculator, TrendingUp } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import { usePaymentFormulas } from "@/hooks/usePaymentFormulas";
 import { PaymentFormulaBuilder } from "@/components/PaymentFormulaBuilder";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Cell, ComposedChart, Line, Area } from "recharts";
 interface Vehicle {
   id: string;
   vehicle_number: string;
@@ -708,6 +709,125 @@ export default function FleetFinancialsTab() {
     }
   };
 
+  // Calculate weekly P&L chart data
+  const weeklyPLChartData = useMemo(() => {
+    if (dailyData.length === 0) return [];
+    
+    const today = startOfDay(new Date());
+    const weeklyData: { 
+      week: string; 
+      weekLabel: string;
+      revenue: number; 
+      expenses: number; 
+      profit: number;
+      loads: number;
+      miles: number;
+    }[] = [];
+    
+    let currentWeekStart = 0;
+    let weekNumber = 1;
+    
+    // Helper functions inline to avoid dependency issues
+    const calcDispatcherPay = (load: Load) => {
+      const dispatcher = dispatchers.find(d => d.id === load.assigned_dispatcher_id);
+      if (!dispatcher?.pay_percentage || !load.rate) return 0;
+      return load.rate * (dispatcher.pay_percentage / 100);
+    };
+    
+    const calcDriverPay = (load: Load) => {
+      if (!driverCompensation?.pay_method_active || !driverCompensation?.pay_method) return 0;
+      const rate = load.rate || 0;
+      const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+      switch (driverCompensation.pay_method) {
+        case 'percentage': return rate * ((driverCompensation.load_percentage || 0) / 100);
+        case 'mileage': return totalMiles * (driverCompensation.pay_per_mile || 0);
+        case 'hybrid': return rate * ((driverCompensation.load_percentage || 0) / 100);
+        default: return 0;
+      }
+    };
+    
+    const calcDriver2Pay = (load: Load) => {
+      if (!driver2Compensation?.pay_method_active || !driver2Compensation?.pay_method) return 0;
+      const rate = load.rate || 0;
+      const totalMiles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+      switch (driver2Compensation.pay_method) {
+        case 'percentage': return rate * ((driver2Compensation.load_percentage || 0) / 100);
+        case 'mileage': return totalMiles * (driver2Compensation.pay_per_mile || 0);
+        case 'hybrid': return rate * ((driver2Compensation.load_percentage || 0) / 100);
+        default: return 0;
+      }
+    };
+    
+    for (let i = 0; i < dailyData.length; i++) {
+      const day = dailyData[i];
+      
+      // If it's the end of the week (Sunday) or last day of month
+      if (day.isWeekEnd || i === dailyData.length - 1) {
+        let weekRevenue = 0;
+        let weekExpenses = 0;
+        let weekLoads = 0;
+        let weekMiles = 0;
+        
+        const dailyRental = totals.dailyRentalRate;
+        const dailyInsurance = totals.dailyInsuranceRate;
+        
+        // Calculate for all days in this week
+        for (let j = currentWeekStart; j <= i; j++) {
+          const weekDay = dailyData[j];
+          const dayDate = weekDay.date;
+          const isFutureDate = isAfter(startOfDay(dayDate), today);
+          const isBusinessDay = !isWeekend(dayDate);
+          
+          // Revenue from loads
+          weekDay.loads.forEach((load, loadIndex) => {
+            const rate = load.rate || 0;
+            const miles = (load.empty_miles || 0) + (load.estimated_miles || 0);
+            weekRevenue += rate;
+            weekLoads++;
+            weekMiles += miles;
+            
+            // Expenses per load
+            const factoring = rate * (factoringPercentage / 100);
+            const fuelCost = miles > 0 ? (miles / milesPerGallon) * dollarPerGallon : 0;
+            const dispPay = calcDispatcherPay(load);
+            const drvPay = calcDriverPay(load);
+            const drv2Pay = calcDriver2Pay(load);
+            
+            weekExpenses += factoring + fuelCost + dispPay + drvPay + drv2Pay;
+            
+            // Add daily costs only to first load of day
+            if (loadIndex === 0 && isBusinessDay && !isFutureDate) {
+              weekExpenses += dailyRental + dailyInsurance + DAILY_OTHER_COST;
+            }
+          });
+          
+          // Add daily costs for days with no loads (only past/today business days)
+          if (weekDay.loads.length === 0 && isBusinessDay && !isFutureDate) {
+            weekExpenses += dailyRental + dailyInsurance + DAILY_OTHER_COST;
+          }
+        }
+        
+        const startDay = format(dailyData[currentWeekStart].date, 'MMM d');
+        const endDay = format(dailyData[i].date, 'd');
+        
+        weeklyData.push({
+          week: `Week ${weekNumber}`,
+          weekLabel: `${startDay}-${endDay}`,
+          revenue: Math.round(weekRevenue * 100) / 100,
+          expenses: Math.round(weekExpenses * 100) / 100,
+          profit: Math.round((weekRevenue - weekExpenses) * 100) / 100,
+          loads: weekLoads,
+          miles: weekMiles,
+        });
+        
+        currentWeekStart = i + 1;
+        weekNumber++;
+      }
+    }
+    
+    return weeklyData;
+  }, [dailyData, totals, factoringPercentage, milesPerGallon, dollarPerGallon, dispatchers, driverCompensation, driver2Compensation]);
+
   const getDispatcherName = (dispatcherId: string | null) => {
     if (!dispatcherId) return "-";
     const dispatcher = dispatchers.find(d => d.id === dispatcherId);
@@ -955,6 +1075,10 @@ export default function FleetFinancialsTab() {
             <TabsTrigger value="payment-calc" className="text-sm">
               <Calculator className="h-3.5 w-3.5 mr-1" />
               Payment Calculation
+            </TabsTrigger>
+            <TabsTrigger value="profit-loss" className="text-sm">
+              <TrendingUp className="h-3.5 w-3.5 mr-1" />
+              Profit & Loss
             </TabsTrigger>
           </TabsList>
         </div>
@@ -1414,6 +1538,267 @@ export default function FleetFinancialsTab() {
         onSave={saveFormula}
         saving={formulasSaving}
       />
+    </div>
+  </TabsContent>
+
+  {/* Profit & Loss Chart Tab */}
+  <TabsContent value="profit-loss" className="flex-1 m-0 p-6 overflow-auto">
+    <div className="space-y-6">
+      {/* Header with vehicle info */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            Profit & Loss Analysis
+          </h2>
+          <p className="text-muted-foreground">
+            {selectedVehicle ? `Vehicle ${selectedVehicle.vehicle_number}` : 'No vehicle selected'} • {format(new Date(selectedMonth + '-01'), 'MMMM yyyy')}
+          </p>
+        </div>
+        
+        {/* Summary Cards */}
+        <div className="flex gap-4">
+          <Card className="bg-green-500/10 border-green-500/30">
+            <CardContent className="p-4">
+              <div className="text-sm text-green-600 dark:text-green-400">Total Revenue</div>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.revenue, 0))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-red-500/10 border-red-500/30">
+            <CardContent className="p-4">
+              <div className="text-sm text-red-600 dark:text-red-400">Total Expenses</div>
+              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.expenses, 0))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={cn(
+            "border",
+            totals.netProfit >= 0 
+              ? "bg-emerald-500/10 border-emerald-500/30" 
+              : "bg-red-500/10 border-red-500/30"
+          )}>
+            <CardContent className="p-4">
+              <div className={cn(
+                "text-sm",
+                totals.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              )}>Net Profit</div>
+              <div className={cn(
+                "text-2xl font-bold",
+                totals.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              )}>
+                {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.profit, 0))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Main Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Revenue vs Expenses</CardTitle>
+          <CardDescription>
+            Breakdown of revenue, expenses, and net profit by week
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {weeklyPLChartData.length === 0 ? (
+            <div className="flex items-center justify-center h-80 text-muted-foreground">
+              <div className="text-center">
+                <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No data available for this period</p>
+                <p className="text-sm">Select a vehicle and time period with loads</p>
+              </div>
+            </div>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={weeklyPLChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0.2} />
+                    </linearGradient>
+                    <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="weekLabel" 
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                    formatter={(value: number, name: string) => [
+                      formatCurrency(value),
+                      name === 'revenue' ? '💰 Revenue' : name === 'expenses' ? '💸 Expenses' : '📊 Net Profit'
+                    ]}
+                    labelFormatter={(label) => `📅 ${label}`}
+                  />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36}
+                    formatter={(value) => value === 'revenue' ? 'Revenue' : value === 'expenses' ? 'Expenses' : 'Net Profit'}
+                  />
+                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+                  <Bar dataKey="revenue" name="revenue" fill="url(#revenueGradient)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="expenses" fill="url(#expenseGradient)" radius={[4, 4, 0, 0]} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="profit" 
+                    name="profit" 
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 5 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Profit/Loss Breakdown by Week */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Profit/Loss Breakdown</CardTitle>
+          <CardDescription>
+            Detailed view of each week's financial performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {weeklyPLChartData.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No data available</p>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyPLChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="weekLabel" 
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: number) => [formatCurrency(value), 'Net Profit/Loss']}
+                    labelFormatter={(label) => `${label}`}
+                  />
+                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={2} />
+                  <Bar dataKey="profit" name="Net Profit/Loss" radius={[4, 4, 4, 4]}>
+                    {weeklyPLChartData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.profit >= 0 ? '#22c55e' : '#ef4444'} 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Weekly Details Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-medium">Week</th>
+                  <th className="text-right py-3 px-4 font-medium">Loads</th>
+                  <th className="text-right py-3 px-4 font-medium">Miles</th>
+                  <th className="text-right py-3 px-4 font-medium text-green-600">Revenue</th>
+                  <th className="text-right py-3 px-4 font-medium text-red-600">Expenses</th>
+                  <th className="text-right py-3 px-4 font-medium">Net P&L</th>
+                  <th className="text-right py-3 px-4 font-medium">Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeklyPLChartData.map((week, index) => {
+                  const margin = week.revenue > 0 ? (week.profit / week.revenue) * 100 : 0;
+                  return (
+                    <tr key={index} className="border-b hover:bg-muted/50">
+                      <td className="py-3 px-4 font-medium">{week.weekLabel}</td>
+                      <td className="py-3 px-4 text-right">{week.loads}</td>
+                      <td className="py-3 px-4 text-right">{week.miles.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right text-green-600">{formatCurrency(week.revenue)}</td>
+                      <td className="py-3 px-4 text-right text-red-600">{formatCurrency(week.expenses)}</td>
+                      <td className={cn(
+                        "py-3 px-4 text-right font-bold",
+                        week.profit >= 0 ? "text-emerald-600" : "text-red-600"
+                      )}>
+                        {formatCurrency(week.profit)}
+                      </td>
+                      <td className={cn(
+                        "py-3 px-4 text-right",
+                        margin >= 0 ? "text-emerald-600" : "text-red-600"
+                      )}>
+                        {margin.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* Totals Row */}
+                <tr className="bg-muted/50 font-bold">
+                  <td className="py-3 px-4">Total</td>
+                  <td className="py-3 px-4 text-right">{weeklyPLChartData.reduce((s, w) => s + w.loads, 0)}</td>
+                  <td className="py-3 px-4 text-right">{weeklyPLChartData.reduce((s, w) => s + w.miles, 0).toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right text-green-600">{formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.revenue, 0))}</td>
+                  <td className="py-3 px-4 text-right text-red-600">{formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.expenses, 0))}</td>
+                  <td className={cn(
+                    "py-3 px-4 text-right",
+                    weeklyPLChartData.reduce((s, w) => s + w.profit, 0) >= 0 ? "text-emerald-600" : "text-red-600"
+                  )}>
+                    {formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.profit, 0))}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    {(() => {
+                      const totalRev = weeklyPLChartData.reduce((s, w) => s + w.revenue, 0);
+                      const totalProfit = weeklyPLChartData.reduce((s, w) => s + w.profit, 0);
+                      return totalRev > 0 ? `${((totalProfit / totalRev) * 100).toFixed(1)}%` : '0%';
+                    })()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   </TabsContent>
 </Tabs>
