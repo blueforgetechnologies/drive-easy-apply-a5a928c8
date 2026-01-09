@@ -143,6 +143,39 @@ export default function IntegrationsTab() {
   const connectGmail = async () => {
     if (!tenantId) return;
 
+    // Open popup immediately (synchronously on user click) to satisfy browser gesture requirements
+    const popup = window.open("about:blank", "gmail-oauth", "width=520,height=720");
+
+    if (!popup) {
+      toast.error("Popup blocked", {
+        description: "Please allow popups for this site and try again.",
+      });
+      return;
+    }
+
+    // Show loading message in popup while we fetch the auth URL
+    popup.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Connecting to Gmail...</title>
+          <style>
+            body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
+            .loader { text-align: center; }
+            .spinner { border: 3px solid #e0e0e0; border-top-color: #3b82f6; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            p { color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="loader">
+            <div class="spinner"></div>
+            <p>Connecting to Gmail...</p>
+          </div>
+        </body>
+      </html>
+    `);
+
     setIsConnectingGmail(true);
     try {
       const { data, error } = await supabase.functions.invoke("gmail-auth", {
@@ -153,10 +186,12 @@ export default function IntegrationsTab() {
       if (data?.success === false) throw new Error(data.error || "Failed to start Gmail connection");
       if (!data?.authUrl) throw new Error("No authorization URL returned");
 
-      window.open(data.authUrl, "gmail-oauth", "width=520,height=720");
+      // Redirect the already-open popup to the auth URL
+      popup.location.href = data.authUrl;
       toast.info("Complete Gmail authorization in the popup, then come back here.");
     } catch (error) {
       console.error("Error starting Gmail OAuth:", error);
+      popup.close();
       toast.error("Failed to start Gmail connection", {
         description: error instanceof Error ? error.message : "Unknown error",
       });
