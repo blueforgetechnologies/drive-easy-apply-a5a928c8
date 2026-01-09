@@ -5343,6 +5343,54 @@ export type Database = {
           },
         ]
       }
+      worker_config: {
+        Row: {
+          backoff_duration_ms: number
+          backoff_on_429: boolean
+          batch_size: number
+          concurrent_limit: number
+          enabled: boolean
+          id: string
+          loop_interval_ms: number
+          max_retries: number
+          notes: string | null
+          paused: boolean
+          per_request_delay_ms: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          backoff_duration_ms?: number
+          backoff_on_429?: boolean
+          batch_size?: number
+          concurrent_limit?: number
+          enabled?: boolean
+          id?: string
+          loop_interval_ms?: number
+          max_retries?: number
+          notes?: string | null
+          paused?: boolean
+          per_request_delay_ms?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          backoff_duration_ms?: number
+          backoff_on_429?: boolean
+          batch_size?: number
+          concurrent_limit?: number
+          enabled?: boolean
+          id?: string
+          loop_interval_ms?: number
+          max_retries?: number
+          notes?: string | null
+          paused?: boolean
+          per_request_delay_ms?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       unreviewed_matches: {
@@ -5485,6 +5533,20 @@ export type Database = {
         }[]
       }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
+      get_worker_config: {
+        Args: never
+        Returns: {
+          backoff_duration_ms: number
+          backoff_on_429: boolean
+          batch_size: number
+          concurrent_limit: number
+          enabled: boolean
+          loop_interval_ms: number
+          max_retries: number
+          paused: boolean
+          per_request_delay_ms: number
+        }[]
+      }
       has_permission: {
         Args: { _permission_code: string; _user_id: string }
         Returns: boolean

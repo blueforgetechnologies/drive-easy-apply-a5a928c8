@@ -11,6 +11,7 @@
  * - Automatic stale job recovery
  * - Health check HTTP endpoint
  * - Structured logging with metrics
+ * - Dynamic configuration from database
  * 
  * Usage:
  *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... RESEND_API_KEY=... npm start
@@ -20,20 +21,45 @@ import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { claimBatch, completeItem, failItem, resetStaleItems } from './claim.js';
 import { processQueueItem } from './process.js';
+import { supabase } from './supabase.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONFIGURATION
+// CONFIGURATION (defaults, can be overridden by database)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CONFIG = {
-  // Queue polling
-  LOOP_INTERVAL_MS: 3000,          // Check queue every 3 seconds
-  BATCH_SIZE: 25,                  // Items per batch claim
-  CONCURRENT_LIMIT: 5,             // Max concurrent processing within a batch
-  MAX_RETRIES: 3,                  // Retries before marking as failed
-  
+interface DynamicConfig {
+  enabled: boolean;
+  paused: boolean;
+  batch_size: number;
+  loop_interval_ms: number;
+  concurrent_limit: number;
+  per_request_delay_ms: number;
+  backoff_on_429: boolean;
+  backoff_duration_ms: number;
+  max_retries: number;
+}
+
+// Default configuration (used if database unavailable)
+const DEFAULT_CONFIG: DynamicConfig = {
+  enabled: true,
+  paused: false,
+  batch_size: 25,
+  loop_interval_ms: 3000,
+  concurrent_limit: 5,
+  per_request_delay_ms: 0,
+  backoff_on_429: true,
+  backoff_duration_ms: 30000,
+  max_retries: 3,
+};
+
+// Current active configuration (updated from database)
+let currentConfig: DynamicConfig = { ...DEFAULT_CONFIG };
+
+// Static configuration
+const STATIC_CONFIG = {
   // Recovery
   STALE_RESET_INTERVAL_MS: 60000,  // Reset stale items every 60 seconds
+  CONFIG_REFRESH_INTERVAL_MS: 10000, // Refresh config from database every 10 seconds
   
   // Health check
   HEALTH_PORT: parseInt(process.env.HEALTH_PORT || '8080', 10),
@@ -56,6 +82,9 @@ interface WorkerMetrics {
   staleResetCount: number;
   isHealthy: boolean;
   lastHeartbeat: Date;
+  rateLimitBackoffUntil: number;
+  configSource: 'database' | 'default';
+  lastConfigRefresh: Date | null;
 }
 
 const METRICS: WorkerMetrics = {
@@ -68,10 +97,14 @@ const METRICS: WorkerMetrics = {
   staleResetCount: 0,
   isHealthy: true,
   lastHeartbeat: new Date(),
+  rateLimitBackoffUntil: 0,
+  configSource: 'default',
+  lastConfigRefresh: null,
 };
 
 let isShuttingDown = false;
 let lastStaleReset = Date.now();
+let lastConfigRefresh = 0;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STRUCTURED LOGGING
@@ -86,7 +119,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-const currentLogLevel = LOG_LEVELS[CONFIG.LOG_LEVEL as LogLevel] ?? LOG_LEVELS.info;
+const currentLogLevel = LOG_LEVELS[STATIC_CONFIG.LOG_LEVEL as LogLevel] ?? LOG_LEVELS.info;
 
 function log(level: LogLevel, message: string, meta?: Record<string, any>): void {
   if (LOG_LEVELS[level] < currentLogLevel) return;
@@ -110,6 +143,43 @@ function log(level: LogLevel, message: string, meta?: Record<string, any>): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DYNAMIC CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function refreshConfig(): Promise<void> {
+  try {
+    const { data, error } = await supabase.rpc('get_worker_config');
+    
+    if (error) {
+      log('warn', 'Failed to fetch config from database, using defaults', { error: error.message });
+      METRICS.configSource = 'default';
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      const dbConfig = data[0];
+      currentConfig = {
+        enabled: dbConfig.enabled ?? DEFAULT_CONFIG.enabled,
+        paused: dbConfig.paused ?? DEFAULT_CONFIG.paused,
+        batch_size: dbConfig.batch_size ?? DEFAULT_CONFIG.batch_size,
+        loop_interval_ms: dbConfig.loop_interval_ms ?? DEFAULT_CONFIG.loop_interval_ms,
+        concurrent_limit: dbConfig.concurrent_limit ?? DEFAULT_CONFIG.concurrent_limit,
+        per_request_delay_ms: dbConfig.per_request_delay_ms ?? DEFAULT_CONFIG.per_request_delay_ms,
+        backoff_on_429: dbConfig.backoff_on_429 ?? DEFAULT_CONFIG.backoff_on_429,
+        backoff_duration_ms: dbConfig.backoff_duration_ms ?? DEFAULT_CONFIG.backoff_duration_ms,
+        max_retries: dbConfig.max_retries ?? DEFAULT_CONFIG.max_retries,
+      };
+      METRICS.configSource = 'database';
+      METRICS.lastConfigRefresh = new Date();
+      log('debug', 'Config refreshed from database', { config: currentConfig });
+    }
+  } catch (error) {
+    log('warn', 'Exception refreshing config', { error: String(error) });
+    METRICS.configSource = 'default';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HEALTH CHECK SERVER
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -129,11 +199,14 @@ function startHealthServer(): void {
           last_batch_time_ms: METRICS.lastBatchTime,
           stale_resets: METRICS.staleResetCount,
           last_heartbeat: METRICS.lastHeartbeat.toISOString(),
+          rate_limit_backoff_until: METRICS.rateLimitBackoffUntil > Date.now() 
+            ? new Date(METRICS.rateLimitBackoffUntil).toISOString() 
+            : null,
         },
         config: {
-          batch_size: CONFIG.BATCH_SIZE,
-          loop_interval_ms: CONFIG.LOOP_INTERVAL_MS,
-          concurrent_limit: CONFIG.CONCURRENT_LIMIT,
+          source: METRICS.configSource,
+          last_refresh: METRICS.lastConfigRefresh?.toISOString() || null,
+          ...currentConfig,
         },
       };
 
@@ -164,6 +237,12 @@ function startHealthServer(): void {
         `# HELP worker_last_batch_duration_ms Last batch processing time`,
         `# TYPE worker_last_batch_duration_ms gauge`,
         `worker_last_batch_duration_ms ${METRICS.lastBatchTime}`,
+        `# HELP worker_config_enabled Whether worker is enabled`,
+        `# TYPE worker_config_enabled gauge`,
+        `worker_config_enabled ${currentConfig.enabled ? 1 : 0}`,
+        `# HELP worker_config_paused Whether worker is paused`,
+        `# TYPE worker_config_paused gauge`,
+        `worker_config_paused ${currentConfig.paused ? 1 : 0}`,
       ];
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(lines.join('\n'));
@@ -173,8 +252,8 @@ function startHealthServer(): void {
     }
   });
 
-  server.listen(CONFIG.HEALTH_PORT, () => {
-    log('info', `Health server listening`, { port: CONFIG.HEALTH_PORT });
+  server.listen(STATIC_CONFIG.HEALTH_PORT, () => {
+    log('info', `Health server listening`, { port: STATIC_CONFIG.HEALTH_PORT });
   });
 }
 
@@ -195,10 +274,14 @@ function formatUptime(ms: number): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function workerLoop(): Promise<void> {
+  // Initial config load
+  await refreshConfig();
+  
   log('info', 'Starting email queue worker (Resend)', {
-    batch_size: CONFIG.BATCH_SIZE,
-    interval_ms: CONFIG.LOOP_INTERVAL_MS,
-    concurrent: CONFIG.CONCURRENT_LIMIT,
+    batch_size: currentConfig.batch_size,
+    interval_ms: currentConfig.loop_interval_ms,
+    concurrent: currentConfig.concurrent_limit,
+    config_source: METRICS.configSource,
   });
 
   // Log heartbeat every minute
@@ -208,16 +291,46 @@ async function workerLoop(): Promise<void> {
       loops: METRICS.loopCount,
       sent: METRICS.emailsSent,
       failed: METRICS.emailsFailed,
+      enabled: currentConfig.enabled,
+      paused: currentConfig.paused,
     });
   }, 60000);
 
   while (!isShuttingDown) {
     try {
+      // Refresh config periodically
+      if (Date.now() - lastConfigRefresh >= STATIC_CONFIG.CONFIG_REFRESH_INTERVAL_MS) {
+        await refreshConfig();
+        lastConfigRefresh = Date.now();
+      }
+
+      // Check if disabled
+      if (!currentConfig.enabled) {
+        log('debug', 'Worker disabled, sleeping...');
+        await sleep(currentConfig.loop_interval_ms);
+        continue;
+      }
+
+      // Check if paused
+      if (currentConfig.paused) {
+        log('debug', 'Worker paused, sleeping...');
+        await sleep(currentConfig.loop_interval_ms);
+        continue;
+      }
+
+      // Check if in rate limit backoff
+      if (METRICS.rateLimitBackoffUntil > Date.now()) {
+        const remaining = Math.ceil((METRICS.rateLimitBackoffUntil - Date.now()) / 1000);
+        log('debug', `Rate limit backoff active`, { remaining_seconds: remaining });
+        await sleep(1000);
+        continue;
+      }
+
       METRICS.loopCount++;
       METRICS.isHealthy = true;
 
       // Reset stale items periodically
-      if (Date.now() - lastStaleReset >= CONFIG.STALE_RESET_INTERVAL_MS) {
+      if (Date.now() - lastStaleReset >= STATIC_CONFIG.STALE_RESET_INTERVAL_MS) {
         const resetCount = await resetStaleItems();
         if (resetCount > 0) {
           log('warn', `Reset stale items`, { count: resetCount });
@@ -227,10 +340,10 @@ async function workerLoop(): Promise<void> {
       }
 
       // Claim a batch of items atomically
-      const batch = await claimBatch(CONFIG.BATCH_SIZE);
+      const batch = await claimBatch(currentConfig.batch_size);
 
       if (batch.length === 0) {
-        await sleep(CONFIG.LOOP_INTERVAL_MS);
+        await sleep(currentConfig.loop_interval_ms);
         continue;
       }
 
@@ -239,11 +352,22 @@ async function workerLoop(): Promise<void> {
       METRICS.lastBatchSize = batch.length;
 
       // Process items with controlled concurrency
-      for (let i = 0; i < batch.length; i += CONFIG.CONCURRENT_LIMIT) {
-        const chunk = batch.slice(i, i + CONFIG.CONCURRENT_LIMIT);
+      for (let i = 0; i < batch.length; i += currentConfig.concurrent_limit) {
+        // Check for pause/disable mid-batch
+        if (!currentConfig.enabled || currentConfig.paused || isShuttingDown) {
+          log('info', 'Stopping mid-batch due to config change');
+          break;
+        }
+
+        const chunk = batch.slice(i, i + currentConfig.concurrent_limit);
 
         await Promise.all(
           chunk.map(async (item) => {
+            // Add per-request delay if configured
+            if (currentConfig.per_request_delay_ms > 0) {
+              await sleep(currentConfig.per_request_delay_ms);
+            }
+
             const itemStart = Date.now();
             try {
               const result = await processQueueItem(item);
@@ -259,11 +383,22 @@ async function workerLoop(): Promise<void> {
                   duration_ms: Date.now() - itemStart,
                 });
               } else {
+                // Check for rate limit error
+                if (result.error?.includes('429') || result.error?.includes('rate limit')) {
+                  if (currentConfig.backoff_on_429) {
+                    METRICS.rateLimitBackoffUntil = Date.now() + currentConfig.backoff_duration_ms;
+                    log('warn', 'Rate limit hit, entering backoff', { 
+                      duration_ms: currentConfig.backoff_duration_ms,
+                      until: new Date(METRICS.rateLimitBackoffUntil).toISOString(),
+                    });
+                  }
+                }
+
                 const newAttempts = item.attempts + 1;
                 await failItem(item.id, result.error || 'Unknown error', newAttempts);
                 METRICS.emailsFailed++;
 
-                if (newAttempts >= CONFIG.MAX_RETRIES) {
+                if (newAttempts >= currentConfig.max_retries) {
                   log('error', `Email permanently failed`, {
                     id: item.id,
                     to: item.to_email,
@@ -283,6 +418,17 @@ async function workerLoop(): Promise<void> {
               }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);
+              
+              // Check for rate limit in exception
+              if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+                if (currentConfig.backoff_on_429) {
+                  METRICS.rateLimitBackoffUntil = Date.now() + currentConfig.backoff_duration_ms;
+                  log('warn', 'Rate limit exception, entering backoff', { 
+                    duration_ms: currentConfig.backoff_duration_ms 
+                  });
+                }
+              }
+
               const newAttempts = item.attempts + 1;
               await failItem(item.id, errorMessage, newAttempts);
               METRICS.emailsFailed++;
