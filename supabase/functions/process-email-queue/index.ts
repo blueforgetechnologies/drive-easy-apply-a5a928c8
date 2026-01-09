@@ -30,6 +30,58 @@ function validateRequest(req: Request): boolean {
   return false;
 }
 
+// Generate a content hash for smart business-level deduplication
+// This catches loads that are reposted with small changes (rate, notes, etc.)
+function generateContentHash(parsedData: Record<string, any>): string {
+  // Core fields that define a unique load opportunity
+  const coreFields = [
+    (parsedData.origin_city || '').toLowerCase().trim(),
+    (parsedData.origin_state || '').toUpperCase().trim(),
+    (parsedData.destination_city || '').toLowerCase().trim(),
+    (parsedData.destination_state || '').toUpperCase().trim(),
+    (parsedData.pickup_date || '').trim(),
+    (parsedData.order_number || '').trim(),
+    (parsedData.vehicle_type || '').toLowerCase().trim(),
+  ];
+  
+  // Create a simple hash by joining and encoding
+  const hashInput = coreFields.join('|');
+  
+  // Use a simple but effective hash for deduplication
+  let hash = 0;
+  for (let i = 0; i < hashInput.length; i++) {
+    const char = hashInput.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  return `ch_${Math.abs(hash).toString(36)}`;
+}
+
+// Check for existing similar load within same tenant (smart deduplication)
+async function findExistingSimilarLoad(
+  contentHash: string, 
+  tenantId: string | null, 
+  hoursWindow: number = 48
+): Promise<{ id: string; load_id: string; received_at: string } | null> {
+  if (!contentHash || !tenantId) return null;
+  
+  const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
+  
+  const { data: existingLoad } = await supabase
+    .from('load_emails')
+    .select('id, load_id, received_at')
+    .eq('content_hash', contentHash)
+    .eq('tenant_id', tenantId)
+    .eq('is_update', false) // Find the original, not other updates
+    .gte('received_at', windowStart)
+    .order('received_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  
+  return existingLoad;
+}
+
 // Apply parser hints from database to fill missing fields
 async function applyParserHints(
   emailSource: string, 
@@ -924,7 +976,7 @@ serve(async (req) => {
     }
 
     // Helper function to process a single email
-    const processEmail = async (item: any): Promise<{ success: boolean; queuedAt: string; loadId?: string; error?: string }> => {
+    const processEmail = async (item: any): Promise<{ success: boolean; queuedAt: string; loadId?: string; error?: string; isUpdate?: boolean }> => {
       try {
         // Mark as processing
         await supabase
@@ -1110,7 +1162,22 @@ serve(async (req) => {
         // Get tenant_id from queue item (propagate to load_emails)
         const tenantId = item.tenant_id;
 
-        // Insert into load_emails with tenant_id and raw_payload_url for audit trail
+        // Generate content hash for smart business-level deduplication
+        const contentHash = generateContentHash(parsedData);
+        
+        // Check if this is a duplicate/update of an existing load (same core fields within 48 hours)
+        const existingSimilarLoad = await findExistingSimilarLoad(contentHash, tenantId, 48);
+        
+        let isUpdate = false;
+        let parentEmailId: string | null = null;
+        
+        if (existingSimilarLoad) {
+          isUpdate = true;
+          parentEmailId = existingSimilarLoad.id;
+          console.log(`🔄 Detected update to existing load ${existingSimilarLoad.load_id} (original from ${existingSimilarLoad.received_at})`);
+        }
+
+        // Insert into load_emails with tenant_id, content_hash, and smart dedup fields
         const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
           .upsert({
@@ -1124,12 +1191,15 @@ serve(async (req) => {
             received_at: receivedAt.toISOString(),
             parsed_data: parsedData,
             expires_at: parsedData.expires_at || null,
-            status: 'new',
+            status: isUpdate ? 'update' : 'new', // Mark updates differently
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
             email_source: emailSource,
-            tenant_id: tenantId, // Propagate tenant_id from queue
-            raw_payload_url: item.payload_url || null, // Audit trail reference
+            tenant_id: tenantId,
+            raw_payload_url: item.payload_url || null,
+            content_hash: contentHash, // For future dedup lookups
+            is_update: isUpdate, // Flag if this is an update to existing load
+            parent_email_id: parentEmailId, // Link to original load
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();
@@ -1142,12 +1212,12 @@ serve(async (req) => {
           .update({ status: 'completed', processed_at: new Date().toISOString() })
           .eq('id', item.id);
 
-        // Hunt matching (fire and forget for speed) - include tenant_id
-        if (insertedEmail && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+        // Hunt matching - only for NEW loads, not updates (avoid duplicate notifications)
+        if (insertedEmail && !isUpdate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
           matchLoadToHunts(insertedEmail.id, insertedEmail.load_id, parsedData, tenantId).catch(() => {});
         }
 
-        return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id };
+        return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id, isUpdate };
       } catch (error) {
         const newStatus = item.attempts >= 3 ? 'failed' : 'pending';
         await supabase
