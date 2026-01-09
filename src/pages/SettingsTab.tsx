@@ -9,6 +9,7 @@ import PreferencesTab from "./PreferencesTab";
 import IntegrationsTab from "./IntegrationsTab";
 import { FeatureAccessManager } from "@/components/FeatureAccessManager";
 import { GmailTenantMapping } from "@/components/GmailTenantMapping";
+import { WorkerControlPanel } from "@/components/WorkerControlPanel";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,18 +60,20 @@ export default function SettingsTab() {
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
-    const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access", "gmail-mapping"];
+    const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access", "gmail-mapping", "workers"];
     if (subTab && validSubTabs.includes(subTab)) {
       // Only allow access subtab if user can manage it
       if (subTab === "access" && !canManageAccess) {
         setActiveSubTab("users");
       } else if (subTab === "gmail-mapping" && !canSeeGmailMapping) {
         setActiveSubTab("users");
+      } else if (subTab === "workers" && !isPlatformAdmin) {
+        setActiveSubTab("users");
       } else {
         setActiveSubTab(subTab);
       }
     }
-  }, [searchParams, canManageAccess, canSeeGmailMapping]);
+  }, [searchParams, canManageAccess, canSeeGmailMapping, isPlatformAdmin]);
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
@@ -102,6 +105,9 @@ export default function SettingsTab() {
             )}
             {canSeeGmailMapping && (
               <TabsTrigger value="gmail-mapping" className="text-xs sm:text-sm">Gmail Mapping</TabsTrigger>
+            )}
+            {isPlatformAdmin && (
+              <TabsTrigger value="workers" className="text-xs sm:text-sm">Workers</TabsTrigger>
             )}
           </TabsList>
         </div>
@@ -139,6 +145,12 @@ export default function SettingsTab() {
         {canSeeGmailMapping && (
           <TabsContent value="gmail-mapping" className="mt-4">
             <GmailTenantMapping />
+          </TabsContent>
+        )}
+
+        {isPlatformAdmin && (
+          <TabsContent value="workers" className="mt-4">
+            <WorkerControlPanel />
           </TabsContent>
         )}
       </Tabs>
