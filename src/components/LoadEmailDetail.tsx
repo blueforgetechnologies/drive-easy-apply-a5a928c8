@@ -539,22 +539,36 @@ const LoadEmailDetail = ({
   const destState = data.destination_state || "TN";
 
   // Memoize map stops to prevent map flickering on parent re-renders
-  const mapStops = useMemo(() => [
-    {
-      location_city: originCity,
-      location_state: originState,
-      location_address: `${originCity}, ${originState}`,
-      stop_type: "pickup",
-      stop_sequence: 1
-    },
-    {
-      location_city: destCity,
-      location_state: destState,
-      location_address: `${destCity}, ${destState}`,
-      stop_type: "delivery",
-      stop_sequence: 2
-    }
-  ], [originCity, originState, destCity, destState]);
+  // Include pre-geocoded coordinates from parsed_data to skip geocoding API calls
+  const mapStops = useMemo(() => {
+    // Extract pre-geocoded coordinates from parsed_data if available
+    const originLat = data.origin_lat || data.pickup_lat;
+    const originLng = data.origin_lng || data.pickup_lng;
+    const destLat = data.destination_lat || data.delivery_lat || data.dest_lat;
+    const destLng = data.destination_lng || data.delivery_lng || data.dest_lng;
+    
+    return [
+      {
+        location_city: originCity,
+        location_state: originState,
+        location_address: `${originCity}, ${originState}`,
+        stop_type: "pickup",
+        stop_sequence: 1,
+        // Pre-geocoded coordinates - if available, map skips geocoding API call
+        lat: originLat,
+        lng: originLng
+      },
+      {
+        location_city: destCity,
+        location_state: destState,
+        location_address: `${destCity}, ${destState}`,
+        stop_type: "delivery",
+        stop_sequence: 2,
+        lat: destLat,
+        lng: destLng
+      }
+    ];
+  }, [originCity, originState, destCity, destState, data.origin_lat, data.origin_lng, data.pickup_lat, data.pickup_lng, data.destination_lat, data.destination_lng, data.delivery_lat, data.delivery_lng, data.dest_lat, data.dest_lng]);
 
   // Get actual vehicle, driver, carrier, and broker data
   const vehicle = match && vehicles?.find((v: any) => v.id === match.vehicle_id);
