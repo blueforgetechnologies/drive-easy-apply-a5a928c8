@@ -37,6 +37,7 @@ interface DynamicConfig {
   backoff_on_429: boolean;
   backoff_duration_ms: number;
   max_retries: number;
+  restart_requested_at: string | null;
 }
 
 // Default configuration (used if database unavailable)
@@ -50,6 +51,7 @@ const DEFAULT_CONFIG: DynamicConfig = {
   backoff_on_429: true,
   backoff_duration_ms: 30000,
   max_retries: 3,
+  restart_requested_at: null,
 };
 
 // Current active configuration (updated from database)
@@ -146,18 +148,29 @@ function log(level: LogLevel, message: string, meta?: Record<string, any>): void
 // DYNAMIC CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function refreshConfig(): Promise<void> {
+async function refreshConfig(): Promise<{ shouldRestart: boolean }> {
   try {
     const { data, error } = await supabase.rpc('get_worker_config');
     
     if (error) {
       log('warn', 'Failed to fetch config from database, using defaults', { error: error.message });
       METRICS.configSource = 'default';
-      return;
+      return { shouldRestart: false };
     }
     
     if (data && data.length > 0) {
       const dbConfig = data[0];
+      
+      // Check for restart signal
+      if (dbConfig.restart_requested_at) {
+        log('info', 'Restart signal detected', { requested_at: dbConfig.restart_requested_at });
+        
+        // Clear the restart signal before exiting
+        await clearRestartSignal();
+        
+        return { shouldRestart: true };
+      }
+      
       currentConfig = {
         enabled: dbConfig.enabled ?? DEFAULT_CONFIG.enabled,
         paused: dbConfig.paused ?? DEFAULT_CONFIG.paused,
@@ -168,14 +181,34 @@ async function refreshConfig(): Promise<void> {
         backoff_on_429: dbConfig.backoff_on_429 ?? DEFAULT_CONFIG.backoff_on_429,
         backoff_duration_ms: dbConfig.backoff_duration_ms ?? DEFAULT_CONFIG.backoff_duration_ms,
         max_retries: dbConfig.max_retries ?? DEFAULT_CONFIG.max_retries,
+        restart_requested_at: dbConfig.restart_requested_at ?? null,
       };
       METRICS.configSource = 'database';
       METRICS.lastConfigRefresh = new Date();
       log('debug', 'Config refreshed from database', { config: currentConfig });
     }
+    return { shouldRestart: false };
   } catch (error) {
     log('warn', 'Exception refreshing config', { error: String(error) });
     METRICS.configSource = 'default';
+    return { shouldRestart: false };
+  }
+}
+
+async function clearRestartSignal(): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('worker_config')
+      .update({ restart_requested_at: null })
+      .eq('id', 'default');
+    
+    if (error) {
+      log('warn', 'Failed to clear restart signal', { error: error.message });
+    } else {
+      log('info', 'Restart signal cleared');
+    }
+  } catch (error) {
+    log('warn', 'Exception clearing restart signal', { error: String(error) });
   }
 }
 
@@ -275,7 +308,11 @@ function formatUptime(ms: number): string {
 
 async function workerLoop(): Promise<void> {
   // Initial config load
-  await refreshConfig();
+  const initialResult = await refreshConfig();
+  if (initialResult.shouldRestart) {
+    log('info', 'Restart requested on startup, exiting for Docker restart...');
+    process.exit(0);
+  }
   
   log('info', 'Starting email queue worker (Resend)', {
     batch_size: currentConfig.batch_size,
@@ -300,8 +337,17 @@ async function workerLoop(): Promise<void> {
     try {
       // Refresh config periodically
       if (Date.now() - lastConfigRefresh >= STATIC_CONFIG.CONFIG_REFRESH_INTERVAL_MS) {
-        await refreshConfig();
+        const result = await refreshConfig();
         lastConfigRefresh = Date.now();
+        
+        // Check for restart signal
+        if (result.shouldRestart) {
+          log('info', 'Restart signal received, gracefully shutting down...');
+          isShuttingDown = true;
+          clearInterval(heartbeatInterval);
+          log('info', 'Worker exiting for restart. Docker will restart the container.');
+          process.exit(0);
+        }
       }
 
       // Check if disabled

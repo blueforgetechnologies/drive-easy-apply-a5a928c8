@@ -38,6 +38,7 @@ interface WorkerConfig {
   notes: string | null;
   updated_at: string;
   updated_by: string | null;
+  restart_requested_at: string | null;
 }
 
 interface QueueStats {
@@ -51,9 +52,9 @@ export function WorkerControlPanel() {
   const [config, setConfig] = useState<WorkerConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
-
   const loadConfig = async () => {
     try {
       const { data, error } = await supabase
@@ -166,6 +167,45 @@ export function WorkerControlPanel() {
 
   const toggleEnabled = () => updateConfig({ enabled: !config?.enabled });
   const togglePaused = () => updateConfig({ paused: !config?.paused });
+
+  const requestRestart = async () => {
+    setRestarting(true);
+    try {
+      const { error } = await supabase
+        .from("worker_config")
+        .update({
+          restart_requested_at: new Date().toISOString(),
+        })
+        .eq("id", "default");
+
+      if (error) throw error;
+      
+      toast.success("Restart signal sent. Workers will restart on their next loop cycle.");
+      loadConfig();
+    } catch (error) {
+      console.error("Error requesting restart:", error);
+      toast.error("Failed to send restart signal");
+    } finally {
+      setRestarting(false);
+    }
+  };
+
+  const clearRestartSignal = async () => {
+    try {
+      const { error } = await supabase
+        .from("worker_config")
+        .update({
+          restart_requested_at: null,
+        })
+        .eq("id", "default");
+
+      if (error) throw error;
+      toast.success("Restart signal cleared");
+      loadConfig();
+    } catch (error) {
+      console.error("Error clearing restart signal:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -313,6 +353,52 @@ export function WorkerControlPanel() {
                 onCheckedChange={togglePaused}
               />
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Restart Workers */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Restart Workers
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Send a restart signal to all running workers. They will gracefully restart on next loop.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {config.restart_requested_at && (
+                <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                  Restart pending since {new Date(config.restart_requested_at).toLocaleTimeString()}
+                </Badge>
+              )}
+              {config.restart_requested_at ? (
+                <Button variant="outline" size="sm" onClick={clearRestartSignal}>
+                  Clear Signal
+                </Button>
+              ) : (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={requestRestart}
+                  disabled={restarting}
+                >
+                  {restarting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                  Restart Workers
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Instructions for restart */}
+          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+            <p className="text-sm text-orange-700 dark:text-orange-300">
+              <strong>⚠️ Restart Info:</strong> When you click "Restart Workers", a signal is sent to the database. 
+              Each worker checks for this signal every loop cycle and will gracefully exit, allowing Docker to restart it. 
+              This is useful after deploying new worker code or clearing stuck state.
+            </p>
           </div>
 
           {/* Recommended Settings */}
