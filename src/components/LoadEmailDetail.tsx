@@ -916,11 +916,12 @@ const LoadEmailDetail = ({
   useEffect(() => {
     const resolveToEmail = async () => {
       try {
-        // Helper to check if email is a "do not use" address
+        // Helper to check if email is a "do not use" address (never send bids to these)
         const isDoNotUseEmail = (addr: string | null | undefined) => {
           if (!addr) return true;
           const lower = addr.toLowerCase();
           return lower.includes('postedloads@sylectus') || 
+                 lower.includes('postedloads@fullcircletms') ||
                  lower.includes('donotreply') || 
                  lower.includes('do-not-reply') || 
                  lower.includes('do_not_reply') ||
@@ -935,19 +936,27 @@ const LoadEmailDetail = ({
           } = await supabase.from("load_emails").select("parsed_data").eq("id", match.load_email_id).maybeSingle();
           if (!error && loadEmail?.parsed_data) {
             const parsedData = loadEmail.parsed_data as Record<string, any>;
-            // Check broker_email first, then email field from parsed data
+            // PRIORITY 1: Always use reply_to if available (this is the correct bid email)
+            if (parsedData.reply_to && !isDoNotUseEmail(parsedData.reply_to)) {
+              setToEmail(parsedData.reply_to);
+              return;
+            }
+            // PRIORITY 2: Check broker_email
             if (parsedData.broker_email && !isDoNotUseEmail(parsedData.broker_email)) {
               setToEmail(parsedData.broker_email);
               return;
             }
+            // PRIORITY 3: Check email field from parsed data
             if (parsedData.email && !isDoNotUseEmail(parsedData.email)) {
               setToEmail(parsedData.email);
               return;
             }
           }
         }
-        // Fallback to broker_email or email from current data prop, never use from_email if it's sylectus
-        if (data.broker_email && !isDoNotUseEmail(data.broker_email)) {
+        // Fallback to reply_to, broker_email, or email from current data prop
+        if (data.reply_to && !isDoNotUseEmail(data.reply_to)) {
+          setToEmail(data.reply_to);
+        } else if (data.broker_email && !isDoNotUseEmail(data.broker_email)) {
           setToEmail(data.broker_email);
         } else if (data.email && !isDoNotUseEmail(data.email)) {
           setToEmail(data.email);
@@ -963,9 +972,11 @@ const LoadEmailDetail = ({
         const isDoNotUseEmail = (addr: string | null | undefined) => {
           if (!addr) return true;
           const lower = addr.toLowerCase();
-          return lower.includes('postedloads@sylectus') || lower.includes('donotreply') || lower.includes('noreply');
+          return lower.includes('postedloads@sylectus') || lower.includes('postedloads@fullcircletms') || lower.includes('donotreply') || lower.includes('noreply');
         };
-        if (data.broker_email && !isDoNotUseEmail(data.broker_email)) {
+        if (data.reply_to && !isDoNotUseEmail(data.reply_to)) {
+          setToEmail(data.reply_to);
+        } else if (data.broker_email && !isDoNotUseEmail(data.broker_email)) {
           setToEmail(data.broker_email);
         } else if (data.email && !isDoNotUseEmail(data.email)) {
           setToEmail(data.email);
@@ -975,7 +986,7 @@ const LoadEmailDetail = ({
       }
     };
     resolveToEmail();
-  }, [match, email.from_email, data.broker_email, data.email]);
+  }, [match, email.from_email, data.broker_email, data.email, data.reply_to]);
 
   // Dispatcher signature info for email - use bid_as carrier if available, fallback to company_profile
   const dispatcherName = currentDispatcher ? `${currentDispatcher.first_name} ${currentDispatcher.last_name}` : 'Dispatcher Name';
