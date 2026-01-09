@@ -47,6 +47,99 @@ export default function IntegrationsTab() {
   const [isConnectingGmail, setIsConnectingGmail] = useState(false);
   const [pushStatus, setPushStatus] = useState<"unknown" | "active" | "error">("unknown");
 
+  const loadIntegrations = useCallback(async () => {
+    if (shouldFilter && !tenantId) return;
+
+    try {
+      const body = tenantId ? { tenant_id: tenantId } : {};
+      const { data, error } = await supabase.functions.invoke("check-tenant-integrations", {
+        body,
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setIntegrations((data?.integrations ?? []) as Integration[]);
+    } catch (error) {
+      console.error("Error loading integrations:", error);
+      toast.error("Failed to load integrations", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+      setIntegrations([]);
+    }
+  }, [tenantId, shouldFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (shouldFilter && !tenantId) return;
+
+      setIsLoading(true);
+      try {
+        await loadIntegrations();
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, shouldFilter, loadIntegrations]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await loadIntegrations();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadIntegrations]);
+
+  const handleTestIntegration = useCallback(
+    async (integration: Integration) => {
+      if (!tenantId) {
+        toast.error("Please select a tenant to test integrations.");
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke("test-tenant-integration", {
+          body: { tenant_id: tenantId, provider: integration.id },
+        });
+
+        if (error) throw error;
+
+        if (data?.status === "healthy") {
+          toast.success("Connection test successful", { description: data.message });
+        } else if (data?.status === "disabled") {
+          toast.info("Integration is disabled", { description: data.message });
+        } else {
+          toast.error("Connection test failed", {
+            description: data?.message || "Unknown error",
+          });
+        }
+
+        await loadIntegrations();
+      } catch (error) {
+        console.error("Error testing integration:", error);
+        toast.error("Failed to test connection", {
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+    [tenantId, loadIntegrations]
+  );
+
+  const handleConfigure = useCallback((integration: Integration) => {
+    setSelectedProvider(integration.id);
+    setSelectedIntegration(integration);
+    setConfigModalOpen(true);
+  }, []);
+
   const connectGmail = async () => {
     if (!tenantId) return;
 
