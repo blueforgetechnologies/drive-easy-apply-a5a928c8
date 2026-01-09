@@ -182,7 +182,33 @@ export default function LoadHunterTab() {
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
-  const showAllTabEnabled = currentDispatcherInfo?.show_all_tab || localStorage.getItem('showAllTab') === 'true';
+  
+  // Track showAllTab with state that updates on storage events
+  const [showAllTabState, setShowAllTabState] = useState<boolean>(() => localStorage.getItem('showAllTab') === 'true');
+  
+  // Listen for localStorage changes from DashboardLayout toggle
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'showAllTab') {
+        setShowAllTabState(e.newValue === 'true');
+      }
+    };
+    
+    // Also handle same-tab updates via custom event
+    const handleLocalUpdate = () => {
+      setShowAllTabState(localStorage.getItem('showAllTab') === 'true');
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('showAllTabChanged', handleLocalUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('showAllTabChanged', handleLocalUpdate);
+    };
+  }, []);
+  
+  const showAllTabEnabled = currentDispatcherInfo?.show_all_tab || showAllTabState;
   const currentDispatcherIdRef = useRef<string | null>(null);
   const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);

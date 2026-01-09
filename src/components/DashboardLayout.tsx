@@ -12,6 +12,7 @@ import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { TenantSwitcher } from "./TenantSwitcher";
 
 import { TenantRequired } from "./TenantRequired";
+import { prefetchMapboxToken } from "./LoadRouteMap";
 import { ImpersonationBanner } from "./ImpersonationBanner";
 import { ImpersonateTenantDialog } from "./ImpersonateTenantDialog";
 import { TenantDebugBanner } from "./TenantDebugBanner";
@@ -88,6 +89,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setAuthUserId(session?.user?.id ?? null);
       setAuthReady(true);
     });
+    
+    // Prefetch mapbox token early for faster map loading
+    prefetchMapboxToken();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -178,6 +182,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // Always save to localStorage
     localStorage.setItem('showAllTab', String(newValue));
     setShowAllTab(newValue);
+    
+    // Dispatch custom event so LoadHunterTab can react immediately
+    window.dispatchEvent(new CustomEvent('showAllTabChanged'));
     
     // If dispatcher profile exists, also save to database
     if (dispatcherId) {
