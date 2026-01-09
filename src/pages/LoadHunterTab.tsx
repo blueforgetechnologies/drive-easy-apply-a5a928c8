@@ -4921,6 +4921,8 @@ export default function LoadHunterTab() {
                               load_id: (item as any).load_id,
                               status: (item as any).email_status,
                               email_source: (item as any).email_source,
+                              is_update: (item as any).is_update,
+                              parent_email_id: (item as any).parent_email_id,
                             };
                           } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') {
                             // Skipped/bid/booked/undecided/waitlist matches now include email data from the join
@@ -5277,6 +5279,9 @@ export default function LoadHunterTab() {
                                     <span className={`text-[13px] leading-tight whitespace-nowrap font-medium ${receivedDiffMins >= 15 ? 'text-red-500' : receivedDiffMins >= 5 ? 'text-orange-500' : 'text-green-500'}`} title={exactReceived}>{receivedAgo}</span>
                                     {isNewlyProcessed && (
                                       <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-black font-semibold">NEW</Badge>
+                                    )}
+                                    {email.is_update && (
+                                      <Badge variant="outline" className="h-4 px-1 text-[10px] border-yellow-500 text-yellow-600 font-semibold" title="This is an updated version of a previously posted load">UPD</Badge>
                                     )}
                                   </div>
                                   <div className="text-[11px] text-muted-foreground leading-tight whitespace-nowrap">

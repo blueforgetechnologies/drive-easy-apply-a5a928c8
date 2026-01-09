@@ -5456,6 +5456,7 @@ export type Database = {
     Views: {
       unreviewed_matches: {
         Row: {
+          content_hash: string | null
           distance_miles: number | null
           email_id: string | null
           email_source: string | null
@@ -5467,11 +5468,13 @@ export type Database = {
           hunt_plan_id: string | null
           hunt_zip: string | null
           is_active: boolean | null
+          is_update: boolean | null
           load_email_id: string | null
           load_id: string | null
           match_id: string | null
           match_status: string | null
           matched_at: string | null
+          parent_email_id: string | null
           parsed_data: Json | null
           pickup_radius: string | null
           plan_name: string | null
@@ -5487,6 +5490,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_emails_parent_email_id_fkey"
+            columns: ["parent_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
             referencedColumns: ["id"]
           },
           {
