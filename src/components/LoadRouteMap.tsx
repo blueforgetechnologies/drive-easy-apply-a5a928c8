@@ -3,8 +3,43 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from './ui/card';
-import { DollarSign, Leaf } from 'lucide-react';
+import { DollarSign, Leaf, Loader2 } from 'lucide-react';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
+import { Skeleton } from './ui/skeleton';
+
+// Global token cache - persists across component mounts
+let cachedMapboxToken: string | null = null;
+let tokenFetchPromise: Promise<string | null> | null = null;
+
+// Prefetch token function - call this early in the app
+export const prefetchMapboxToken = async (): Promise<string | null> => {
+  if (cachedMapboxToken) return cachedMapboxToken;
+  if (tokenFetchPromise) return tokenFetchPromise;
+  
+  tokenFetchPromise = (async () => {
+    try {
+      const { data: tokenData } = await supabase.functions.invoke('get-mapbox-token');
+      if (tokenData?.token) {
+        cachedMapboxToken = tokenData.token;
+        return cachedMapboxToken;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error prefetching Mapbox token:', error);
+      return null;
+    } finally {
+      tokenFetchPromise = null;
+    }
+  })();
+  
+  return tokenFetchPromise;
+};
+
+// Get token (uses cache if available)
+const getMapboxToken = async (): Promise<string | null> => {
+  if (cachedMapboxToken) return cachedMapboxToken;
+  return prefetchMapboxToken();
+};
 
 interface Stop {
   location_city?: string;
@@ -42,6 +77,7 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
   const [routeDistance, setRouteDistance] = useState<number>(0);
   const [fuelEstimate, setFuelEstimate] = useState<any>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [mapLoading, setMapLoading] = useState(true);
   const initializingRef = useRef(false);
   
   // Track last processed stops to avoid redundant updates
@@ -55,15 +91,16 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
 
     const initializeMap = async () => {
       try {
-        // Fetch Mapbox token
-        const { data: tokenData } = await supabase.functions.invoke('get-mapbox-token');
-        if (!tokenData?.token) {
+        // Use cached token - much faster on subsequent loads
+        const token = await getMapboxToken();
+        if (!token) {
           console.error('No Mapbox token available');
           initializingRef.current = false;
+          setMapLoading(false);
           return;
         }
 
-        mapboxgl.accessToken = tokenData.token;
+        mapboxgl.accessToken = token;
 
         // Initialize map
         map.current = new mapboxgl.Map({
@@ -77,10 +114,12 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
 
         map.current.on('load', () => {
           setMapReady(true);
+          setMapLoading(false);
         });
       } catch (error) {
         console.error('Error initializing map:', error);
         initializingRef.current = false;
+        setMapLoading(false);
       }
     };
 
@@ -408,6 +447,16 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
     <div className="space-y-4 h-full">
       <div className="relative w-full h-full min-h-[200px] rounded-lg overflow-hidden">
         <div ref={mapContainer} className="absolute inset-0" />
+        
+        {/* Loading overlay */}
+        {mapLoading && (
+          <div className="absolute inset-0 bg-muted/80 backdrop-blur-sm flex items-center justify-center z-20">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Loading map...</span>
+            </div>
+          </div>
+        )}
         
         {onOptimize && (
           <div className="absolute top-4 right-4 z-10">

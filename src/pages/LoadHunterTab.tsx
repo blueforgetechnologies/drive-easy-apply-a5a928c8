@@ -4,6 +4,7 @@ import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
+import { prefetchMapboxToken } from "@/components/LoadRouteMap";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
 import { VehicleAssignmentView } from "@/components/VehicleAssignmentView";
 import { DispatcherMetricsView } from "@/components/DispatcherMetricsView";
@@ -1300,10 +1301,10 @@ export default function LoadHunterTab() {
 
   const fetchMapboxToken = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('get-mapbox-token');
-      if (error) throw error;
-      if (data?.token) {
-        setMapboxToken(data.token);
+      // Use the cached prefetch function for faster loading
+      const token = await prefetchMapboxToken();
+      if (token) {
+        setMapboxToken(token);
       }
     } catch (error) {
       console.error('Failed to fetch Mapbox token:', error);
