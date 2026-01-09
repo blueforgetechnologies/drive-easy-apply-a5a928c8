@@ -44,80 +44,37 @@ export default function IntegrationsTab() {
 
   // Gmail push state
   const [isSettingUpPush, setIsSettingUpPush] = useState(false);
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
   const [pushStatus, setPushStatus] = useState<"unknown" | "active" | "error">("unknown");
 
-  const loadIntegrations = useCallback(async () => {
-    if (!tenantId) {
-      setIntegrations([]);
-      setIsLoading(false);
-      return;
-    }
+  const connectGmail = async () => {
+    if (!tenantId) return;
 
+    setIsConnectingGmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke("check-tenant-integrations", {
-        body: { tenant_id: tenantId },
+      const { data, error } = await supabase.functions.invoke("gmail-auth", {
+        body: { action: "start", tenantId },
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.success === false) throw new Error(data.error || "Failed to start Gmail connection");
+      if (!data?.authUrl) throw new Error("No authorization URL returned");
 
-      setIntegrations(data?.integrations || []);
+      window.open(data.authUrl, "gmail-oauth", "width=520,height=720");
+      toast.info("Complete Gmail authorization in the popup, then come back here.");
     } catch (error) {
-      console.error("Error loading integrations:", error);
-      toast.error("Failed to load integrations");
+      console.error("Error starting Gmail OAuth:", error);
+      toast.error("Failed to start Gmail connection", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [tenantId]);
-
-  useEffect(() => {
-    setIsLoading(true);
-    loadIntegrations();
-  }, [loadIntegrations]);
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadIntegrations();
-  };
-
-  const handleConfigure = (integration: Integration) => {
-    setSelectedProvider(integration.id);
-    setSelectedIntegration(integration);
-    setConfigModalOpen(true);
-  };
-
-  const handleTestIntegration = async (integration: Integration) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("test-tenant-integration", {
-        body: { tenant_id: tenantId, provider: integration.id },
-      });
-
-      if (error) throw error;
-
-      if (data?.status === "healthy") {
-        toast.success(`${integration.name} test successful`, {
-          description: data.message,
-        });
-      } else if (data?.status === "disabled") {
-        toast.info(`${integration.name} is disabled`, {
-          description: data.message,
-        });
-      } else {
-        toast.error(`${integration.name} test failed`, {
-          description: data?.message || "Unknown error",
-        });
-      }
-
-      // Refresh to show updated status
-      loadIntegrations();
-    } catch (error) {
-      console.error("Error testing integration:", error);
-      toast.error("Failed to test integration");
+      setIsConnectingGmail(false);
     }
   };
 
   const setupGmailPush = async () => {
+    if (!tenantId) return;
+
     setIsSettingUpPush(true);
     try {
       const { data, error } = await supabase.functions.invoke("gmail-auth", {
@@ -125,11 +82,11 @@ export default function IntegrationsTab() {
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.success === false) throw new Error(data.error || "Failed to setup Gmail push");
 
       setPushStatus("active");
       toast.success("Gmail push notifications configured!", {
-        description: data.expiration
+        description: data?.expiration
           ? `Expires: ${new Date(parseInt(data.expiration)).toLocaleString()}`
           : undefined,
       });
@@ -259,26 +216,53 @@ export default function IntegrationsTab() {
             {pushStatus === "error" && <Badge variant="destructive">Error</Badge>}
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Setup Gmail push notifications to receive instant load emails without polling.
-            </p>
-            <Button onClick={setupGmailPush} disabled={isSettingUpPush} size="sm" className="gap-2">
-              {isSettingUpPush ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Setting up...
-                </>
-              ) : (
-                <>
-                  <Mail className="h-4 w-4" />
-                  Setup Gmail Push
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Connect a Gmail account, then enable push notifications to receive instant load emails.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={connectGmail}
+                  disabled={isConnectingGmail}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {isConnectingGmail ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Connect / Reconnect Gmail
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={setupGmailPush}
+                  disabled={isSettingUpPush}
+                  size="sm"
+                  className="gap-2"
+                >
+                  {isSettingUpPush ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Setting up...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="h-4 w-4" />
+                      Setup Gmail Push
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
       </Card>
 
       {/* Integration Cards */}
