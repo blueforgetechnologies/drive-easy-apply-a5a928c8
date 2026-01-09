@@ -50,6 +50,9 @@ interface Stop {
   stop_sequence?: number;
   scheduled_date?: string;
   location_name?: string;
+  // Pre-geocoded coordinates - if provided, skip geocoding API call
+  lat?: number;
+  lng?: number;
 }
 
 interface LoadRouteMapProps {
@@ -136,9 +139,14 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
     };
   }, []); // Only run once on mount
 
-  // Geocode address function using cached edge function
+  // Geocode address function - uses pre-geocoded coords if available, otherwise calls edge function
   const geocodeAddress = useCallback(async (stop: Stop): Promise<[number, number] | null> => {
     try {
+      // FAST PATH: If stop already has coordinates, use them directly (no API call!)
+      if (stop.lat && stop.lng) {
+        return [stop.lng, stop.lat];
+      }
+      
       const query = `${stop.location_address || ''} ${stop.location_city || ''} ${stop.location_state || ''} ${stop.location_zip || ''}`.trim();
       if (!query) return null;
 
