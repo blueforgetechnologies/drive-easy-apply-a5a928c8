@@ -212,6 +212,35 @@ async function clearRestartSignal(): Promise<void> {
   }
 }
 
+async function reportHeartbeat(): Promise<void> {
+  try {
+    const workerId = process.env.WORKER_ID || 'worker-1';
+    const status = METRICS.rateLimitBackoffUntil > Date.now() ? 'degraded' : 'healthy';
+    
+    await supabase.rpc('worker_heartbeat', {
+      p_worker_id: workerId,
+      p_status: status,
+      p_emails_sent: METRICS.emailsSent,
+      p_emails_failed: METRICS.emailsFailed,
+      p_loops_completed: METRICS.loopCount,
+      p_current_batch_size: METRICS.lastBatchSize,
+      p_rate_limit_until: METRICS.rateLimitBackoffUntil > Date.now() 
+        ? new Date(METRICS.rateLimitBackoffUntil).toISOString() 
+        : null,
+      p_error_message: null,
+      p_host_info: {
+        uptime_ms: Date.now() - METRICS.startedAt.getTime(),
+        config_source: METRICS.configSource,
+        node_version: process.version,
+      },
+    });
+    
+    log('debug', 'Heartbeat reported to database', { worker_id: workerId, status });
+  } catch (error) {
+    log('warn', 'Failed to report heartbeat', { error: String(error) });
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HEALTH CHECK SERVER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -321,8 +350,8 @@ async function workerLoop(): Promise<void> {
     config_source: METRICS.configSource,
   });
 
-  // Log heartbeat every minute
-  const heartbeatInterval = setInterval(() => {
+  // Log heartbeat every minute and report to database
+  const heartbeatInterval = setInterval(async () => {
     METRICS.lastHeartbeat = new Date();
     log('info', 'Heartbeat', {
       loops: METRICS.loopCount,
@@ -331,7 +360,13 @@ async function workerLoop(): Promise<void> {
       enabled: currentConfig.enabled,
       paused: currentConfig.paused,
     });
+    
+    // Report heartbeat to database
+    await reportHeartbeat();
   }, 60000);
+  
+  // Initial heartbeat
+  await reportHeartbeat();
 
   while (!isShuttingDown) {
     try {

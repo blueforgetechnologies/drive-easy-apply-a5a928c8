@@ -5632,6 +5632,7 @@ export type Database = {
           max_retries: number
           paused: boolean
           per_request_delay_ms: number
+          restart_requested_at: string
         }[]
       }
       has_permission: {
