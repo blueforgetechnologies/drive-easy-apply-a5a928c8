@@ -1542,263 +1542,513 @@ export default function FleetFinancialsTab() {
   </TabsContent>
 
   {/* Profit & Loss Chart Tab */}
-  <TabsContent value="profit-loss" className="flex-1 m-0 p-6 overflow-auto">
-    <div className="space-y-6">
-      {/* Header with vehicle info */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-primary" />
-            Profit & Loss Analysis
-          </h2>
-          <p className="text-muted-foreground">
-            {selectedVehicle ? `Vehicle ${selectedVehicle.vehicle_number}` : 'No vehicle selected'} • {format(new Date(selectedMonth + '-01'), 'MMMM yyyy')}
-          </p>
+  <TabsContent value="profit-loss" className="flex-1 min-h-0 m-0 overflow-hidden">
+    <div className="flex h-full min-h-0">
+      {/* Left Sidebar - Carrier Filter (same as statistics tab) */}
+      <div className="w-[190px] border-r bg-card flex-shrink-0">
+        <div className="pl-3 pr-4 py-3 border-b space-y-2">
+          <button
+            onClick={() => {
+              setAllTruckIdsMode(true);
+              setSelectedCarrier(null);
+              const sorted = [...vehiclesWithNames].sort((a, b) => {
+                const numA = parseInt(a.vehicle_number, 10);
+                const numB = parseInt(b.vehicle_number, 10);
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                return a.vehicle_number.localeCompare(b.vehicle_number);
+              });
+              if (sorted.length > 0) {
+                setSelectedVehicleId(sorted[0].id);
+              }
+            }}
+            className={cn(
+              "w-full h-9 text-sm font-bold rounded-md transition-all duration-200",
+              allTruckIdsMode
+                ? "btn-glossy-primary text-white"
+                : "btn-glossy text-muted-foreground"
+            )}
+          >
+            All Truck IDs
+          </button>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Type to search..."
+              value={carrierSearch}
+              onChange={(e) => setCarrierSearch(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
+          <div className="flex w-full mt-2">
+            <button
+              onClick={() => setCarrierStatusFilter(prev => 
+                prev.includes("active") 
+                  ? prev.filter(s => s !== "active")
+                  : [...prev, "active"]
+              )}
+              className={cn(
+                "flex-1 h-8 text-sm font-medium rounded-l-md transition-all duration-200",
+                carrierStatusFilter.includes("active") 
+                  ? "btn-glossy-primary text-white" 
+                  : "btn-glossy text-muted-foreground"
+              )}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setCarrierStatusFilter(prev => 
+                prev.includes("inactive") 
+                  ? prev.filter(s => s !== "inactive")
+                  : [...prev, "inactive"]
+              )}
+              className={cn(
+                "flex-1 h-8 text-sm font-medium rounded-r-md transition-all duration-200",
+                carrierStatusFilter.includes("inactive") 
+                  ? "btn-glossy-primary text-white" 
+                  : "btn-glossy text-muted-foreground"
+              )}
+            >
+              Inactive
+            </button>
+          </div>
         </div>
-        
-        {/* Summary Cards */}
-        <div className="flex gap-4">
-          <Card className="bg-green-500/10 border-green-500/30">
-            <CardContent className="p-4">
-              <div className="text-sm text-green-600 dark:text-green-400">Total Revenue</div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.revenue, 0))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-red-500/10 border-red-500/30">
-            <CardContent className="p-4">
-              <div className="text-sm text-red-600 dark:text-red-400">Total Expenses</div>
-              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.expenses, 0))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className={cn(
-            "border",
-            totals.netProfit >= 0 
-              ? "bg-emerald-500/10 border-emerald-500/30" 
-              : "bg-red-500/10 border-red-500/30"
-          )}>
-            <CardContent className="p-4">
-              <div className={cn(
-                "text-sm",
-                totals.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-              )}>Net Profit</div>
-              <div className={cn(
-                "text-2xl font-bold",
-                totals.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-              )}>
-                {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.profit, 0))}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="pl-3 pr-4 py-3">
+          <ScrollArea className="h-[calc(100vh-300px)] overflow-visible">
+            <div className="flex flex-col w-[70%]">
+              {carriers
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .filter(carrier => 
+                  carrierStatusFilter.length > 0 && 
+                  carrierStatusFilter.includes(carrier.status || "") &&
+                  (carrierSearch === "" || carrier.name.toLowerCase().startsWith(carrierSearch.toLowerCase()))
+                )
+                .map((carrier, idx, arr) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <button
+                      key={carrier.id}
+                      onClick={() => {
+                        setAllTruckIdsMode(false);
+                        setSelectedCarrier(carrier.id);
+                        setCarrierSearch("");
+                        const carrierVehicles = vehiclesWithNames
+                          .filter(v => v.carrier === carrier.id)
+                          .sort((a, b) => {
+                            const numA = parseInt(a.vehicle_number, 10);
+                            const numB = parseInt(b.vehicle_number, 10);
+                            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                            return a.vehicle_number.localeCompare(b.vehicle_number);
+                          });
+                        if (carrierVehicles.length > 0) {
+                          setSelectedVehicleId(carrierVehicles[0].id);
+                        } else {
+                          setSelectedVehicleId(null);
+                        }
+                      }}
+                      className={cn(
+                        "w-[150px] h-7 text-left px-3 text-xs font-medium transition-all border-x border-t",
+                        isLast && "border-b",
+                        isFirst && "rounded-t-md",
+                        isLast && "rounded-b-md",
+                        (selectedCarrier === carrier.id || (allTruckIdsMode && selectedVehicleCarrier === carrier.id))
+                          ? "btn-glossy-primary text-white border-primary/30"
+                          : "btn-glossy text-gray-700 border-gray-300/50"
+                      )}
+                    >
+                      <div className="truncate">{carrier.name}</div>
+                    </button>
+                  );
+                })}
+            </div>
+          </ScrollArea>
         </div>
       </div>
 
-      {/* Main Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Revenue vs Expenses</CardTitle>
-          <CardDescription>
-            Breakdown of revenue, expenses, and net profit by week
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {weeklyPLChartData.length === 0 ? (
-            <div className="flex items-center justify-center h-80 text-muted-foreground">
-              <div className="text-center">
-                <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No data available for this period</p>
-                <p className="text-sm">Select a vehicle and time period with loads</p>
-              </div>
-            </div>
-          ) : (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={weeklyPLChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0.2} />
-                    </linearGradient>
-                    <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="weekLabel" 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                    }}
-                    formatter={(value: number, name: string) => [
-                      formatCurrency(value),
-                      name === 'revenue' ? '💰 Revenue' : name === 'expenses' ? '💸 Expenses' : '📊 Net Profit'
-                    ]}
-                    labelFormatter={(label) => `📅 ${label}`}
-                  />
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    formatter={(value) => value === 'revenue' ? 'Revenue' : value === 'expenses' ? 'Expenses' : 'Net Profit'}
-                  />
-                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                  <Bar dataKey="revenue" name="revenue" fill="url(#revenueGradient)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name="expenses" fill="url(#expenseGradient)" radius={[4, 4, 0, 0]} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="profit" 
-                    name="profit" 
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={3}
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 5 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Profit/Loss Breakdown by Week */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Profit/Loss Breakdown</CardTitle>
-          <CardDescription>
-            Detailed view of each week's financial performance
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {weeklyPLChartData.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No data available</p>
-          ) : (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyPLChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="weekLabel" 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `$${value.toLocaleString()}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                    formatter={(value: number) => [formatCurrency(value), 'Net Profit/Loss']}
-                    labelFormatter={(label) => `${label}`}
-                  />
-                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={2} />
-                  <Bar dataKey="profit" name="Net Profit/Loss" radius={[4, 4, 4, 4]}>
-                    {weeklyPLChartData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.profit >= 0 ? '#22c55e' : '#ef4444'} 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Weekly Details Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">Week</th>
-                  <th className="text-right py-3 px-4 font-medium">Loads</th>
-                  <th className="text-right py-3 px-4 font-medium">Miles</th>
-                  <th className="text-right py-3 px-4 font-medium text-green-600">Revenue</th>
-                  <th className="text-right py-3 px-4 font-medium text-red-600">Expenses</th>
-                  <th className="text-right py-3 px-4 font-medium">Net P&L</th>
-                  <th className="text-right py-3 px-4 font-medium">Margin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {weeklyPLChartData.map((week, index) => {
-                  const margin = week.revenue > 0 ? (week.profit / week.revenue) * 100 : 0;
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Vehicle Tabs */}
+        <div className="border-b bg-card px-3 py-1.5">
+          <ScrollArea className="w-full">
+            <div className="flex">
+              {filteredVehicles
+                .slice()
+                .sort((a, b) => {
+                  const numA = parseInt(a.vehicle_number, 10);
+                  const numB = parseInt(b.vehicle_number, 10);
+                  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                  return a.vehicle_number.localeCompare(b.vehicle_number);
+                })
+                .map((vehicle, idx, arr) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  const isActive = selectedVehicleId === vehicle.id;
                   return (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4 font-medium">{week.weekLabel}</td>
-                      <td className="py-3 px-4 text-right">{week.loads}</td>
-                      <td className="py-3 px-4 text-right">{week.miles.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right text-green-600">{formatCurrency(week.revenue)}</td>
-                      <td className="py-3 px-4 text-right text-red-600">{formatCurrency(week.expenses)}</td>
-                      <td className={cn(
-                        "py-3 px-4 text-right font-bold",
-                        week.profit >= 0 ? "text-emerald-600" : "text-red-600"
-                      )}>
-                        {formatCurrency(week.profit)}
-                      </td>
-                      <td className={cn(
-                        "py-3 px-4 text-right",
-                        margin >= 0 ? "text-emerald-600" : "text-red-600"
-                      )}>
-                        {margin.toFixed(1)}%
-                      </td>
-                    </tr>
+                    <Button
+                      key={vehicle.id}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedVehicleId(vehicle.id)}
+                      className={cn(
+                        "whitespace-nowrap !rounded-none border-0",
+                        isFirst && "!rounded-l-full",
+                        isLast && "!rounded-r-full",
+                        isActive ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                      )}
+                    >
+                      {vehicle.vehicle_number}
+                    </Button>
                   );
                 })}
-                {/* Totals Row */}
-                <tr className="bg-muted/50 font-bold">
-                  <td className="py-3 px-4">Total</td>
-                  <td className="py-3 px-4 text-right">{weeklyPLChartData.reduce((s, w) => s + w.loads, 0)}</td>
-                  <td className="py-3 px-4 text-right">{weeklyPLChartData.reduce((s, w) => s + w.miles, 0).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right text-green-600">{formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.revenue, 0))}</td>
-                  <td className="py-3 px-4 text-right text-red-600">{formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.expenses, 0))}</td>
-                  <td className={cn(
-                    "py-3 px-4 text-right",
-                    weeklyPLChartData.reduce((s, w) => s + w.profit, 0) >= 0 ? "text-emerald-600" : "text-red-600"
-                  )}>
-                    {formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.profit, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    {(() => {
-                      const totalRev = weeklyPLChartData.reduce((s, w) => s + w.revenue, 0);
-                      const totalProfit = weeklyPLChartData.reduce((s, w) => s + w.profit, 0);
-                      return totalRev > 0 ? `${((totalProfit / totalRev) * 100).toFixed(1)}%` : '0%';
-                    })()}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
+
+        {/* Period Selector */}
+        <div className="px-3 py-1.5 flex items-center gap-1.5 border-b bg-card flex-wrap">
+          <span className="text-sm font-medium mr-2">Period</span>
+          <div className="flex">
+            {(() => {
+              const now = new Date();
+              const months = [
+                { label: "This Month", date: now },
+                { label: format(subMonths(now, 1), "MMM"), date: subMonths(now, 1) },
+                { label: format(subMonths(now, 2), "MMM"), date: subMonths(now, 2) },
+                { label: format(subMonths(now, 3), "MMM"), date: subMonths(now, 3) },
+                { label: format(subMonths(now, 4), "MMM"), date: subMonths(now, 4) },
+                { label: format(subMonths(now, 5), "MMM"), date: subMonths(now, 5) },
+              ];
+              return months.map((m, idx) => {
+                const monthValue = format(m.date, "yyyy-MM");
+                const isActive = selectedMonth === monthValue;
+                const isFirst = idx === 0;
+                return (
+                  <Button
+                    key={idx}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-7 px-3 text-xs !rounded-none border-0",
+                      isFirst && "!rounded-l-full",
+                      isActive ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                    )}
+                    onClick={() => setSelectedMonth(monthValue)}
+                  >
+                    {m.label}
+                  </Button>
+                );
+              });
+            })()}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={!["This Month", ...Array.from({length: 5}, (_, i) => format(subMonths(new Date(), i + 1), "MMM"))].some((_, idx) => {
+                    const now = new Date();
+                    const monthsToCheck = [now, ...Array.from({length: 5}, (_, i) => subMonths(now, i + 1))];
+                    return format(monthsToCheck[idx] || now, "yyyy-MM") === selectedMonth;
+                  }) ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "h-7 px-3 text-xs gap-1 !rounded-none !rounded-r-full border-0",
+                    !["This Month", ...Array.from({length: 5}, (_, i) => format(subMonths(new Date(), i + 1), "MMM"))].some((_, idx) => {
+                      const now = new Date();
+                      const monthsToCheck = [now, ...Array.from({length: 5}, (_, i) => subMonths(now, i + 1))];
+                      return format(monthsToCheck[idx] || now, "yyyy-MM") === selectedMonth;
+                    }) ? "btn-glossy-primary text-white" : "btn-glossy text-gray-700"
+                  )}
+                >
+                  <CalendarIcon className="h-3 w-3" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={new Date(selectedMonth + "-01")}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedMonth(format(date, "yyyy-MM"));
+                    }
+                  }}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
-        </CardContent>
-      </Card>
+          
+          {selectedVehicle && (
+            <span className="text-sm text-muted-foreground ml-4">
+              Vehicle: {selectedVehicle.vehicle_number} | Carrier: {selectedVehicle.carrierName || "N/A"}
+            </span>
+          )}
+        </div>
+
+        {/* P&L Charts Content */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="space-y-6">
+            {/* Header with vehicle info */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  Profit & Loss Analysis
+                </h2>
+                <p className="text-muted-foreground">
+                  {selectedVehicle ? `Vehicle ${selectedVehicle.vehicle_number}` : 'No vehicle selected'} 
+                  {selectedVehicle?.carrierName && ` • ${selectedVehicle.carrierName}`}
+                  {' • '}{format(new Date(selectedMonth + '-01'), 'MMMM yyyy')}
+                </p>
+              </div>
+              
+              {/* Summary Cards */}
+              <div className="flex gap-4 flex-wrap">
+                <Card className="bg-green-500/10 border-green-500/30">
+                  <CardContent className="p-4">
+                    <div className="text-sm text-green-600 dark:text-green-400">Total Revenue</div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.revenue, 0))}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-red-500/10 border-red-500/30">
+                  <CardContent className="p-4">
+                    <div className="text-sm text-red-600 dark:text-red-400">Total Expenses</div>
+                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.expenses, 0))}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className={cn(
+                  "border",
+                  totals.netProfit >= 0 
+                    ? "bg-emerald-500/10 border-emerald-500/30" 
+                    : "bg-red-500/10 border-red-500/30"
+                )}>
+                  <CardContent className="p-4">
+                    <div className={cn(
+                      "text-sm",
+                      totals.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    )}>Net Profit</div>
+                    <div className={cn(
+                      "text-2xl font-bold",
+                      totals.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    )}>
+                      {formatCurrency(weeklyPLChartData.reduce((sum, w) => sum + w.profit, 0))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Main Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Revenue vs Expenses</CardTitle>
+                <CardDescription>
+                  Breakdown of revenue, expenses, and net profit by week
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {weeklyPLChartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-80 text-muted-foreground">
+                    <div className="text-center">
+                      <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No data available for this period</p>
+                      <p className="text-sm">Select a vehicle and time period with loads</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={weeklyPLChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0.2} />
+                          </linearGradient>
+                          <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="weekLabel" 
+                          tick={{ fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                          }}
+                          formatter={(value: number, name: string) => [
+                            formatCurrency(value),
+                            name === 'revenue' ? '💰 Revenue' : name === 'expenses' ? '💸 Expenses' : '📊 Net Profit'
+                          ]}
+                          labelFormatter={(label) => `📅 ${label}`}
+                        />
+                        <Legend 
+                          verticalAlign="top" 
+                          height={36}
+                          formatter={(value) => value === 'revenue' ? 'Revenue' : value === 'expenses' ? 'Expenses' : 'Net Profit'}
+                        />
+                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+                        <Bar dataKey="revenue" name="revenue" fill="url(#revenueGradient)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="expenses" name="expenses" fill="url(#expenseGradient)" radius={[4, 4, 0, 0]} />
+                        <Line 
+                          type="monotone" 
+                          dataKey="profit" 
+                          name="profit" 
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={3}
+                          dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 5 }}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Profit/Loss Breakdown by Week */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Profit/Loss Breakdown</CardTitle>
+                <CardDescription>
+                  Detailed view of each week's financial performance
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {weeklyPLChartData.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No data available</p>
+                ) : (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={weeklyPLChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="weekLabel" 
+                          tick={{ fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `$${value.toLocaleString()}`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: number) => [formatCurrency(value), 'Net Profit/Loss']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={2} />
+                        <Bar dataKey="profit" name="Net Profit/Loss" radius={[4, 4, 4, 4]}>
+                          {weeklyPLChartData.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.profit >= 0 ? '#22c55e' : '#ef4444'} 
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Weekly Details Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Week</th>
+                        <th className="text-right py-3 px-4 font-medium">Loads</th>
+                        <th className="text-right py-3 px-4 font-medium">Miles</th>
+                        <th className="text-right py-3 px-4 font-medium text-green-600">Revenue</th>
+                        <th className="text-right py-3 px-4 font-medium text-red-600">Expenses</th>
+                        <th className="text-right py-3 px-4 font-medium">Net P&L</th>
+                        <th className="text-right py-3 px-4 font-medium">Margin</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {weeklyPLChartData.map((week, index) => {
+                        const margin = week.revenue > 0 ? (week.profit / week.revenue) * 100 : 0;
+                        return (
+                          <tr key={index} className="border-b hover:bg-muted/50">
+                            <td className="py-3 px-4 font-medium">{week.weekLabel}</td>
+                            <td className="py-3 px-4 text-right">{week.loads}</td>
+                            <td className="py-3 px-4 text-right">{week.miles.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right text-green-600">{formatCurrency(week.revenue)}</td>
+                            <td className="py-3 px-4 text-right text-red-600">{formatCurrency(week.expenses)}</td>
+                            <td className={cn(
+                              "py-3 px-4 text-right font-bold",
+                              week.profit >= 0 ? "text-emerald-600" : "text-red-600"
+                            )}>
+                              {formatCurrency(week.profit)}
+                            </td>
+                            <td className={cn(
+                              "py-3 px-4 text-right",
+                              margin >= 0 ? "text-emerald-600" : "text-red-600"
+                            )}>
+                              {margin.toFixed(1)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Totals Row */}
+                      <tr className="bg-muted/50 font-bold">
+                        <td className="py-3 px-4">Total</td>
+                        <td className="py-3 px-4 text-right">{weeklyPLChartData.reduce((s, w) => s + w.loads, 0)}</td>
+                        <td className="py-3 px-4 text-right">{weeklyPLChartData.reduce((s, w) => s + w.miles, 0).toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right text-green-600">{formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.revenue, 0))}</td>
+                        <td className="py-3 px-4 text-right text-red-600">{formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.expenses, 0))}</td>
+                        <td className={cn(
+                          "py-3 px-4 text-right",
+                          weeklyPLChartData.reduce((s, w) => s + w.profit, 0) >= 0 ? "text-emerald-600" : "text-red-600"
+                        )}>
+                          {formatCurrency(weeklyPLChartData.reduce((s, w) => s + w.profit, 0))}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {(() => {
+                            const totalRev = weeklyPLChartData.reduce((s, w) => s + w.revenue, 0);
+                            const totalProfit = weeklyPLChartData.reduce((s, w) => s + w.profit, 0);
+                            return totalRev > 0 ? `${((totalProfit / totalRev) * 100).toFixed(1)}%` : '0%';
+                          })()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   </TabsContent>
 </Tabs>
