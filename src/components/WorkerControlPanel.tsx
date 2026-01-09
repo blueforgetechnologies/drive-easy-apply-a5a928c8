@@ -265,6 +265,15 @@ export function WorkerControlPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Instructions */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>📋 Instructions:</strong> Use <strong>Enabled</strong> to completely turn workers on/off. 
+              Use <strong>Paused</strong> for temporary maintenance without losing the "enabled" state. 
+              When paused, workers stay running but don't claim new items.
+            </p>
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base">Workers Enabled</Label>
@@ -305,6 +314,14 @@ export function WorkerControlPanel() {
               />
             </div>
           </div>
+
+          {/* Recommended Settings */}
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-4">
+            <p className="text-sm text-green-700 dark:text-green-300">
+              <strong>✅ Recommended:</strong> Keep workers <strong>enabled</strong> and <strong>not paused</strong> for normal operation. 
+              Only pause when you need to perform database maintenance or debug issues.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -320,11 +337,19 @@ export function WorkerControlPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          {/* Instructions */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>📋 Instructions:</strong> Balance speed vs API rate limits. Higher values = faster processing but more likely to hit rate limits. 
+              If you see 429 errors, reduce batch size and increase delays.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Batch Size</Label>
               <p className="text-xs text-muted-foreground">
-                Items claimed per worker per cycle
+                Number of queue items claimed per worker per cycle. Larger batches mean fewer database round-trips but longer processing time per cycle.
               </p>
               <div className="flex items-center gap-4">
                 <Slider
@@ -344,12 +369,15 @@ export function WorkerControlPanel() {
                   max={50}
                 />
               </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💡 Recommended: <strong>5-15</strong> for Gmail API. Current: {config.batch_size} {config.batch_size >= 5 && config.batch_size <= 15 ? "✓" : "⚠️"}
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label>Concurrent Limit</Label>
               <p className="text-xs text-muted-foreground">
-                Max simultaneous requests per batch
+                Max parallel API requests within a batch. Higher = faster but more aggressive on rate limits.
               </p>
               <div className="flex items-center gap-4">
                 <Slider
@@ -369,14 +397,17 @@ export function WorkerControlPanel() {
                   max={10}
                 />
               </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💡 Recommended: <strong>2-3</strong> for Gmail API. Current: {config.concurrent_limit} {config.concurrent_limit >= 2 && config.concurrent_limit <= 3 ? "✓" : "⚠️"}
+              </p>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Loop Interval (ms)</Label>
               <p className="text-xs text-muted-foreground">
-                Time between queue checks
+                Time between queue checks when idle. Shorter = more responsive, but more database queries. Doesn't affect speed when queue has items.
               </p>
               <Input
                 type="number"
@@ -385,12 +416,15 @@ export function WorkerControlPanel() {
                 min={1000}
                 max={60000}
               />
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💡 Recommended: <strong>3000-5000ms</strong> (3-5 seconds). Current: {config.loop_interval_ms}ms {config.loop_interval_ms >= 3000 && config.loop_interval_ms <= 5000 ? "✓" : "⚠️"}
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label>Per-Request Delay (ms)</Label>
               <p className="text-xs text-muted-foreground">
-                Delay between individual API calls (prevents rate limits)
+                Delay added between each API call. Helps prevent bursts that trigger rate limits. 0 = no delay.
               </p>
               <Input
                 type="number"
@@ -399,13 +433,16 @@ export function WorkerControlPanel() {
                 min={0}
                 max={5000}
               />
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💡 Recommended: <strong>100-200ms</strong> for Gmail API. Current: {config.per_request_delay_ms}ms {config.per_request_delay_ms >= 100 && config.per_request_delay_ms <= 200 ? "✓" : "⚠️"}
+              </p>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>Max Retries</Label>
             <p className="text-xs text-muted-foreground">
-              Retry attempts before marking as failed
+              How many times to retry a failed item before marking it as permanently failed. Includes transient errors like network timeouts.
             </p>
             <Input
               type="number"
@@ -415,6 +452,23 @@ export function WorkerControlPanel() {
               max={10}
               className="w-32"
             />
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              💡 Recommended: <strong>3-5</strong>. Current: {config.max_retries} {config.max_retries >= 3 && config.max_retries <= 5 ? "✓" : "⚠️"}
+            </p>
+          </div>
+
+          {/* Recommended Settings Summary */}
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+            <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+              <strong>✅ Recommended Settings for Gmail API:</strong>
+            </p>
+            <ul className="text-sm text-green-700 dark:text-green-300 list-disc list-inside space-y-1">
+              <li>Batch Size: <strong>10</strong> (balances efficiency and rate limits)</li>
+              <li>Concurrent Limit: <strong>2</strong> (prevents overwhelming the API)</li>
+              <li>Loop Interval: <strong>5000ms</strong> (good responsiveness without hammering DB)</li>
+              <li>Per-Request Delay: <strong>100ms</strong> (spreads out requests to avoid bursts)</li>
+              <li>Max Retries: <strong>3</strong> (handles transient failures without infinite loops)</li>
+            </ul>
           </div>
         </CardContent>
       </Card>
@@ -431,11 +485,19 @@ export function WorkerControlPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Instructions */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>📋 Instructions:</strong> When enabled, workers will automatically pause when they receive a 429 "Too Many Requests" error from Gmail or other APIs. 
+              This prevents wasting requests and allows the rate limit window to reset.
+            </p>
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base">Backoff on 429</Label>
               <p className="text-sm text-muted-foreground">
-                Pause processing when rate limited
+                Automatically pause all workers when rate limited
               </p>
             </div>
             <Switch
@@ -448,7 +510,7 @@ export function WorkerControlPanel() {
             <div className="space-y-2">
               <Label>Backoff Duration (ms)</Label>
               <p className="text-xs text-muted-foreground">
-                How long to wait after hitting a rate limit
+                How long to wait after hitting a rate limit before resuming. Gmail's rate limit window is typically 60 seconds.
               </p>
               <Input
                 type="number"
@@ -459,27 +521,46 @@ export function WorkerControlPanel() {
                 className="w-40"
               />
               <p className="text-xs text-muted-foreground">
-                Current: {(config.backoff_duration_ms / 1000).toFixed(0)} seconds
+                Current: {(config.backoff_duration_ms / 1000).toFixed(0)} seconds ({(config.backoff_duration_ms / 60000).toFixed(1)} minutes)
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💡 Recommended: <strong>30000-60000ms</strong> (30-60 seconds). Current: {config.backoff_duration_ms}ms {config.backoff_duration_ms >= 30000 && config.backoff_duration_ms <= 60000 ? "✓" : "⚠️"}
               </p>
             </div>
           )}
+
+          {/* Recommended Settings */}
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+            <p className="text-sm text-green-700 dark:text-green-300">
+              <strong>✅ Recommended:</strong> Keep backoff <strong>enabled</strong> with a duration of <strong>30-60 seconds</strong>. 
+              This matches Gmail's typical rate limit reset window and prevents cascading failures.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       {/* Notes */}
       <Card>
         <CardHeader>
-          <CardTitle>Notes</CardTitle>
+          <CardTitle>Configuration Notes</CardTitle>
           <CardDescription>
-            Add notes about current configuration
+            Document why settings were changed for future reference
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Instructions */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>📋 Instructions:</strong> Use this space to document configuration changes. 
+              Include the date, reason, and any observed results. This helps you remember why settings were adjusted.
+            </p>
+          </div>
+
           <Textarea
             value={config.notes || ""}
             onChange={(e) => updateConfig({ notes: e.target.value })}
-            placeholder="e.g., Reduced batch size due to Gmail rate limiting issues..."
-            rows={3}
+            placeholder="e.g., 2024-01-09: Reduced batch size from 20 to 10 due to Gmail rate limiting. Also increased backoff to 60s. Will monitor for 24h..."
+            rows={4}
           />
           {config.updated_at && (
             <p className="text-xs text-muted-foreground mt-2">
@@ -490,13 +571,42 @@ export function WorkerControlPanel() {
         </CardContent>
       </Card>
 
-      {/* Worker Info */}
+      {/* Worker Info & Troubleshooting */}
       <Card className="bg-muted/50">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">
-            <strong>How it works:</strong> Your Docker workers read this configuration from the database 
-            every loop cycle. Changes take effect within a few seconds without needing to restart the workers.
-          </p>
+        <CardHeader>
+          <CardTitle className="text-base">ℹ️ How Workers Work</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              <strong>Configuration Updates:</strong> Workers read this configuration from the database 
+              every loop cycle. Changes take effect within a few seconds without restarting workers.
+            </p>
+            <p>
+              <strong>Multiple Workers:</strong> If you run multiple Docker containers, they all share this config 
+              and coordinate via the database to avoid processing the same items.
+            </p>
+          </div>
+          
+          <Separator />
+          
+          <div className="text-sm">
+            <p className="font-medium mb-2">🔧 Troubleshooting Guide:</p>
+            <ul className="space-y-2 text-muted-foreground">
+              <li>
+                <strong>Seeing 429 errors?</strong> Reduce batch size to 5-10, increase per-request delay to 200ms, enable backoff
+              </li>
+              <li>
+                <strong>Processing too slow?</strong> Increase batch size (max 20), increase concurrent limit to 3, reduce loop interval
+              </li>
+              <li>
+                <strong>Items stuck in "processing"?</strong> Worker may have crashed. Items auto-reset after 5 minutes
+              </li>
+              <li>
+                <strong>High failure rate?</strong> Check if API credentials are valid, increase max retries to 5
+              </li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>
