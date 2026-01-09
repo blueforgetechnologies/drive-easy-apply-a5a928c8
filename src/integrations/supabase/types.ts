@@ -5394,6 +5394,48 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_heartbeats: {
+        Row: {
+          created_at: string
+          current_batch_size: number | null
+          emails_failed: number
+          emails_sent: number
+          error_message: string | null
+          host_info: Json | null
+          id: string
+          last_heartbeat: string
+          loops_completed: number
+          rate_limit_until: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          current_batch_size?: number | null
+          emails_failed?: number
+          emails_sent?: number
+          error_message?: string | null
+          host_info?: Json | null
+          id: string
+          last_heartbeat?: string
+          loops_completed?: number
+          rate_limit_until?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          current_batch_size?: number | null
+          emails_failed?: number
+          emails_sent?: number
+          error_message?: string | null
+          host_info?: Json | null
+          id?: string
+          last_heartbeat?: string
+          loops_completed?: number
+          rate_limit_until?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       unreviewed_matches: {
@@ -5453,6 +5495,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      worker_health_status: {
+        Row: {
+          connection_status: string | null
+          current_batch_size: number | null
+          emails_failed: number | null
+          emails_sent: number | null
+          error_message: string | null
+          last_heartbeat: string | null
+          loops_completed: number | null
+          rate_limit_until: string | null
+          seconds_since_heartbeat: number | null
+          status: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          connection_status?: never
+          current_batch_size?: number | null
+          emails_failed?: number | null
+          emails_sent?: number | null
+          error_message?: string | null
+          last_heartbeat?: string | null
+          loops_completed?: number | null
+          rate_limit_until?: string | null
+          seconds_since_heartbeat?: never
+          status?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          connection_status?: never
+          current_batch_size?: number | null
+          emails_failed?: number | null
+          emails_sent?: number | null
+          error_message?: string | null
+          last_heartbeat?: string | null
+          loops_completed?: number | null
+          rate_limit_until?: string | null
+          seconds_since_heartbeat?: never
+          status?: string | null
+          worker_id?: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -5577,6 +5661,20 @@ export type Database = {
       }
       is_user_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       reset_stale_email_queue: { Args: never; Returns: number }
+      worker_heartbeat: {
+        Args: {
+          p_current_batch_size?: number
+          p_emails_failed?: number
+          p_emails_sent?: number
+          p_error_message?: string
+          p_host_info?: Json
+          p_loops_completed?: number
+          p_rate_limit_until?: string
+          p_status?: string
+          p_worker_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "dispatcher" | "driver"
