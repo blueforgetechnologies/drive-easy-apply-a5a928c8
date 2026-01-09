@@ -2061,6 +2061,7 @@ export type Database = {
           assigned_load_id: string | null
           body_html: string | null
           body_text: string | null
+          content_hash: string | null
           created_at: string
           email_id: string
           email_source: string
@@ -2069,9 +2070,11 @@ export type Database = {
           from_name: string | null
           has_issues: boolean | null
           id: string
+          is_update: boolean | null
           issue_notes: string | null
           load_id: string | null
           marked_missed_at: string | null
+          parent_email_id: string | null
           parsed_data: Json | null
           raw_payload_url: string | null
           received_at: string
@@ -2085,6 +2088,7 @@ export type Database = {
           assigned_load_id?: string | null
           body_html?: string | null
           body_text?: string | null
+          content_hash?: string | null
           created_at?: string
           email_id: string
           email_source?: string
@@ -2093,9 +2097,11 @@ export type Database = {
           from_name?: string | null
           has_issues?: boolean | null
           id?: string
+          is_update?: boolean | null
           issue_notes?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
+          parent_email_id?: string | null
           parsed_data?: Json | null
           raw_payload_url?: string | null
           received_at: string
@@ -2109,6 +2115,7 @@ export type Database = {
           assigned_load_id?: string | null
           body_html?: string | null
           body_text?: string | null
+          content_hash?: string | null
           created_at?: string
           email_id?: string
           email_source?: string
@@ -2117,9 +2124,11 @@ export type Database = {
           from_name?: string | null
           has_issues?: boolean | null
           id?: string
+          is_update?: boolean | null
           issue_notes?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
+          parent_email_id?: string | null
           parsed_data?: Json | null
           raw_payload_url?: string | null
           received_at?: string
@@ -2135,6 +2144,13 @@ export type Database = {
             columns: ["assigned_load_id"]
             isOneToOne: false
             referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_emails_parent_email_id_fkey"
+            columns: ["parent_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
             referencedColumns: ["id"]
           },
           {
