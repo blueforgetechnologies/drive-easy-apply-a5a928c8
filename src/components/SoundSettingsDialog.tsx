@@ -109,81 +109,9 @@ export function SoundSettingsDialog({ onSettingsChange, trigger }: SoundSettings
     saveSettings({ ...localSettings, volume: value[0] / 100 });
   };
 
-  const previewSound = async (soundId: string) => {
-    const option = SOUND_OPTIONS.find(o => o.id === soundId);
-    if (!option) return;
-
-    ensureCacheRef();
-
-    if (aiSoundsUnavailableRef.current) {
-      playFallbackPreview();
-      return;
-    }
-
-    // Check cache first
-    const cachedUrl = soundCacheRef.current.get(soundId);
-    if (cachedUrl) {
-      const audio = new Audio(cachedUrl);
-      audio.volume = localSettings.volume;
-      await audio.play();
-      await audio.play();
-      return;
-    }
-
-    setIsGenerating(soundId);
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-sfx`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            prompt: option.prompt,
-            duration: 1,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
-
-        const providerBlocked =
-          response.status === 401 ||
-          response.status === 403 ||
-          (response.status === 500 &&
-            (errorText.includes('ElevenLabs API error: 401') ||
-              errorText.includes('detected_unusual_activity')));
-
-        if (providerBlocked) {
-          aiSoundsUnavailableRef.current = true;
-          if (!aiSoundsUnavailableToastShownRef.current) {
-            aiSoundsUnavailableToastShownRef.current = true;
-            toast.error('AI sound provider blocked — preview will use a fallback beep.');
-          }
-        }
-
-        throw new Error(`Failed to generate sound: ${response.status} ${errorText}`);
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      // Cache it
-      soundCacheRef.current.set(soundId, audioUrl);
-
-      const audio = new Audio(audioUrl);
-      audio.volume = localSettings.volume;
-      await audio.play();
-    } catch (error) {
-      console.error('Error previewing sound:', error);
-      playFallbackPreview();
-    } finally {
-      setIsGenerating(null);
-    }
+  const previewSound = async (_soundId: string) => {
+    // ElevenLabs disabled - always use fallback beep
+    playFallbackPreview();
   };
 
   return (
