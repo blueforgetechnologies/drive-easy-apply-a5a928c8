@@ -25,7 +25,11 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
-  BarChart3
+  BarChart3,
+  Heart,
+  Wifi,
+  WifiOff,
+  Server
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from "recharts";
 
@@ -63,6 +67,20 @@ interface VolumeDataPoint {
   matches: number;
 }
 
+interface WorkerHealth {
+  worker_id: string;
+  last_heartbeat: string;
+  status: string;
+  emails_sent: number;
+  emails_failed: number;
+  loops_completed: number;
+  current_batch_size: number | null;
+  rate_limit_until: string | null;
+  error_message: string | null;
+  connection_status: 'online' | 'stale' | 'offline';
+  seconds_since_heartbeat: number;
+}
+
 export function WorkerControlPanel() {
   const [config, setConfig] = useState<WorkerConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +91,9 @@ export function WorkerControlPanel() {
   const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
   const [chartOpen, setChartOpen] = useState(true);
   const [loadingChart, setLoadingChart] = useState(true);
+  const [workerHealth, setWorkerHealth] = useState<WorkerHealth[]>([]);
+  const [previousHealth, setPreviousHealth] = useState<WorkerHealth[]>([]);
+  const [healthOpen, setHealthOpen] = useState(true);
   const loadConfig = async () => {
     try {
       const { data, error } = await supabase
@@ -167,15 +188,93 @@ export function WorkerControlPanel() {
     }
   };
 
+  const loadWorkerHealth = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("worker_heartbeats")
+        .select("*")
+        .order("last_heartbeat", { ascending: false });
+
+      if (error) throw error;
+
+      const healthData: WorkerHealth[] = (data || []).map((row) => {
+        const secondsSince = (Date.now() - new Date(row.last_heartbeat).getTime()) / 1000;
+        let connectionStatus: 'online' | 'stale' | 'offline' = 'offline';
+        if (secondsSince < 120) connectionStatus = 'online';
+        else if (secondsSince < 300) connectionStatus = 'stale';
+        
+        return {
+          worker_id: row.id,
+          last_heartbeat: row.last_heartbeat,
+          status: row.status,
+          emails_sent: row.emails_sent,
+          emails_failed: row.emails_failed,
+          loops_completed: row.loops_completed,
+          current_batch_size: row.current_batch_size,
+          rate_limit_until: row.rate_limit_until,
+          error_message: row.error_message,
+          connection_status: connectionStatus,
+          seconds_since_heartbeat: secondsSince,
+        };
+      });
+
+      // Check for status changes and show notifications
+      if (previousHealth.length > 0) {
+        healthData.forEach((worker) => {
+          const prev = previousHealth.find(p => p.worker_id === worker.worker_id);
+          if (prev) {
+            // Worker went offline
+            if (prev.connection_status !== 'offline' && worker.connection_status === 'offline') {
+              toast.error(`🚨 Worker ${worker.worker_id} is OFFLINE!`, {
+                description: `Last seen ${Math.floor(worker.seconds_since_heartbeat / 60)} minutes ago`,
+                duration: 10000,
+              });
+            }
+            // Worker came back online
+            if (prev.connection_status === 'offline' && worker.connection_status === 'online') {
+              toast.success(`✅ Worker ${worker.worker_id} is back ONLINE!`, {
+                duration: 5000,
+              });
+            }
+            // Worker hit rate limit
+            if (!prev.rate_limit_until && worker.rate_limit_until) {
+              toast.warning(`⚠️ Worker ${worker.worker_id} hit rate limit!`, {
+                description: `Backing off until ${new Date(worker.rate_limit_until).toLocaleTimeString()}`,
+                duration: 8000,
+              });
+            }
+          }
+        });
+        
+        // Check for new workers
+        healthData.forEach((worker) => {
+          const prev = previousHealth.find(p => p.worker_id === worker.worker_id);
+          if (!prev && worker.connection_status === 'online') {
+            toast.success(`🆕 New worker ${worker.worker_id} connected!`, {
+              duration: 5000,
+            });
+          }
+        });
+      }
+
+      setPreviousHealth(healthData);
+      setWorkerHealth(healthData);
+    } catch (error) {
+      console.error("Error loading worker health:", error);
+    }
+  };
+
   useEffect(() => {
     loadConfig();
     loadQueueStats();
     loadVolumeData();
+    loadWorkerHealth();
     
     // Refresh stats every 30 seconds
     const interval = setInterval(() => {
       loadQueueStats();
       loadVolumeData();
+      loadWorkerHealth();
     }, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -351,6 +450,191 @@ export function WorkerControlPanel() {
           </Card>
         </div>
       )}
+
+      {/* Worker Health Status - Collapsible */}
+      <Collapsible open={healthOpen} onOpenChange={setHealthOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      Worker Health Status
+                      {workerHealth.length > 0 && (
+                        <Badge 
+                          variant="outline" 
+                          className={
+                            workerHealth.every(w => w.connection_status === 'online') 
+                              ? "bg-green-500/10 text-green-600 border-green-500/30"
+                              : workerHealth.some(w => w.connection_status === 'offline')
+                              ? "bg-red-500/10 text-red-600 border-red-500/30"
+                              : "bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
+                          }
+                        >
+                          {workerHealth.filter(w => w.connection_status === 'online').length}/{workerHealth.length} Online
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Real-time health monitoring of your Docker workers
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {healthOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              {workerHealth.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Server className="h-12 w-12 mb-2 opacity-50" />
+                  <p className="font-medium">No workers detected</p>
+                  <p className="text-sm">Workers will appear here once they start sending heartbeats</p>
+                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg max-w-md">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>💡 Tip:</strong> Make sure your Docker workers are running and have the latest code that includes heartbeat reporting.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Worker Cards */}
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {workerHealth.map((worker) => (
+                      <Card 
+                        key={worker.worker_id} 
+                        className={`border-2 ${
+                          worker.connection_status === 'online' 
+                            ? 'border-green-500/30 bg-green-500/5' 
+                            : worker.connection_status === 'stale'
+                            ? 'border-yellow-500/30 bg-yellow-500/5'
+                            : 'border-red-500/30 bg-red-500/5'
+                        }`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              {worker.connection_status === 'online' ? (
+                                <Wifi className="h-5 w-5 text-green-500" />
+                              ) : worker.connection_status === 'stale' ? (
+                                <Wifi className="h-5 w-5 text-yellow-500" />
+                              ) : (
+                                <WifiOff className="h-5 w-5 text-red-500" />
+                              )}
+                              <span className="font-semibold">{worker.worker_id}</span>
+                            </div>
+                            <Badge 
+                              variant={worker.connection_status === 'online' ? 'default' : 'destructive'}
+                              className={
+                                worker.connection_status === 'online' 
+                                  ? 'bg-green-500' 
+                                  : worker.connection_status === 'stale'
+                                  ? 'bg-yellow-500'
+                                  : 'bg-red-500'
+                              }
+                            >
+                              {worker.connection_status.toUpperCase()}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Last Heartbeat:</span>
+                              <span className={worker.connection_status === 'offline' ? 'text-red-500 font-medium' : ''}>
+                                {worker.seconds_since_heartbeat < 60 
+                                  ? `${Math.floor(worker.seconds_since_heartbeat)}s ago`
+                                  : worker.seconds_since_heartbeat < 3600
+                                  ? `${Math.floor(worker.seconds_since_heartbeat / 60)}m ago`
+                                  : `${Math.floor(worker.seconds_since_heartbeat / 3600)}h ago`
+                                }
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Status:</span>
+                              <span className={worker.status === 'healthy' ? 'text-green-600' : 'text-yellow-600'}>
+                                {worker.status}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Emails Sent:</span>
+                              <span className="font-medium">{worker.emails_sent.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Emails Failed:</span>
+                              <span className={worker.emails_failed > 0 ? 'text-red-500' : ''}>
+                                {worker.emails_failed.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Loop Count:</span>
+                              <span>{worker.loops_completed.toLocaleString()}</span>
+                            </div>
+                            {worker.rate_limit_until && new Date(worker.rate_limit_until) > new Date() && (
+                              <div className="mt-2 p-2 bg-yellow-500/20 rounded text-yellow-700 dark:text-yellow-300 text-xs">
+                                ⚠️ Rate limited until {new Date(worker.rate_limit_until).toLocaleTimeString()}
+                              </div>
+                            )}
+                            {worker.error_message && (
+                              <div className="mt-2 p-2 bg-red-500/20 rounded text-red-700 dark:text-red-300 text-xs">
+                                ❌ {worker.error_message}
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Health Legend */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mt-1 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">Online</p>
+                        <p className="text-xs text-muted-foreground">
+                          Worker heartbeat received within the last 2 minutes. Worker is healthy and processing.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500 mt-1 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">Stale</p>
+                        <p className="text-xs text-muted-foreground">
+                          Last heartbeat 2-5 minutes ago. Worker may be busy or experiencing issues.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-red-500 mt-1 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">Offline</p>
+                        <p className="text-xs text-muted-foreground">
+                          No heartbeat for 5+ minutes. Worker has likely crashed or been stopped.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notification Info */}
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>🔔 Notifications:</strong> You'll receive pop-up alerts when workers go offline, come back online, or hit rate limits. 
+                      Keep this page open to monitor worker health in real-time.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Email Volume Chart - Collapsible */}
       <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
