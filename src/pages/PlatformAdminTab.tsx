@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,10 @@ import {
   BarChart3,
   ShieldCheck,
   Copy,
-  Eye
+  Eye,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -126,6 +129,63 @@ export default function PlatformAdminTab() {
   const [editRateLimitMinute, setEditRateLimitMinute] = useState(60);
   const [editRateLimitDay, setEditRateLimitDay] = useState(10000);
   const [editGmailAlias, setEditGmailAlias] = useState("");
+  
+  // Alias validation state
+  const [aliasValidation, setAliasValidation] = useState<{
+    checking: boolean;
+    valid: boolean | null;
+    message: string;
+  }>({ checking: false, valid: null, message: "" });
+
+  // Debounced alias validation
+  const checkAliasAvailability = useCallback(async (alias: string) => {
+    if (!alias || alias.length < 2) {
+      setAliasValidation({ checking: false, valid: null, message: "" });
+      return;
+    }
+
+    setAliasValidation({ checking: true, valid: null, message: "Checking availability..." });
+
+    try {
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("id, name")
+        .eq("gmail_alias", alias)
+        .maybeSingle();
+
+      if (error) {
+        setAliasValidation({ checking: false, valid: null, message: "Error checking" });
+        return;
+      }
+
+      if (data) {
+        setAliasValidation({ 
+          checking: false, 
+          valid: false, 
+          message: `Already used by: ${data.name}` 
+        });
+      } else {
+        setAliasValidation({ 
+          checking: false, 
+          valid: true, 
+          message: "Available!" 
+        });
+      }
+    } catch (err) {
+      setAliasValidation({ checking: false, valid: null, message: "Error checking" });
+    }
+  }, []);
+
+  // Effect to debounce alias validation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (newTenantGmailAlias) {
+        checkAliasAvailability(newTenantGmailAlias);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [newTenantGmailAlias, checkAliasAvailability]);
 
   // Handle impersonation start
   const handleStartImpersonation = async () => {
@@ -307,6 +367,12 @@ export default function PlatformAdminTab() {
       return;
     }
 
+    // Check if alias validation shows it's taken
+    if (aliasValidation.valid === false) {
+      toast.error("This Gmail alias is already in use. Please choose a different one.");
+      return;
+    }
+
     const slug = newTenantSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
     // Generate gmail_alias from carrier name + MC number
     const sanitizedName = newTenantName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -327,6 +393,7 @@ export default function PlatformAdminTab() {
     if (error) {
       if (error.message.includes("tenants_gmail_alias_unique")) {
         toast.error("This Gmail alias is already in use by another tenant");
+        setAliasValidation({ checking: false, valid: false, message: "Already taken" });
       } else {
         toast.error(`Failed to create tenant: ${error.message}`);
       }
@@ -339,6 +406,7 @@ export default function PlatformAdminTab() {
     setNewTenantSlug("");
     setNewTenantGmailAlias("");
     setNewTenantMcNumber("");
+    setAliasValidation({ checking: false, valid: null, message: "" });
     await loadTenants();
   };
 
@@ -750,12 +818,24 @@ export default function PlatformAdminTab() {
                 <div>
                   <Label htmlFor="tenant-gmail-alias">Generated Email Alias</Label>
                   <div className="flex items-center gap-2">
-                    <Input 
-                      id="tenant-gmail-alias"
-                      value={newTenantGmailAlias}
-                      onChange={(e) => setNewTenantGmailAlias(e.target.value)}
-                      placeholder="+courierexpress123456"
-                    />
+                    <div className="relative flex-1">
+                      <Input 
+                        id="tenant-gmail-alias"
+                        value={newTenantGmailAlias}
+                        onChange={(e) => setNewTenantGmailAlias(e.target.value)}
+                        placeholder="+courierexpress123456"
+                        className={aliasValidation.valid === false ? "border-red-500 pr-10" : aliasValidation.valid === true ? "border-green-500 pr-10" : ""}
+                      />
+                      {aliasValidation.checking && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      {!aliasValidation.checking && aliasValidation.valid === true && (
+                        <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                      )}
+                      {!aliasValidation.checking && aliasValidation.valid === false && (
+                        <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                      )}
+                    </div>
                     <Button
                       type="button"
                       variant="outline"
@@ -769,6 +849,18 @@ export default function PlatformAdminTab() {
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
+                  
+                  {/* Validation Status Message */}
+                  {aliasValidation.message && (
+                    <p className={`text-xs mt-1 ${
+                      aliasValidation.valid === false ? "text-red-500" : 
+                      aliasValidation.valid === true ? "text-green-500" : 
+                      "text-muted-foreground"
+                    }`}>
+                      {aliasValidation.message}
+                    </p>
+                  )}
+                  
                   <div className="mt-2 p-2 bg-muted rounded-md">
                     <p className="text-xs font-medium">Full Email Address:</p>
                     <code className="text-xs text-primary">
@@ -778,11 +870,24 @@ export default function PlatformAdminTab() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowCreateTenant(false)}>
+                <Button variant="outline" onClick={() => {
+                  setShowCreateTenant(false);
+                  setAliasValidation({ checking: false, valid: null, message: "" });
+                }}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreateTenant}>
-                  Create Tenant
+                <Button 
+                  onClick={handleCreateTenant}
+                  disabled={aliasValidation.checking || aliasValidation.valid === false}
+                >
+                  {aliasValidation.checking ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    "Create Tenant"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
