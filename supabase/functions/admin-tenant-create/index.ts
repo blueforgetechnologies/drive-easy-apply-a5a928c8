@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
       return adminCheck.response!;
     }
 
-    const { name, slug, release_channel, plan_code } = await req.json();
+    const { name, slug, release_channel, plan_code, gmail_alias } = await req.json();
 
     if (!name || !slug) {
       return new Response(
@@ -38,6 +38,9 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Auto-generate gmail_alias from slug if not provided
+    const finalGmailAlias = gmail_alias || `+${slug}`;
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -52,6 +55,20 @@ Deno.serve(async (req) => {
     if (existingTenant) {
       return new Response(
         JSON.stringify({ error: 'A tenant with this slug already exists' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if gmail_alias already exists
+    const { data: existingAlias } = await serviceClient
+      .from('tenants')
+      .select('id')
+      .eq('gmail_alias', finalGmailAlias)
+      .maybeSingle();
+
+    if (existingAlias) {
+      return new Response(
+        JSON.stringify({ error: 'A tenant with this gmail alias already exists' }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -78,7 +95,8 @@ Deno.serve(async (req) => {
         release_channel: release_channel || 'general',
         plan_id: planId,
         status: 'active',
-        is_paused: false
+        is_paused: false,
+        gmail_alias: finalGmailAlias
       })
       .select()
       .single();
@@ -91,7 +109,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[admin-tenant-create] Created tenant ${tenant.id} (${slug}) by admin ${adminCheck.user_id}`);
+    console.log(`[admin-tenant-create] Created tenant ${tenant.id} (${slug}) with alias ${finalGmailAlias} by admin ${adminCheck.user_id}`);
 
     return new Response(
       JSON.stringify({ 
@@ -101,7 +119,8 @@ Deno.serve(async (req) => {
           name: tenant.name,
           slug: tenant.slug,
           release_channel: tenant.release_channel,
-          plan_id: tenant.plan_id
+          plan_id: tenant.plan_id,
+          gmail_alias: tenant.gmail_alias
         }
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

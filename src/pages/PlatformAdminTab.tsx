@@ -48,6 +48,8 @@ interface Tenant {
   max_hunt_plans: number;
   created_at: string;
   api_key: string | null;
+  gmail_alias: string | null;
+  last_email_received_at: string | null;
   // Computed counts
   user_count?: number;
   vehicle_count?: number;
@@ -118,8 +120,10 @@ export default function PlatformAdminTab() {
   // Form state
   const [newTenantName, setNewTenantName] = useState("");
   const [newTenantSlug, setNewTenantSlug] = useState("");
+  const [newTenantGmailAlias, setNewTenantGmailAlias] = useState("");
   const [editRateLimitMinute, setEditRateLimitMinute] = useState(60);
   const [editRateLimitDay, setEditRateLimitDay] = useState(10000);
+  const [editGmailAlias, setEditGmailAlias] = useState("");
 
   // Handle impersonation start
   const handleStartImpersonation = async () => {
@@ -301,24 +305,34 @@ export default function PlatformAdminTab() {
       return;
     }
 
+    const slug = newTenantSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    // Auto-generate gmail_alias from slug if not provided
+    const gmailAlias = newTenantGmailAlias.trim() || `+${slug}`;
+
     const { data, error } = await supabase
       .from("tenants")
       .insert({
         name: newTenantName.trim(),
-        slug: newTenantSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-")
+        slug,
+        gmail_alias: gmailAlias
       })
       .select()
       .single();
 
     if (error) {
-      toast.error(`Failed to create tenant: ${error.message}`);
+      if (error.message.includes("tenants_gmail_alias_unique")) {
+        toast.error("This Gmail alias is already in use by another tenant");
+      } else {
+        toast.error(`Failed to create tenant: ${error.message}`);
+      }
       return;
     }
 
-    toast.success(`Tenant "${data.name}" created successfully`);
+    toast.success(`Tenant "${data.name}" created with alias ${gmailAlias}`);
     setShowCreateTenant(false);
     setNewTenantName("");
     setNewTenantSlug("");
+    setNewTenantGmailAlias("");
     await loadTenants();
   };
 
@@ -403,6 +417,7 @@ export default function PlatformAdminTab() {
     setSelectedTenant(tenant);
     setEditRateLimitMinute(tenant.rate_limit_per_minute || 60);
     setEditRateLimitDay(tenant.rate_limit_per_day || 10000);
+    setEditGmailAlias(tenant.gmail_alias || "");
     
     // Load tenant-specific feature flags
     const { data } = await supabase
@@ -422,10 +437,15 @@ export default function PlatformAdminTab() {
       .update({
         rate_limit_per_minute: editRateLimitMinute,
         rate_limit_per_day: editRateLimitDay,
+        gmail_alias: editGmailAlias.trim() || null,
       })
       .eq("id", selectedTenant.id);
 
     if (error) {
+      if (error.message.includes("tenants_gmail_alias_unique")) {
+        toast.error("This Gmail alias is already in use by another tenant");
+        return;
+      }
       toast.error(`Failed to update settings: ${error.message}`);
     } else {
       toast.success("Tenant settings updated");
@@ -627,7 +647,9 @@ export default function PlatformAdminTab() {
                     value={newTenantName}
                     onChange={(e) => {
                       setNewTenantName(e.target.value);
-                      setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+                      const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                      setNewTenantSlug(slug);
+                      setNewTenantGmailAlias(`+${slug}`);
                     }}
                     placeholder="Acme Trucking"
                   />
@@ -637,11 +659,29 @@ export default function PlatformAdminTab() {
                   <Input 
                     id="tenant-slug"
                     value={newTenantSlug}
-                    onChange={(e) => setNewTenantSlug(e.target.value)}
+                    onChange={(e) => {
+                      setNewTenantSlug(e.target.value);
+                      setNewTenantGmailAlias(`+${e.target.value}`);
+                    }}
                     placeholder="acme-trucking"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Used in URLs and API calls
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="tenant-gmail-alias">Gmail Alias</Label>
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      id="tenant-gmail-alias"
+                      value={newTenantGmailAlias}
+                      onChange={(e) => setNewTenantGmailAlias(e.target.value)}
+                      placeholder="+acme-trucking"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <Mail className="h-3 w-3 inline mr-1" />
+                    Loadboard emails sent to talbilogistics{newTenantGmailAlias || "+slug"}@gmail.com will route to this tenant
                   </p>
                 </div>
               </div>
@@ -932,6 +972,33 @@ export default function PlatformAdminTab() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            {/* Email Routing */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Routing
+              </h3>
+              <div>
+                <Label htmlFor="gmail-alias">Gmail Alias</Label>
+                <Input
+                  id="gmail-alias"
+                  value={editGmailAlias}
+                  onChange={(e) => setEditGmailAlias(e.target.value)}
+                  placeholder="+tenant-slug"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Emails to talbilogistics{editGmailAlias || "+alias"}@gmail.com route to this tenant
+                </p>
+                {selectedTenant?.last_email_received_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Last email: {new Date(selectedTenant.last_email_received_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Rate Limits */}
             <div className="space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
