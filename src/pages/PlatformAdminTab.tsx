@@ -960,7 +960,7 @@ export default function PlatformAdminTab() {
 
       {/* Tenant Settings Dialog */}
       <Dialog open={showTenantSettings} onOpenChange={setShowTenantSettings}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -971,7 +971,7 @@ export default function PlatformAdminTab() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4 overflow-y-auto flex-1">
             {/* Email Routing */}
             <div className="space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
