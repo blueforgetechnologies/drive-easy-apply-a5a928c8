@@ -21,8 +21,67 @@ interface OtrBrokerCheckResponse {
   [key: string]: unknown;
 }
 
+interface OtrTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  token_type: string;
+  expires_in?: number;
+}
+
+// Get OAuth token from OTR Solutions
+async function getOtrToken(subscriptionKey: string, username: string, password: string): Promise<{
+  success: boolean;
+  access_token?: string;
+  error?: string;
+}> {
+  try {
+    console.log('[check-broker-credit] Authenticating with OTR...');
+    
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+    
+    const response = await fetch(`${OTR_API_BASE_URL}/auth/token`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'ocp-apim-subscription-key': subscriptionKey,
+        'x-is-test': 'false'
+      },
+      body: formData.toString()
+    });
+    
+    console.log(`[check-broker-credit] OTR auth response status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[check-broker-credit] OTR auth error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Authentication failed: ${response.status}` };
+    }
+    
+    const data: OtrTokenResponse = await response.json();
+    console.log('[check-broker-credit] OTR authentication successful');
+    
+    return {
+      success: true,
+      access_token: data.access_token
+    };
+  } catch (error) {
+    console.error('[check-broker-credit] OTR auth error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Authentication failed'
+    };
+  }
+}
+
 // Check broker credit using OTR Solutions API
-async function checkWithOtr(mcNumber: string, apiKey: string): Promise<{
+async function checkWithOtr(
+  mcNumber: string, 
+  subscriptionKey: string, 
+  accessToken: string
+): Promise<{
   success: boolean;
   approval_status?: string;
   credit_limit?: number;
@@ -40,8 +99,8 @@ async function checkWithOtr(mcNumber: string, apiKey: string): Promise<{
         method: 'GET',
         headers: { 
           'Accept': 'application/json',
-          'ocp-apim-subscription-key': apiKey,
-          'Authorization': `Bearer ${apiKey}`,
+          'ocp-apim-subscription-key': subscriptionKey,
+          'Authorization': `Bearer ${accessToken}`,
           'x-is-test': 'false'
         } 
       }
@@ -54,7 +113,7 @@ async function checkWithOtr(mcNumber: string, apiKey: string): Promise<{
       console.error(`[check-broker-credit] OTR API error: ${response.status} - ${errorText}`);
       
       if (response.status === 401 || response.status === 403) {
-        return { success: false, error: 'Invalid OTR API key or access denied' };
+        return { success: false, error: 'Invalid OTR credentials or access denied' };
       }
       if (response.status === 404) {
         return { 
@@ -157,14 +216,24 @@ async function checkWithFmcsa(mcNumber: string): Promise<{
   }
 }
 
-// Get OTR API key from tenant integrations
-async function getOtrApiKey(adminClient: ReturnType<typeof getServiceClient>, tenantId: string): Promise<string | null> {
+// OTR credentials structure
+interface OtrCredentials {
+  subscriptionKey: string;
+  username: string;
+  password: string;
+}
+
+// Get OTR credentials from secrets or tenant integrations
+async function getOtrCredentials(adminClient: ReturnType<typeof getServiceClient>, tenantId: string): Promise<OtrCredentials | null> {
   try {
-    // First try global secret
-    const globalKey = Deno.env.get('OTR_API_KEY');
-    if (globalKey) {
-      console.log('[check-broker-credit] Using global OTR_API_KEY');
-      return globalKey;
+    // First try global secrets
+    const subscriptionKey = Deno.env.get('OTR_API_KEY');
+    const username = Deno.env.get('OTR_USERNAME');
+    const password = Deno.env.get('OTR_PASSWORD');
+    
+    if (subscriptionKey && username && password) {
+      console.log('[check-broker-credit] Using global OTR credentials');
+      return { subscriptionKey, username, password };
     }
 
     // Then try tenant-specific integration
@@ -184,9 +253,13 @@ async function getOtrApiKey(adminClient: ReturnType<typeof getServiceClient>, te
         try {
           const decrypted = await decrypt(integrationData.encrypted_credentials, masterKey);
           const creds = JSON.parse(decrypted);
-          if (creds.api_key) {
-            console.log('[check-broker-credit] Using tenant OTR API key');
-            return creds.api_key;
+          if (creds.api_key && creds.username && creds.password) {
+            console.log('[check-broker-credit] Using tenant OTR credentials');
+            return { 
+              subscriptionKey: creds.api_key, 
+              username: creds.username, 
+              password: creds.password 
+            };
           }
         } catch (e) {
           console.error('[check-broker-credit] Failed to decrypt OTR credentials:', e);
@@ -196,7 +269,7 @@ async function getOtrApiKey(adminClient: ReturnType<typeof getServiceClient>, te
 
     return null;
   } catch (error) {
-    console.error('[check-broker-credit] Error getting OTR API key:', error);
+    console.error('[check-broker-credit] Error getting OTR credentials:', error);
     return null;
   }
 }
@@ -393,7 +466,7 @@ serve(async (req) => {
     }
 
     // Try OTR API first
-    const otrApiKey = await getOtrApiKey(adminClient, tenant_id);
+    const otrCredentials = await getOtrCredentials(adminClient, tenant_id);
     let otrResult: { 
       success: boolean; 
       approval_status?: string; 
@@ -403,11 +476,25 @@ serve(async (req) => {
       error?: string;
     } | null = null;
     
-    if (otrApiKey) {
-      console.log('[check-broker-credit] OTR API key found, checking with OTR...');
-      otrResult = await checkWithOtr(mcToCheck, otrApiKey);
+    if (otrCredentials) {
+      console.log('[check-broker-credit] OTR credentials found, authenticating...');
+      
+      // First get OAuth token
+      const tokenResult = await getOtrToken(
+        otrCredentials.subscriptionKey, 
+        otrCredentials.username, 
+        otrCredentials.password
+      );
+      
+      if (tokenResult.success && tokenResult.access_token) {
+        console.log('[check-broker-credit] OTR auth successful, checking broker...');
+        otrResult = await checkWithOtr(mcToCheck, otrCredentials.subscriptionKey, tokenResult.access_token);
+      } else {
+        console.error('[check-broker-credit] OTR auth failed:', tokenResult.error);
+        otrResult = { success: false, error: tokenResult.error || 'OTR authentication failed' };
+      }
     } else {
-      console.log('[check-broker-credit] No OTR API key configured');
+      console.log('[check-broker-credit] No OTR credentials configured');
     }
 
     // Also get FMCSA data for additional broker info
@@ -506,7 +593,7 @@ serve(async (req) => {
         error: errorMessage,
         message: otrResult?.success 
           ? `Credit status: ${finalStatus}${creditLimit ? ` (Limit: $${creditLimit.toLocaleString()})` : ''}`
-          : errorMessage || (otrApiKey ? 'OTR check failed - please verify manually' : 'OTR API not configured - manual check required')
+          : errorMessage || (otrCredentials ? 'OTR check failed - please verify manually' : 'OTR API not configured - manual check required')
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
