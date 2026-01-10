@@ -974,10 +974,15 @@ export default function PlatformAdminTab() {
           <div className="space-y-6 py-4 overflow-y-auto flex-1">
             {/* Email Routing */}
             <div className="space-y-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email Routing
-              </h3>
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email Routing
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Configure how loadboard emails are routed to this tenant. Each tenant needs a unique Gmail alias.
+                </p>
+              </div>
               <div>
                 <Label htmlFor="gmail-alias">Gmail Alias</Label>
                 <Input
@@ -990,10 +995,13 @@ export default function PlatformAdminTab() {
                   Emails to talbilogistics{editGmailAlias || "+alias"}@gmail.com route to this tenant
                 </p>
                 {selectedTenant?.last_email_received_at && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Last email: {new Date(selectedTenant.last_email_received_at).toLocaleString()}
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Last email received: {new Date(selectedTenant.last_email_received_at).toLocaleString()}
                   </p>
                 )}
+                <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                  <strong>Setup:</strong> Configure Sylectus/FullCircle to send emails to <code className="bg-muted px-1 rounded">talbilogistics{editGmailAlias || "+alias"}@gmail.com</code>
+                </div>
               </div>
             </div>
 
@@ -1001,10 +1009,15 @@ export default function PlatformAdminTab() {
 
             {/* Rate Limits */}
             <div className="space-y-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Rate Limits
-              </h3>
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Rate Limits
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Control email processing throughput. Lower limits help prevent overwhelming the system during high volume periods.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="rate-minute">Requests per Minute</Label>
@@ -1017,7 +1030,7 @@ export default function PlatformAdminTab() {
                     max={1000}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Current usage: {selectedTenant?.minute_usage || 0}/min
+                    Current: {selectedTenant?.minute_usage || 0}/min • <span className="text-blue-600">Recommended: 60-120</span>
                   </p>
                 </div>
                 <div>
@@ -1031,9 +1044,12 @@ export default function PlatformAdminTab() {
                     max={100000}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Current usage: {selectedTenant?.day_usage || 0}/day
+                    Current: {selectedTenant?.day_usage || 0}/day • <span className="text-blue-600">Recommended: 5,000-15,000</span>
                   </p>
                 </div>
+              </div>
+              <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                <strong>Guidelines:</strong> Small fleets (1-5 trucks): 60/min, 5K/day • Medium (5-20): 120/min, 10K/day • Large (20+): 200/min, 20K/day
               </div>
             </div>
 
@@ -1041,11 +1057,19 @@ export default function PlatformAdminTab() {
 
             {/* Feature Flags */}
             <div className="space-y-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Flag className="h-4 w-4" />
-                Feature Flags (Tenant Override)
-              </h3>
-              <div className="space-y-3">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Flag className="h-4 w-4" />
+                  Feature Flags (Tenant Override)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enable or disable features for this tenant. Overrides inherit the global default unless explicitly set here.
+                </p>
+              </div>
+              <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground mb-2">
+                <strong>Note:</strong> Changes take effect immediately. "Override" badge means this tenant has a custom setting different from the global default.
+              </div>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
                 {featureFlags.map((flag) => {
                   const isEnabled = getTenantFlagEnabled(flag.id, flag.default_enabled);
                   const hasOverride = tenantFeatureFlags.some(tf => tf.feature_flag_id === flag.id);
