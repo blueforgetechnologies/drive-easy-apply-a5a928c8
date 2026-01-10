@@ -698,9 +698,9 @@ export default function LoadHunterTab() {
           // Filter by specific vehicle if filterVehicleId is set (badge click)
           if (filterVehicleId && match.vehicle_id !== filterVehicleId) return false;
           // Filter by dispatcher's vehicles when in MY TRUCKS mode
-          // Only filter if we're in dispatch mode AND we have vehicle IDs loaded
-          if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
-            if (!myVehicleIds.includes(match.vehicle_id)) return false;
+          // In dispatch mode, only show matches for assigned vehicles (empty if none assigned)
+          if (activeMode === 'dispatch') {
+            if (myVehicleIds.length === 0 || !myVehicleIds.includes(match.vehicle_id)) return false;
           }
           // Filter by email source - if no sources selected, show nothing
           if (selectedSources.length === 0) return false;
@@ -747,8 +747,9 @@ export default function LoadHunterTab() {
 
   // Count uses server-side view data for accuracy
   const unreviewedCount = unreviewedViewData.filter(match => {
-    if (activeMode === 'dispatch' && myVehicleIds.length > 0) {
-      if (!myVehicleIds.includes(match.vehicle_id)) return false;
+    // In dispatch mode, only count matches for assigned vehicles (0 if none assigned)
+    if (activeMode === 'dispatch') {
+      if (myVehicleIds.length === 0 || !myVehicleIds.includes(match.vehicle_id)) return false;
     }
     return true;
   }).length;
