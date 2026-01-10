@@ -3847,6 +3847,42 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_email_config: {
+        Row: {
+          catch_all_forward_to: string | null
+          created_at: string
+          custom_domain: string | null
+          custom_domain_status: string | null
+          custom_domain_verified_at: string | null
+          email_mode: string
+          gmail_base_email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          catch_all_forward_to?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          custom_domain_status?: string | null
+          custom_domain_verified_at?: string | null
+          email_mode?: string
+          gmail_base_email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          catch_all_forward_to?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          custom_domain_status?: string | null
+          custom_domain_verified_at?: string | null
+          email_mode?: string
+          gmail_base_email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       processing_state: {
         Row: {
           floor_load_id: string
@@ -4662,6 +4698,8 @@ export type Database = {
         Row: {
           api_key: string | null
           api_key_hash: string | null
+          carrier_address: string | null
+          carrier_name: string | null
           created_at: string
           daily_usage_count: number | null
           daily_usage_reset_at: string | null
@@ -4673,6 +4711,7 @@ export type Database = {
           max_hunt_plans: number | null
           max_users: number | null
           max_vehicles: number | null
+          mc_number: string | null
           name: string
           plan_id: string | null
           primary_color: string | null
@@ -4689,6 +4728,8 @@ export type Database = {
         Insert: {
           api_key?: string | null
           api_key_hash?: string | null
+          carrier_address?: string | null
+          carrier_name?: string | null
           created_at?: string
           daily_usage_count?: number | null
           daily_usage_reset_at?: string | null
@@ -4700,6 +4741,7 @@ export type Database = {
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
+          mc_number?: string | null
           name: string
           plan_id?: string | null
           primary_color?: string | null
@@ -4716,6 +4758,8 @@ export type Database = {
         Update: {
           api_key?: string | null
           api_key_hash?: string | null
+          carrier_address?: string | null
+          carrier_name?: string | null
           created_at?: string
           daily_usage_count?: number | null
           daily_usage_reset_at?: string | null
@@ -4727,6 +4771,7 @@ export type Database = {
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
+          mc_number?: string | null
           name?: string
           plan_id?: string | null
           primary_color?: string | null
