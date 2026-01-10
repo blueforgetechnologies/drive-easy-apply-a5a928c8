@@ -125,29 +125,65 @@ async function testHighway(credentials: Record<string, string>): Promise<{ succe
 
 async function testOtrSolutions(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
   const apiKey = credentials.api_key;
-  if (!apiKey) return { success: false, message: 'API key not configured' };
+  const username = credentials.username;
+  const password = credentials.password;
+  
+  // First try global secrets if tenant credentials not available
+  const subscriptionKey = apiKey || Deno.env.get('OTR_API_KEY');
+  const otrUsername = username || Deno.env.get('OTR_USERNAME');
+  const otrPassword = password || Deno.env.get('OTR_PASSWORD');
+  
+  if (!subscriptionKey) return { success: false, message: 'API subscription key not configured' };
+  if (!otrUsername || !otrPassword) return { success: false, message: 'OTR username/password not configured' };
   
   try {
-    // OTR Solutions API - test connection with a broker check
-    // Using their documented API endpoint
-    const response = await fetch('https://servicesstg.otrsolutions.com/carrier-tms/2/broker-check/123456', {
+    // OTR Solutions API - test authentication first
+    const formData = new URLSearchParams();
+    formData.append('username', otrUsername);
+    formData.append('password', otrPassword);
+    
+    const authResponse = await fetch('https://servicesstg.otrsolutions.com/carrier-tms/2/auth/token', {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'ocp-apim-subscription-key': subscriptionKey,
+        'x-is-test': 'false'
+      },
+      body: formData.toString()
+    });
+    
+    if (!authResponse.ok) {
+      if (authResponse.status === 401 || authResponse.status === 403) {
+        return { success: false, message: 'Invalid credentials or access denied' };
+      }
+      return { success: false, message: `Authentication failed: ${authResponse.status}` };
+    }
+    
+    const tokenData = await authResponse.json();
+    if (!tokenData.access_token) {
+      return { success: false, message: 'No access token received' };
+    }
+    
+    // Now test a broker check with the token
+    const checkResponse = await fetch('https://servicesstg.otrsolutions.com/carrier-tms/2/broker-check/123456', {
       method: 'GET',
       headers: { 
         'Accept': 'application/json',
-        'ocp-apim-subscription-key': apiKey,
-        'Authorization': `Bearer ${apiKey}`,
-        'x-is-test': 'true'
+        'ocp-apim-subscription-key': subscriptionKey,
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'x-is-test': 'false'
       }
     });
     
-    // 401/403 = bad key, 404 = MC not found (which means API works), 200 = success
-    if (response.ok || response.status === 404) {
+    // 404 = MC not found (which means API works), 200 = success
+    if (checkResponse.ok || checkResponse.status === 404) {
       return { success: true, message: 'OTR Solutions API connected successfully' };
     }
-    if (response.status === 401 || response.status === 403) {
-      return { success: false, message: 'Invalid API key or access denied' };
+    if (checkResponse.status === 401 || checkResponse.status === 403) {
+      return { success: false, message: 'Token valid but access denied to broker check' };
     }
-    return { success: false, message: `API error: ${response.status}` };
+    return { success: false, message: `Broker check API error: ${checkResponse.status}` };
   } catch (error) {
     return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
   }
