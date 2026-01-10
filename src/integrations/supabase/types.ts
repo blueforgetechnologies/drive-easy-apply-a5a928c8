@@ -462,6 +462,69 @@ export type Database = {
           },
         ]
       }
+      broker_credit_checks: {
+        Row: {
+          approval_status: string
+          broker_name: string
+          checked_at: string
+          checked_by: string | null
+          created_at: string
+          credit_limit: number | null
+          customer_id: string | null
+          id: string
+          load_email_id: string | null
+          match_id: string | null
+          mc_number: string | null
+          raw_response: Json | null
+          tenant_id: string
+        }
+        Insert: {
+          approval_status: string
+          broker_name: string
+          checked_at?: string
+          checked_by?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          customer_id?: string | null
+          id?: string
+          load_email_id?: string | null
+          match_id?: string | null
+          mc_number?: string | null
+          raw_response?: Json | null
+          tenant_id: string
+        }
+        Update: {
+          approval_status?: string
+          broker_name?: string
+          checked_at?: string
+          checked_by?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          customer_id?: string | null
+          id?: string
+          load_email_id?: string | null
+          match_id?: string | null
+          mc_number?: string | null
+          raw_response?: Json | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_credit_checks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_credit_checks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       carrier_rate_history: {
         Row: {
           changed_at: string
@@ -880,6 +943,10 @@ export type Database = {
           mc_number: string | null
           name: string
           notes: string | null
+          otr_approval_status: string | null
+          otr_check_error: string | null
+          otr_credit_limit: number | null
+          otr_last_checked_at: string | null
           payment_terms: string | null
           phone: string | null
           phone_fax: string | null
@@ -906,6 +973,10 @@ export type Database = {
           mc_number?: string | null
           name: string
           notes?: string | null
+          otr_approval_status?: string | null
+          otr_check_error?: string | null
+          otr_credit_limit?: number | null
+          otr_last_checked_at?: string | null
           payment_terms?: string | null
           phone?: string | null
           phone_fax?: string | null
@@ -932,6 +1003,10 @@ export type Database = {
           mc_number?: string | null
           name?: string
           notes?: string | null
+          otr_approval_status?: string | null
+          otr_check_error?: string | null
+          otr_credit_limit?: number | null
+          otr_last_checked_at?: string | null
           payment_terms?: string | null
           phone?: string | null
           phone_fax?: string | null

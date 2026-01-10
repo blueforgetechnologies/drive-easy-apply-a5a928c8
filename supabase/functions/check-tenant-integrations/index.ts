@@ -21,6 +21,19 @@ interface FieldDef {
 // Gmail removed for MVP - requires OAuth flow implementation
 const PROVIDER_CATALOG = [
   { 
+    id: 'otr_solutions', 
+    name: 'OTR Solutions', 
+    description: 'Factoring company - Broker credit checks and approval status',
+    icon: 'shield-check',
+    credentialFields: [
+      { key: 'api_key', label: 'API Key', type: 'password' as const, placeholder: 'Enter your OTR Solutions API key', required: true },
+      { key: 'client_id', label: 'Client ID', type: 'text' as const, placeholder: 'Your OTR client identifier', required: false }
+    ],
+    settingsFields: [
+      { key: 'auto_check', label: 'Auto-check on match', type: 'text' as const, placeholder: 'true/false', required: false }
+    ]
+  },
+  { 
     id: 'samsara', 
     name: 'Samsara API', 
     description: 'Vehicle telematics and fleet tracking',
