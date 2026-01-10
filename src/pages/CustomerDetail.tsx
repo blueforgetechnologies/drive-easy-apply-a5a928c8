@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search, CheckCircle, XCircle } from "lucide-react";
+import { BrokerCreditBadge } from "@/components/BrokerCreditBadge";
 
 interface CustomerData {
   id: string;
@@ -290,6 +291,13 @@ export default function CustomerDetail() {
               </SelectContent>
             </Select>
           </div>
+          {/* OTR Credit Check Badge */}
+          <BrokerCreditBadge
+            brokerName={customer.name}
+            mcNumber={customer.mc_number}
+            customerId={customer.id}
+            showCheckButton={true}
+          />
         </div>
         <Button onClick={handleSave} disabled={saving}>
           <Save className="h-4 w-4 mr-2" />
