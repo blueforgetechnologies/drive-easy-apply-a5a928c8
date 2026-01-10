@@ -815,7 +815,7 @@ export default function PlatformAdminTab() {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => handleOpenTenantSettings(tenant)}
+                          onClick={() => navigate(`/dashboard/tenant/${tenant.id}/settings`)}
                         >
                           <Settings className="h-4 w-4 text-muted-foreground" />
                         </Button>
