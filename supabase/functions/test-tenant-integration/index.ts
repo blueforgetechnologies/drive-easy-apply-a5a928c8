@@ -128,18 +128,19 @@ async function testOtrSolutions(credentials: Record<string, string>): Promise<{ 
   if (!apiKey) return { success: false, message: 'API key not configured' };
   
   try {
-    // OTR Solutions API - test with a known MC number check
-    // Their API endpoint for broker credit checks
-    const response = await fetch('https://api.otrsolutions.com/v1/broker/check', {
-      method: 'POST',
+    // OTR Solutions API - test connection with a broker check
+    // Using their documented API endpoint
+    const response = await fetch('https://servicesstg.otrsolutions.com/carrier-tms/2/broker-check/123456', {
+      method: 'GET',
       headers: { 
+        'Accept': 'application/json',
+        'ocp-apim-subscription-key': apiKey,
         'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ mc_number: '123456' }) // Test MC
+        'x-is-test': 'true'
+      }
     });
     
-    // 401 = bad key, 404 = MC not found (which means API works)
+    // 401/403 = bad key, 404 = MC not found (which means API works), 200 = success
     if (response.ok || response.status === 404) {
       return { success: true, message: 'OTR Solutions API connected successfully' };
     }
