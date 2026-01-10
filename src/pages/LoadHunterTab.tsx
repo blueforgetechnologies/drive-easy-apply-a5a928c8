@@ -754,12 +754,21 @@ export default function LoadHunterTab() {
     return true;
   }).length;
   
-  const missedCount = missedHistory.length; // Use missed history count
-  const waitlistCount = waitlistMatches.length; // Use match-based count
-  const skippedCount = skippedMatches.length;
-  const bidCount = bidMatches.length;
-  const bookedCount = bookedMatches.length;
-  const undecidedCount = undecidedMatches.length;
+  // Filter helper for dispatch mode
+  const filterByAssignedVehicles = <T extends { vehicle_id?: string | null }>(items: T[]) => {
+    if (activeMode === 'dispatch') {
+      if (myVehicleIds.length === 0) return [];
+      return items.filter(item => item.vehicle_id && myVehicleIds.includes(item.vehicle_id));
+    }
+    return items;
+  };
+
+  const missedCount = filterByAssignedVehicles(missedHistory).length;
+  const waitlistCount = filterByAssignedVehicles(waitlistMatches).length;
+  const skippedCount = filterByAssignedVehicles(skippedMatches).length;
+  const bidCount = filterByAssignedVehicles(bidMatches).length;
+  const bookedCount = filterByAssignedVehicles(bookedMatches).length;
+  const undecidedCount = filterByAssignedVehicles(undecidedMatches).length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
 
   // Search archived matches
