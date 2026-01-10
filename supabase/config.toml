@@ -194,3 +194,6 @@ verify_jwt = true
 
 [functions.gmail-tenant-mapping]
 verify_jwt = true
+
+[functions.check-email-health]
+verify_jwt = false

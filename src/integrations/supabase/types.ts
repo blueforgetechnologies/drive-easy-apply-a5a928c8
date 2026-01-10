@@ -1138,6 +1138,56 @@ export type Database = {
           },
         ]
       }
+      email_health_alerts: {
+        Row: {
+          alert_level: string
+          alert_type: string
+          created_at: string
+          id: string
+          is_business_hours: boolean
+          last_email_at: string | null
+          message: string
+          resolved_at: string | null
+          sent_at: string
+          tenant_id: string | null
+          threshold_minutes: number
+        }
+        Insert: {
+          alert_level: string
+          alert_type: string
+          created_at?: string
+          id?: string
+          is_business_hours: boolean
+          last_email_at?: string | null
+          message: string
+          resolved_at?: string | null
+          sent_at?: string
+          tenant_id?: string | null
+          threshold_minutes: number
+        }
+        Update: {
+          alert_level?: string
+          alert_type?: string
+          created_at?: string
+          id?: string
+          is_business_hours?: boolean
+          last_email_at?: string | null
+          message?: string
+          resolved_at?: string | null
+          sent_at?: string
+          tenant_id?: string | null
+          threshold_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_health_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_queue: {
         Row: {
           attempts: number
@@ -4615,8 +4665,10 @@ export type Database = {
           created_at: string
           daily_usage_count: number | null
           daily_usage_reset_at: string | null
+          gmail_alias: string | null
           id: string
           is_paused: boolean | null
+          last_email_received_at: string | null
           logo_url: string | null
           max_hunt_plans: number | null
           max_users: number | null
@@ -4640,8 +4692,10 @@ export type Database = {
           created_at?: string
           daily_usage_count?: number | null
           daily_usage_reset_at?: string | null
+          gmail_alias?: string | null
           id?: string
           is_paused?: boolean | null
+          last_email_received_at?: string | null
           logo_url?: string | null
           max_hunt_plans?: number | null
           max_users?: number | null
@@ -4665,8 +4719,10 @@ export type Database = {
           created_at?: string
           daily_usage_count?: number | null
           daily_usage_reset_at?: string | null
+          gmail_alias?: string | null
           id?: string
           is_paused?: boolean | null
+          last_email_received_at?: string | null
           logo_url?: string | null
           max_hunt_plans?: number | null
           max_users?: number | null

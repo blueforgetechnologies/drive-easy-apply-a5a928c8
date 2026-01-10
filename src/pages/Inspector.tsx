@@ -34,6 +34,9 @@ interface TenantMetrics {
   status: string | null;
   release_channel: string | null;
   created_at: string;
+  gmail_alias: string | null;
+  last_email_received_at: string | null;
+  email_health_status: 'healthy' | 'warning' | 'critical' | 'no_source';
   metrics: {
     users_count: number;
     drivers_count: number;
@@ -342,6 +345,21 @@ export default function Inspector() {
     fetchLoadHunterHealth(tenantId || undefined);
   }
 
+  function getEmailHealthBadge(status: string | null) {
+    switch (status) {
+      case "healthy":
+        return <Badge variant="default" className="bg-green-600">🟢 Healthy</Badge>;
+      case "warning":
+        return <Badge variant="secondary" className="bg-yellow-500 text-black">🟡 Warning</Badge>;
+      case "critical":
+        return <Badge variant="destructive">🔴 Critical</Badge>;
+      case "no_source":
+        return <Badge variant="outline">⚪ No Source</Badge>;
+      default:
+        return <Badge variant="outline">—</Badge>;
+    }
+  }
+
   function getStatusBadge(status: string | null) {
     switch (status) {
       case "active":
@@ -621,12 +639,12 @@ export default function Inspector() {
                     <TableRow>
                       <TableHead>Tenant Name</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Email Health</TableHead>
+                      <TableHead>Gmail Alias</TableHead>
                       <TableHead>Channel</TableHead>
                       <TableHead className="text-right">Users</TableHead>
-                      <TableHead className="text-right">Drivers</TableHead>
                       <TableHead className="text-right">Vehicles</TableHead>
                       <TableHead className="text-right">Active Hunts</TableHead>
-                      <TableHead>Created</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -634,12 +652,12 @@ export default function Inspector() {
                       <TableRow key={tenant.tenant_id}>
                         <TableCell className="font-medium">{tenant.tenant_name}</TableCell>
                         <TableCell>{getStatusBadge(tenant.status)}</TableCell>
+                        <TableCell>{getEmailHealthBadge(tenant.email_health_status)}</TableCell>
+                        <TableCell className="font-mono text-xs">{tenant.gmail_alias || "—"}</TableCell>
                         <TableCell>{getChannelBadge(tenant.release_channel)}</TableCell>
                         <TableCell className="text-right">{tenant.metrics.users_count}</TableCell>
-                        <TableCell className="text-right">{tenant.metrics.drivers_count}</TableCell>
                         <TableCell className="text-right">{tenant.metrics.vehicles_count}</TableCell>
                         <TableCell className="text-right">{tenant.metrics.active_hunts_count}</TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(tenant.created_at)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

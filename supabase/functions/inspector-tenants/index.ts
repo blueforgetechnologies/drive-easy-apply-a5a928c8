@@ -11,6 +11,9 @@ interface TenantMetrics {
   status: string | null;
   release_channel: string | null;
   created_at: string;
+  gmail_alias: string | null;
+  last_email_received_at: string | null;
+  email_health_status: 'healthy' | 'warning' | 'critical' | 'no_source';
   metrics: {
     users_count: number;
     drivers_count: number;
@@ -84,10 +87,10 @@ Deno.serve(async (req) => {
 
     console.log('Platform admin verified, fetching tenant data...');
 
-    // Fetch tenants
+    // Fetch tenants with email health fields
     const { data: tenants, error: tenantsError } = await serviceClient
       .from('tenants')
-      .select('id, name, status, release_channel, created_at')
+      .select('id, name, status, release_channel, created_at, gmail_alias, last_email_received_at')
       .order('created_at', { ascending: false });
 
     if (tenantsError) {
@@ -130,6 +133,30 @@ Deno.serve(async (req) => {
     const vehicleCounts = countByTenant(vehiclesResult.data);
     const huntCounts = countByTenant(huntsResult.data);
 
+    // Calculate email health status for each tenant
+    const now = new Date();
+    const getEmailHealthStatus = (tenant: { gmail_alias: string | null; last_email_received_at: string | null }): 'healthy' | 'warning' | 'critical' | 'no_source' => {
+      if (!tenant.gmail_alias) {
+        return 'no_source';
+      }
+      if (!tenant.last_email_received_at) {
+        return 'critical';
+      }
+      const lastEmail = new Date(tenant.last_email_received_at);
+      const minutesSince = Math.floor((now.getTime() - lastEmail.getTime()) / 60000);
+      
+      // Use 30 min for business hours, 300 min (5hr) for off-hours as threshold
+      const threshold = 60; // Use 1 hour as a general "warning" threshold for display
+      const criticalThreshold = 180; // 3 hours as critical
+      
+      if (minutesSince > criticalThreshold) {
+        return 'critical';
+      } else if (minutesSince > threshold) {
+        return 'warning';
+      }
+      return 'healthy';
+    };
+
     // Transform tenants with metrics
     const tenantsWithMetrics: TenantMetrics[] = tenants.map(tenant => ({
       tenant_id: tenant.id,
@@ -137,6 +164,9 @@ Deno.serve(async (req) => {
       status: tenant.status,
       release_channel: tenant.release_channel,
       created_at: tenant.created_at,
+      gmail_alias: tenant.gmail_alias,
+      last_email_received_at: tenant.last_email_received_at,
+      email_health_status: getEmailHealthStatus(tenant),
       metrics: {
         users_count: userCounts.get(tenant.id) || 0,
         drivers_count: driverCounts.get(tenant.id) || 0,
