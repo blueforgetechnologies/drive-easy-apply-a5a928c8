@@ -394,7 +394,7 @@ export default function IntegrationsTab() {
           </CardContent>
       </Card>
 
-      {/* OTR Solutions Integration Card - Factoring Company (Manual Check) */}
+      {/* OTR Solutions Integration Card - Automated API Credit Checks */}
       <Card className="border-green-200 bg-green-50/30">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -402,25 +402,25 @@ export default function IntegrationsTab() {
               <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
               <div>
                 <CardTitle className="text-base">OTR Solutions LLC</CardTitle>
-                <CardDescription>Factoring company - Manual broker credit checks</CardDescription>
+                <CardDescription>Factoring company - Automated broker credit checks via API</CardDescription>
               </div>
             </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">Ready</Badge>
+            <Badge variant="secondary" className="bg-green-100 text-green-700">API Connected</Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Check broker credit status in the OTR Solutions portal before bidding on loads. 
-              Click the badge on load matches to open OTR portal and record the result.
+              Automatic broker credit checks using OTR Solutions API. 
+              Click the credit badge on load matches to instantly check approval status.
             </p>
             <div className="bg-white p-3 rounded-lg border">
               <p className="text-xs text-muted-foreground mb-2">How it works:</p>
               <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
                 <li>Click the credit badge on a load match</li>
-                <li>Click "Open OTR Portal" to check broker status</li>
-                <li>Enter MC# in OTR portal and check approval</li>
-                <li>Record the result (Approved/Declined/Call OTR)</li>
+                <li>System automatically checks OTR API for approval status</li>
+                <li>Credit limit and approval status displayed instantly</li>
+                <li>Results cached on customer record for future reference</li>
               </ol>
             </div>
             <div className="bg-white p-3 rounded-lg border">
@@ -432,15 +432,17 @@ export default function IntegrationsTab() {
                 <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded">? Not Found</span>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open('https://client.otrsolutions.com', '_blank')}
-              className="gap-1.5"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Open OTR Portal
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open('https://client.otrsolutions.com', '_blank')}
+                className="gap-1.5"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Open OTR Portal
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

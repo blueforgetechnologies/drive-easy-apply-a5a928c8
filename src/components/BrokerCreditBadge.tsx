@@ -166,10 +166,15 @@ export function BrokerCreditBadge({
     }
   };
 
-  // Validate MC with FMCSA
-  const handleValidateMc = async () => {
-    if (!tenantId || !mcNumber) {
-      toast.warning('MC number required');
+  // Automated OTR API check
+  const handleAutoCheck = async () => {
+    if (!tenantId) {
+      toast.error('No tenant context');
+      return;
+    }
+
+    if (!mcNumber && !customerId) {
+      toast.warning('MC number required for credit check');
       return;
     }
 
@@ -184,37 +189,86 @@ export function BrokerCreditBadge({
           broker_name: brokerName,
           customer_id: customerId,
           load_email_id: loadEmailId,
-          match_id: matchId
+          match_id: matchId,
+          force_check: true
         }
       });
 
       if (error) {
-        console.error('FMCSA lookup error:', error);
-        setStatus('unchecked');
-        toast.error('FMCSA lookup failed');
+        console.error('OTR API check error:', error);
+        setStatus('error');
+        toast.error('Credit check failed');
         return;
       }
 
+      // Update state based on response
+      if (data?.approval_status) {
+        setStatus(data.approval_status as ApprovalStatus);
+      } else {
+        setStatus('unchecked');
+      }
+
+      if (data?.credit_limit) {
+        setCreditLimit(data.credit_limit);
+      }
+
+      setLastChecked(new Date().toISOString());
+
+      // Store FMCSA info if available
       if (data?.fmcsa_found) {
         setFmcsaInfo({
           legalName: data.legal_name,
           dotNumber: data.dot_number
         });
-        toast.success('MC Verified in FMCSA', {
-          description: `${data.legal_name || brokerName} found. Now check OTR portal for credit status.`
-        });
-      } else {
-        toast.warning('MC not found in FMCSA');
       }
 
-      setStatus('unchecked');
+      // Show result toast
+      if (data?.success && data?.status_source === 'otr_api') {
+        if (data.approval_status === 'approved') {
+          toast.success('OTR Approved', {
+            description: data.credit_limit ? `Credit Limit: $${data.credit_limit.toLocaleString()}` : 'Broker approved for factoring'
+          });
+        } else if (data.approval_status === 'not_approved') {
+          toast.error('OTR Not Approved', {
+            description: 'This broker is not approved for factoring'
+          });
+        } else if (data.approval_status === 'call_otr') {
+          toast.warning('Call OTR', {
+            description: 'Contact OTR Solutions for more information'
+          });
+        } else if (data.approval_status === 'not_found') {
+          toast.warning('Not Found in OTR', {
+            description: 'Broker not found in OTR system'
+          });
+        }
+      } else if (data?.error) {
+        toast.warning('Manual check required', {
+          description: data.message || 'OTR API check inconclusive'
+        });
+      } else {
+        toast.info('Check complete', {
+          description: data?.message || 'Status updated'
+        });
+      }
+
+      if (onStatusChange && data?.approval_status) {
+        onStatusChange(data.approval_status);
+      }
+
+      setPopoverOpen(false);
     } catch (err) {
-      console.error('FMCSA lookup error:', err);
-      setStatus('unchecked');
-      toast.error('Lookup failed');
+      console.error('OTR API check error:', err);
+      setStatus('error');
+      toast.error('Credit check failed');
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Validate MC with FMCSA only (fallback)
+  const handleValidateMc = async () => {
+    // Just trigger auto check which includes FMCSA
+    await handleAutoCheck();
   };
 
   const config = statusConfig[status] || statusConfig.unchecked;
@@ -247,6 +301,22 @@ export function BrokerCreditBadge({
               </div>
 
               <div className="border-t pt-3 space-y-2">
+                {/* Primary action: Auto check with OTR API */}
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full justify-center bg-green-600 hover:bg-green-700"
+                  onClick={handleAutoCheck}
+                  disabled={isUpdating || (!mcNumber && !customerId)}
+                >
+                  {isUpdating ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5 mr-2" />
+                  )}
+                  Check OTR Credit
+                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -256,19 +326,6 @@ export function BrokerCreditBadge({
                   <ExternalLink className="h-3.5 w-3.5 mr-2" />
                   Open OTR Portal
                 </Button>
-
-                {mcNumber && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-xs"
-                    onClick={handleValidateMc}
-                    disabled={isUpdating}
-                  >
-                    {isUpdating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-2" />}
-                    Validate MC (FMCSA)
-                  </Button>
-                )}
               </div>
 
               <div className="border-t pt-3">
@@ -328,17 +385,22 @@ export function BrokerCreditBadge({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-green-600"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleOpenOtrPortal();
+                  handleAutoCheck();
                 }}
+                disabled={isUpdating}
               >
-                <ExternalLink className="h-3 w-3" />
+                {isUpdating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3 w-3" />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p className="text-xs">Open OTR Portal</p>
+              <p className="text-xs">Check OTR Credit</p>
             </TooltipContent>
           </Tooltip>
         )}
