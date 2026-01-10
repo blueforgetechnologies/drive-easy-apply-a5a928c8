@@ -845,7 +845,8 @@ export default function LoadHunterTab() {
   // Cache for generated sound effects
   const soundCacheRef = useRef<Map<string, string>>(new Map());
   const isGeneratingSoundRef = useRef<Record<string, boolean>>({});
-  const aiSoundsUnavailableRef = useRef(false);
+  // ElevenLabs free tier is blocked - disable AI sounds permanently
+  const aiSoundsUnavailableRef = useRef(true);
   const aiSoundsUnavailableToastShownRef = useRef(false);
 
   const ensureSoundRefs = () => {
