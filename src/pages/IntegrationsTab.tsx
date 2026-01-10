@@ -394,7 +394,7 @@ export default function IntegrationsTab() {
           </CardContent>
       </Card>
 
-      {/* OTR Solutions Integration Card - Factoring Company */}
+      {/* OTR Solutions Integration Card - Factoring Company (Manual Check) */}
       <Card className="border-green-200 bg-green-50/30">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -402,18 +402,27 @@ export default function IntegrationsTab() {
               <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
               <div>
                 <CardTitle className="text-base">OTR Solutions LLC</CardTitle>
-                <CardDescription>Factoring company - Broker credit checks and approval status</CardDescription>
+                <CardDescription>Factoring company - Manual broker credit checks</CardDescription>
               </div>
             </div>
-            {otrIntegration && getStatusBadge(otrIntegration.sync_status, otrIntegration.is_configured, otrIntegration.is_enabled)}
+            <Badge variant="secondary" className="bg-green-100 text-green-700">Ready</Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Connect to OTR Solutions to automatically check broker credit status before bidding on loads. 
-              Approved brokers show a green badge, unapproved show red.
+              Check broker credit status in the OTR Solutions portal before bidding on loads. 
+              Click the badge on load matches to open OTR portal and record the result.
             </p>
+            <div className="bg-white p-3 rounded-lg border">
+              <p className="text-xs text-muted-foreground mb-2">How it works:</p>
+              <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>Click the credit badge on a load match</li>
+                <li>Click "Open OTR Portal" to check broker status</li>
+                <li>Enter MC# in OTR portal and check approval</li>
+                <li>Record the result (Approved/Declined/Call OTR)</li>
+              </ol>
+            </div>
             <div className="bg-white p-3 rounded-lg border">
               <p className="text-xs text-muted-foreground mb-2">Status Indicators:</p>
               <div className="flex flex-wrap gap-2 text-xs">
@@ -423,36 +432,15 @@ export default function IntegrationsTab() {
                 <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded">? Not Found</span>
               </div>
             </div>
-            <div className="flex gap-2">
-              {otrIntegration?.is_configured && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleTestIntegration(otrIntegration)}
-                >
-                  Test Connection
-                </Button>
-              )}
-              {otrIntegration && (
-                <Button
-                  variant={otrIntegration.is_configured ? "outline" : "default"}
-                  size="sm"
-                  onClick={() => handleConfigure(otrIntegration)}
-                  className="gap-1.5"
-                >
-                  <SettingsIcon className="h-4 w-4" />
-                  {otrIntegration.is_configured ? "Update API Key" : "Configure OTR"}
-                </Button>
-              )}
-            </div>
-            {otrIntegration?.error_message && (
-              <p className="text-sm text-destructive">Error: {otrIntegration.error_message}</p>
-            )}
-            {otrIntegration?.last_checked_at && (
-              <p className="text-xs text-muted-foreground">
-                Last checked: {new Date(otrIntegration.last_checked_at).toLocaleString()}
-              </p>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('https://client.otrsolutions.com', '_blank')}
+              className="gap-1.5"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Open OTR Portal
+            </Button>
           </div>
         </CardContent>
       </Card>
