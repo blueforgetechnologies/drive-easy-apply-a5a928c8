@@ -48,6 +48,7 @@ import UserDetail from "./pages/UserDetail";
 import ToolsTab from "./pages/ToolsTab";
 import AuditDetail from "./pages/AuditDetail";
 import PlatformAdminTab from "./pages/PlatformAdminTab";
+import TenantSettingsPage from "./pages/TenantSettingsPage";
 import Inspector from "./pages/Inspector";
 import DebugTenantDataTab from "./pages/DebugTenantDataTab";
 import TenantVerificationTab from "./pages/TenantVerificationTab";
@@ -103,6 +104,7 @@ const App = () => (
               <Route path="/dashboard/customer/:id" element={<DashboardLayout><CustomerDetail /></DashboardLayout>} />
               <Route path="/dashboard/duplicate-customers" element={<DashboardLayout><DuplicateCustomersTab /></DashboardLayout>} />
               <Route path="/dashboard/platform-admin" element={<DashboardLayout><PlatformAdminTab /></DashboardLayout>} />
+              <Route path="/dashboard/tenant/:tenantId/settings" element={<DashboardLayout><TenantSettingsPage /></DashboardLayout>} />
               <Route path="/dashboard/inspector" element={<DashboardLayout><Inspector /></DashboardLayout>} />
               <Route path="/dashboard/debug/tenant-data" element={<DashboardLayout><DebugTenantDataTab /></DashboardLayout>} />
               <Route path="/dashboard/debug/tenant-verification" element={<DashboardLayout><TenantVerificationTab /></DashboardLayout>} />
