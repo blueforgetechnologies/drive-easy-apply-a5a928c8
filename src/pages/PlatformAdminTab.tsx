@@ -121,6 +121,8 @@ export default function PlatformAdminTab() {
   const [newTenantName, setNewTenantName] = useState("");
   const [newTenantSlug, setNewTenantSlug] = useState("");
   const [newTenantGmailAlias, setNewTenantGmailAlias] = useState("");
+  const [newTenantMcNumber, setNewTenantMcNumber] = useState("");
+  const [lookingUpCarrier, setLookingUpCarrier] = useState(false);
   const [editRateLimitMinute, setEditRateLimitMinute] = useState(60);
   const [editRateLimitDay, setEditRateLimitDay] = useState(10000);
   const [editGmailAlias, setEditGmailAlias] = useState("");
@@ -306,15 +308,18 @@ export default function PlatformAdminTab() {
     }
 
     const slug = newTenantSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
-    // Auto-generate gmail_alias from slug if not provided
-    const gmailAlias = newTenantGmailAlias.trim() || `+${slug}`;
+    // Generate gmail_alias from carrier name + MC number
+    const sanitizedName = newTenantName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const gmailAlias = newTenantGmailAlias.trim() || `+${sanitizedName}${newTenantMcNumber || ''}`;
 
     const { data, error } = await supabase
       .from("tenants")
       .insert({
         name: newTenantName.trim(),
         slug,
-        gmail_alias: gmailAlias
+        gmail_alias: gmailAlias,
+        mc_number: newTenantMcNumber || null,
+        carrier_name: newTenantName.trim()
       })
       .select()
       .single();
@@ -333,7 +338,45 @@ export default function PlatformAdminTab() {
     setNewTenantName("");
     setNewTenantSlug("");
     setNewTenantGmailAlias("");
+    setNewTenantMcNumber("");
     await loadTenants();
+  };
+
+  const handleLookupCarrier = async () => {
+    if (!newTenantMcNumber.trim()) {
+      toast.error("Enter an MC number to lookup");
+      return;
+    }
+
+    setLookingUpCarrier(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-carrier-data", {
+        body: { mc: newTenantMcNumber.trim() }
+      });
+
+      if (error) throw error;
+
+      if (data.error || !data.name) {
+        toast.error(data.error || "Carrier not found");
+        return;
+      }
+
+      // Populate form with carrier data
+      setNewTenantName(data.dba_name || data.name);
+      const slug = (data.dba_name || data.name).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      setNewTenantSlug(slug);
+      
+      // Generate alias: sanitized name + MC number
+      const sanitizedName = (data.dba_name || data.name).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const mcClean = data.mc_number || newTenantMcNumber.replace(/\D/g, '');
+      setNewTenantGmailAlias(`+${sanitizedName}${mcClean}`);
+      
+      toast.success(`Found: ${data.dba_name || data.name}`);
+    } catch (error: any) {
+      toast.error("Lookup failed: " + error.message);
+    } finally {
+      setLookingUpCarrier(false);
+    }
   };
 
   const handleTogglePause = async (tenant: Tenant) => {
@@ -524,14 +567,23 @@ export default function PlatformAdminTab() {
           </h1>
           <p className="text-muted-foreground">Manage tenants, feature flags, and platform-wide settings</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={loadAllData}
-          disabled={refreshing}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/dashboard/email-branding")}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Email Branding
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={loadAllData}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -640,8 +692,35 @@ export default function PlatformAdminTab() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                {/* MC Number Lookup */}
                 <div>
-                  <Label htmlFor="tenant-name">Tenant Name</Label>
+                  <Label htmlFor="tenant-mc">MC Number (optional)</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="tenant-mc"
+                      value={newTenantMcNumber}
+                      onChange={(e) => setNewTenantMcNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className="flex-1"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
+                      onClick={handleLookupCarrier}
+                      disabled={lookingUpCarrier || !newTenantMcNumber}
+                    >
+                      {lookingUpCarrier ? "Looking up..." : "Lookup FMCSA"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter MC number to auto-fill carrier info from FMCSA
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <Label htmlFor="tenant-name">Carrier/Tenant Name</Label>
                   <Input 
                     id="tenant-name"
                     value={newTenantName}
@@ -649,9 +728,11 @@ export default function PlatformAdminTab() {
                       setNewTenantName(e.target.value);
                       const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
                       setNewTenantSlug(slug);
-                      setNewTenantGmailAlias(`+${slug}`);
+                      // Auto-generate alias with MC if available
+                      const sanitizedName = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                      setNewTenantGmailAlias(`+${sanitizedName}${newTenantMcNumber || ''}`);
                     }}
-                    placeholder="Acme Trucking"
+                    placeholder="Courier Express"
                   />
                 </div>
                 <div>
@@ -659,30 +740,41 @@ export default function PlatformAdminTab() {
                   <Input 
                     id="tenant-slug"
                     value={newTenantSlug}
-                    onChange={(e) => {
-                      setNewTenantSlug(e.target.value);
-                      setNewTenantGmailAlias(`+${e.target.value}`);
-                    }}
-                    placeholder="acme-trucking"
+                    onChange={(e) => setNewTenantSlug(e.target.value)}
+                    placeholder="courier-express"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Used in URLs and API calls
                   </p>
                 </div>
                 <div>
-                  <Label htmlFor="tenant-gmail-alias">Gmail Alias</Label>
+                  <Label htmlFor="tenant-gmail-alias">Generated Email Alias</Label>
                   <div className="flex items-center gap-2">
                     <Input 
                       id="tenant-gmail-alias"
                       value={newTenantGmailAlias}
                       onChange={(e) => setNewTenantGmailAlias(e.target.value)}
-                      placeholder="+acme-trucking"
+                      placeholder="+courierexpress123456"
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const fullEmail = `talbilogistics${newTenantGmailAlias}@gmail.com`;
+                        navigator.clipboard.writeText(fullEmail);
+                        toast.success("Email copied to clipboard!");
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <Mail className="h-3 w-3 inline mr-1" />
-                    Loadboard emails sent to talbilogistics{newTenantGmailAlias || "+slug"}@gmail.com will route to this tenant
-                  </p>
+                  <div className="mt-2 p-2 bg-muted rounded-md">
+                    <p className="text-xs font-medium">Full Email Address:</p>
+                    <code className="text-xs text-primary">
+                      talbilogistics{newTenantGmailAlias || "+alias"}@gmail.com
+                    </code>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

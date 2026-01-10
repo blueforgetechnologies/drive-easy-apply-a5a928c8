@@ -19,7 +19,9 @@ import {
   Save,
   RefreshCw,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Copy,
+  ExternalLink
 } from "lucide-react";
 
 interface Tenant {
@@ -293,18 +295,40 @@ export default function TenantSettingsPage() {
                 id="gmail-alias"
                 value={gmailAlias}
                 onChange={(e) => setGmailAlias(e.target.value)}
-                placeholder="+tenant-slug"
+                placeholder="+carriername-mcnumber"
               />
+            </div>
+            
+            {/* Prominent Copy Email Section */}
+            <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
+              <p className="text-xs font-medium text-primary mb-2">📧 CARRIER EMAIL ADDRESS</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 p-2 bg-background border rounded text-sm font-mono break-all">
+                  talbilogistics{gmailAlias || "+alias"}@gmail.com
+                </code>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const fullEmail = `talbilogistics${gmailAlias}@gmail.com`;
+                    navigator.clipboard.writeText(fullEmail);
+                    toast.success("Email copied! Send this to your carrier.");
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Emails to <code className="bg-muted px-1 rounded">talbilogistics{gmailAlias || "+alias"}@gmail.com</code> route here
+                Send this email to the carrier to add to their Sylectus/loadboard settings
               </p>
             </div>
+            
             <div className="p-3 bg-muted/50 rounded-lg text-sm">
               <strong className="text-xs uppercase tracking-wide text-muted-foreground">Setup Instructions</strong>
               <ol className="mt-2 space-y-1 text-xs text-muted-foreground list-decimal list-inside">
-                <li>Configure Sylectus/FullCircle email settings</li>
-                <li>Set destination to <code className="bg-muted px-1 rounded">talbilogistics{gmailAlias || "+alias"}@gmail.com</code></li>
-                <li>Test by sending a sample load email</li>
+                <li>Copy the email address above</li>
+                <li>Send to carrier / loadboard provider</li>
+                <li>Have them set it as the destination for load emails</li>
               </ol>
             </div>
           </CardContent>
