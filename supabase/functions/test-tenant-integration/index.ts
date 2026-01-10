@@ -123,6 +123,35 @@ async function testHighway(credentials: Record<string, string>): Promise<{ succe
   }
 }
 
+async function testOtrSolutions(credentials: Record<string, string>): Promise<{ success: boolean; message: string }> {
+  const apiKey = credentials.api_key;
+  if (!apiKey) return { success: false, message: 'API key not configured' };
+  
+  try {
+    // OTR Solutions API - test with a known MC number check
+    // Their API endpoint for broker credit checks
+    const response = await fetch('https://api.otrsolutions.com/v1/broker/check', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ mc_number: '123456' }) // Test MC
+    });
+    
+    // 401 = bad key, 404 = MC not found (which means API works)
+    if (response.ok || response.status === 404) {
+      return { success: true, message: 'OTR Solutions API connected successfully' };
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, message: 'Invalid API key or access denied' };
+    }
+    return { success: false, message: `API error: ${response.status}` };
+  } catch (error) {
+    return { success: false, message: sanitizeError(error instanceof Error ? error.message : 'Connection failed') };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -222,6 +251,9 @@ serve(async (req) => {
         break;
       case 'highway':
         result = await testHighway(credentials);
+        break;
+      case 'otr_solutions':
+        result = await testOtrSolutions(credentials);
         break;
       default:
         result = { success: false, message: `Unknown provider: ${provider}` };

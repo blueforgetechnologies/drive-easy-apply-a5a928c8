@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { IntegrationConfigModal } from "@/components/IntegrationConfigModal";
 
@@ -290,9 +290,10 @@ export default function IntegrationsTab() {
     );
   }
 
-  // Filter out gmail from main list (it has special handling)
-  const mainIntegrations = integrations.filter((i) => i.id !== "gmail");
+  // Filter out gmail and otr_solutions from main list (they have special handling)
+  const mainIntegrations = integrations.filter((i) => i.id !== "gmail" && i.id !== "otr_solutions");
   const gmailIntegration = integrations.find((i) => i.id === "gmail");
+  const otrIntegration = integrations.find((i) => i.id === "otr_solutions");
 
   return (
     <div className="space-y-4">
@@ -391,6 +392,69 @@ export default function IntegrationsTab() {
               </div>
             </div>
           </CardContent>
+      </Card>
+
+      {/* OTR Solutions Integration Card - Factoring Company */}
+      <Card className="border-green-200 bg-green-50/30">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <CardTitle className="text-base">OTR Solutions LLC</CardTitle>
+                <CardDescription>Factoring company - Broker credit checks and approval status</CardDescription>
+              </div>
+            </div>
+            {otrIntegration && getStatusBadge(otrIntegration.sync_status, otrIntegration.is_configured, otrIntegration.is_enabled)}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Connect to OTR Solutions to automatically check broker credit status before bidding on loads. 
+              Approved brokers show a green badge, unapproved show red.
+            </p>
+            <div className="bg-white p-3 rounded-lg border">
+              <p className="text-xs text-muted-foreground mb-2">Status Indicators:</p>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded">✓ Approved</span>
+                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded">✗ Not Approved</span>
+                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">📞 Call OTR</span>
+                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded">? Not Found</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {otrIntegration?.is_configured && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTestIntegration(otrIntegration)}
+                >
+                  Test Connection
+                </Button>
+              )}
+              {otrIntegration && (
+                <Button
+                  variant={otrIntegration.is_configured ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => handleConfigure(otrIntegration)}
+                  className="gap-1.5"
+                >
+                  <SettingsIcon className="h-4 w-4" />
+                  {otrIntegration.is_configured ? "Update API Key" : "Configure OTR"}
+                </Button>
+              )}
+            </div>
+            {otrIntegration?.error_message && (
+              <p className="text-sm text-destructive">Error: {otrIntegration.error_message}</p>
+            )}
+            {otrIntegration?.last_checked_at && (
+              <p className="text-xs text-muted-foreground">
+                Last checked: {new Date(otrIntegration.last_checked_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Integration Cards */}

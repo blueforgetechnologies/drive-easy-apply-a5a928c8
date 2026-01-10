@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import LoadRouteMap from "@/components/LoadRouteMap";
+import { BrokerCreditBadge } from "@/components/BrokerCreditBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -2030,13 +2031,22 @@ const LoadEmailDetail = ({
 
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
-                    <button 
-                      className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:from-amber-150 hover:to-amber-250 active:scale-[0.98]"
-                      style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
-                      title={brokerName}
-                    >
-                      {brokerName}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:from-amber-150 hover:to-amber-250 active:scale-[0.98]"
+                        style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
+                        title={brokerName}
+                      >
+                        {brokerName}
+                      </button>
+                      <BrokerCreditBadge
+                        brokerName={brokerName}
+                        mcNumber={data.mc_number || data.broker_mc}
+                        loadEmailId={email.id}
+                        matchId={match?.id}
+                        showCheckButton={true}
+                      />
+                    </div>
                     <div>
                       <div>   11/30/25 Sun 17:00 EST</div>
                       <div>   12/01/25 Mon 09:00 EST</div>
