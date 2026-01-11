@@ -1225,6 +1225,7 @@ export type Database = {
           payload_url: string | null
           provider: string
           receipt_count: number
+          size_bytes: number | null
         }
         Insert: {
           body_html?: string | null
@@ -1237,6 +1238,7 @@ export type Database = {
           payload_url?: string | null
           provider: string
           receipt_count?: number
+          size_bytes?: number | null
         }
         Update: {
           body_html?: string | null
@@ -1249,6 +1251,7 @@ export type Database = {
           payload_url?: string | null
           provider?: string
           receipt_count?: number
+          size_bytes?: number | null
         }
         Relationships: []
       }
@@ -5918,11 +5921,21 @@ export type Database = {
     Views: {
       content_dedup_metrics: {
         Row: {
-          by_provider: Json | null
-          reuse_rate_pct: number | null
-          tenant_flag_status: Json | null
-          total_content_bytes: number | null
-          total_receipt_count: number | null
+          avg_content_size_bytes: number | null
+          avg_reuse_count: number | null
+          estimated_bytes_saved: number | null
+          max_reuse_count: number | null
+          provider_breakdown: Json | null
+          quarantine_24h: number | null
+          quarantine_7d: number | null
+          receipts_24h: number | null
+          receipts_7d: number | null
+          tenant_feature_status: Json | null
+          total_content_uses: number | null
+          total_receipts: number | null
+          total_stored_bytes: number | null
+          unique_content_24h: number | null
+          unique_content_7d: number | null
           unique_content_count: number | null
         }
         Relationships: []
