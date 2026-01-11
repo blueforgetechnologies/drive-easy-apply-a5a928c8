@@ -42,6 +42,13 @@ interface ContentDedupResult {
   contentHash: string;
 }
 
+// Raw MIME fetch result
+interface RawMimeResult {
+  rawBytes: Uint8Array;
+  contentHash: string;
+  sizeBytes: number;
+}
+
 // Extract gmail alias from email address (e.g., "talbilogistics+acme@gmail.com" -> "+acme")
 function extractGmailAlias(email: string | null): string | null {
   if (!email) return null;
@@ -224,46 +231,59 @@ function generateDedupeKey(gmailMessageId: string): string {
 }
 
 // ============================================================================
-// CONTENT DEDUPLICATION FUNCTIONS (Step 2)
+// CONTENT DEDUPLICATION FUNCTIONS (Step 2) - RAW MIME HASHING
 // ============================================================================
 
-// Build a TENANT-NEUTRAL content payload for hashing
-// This excludes: tenantId, receivedAt, historyId, alias (all are per-tenant or time-based)
-// This includes: content that's identical across all tenants receiving the same load email
-interface ContentPayloadForHash {
-  provider: string;
-  fromEmail: string | null;
-  subject: string | null;
-  threadId: string | null;
-  // messageId is excluded because it may differ per recipient in some cases
-  // We rely on subject + from + provider to identify duplicate content
-}
-
-function buildContentPayloadForHash(
-  provider: string,
-  fromEmail: string | null,
-  subject: string | null,
-  threadId: string | null
-): ContentPayloadForHash {
-  return {
-    provider,
-    fromEmail: fromEmail?.toLowerCase().trim() || null,
-    subject: subject?.trim() || null,
-    threadId,
-  };
-}
-
-// Compute SHA256 hash of TENANT-NEUTRAL content
-// This ensures the same loadboard email sent to multiple tenants produces the same hash
-async function computeContentHash(contentPayload: ContentPayloadForHash): Promise<string> {
-  // Sort keys for deterministic serialization
-  const payloadString = JSON.stringify(contentPayload, Object.keys(contentPayload).sort());
-  const encoder = new TextEncoder();
-  const data = encoder.encode(payloadString);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+// Fetch raw MIME bytes from Gmail API and compute SHA256 hash
+// This ensures 100% identical emails produce the same hash - no false positives
+async function fetchRawMimeAndHash(
+  accessToken: string,
+  messageId: string
+): Promise<RawMimeResult | null> {
+  try {
+    // Fetch raw MIME (base64url encoded)
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=raw`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    
+    if (!response.ok) {
+      console.error(`[raw-mime] Failed to fetch raw for ${messageId}: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (!data.raw) {
+      console.error(`[raw-mime] No raw field in response for ${messageId}`);
+      return null;
+    }
+    
+    // Decode base64url to bytes
+    // Gmail uses URL-safe base64: replace - with + and _ with /
+    const base64 = data.raw.replace(/-/g, '+').replace(/_/g, '/');
+    const binaryString = atob(base64);
+    const rawBytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      rawBytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Compute SHA256 of raw MIME bytes
+    const hashBuffer = await crypto.subtle.digest('SHA-256', rawBytes);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    console.log(`[raw-mime] ✅ Fetched ${rawBytes.length} bytes, hash: ${contentHash.substring(0, 12)}...`);
+    
+    return {
+      rawBytes,
+      contentHash,
+      sizeBytes: rawBytes.length,
+    };
+  } catch (err) {
+    console.error(`[raw-mime] Error fetching raw MIME:`, err);
+    return null;
+  }
 }
 
 // Detect provider from email sender
@@ -275,38 +295,39 @@ function detectProvider(fromEmail: string | null): string {
   return 'unknown';
 }
 
-// Store content-addressed payload to global bucket
-async function storeGlobalPayload(
+// Store raw MIME bytes to global content-addressed bucket
+// Uses SHA256 hash as path - if file exists, content is guaranteed identical
+async function storeRawMimeContent(
   provider: string,
   contentHash: string,
-  payload: any
+  rawBytes: Uint8Array
 ): Promise<string | null> {
   try {
-    // Content-addressed path: provider/prefix/full_hash.json
+    // Content-addressed path: provider/prefix/full_hash.eml
     const hashPrefix = contentHash.substring(0, 4);
-    const filePath = `${provider}/${hashPrefix}/${contentHash}.json`;
+    const filePath = `${provider}/${hashPrefix}/${contentHash}.eml`;
     
     const { error } = await supabase.storage
       .from('email-content')
-      .upload(filePath, JSON.stringify(payload), {
-        contentType: 'application/json',
-        upsert: false, // Don't overwrite - content is immutable
+      .upload(filePath, rawBytes, {
+        contentType: 'message/rfc822',
+        upsert: false, // Don't overwrite - content is immutable by definition
       });
     
     if (error) {
-      // If already exists, that's fine (expected for reuse)
+      // If already exists, that's expected for reuse - not an error
       if (!error.message?.includes('already exists') && !error.message?.includes('Duplicate')) {
-        console.error(`[gmail-webhook] Failed to store global payload:`, error);
+        console.error(`[storage] Failed to store raw MIME:`, error);
         return null;
       }
-      console.log(`📦 Content already exists: ${filePath}`);
+      console.log(`📦 Raw MIME already exists: ${filePath}`);
       return filePath;
     }
     
-    console.log(`📦 Stored NEW global content: ${filePath}`);
+    console.log(`📦 Stored NEW raw MIME: ${filePath} (${rawBytes.length} bytes)`);
     return filePath;
   } catch (err) {
-    console.error(`[gmail-webhook] Global storage error:`, err);
+    console.error(`[storage] Raw MIME storage error:`, err);
     return null;
   }
 }
@@ -319,8 +340,10 @@ async function processContentDedup(
   payloadUrl: string | null,
   gmailMessageId: string,
   historyId: string | null,
-  headerResult: HeaderExtractionResult
+  headerResult: HeaderExtractionResult,
+  sizeBytes?: number
 ): Promise<ContentDedupResult | null> {
+
   try {
     // 1. Upsert email_content: insert if new, update last_seen_at + increment receipt_count if exists
     const { data: existingContent, error: lookupError } = await supabase
@@ -747,49 +770,52 @@ serve(async (req) => {
       if (contentDedupEnabled) {
         contentDedupStats.enabled = true;
         
-        // Build TENANT-NEUTRAL payload for hashing (excludes tenant_id, timestamps, etc.)
-        const contentPayloadForHash = buildContentPayloadForHash(
-          provider,
-          fromEmail,
-          subject,
-          message.threadId
-        );
+        // ====================================================================
+        // RAW MIME HASHING: Fetch format=raw and compute SHA256 of exact bytes
+        // This ensures 100% identical emails produce the same hash
+        // ====================================================================
+        const rawMimeResult = await fetchRawMimeAndHash(accessToken, message.id);
         
-        // Compute SHA256 hash of tenant-neutral content
-        const contentHash = await computeContentHash(contentPayloadForHash);
-        
-        // Store to global content-addressed bucket (full rawPayload for audit)
-        const globalPayloadUrl = await storeGlobalPayload(provider, contentHash, rawPayload);
-        
-        // Upsert content + create receipt
-        const dedupResult = await processContentDedup(
-          tenantInfo.tenantId,
-          provider,
-          contentHash,
-          globalPayloadUrl,
-          message.id,
-          historyId,
-          headerResult
-        );
-        
-        if (dedupResult) {
-          contentId = dedupResult.contentId;
-          receiptId = dedupResult.receiptId;
+        if (rawMimeResult) {
+          const { rawBytes, contentHash, sizeBytes } = rawMimeResult;
           
-          if (dedupResult.isNewContent) {
-            contentDedupStats.newContent++;
+          // Store raw MIME bytes to global content-addressed bucket
+          const globalPayloadUrl = await storeRawMimeContent(provider, contentHash, rawBytes);
+          
+          // Upsert content + create receipt
+          const dedupResult = await processContentDedup(
+            tenantInfo.tenantId,
+            provider,
+            contentHash,
+            globalPayloadUrl,
+            message.id,
+            historyId,
+            headerResult,
+            sizeBytes
+          );
+          
+          if (dedupResult) {
+            contentId = dedupResult.contentId;
+            receiptId = dedupResult.receiptId;
+            
+            if (dedupResult.isNewContent) {
+              contentDedupStats.newContent++;
+            } else {
+              contentDedupStats.reusedContent++;
+            }
+            contentDedupStats.receiptsCreated++;
+            
+            console.log(`[content-dedup] ✅ ${dedupResult.isNewContent ? 'NEW' : 'REUSED'} content for tenant ${tenantInfo.tenantName} (${sizeBytes} bytes)`);
           } else {
-            contentDedupStats.reusedContent++;
+            contentDedupStats.errors++;
+            console.error(`[content-dedup] ❌ Failed for message ${message.id}`);
           }
-          contentDedupStats.receiptsCreated++;
-          
-          console.log(`[content-dedup] ✅ ${dedupResult.isNewContent ? 'NEW' : 'REUSED'} content for tenant ${tenantInfo.tenantName}`);
         } else {
           contentDedupStats.errors++;
-          console.error(`[content-dedup] ❌ Failed for message ${message.id}`);
+          console.error(`[content-dedup] ❌ Failed to fetch raw MIME for ${message.id}`);
         }
       }
-      
+
       // ========================================================================
       // LEGACY PATH: Always store to tenant-scoped bucket (dual-write for now)
       // ========================================================================
