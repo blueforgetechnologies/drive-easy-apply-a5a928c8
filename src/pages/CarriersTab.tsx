@@ -10,11 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight, LayoutDashboard, Copy, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight, LayoutDashboard, Copy, MoreHorizontal, Download, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { exportToExcel } from "@/lib/excel-utils";
+import { ExcelImportDialog } from "@/components/ExcelImportDialog";
 
 interface Carrier {
   id: string;
@@ -55,6 +57,7 @@ export default function CarriersTab() {
   const [selectedCarriers, setSelectedCarriers] = useState<string[]>([]);
   const [showCheckboxes, setShowCheckboxes] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const ROWS_PER_PAGE = 50;
 
   const { tenantId, shouldFilter } = useTenantFilter();
@@ -383,6 +386,27 @@ export default function CarriersTab() {
               Cancel
             </Button>
           )}
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => {
+              exportToExcel(filteredCarriers, 'carriers');
+              toast.success(`Exported ${filteredCarriers.length} carriers`);
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Import
+          </Button>
           <Button 
             variant="outline" 
             size="sm"
