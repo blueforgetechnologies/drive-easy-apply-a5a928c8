@@ -176,10 +176,37 @@ export function parseExcelFile(file: File): Promise<any[]> {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        
+        // Parse as array of arrays first to get raw data
+        const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,  // Get as array of arrays
           defval: '',
-          raw: false,  // Get formatted strings
+          raw: false,
         });
+        
+        console.log('Raw sheet data (first 3 rows):', rawData.slice(0, 3));
+        
+        if (rawData.length < 2) {
+          // Need at least header row + 1 data row
+          resolve([]);
+          return;
+        }
+        
+        // First row is headers - normalize them
+        const headers = (rawData[0] || []).map((h: any) => normalizeHeader(String(h || '')));
+        console.log('Normalized headers:', headers);
+        
+        // Convert remaining rows to objects using normalized headers
+        const jsonData = rawData.slice(1).map(row => {
+          const obj: Record<string, any> = {};
+          headers.forEach((header, index) => {
+            if (header && row[index] !== undefined && row[index] !== '') {
+              obj[header] = row[index];
+            }
+          });
+          return obj;
+        }).filter(obj => Object.keys(obj).length > 0); // Filter out empty rows
+        
         console.log('Parsed Excel data:', jsonData);
         resolve(jsonData);
       } catch (error) {
@@ -193,40 +220,53 @@ export function parseExcelFile(file: File): Promise<any[]> {
   });
 }
 
+// Normalize header: trim, collapse whitespace, lowercase for matching
+function normalizeHeader(header: string): string {
+  return header.trim().replace(/\s+/g, ' ');
+}
+
+// Create a lookup key for header matching (lowercase, no spaces)
+function headerKey(header: string): string {
+  return header.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+}
+
 export function mapExcelRowToEntity(row: any, entityType: EntityType): any {
   const columns = ENTITY_COLUMNS[entityType];
   const result: any = {};
   
-  // Log available keys in the row for debugging
-  console.log('Excel row keys:', Object.keys(row));
+  // Build a lookup map from the row keys
+  const rowKeyMap: Record<string, string> = {};
+  Object.keys(row).forEach(key => {
+    rowKeyMap[headerKey(key)] = key;
+  });
+  
+  console.log('Row keys:', Object.keys(row));
+  console.log('Row key map:', rowKeyMap);
   
   columns.forEach(col => {
-    // Try exact header match first
-    let excelValue = row[col.header];
+    const colKey = headerKey(col.header);
+    const actualKey = rowKeyMap[colKey];
     
-    // If not found, try case-insensitive match
-    if (excelValue === undefined) {
-      const lowerHeader = col.header.toLowerCase();
-      const matchingKey = Object.keys(row).find(k => k.toLowerCase() === lowerHeader);
-      if (matchingKey) {
-        excelValue = row[matchingKey];
-      }
-    }
-    
-    if (excelValue !== undefined && excelValue !== '') {
-      // Handle boolean transforms in reverse
-      let value = excelValue;
-      if (col.transform) {
-        if (excelValue === 'Yes' || excelValue === 'yes' || excelValue === 'TRUE' || excelValue === true) {
-          value = true;
-        } else if (excelValue === 'No' || excelValue === 'no' || excelValue === 'FALSE' || excelValue === false) {
-          value = false;
+    if (actualKey) {
+      const excelValue = row[actualKey];
+      
+      if (excelValue !== undefined && excelValue !== '') {
+        // Handle boolean transforms in reverse
+        let value = excelValue;
+        if (col.transform) {
+          const strVal = String(excelValue).toLowerCase();
+          if (strVal === 'yes' || strVal === 'true' || excelValue === true) {
+            value = true;
+          } else if (strVal === 'no' || strVal === 'false' || excelValue === false) {
+            value = false;
+          }
         }
+        setNestedValue(result, col.key, value);
       }
-      setNestedValue(result, col.key, value);
     }
   });
   
+  console.log('Mapped result:', result);
   return result;
 }
 
