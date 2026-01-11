@@ -1857,6 +1857,41 @@ export type Database = {
           },
         ]
       }
+      integration_usage_events: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          integration_key: string
+          meta: Json | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          integration_key: string
+          meta?: Json | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          integration_key?: string
+          meta?: Json | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_usage_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           accepted_at: string | null
@@ -3958,6 +3993,42 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_integrations: {
+        Row: {
+          config: Json | null
+          config_hint: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          integration_key: string
+          is_enabled: boolean | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json | null
+          config_hint?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          integration_key: string
+          is_enabled?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json | null
+          config_hint?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          integration_key?: string
+          is_enabled?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       processing_state: {
         Row: {
           floor_load_id: string
@@ -4562,11 +4633,14 @@ export type Database = {
           is_enabled: boolean | null
           last_checked_at: string | null
           last_sync_at: string | null
+          override_config: string | null
+          override_hint: string | null
           provider: string
           settings: Json | null
           sync_status: string | null
           tenant_id: string
           updated_at: string | null
+          use_global: boolean | null
         }
         Insert: {
           created_at?: string | null
@@ -4577,11 +4651,14 @@ export type Database = {
           is_enabled?: boolean | null
           last_checked_at?: string | null
           last_sync_at?: string | null
+          override_config?: string | null
+          override_hint?: string | null
           provider: string
           settings?: Json | null
           sync_status?: string | null
           tenant_id: string
           updated_at?: string | null
+          use_global?: boolean | null
         }
         Update: {
           created_at?: string | null
@@ -4592,11 +4669,14 @@ export type Database = {
           is_enabled?: boolean | null
           last_checked_at?: string | null
           last_sync_at?: string | null
+          override_config?: string | null
+          override_hint?: string | null
           provider?: string
           settings?: Json | null
           sync_status?: string | null
           tenant_id?: string
           updated_at?: string | null
+          use_global?: boolean | null
         }
         Relationships: [
           {
@@ -5864,6 +5944,10 @@ export type Database = {
       }
       is_user_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       reset_stale_email_queue: { Args: never; Returns: number }
+      resolve_integration_config: {
+        Args: { p_integration_key: string; p_tenant_id: string }
+        Returns: Json
+      }
       worker_heartbeat: {
         Args: {
           p_current_batch_size?: number

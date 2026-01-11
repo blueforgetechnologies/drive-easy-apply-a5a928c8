@@ -2,279 +2,314 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail, ShieldCheck } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings as SettingsIcon, Bell, Mail, ShieldCheck, Globe, Building2, Eye, EyeOff, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
-import { IntegrationConfigModal } from "@/components/IntegrationConfigModal";
+import { useQuery } from "@tanstack/react-query";
 
-// Field definition from edge function
-interface FieldDef {
-  key: string;
-  label: string;
-  type: 'password' | 'text' | 'email';
-  placeholder: string;
-  required: boolean;
+// Platform integrations in scope
+const PLATFORM_INTEGRATIONS = [
+  { key: 'mapbox', name: 'Mapbox', description: 'Maps and geocoding services', icon: 'map', fieldKey: 'token', fieldLabel: 'Access Token' },
+  { key: 'resend', name: 'Resend', description: 'Transactional email service', icon: 'mail', fieldKey: 'api_key', fieldLabel: 'API Key' },
+  { key: 'weather', name: 'Weather API', description: 'Real-time weather data for locations', icon: 'cloud', fieldKey: 'api_key', fieldLabel: 'API Key' },
+  { key: 'highway', name: 'Highway', description: 'Carrier identity verification and fraud prevention', icon: 'shield', fieldKey: 'api_key', fieldLabel: 'API Key' },
+];
+
+interface PlatformIntegration {
+  id: string;
+  integration_key: string;
+  is_enabled: boolean;
+  config: { encrypted?: string } | null;
+  config_hint: string | null;
+  description: string | null;
+  updated_at: string;
 }
 
-interface Integration {
+interface TenantIntegrationOverride {
   id: string;
-  name: string;
-  description: string;
-  is_configured: boolean;
+  provider: string;
+  use_global: boolean;
   is_enabled: boolean;
-  credentials_hint: string | null;
-  settings: Record<string, unknown> | null;
-  sync_status: "healthy" | "failed" | "partial" | "pending" | "disabled" | "not_configured";
-  error_message: string | null;
-  last_checked_at: string | null;
-  last_sync_at: string | null;
-  credentialFields: FieldDef[];
-  settingsFields: FieldDef[];
+  override_hint: string | null;
 }
 
 export default function IntegrationsTab() {
-  const { tenantId, shouldFilter } = useTenantFilter();
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tenantId, shouldFilter, isPlatformAdmin } = useTenantFilter();
+  const [activeTab, setActiveTab] = useState<'platform' | 'tenant'>(isPlatformAdmin ? 'platform' : 'tenant');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
+  
+  // Platform admin state
+  const [platformIntegrations, setPlatformIntegrations] = useState<PlatformIntegration[]>([]);
+  const [platformCredentials, setPlatformCredentials] = useState<Record<string, string>>({});
+  const [platformShowSecrets, setPlatformShowSecrets] = useState<Record<string, boolean>>({});
+  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
+  const [testingPlatform, setTestingPlatform] = useState<string | null>(null);
+  
+  // Tenant admin state
+  const [tenantOverrides, setTenantOverrides] = useState<Record<string, TenantIntegrationOverride>>({});
+  const [tenantCredentials, setTenantCredentials] = useState<Record<string, string>>({});
+  const [tenantShowSecrets, setTenantShowSecrets] = useState<Record<string, boolean>>({});
+  const [savingTenant, setSavingTenant] = useState<string | null>(null);
+  const [testingTenant, setTestingTenant] = useState<string | null>(null);
+  const [togglingGlobal, setTogglingGlobal] = useState<string | null>(null);
 
-  // Gmail push state
-  const [isSettingUpPush, setIsSettingUpPush] = useState(false);
-  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
-  const [pushStatus, setPushStatus] = useState<"unknown" | "active" | "error">("unknown");
-
-  const loadIntegrations = useCallback(async () => {
-    if (shouldFilter && !tenantId) return;
-
+  // Fetch platform integrations (for platform admins)
+  const loadPlatformIntegrations = useCallback(async () => {
+    if (!isPlatformAdmin) return;
+    
     try {
-      const body = tenantId ? { tenant_id: tenantId } : {};
-      const { data, error } = await supabase.functions.invoke("check-tenant-integrations", {
-        body,
+      const { data, error } = await supabase.functions.invoke('manage-platform-integration', {
+        body: { action: 'list' },
       });
-
+      
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      setIntegrations((data?.integrations ?? []) as Integration[]);
+      setPlatformIntegrations(data?.integrations || []);
     } catch (error) {
-      console.error("Error loading integrations:", error);
-      toast.error("Failed to load integrations", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
-      setIntegrations([]);
+      console.error('Error loading platform integrations:', error);
+      toast.error('Failed to load platform integrations');
     }
-  }, [tenantId, shouldFilter]);
+  }, [isPlatformAdmin]);
+
+  // Fetch tenant overrides
+  const loadTenantOverrides = useCallback(async () => {
+    if (!tenantId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('tenant_integrations')
+        .select('id, provider, use_global, is_enabled, override_hint')
+        .eq('tenant_id', tenantId)
+        .in('provider', PLATFORM_INTEGRATIONS.map(p => p.key));
+      
+      if (error) throw error;
+      
+      const overridesMap: Record<string, TenantIntegrationOverride> = {};
+      (data || []).forEach((item: TenantIntegrationOverride) => {
+        overridesMap[item.provider] = item;
+      });
+      setTenantOverrides(overridesMap);
+    } catch (error) {
+      console.error('Error loading tenant overrides:', error);
+    }
+  }, [tenantId]);
 
   useEffect(() => {
-    let cancelled = false;
+    loadPlatformIntegrations();
+    loadTenantOverrides();
+  }, [loadPlatformIntegrations, loadTenantOverrides]);
 
-    const run = async () => {
-      if (shouldFilter && !tenantId) return;
-
-      setIsLoading(true);
-      try {
-        await loadIntegrations();
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId, shouldFilter, loadIntegrations]);
-
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
+    await Promise.all([loadPlatformIntegrations(), loadTenantOverrides()]);
+    setIsRefreshing(false);
+    toast.success('Refreshed integration status');
+  };
+
+  // Platform admin: toggle enabled
+  const handlePlatformToggle = async (integrationKey: string, enabled: boolean) => {
     try {
-      await loadIntegrations();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadIntegrations]);
-
-  const handleTestIntegration = useCallback(
-    async (integration: Integration) => {
-      if (!tenantId) {
-        toast.error("Please select a tenant to test integrations.");
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.functions.invoke("test-tenant-integration", {
-          body: { tenant_id: tenantId, provider: integration.id },
-        });
-
-        if (error) throw error;
-
-        if (data?.status === "healthy") {
-          toast.success("Connection test successful", { description: data.message });
-        } else if (data?.status === "disabled") {
-          toast.info("Integration is disabled", { description: data.message });
-        } else {
-          toast.error("Connection test failed", {
-            description: data?.message || "Unknown error",
-          });
-        }
-
-        await loadIntegrations();
-      } catch (error) {
-        console.error("Error testing integration:", error);
-        toast.error("Failed to test connection", {
-          description: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    },
-    [tenantId, loadIntegrations]
-  );
-
-  const handleConfigure = useCallback((integration: Integration) => {
-    setSelectedProvider(integration.id);
-    setSelectedIntegration(integration);
-    setConfigModalOpen(true);
-  }, []);
-
-  const connectGmail = async () => {
-    if (!tenantId) return;
-
-    // Open popup immediately (synchronously on user click) to satisfy browser gesture requirements
-    const popup = window.open("about:blank", "gmail-oauth", "width=520,height=720");
-
-    if (!popup) {
-      toast.error("Popup blocked", {
-        description: "Please allow popups for this site and try again.",
+      const { error } = await supabase.functions.invoke('manage-platform-integration', {
+        body: { action: 'update', integration_key: integrationKey, is_enabled: enabled },
       });
+      
+      if (error) throw error;
+      
+      setPlatformIntegrations(prev => 
+        prev.map(i => i.integration_key === integrationKey ? { ...i, is_enabled: enabled } : i)
+      );
+      toast.success(`${integrationKey} ${enabled ? 'enabled' : 'disabled'} globally`);
+    } catch (error) {
+      console.error('Error toggling integration:', error);
+      toast.error('Failed to update integration');
+    }
+  };
+
+  // Platform admin: save credentials
+  const handlePlatformSave = async (integrationKey: string) => {
+    const cred = platformCredentials[integrationKey];
+    if (!cred?.trim()) {
+      toast.error('Please enter API credentials');
       return;
     }
 
-    // Show loading message in popup while we fetch the auth URL
-    popup.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Connecting to Gmail...</title>
-          <style>
-            body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
-            .loader { text-align: center; }
-            .spinner { border: 3px solid #e0e0e0; border-top-color: #3b82f6; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
-            @keyframes spin { to { transform: rotate(360deg); } }
-            p { color: #666; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="loader">
-            <div class="spinner"></div>
-            <p>Connecting to Gmail...</p>
-          </div>
-        </body>
-      </html>
-    `);
-
-    setIsConnectingGmail(true);
+    setSavingPlatform(integrationKey);
     try {
-      const { data, error } = await supabase.functions.invoke("gmail-auth", {
-        body: { action: "start", tenantId },
+      const integration = PLATFORM_INTEGRATIONS.find(i => i.key === integrationKey);
+      const config = { [integration?.fieldKey || 'api_key']: cred.trim() };
+      
+      const { error } = await supabase.functions.invoke('manage-platform-integration', {
+        body: { action: 'update', integration_key: integrationKey, config },
       });
-
+      
       if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Failed to start Gmail connection");
-      if (!data?.authUrl) throw new Error("No authorization URL returned");
-
-      // Redirect the already-open popup to the auth URL
-      popup.location.href = data.authUrl;
-      toast.info("Complete Gmail authorization in the popup, then come back here.");
+      
+      toast.success(`${integrationKey} credentials saved`);
+      setPlatformCredentials(prev => ({ ...prev, [integrationKey]: '' }));
+      await loadPlatformIntegrations();
     } catch (error) {
-      console.error("Error starting Gmail OAuth:", error);
-      popup.close();
-      toast.error("Failed to start Gmail connection", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
+      console.error('Error saving credentials:', error);
+      toast.error('Failed to save credentials');
     } finally {
-      setIsConnectingGmail(false);
+      setSavingPlatform(null);
     }
   };
 
-  const setupGmailPush = async () => {
+  // Platform admin: test integration
+  const handlePlatformTest = async (integrationKey: string) => {
+    setTestingPlatform(integrationKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-platform-integration', {
+        body: { integration_key: integrationKey },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === 'healthy') {
+        toast.success('Connection test successful', { description: data.message });
+      } else {
+        toast.error('Connection test failed', { description: data?.message });
+      }
+    } catch (error) {
+      console.error('Error testing integration:', error);
+      toast.error('Failed to test connection');
+    } finally {
+      setTestingPlatform(null);
+    }
+  };
+
+  // Tenant admin: toggle use_global
+  const handleTenantToggleGlobal = async (integrationKey: string, useGlobal: boolean) => {
     if (!tenantId) return;
-
-    setIsSettingUpPush(true);
+    
+    setTogglingGlobal(integrationKey);
     try {
-      const { data, error } = await supabase.functions.invoke("gmail-auth", {
-        body: { action: "setup-push", tenantId },
-      });
-
+      const { error } = await supabase
+        .from('tenant_integrations')
+        .upsert({
+          tenant_id: tenantId,
+          provider: integrationKey,
+          use_global: useGlobal,
+          is_enabled: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'tenant_id,provider' });
+      
       if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Failed to setup Gmail push");
-
-      setPushStatus("active");
-      toast.success("Gmail push notifications configured!", {
-        description: data?.expiration
-          ? `Expires: ${new Date(parseInt(data.expiration)).toLocaleString()}`
-          : undefined,
-      });
+      
+      await loadTenantOverrides();
+      toast.success(useGlobal ? 'Using global defaults' : 'Ready for custom credentials');
     } catch (error) {
-      console.error("Error setting up Gmail push:", error);
-      setPushStatus("error");
-      toast.error("Failed to setup Gmail push notifications", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
+      console.error('Error toggling global:', error);
+      toast.error('Failed to update setting');
     } finally {
-      setIsSettingUpPush(false);
+      setTogglingGlobal(null);
     }
   };
 
-  const getStatusIcon = (status: string, isConfigured: boolean) => {
-    if (!isConfigured) {
-      return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
+  // Tenant admin: save override credentials
+  const handleTenantSaveOverride = async (integrationKey: string) => {
+    const cred = tenantCredentials[integrationKey];
+    if (!cred?.trim()) {
+      toast.error('Please enter API credentials');
+      return;
     }
-    switch (status) {
-      case "healthy":
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case "failed":
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      case "partial":
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case "pending":
-        return <AlertCircle className="h-5 w-5 text-blue-500" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-muted-foreground" />;
+
+    setSavingTenant(integrationKey);
+    try {
+      const integration = PLATFORM_INTEGRATIONS.find(i => i.key === integrationKey);
+      const credentials = { [integration?.fieldKey || 'api_key']: cred.trim() };
+      
+      const { error } = await supabase.functions.invoke('set-tenant-integration', {
+        body: { 
+          tenant_id: tenantId, 
+          provider: integrationKey,
+          is_enabled: true,
+          credentials,
+        },
+      });
+      
+      if (error) throw error;
+      
+      // Also set use_global = false
+      await supabase
+        .from('tenant_integrations')
+        .update({ use_global: false })
+        .eq('tenant_id', tenantId)
+        .eq('provider', integrationKey);
+      
+      toast.success(`${integrationKey} override saved`);
+      setTenantCredentials(prev => ({ ...prev, [integrationKey]: '' }));
+      await loadTenantOverrides();
+    } catch (error) {
+      console.error('Error saving override:', error);
+      toast.error('Failed to save credentials');
+    } finally {
+      setSavingTenant(null);
     }
   };
 
-  const getStatusBadge = (status: string, isConfigured: boolean, isEnabled: boolean) => {
-    if (!isConfigured) {
-      return <Badge variant="secondary">Not Configured</Badge>;
-    }
-    if (!isEnabled) {
-      return <Badge variant="outline">Disabled</Badge>;
-    }
-    switch (status) {
-      case "healthy":
-        return <Badge className="bg-green-500">Operational</Badge>;
-      case "failed":
-        return <Badge variant="destructive">Failed</Badge>;
-      case "partial":
-        return <Badge className="bg-yellow-500">Degraded</Badge>;
-      case "pending":
-        return <Badge className="bg-blue-500">Pending</Badge>;
-      case "disabled":
-        return <Badge variant="outline">Disabled</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
+  // Tenant admin: test integration (uses resolve-integration to get the right config)
+  const handleTenantTest = async (integrationKey: string) => {
+    if (!tenantId) return;
+    
+    setTestingTenant(integrationKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-tenant-integration', {
+        body: { tenant_id: tenantId, provider: integrationKey },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.status === 'healthy') {
+        toast.success('Connection test successful', { description: data.message });
+      } else {
+        toast.error('Connection test failed', { description: data?.message });
+      }
+    } catch (error) {
+      console.error('Error testing integration:', error);
+      toast.error('Failed to test connection');
+    } finally {
+      setTestingTenant(null);
     }
   };
 
-  const failedCount = integrations.filter(
-    (i) => i.is_configured && i.is_enabled && (i.sync_status === "failed" || i.sync_status === "partial")
-  ).length;
+  const getPlatformStatus = (integrationKey: string) => {
+    const integration = platformIntegrations.find(i => i.integration_key === integrationKey);
+    if (!integration) return { configured: false, enabled: false, hint: null };
+    return {
+      configured: !!integration.config?.encrypted,
+      enabled: integration.is_enabled,
+      hint: integration.config_hint,
+    };
+  };
 
-  if (!tenantId && shouldFilter) {
+  const getTenantStatus = (integrationKey: string) => {
+    const override = tenantOverrides[integrationKey];
+    const platformStatus = getPlatformStatus(integrationKey);
+    
+    if (!override || override.use_global !== false) {
+      // Using global
+      return {
+        source: 'global' as const,
+        configured: platformStatus.configured,
+        enabled: platformStatus.enabled,
+        hint: platformStatus.hint,
+      };
+    }
+    
+    // Using override
+    return {
+      source: 'override' as const,
+      configured: !!override.override_hint,
+      enabled: override.is_enabled,
+      hint: override.override_hint,
+    };
+  };
+
+  if (!tenantId && shouldFilter && !isPlatformAdmin) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-muted-foreground">Please select a tenant to manage integrations.</div>
@@ -282,247 +317,256 @@ export default function IntegrationsTab() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // Filter out gmail and otr_solutions from main list (they have special handling)
-  const mainIntegrations = integrations.filter((i) => i.id !== "gmail" && i.id !== "otr_solutions");
-  const gmailIntegration = integrations.find((i) => i.id === "gmail");
-  const otrIntegration = integrations.find((i) => i.id === "otr_solutions");
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-xl font-bold">API Integrations</h2>
           <p className="text-sm text-muted-foreground">
-            Configure and monitor integrations for this organization
+            {isPlatformAdmin ? 'Manage global defaults and tenant overrides' : 'Configure integrations for your organization'}
           </p>
         </div>
         <Button onClick={handleRefresh} disabled={isRefreshing} size="sm" variant="outline">
-          {isRefreshing ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </>
-          )}
+          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Refresh
         </Button>
       </div>
 
-      {failedCount > 0 && (
-        <Card className="border-destructive bg-destructive/10">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-destructive" />
-              {failedCount} Integration{failedCount > 1 ? "s" : ""} Experiencing Issues
-            </CardTitle>
-          </CardHeader>
-        </Card>
+      {/* Tab switcher for platform admins */}
+      {isPlatformAdmin && (
+        <div className="flex gap-2 border-b pb-2">
+          <Button
+            variant={activeTab === 'platform' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('platform')}
+            className="gap-2"
+          >
+            <Globe className="h-4 w-4" />
+            Platform Defaults
+          </Button>
+          <Button
+            variant={activeTab === 'tenant' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('tenant')}
+            className="gap-2"
+          >
+            <Building2 className="h-4 w-4" />
+            Tenant Overrides
+          </Button>
+        </div>
       )}
 
-      {/* Gmail Integration Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <Bell className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div>
-                <CardTitle className="text-base">Gmail Push Notifications</CardTitle>
-                <CardDescription>Enable real-time email notifications for Load Hunter</CardDescription>
-              </div>
-            </div>
-            {pushStatus === "active" && <Badge className="bg-green-500">Active</Badge>}
-            {pushStatus === "error" && <Badge variant="destructive">Error</Badge>}
-          </div>
-        </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Connect a Gmail account, then enable push notifications to receive instant load emails.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={connectGmail}
-                  disabled={isConnectingGmail}
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isConnectingGmail ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="h-4 w-4" />
-                      Connect / Reconnect Gmail
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  onClick={setupGmailPush}
-                  disabled={isSettingUpPush}
-                  size="sm"
-                  className="gap-2"
-                >
-                  {isSettingUpPush ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Setting up...
-                    </>
-                  ) : (
-                    <>
-                      <Bell className="h-4 w-4" />
-                      Setup Gmail Push
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-      </Card>
-
-      {/* OTR Solutions Integration Card - Automated API Credit Checks */}
-      <Card className="border-green-200 bg-green-50/30">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
-              <div>
-                <CardTitle className="text-base">OTR Solutions LLC</CardTitle>
-                <CardDescription>Factoring company - Automated broker credit checks via API</CardDescription>
-              </div>
-            </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">API Connected</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Automatic broker credit checks using OTR Solutions API. 
-              Click the credit badge on load matches to instantly check approval status.
-            </p>
-            <div className="bg-white p-3 rounded-lg border">
-              <p className="text-xs text-muted-foreground mb-2">How it works:</p>
-              <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Click the credit badge on a load match</li>
-                <li>System automatically checks OTR API for approval status</li>
-                <li>Credit limit and approval status displayed instantly</li>
-                <li>Results cached on customer record for future reference</li>
-              </ol>
-            </div>
-            <div className="bg-white p-3 rounded-lg border">
-              <p className="text-xs text-muted-foreground mb-2">Status Indicators:</p>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded">✓ Approved</span>
-                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded">✗ Not Approved</span>
-                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">📞 Call OTR</span>
-                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded">? Not Found</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open('https://client.otrsolutions.com', '_blank')}
-                className="gap-1.5"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Open OTR Portal
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Integration Cards */}
-      <div className="grid gap-4">
-        {mainIntegrations.map((integration) => (
-          <Card key={integration.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  {getStatusIcon(integration.sync_status, integration.is_configured)}
-                  <div>
-                    <CardTitle className="text-base">{integration.name}</CardTitle>
-                    <CardDescription>{integration.description}</CardDescription>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(integration.sync_status, integration.is_configured, integration.is_enabled)}
-                </div>
-              </div>
+      {/* Platform Admin View */}
+      {activeTab === 'platform' && isPlatformAdmin && (
+        <div className="space-y-4">
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Globe className="h-5 w-5 text-blue-600" />
+                Global Integration Defaults
+              </CardTitle>
+              <CardDescription>
+                These API keys are used by all tenants unless they configure their own override.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  {integration.is_configured && integration.credentials_hint && (
-                    <p className="text-sm text-muted-foreground">
-                      Credentials: {integration.credentials_hint}
-                    </p>
-                  )}
-                  {integration.error_message && (
-                    <p className="text-sm text-destructive">Error: {integration.error_message}</p>
-                  )}
-                  {integration.last_checked_at && (
-                    <p className="text-xs text-muted-foreground">
-                      Last checked: {new Date(integration.last_checked_at).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {integration.is_configured && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTestIntegration(integration)}
-                    >
-                      Test
-                    </Button>
-                  )}
-                  <Button
-                    variant={integration.is_configured ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => handleConfigure(integration)}
-                    className="gap-1.5"
-                  >
-                    <SettingsIcon className="h-4 w-4" />
-                    {integration.is_configured ? "Update" : "Configure"}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Configuration Modal */}
-      {selectedProvider && selectedIntegration && (
-        <IntegrationConfigModal
-          open={configModalOpen}
-          onOpenChange={setConfigModalOpen}
-          provider={selectedProvider}
-          providerName={selectedIntegration.name}
-          providerDescription={selectedIntegration.description}
-          tenantId={tenantId!}
-          existingHint={selectedIntegration.credentials_hint}
-          existingSettings={selectedIntegration.settings}
-          credentialFields={selectedIntegration.credentialFields || []}
-          settingsFields={selectedIntegration.settingsFields || []}
-          onSuccess={loadIntegrations}
-        />
+          {PLATFORM_INTEGRATIONS.map((integration) => {
+            const status = getPlatformStatus(integration.key);
+            const isSaving = savingPlatform === integration.key;
+            const isTesting = testingPlatform === integration.key;
+            
+            return (
+              <Card key={integration.key}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base">{integration.name}</CardTitle>
+                      <CardDescription>{integration.description}</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {status.configured ? (
+                        <Badge className="bg-green-500">Configured</Badge>
+                      ) : (
+                        <Badge variant="secondary">Not Configured</Badge>
+                      )}
+                      <Switch
+                        checked={status.enabled}
+                        onCheckedChange={(checked) => handlePlatformToggle(integration.key, checked)}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {status.hint && (
+                      <p className="text-sm text-muted-foreground">
+                        Current: <code className="bg-muted px-1.5 py-0.5 rounded">{status.hint}</code>
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={platformShowSecrets[integration.key] ? 'text' : 'password'}
+                          placeholder={status.hint ? 'Enter new key to replace...' : `Enter ${integration.fieldLabel}...`}
+                          value={platformCredentials[integration.key] || ''}
+                          onChange={(e) => setPlatformCredentials(prev => ({ ...prev, [integration.key]: e.target.value }))}
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setPlatformShowSecrets(prev => ({ ...prev, [integration.key]: !prev[integration.key] }))}
+                        >
+                          {platformShowSecrets[integration.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <Button onClick={() => handlePlatformSave(integration.key)} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      </Button>
+                      {status.configured && (
+                        <Button variant="outline" onClick={() => handlePlatformTest(integration.key)} disabled={isTesting}>
+                          {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube className="h-4 w-4" />}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Tenant Admin View */}
+      {activeTab === 'tenant' && (
+        <div className="space-y-4">
+          {!tenantId ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Select a tenant to manage integration overrides
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card className="border-amber-200 bg-amber-50/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-amber-600" />
+                    Tenant Integration Settings
+                  </CardTitle>
+                  <CardDescription>
+                    By default, your organization uses the global platform keys. Toggle "Use Global" off to provide your own API keys.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              {PLATFORM_INTEGRATIONS.map((integration) => {
+                const tenantStatus = getTenantStatus(integration.key);
+                const override = tenantOverrides[integration.key];
+                const useGlobal = !override || override.use_global !== false;
+                const isToggling = togglingGlobal === integration.key;
+                const isSaving = savingTenant === integration.key;
+                const isTesting = testingTenant === integration.key;
+                
+                return (
+                  <Card key={integration.key}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base">{integration.name}</CardTitle>
+                          <CardDescription>{integration.description}</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {tenantStatus.source === 'global' ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Globe className="h-3 w-3" />
+                              Global
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500 gap-1">
+                              <Building2 className="h-3 w-3" />
+                              Override
+                            </Badge>
+                          )}
+                          {tenantStatus.configured ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={`global-${integration.key}`} className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            Use Global Default
+                          </Label>
+                          <Switch
+                            id={`global-${integration.key}`}
+                            checked={useGlobal}
+                            onCheckedChange={(checked) => handleTenantToggleGlobal(integration.key, checked)}
+                            disabled={isToggling}
+                          />
+                        </div>
+
+                        {!useGlobal && (
+                          <div className="space-y-3 border-t pt-4">
+                            {tenantStatus.hint && (
+                              <p className="text-sm text-muted-foreground">
+                                Current override: <code className="bg-muted px-1.5 py-0.5 rounded">{tenantStatus.hint}</code>
+                              </p>
+                            )}
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Input
+                                  type={tenantShowSecrets[integration.key] ? 'text' : 'password'}
+                                  placeholder={tenantStatus.hint ? 'Enter new key to replace...' : `Enter your ${integration.fieldLabel}...`}
+                                  value={tenantCredentials[integration.key] || ''}
+                                  onChange={(e) => setTenantCredentials(prev => ({ ...prev, [integration.key]: e.target.value }))}
+                                  className="pr-10"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-0 top-0 h-full px-3"
+                                  onClick={() => setTenantShowSecrets(prev => ({ ...prev, [integration.key]: !prev[integration.key] }))}
+                                >
+                                  {tenantShowSecrets[integration.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
+                              <Button onClick={() => handleTenantSaveOverride(integration.key)} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleTenantTest(integration.key)} 
+                            disabled={isTesting || !tenantStatus.configured}
+                            className="gap-1.5"
+                          >
+                            {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube className="h-4 w-4" />}
+                            Test Connection
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </>
+          )}
+        </div>
       )}
     </div>
   );

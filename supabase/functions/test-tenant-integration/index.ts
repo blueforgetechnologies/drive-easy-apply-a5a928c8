@@ -189,6 +189,9 @@ async function testOtrSolutions(credentials: Record<string, string>): Promise<{ 
   }
 }
 
+// Global integrations that use the resolver pattern
+const GLOBAL_INTEGRATIONS = ['mapbox', 'resend', 'weather', 'highway'];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -225,49 +228,112 @@ serve(async (req) => {
     // Use service role client after access verified
     const adminClient = getServiceClient();
 
-    const { data: integration, error: fetchError } = await adminClient
-      .from('tenant_integrations')
-      .select('*')
-      .eq('tenant_id', tenant_id)
-      .eq('provider', provider)
-      .single();
-
-    if (fetchError || !integration) {
-      return new Response(
-        JSON.stringify({ error: 'Integration not configured' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // CONSTRAINT B: If disabled, do not test - preserve 'disabled' status
-    if (integration.is_enabled === false) {
-      return new Response(
-        JSON.stringify({ 
-          status: 'disabled',
-          message: 'Integration is disabled. Enable it before testing.'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!integration.credentials_encrypted) {
-      return new Response(
-        JSON.stringify({ error: 'No credentials configured for this integration' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Decrypt credentials
     let credentials: Record<string, string>;
-    try {
-      const decrypted = await decrypt(integration.credentials_encrypted, masterKey);
-      credentials = JSON.parse(decrypted);
-    } catch (e) {
-      console.error('Decryption failed:', e);
-      return new Response(
-        JSON.stringify({ error: 'Failed to decrypt credentials' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let integration: { id?: string; is_enabled?: boolean; use_global?: boolean } = {};
+
+    // For global integrations (mapbox, resend, weather, highway), use the resolver pattern
+    if (GLOBAL_INTEGRATIONS.includes(provider)) {
+      // Get platform integration config
+      const { data: platformIntegration } = await adminClient
+        .from('platform_integrations')
+        .select('*')
+        .eq('integration_key', provider)
+        .single();
+
+      // Get tenant override if exists
+      const { data: tenantIntegration } = await adminClient
+        .from('tenant_integrations')
+        .select('*')
+        .eq('tenant_id', tenant_id)
+        .eq('provider', provider)
+        .single();
+
+      integration = tenantIntegration || {};
+
+      // Determine which config to use (resolver logic)
+      if (tenantIntegration?.use_global === false && tenantIntegration?.override_config) {
+        // Use tenant override
+        try {
+          const decrypted = await decrypt(tenantIntegration.override_config, masterKey);
+          credentials = JSON.parse(decrypted);
+        } catch (e) {
+          console.error('Decryption failed for tenant override:', e);
+          return new Response(
+            JSON.stringify({ status: 'failed', message: 'Failed to decrypt tenant credentials' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else if (platformIntegration?.config?.encrypted) {
+        // Use global config
+        if (!platformIntegration.is_enabled) {
+          return new Response(
+            JSON.stringify({ status: 'disabled', message: 'Integration is disabled globally' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        try {
+          const decrypted = await decrypt(platformIntegration.config.encrypted, masterKey);
+          credentials = JSON.parse(decrypted);
+        } catch (e) {
+          console.error('Decryption failed for platform config:', e);
+          return new Response(
+            JSON.stringify({ status: 'failed', message: 'Failed to decrypt platform credentials' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        return new Response(
+          JSON.stringify({ status: 'not_configured', message: 'No credentials configured for this integration' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Legacy tenant-only integrations (samsara, otr_solutions, etc.)
+      const { data: tenantIntegration, error: fetchError } = await adminClient
+        .from('tenant_integrations')
+        .select('*')
+        .eq('tenant_id', tenant_id)
+        .eq('provider', provider)
+        .single();
+
+      if (fetchError || !tenantIntegration) {
+        return new Response(
+          JSON.stringify({ error: 'Integration not configured' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      integration = tenantIntegration;
+
+      // CONSTRAINT B: If disabled, do not test - preserve 'disabled' status
+      if (tenantIntegration.is_enabled === false) {
+        return new Response(
+          JSON.stringify({ 
+            status: 'disabled',
+            message: 'Integration is disabled. Enable it before testing.'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!tenantIntegration.credentials_encrypted) {
+        return new Response(
+          JSON.stringify({ error: 'No credentials configured for this integration' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Decrypt credentials
+      try {
+        const decrypted = await decrypt(tenantIntegration.credentials_encrypted, masterKey);
+        credentials = JSON.parse(decrypted);
+      } catch (e) {
+        console.error('Decryption failed:', e);
+        return new Response(
+          JSON.stringify({ error: 'Failed to decrypt credentials' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Test the integration based on provider
@@ -296,16 +362,28 @@ serve(async (req) => {
         result = { success: false, message: `Unknown provider: ${provider}` };
     }
 
-    // CONSTRAINT B: pass => 'healthy' + clear error; fail => 'failed' + sanitized error
-    await adminClient
-      .from('tenant_integrations')
-      .update({
-        sync_status: result.success ? 'healthy' : 'failed',
-        error_message: result.success ? null : sanitizeError(result.message),
-        last_checked_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', integration.id);
+    // Update tenant_integrations status if record exists
+    if (integration.id) {
+      await adminClient
+        .from('tenant_integrations')
+        .update({
+          sync_status: result.success ? 'healthy' : 'failed',
+          error_message: result.success ? null : sanitizeError(result.message),
+          last_checked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', integration.id);
+    }
+
+    // Log usage event for global integrations
+    if (GLOBAL_INTEGRATIONS.includes(provider)) {
+      await adminClient.from('integration_usage_events').insert({
+        tenant_id,
+        integration_key: provider,
+        event_type: result.success ? 'success' : 'error',
+        meta: { action: 'test', message: result.message },
+      });
+    }
 
     console.log(`[test-tenant-integration] provider=${provider} tenant=${tenant_id} result=${result.success ? 'healthy' : 'failed'}`);
 
