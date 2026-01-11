@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, Download, ShieldCheck } from "lucide-react";
+import { Search, Plus, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight, Download, Upload, ShieldCheck } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-utils";
+import { ExcelImportDialog } from "@/components/ExcelImportDialog";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 interface Vehicle {
   id: string;
@@ -66,6 +68,7 @@ export default function VehiclesTab() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignDialogType, setAssignDialogType] = useState<"driver1" | "driver2" | "dispatcher">("driver1");
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     vehicle_number: "",
     carrier: "",
@@ -415,152 +418,68 @@ export default function VehiclesTab() {
   };
 
   const handleExportExcel = () => {
-    // Get all vehicles data for export (use filtered or all)
-    const dataToExport = filteredVehicles;
-    
-    if (dataToExport.length === 0) {
+    if (filteredVehicles.length === 0) {
       toast.error("No assets to export");
       return;
     }
+    exportToExcel(filteredVehicles, 'assets');
+    toast.success(`Exported ${filteredVehicles.length} assets to Excel`);
+  };
 
-    // Define all columns for export
-    const headers = [
-      "Status", "Unit ID", "Carrier", "Payee", "Driver 1", "Driver 2", "Dispatcher",
-      "Asset Type", "Asset Subtype", "Make", "Model", "Year", "VIN", "License Plate",
-      "Vehicle Size", "Dimensions (LxWxH)", "Payload", "Air Ride", "Suspension",
-      "Lift Gate", "Lift Gate Capacity", "Lift Gate Dims", "Pallet Jack", "Pallet Jack Capacity",
-      "Blankets", "Straps Count", "Load Bars (E-Track)", "Load Bars (Non E-Track)",
-      "Horizontal E-Tracks", "Vertical E-Track Rows", "Door Type", "Door Dims (WxH)",
-      "Has Side Door", "Door Sensors", "Temp Control", "Team", "Clearance", "Axles",
-      "Fuel Type", "Fuel Tank Capacity", "Fuel Efficiency (MPG)", "Fuel Per Gallon",
-      "Odometer", "Mileage", "Oil Change Due", "Oil Change Remaining",
-      "Last Service Date", "Next Service Date", "Registration Exp", "Registration Status",
-      "Insurance Expiry", "Cargo Coverage Exp", "Cargo Coverage Status",
-      "Liability Coverage Exp", "Liability Coverage Status", "Physical Coverage Exp", "Physical Coverage Status",
-      "Insurance Cost/Month", "Asset Ownership", "Bid As", "Provider", "Provider ID", "Provider Status",
-      "Reg Plate", "Reg State", "Last Location", "Formatted Address", "Speed", "Stopped Status",
-      "ELD Device SN", "Dash Cam SN", "Toll Device SN", "Tracking Device IMEI",
-      "Trailer Tracking", "Panic Button", "Camera Image URL",
-      "Pickup Date", "Pickup Odometer", "Return Date", "Return Odometer",
-      "Notes", "Created At", "Updated At", "Last Updated"
-    ];
+  const handleImportAssets = async (data: any[]): Promise<{ success: number; errors: string[] }> => {
+    let success = 0;
+    const errors: string[] = [];
 
-    // Map data to rows
-    const rows = dataToExport.map((v: any) => [
-      v.status || "",
-      v.vehicle_number || "",
-      carriersMap[v.carrier] || v.carrier || "",
-      payeesMap[v.payee_id] || v.payee_id || "",
-      driversMap[v.driver_1_id] || "",
-      driversMap[v.driver_2_id] || "",
-      dispatchersMap[v.primary_dispatcher_id] || "",
-      v.asset_type || "",
-      v.asset_subtype || "",
-      v.make || "",
-      v.model || "",
-      v.year || "",
-      v.vin || "",
-      v.license_plate || "",
-      v.vehicle_size || "",
-      v.dimensions_length && v.dimensions_width && v.dimensions_height 
-        ? `${v.dimensions_length}x${v.dimensions_width}x${v.dimensions_height}` 
-        : "",
-      v.payload || "",
-      v.air_ride ? "Yes" : "No",
-      v.suspension || "",
-      v.lift_gate ? "Yes" : "No",
-      v.lift_gate_capacity || "",
-      v.lift_gate_dims || "",
-      v.pallet_jack ? "Yes" : "No",
-      v.pallet_jack_capacity || "",
-      v.blankets || "",
-      v.straps_count || "",
-      v.load_bars_etrack || "",
-      v.load_bars_non_etrack || "",
-      v.horizontal_etracks || "",
-      v.vertical_etrack_rows || "",
-      v.door_type || "",
-      v.door_dims_width && v.door_dims_height ? `${v.door_dims_width}x${v.door_dims_height}` : "",
-      v.has_side_door ? "Yes" : "No",
-      v.door_sensors ? "Yes" : "No",
-      v.temp_control ? "Yes" : "No",
-      v.team ? "Yes" : "No",
-      v.clearance || "",
-      v.axles || "",
-      v.fuel_type || "",
-      v.fuel_tank_capacity || "",
-      v.fuel_efficiency_mpg || "",
-      v.fuel_per_gallon || "",
-      v.odometer || "",
-      v.mileage || "",
-      v.oil_change_due || "",
-      v.oil_change_remaining || "",
-      v.last_service_date || "",
-      v.next_service_date || "",
-      v.registration_exp_date || "",
-      v.registration_status || "",
-      v.insurance_expiry || "",
-      v.cargo_coverage_exp_date || "",
-      v.cargo_coverage_status || "",
-      v.liability_coverage_exp_date || "",
-      v.liability_coverage_status || "",
-      v.physical_coverage_exp_date || "",
-      v.physical_coverage_status || "",
-      v.insurance_cost_per_month || "",
-      v.asset_ownership || "",
-      v.bid_as || "",
-      v.provider || "",
-      v.provider_id || "",
-      v.provider_status || "",
-      v.reg_plate || "",
-      v.reg_state || "",
-      v.last_location || "",
-      v.formatted_address || "",
-      v.speed || "",
-      v.stopped_status || "",
-      v.eld_device_sn || "",
-      v.dash_cam_sn || "",
-      v.toll_device_sn || "",
-      v.tracking_device_imei || "",
-      v.trailer_tracking ? "Yes" : "No",
-      v.panic_button ? "Yes" : "No",
-      v.camera_image_url || "",
-      v.pickup_date || "",
-      v.pickup_odometer || "",
-      v.return_date || "",
-      v.return_odometer || "",
-      v.notes || "",
-      v.created_at || "",
-      v.updated_at || "",
-      v.last_updated || ""
-    ]);
+    for (const item of data) {
+      try {
+        // Validate required fields
+        if (!item.vehicle_number) {
+          errors.push(`Missing Unit ID for row`);
+          continue;
+        }
 
-    // Create CSV content
-    const escapeCSV = (value: any) => {
-      const str = String(value);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
+        const insertData: any = {
+          vehicle_number: item.vehicle_number,
+          status: item.status || 'active',
+          make: item.make || null,
+          model: item.model || null,
+          year: item.year ? parseInt(item.year) : null,
+          vin: item.vin || null,
+          license_plate: item.license_plate || null,
+          asset_type: item.asset_type || null,
+          asset_subtype: item.asset_subtype || null,
+          vehicle_size: item.vehicle_size ? parseFloat(item.vehicle_size) : null,
+          payload: item.payload ? parseFloat(item.payload) : null,
+          dimensions_length: item.dimensions_length ? parseFloat(item.dimensions_length) : null,
+          dimensions_width: item.dimensions_width ? parseFloat(item.dimensions_width) : null,
+          dimensions_height: item.dimensions_height ? parseFloat(item.dimensions_height) : null,
+          fuel_type: item.fuel_type || null,
+          odometer: item.odometer ? parseFloat(item.odometer) : null,
+          registration_exp_date: item.registration_exp_date || null,
+          insurance_expiry: item.insurance_expiry || null,
+          lift_gate: item.lift_gate === true || item.lift_gate === 'Yes',
+          air_ride: item.air_ride === true || item.air_ride === 'Yes',
+          notes: item.notes || null,
+          tenant_id: tenantId,
+        };
+
+        const { error } = await supabase.from("vehicles").insert([insertData]);
+        
+        if (error) {
+          errors.push(`${item.vehicle_number}: ${error.message}`);
+        } else {
+          success++;
+        }
+      } catch (err: any) {
+        errors.push(`${item.vehicle_number || 'Unknown'}: ${err.message}`);
       }
-      return str;
-    };
+    }
 
-    const csvContent = [
-      headers.map(escapeCSV).join(","),
-      ...rows.map(row => row.map(escapeCSV).join(","))
-    ].join("\n");
+    if (success > 0) {
+      loadData();
+    }
 
-    // Create and download file
-    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `assets_export_${format(new Date(), "yyyy-MM-dd")}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success(`Exported ${dataToExport.length} assets to Excel`);
+    return { success, errors };
   };
 
   const filteredVehicles = vehicles.filter((vehicle) => {
@@ -620,6 +539,15 @@ export default function VehiclesTab() {
           >
             <Download className="h-3.5 w-3.5" />
             Export
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="gap-1.5 h-8" 
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Import
           </Button>
           <Button 
             variant="outline" 
@@ -1198,6 +1126,15 @@ export default function VehiclesTab() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Excel Import Dialog */}
+      <ExcelImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        entityType="assets"
+        entityLabel="Assets"
+        onImport={handleImportAssets}
+      />
     </div>
   );
 }

@@ -9,11 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMerge, X, ChevronDown } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Sparkles, ChevronLeft, ChevronRight, GitMerge, X, ChevronDown, Download, Upload } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { exportToExcel } from "@/lib/excel-utils";
+import { ExcelImportDialog } from "@/components/ExcelImportDialog";
 
 interface Customer {
   id: string;
