@@ -2366,6 +2366,7 @@ export type Database = {
           body_text: string | null
           content_hash: string | null
           created_at: string
+          duplicate_of_id: string | null
           email_id: string
           email_source: string
           expires_at: string | null
@@ -2373,12 +2374,14 @@ export type Database = {
           from_name: string | null
           has_issues: boolean | null
           id: string
+          is_duplicate: boolean | null
           is_update: boolean | null
           issue_notes: string | null
           load_id: string | null
           marked_missed_at: string | null
           parent_email_id: string | null
           parsed_data: Json | null
+          parsed_load_fingerprint: string | null
           raw_payload_url: string | null
           received_at: string
           status: string
@@ -2393,6 +2396,7 @@ export type Database = {
           body_text?: string | null
           content_hash?: string | null
           created_at?: string
+          duplicate_of_id?: string | null
           email_id: string
           email_source?: string
           expires_at?: string | null
@@ -2400,12 +2404,14 @@ export type Database = {
           from_name?: string | null
           has_issues?: boolean | null
           id?: string
+          is_duplicate?: boolean | null
           is_update?: boolean | null
           issue_notes?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
           parent_email_id?: string | null
           parsed_data?: Json | null
+          parsed_load_fingerprint?: string | null
           raw_payload_url?: string | null
           received_at: string
           status?: string
@@ -2420,6 +2426,7 @@ export type Database = {
           body_text?: string | null
           content_hash?: string | null
           created_at?: string
+          duplicate_of_id?: string | null
           email_id?: string
           email_source?: string
           expires_at?: string | null
@@ -2427,12 +2434,14 @@ export type Database = {
           from_name?: string | null
           has_issues?: boolean | null
           id?: string
+          is_duplicate?: boolean | null
           is_update?: boolean | null
           issue_notes?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
           parent_email_id?: string | null
           parsed_data?: Json | null
+          parsed_load_fingerprint?: string | null
           raw_payload_url?: string | null
           received_at?: string
           status?: string
@@ -2447,6 +2456,13 @@ export type Database = {
             columns: ["assigned_load_id"]
             isOneToOne: false
             referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_emails_duplicate_of_id_fkey"
+            columns: ["duplicate_of_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
             referencedColumns: ["id"]
           },
           {
@@ -5937,6 +5953,18 @@ export type Database = {
           unique_content_24h: number | null
           unique_content_7d: number | null
           unique_content_count: number | null
+        }
+        Relationships: []
+      }
+      load_dedup_metrics: {
+        Row: {
+          dedup_rate_pct: number | null
+          duplicates_24h: number | null
+          loads_24h: number | null
+          tenant_breakdown: Json | null
+          total_duplicates: number | null
+          total_loads: number | null
+          unique_fingerprints: number | null
         }
         Relationships: []
       }
