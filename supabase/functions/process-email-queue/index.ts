@@ -159,67 +159,122 @@ function normalizeBooleanStrict(value: any): boolean | null {
   return null;
 }
 
+// Fingerprint version - increment when canonicalization logic changes
+const FINGERPRINT_VERSION = 1;
+
+// Normalize coordinates for fingerprinting
+function normalizeCoordinates(coords: any): { lat: number; lng: number } | null {
+  if (coords === null || coords === undefined) return null;
+  if (typeof coords === 'object' && coords !== null) {
+    const lat = parseNumericStrict(coords.lat);
+    const lng = parseNumericStrict(coords.lng);
+    if (lat !== null && lng !== null) {
+      // Round to 5 decimal places for consistency (~1m precision)
+      return { lat: Math.round(lat * 100000) / 100000, lng: Math.round(lng * 100000) / 100000 };
+    }
+  }
+  return null;
+}
+
+// Normalize stops array for fingerprinting (deterministic)
+function normalizeStops(stops: any): any[] | null {
+  if (stops === null || stops === undefined) return null;
+  if (!Array.isArray(stops)) return null;
+  if (stops.length === 0) return null;
+  
+  // Normalize each stop and sort by a deterministic key
+  return stops.map((stop: any, index: number) => ({
+    sequence: index,
+    city: normalizeStringStrict(stop?.city),
+    state: normalizeStringStrict(stop?.state)?.toUpperCase() || null,
+    zip: normalizeStringStrict(stop?.zip),
+    type: normalizeStringStrict(stop?.type)?.toLowerCase() || null,
+    date: normalizeDateStrict(stop?.date),
+    time: normalizeStringStrict(stop?.time),
+  }));
+}
+
 // Build canonical payload for fingerprinting from parsed_data
 // Uses STRICT normalization: null for missing, no defaults
+// Includes ALL fields from ParsedEmailData for 100% exact-match dedup
 function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<string, any> {
   const payload: Record<string, any> = {
-    // Broker info (case-insensitive for email)
+    // === Fingerprint metadata ===
+    fingerprint_version: FINGERPRINT_VERSION,
+    
+    // === Broker info (case-insensitive for email) ===
     broker_name: normalizeStringStrict(parsedData.broker_name),
     broker_company: normalizeStringStrict(parsedData.broker_company),
     broker_email: normalizeStringLower(parsedData.broker_email),
     broker_phone: normalizeStringStrict(parsedData.broker_phone),
+    broker_address: normalizeStringStrict(parsedData.broker_address),
+    broker_city: normalizeStringStrict(parsedData.broker_city),
+    broker_state: normalizeStringStrict(parsedData.broker_state)?.toUpperCase() || null,
+    broker_zip: normalizeStringStrict(parsedData.broker_zip),
+    broker_fax: normalizeStringStrict(parsedData.broker_fax),
+    mc_number: normalizeStringStrict(parsedData.mc_number),
     
-    // Order identifier
+    // === Order identifiers ===
     order_number: normalizeStringStrict(parsedData.order_number),
+    order_number_secondary: normalizeStringStrict(parsedData.order_number_secondary),
+    customer: normalizeStringStrict(parsedData.customer),
     
-    // Origin
+    // === Origin ===
     origin_city: normalizeStringStrict(parsedData.origin_city),
     origin_state: normalizeStringStrict(parsedData.origin_state)?.toUpperCase() || null,
     origin_zip: normalizeStringStrict(parsedData.origin_zip),
     
-    // Destination
+    // === Destination ===
     destination_city: normalizeStringStrict(parsedData.destination_city),
     destination_state: normalizeStringStrict(parsedData.destination_state)?.toUpperCase() || null,
     destination_zip: normalizeStringStrict(parsedData.destination_zip),
     
-    // Load details - null if missing, NOT 0
+    // === Pickup coordinates ===
+    pickup_coordinates: normalizeCoordinates(parsedData.pickup_coordinates),
+    
+    // === Load details - null if missing, NOT 0 ===
     miles: parseNumericStrict(parsedData.miles),
+    loaded_miles: parseNumericStrict(parsedData.loaded_miles),
     weight: parseNumericStrict(parsedData.weight),
     pieces: parseIntStrict(parsedData.pieces),
     
-    // Rate/pricing - null if missing, NOT 0
+    // === Rate/pricing - null if missing, NOT 0 ===
     rate: parseNumericStrict(parsedData.rate),
     posted_amount: parseNumericStrict(parsedData.posted_amount),
     
-    // Dates (normalized to ISO or null)
+    // === Dates (normalized to ISO or null) ===
     pickup_date: normalizeDateStrict(parsedData.pickup_date),
     pickup_time: normalizeStringStrict(parsedData.pickup_time),
     delivery_date: normalizeDateStrict(parsedData.delivery_date),
     delivery_time: normalizeStringStrict(parsedData.delivery_time),
+    expires_datetime: normalizeStringStrict(parsedData.expires_datetime),
+    expires_at: normalizeStringStrict(parsedData.expires_at),
     
-    // Equipment
+    // === Equipment ===
     vehicle_type: normalizeStringStrict(parsedData.vehicle_type)?.toLowerCase() || null,
     load_type: normalizeStringStrict(parsedData.load_type)?.toLowerCase() || null,
     
-    // Dimensions - null if missing, NOT 0
+    // === Dimensions - null if missing, NOT 0 ===
     length: parseNumericStrict(parsedData.length),
     width: parseNumericStrict(parsedData.width),
     height: parseNumericStrict(parsedData.height),
+    dimensions: normalizeStringStrict(parsedData.dimensions),
     
-    // Special requirements - null if missing
+    // === Special requirements - null if missing ===
     hazmat: normalizeBooleanStrict(parsedData.hazmat),
     team_required: normalizeBooleanStrict(parsedData.team_required),
     stackable: normalizeBooleanStrict(parsedData.stackable),
+    dock_level: normalizeBooleanStrict(parsedData.dock_level),
     
-    // Commodity
+    // === Multi-stop info ===
+    stops: normalizeStops(parsedData.stops),
+    stop_count: parseIntStrict(parsedData.stop_count),
+    has_multiple_stops: normalizeBooleanStrict(parsedData.has_multiple_stops),
+    
+    // === Commodity and notes ===
     commodity: normalizeStringStrict(parsedData.commodity),
-    
-    // Notes/special instructions
     special_instructions: normalizeStringStrict(parsedData.special_instructions),
     notes: normalizeStringStrict(parsedData.notes),
-    
-    // Dimensions string (if provided)
-    dimensions: normalizeStringStrict(parsedData.dimensions),
   };
   
   return payload;
@@ -228,14 +283,22 @@ function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<stri
 // Check if load has critical fields for safe deduplication
 // If missing critical fields, we should NOT dedup (too risky)
 function isDedupEligible(canonicalPayload: Record<string, any>): { eligible: boolean; reason: string | null } {
-  // Requirement: origin city+state OR broker/company OR pickup_date must be present
+  // === CRITICAL FIELD REQUIREMENTS ===
+  // All three must be present for dedup to be safe
+  
   const hasOrigin = canonicalPayload.origin_city && canonicalPayload.origin_state;
-  const hasBrokerIdentity = canonicalPayload.broker_company || canonicalPayload.broker_name || canonicalPayload.broker_email;
+  const hasDestination = canonicalPayload.destination_city && canonicalPayload.destination_state;
+  const hasBrokerIdentity = canonicalPayload.broker_company || canonicalPayload.broker_name || canonicalPayload.broker_email || canonicalPayload.mc_number;
   const hasPickupDate = canonicalPayload.pickup_date;
   
   // Must have origin location
   if (!hasOrigin) {
     return { eligible: false, reason: 'missing_origin_location' };
+  }
+  
+  // Must have destination location
+  if (!hasDestination) {
+    return { eligible: false, reason: 'missing_destination_location' };
   }
   
   // Must have broker identification
@@ -262,13 +325,18 @@ async function computeParsedLoadFingerprint(parsedData: Record<string, any>): Pr
   const canonicalPayload = buildCanonicalLoadPayload(parsedData);
   const eligibility = isDedupEligible(canonicalPayload);
   
-  // Sort keys for deterministic serialization
-  const sortedKeys = Object.keys(canonicalPayload).sort();
-  const sortedPayload: Record<string, any> = {};
-  for (const key of sortedKeys) {
-    sortedPayload[key] = canonicalPayload[key];
+  // Sort keys for deterministic serialization (deep sort for nested objects)
+  function sortObjectKeys(obj: any): any {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+    const sorted: Record<string, any> = {};
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = sortObjectKeys(obj[key]);
+    }
+    return sorted;
   }
   
+  const sortedPayload = sortObjectKeys(canonicalPayload);
   const payloadString = JSON.stringify(sortedPayload);
   
   // Compute SHA256
