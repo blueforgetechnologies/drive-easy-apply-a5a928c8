@@ -60,55 +60,71 @@ function generateContentHash(parsedData: Record<string, any>): string {
 }
 
 // ============================================================================
-// PARSED LOAD FINGERPRINT - Exact-match deduplication
-// SHA256 of ALL normalized parsed fields. Only truly identical loads match.
+// PARSED LOAD FINGERPRINT - Strict Exact-match deduplication
+// SHA256 of ALL parsed fields with meaning-preserving normalization.
+// RULES:
+// - null/undefined → null (NOT empty string)
+// - Missing numeric fields → null (NOT 0)
+// - Strings → trim only (lowercase for case-insensitive fields like email)
+// - Dates → normalize to YYYY-MM-DD or null
+// - Critical fields missing → dedup_eligible = false (skip dedup for safety)
 // ============================================================================
 
-// Normalize a value for fingerprinting (minimal, safe normalization only)
-function normalizeForFingerprint(value: any): any {
-  if (value === null || value === undefined) {
-    return ''; // Treat null/undefined as empty string
-  }
-  
+// Parse a numeric value strictly: returns number if valid, null otherwise
+function parseNumericStrict(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && !isNaN(value)) return value;
   if (typeof value === 'string') {
-    // Trim whitespace and lowercase for consistent comparison
-    return value.trim().toLowerCase();
+    const cleaned = value.replace(/[^0-9.-]/g, '');
+    if (!cleaned) return null;
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
   }
-  
-  if (typeof value === 'number') {
-    // Keep numbers as-is (no rounding per user requirement)
-    return value;
-  }
-  
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  
-  if (Array.isArray(value)) {
-    // Sort arrays for consistent ordering, recursively normalize
-    return value.map(normalizeForFingerprint).sort();
-  }
-  
-  if (typeof value === 'object') {
-    // Recursively normalize object values
-    const normalized: Record<string, any> = {};
-    for (const key of Object.keys(value).sort()) {
-      normalized[key] = normalizeForFingerprint(value[key]);
-    }
-    return normalized;
-  }
-  
-  return String(value).trim().toLowerCase();
+  return null;
 }
 
-// Normalize a date string to ISO format (YYYY-MM-DD)
-function normalizeDateForFingerprint(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+// Parse an integer value strictly: returns number if valid, null otherwise
+function parseIntStrict(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && !isNaN(value)) return Math.floor(value);
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9-]/g, '');
+    if (!cleaned) return null;
+    const parsed = parseInt(cleaned, 10);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+// Normalize a string for fingerprinting: trim only (preserves case for most fields)
+function normalizeStringStrict(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+  return String(value).trim() || null;
+}
+
+// Normalize a string for case-insensitive fields (email, etc.): trim + lowercase
+function normalizeStringLower(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase();
+    return trimmed === '' ? null : trimmed;
+  }
+  return String(value).trim().toLowerCase() || null;
+}
+
+// Normalize a date string to ISO format (YYYY-MM-DD) or null
+function normalizeDateStrict(dateStr: any): string | null {
+  if (dateStr === null || dateStr === undefined) return null;
+  if (typeof dateStr !== 'string') dateStr = String(dateStr);
   
-  const trimmed = String(dateStr).trim();
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
   
-  // Try parsing various date formats
-  // MM/DD/YY, MM/DD/YYYY, YYYY-MM-DD
+  // Try parsing various date formats: MM/DD/YY, MM/DD/YYYY, YYYY-MM-DD
   const mmddyy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (mmddyy) {
     const month = mmddyy[1].padStart(2, '0');
@@ -126,93 +142,148 @@ function normalizeDateForFingerprint(dateStr: string | null | undefined): string
     return `${iso[1]}-${iso[2]}-${iso[3]}`;
   }
   
-  // Return as-is if we can't parse
-  return trimmed.toLowerCase();
+  // Return null if we can't parse (don't use raw string)
+  return null;
+}
+
+// Normalize a boolean value strictly
+function normalizeBooleanStrict(value: any): boolean | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim();
+    if (lower === 'true' || lower === 'yes' || lower === '1') return true;
+    if (lower === 'false' || lower === 'no' || lower === '0') return false;
+  }
+  if (typeof value === 'number') return value !== 0;
+  return null;
 }
 
 // Build canonical payload for fingerprinting from parsed_data
-// Includes ALL fields that define a unique load opportunity
+// Uses STRICT normalization: null for missing, no defaults
 function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<string, any> {
-  return {
-    // Broker info
-    broker_name: normalizeForFingerprint(parsedData.broker_name),
-    broker_company: normalizeForFingerprint(parsedData.broker_company),
-    broker_email: normalizeForFingerprint(parsedData.broker_email),
-    broker_phone: normalizeForFingerprint(parsedData.broker_phone),
+  const payload: Record<string, any> = {
+    // Broker info (case-insensitive for email)
+    broker_name: normalizeStringStrict(parsedData.broker_name),
+    broker_company: normalizeStringStrict(parsedData.broker_company),
+    broker_email: normalizeStringLower(parsedData.broker_email),
+    broker_phone: normalizeStringStrict(parsedData.broker_phone),
     
     // Order identifier
-    order_number: normalizeForFingerprint(parsedData.order_number),
+    order_number: normalizeStringStrict(parsedData.order_number),
     
     // Origin
-    origin_city: normalizeForFingerprint(parsedData.origin_city),
-    origin_state: normalizeForFingerprint(parsedData.origin_state),
-    origin_zip: normalizeForFingerprint(parsedData.origin_zip),
+    origin_city: normalizeStringStrict(parsedData.origin_city),
+    origin_state: normalizeStringStrict(parsedData.origin_state)?.toUpperCase() || null,
+    origin_zip: normalizeStringStrict(parsedData.origin_zip),
     
     // Destination
-    destination_city: normalizeForFingerprint(parsedData.destination_city),
-    destination_state: normalizeForFingerprint(parsedData.destination_state),
-    destination_zip: normalizeForFingerprint(parsedData.destination_zip),
+    destination_city: normalizeStringStrict(parsedData.destination_city),
+    destination_state: normalizeStringStrict(parsedData.destination_state)?.toUpperCase() || null,
+    destination_zip: normalizeStringStrict(parsedData.destination_zip),
     
-    // Load details
-    miles: typeof parsedData.miles === 'number' ? parsedData.miles : 
-           parseFloat(String(parsedData.miles || '0').replace(/[^0-9.]/g, '')) || 0,
-    weight: typeof parsedData.weight === 'number' ? parsedData.weight :
-            parseFloat(String(parsedData.weight || '0').replace(/[^0-9.]/g, '')) || 0,
-    pieces: typeof parsedData.pieces === 'number' ? parsedData.pieces :
-            parseInt(String(parsedData.pieces || '0').replace(/[^0-9]/g, '')) || 0,
+    // Load details - null if missing, NOT 0
+    miles: parseNumericStrict(parsedData.miles),
+    weight: parseNumericStrict(parsedData.weight),
+    pieces: parseIntStrict(parsedData.pieces),
     
-    // Rate/pricing
-    rate: typeof parsedData.rate === 'number' ? parsedData.rate :
-          parseFloat(String(parsedData.rate || '0').replace(/[^0-9.]/g, '')) || 0,
-    posted_amount: typeof parsedData.posted_amount === 'number' ? parsedData.posted_amount :
-                   parseFloat(String(parsedData.posted_amount || '0').replace(/[^0-9.]/g, '')) || 0,
+    // Rate/pricing - null if missing, NOT 0
+    rate: parseNumericStrict(parsedData.rate),
+    posted_amount: parseNumericStrict(parsedData.posted_amount),
     
-    // Dates (normalized to ISO)
-    pickup_date: normalizeDateForFingerprint(parsedData.pickup_date),
-    pickup_time: normalizeForFingerprint(parsedData.pickup_time),
-    delivery_date: normalizeDateForFingerprint(parsedData.delivery_date),
-    delivery_time: normalizeForFingerprint(parsedData.delivery_time),
+    // Dates (normalized to ISO or null)
+    pickup_date: normalizeDateStrict(parsedData.pickup_date),
+    pickup_time: normalizeStringStrict(parsedData.pickup_time),
+    delivery_date: normalizeDateStrict(parsedData.delivery_date),
+    delivery_time: normalizeStringStrict(parsedData.delivery_time),
     
     // Equipment
-    vehicle_type: normalizeForFingerprint(parsedData.vehicle_type),
-    load_type: normalizeForFingerprint(parsedData.load_type),
+    vehicle_type: normalizeStringStrict(parsedData.vehicle_type)?.toLowerCase() || null,
+    load_type: normalizeStringStrict(parsedData.load_type)?.toLowerCase() || null,
     
-    // Dimensions (if present)
-    length: typeof parsedData.length === 'number' ? parsedData.length :
-            parseFloat(String(parsedData.length || '0').replace(/[^0-9.]/g, '')) || 0,
-    width: typeof parsedData.width === 'number' ? parsedData.width :
-           parseFloat(String(parsedData.width || '0').replace(/[^0-9.]/g, '')) || 0,
-    height: typeof parsedData.height === 'number' ? parsedData.height :
-            parseFloat(String(parsedData.height || '0').replace(/[^0-9.]/g, '')) || 0,
+    // Dimensions - null if missing, NOT 0
+    length: parseNumericStrict(parsedData.length),
+    width: parseNumericStrict(parsedData.width),
+    height: parseNumericStrict(parsedData.height),
     
-    // Special requirements
-    hazmat: Boolean(parsedData.hazmat),
-    team_required: Boolean(parsedData.team_required),
+    // Special requirements - null if missing
+    hazmat: normalizeBooleanStrict(parsedData.hazmat),
+    team_required: normalizeBooleanStrict(parsedData.team_required),
+    stackable: normalizeBooleanStrict(parsedData.stackable),
     
     // Commodity
-    commodity: normalizeForFingerprint(parsedData.commodity),
+    commodity: normalizeStringStrict(parsedData.commodity),
     
-    // Notes/special instructions (included for exact match)
-    special_instructions: normalizeForFingerprint(parsedData.special_instructions),
-    notes: normalizeForFingerprint(parsedData.notes),
+    // Notes/special instructions
+    special_instructions: normalizeStringStrict(parsedData.special_instructions),
+    notes: normalizeStringStrict(parsedData.notes),
+    
+    // Dimensions string (if provided)
+    dimensions: normalizeStringStrict(parsedData.dimensions),
   };
+  
+  return payload;
+}
+
+// Check if load has critical fields for safe deduplication
+// If missing critical fields, we should NOT dedup (too risky)
+function isDedupEligible(canonicalPayload: Record<string, any>): { eligible: boolean; reason: string | null } {
+  // Requirement: origin city+state OR broker/company OR pickup_date must be present
+  const hasOrigin = canonicalPayload.origin_city && canonicalPayload.origin_state;
+  const hasBrokerIdentity = canonicalPayload.broker_company || canonicalPayload.broker_name || canonicalPayload.broker_email;
+  const hasPickupDate = canonicalPayload.pickup_date;
+  
+  // Must have origin location
+  if (!hasOrigin) {
+    return { eligible: false, reason: 'missing_origin_location' };
+  }
+  
+  // Must have broker identification
+  if (!hasBrokerIdentity) {
+    return { eligible: false, reason: 'missing_broker_identity' };
+  }
+  
+  // Must have pickup date
+  if (!hasPickupDate) {
+    return { eligible: false, reason: 'missing_pickup_date' };
+  }
+  
+  return { eligible: true, reason: null };
 }
 
 // Compute SHA256 fingerprint of parsed load data
-async function computeParsedLoadFingerprint(parsedData: Record<string, any>): Promise<string> {
+// Returns fingerprint, canonical payload, and eligibility
+async function computeParsedLoadFingerprint(parsedData: Record<string, any>): Promise<{
+  fingerprint: string;
+  canonicalPayload: Record<string, any>;
+  dedupEligible: boolean;
+  dedupEligibleReason: string | null;
+}> {
   const canonicalPayload = buildCanonicalLoadPayload(parsedData);
+  const eligibility = isDedupEligible(canonicalPayload);
   
   // Sort keys for deterministic serialization
-  const payloadString = JSON.stringify(canonicalPayload, Object.keys(canonicalPayload).sort());
+  const sortedKeys = Object.keys(canonicalPayload).sort();
+  const sortedPayload: Record<string, any> = {};
+  for (const key of sortedKeys) {
+    sortedPayload[key] = canonicalPayload[key];
+  }
+  
+  const payloadString = JSON.stringify(sortedPayload);
   
   // Compute SHA256
   const encoder = new TextEncoder();
   const data = encoder.encode(payloadString);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   
-  return hashHex;
+  return {
+    fingerprint,
+    canonicalPayload: sortedPayload,
+    dedupEligible: eligibility.eligible,
+    dedupEligibleReason: eligibility.reason,
+  };
 }
 
 // Check for existing load with same fingerprint in same tenant
@@ -1347,22 +1418,29 @@ serve(async (req) => {
         const contentHash = generateContentHash(parsedData);
         
         // ====================================================================
-        // PARSED LOAD FINGERPRINT - Exact-match deduplication
-        // Computes SHA256 of ALL normalized parsed fields
+        // PARSED LOAD FINGERPRINT - Strict Exact-match deduplication
+        // Computes SHA256 of ALL parsed fields with meaning-preserving normalization
         // ====================================================================
-        const parsedLoadFingerprint = await computeParsedLoadFingerprint(parsedData);
-        console.log(`🔑 Computed fingerprint: ${parsedLoadFingerprint.substring(0, 12)}...`);
+        const fingerprintResult = await computeParsedLoadFingerprint(parsedData);
+        const { fingerprint: parsedLoadFingerprint, canonicalPayload, dedupEligible, dedupEligibleReason } = fingerprintResult;
         
-        // Check for exact duplicate (same fingerprint within tenant in last 7 days)
-        const existingDuplicate = await findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168);
+        console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
         
         let isDuplicate = false;
         let duplicateOfId: string | null = null;
         
-        if (existingDuplicate) {
-          isDuplicate = true;
-          duplicateOfId = existingDuplicate.id;
-          console.log(`🔄 DUPLICATE detected: matches ${existingDuplicate.load_id} (fingerprint: ${parsedLoadFingerprint.substring(0, 12)})`);
+        // Only check for duplicates if the load is eligible (has critical fields)
+        if (dedupEligible) {
+          // Check for exact duplicate (same fingerprint within tenant in last 7 days)
+          const existingDuplicate = await findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168);
+          
+          if (existingDuplicate) {
+            isDuplicate = true;
+            duplicateOfId = existingDuplicate.id;
+            console.log(`🔄 DUPLICATE detected: matches ${existingDuplicate.load_id} (fingerprint: ${parsedLoadFingerprint.substring(0, 12)})`);
+          }
+        } else {
+          console.log(`⚠️ Skipping dedup check: ${dedupEligibleReason}`);
         }
         
         // Also check legacy content hash for "update" detection (different from exact duplicate)
@@ -1404,6 +1482,8 @@ serve(async (req) => {
             is_duplicate: isDuplicate,
             duplicate_of_id: duplicateOfId,
             parent_email_id: parentEmailId,
+            dedup_eligible: dedupEligible,
+            dedup_canonical_payload: isDuplicate ? canonicalPayload : null, // Store payload only for duplicates (for debugging)
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();

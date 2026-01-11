@@ -2366,6 +2366,8 @@ export type Database = {
           body_text: string | null
           content_hash: string | null
           created_at: string
+          dedup_canonical_payload: Json | null
+          dedup_eligible: boolean | null
           duplicate_of_id: string | null
           email_id: string
           email_source: string
@@ -2396,6 +2398,8 @@ export type Database = {
           body_text?: string | null
           content_hash?: string | null
           created_at?: string
+          dedup_canonical_payload?: Json | null
+          dedup_eligible?: boolean | null
           duplicate_of_id?: string | null
           email_id: string
           email_source?: string
@@ -2426,6 +2430,8 @@ export type Database = {
           body_text?: string | null
           content_hash?: string | null
           created_at?: string
+          dedup_canonical_payload?: Json | null
+          dedup_eligible?: boolean | null
           duplicate_of_id?: string | null
           email_id?: string
           email_source?: string
