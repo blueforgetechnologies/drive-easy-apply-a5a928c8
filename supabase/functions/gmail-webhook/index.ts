@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 // Google Pub/Sub push requests use this User-Agent prefix
-// See: https://cloud.google.com/pubsub/docs/push
 const GOOGLE_PUBSUB_USER_AGENT_PREFIX = "CloudPubSub-Google";
 
 // Initialize Supabase client once
@@ -21,23 +20,81 @@ interface TenantInfo {
   isPaused: boolean;
   rateLimitPerMinute: number;
   rateLimitPerDay: number;
+  tenantName: string | null;
 }
 
-// Extract gmail alias from to_email address (e.g., "talbilogistics+acme@gmail.com" -> "+acme")
-function extractGmailAlias(toEmail: string | null): string | null {
-  if (!toEmail) return null;
+// Header extraction result
+interface HeaderExtractionResult {
+  alias: string | null;
+  source: string | null;
+  deliveredTo: string | null;
+  xOriginalTo: string | null;
+  envelopeTo: string | null;
+  to: string | null;
+}
+
+// Extract gmail alias from email address (e.g., "talbilogistics+acme@gmail.com" -> "+acme")
+function extractGmailAlias(email: string | null): string | null {
+  if (!email) return null;
   
   // Match the pattern: anything+alias@domain
-  const match = toEmail.match(/([^@]+)\+([^@]+)@/);
+  const match = email.match(/([^@]+)\+([^@]+)@/);
   if (match && match[2]) {
     return `+${match[2]}`;
   }
   return null;
 }
 
-// Get tenant ID from gmail alias (preferred) or API key or use default tenant
-async function getTenantId(apiKey: string | null, gmailAlias: string | null): Promise<TenantInfo> {
-  // First priority: Look up tenant by gmail alias
+// Extract alias from headers with priority order:
+// 1. Delivered-To (most reliable for Gmail)
+// 2. X-Original-To (commonly used by mail servers)
+// 3. Envelope-To (sometimes available)
+// 4. To (fallback - least reliable for routing)
+function extractAliasFromHeaders(headers: { name: string; value: string }[]): HeaderExtractionResult {
+  const result: HeaderExtractionResult = {
+    alias: null,
+    source: null,
+    deliveredTo: null,
+    xOriginalTo: null,
+    envelopeTo: null,
+    to: null,
+  };
+  
+  // Build header map (case-insensitive)
+  const headerMap = new Map<string, string>();
+  for (const h of headers) {
+    headerMap.set(h.name.toLowerCase(), h.value);
+  }
+  
+  // Extract header values
+  result.deliveredTo = headerMap.get('delivered-to') || null;
+  result.xOriginalTo = headerMap.get('x-original-to') || null;
+  result.envelopeTo = headerMap.get('envelope-to') || null;
+  result.to = headerMap.get('to') || null;
+  
+  // Priority order extraction
+  const priorityOrder: Array<{ header: string | null; source: string }> = [
+    { header: result.deliveredTo, source: 'Delivered-To' },
+    { header: result.xOriginalTo, source: 'X-Original-To' },
+    { header: result.envelopeTo, source: 'Envelope-To' },
+    { header: result.to, source: 'To' },
+  ];
+  
+  for (const { header, source } of priorityOrder) {
+    const alias = extractGmailAlias(header);
+    if (alias) {
+      result.alias = alias;
+      result.source = source;
+      break;
+    }
+  }
+  
+  return result;
+}
+
+// Get tenant ID from gmail alias (fail-closed: no fallback to default)
+async function getTenantId(gmailAlias: string | null): Promise<TenantInfo> {
+  // Only route by gmail alias - fail-closed approach
   if (gmailAlias) {
     const { data: tenant, error } = await supabase
       .from('tenants')
@@ -46,49 +103,70 @@ async function getTenantId(apiKey: string | null, gmailAlias: string | null): Pr
       .maybeSingle();
     
     if (tenant) {
-      console.log(`[gmail-webhook] Routed to tenant "${tenant.name}" via alias ${gmailAlias}`);
+      console.log(`[gmail-webhook] ✅ Routed to tenant "${tenant.name}" via alias ${gmailAlias}`);
       return { 
         tenantId: tenant.id, 
         isPaused: tenant.is_paused || false,
         rateLimitPerMinute: tenant.rate_limit_per_minute || 60,
         rateLimitPerDay: tenant.rate_limit_per_day || 10000,
+        tenantName: tenant.name,
       };
     }
-    console.warn(`[gmail-webhook] No tenant found for alias ${gmailAlias}, trying other methods`);
+    console.warn(`[gmail-webhook] ⚠️ No tenant found for alias ${gmailAlias}`);
   }
 
-  // Second priority: If API key provided, look up the tenant
-  if (apiKey) {
-    const { data: tenant, error } = await supabase
-      .from('tenants')
-      .select('id, is_paused, rate_limit_per_minute, rate_limit_per_day')
-      .eq('api_key', apiKey)
-      .maybeSingle();
-    
-    if (tenant) {
-      return { 
-        tenantId: tenant.id, 
-        isPaused: tenant.is_paused || false,
-        rateLimitPerMinute: tenant.rate_limit_per_minute || 60,
-        rateLimitPerDay: tenant.rate_limit_per_day || 10000,
-      };
-    }
-    console.warn('[gmail-webhook] Invalid API key provided, falling back to default tenant');
-  }
-  
-  // Fall back to default tenant for single-tenant mode
-  const { data: defaultTenant } = await supabase
-    .from('tenants')
-    .select('id, is_paused, rate_limit_per_minute, rate_limit_per_day')
-    .eq('slug', 'default')
-    .maybeSingle();
-  
+  // FAIL-CLOSED: No fallback to default tenant
+  // Return null tenantId to trigger quarantine
   return { 
-    tenantId: defaultTenant?.id || null, 
-    isPaused: defaultTenant?.is_paused || false,
-    rateLimitPerMinute: defaultTenant?.rate_limit_per_minute || 60,
-    rateLimitPerDay: defaultTenant?.rate_limit_per_day || 10000,
+    tenantId: null, 
+    isPaused: false,
+    rateLimitPerMinute: 60,
+    rateLimitPerDay: 10000,
+    tenantName: null,
   };
+}
+
+// Quarantine an unroutable email
+async function quarantineEmail(
+  messageId: string,
+  historyId: string | null,
+  headers: HeaderExtractionResult,
+  fromEmail: string | null,
+  subject: string | null,
+  failureReason: string,
+  rawHeaders: { name: string; value: string }[]
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('unroutable_emails')
+      .upsert({
+        gmail_message_id: messageId,
+        gmail_history_id: historyId,
+        received_at: new Date().toISOString(),
+        delivered_to_header: headers.deliveredTo,
+        x_original_to_header: headers.xOriginalTo,
+        envelope_to_header: headers.envelopeTo,
+        to_header: headers.to,
+        from_header: fromEmail,
+        subject: subject,
+        extracted_alias: headers.alias,
+        extraction_source: headers.source,
+        failure_reason: failureReason,
+        raw_headers: rawHeaders,
+        status: 'quarantined',
+      }, { 
+        onConflict: 'gmail_message_id',
+        ignoreDuplicates: true 
+      });
+    
+    if (error) {
+      console.error(`[gmail-webhook] Failed to quarantine email ${messageId}:`, error);
+    } else {
+      console.log(`[gmail-webhook] 🔒 Quarantined email ${messageId}: ${failureReason}`);
+    }
+  } catch (err) {
+    console.error(`[gmail-webhook] Quarantine error:`, err);
+  }
 }
 
 // Check tenant rate limit using atomic DB function
@@ -105,7 +183,6 @@ async function checkRateLimit(
   
   if (error) {
     console.error('[gmail-webhook] Rate limit check failed:', error);
-    // Allow on error to avoid blocking legitimate traffic
     return { allowed: true, reason: null, minuteCount: 0, dayCount: 0 };
   }
   
@@ -126,7 +203,6 @@ async function isFeatureEnabled(tenantId: string, featureKey: string): Promise<b
   
   if (error) {
     console.error(`[gmail-webhook] Feature flag check failed for ${featureKey}:`, error);
-    // Default to enabled on error to avoid blocking
     return true;
   }
   
@@ -135,8 +211,6 @@ async function isFeatureEnabled(tenantId: string, featureKey: string): Promise<b
 
 // Generate deterministic dedupe key for tenant-scoped deduplication
 function generateDedupeKey(gmailMessageId: string): string {
-  // For now, dedupe_key is the gmail_message_id
-  // In future, could include additional factors like email hash
   return gmailMessageId;
 }
 
@@ -147,14 +221,14 @@ async function storeRawPayload(
   payload: any
 ): Promise<string | null> {
   try {
-    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const timestamp = new Date().toISOString().split('T')[0];
     const filePath = `${tenantId}/${timestamp}/${gmailMessageId}.json`;
     
     const { error } = await supabase.storage
       .from('email-payloads')
       .upload(filePath, JSON.stringify(payload), {
         contentType: 'application/json',
-        upsert: true, // Allow overwrite for retries
+        upsert: true,
       });
     
     if (error) {
@@ -182,7 +256,6 @@ serve(async (req) => {
     const userAgent = req.headers.get('user-agent') || '';
     const isFromPubSub = userAgent.startsWith(GOOGLE_PUBSUB_USER_AGENT_PREFIX);
     
-    // Clone request to read body for validation while preserving it for later use
     const bodyText = await req.text();
     let body: any = {};
     let historyId: string | null = null;
@@ -193,11 +266,9 @@ serve(async (req) => {
       // Body might be empty for some requests
     }
     
-    // Check for Pub/Sub message structure
     const hasPubSubStructure = body && typeof body === 'object' && 
       (body.message !== undefined || body.subscription !== undefined);
     
-    // Reject requests that don't appear to be from Pub/Sub
     if (!isFromPubSub && !hasPubSubStructure) {
       console.warn('[gmail-webhook] Request rejected: Invalid origin. User-Agent:', userAgent);
       return new Response(
@@ -210,9 +281,6 @@ serve(async (req) => {
     }
 
     console.log('[gmail-webhook] Request validated as Pub/Sub notification');
-
-    // Get API key header (optional - used as fallback)
-    const tenantApiKey = req.headers.get('x-tenant-api-key');
 
     // Track Pub/Sub usage
     supabase
@@ -234,7 +302,7 @@ serve(async (req) => {
       console.log('Could not decode Pub/Sub data');
     }
 
-    // Get access token - quick single lookup
+    // Get access token
     const { data: tokenData, error: tokenError } = await supabase
       .from('gmail_tokens')
       .select('access_token, refresh_token, token_expiry, user_email')
@@ -270,7 +338,6 @@ serve(async (req) => {
         const tokens = await refreshResponse.json();
         accessToken = tokens.access_token;
         
-        // Update token - don't wait
         supabase
           .from('gmail_tokens')
           .update({
@@ -283,7 +350,6 @@ serve(async (req) => {
     }
 
     // Fetch unread messages from BOTH Sylectus and Full Circle TMS
-    // Use OR query to get emails from either source
     const sylectusResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&q=is:unread from:sylectus.com`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -302,7 +368,6 @@ serve(async (req) => {
       });
     }
     
-    // Combine messages from both sources
     const sylectusData = sylectusResponse.ok ? await sylectusResponse.json() : { messages: [] };
     const fullCircleData = fullCircleResponse.ok ? await fullCircleResponse.json() : { messages: [] };
     
@@ -329,54 +394,74 @@ serve(async (req) => {
 
     console.log(`📧 Processing ${messages.length} messages for tenant routing`);
 
-    // Fetch metadata for each message to get the "To" header for tenant routing
+    // Fetch full metadata for each message to get all routing headers
     const messageDetailsPromises = messages.map(async (m: any) => {
       try {
+        // Request all relevant headers for routing
         const detailResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=To&metadataHeaders=Delivered-To`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Delivered-To&metadataHeaders=X-Original-To&metadataHeaders=Envelope-To&metadataHeaders=To&metadataHeaders=From&metadataHeaders=Subject`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         
         if (!detailResponse.ok) {
           console.warn(`Failed to fetch details for message ${m.id}`);
-          return { message: m, toEmail: null };
+          return { message: m, headers: [], fromEmail: null, subject: null };
         }
         
         const detail = await detailResponse.json();
         const headers = detail.payload?.headers || [];
         
-        // Look for To or Delivered-To header
-        const toHeader = headers.find((h: any) => h.name.toLowerCase() === 'to' || h.name.toLowerCase() === 'delivered-to');
-        const toEmail = toHeader?.value || null;
+        // Extract From and Subject for logging
+        const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
+        const subjectHeader = headers.find((h: any) => h.name.toLowerCase() === 'subject');
         
-        return { message: m, toEmail };
+        return { 
+          message: m, 
+          headers,
+          fromEmail: fromHeader?.value || null,
+          subject: subjectHeader?.value || null,
+        };
       } catch (err) {
         console.error(`Error fetching message ${m.id}:`, err);
-        return { message: m, toEmail: null };
+        return { message: m, headers: [], fromEmail: null, subject: null };
       }
     });
 
     const messageDetails = await Promise.all(messageDetailsPromises);
 
-    // Group messages by tenant based on gmail alias
+    // Process messages with improved header extraction
     const tenantQueueMap = new Map<string, { tenantId: string; items: any[] }>();
     let skippedCount = 0;
+    let quarantinedCount = 0;
 
-    for (const { message, toEmail } of messageDetails) {
-      // Extract gmail alias from the to email
-      const gmailAlias = extractGmailAlias(toEmail);
+    for (const { message, headers, fromEmail, subject } of messageDetails) {
+      // Extract alias using priority-ordered header extraction
+      const headerResult = extractAliasFromHeaders(headers);
       
-      // Get tenant info for this message
-      const tenantInfo = await getTenantId(tenantApiKey, gmailAlias);
+      // Get tenant info for this message (fail-closed approach)
+      const tenantInfo = await getTenantId(headerResult.alias);
       
       if (!tenantInfo.tenantId) {
-        console.warn(`No tenant found for message ${message.id} (to: ${toEmail}, alias: ${gmailAlias})`);
-        skippedCount++;
+        // QUARANTINE: No tenant found - fail-closed routing
+        const failureReason = headerResult.alias 
+          ? `No tenant configured for alias: ${headerResult.alias}`
+          : 'No alias found in email headers';
+        
+        await quarantineEmail(
+          message.id,
+          historyId,
+          headerResult,
+          fromEmail,
+          subject,
+          failureReason,
+          headers
+        );
+        quarantinedCount++;
         continue;
       }
       
       if (tenantInfo.isPaused) {
-        console.log(`Tenant ${tenantInfo.tenantId} is paused, skipping message ${message.id}`);
+        console.log(`Tenant ${tenantInfo.tenantName} is paused, skipping message ${message.id}`);
         skippedCount++;
         continue;
       }
@@ -384,7 +469,7 @@ serve(async (req) => {
       // Check rate limit for this tenant
       const rateCheck = await checkRateLimit(tenantInfo.tenantId, tenantInfo.rateLimitPerMinute, tenantInfo.rateLimitPerDay);
       if (!rateCheck.allowed) {
-        console.warn(`Rate limit exceeded for tenant ${tenantInfo.tenantId}, skipping message ${message.id}`);
+        console.warn(`Rate limit exceeded for tenant ${tenantInfo.tenantName}, skipping message ${message.id}`);
         skippedCount++;
         continue;
       }
@@ -392,7 +477,7 @@ serve(async (req) => {
       // Check if Load Hunter is enabled for this tenant
       const loadHunterEnabled = await isFeatureEnabled(tenantInfo.tenantId, 'load_hunter_enabled');
       if (!loadHunterEnabled) {
-        console.log(`Load Hunter disabled for tenant ${tenantInfo.tenantId}, skipping message ${message.id}`);
+        console.log(`Load Hunter disabled for tenant ${tenantInfo.tenantName}, skipping message ${message.id}`);
         skippedCount++;
         continue;
       }
@@ -404,8 +489,9 @@ serve(async (req) => {
         historyId,
         receivedAt: new Date().toISOString(),
         tenantId: tenantInfo.tenantId,
-        toEmail,
-        gmailAlias,
+        headerExtraction: headerResult,
+        fromEmail,
+        subject,
       };
       const payloadUrl = await storeRawPayload(tenantInfo.tenantId, message.id, rawPayload);
       
@@ -421,11 +507,14 @@ serve(async (req) => {
         tenant_id: tenantInfo.tenantId,
         dedupe_key: generateDedupeKey(message.id),
         payload_url: payloadUrl,
-        to_email: toEmail,
+        to_email: headerResult.deliveredTo || headerResult.to,
+        routing_method: headerResult.source || 'unknown',
+        extracted_alias: headerResult.alias,
+        delivered_to_header: headerResult.deliveredTo,
       });
     }
 
-    // Insert queue items for each tenant
+    // Insert queue items for each tenant (tenant-scoped dedup)
     let totalQueued = 0;
     let totalDeduplicated = 0;
     const tenantResults: { tenantId: string; queued: number }[] = [];
@@ -433,10 +522,11 @@ serve(async (req) => {
     for (const [tenantId, { items }] of tenantQueueMap) {
       if (items.length === 0) continue;
       
+      // Use tenant-scoped dedup: UNIQUE(tenant_id, dedupe_key)
       const { data: upsertResult, error: queueError } = await supabase
         .from('email_queue')
         .upsert(items, { 
-          onConflict: 'gmail_message_id', 
+          onConflict: 'tenant_id,dedupe_key', 
           ignoreDuplicates: true 
         })
         .select('id');
@@ -457,10 +547,10 @@ serve(async (req) => {
     }
     
     if (totalDeduplicated > 0) {
-      console.log(`🔄 Deduplicated ${totalDeduplicated} messages (already in queue)`);
+      console.log(`🔄 Deduplicated ${totalDeduplicated} messages (already in queue for tenant)`);
     }
 
-    // Mark messages as read in background - don't block response
+    // Mark messages as read in background
     Promise.all(messages.map((msg: any) =>
       fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}/modify`, {
         method: 'POST',
@@ -473,12 +563,13 @@ serve(async (req) => {
     ));
 
     const elapsed = Date.now() - startTime;
-    console.log(`✅ Queued ${totalQueued} across ${tenantResults.length} tenants (${totalDeduplicated} deduped, ${skippedCount} skipped) in ${elapsed}ms`);
+    console.log(`✅ Queued ${totalQueued} across ${tenantResults.length} tenants (${totalDeduplicated} deduped, ${skippedCount} skipped, ${quarantinedCount} quarantined) in ${elapsed}ms`);
 
     return new Response(JSON.stringify({ 
       queued: totalQueued, 
       deduplicated: totalDeduplicated,
       skipped: skippedCount,
+      quarantined: quarantinedCount,
       tenants: tenantResults,
       elapsed 
     }), {
