@@ -1269,6 +1269,8 @@ export type Database = {
           body_html: string | null
           body_text: string | null
           dedupe_key: string | null
+          delivered_to_header: string | null
+          extracted_alias: string | null
           from_email: string | null
           from_name: string | null
           gmail_history_id: string | null
@@ -1279,6 +1281,7 @@ export type Database = {
           processed_at: string | null
           processing_started_at: string | null
           queued_at: string
+          routing_method: string | null
           status: string
           subject: string | null
           tenant_id: string | null
@@ -1289,6 +1292,8 @@ export type Database = {
           body_html?: string | null
           body_text?: string | null
           dedupe_key?: string | null
+          delivered_to_header?: string | null
+          extracted_alias?: string | null
           from_email?: string | null
           from_name?: string | null
           gmail_history_id?: string | null
@@ -1299,6 +1304,7 @@ export type Database = {
           processed_at?: string | null
           processing_started_at?: string | null
           queued_at?: string
+          routing_method?: string | null
           status?: string
           subject?: string | null
           tenant_id?: string | null
@@ -1309,6 +1315,8 @@ export type Database = {
           body_html?: string | null
           body_text?: string | null
           dedupe_key?: string | null
+          delivered_to_header?: string | null
+          extracted_alias?: string | null
           from_email?: string | null
           from_name?: string | null
           gmail_history_id?: string | null
@@ -1319,6 +1327,7 @@ export type Database = {
           processed_at?: string | null
           processing_started_at?: string | null
           queued_at?: string
+          routing_method?: string | null
           status?: string
           subject?: string | null
           tenant_id?: string | null
@@ -4992,6 +5001,72 @@ export type Database = {
           tenant_scope?: string
           ui_location?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      unroutable_emails: {
+        Row: {
+          delivered_to_header: string | null
+          envelope_to_header: string | null
+          extracted_alias: string | null
+          extraction_source: string | null
+          failure_reason: string
+          from_header: string | null
+          gmail_history_id: string | null
+          gmail_message_id: string
+          id: string
+          payload_url: string | null
+          raw_headers: Json | null
+          received_at: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          subject: string | null
+          to_header: string | null
+          x_original_to_header: string | null
+        }
+        Insert: {
+          delivered_to_header?: string | null
+          envelope_to_header?: string | null
+          extracted_alias?: string | null
+          extraction_source?: string | null
+          failure_reason: string
+          from_header?: string | null
+          gmail_history_id?: string | null
+          gmail_message_id: string
+          id?: string
+          payload_url?: string | null
+          raw_headers?: Json | null
+          received_at?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject?: string | null
+          to_header?: string | null
+          x_original_to_header?: string | null
+        }
+        Update: {
+          delivered_to_header?: string | null
+          envelope_to_header?: string | null
+          extracted_alias?: string | null
+          extraction_source?: string | null
+          failure_reason?: string
+          from_header?: string | null
+          gmail_history_id?: string | null
+          gmail_message_id?: string
+          id?: string
+          payload_url?: string | null
+          raw_headers?: Json | null
+          received_at?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject?: string | null
+          to_header?: string | null
+          x_original_to_header?: string | null
         }
         Relationships: []
       }
