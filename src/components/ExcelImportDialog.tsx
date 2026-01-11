@@ -31,6 +31,7 @@ export function ExcelImportDialog({
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
+    console.log('File selected:', selectedFile?.name, selectedFile?.type, selectedFile?.size);
     if (!selectedFile) return;
 
     setError(null);
@@ -38,6 +39,8 @@ export function ExcelImportDialog({
 
     try {
       const data = await parseExcelFile(selectedFile);
+      console.log('Raw parsed data:', data);
+      
       if (data.length === 0) {
         setError("The file is empty or has no valid data rows");
         setPreviewData([]);
@@ -45,12 +48,42 @@ export function ExcelImportDialog({
       }
       
       // Map Excel data to entity format
-      const mappedData = data.map(row => mapExcelRowToEntity(row, entityType));
-      setPreviewData(mappedData);
+      const mappedData = data.map(row => {
+        const mapped = mapExcelRowToEntity(row, entityType);
+        console.log('Mapped row:', row, '->', mapped);
+        return mapped;
+      });
+      
+      // Filter out empty rows
+      const validData = mappedData.filter(row => Object.keys(row).length > 0);
+      console.log('Valid mapped data:', validData);
+      
+      setPreviewData(validData);
     } catch (err) {
+      console.error('Excel parse error:', err);
       setError("Failed to parse Excel file. Please ensure it's a valid .xlsx or .xls file.");
       setPreviewData([]);
     }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (!droppedFile) return;
+    
+    // Create a synthetic event to reuse handleFileChange logic
+    const syntheticEvent = {
+      target: { files: [droppedFile] }
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    
+    await handleFileChange(syntheticEvent);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleImport = async () => {
@@ -127,6 +160,8 @@ export function ExcelImportDialog({
           <div 
             className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
             onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
           >
             <input
               ref={fileInputRef}

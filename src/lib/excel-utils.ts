@@ -197,8 +197,22 @@ export function mapExcelRowToEntity(row: any, entityType: EntityType): any {
   const columns = ENTITY_COLUMNS[entityType];
   const result: any = {};
   
+  // Log available keys in the row for debugging
+  console.log('Excel row keys:', Object.keys(row));
+  
   columns.forEach(col => {
-    const excelValue = row[col.header];
+    // Try exact header match first
+    let excelValue = row[col.header];
+    
+    // If not found, try case-insensitive match
+    if (excelValue === undefined) {
+      const lowerHeader = col.header.toLowerCase();
+      const matchingKey = Object.keys(row).find(k => k.toLowerCase() === lowerHeader);
+      if (matchingKey) {
+        excelValue = row[matchingKey];
+      }
+    }
+    
     if (excelValue !== undefined && excelValue !== '') {
       // Handle boolean transforms in reverse
       let value = excelValue;
