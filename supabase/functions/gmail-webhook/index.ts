@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,6 +32,14 @@ interface HeaderExtractionResult {
   xOriginalTo: string | null;
   envelopeTo: string | null;
   to: string | null;
+}
+
+// Content dedup result
+interface ContentDedupResult {
+  contentId: string;
+  receiptId: string;
+  isNewContent: boolean;
+  contentHash: string;
 }
 
 // Extract gmail alias from email address (e.g., "talbilogistics+acme@gmail.com" -> "+acme")
@@ -214,7 +223,198 @@ function generateDedupeKey(gmailMessageId: string): string {
   return gmailMessageId;
 }
 
-// Store raw payload to object storage for audit compliance
+// ============================================================================
+// CONTENT DEDUPLICATION FUNCTIONS (Step 2)
+// ============================================================================
+
+// Compute SHA256 hash of raw payload bytes
+async function computeContentHash(payload: any): Promise<string> {
+  const payloadString = JSON.stringify(payload);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payloadString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+// Detect provider from email sender
+function detectProvider(fromEmail: string | null): string {
+  if (!fromEmail) return 'unknown';
+  const lower = fromEmail.toLowerCase();
+  if (lower.includes('sylectus')) return 'sylectus';
+  if (lower.includes('fullcircle') || lower.includes('fctms')) return 'fullcircle';
+  return 'unknown';
+}
+
+// Store content-addressed payload to global bucket
+async function storeGlobalPayload(
+  provider: string,
+  contentHash: string,
+  payload: any
+): Promise<string | null> {
+  try {
+    // Content-addressed path: provider/prefix/full_hash.json
+    const hashPrefix = contentHash.substring(0, 4);
+    const filePath = `${provider}/${hashPrefix}/${contentHash}.json`;
+    
+    const { error } = await supabase.storage
+      .from('email-content')
+      .upload(filePath, JSON.stringify(payload), {
+        contentType: 'application/json',
+        upsert: false, // Don't overwrite - content is immutable
+      });
+    
+    if (error) {
+      // If already exists, that's fine (expected for reuse)
+      if (!error.message?.includes('already exists') && !error.message?.includes('Duplicate')) {
+        console.error(`[gmail-webhook] Failed to store global payload:`, error);
+        return null;
+      }
+      console.log(`📦 Content already exists: ${filePath}`);
+      return filePath;
+    }
+    
+    console.log(`📦 Stored NEW global content: ${filePath}`);
+    return filePath;
+  } catch (err) {
+    console.error(`[gmail-webhook] Global storage error:`, err);
+    return null;
+  }
+}
+
+// Upsert email_content and create receipt (atomic content dedup)
+async function processContentDedup(
+  tenantId: string,
+  provider: string,
+  contentHash: string,
+  payloadUrl: string | null,
+  gmailMessageId: string,
+  historyId: string | null,
+  headerResult: HeaderExtractionResult
+): Promise<ContentDedupResult | null> {
+  try {
+    // 1. Upsert email_content: insert if new, update last_seen_at + increment receipt_count if exists
+    const { data: existingContent, error: lookupError } = await supabase
+      .from('email_content')
+      .select('id, receipt_count')
+      .eq('provider', provider)
+      .eq('content_hash', contentHash)
+      .maybeSingle();
+    
+    if (lookupError) {
+      console.error(`[gmail-webhook] Content lookup error:`, lookupError);
+      return null;
+    }
+    
+    let contentId: string;
+    let isNewContent = false;
+    
+    if (existingContent) {
+      // Content exists - update last_seen_at and increment receipt_count
+      const { error: updateError } = await supabase
+        .from('email_content')
+        .update({
+          last_seen_at: new Date().toISOString(),
+          receipt_count: existingContent.receipt_count + 1,
+        })
+        .eq('id', existingContent.id);
+      
+      if (updateError) {
+        console.error(`[gmail-webhook] Content update error:`, updateError);
+        return null;
+      }
+      
+      contentId = existingContent.id;
+      console.log(`♻️ Reusing content ${contentHash.substring(0, 8)}... (count: ${existingContent.receipt_count + 1})`);
+    } else {
+      // New content - insert
+      const { data: newContent, error: insertError } = await supabase
+        .from('email_content')
+        .insert({
+          provider,
+          content_hash: contentHash,
+          payload_url: payloadUrl,
+          receipt_count: 1,
+        })
+        .select('id')
+        .single();
+      
+      if (insertError) {
+        // Handle race condition - another request may have inserted
+        if (insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+          // Retry lookup
+          const { data: retryContent } = await supabase
+            .from('email_content')
+            .select('id, receipt_count')
+            .eq('provider', provider)
+            .eq('content_hash', contentHash)
+            .single();
+          
+          if (retryContent) {
+            contentId = retryContent.id;
+            // Increment count for this receipt
+            await supabase
+              .from('email_content')
+              .update({
+                last_seen_at: new Date().toISOString(),
+                receipt_count: retryContent.receipt_count + 1,
+              })
+              .eq('id', retryContent.id);
+          } else {
+            console.error(`[gmail-webhook] Content race condition unresolved`);
+            return null;
+          }
+        } else {
+          console.error(`[gmail-webhook] Content insert error:`, insertError);
+          return null;
+        }
+      } else {
+        contentId = newContent.id;
+        isNewContent = true;
+        console.log(`🆕 New content stored: ${contentHash.substring(0, 8)}...`);
+      }
+    }
+    
+    // 2. Insert email_receipt for this tenant
+    const { data: receipt, error: receiptError } = await supabase
+      .from('email_receipts')
+      .upsert({
+        tenant_id: tenantId,
+        content_id: contentId,
+        provider,
+        gmail_message_id: gmailMessageId,
+        gmail_history_id: historyId,
+        routing_method: headerResult.source || 'unknown',
+        extracted_alias: headerResult.alias,
+        delivered_to_header: headerResult.deliveredTo,
+        status: 'pending',
+        received_at: new Date().toISOString(),
+      }, {
+        onConflict: 'tenant_id,gmail_message_id',
+        ignoreDuplicates: false, // Update if exists
+      })
+      .select('id')
+      .single();
+    
+    if (receiptError) {
+      console.error(`[gmail-webhook] Receipt insert error:`, receiptError);
+      return null;
+    }
+    
+    return {
+      contentId,
+      receiptId: receipt.id,
+      isNewContent,
+      contentHash,
+    };
+  } catch (err) {
+    console.error(`[gmail-webhook] Content dedup error:`, err);
+    return null;
+  }
+}
+
+// Store raw payload to object storage for audit compliance (legacy path)
 async function storeRawPayload(
   tenantId: string, 
   gmailMessageId: string, 
@@ -250,6 +450,15 @@ serve(async (req) => {
   }
 
   const startTime = Date.now();
+  
+  // Metrics for content dedup
+  let contentDedupStats = {
+    enabled: false,
+    newContent: 0,
+    reusedContent: 0,
+    receiptsCreated: 0,
+    errors: 0,
+  };
   
   try {
     // Security validation: Verify request originates from Google Pub/Sub
@@ -482,7 +691,10 @@ serve(async (req) => {
         continue;
       }
       
-      // Store raw payload
+      // Detect provider from sender
+      const provider = detectProvider(fromEmail);
+      
+      // Build raw payload for storage
       const rawPayload = {
         messageId: message.id,
         threadId: message.threadId,
@@ -493,9 +705,61 @@ serve(async (req) => {
         fromEmail,
         subject,
       };
-      const payloadUrl = await storeRawPayload(tenantInfo.tenantId, message.id, rawPayload);
       
-      // Add to tenant's queue
+      // ========================================================================
+      // CONTENT DEDUPLICATION PATH (Feature-flagged)
+      // ========================================================================
+      let contentId: string | null = null;
+      let receiptId: string | null = null;
+      let payloadUrl: string | null = null;
+      
+      // Check if content dedup is enabled for this tenant
+      const contentDedupEnabled = await isFeatureEnabled(tenantInfo.tenantId, 'content_dedup_enabled');
+      
+      if (contentDedupEnabled) {
+        contentDedupStats.enabled = true;
+        
+        // Compute SHA256 hash of raw payload bytes
+        const contentHash = await computeContentHash(rawPayload);
+        
+        // Store to global content-addressed bucket
+        const globalPayloadUrl = await storeGlobalPayload(provider, contentHash, rawPayload);
+        
+        // Upsert content + create receipt
+        const dedupResult = await processContentDedup(
+          tenantInfo.tenantId,
+          provider,
+          contentHash,
+          globalPayloadUrl,
+          message.id,
+          historyId,
+          headerResult
+        );
+        
+        if (dedupResult) {
+          contentId = dedupResult.contentId;
+          receiptId = dedupResult.receiptId;
+          
+          if (dedupResult.isNewContent) {
+            contentDedupStats.newContent++;
+          } else {
+            contentDedupStats.reusedContent++;
+          }
+          contentDedupStats.receiptsCreated++;
+          
+          console.log(`[content-dedup] ✅ ${dedupResult.isNewContent ? 'NEW' : 'REUSED'} content for tenant ${tenantInfo.tenantName}`);
+        } else {
+          contentDedupStats.errors++;
+          console.error(`[content-dedup] ❌ Failed for message ${message.id}`);
+        }
+      }
+      
+      // ========================================================================
+      // LEGACY PATH: Always store to tenant-scoped bucket (dual-write for now)
+      // ========================================================================
+      payloadUrl = await storeRawPayload(tenantInfo.tenantId, message.id, rawPayload);
+      
+      // Add to tenant's queue with both legacy and new fields
       if (!tenantQueueMap.has(tenantInfo.tenantId)) {
         tenantQueueMap.set(tenantInfo.tenantId, { tenantId: tenantInfo.tenantId, items: [] });
       }
@@ -511,6 +775,9 @@ serve(async (req) => {
         routing_method: headerResult.source || 'unknown',
         extracted_alias: headerResult.alias,
         delivered_to_header: headerResult.deliveredTo,
+        // NEW: Content dedup references (nullable if feature disabled)
+        content_id: contentId,
+        receipt_id: receiptId,
       });
     }
 
@@ -563,6 +830,12 @@ serve(async (req) => {
     ));
 
     const elapsed = Date.now() - startTime;
+    
+    // Log content dedup stats if enabled
+    if (contentDedupStats.enabled) {
+      console.log(`[content-dedup] 📊 Stats: ${contentDedupStats.newContent} new, ${contentDedupStats.reusedContent} reused, ${contentDedupStats.receiptsCreated} receipts, ${contentDedupStats.errors} errors`);
+    }
+    
     console.log(`✅ Queued ${totalQueued} across ${tenantResults.length} tenants (${totalDeduplicated} deduped, ${skippedCount} skipped, ${quarantinedCount} quarantined) in ${elapsed}ms`);
 
     return new Response(JSON.stringify({ 
@@ -571,7 +844,8 @@ serve(async (req) => {
       skipped: skippedCount,
       quarantined: quarantinedCount,
       tenants: tenantResults,
-      elapsed 
+      elapsed,
+      contentDedup: contentDedupStats.enabled ? contentDedupStats : undefined,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
