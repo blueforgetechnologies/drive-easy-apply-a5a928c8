@@ -432,51 +432,121 @@ export default function VehiclesTab() {
   };
 
   const handleImportAssets = async (data: any[]): Promise<{ success: number; errors: string[] }> => {
+    if (!tenantId) {
+      return { success: 0, errors: ["No tenant selected"] };
+    }
+
     let success = 0;
     const errors: string[] = [];
 
+    const isUuid = (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+    const normalizeVin = (vin: any) => String(vin || "").trim().toUpperCase();
+    const normalizeUnit = (unit: any) => String(unit || "").trim();
+    const normalizeName = (name: any) => String(name || "").trim().toLowerCase();
+
+    // Preload lookups so we can update existing assets instead of failing on duplicates
+    const [{ data: existingVehicles, error: existingError }, { data: carriers, error: carriersError }] =
+      await Promise.all([
+        supabase
+          .from("vehicles")
+          .select("id, vin, vehicle_number")
+          .eq("tenant_id", tenantId),
+        supabase
+          .from("carriers")
+          .select("id, name")
+          .eq("tenant_id", tenantId),
+      ]);
+
+    if (existingError) {
+      errors.push(`Failed to load existing assets: ${existingError.message}`);
+    }
+
+    const existingByVin = new Map<string, string>();
+    const existingByUnit = new Map<string, string>();
+    (existingVehicles || []).forEach((v: any) => {
+      const vin = normalizeVin(v.vin);
+      const unit = normalizeUnit(v.vehicle_number);
+      if (vin) existingByVin.set(vin, v.id);
+      if (unit) existingByUnit.set(unit, v.id);
+    });
+
+    const carrierNameToId = new Map<string, string>();
+    if (carriersError) {
+      errors.push(`Failed to load carriers: ${carriersError.message}`);
+    }
+    (carriers || []).forEach((c: any) => {
+      const key = normalizeName(c.name);
+      if (key) carrierNameToId.set(key, c.id);
+    });
+
     for (const item of data) {
       try {
-        // Validate required fields
-        if (!item.vehicle_number) {
+        const unit = normalizeUnit(item.vehicle_number);
+        if (!unit) {
           errors.push(`Missing Unit ID for row`);
           continue;
         }
 
-        const insertData: any = {
-          vehicle_number: item.vehicle_number,
-          status: item.status || 'active',
-          make: item.make || null,
-          model: item.model || null,
-          year: item.year ? parseInt(item.year) : null,
-          vin: item.vin || null,
-          license_plate: item.license_plate || null,
+        const vin = normalizeVin(item.vin);
+
+        // Map carrier name (exported) back to carrier id (stored)
+        const carrierRaw = String(item.carrier || "").trim();
+        const carrierId = carrierRaw
+          ? (isUuid(carrierRaw) ? carrierRaw : carrierNameToId.get(normalizeName(carrierRaw)) || null)
+          : null;
+        if (carrierRaw && !carrierId) {
+          // Not blocking import, but surfaces the issue
+          errors.push(`${unit}: Carrier "${carrierRaw}" not found (leaving blank)`);
+        }
+
+        const rowData: any = {
+          vehicle_number: unit,
+          status: item.status || "active",
+          carrier: carrierId,
+          make: item.make ? String(item.make).trim() : null,
+          model: item.model ? String(item.model).trim() : null,
+          year: item.year ? parseInt(String(item.year), 10) : null,
+          vin: vin || null,
+          license_plate: item.license_plate ? String(item.license_plate).trim() : null,
           asset_type: item.asset_type || null,
           asset_subtype: item.asset_subtype || null,
-          vehicle_size: item.vehicle_size ? parseFloat(item.vehicle_size) : null,
-          payload: item.payload ? parseFloat(item.payload) : null,
-          dimensions_length: item.dimensions_length ? parseFloat(item.dimensions_length) : null,
-          dimensions_width: item.dimensions_width ? parseFloat(item.dimensions_width) : null,
-          dimensions_height: item.dimensions_height ? parseFloat(item.dimensions_height) : null,
+          vehicle_size: item.vehicle_size ? parseFloat(String(item.vehicle_size)) : null,
+          payload: item.payload ? parseFloat(String(item.payload)) : null,
+          dimensions_length: item.dimensions_length ? parseFloat(String(item.dimensions_length)) : null,
+          dimensions_width: item.dimensions_width ? parseFloat(String(item.dimensions_width)) : null,
+          dimensions_height: item.dimensions_height ? parseFloat(String(item.dimensions_height)) : null,
           fuel_type: item.fuel_type || null,
-          odometer: item.odometer ? parseFloat(item.odometer) : null,
+          odometer: item.odometer ? parseFloat(String(item.odometer)) : null,
           registration_exp_date: item.registration_exp_date || null,
           insurance_expiry: item.insurance_expiry || null,
-          lift_gate: item.lift_gate === true || item.lift_gate === 'Yes',
-          air_ride: item.air_ride === true || item.air_ride === 'Yes',
+          lift_gate: item.lift_gate === true || item.lift_gate === "Yes",
+          air_ride: item.air_ride === true || item.air_ride === "Yes",
           notes: item.notes || null,
-          tenant_id: tenantId,
         };
 
-        const { error } = await supabase.from("vehicles").insert([insertData]);
-        
-        if (error) {
-          errors.push(`${item.vehicle_number}: ${error.message}`);
+        const existingId = (vin && existingByVin.get(vin)) || existingByUnit.get(unit);
+
+        if (existingId) {
+          const { error } = await supabase.from("vehicles").update(rowData).eq("id", existingId);
+          if (error) {
+            errors.push(`${unit}: ${error.message}`);
+          } else {
+            success++;
+          }
         } else {
-          success++;
+          const { error } = await supabase.from("vehicles").insert([{ ...rowData, tenant_id: tenantId }]);
+          if (error) {
+            errors.push(`${unit}: ${error.message}`);
+          } else {
+            success++;
+            if (vin) existingByVin.set(vin, "__new__");
+            existingByUnit.set(unit, "__new__");
+          }
         }
       } catch (err: any) {
-        errors.push(`${item.vehicle_number || 'Unknown'}: ${err.message}`);
+        errors.push(`${item.vehicle_number || "Unknown"}: ${err.message}`);
       }
     }
 
