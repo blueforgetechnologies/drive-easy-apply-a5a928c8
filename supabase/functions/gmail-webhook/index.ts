@@ -227,9 +227,37 @@ function generateDedupeKey(gmailMessageId: string): string {
 // CONTENT DEDUPLICATION FUNCTIONS (Step 2)
 // ============================================================================
 
-// Compute SHA256 hash of raw payload bytes
-async function computeContentHash(payload: any): Promise<string> {
-  const payloadString = JSON.stringify(payload);
+// Build a TENANT-NEUTRAL content payload for hashing
+// This excludes: tenantId, receivedAt, historyId, alias (all are per-tenant or time-based)
+// This includes: content that's identical across all tenants receiving the same load email
+interface ContentPayloadForHash {
+  provider: string;
+  fromEmail: string | null;
+  subject: string | null;
+  threadId: string | null;
+  // messageId is excluded because it may differ per recipient in some cases
+  // We rely on subject + from + provider to identify duplicate content
+}
+
+function buildContentPayloadForHash(
+  provider: string,
+  fromEmail: string | null,
+  subject: string | null,
+  threadId: string | null
+): ContentPayloadForHash {
+  return {
+    provider,
+    fromEmail: fromEmail?.toLowerCase().trim() || null,
+    subject: subject?.trim() || null,
+    threadId,
+  };
+}
+
+// Compute SHA256 hash of TENANT-NEUTRAL content
+// This ensures the same loadboard email sent to multiple tenants produces the same hash
+async function computeContentHash(contentPayload: ContentPayloadForHash): Promise<string> {
+  // Sort keys for deterministic serialization
+  const payloadString = JSON.stringify(contentPayload, Object.keys(contentPayload).sort());
   const encoder = new TextEncoder();
   const data = encoder.encode(payloadString);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -719,10 +747,18 @@ serve(async (req) => {
       if (contentDedupEnabled) {
         contentDedupStats.enabled = true;
         
-        // Compute SHA256 hash of raw payload bytes
-        const contentHash = await computeContentHash(rawPayload);
+        // Build TENANT-NEUTRAL payload for hashing (excludes tenant_id, timestamps, etc.)
+        const contentPayloadForHash = buildContentPayloadForHash(
+          provider,
+          fromEmail,
+          subject,
+          message.threadId
+        );
         
-        // Store to global content-addressed bucket
+        // Compute SHA256 hash of tenant-neutral content
+        const contentHash = await computeContentHash(contentPayloadForHash);
+        
+        // Store to global content-addressed bucket (full rawPayload for audit)
         const globalPayloadUrl = await storeGlobalPayload(provider, contentHash, rawPayload);
         
         // Upsert content + create receipt

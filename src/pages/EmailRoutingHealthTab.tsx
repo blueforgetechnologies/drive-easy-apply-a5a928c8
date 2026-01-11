@@ -6,9 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp } from "lucide-react";
+import { format, formatDistanceToNow, subDays, subHours } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 
 interface RoutedEmail {
   id: string;
@@ -21,6 +22,8 @@ interface RoutedEmail {
   to_email: string | null;
   tenant_id: string;
   dedupe_key: string | null;
+  content_id: string | null;
+  receipt_id: string | null;
   tenant?: {
     name: string;
     slug: string;
@@ -50,6 +53,25 @@ interface TenantAlias {
   release_channel: string | null;
 }
 
+interface ContentDedupStats {
+  uniqueContent24h: number;
+  receipts24h: number;
+  uniqueContent7d: number;
+  receipts7d: number;
+  reuseRate24h: number;
+  reuseRate7d: number;
+  byProvider: {
+    provider: string;
+    uniqueContent: number;
+    receipts: number;
+    reuseRate: number;
+  }[];
+  featureFlagStatus: {
+    tenantSlug: string;
+    enabled: boolean;
+  }[];
+}
+
 export default function EmailRoutingHealthTab() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -63,6 +85,7 @@ export default function EmailRoutingHealthTab() {
         .select(`
           id, gmail_message_id, queued_at, status, routing_method, 
           extracted_alias, delivered_to_header, to_email, tenant_id, dedupe_key,
+          content_id, receipt_id,
           tenant:tenants(name, slug)
         `)
         .order('queued_at', { ascending: false })
@@ -99,6 +122,105 @@ export default function EmailRoutingHealthTab() {
       
       if (error) throw error;
       return (data || []) as TenantAlias[];
+    },
+  });
+
+  // Fetch content dedup stats
+  const { data: dedupStats, isLoading: loadingDedup } = useQuery({
+    queryKey: ['email-routing-health', 'dedup', refreshKey],
+    queryFn: async () => {
+      const now = new Date();
+      const h24Ago = subHours(now, 24).toISOString();
+      const d7Ago = subDays(now, 7).toISOString();
+
+      // Get receipts in last 24h
+      const { data: receipts24h } = await supabase
+        .from('email_receipts')
+        .select('id, content_id, provider')
+        .gte('received_at', h24Ago);
+
+      // Get receipts in last 7d
+      const { data: receipts7d } = await supabase
+        .from('email_receipts')
+        .select('id, content_id, provider')
+        .gte('received_at', d7Ago);
+
+      // Get unique content in last 24h
+      const { data: content24h } = await supabase
+        .from('email_content')
+        .select('id, provider')
+        .gte('first_seen_at', h24Ago);
+
+      // Get unique content in last 7d
+      const { data: content7d } = await supabase
+        .from('email_content')
+        .select('id, provider, receipt_count')
+        .gte('first_seen_at', d7Ago);
+
+      // Get feature flag status
+      const { data: flagData } = await supabase
+        .from('tenants')
+        .select('slug')
+        .eq('status', 'active');
+
+      const { data: ffData } = await supabase
+        .from('feature_flags')
+        .select('id')
+        .eq('key', 'content_dedup_enabled')
+        .single();
+
+      let featureFlagStatus: { tenantSlug: string; enabled: boolean }[] = [];
+      if (ffData && flagData) {
+        const { data: tffData } = await supabase
+          .from('tenant_feature_flags')
+          .select('tenant_id, enabled')
+          .eq('feature_flag_id', ffData.id);
+
+        const tffMap = new Map(tffData?.map(t => [t.tenant_id, t.enabled]) || []);
+        
+        // Need to get tenant IDs
+        const { data: tenantsWithIds } = await supabase
+          .from('tenants')
+          .select('id, slug')
+          .eq('status', 'active');
+
+        featureFlagStatus = (tenantsWithIds || []).map(t => ({
+          tenantSlug: t.slug,
+          enabled: tffMap.get(t.id) || false,
+        }));
+      }
+
+      // Calculate per-provider stats
+      const providerMap = new Map<string, { uniqueContent: number; receipts: number }>();
+      (content7d || []).forEach(c => {
+        const existing = providerMap.get(c.provider) || { uniqueContent: 0, receipts: 0 };
+        existing.uniqueContent++;
+        existing.receipts += c.receipt_count || 0;
+        providerMap.set(c.provider, existing);
+      });
+
+      const byProvider = Array.from(providerMap.entries()).map(([provider, stats]) => ({
+        provider,
+        uniqueContent: stats.uniqueContent,
+        receipts: stats.receipts,
+        reuseRate: stats.receipts > 0 ? Math.round(100 * (1 - stats.uniqueContent / stats.receipts)) : 0,
+      }));
+
+      const r24h = receipts24h?.length || 0;
+      const c24h = content24h?.length || 0;
+      const r7d = receipts7d?.length || 0;
+      const c7d = content7d?.length || 0;
+
+      return {
+        uniqueContent24h: c24h,
+        receipts24h: r24h,
+        uniqueContent7d: c7d,
+        receipts7d: r7d,
+        reuseRate24h: r24h > 0 ? Math.round(100 * (1 - c24h / r24h)) : 0,
+        reuseRate7d: r7d > 0 ? Math.round(100 * (1 - c7d / r7d)) : 0,
+        byProvider,
+        featureFlagStatus,
+      } as ContentDedupStats;
     },
   });
 
@@ -237,6 +359,180 @@ export default function EmailRoutingHealthTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Content Deduplication Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Content Deduplication
+              </CardTitle>
+              <CardDescription>Global content storage with tenant-scoped receipts</CardDescription>
+            </div>
+            {dedupStats && (
+              <div className="flex items-center gap-2">
+                {dedupStats.reuseRate7d >= 50 ? (
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Healthy
+                  </Badge>
+                ) : dedupStats.reuseRate7d >= 20 ? (
+                  <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100 gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Low Reuse
+                  </Badge>
+                ) : dedupStats.receipts7d === 0 ? (
+                  <Badge variant="outline" className="gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    No Data
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Check Config
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingDedup ? (
+            <div className="text-center py-4 text-muted-foreground">Loading dedup stats...</div>
+          ) : dedupStats ? (
+            <div className="space-y-6">
+              {/* Main Metrics */}
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* 24h Stats */}
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Last 24 Hours</span>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Receipts:</span>
+                      <span className="font-medium">{dedupStats.receipts24h}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Unique Content:</span>
+                      <span className="font-medium">{dedupStats.uniqueContent24h}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reuse Rate:</span>
+                      <span className={`font-bold ${dedupStats.reuseRate24h >= 50 ? 'text-green-600' : dedupStats.reuseRate24h >= 20 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+                        {dedupStats.reuseRate24h}%
+                      </span>
+                    </div>
+                    <Progress value={dedupStats.reuseRate24h} className="h-2" />
+                  </div>
+                </div>
+
+                {/* 7d Stats */}
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Last 7 Days</span>
+                    <Recycle className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Receipts:</span>
+                      <span className="font-medium">{dedupStats.receipts7d}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Unique Content:</span>
+                      <span className="font-medium">{dedupStats.uniqueContent7d}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reuse Rate:</span>
+                      <span className={`font-bold ${dedupStats.reuseRate7d >= 50 ? 'text-green-600' : dedupStats.reuseRate7d >= 20 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+                        {dedupStats.reuseRate7d}%
+                      </span>
+                    </div>
+                    <Progress value={dedupStats.reuseRate7d} className="h-2" />
+                  </div>
+                </div>
+
+                {/* Storage Savings */}
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Estimated Savings</span>
+                    <Database className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Copies Avoided:</span>
+                      <span className="font-medium text-green-600">
+                        {dedupStats.receipts7d - dedupStats.uniqueContent7d}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Est. Storage Saved:</span>
+                      <span className="font-medium text-green-600">
+                        ~{Math.round((dedupStats.receipts7d - dedupStats.uniqueContent7d) * 15 / 1024)} MB
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Based on ~15KB avg per email payload
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Provider Breakdown */}
+              {dedupStats.byProvider.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3">By Provider (7 days)</h4>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {dedupStats.byProvider.map((p) => (
+                      <div key={p.provider} className="p-3 rounded-lg border flex items-center justify-between">
+                        <div>
+                          <p className="font-medium capitalize">{p.provider}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {p.uniqueContent} unique / {p.receipts} receipts
+                          </p>
+                        </div>
+                        <Badge 
+                          className={p.reuseRate >= 50 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
+                            : p.reuseRate >= 20 
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                              : 'bg-muted text-muted-foreground'
+                          }
+                        >
+                          {p.reuseRate}% reuse
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Feature Flag Status */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Feature Flag: content_dedup_enabled</h4>
+                <div className="flex flex-wrap gap-2">
+                  {dedupStats.featureFlagStatus.map((t) => (
+                    <Badge 
+                      key={t.tenantSlug}
+                      variant={t.enabled ? "default" : "outline"}
+                      className={t.enabled ? "bg-green-600" : ""}
+                    >
+                      {t.tenantSlug}: {t.enabled ? "ON" : "OFF"}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              No dedup data available. Feature may not be enabled.
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Tenant Aliases */}
       <Card>
