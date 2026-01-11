@@ -422,7 +422,12 @@ export default function VehiclesTab() {
       toast.error("No assets to export");
       return;
     }
-    exportToExcel(filteredVehicles, 'assets');
+    // Map carrier IDs to carrier names for export
+    const exportData = filteredVehicles.map(vehicle => ({
+      ...vehicle,
+      carrier: vehicle.carrier ? carriersMap[vehicle.carrier] || vehicle.carrier : '',
+    }));
+    exportToExcel(exportData, 'assets');
     toast.success(`Exported ${filteredVehicles.length} assets to Excel`);
   };
 
