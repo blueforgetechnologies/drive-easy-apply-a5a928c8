@@ -1213,6 +1213,45 @@ export type Database = {
           },
         ]
       }
+      email_content: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          content_hash: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          parsed_data: Json | null
+          payload_url: string | null
+          provider: string
+          receipt_count: number
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          content_hash: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          parsed_data?: Json | null
+          payload_url?: string | null
+          provider: string
+          receipt_count?: number
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          content_hash?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          parsed_data?: Json | null
+          payload_url?: string | null
+          provider?: string
+          receipt_count?: number
+        }
+        Relationships: []
+      }
       email_health_alerts: {
         Row: {
           alert_level: string
@@ -1268,6 +1307,7 @@ export type Database = {
           attempts: number
           body_html: string | null
           body_text: string | null
+          content_id: string | null
           dedupe_key: string | null
           delivered_to_header: string | null
           extracted_alias: string | null
@@ -1281,6 +1321,7 @@ export type Database = {
           processed_at: string | null
           processing_started_at: string | null
           queued_at: string
+          receipt_id: string | null
           routing_method: string | null
           status: string
           subject: string | null
@@ -1291,6 +1332,7 @@ export type Database = {
           attempts?: number
           body_html?: string | null
           body_text?: string | null
+          content_id?: string | null
           dedupe_key?: string | null
           delivered_to_header?: string | null
           extracted_alias?: string | null
@@ -1304,6 +1346,7 @@ export type Database = {
           processed_at?: string | null
           processing_started_at?: string | null
           queued_at?: string
+          receipt_id?: string | null
           routing_method?: string | null
           status?: string
           subject?: string | null
@@ -1314,6 +1357,7 @@ export type Database = {
           attempts?: number
           body_html?: string | null
           body_text?: string | null
+          content_id?: string | null
           dedupe_key?: string | null
           delivered_to_header?: string | null
           extracted_alias?: string | null
@@ -1327,6 +1371,7 @@ export type Database = {
           processed_at?: string | null
           processing_started_at?: string | null
           queued_at?: string
+          receipt_id?: string | null
           routing_method?: string | null
           status?: string
           subject?: string | null
@@ -1335,7 +1380,93 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "email_queue_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "email_content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_queue_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "email_receipts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_receipts: {
+        Row: {
+          content_id: string
+          created_at: string
+          delivered_to_header: string | null
+          extracted_alias: string | null
+          gmail_history_id: string | null
+          gmail_message_id: string
+          id: string
+          load_email_id: string | null
+          match_count: number | null
+          processed_at: string | null
+          provider: string
+          received_at: string
+          routing_method: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          delivered_to_header?: string | null
+          extracted_alias?: string | null
+          gmail_history_id?: string | null
+          gmail_message_id: string
+          id?: string
+          load_email_id?: string | null
+          match_count?: number | null
+          processed_at?: string | null
+          provider: string
+          received_at?: string
+          routing_method?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          delivered_to_header?: string | null
+          extracted_alias?: string | null
+          gmail_history_id?: string | null
+          gmail_message_id?: string
+          id?: string
+          load_email_id?: string | null
+          match_count?: number | null
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          routing_method?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_receipts_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "email_content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_receipts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -5785,6 +5916,17 @@ export type Database = {
       }
     }
     Views: {
+      content_dedup_metrics: {
+        Row: {
+          by_provider: Json | null
+          reuse_rate_pct: number | null
+          tenant_flag_status: Json | null
+          total_content_bytes: number | null
+          total_receipt_count: number | null
+          unique_content_count: number | null
+        }
+        Relationships: []
+      }
       unreviewed_matches: {
         Row: {
           content_hash: string | null
