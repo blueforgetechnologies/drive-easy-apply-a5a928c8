@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,6 +57,186 @@ function generateContentHash(parsedData: Record<string, any>): string {
   }
   
   return `ch_${Math.abs(hash).toString(36)}`;
+}
+
+// ============================================================================
+// PARSED LOAD FINGERPRINT - Exact-match deduplication
+// SHA256 of ALL normalized parsed fields. Only truly identical loads match.
+// ============================================================================
+
+// Normalize a value for fingerprinting (minimal, safe normalization only)
+function normalizeForFingerprint(value: any): any {
+  if (value === null || value === undefined) {
+    return ''; // Treat null/undefined as empty string
+  }
+  
+  if (typeof value === 'string') {
+    // Trim whitespace and lowercase for consistent comparison
+    return value.trim().toLowerCase();
+  }
+  
+  if (typeof value === 'number') {
+    // Keep numbers as-is (no rounding per user requirement)
+    return value;
+  }
+  
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  
+  if (Array.isArray(value)) {
+    // Sort arrays for consistent ordering, recursively normalize
+    return value.map(normalizeForFingerprint).sort();
+  }
+  
+  if (typeof value === 'object') {
+    // Recursively normalize object values
+    const normalized: Record<string, any> = {};
+    for (const key of Object.keys(value).sort()) {
+      normalized[key] = normalizeForFingerprint(value[key]);
+    }
+    return normalized;
+  }
+  
+  return String(value).trim().toLowerCase();
+}
+
+// Normalize a date string to ISO format (YYYY-MM-DD)
+function normalizeDateForFingerprint(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  
+  const trimmed = String(dateStr).trim();
+  
+  // Try parsing various date formats
+  // MM/DD/YY, MM/DD/YYYY, YYYY-MM-DD
+  const mmddyy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mmddyy) {
+    const month = mmddyy[1].padStart(2, '0');
+    const day = mmddyy[2].padStart(2, '0');
+    let year = mmddyy[3];
+    if (year.length === 2) {
+      year = parseInt(year) > 50 ? '19' + year : '20' + year;
+    }
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Already ISO format
+  const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+  
+  // Return as-is if we can't parse
+  return trimmed.toLowerCase();
+}
+
+// Build canonical payload for fingerprinting from parsed_data
+// Includes ALL fields that define a unique load opportunity
+function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<string, any> {
+  return {
+    // Broker info
+    broker_name: normalizeForFingerprint(parsedData.broker_name),
+    broker_company: normalizeForFingerprint(parsedData.broker_company),
+    broker_email: normalizeForFingerprint(parsedData.broker_email),
+    broker_phone: normalizeForFingerprint(parsedData.broker_phone),
+    
+    // Order identifier
+    order_number: normalizeForFingerprint(parsedData.order_number),
+    
+    // Origin
+    origin_city: normalizeForFingerprint(parsedData.origin_city),
+    origin_state: normalizeForFingerprint(parsedData.origin_state),
+    origin_zip: normalizeForFingerprint(parsedData.origin_zip),
+    
+    // Destination
+    destination_city: normalizeForFingerprint(parsedData.destination_city),
+    destination_state: normalizeForFingerprint(parsedData.destination_state),
+    destination_zip: normalizeForFingerprint(parsedData.destination_zip),
+    
+    // Load details
+    miles: typeof parsedData.miles === 'number' ? parsedData.miles : 
+           parseFloat(String(parsedData.miles || '0').replace(/[^0-9.]/g, '')) || 0,
+    weight: typeof parsedData.weight === 'number' ? parsedData.weight :
+            parseFloat(String(parsedData.weight || '0').replace(/[^0-9.]/g, '')) || 0,
+    pieces: typeof parsedData.pieces === 'number' ? parsedData.pieces :
+            parseInt(String(parsedData.pieces || '0').replace(/[^0-9]/g, '')) || 0,
+    
+    // Rate/pricing
+    rate: typeof parsedData.rate === 'number' ? parsedData.rate :
+          parseFloat(String(parsedData.rate || '0').replace(/[^0-9.]/g, '')) || 0,
+    posted_amount: typeof parsedData.posted_amount === 'number' ? parsedData.posted_amount :
+                   parseFloat(String(parsedData.posted_amount || '0').replace(/[^0-9.]/g, '')) || 0,
+    
+    // Dates (normalized to ISO)
+    pickup_date: normalizeDateForFingerprint(parsedData.pickup_date),
+    pickup_time: normalizeForFingerprint(parsedData.pickup_time),
+    delivery_date: normalizeDateForFingerprint(parsedData.delivery_date),
+    delivery_time: normalizeForFingerprint(parsedData.delivery_time),
+    
+    // Equipment
+    vehicle_type: normalizeForFingerprint(parsedData.vehicle_type),
+    load_type: normalizeForFingerprint(parsedData.load_type),
+    
+    // Dimensions (if present)
+    length: typeof parsedData.length === 'number' ? parsedData.length :
+            parseFloat(String(parsedData.length || '0').replace(/[^0-9.]/g, '')) || 0,
+    width: typeof parsedData.width === 'number' ? parsedData.width :
+           parseFloat(String(parsedData.width || '0').replace(/[^0-9.]/g, '')) || 0,
+    height: typeof parsedData.height === 'number' ? parsedData.height :
+            parseFloat(String(parsedData.height || '0').replace(/[^0-9.]/g, '')) || 0,
+    
+    // Special requirements
+    hazmat: Boolean(parsedData.hazmat),
+    team_required: Boolean(parsedData.team_required),
+    
+    // Commodity
+    commodity: normalizeForFingerprint(parsedData.commodity),
+    
+    // Notes/special instructions (included for exact match)
+    special_instructions: normalizeForFingerprint(parsedData.special_instructions),
+    notes: normalizeForFingerprint(parsedData.notes),
+  };
+}
+
+// Compute SHA256 fingerprint of parsed load data
+async function computeParsedLoadFingerprint(parsedData: Record<string, any>): Promise<string> {
+  const canonicalPayload = buildCanonicalLoadPayload(parsedData);
+  
+  // Sort keys for deterministic serialization
+  const payloadString = JSON.stringify(canonicalPayload, Object.keys(canonicalPayload).sort());
+  
+  // Compute SHA256
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payloadString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return hashHex;
+}
+
+// Check for existing load with same fingerprint in same tenant
+async function findExistingByFingerprint(
+  fingerprint: string,
+  tenantId: string | null,
+  hoursWindow: number = 168 // 7 days default
+): Promise<{ id: string; load_id: string; received_at: string } | null> {
+  if (!fingerprint || !tenantId) return null;
+  
+  const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
+  
+  const { data: existingLoad } = await supabase
+    .from('load_emails')
+    .select('id, load_id, received_at')
+    .eq('parsed_load_fingerprint', fingerprint)
+    .eq('tenant_id', tenantId)
+    .eq('is_duplicate', false) // Find the original, not other duplicates
+    .gte('received_at', windowStart)
+    .order('received_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  
+  return existingLoad;
 }
 
 // Check for existing similar load within same tenant (smart deduplication)
@@ -1162,22 +1343,42 @@ serve(async (req) => {
         // Get tenant_id from queue item (propagate to load_emails)
         const tenantId = item.tenant_id;
 
-        // Generate content hash for smart business-level deduplication
+        // Generate content hash for smart business-level deduplication (legacy)
         const contentHash = generateContentHash(parsedData);
         
-        // Check if this is a duplicate/update of an existing load (same core fields within 48 hours)
+        // ====================================================================
+        // PARSED LOAD FINGERPRINT - Exact-match deduplication
+        // Computes SHA256 of ALL normalized parsed fields
+        // ====================================================================
+        const parsedLoadFingerprint = await computeParsedLoadFingerprint(parsedData);
+        console.log(`🔑 Computed fingerprint: ${parsedLoadFingerprint.substring(0, 12)}...`);
+        
+        // Check for exact duplicate (same fingerprint within tenant in last 7 days)
+        const existingDuplicate = await findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168);
+        
+        let isDuplicate = false;
+        let duplicateOfId: string | null = null;
+        
+        if (existingDuplicate) {
+          isDuplicate = true;
+          duplicateOfId = existingDuplicate.id;
+          console.log(`🔄 DUPLICATE detected: matches ${existingDuplicate.load_id} (fingerprint: ${parsedLoadFingerprint.substring(0, 12)})`);
+        }
+        
+        // Also check legacy content hash for "update" detection (different from exact duplicate)
         const existingSimilarLoad = await findExistingSimilarLoad(contentHash, tenantId, 48);
         
         let isUpdate = false;
         let parentEmailId: string | null = null;
         
-        if (existingSimilarLoad) {
+        if (existingSimilarLoad && !isDuplicate) {
+          // This is a similar load but not an exact duplicate - could be a rate change, etc.
           isUpdate = true;
           parentEmailId = existingSimilarLoad.id;
           console.log(`🔄 Detected update to existing load ${existingSimilarLoad.load_id} (original from ${existingSimilarLoad.received_at})`);
         }
 
-        // Insert into load_emails with tenant_id, content_hash, and smart dedup fields
+        // Insert into load_emails with tenant_id, content_hash, fingerprint and dedup fields
         const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
           .upsert({
@@ -1191,15 +1392,18 @@ serve(async (req) => {
             received_at: receivedAt.toISOString(),
             parsed_data: parsedData,
             expires_at: parsedData.expires_at || null,
-            status: isUpdate ? 'update' : 'new', // Mark updates differently
+            status: isDuplicate ? 'duplicate' : (isUpdate ? 'update' : 'new'),
             has_issues: hasIssues,
             issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
             email_source: emailSource,
             tenant_id: tenantId,
             raw_payload_url: item.payload_url || null,
-            content_hash: contentHash, // For future dedup lookups
-            is_update: isUpdate, // Flag if this is an update to existing load
-            parent_email_id: parentEmailId, // Link to original load
+            content_hash: contentHash, // Legacy dedup
+            parsed_load_fingerprint: parsedLoadFingerprint, // Exact-match dedup
+            is_update: isUpdate,
+            is_duplicate: isDuplicate,
+            duplicate_of_id: duplicateOfId,
+            parent_email_id: parentEmailId,
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();
@@ -1212,9 +1416,11 @@ serve(async (req) => {
           .update({ status: 'completed', processed_at: new Date().toISOString() })
           .eq('id', item.id);
 
-        // Hunt matching - only for NEW loads, not updates (avoid duplicate notifications)
-        if (insertedEmail && !isUpdate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+        // Hunt matching - only for NEW loads, not updates or duplicates (avoid duplicate notifications)
+        if (insertedEmail && !isUpdate && !isDuplicate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
           matchLoadToHunts(insertedEmail.id, insertedEmail.load_id, parsedData, tenantId).catch(() => {});
+        } else if (isDuplicate) {
+          console.log(`⏭️ Skipping hunt matching for duplicate load`);
         }
 
         return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id, isUpdate };
