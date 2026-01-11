@@ -173,18 +173,23 @@ export function parseExcelFile(file: File): Promise<any[]> {
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          defval: '',
+          raw: false,  // Get formatted strings
+        });
+        console.log('Parsed Excel data:', jsonData);
         resolve(jsonData);
       } catch (error) {
+        console.error('Excel parse error:', error);
         reject(error);
       }
     };
     
     reader.onerror = (error) => reject(error);
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   });
 }
 
