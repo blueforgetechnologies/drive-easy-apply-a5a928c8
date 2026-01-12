@@ -2508,6 +2508,13 @@ export type Database = {
             referencedColumns: ["fingerprint"]
           },
           {
+            foreignKeyName: "fk_load_emails_load_content"
+            columns: ["load_content_fingerprint"]
+            isOneToOne: false
+            referencedRelation: "load_content_top10_7d"
+            referencedColumns: ["fingerprint"]
+          },
+          {
             foreignKeyName: "load_emails_duplicate_of_id_fkey"
             columns: ["duplicate_of_id"]
             isOneToOne: false
@@ -6002,6 +6009,39 @@ export type Database = {
           unique_content_24h: number | null
           unique_content_7d: number | null
           unique_content_count: number | null
+        }
+        Relationships: []
+      }
+      load_content_metrics_24h: {
+        Row: {
+          eligible_1h: number | null
+          eligible_receipts_24h: number | null
+          missing_fk_1h: number | null
+          missing_fk_24h: number | null
+          missing_parsed_fp_1h: number | null
+          receipts_24h: number | null
+          reuse_rate_24h: number | null
+          unique_content_24h: number | null
+        }
+        Relationships: []
+      }
+      load_content_provider_breakdown_24h: {
+        Row: {
+          eligible: number | null
+          provider: string | null
+          receipts: number | null
+          reuse_rate: number | null
+          unique_content: number | null
+        }
+        Relationships: []
+      }
+      load_content_top10_7d: {
+        Row: {
+          fingerprint: string | null
+          first_seen_at: string | null
+          last_seen_at: string | null
+          provider: string | null
+          receipt_count: number | null
         }
         Relationships: []
       }
