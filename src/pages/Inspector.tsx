@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   Shield, Loader2, Building2, Users, Truck, Target, RefreshCw, Flag, Check, X, Minus,
   Mail, Zap, MapPin, Brain, AlertTriangle, Clock, Activity, MousePointer2, ExternalLink,
-  Navigation, Database, LayoutGrid, Rocket, Inbox
+  Navigation, Database, LayoutGrid, Rocket, Inbox, HelpCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ReleaseControlTab } from "@/components/inspector/ReleaseControlTab";
 import EmailRoutingHealthTab from "@/pages/EmailRoutingHealthTab";
 
@@ -41,7 +47,8 @@ interface TenantMetrics {
   metrics: {
     users_count: number;
     drivers_count: number;
-    vehicles_count: number;
+    active_vehicles_count: number;
+    pending_vehicles_count: number;
     active_hunts_count: number;
   };
 }
@@ -496,10 +503,11 @@ export default function Inspector() {
     (acc, t) => ({
       users: acc.users + t.metrics.users_count,
       drivers: acc.drivers + t.metrics.drivers_count,
-      vehicles: acc.vehicles + t.metrics.vehicles_count,
+      activeVehicles: acc.activeVehicles + t.metrics.active_vehicles_count,
+      pendingVehicles: acc.pendingVehicles + t.metrics.pending_vehicles_count,
       hunts: acc.hunts + t.metrics.active_hunts_count,
     }),
-    { users: 0, drivers: 0, vehicles: 0, hunts: 0 }
+    { users: 0, drivers: 0, activeVehicles: 0, pendingVehicles: 0, hunts: 0 }
   );
 
   if (loading) {
@@ -599,11 +607,24 @@ export default function Inspector() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Truck className="w-4 h-4" />
-                  Total Vehicles
+                  Active Vehicles
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Vehicles with status = 'active'</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{totals.vehicles}</p>
+                <p className="text-2xl font-bold">{totals.activeVehicles}</p>
+                {totals.pendingVehicles > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">+{totals.pendingVehicles} pending</p>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -611,6 +632,16 @@ export default function Inspector() {
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Target className="w-4 h-4" />
                   Active Hunts
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Hunt plans with enabled = true</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -648,7 +679,21 @@ export default function Inspector() {
                       <TableHead>Gmail Alias</TableHead>
                       <TableHead>Channel</TableHead>
                       <TableHead className="text-right">Users</TableHead>
-                      <TableHead className="text-right">Vehicles</TableHead>
+                      <TableHead className="text-right">
+                        <span className="flex items-center justify-end gap-1">
+                          Vehicles
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="h-3 w-3 text-muted-foreground/60" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Active + pending vehicles</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </span>
+                      </TableHead>
                       <TableHead className="text-right">Active Hunts</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -661,7 +706,12 @@ export default function Inspector() {
                         <TableCell className="font-mono text-xs">{tenant.gmail_alias || "—"}</TableCell>
                         <TableCell>{getChannelBadge(tenant.release_channel)}</TableCell>
                         <TableCell className="text-right">{tenant.metrics.users_count}</TableCell>
-                        <TableCell className="text-right">{tenant.metrics.vehicles_count}</TableCell>
+                        <TableCell className="text-right">
+                          {tenant.metrics.active_vehicles_count}
+                          {tenant.metrics.pending_vehicles_count > 0 && (
+                            <span className="text-muted-foreground text-xs ml-1">(+{tenant.metrics.pending_vehicles_count})</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{tenant.metrics.active_hunts_count}</TableCell>
                       </TableRow>
                     ))}

@@ -4838,6 +4838,44 @@ export type Database = {
           },
         ]
       }
+      tenant_inbound_addresses: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email_address: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email_address: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email_address?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_inbound_addresses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_integrations: {
         Row: {
           created_at: string | null

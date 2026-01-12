@@ -108,9 +108,42 @@ function extractAliasFromHeaders(headers: { name: string; value: string }[]): He
   return result;
 }
 
+// Lookup tenant by custom inbound address (fallback when no +alias)
+// Uses normalized (lower + trim) comparison via the indexed column
+async function getTenantByInboundAddress(emailAddress: string): Promise<TenantInfo> {
+  const normalizedEmail = emailAddress.toLowerCase().trim();
+  
+  const { data: mapping, error } = await supabase
+    .from('tenant_inbound_addresses')
+    .select('tenant_id, tenants!inner(id, name, is_paused, rate_limit_per_minute, rate_limit_per_day)')
+    .eq('is_active', true)
+    .ilike('email_address', normalizedEmail)
+    .maybeSingle();
+  
+  if (error) {
+    console.error(`[gmail-webhook] Inbound address lookup error:`, error);
+    return { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+  }
+  
+  if (mapping && mapping.tenants) {
+    const tenant = mapping.tenants as any;
+    console.log(`[gmail-webhook] ✅ Routed to tenant "${tenant.name}" via custom inbound address ${normalizedEmail}`);
+    return {
+      tenantId: tenant.id,
+      isPaused: tenant.is_paused || false,
+      rateLimitPerMinute: tenant.rate_limit_per_minute || 60,
+      rateLimitPerDay: tenant.rate_limit_per_day || 10000,
+      tenantName: tenant.name,
+    };
+  }
+  
+  return { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+}
+
 // Get tenant ID from gmail alias (fail-closed: no fallback to default)
-async function getTenantId(gmailAlias: string | null): Promise<TenantInfo> {
-  // Only route by gmail alias - fail-closed approach
+// Routing order: 1) +alias match, 2) custom inbound address lookup, 3) quarantine
+async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtractionResult): Promise<TenantInfo> {
+  // STEP 1: Try +alias match first (primary routing method)
   if (gmailAlias) {
     const { data: tenant, error } = await supabase
       .from('tenants')
@@ -131,7 +164,25 @@ async function getTenantId(gmailAlias: string | null): Promise<TenantInfo> {
     console.warn(`[gmail-webhook] ⚠️ No tenant found for alias ${gmailAlias}`);
   }
 
-  // FAIL-CLOSED: No fallback to default tenant
+  // STEP 2: Fallback - lookup by custom inbound address (when no +alias found)
+  // Try headers in priority order: Delivered-To, X-Original-To, Envelope-To, To
+  if (headerResult) {
+    const addressesToTry = [
+      headerResult.deliveredTo,
+      headerResult.xOriginalTo,
+      headerResult.envelopeTo,
+      headerResult.to,
+    ].filter(Boolean) as string[];
+    
+    for (const address of addressesToTry) {
+      const result = await getTenantByInboundAddress(address);
+      if (result.tenantId) {
+        return result;
+      }
+    }
+  }
+
+  // STEP 3: FAIL-CLOSED - No fallback to default tenant
   // Return null tenantId to trigger quarantine
   return { 
     tenantId: null, 
@@ -699,7 +750,8 @@ serve(async (req) => {
       const headerResult = extractAliasFromHeaders(headers);
       
       // Get tenant info for this message (fail-closed approach)
-      const tenantInfo = await getTenantId(headerResult.alias);
+      // Routing: 1) +alias match, 2) custom inbound address lookup, 3) quarantine
+      const tenantInfo = await getTenantId(headerResult.alias, headerResult);
       
       if (!tenantInfo.tenantId) {
         // QUARANTINE: No tenant found - fail-closed routing
