@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { 
@@ -20,9 +19,9 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  Copy,
-  ExternalLink
+  Copy
 } from "lucide-react";
+import InboundEmailRoutingCard from "@/components/InboundEmailRoutingCard";
 
 interface Tenant {
   id: string;
@@ -277,62 +276,13 @@ export default function TenantSettingsPage() {
 
       {/* Settings Grid */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Email Routing Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Mail className="h-5 w-5 text-primary" />
-              Email Routing
-            </CardTitle>
-            <CardDescription>
-              Configure how loadboard emails are routed to this tenant
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="gmail-alias">Gmail Alias</Label>
-              <Input
-                id="gmail-alias"
-                value={gmailAlias}
-                onChange={(e) => setGmailAlias(e.target.value)}
-                placeholder="+carriername-mcnumber"
-              />
-            </div>
-            
-            {/* Prominent Copy Email Section */}
-            <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
-              <p className="text-xs font-medium text-primary mb-2">📧 CARRIER EMAIL ADDRESS</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 p-2 bg-background border rounded text-sm font-mono break-all">
-                  talbilogistics{gmailAlias || "+alias"}@gmail.com
-                </code>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const fullEmail = `talbilogistics${gmailAlias}@gmail.com`;
-                    navigator.clipboard.writeText(fullEmail);
-                    toast.success("Email copied! Send this to your carrier.");
-                  }}
-                >
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copy
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Send this email to the carrier to add to their Sylectus/loadboard settings
-              </p>
-            </div>
-            
-            <div className="p-3 bg-muted/50 rounded-lg text-sm">
-              <strong className="text-xs uppercase tracking-wide text-muted-foreground">Setup Instructions</strong>
-              <ol className="mt-2 space-y-1 text-xs text-muted-foreground list-decimal list-inside">
-                <li>Copy the email address above</li>
-                <li>Send to carrier / loadboard provider</li>
-                <li>Have them set it as the destination for load emails</li>
-              </ol>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Inbound Email Routing Card - Full featured */}
+        <InboundEmailRoutingCard
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          gmailAlias={gmailAlias || tenant.gmail_alias}
+          lastEmailReceivedAt={tenant.last_email_received_at}
+        />
 
         {/* Rate Limits Card */}
         <Card>
@@ -346,6 +296,20 @@ export default function TenantSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Gmail Alias Input (still needed for editing) */}
+            <div>
+              <Label htmlFor="gmail-alias">Gmail Alias</Label>
+              <Input
+                id="gmail-alias"
+                value={gmailAlias}
+                onChange={(e) => setGmailAlias(e.target.value)}
+                placeholder="+carriername-mcnumber"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This determines the carrier email address format
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="rate-minute">Per Minute</Label>
