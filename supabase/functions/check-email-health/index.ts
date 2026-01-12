@@ -103,6 +103,72 @@ serve(async (req: Request) => {
       minutesSinceLastEmail: number | null;
     }> = [];
 
+    // ============================================================
+    // DEDUP REGRESSION CHECK (rate-based + minimum volume)
+    // ============================================================
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    
+    // Query 1-hour dedup metrics
+    const { data: dedupMetrics } = await supabase
+      .from("load_emails")
+      .select("id, dedup_eligible, load_content_fingerprint, parsed_load_fingerprint")
+      .gte("received_at", oneHourAgo);
+
+    const eligible1h = dedupMetrics?.filter(r => r.dedup_eligible === true).length || 0;
+    const missingFk1h = dedupMetrics?.filter(r => r.dedup_eligible === true && !r.load_content_fingerprint).length || 0;
+    const missingParsedFp1h = dedupMetrics?.filter(r => r.dedup_eligible === true && !r.parsed_load_fingerprint).length || 0;
+
+    console.log(`[check-email-health] Dedup metrics (1h): eligible=${eligible1h}, missing_fk=${missingFk1h}, missing_parsed_fp=${missingParsedFp1h}`);
+
+    // Determine dedup regression alert level
+    let dedupAlertLevel: "critical" | "warning" | null = null;
+    
+    // CRITICAL if: (eligible >= 20 AND any missing) OR hard thresholds >= 3
+    if (
+      (eligible1h >= 20 && (missingFk1h > 0 || missingParsedFp1h > 0)) ||
+      missingFk1h >= 3 ||
+      missingParsedFp1h >= 3
+    ) {
+      dedupAlertLevel = "critical";
+    }
+    // WARNING if: (eligible 5-19 AND any missing) OR hard thresholds 1-2
+    else if (
+      (eligible1h >= 5 && eligible1h < 20 && (missingFk1h > 0 || missingParsedFp1h > 0)) ||
+      (missingFk1h >= 1 && missingFk1h < 3) ||
+      (missingParsedFp1h >= 1 && missingParsedFp1h < 3)
+    ) {
+      dedupAlertLevel = "warning";
+    }
+
+    if (dedupAlertLevel) {
+      // Check for existing unresolved dedup_regression alert (spam prevention)
+      const { data: existingDedupAlert } = await supabase
+        .from("email_health_alerts")
+        .select("id")
+        .eq("alert_type", "dedup_regression")
+        .is("resolved_at", null)
+        .gte("sent_at", oneHourAgo)
+        .limit(1);
+
+      if (!existingDedupAlert?.length) {
+        alerts.push({
+          type: "dedup_regression",
+          level: dedupAlertLevel,
+          tenantId: null,
+          tenantName: null,
+          message: `Dedup regression: ${missingFk1h} eligible rows missing load_content_fingerprint, ${missingParsedFp1h} missing parsed_load_fingerprint (last 1h, eligible=${eligible1h})`,
+          minutesSinceLastEmail: null,
+        });
+      }
+    } else {
+      // Resolve any existing dedup_regression alerts
+      await supabase
+        .from("email_health_alerts")
+        .update({ resolved_at: now.toISOString() })
+        .eq("alert_type", "dedup_regression")
+        .is("resolved_at", null);
+    }
+
     // Check for system-wide inactivity
     if (systemInactive) {
       const minutesSince = systemLastEmail 

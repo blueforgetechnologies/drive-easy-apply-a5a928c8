@@ -6,10 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp, Layers, AlertTriangle } from "lucide-react";
 import { format, formatDistanceToNow, subDays, subHours } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface RoutedEmail {
   id: string;
@@ -70,6 +71,33 @@ interface ContentDedupStats {
     tenantSlug: string;
     enabled: boolean;
   }[];
+}
+
+interface LoadContentMetrics {
+  receipts_24h: number;
+  eligible_receipts_24h: number;
+  unique_content_24h: number;
+  reuse_rate_24h: number;
+  missing_fk_24h: number;
+  eligible_1h: number;
+  missing_fk_1h: number;
+  missing_parsed_fp_1h: number;
+}
+
+interface LoadContentProviderBreakdown {
+  provider: string;
+  receipts: number;
+  eligible: number;
+  unique_content: number;
+  reuse_rate: number;
+}
+
+interface LoadContentTop10 {
+  fingerprint: string;
+  provider: string;
+  receipt_count: number;
+  first_seen_at: string;
+  last_seen_at: string;
 }
 
 export default function EmailRoutingHealthTab() {
@@ -224,6 +252,56 @@ export default function EmailRoutingHealthTab() {
     },
   });
 
+  // Fetch load content metrics (from views)
+  const { data: loadContentMetrics, isLoading: loadingLoadContent } = useQuery({
+    queryKey: ['email-routing-health', 'load-content-metrics', refreshKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('load_content_metrics_24h')
+        .select('*')
+        .single();
+      
+      if (error) {
+        console.error('Error fetching load_content_metrics_24h:', error);
+        return null;
+      }
+      return data as LoadContentMetrics;
+    },
+  });
+
+  // Fetch load content provider breakdown
+  const { data: loadContentProviders = [], isLoading: loadingLoadProviders } = useQuery({
+    queryKey: ['email-routing-health', 'load-content-providers', refreshKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('load_content_provider_breakdown_24h')
+        .select('*')
+        .order('provider');
+      
+      if (error) {
+        console.error('Error fetching load_content_provider_breakdown_24h:', error);
+        return [];
+      }
+      return (data || []) as LoadContentProviderBreakdown[];
+    },
+  });
+
+  // Fetch load content top 10
+  const { data: loadContentTop10 = [], isLoading: loadingLoadTop10 } = useQuery({
+    queryKey: ['email-routing-health', 'load-content-top10', refreshKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('load_content_top10_7d')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching load_content_top10_7d:', error);
+        return [];
+      }
+      return (data || []) as LoadContentTop10[];
+    },
+  });
+
   // Calculate stats
   const stats = {
     totalRouted: routedEmails.length,
@@ -237,6 +315,21 @@ export default function EmailRoutingHealthTab() {
     aliasesConfigured: tenantAliases.filter(t => t.gmail_alias).length,
     aliasesMissing: tenantAliases.filter(t => !t.gmail_alias).length,
   };
+
+  // Check for dedup regression
+  const hasDedupRegression = loadContentMetrics && (
+    (loadContentMetrics.missing_fk_1h > 0) || 
+    (loadContentMetrics.missing_parsed_fp_1h > 0)
+  );
+  const dedupRegressionLevel = loadContentMetrics ? (
+    (loadContentMetrics.eligible_1h >= 20 && hasDedupRegression) ||
+    loadContentMetrics.missing_fk_1h >= 3 ||
+    loadContentMetrics.missing_parsed_fp_1h >= 3
+      ? 'critical'
+      : hasDedupRegression
+        ? 'warning'
+        : null
+  ) : null;
 
   // Filter routed emails
   const filteredRouted = statusFilter === "all" 
@@ -587,6 +680,15 @@ export default function EmailRoutingHealthTab() {
             <Shield className="h-4 w-4" />
             Quarantine ({stats.totalQuarantined})
           </TabsTrigger>
+          <TabsTrigger value="load-dedup" className="gap-2">
+            <Layers className="h-4 w-4" />
+            Load Dedup
+            {dedupRegressionLevel && (
+              <Badge variant={dedupRegressionLevel === 'critical' ? 'destructive' : 'secondary'} className="ml-1 h-5 px-1.5">
+                !
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* Routed Emails Tab */}
@@ -767,6 +869,225 @@ export default function EmailRoutingHealthTab() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Load Dedup Tab */}
+        <TabsContent value="load-dedup">
+          <div className="space-y-4">
+            {/* Regression Alert Banner */}
+            {dedupRegressionLevel && (
+              <Alert variant={dedupRegressionLevel === 'critical' ? 'destructive' : 'default'}>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>
+                  {dedupRegressionLevel === 'critical' ? '🔴 Dedup Regression Detected' : '🟡 Dedup Warning'}
+                </AlertTitle>
+                <AlertDescription>
+                  {loadContentMetrics && (
+                    <>
+                      Last 1 hour: {loadContentMetrics.missing_fk_1h} eligible rows missing load_content_fingerprint, 
+                      {loadContentMetrics.missing_parsed_fp_1h} missing parsed_load_fingerprint 
+                      (eligible={loadContentMetrics.eligible_1h})
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* KPI Cards */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Receipts (24h)</CardTitle>
+                  <Inbox className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{loadContentMetrics?.receipts_24h ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {loadContentMetrics?.eligible_receipts_24h ?? 0} eligible for dedup
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Unique Content (24h)</CardTitle>
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{loadContentMetrics?.unique_content_24h ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Distinct fingerprints
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Reuse Rate (24h)</CardTitle>
+                  <Recycle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${
+                    (loadContentMetrics?.reuse_rate_24h ?? 0) >= 50 
+                      ? 'text-green-600' 
+                      : (loadContentMetrics?.reuse_rate_24h ?? 0) >= 20 
+                        ? 'text-yellow-600' 
+                        : ''
+                  }`}>
+                    {loadContentMetrics?.reuse_rate_24h ?? 0}%
+                  </div>
+                  <Progress value={loadContentMetrics?.reuse_rate_24h ?? 0} className="h-2 mt-2" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Missing FK (24h)</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${
+                    (loadContentMetrics?.missing_fk_24h ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {loadContentMetrics?.missing_fk_24h ?? 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Should be 0 for healthy system
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Provider Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Provider Breakdown (24h)</CardTitle>
+                <CardDescription>Dedup metrics by email source</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingLoadProviders ? (
+                  <div className="text-center py-4 text-muted-foreground">Loading...</div>
+                ) : loadContentProviders.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">No data available</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Provider</TableHead>
+                        <TableHead className="text-right">Receipts</TableHead>
+                        <TableHead className="text-right">Eligible</TableHead>
+                        <TableHead className="text-right">Unique Content</TableHead>
+                        <TableHead className="text-right">Reuse Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadContentProviders.map((p) => (
+                        <TableRow key={p.provider}>
+                          <TableCell className="font-medium capitalize">{p.provider}</TableCell>
+                          <TableCell className="text-right">{p.receipts}</TableCell>
+                          <TableCell className="text-right">{p.eligible}</TableCell>
+                          <TableCell className="text-right">
+                            {p.provider === 'other' ? '-' : p.unique_content}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {p.provider === 'other' ? (
+                              <span className="text-muted-foreground">N/A</span>
+                            ) : (
+                              <Badge className={
+                                p.reuse_rate >= 50 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
+                                  : p.reuse_rate >= 20 
+                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                                    : 'bg-muted text-muted-foreground'
+                              }>
+                                {p.reuse_rate}%
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Top 10 Most Reused */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Top 10 Most Reused Content (7 days)</CardTitle>
+                <CardDescription>Load content with highest receipt counts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingLoadTop10 ? (
+                  <div className="text-center py-4 text-muted-foreground">Loading...</div>
+                ) : loadContentTop10.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">No data available</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fingerprint</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead className="text-right">Receipt Count</TableHead>
+                        <TableHead>First Seen</TableHead>
+                        <TableHead>Last Seen</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadContentTop10.map((row) => (
+                        <TableRow key={row.fingerprint}>
+                          <TableCell className="font-mono text-xs max-w-[200px] truncate">
+                            {row.fingerprint}
+                          </TableCell>
+                          <TableCell className="capitalize">{row.provider}</TableCell>
+                          <TableCell className="text-right font-bold">{row.receipt_count}</TableCell>
+                          <TableCell className="text-xs">
+                            {format(new Date(row.first_seen_at), 'MMM d, HH:mm')}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {format(new Date(row.last_seen_at), 'MMM d, HH:mm')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 1-Hour Guardrail Metrics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">1-Hour Guardrail Metrics</CardTitle>
+                <CardDescription>Used for regression detection alerts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="p-4 rounded-lg border">
+                    <div className="text-sm text-muted-foreground">Eligible (1h)</div>
+                    <div className="text-2xl font-bold">{loadContentMetrics?.eligible_1h ?? 0}</div>
+                  </div>
+                  <div className="p-4 rounded-lg border">
+                    <div className="text-sm text-muted-foreground">Missing FK (1h)</div>
+                    <div className={`text-2xl font-bold ${
+                      (loadContentMetrics?.missing_fk_1h ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {loadContentMetrics?.missing_fk_1h ?? 0}
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-lg border">
+                    <div className="text-sm text-muted-foreground">Missing Parsed FP (1h)</div>
+                    <div className={`text-2xl font-bold ${
+                      (loadContentMetrics?.missing_parsed_fp_1h ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {loadContentMetrics?.missing_parsed_fp_1h ?? 0}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
