@@ -6014,8 +6014,10 @@ export type Database = {
       }
       load_content_metrics_24h: {
         Row: {
+          coverage_rate_24h: number | null
           eligible_1h: number | null
           eligible_receipts_24h: number | null
+          eligible_with_fk_24h: number | null
           missing_fk_1h: number | null
           missing_fk_24h: number | null
           missing_parsed_fp_1h: number | null
@@ -6027,7 +6029,9 @@ export type Database = {
       }
       load_content_provider_breakdown_24h: {
         Row: {
+          coverage_rate: number | null
           eligible: number | null
+          eligible_with_fk: number | null
           provider: string | null
           receipts: number | null
           reuse_rate: number | null
