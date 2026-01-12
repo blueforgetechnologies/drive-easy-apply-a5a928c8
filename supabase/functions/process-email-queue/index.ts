@@ -1515,6 +1515,7 @@ serve(async (req) => {
         
         let isDuplicate = false;
         let duplicateOfId: string | null = null;
+        let loadContentFingerprint: string | null = null;
         
         // Only check for duplicates if the load is eligible (has critical fields)
         if (dedupEligible) {
@@ -1525,6 +1526,50 @@ serve(async (req) => {
             isDuplicate = true;
             duplicateOfId = existingDuplicate.id;
             console.log(`🔄 DUPLICATE detected: matches ${existingDuplicate.load_id} (fingerprint: ${parsedLoadFingerprint.substring(0, 12)})`);
+          }
+          
+          // ====================================================================
+          // CROSS-TENANT DEDUP: UPSERT into global load_content table
+          // Store canonical payload ONCE globally, keyed by fingerprint
+          // ====================================================================
+          const canonicalPayloadJson = JSON.stringify(canonicalPayload);
+          const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
+          
+          const { error: loadContentError } = await supabase
+            .from('load_content')
+            .upsert({
+              fingerprint: parsedLoadFingerprint,
+              canonical_payload: canonicalPayload,
+              first_seen_at: new Date().toISOString(),
+              last_seen_at: new Date().toISOString(),
+              receipt_count: 1,
+              provider: emailSource || null,
+              fingerprint_version: FINGERPRINT_VERSION,
+              size_bytes: sizeBytes,
+            }, { 
+              onConflict: 'fingerprint',
+              ignoreDuplicates: false 
+            });
+          
+          if (loadContentError) {
+            // If UPSERT fails (conflict), manually increment receipt_count via raw update
+            // The upsert likely failed because the row exists - update last_seen_at only
+            const { error: updateError } = await supabase
+              .from('load_content')
+              .update({ 
+                last_seen_at: new Date().toISOString()
+              })
+              .eq('fingerprint', parsedLoadFingerprint);
+            
+            if (updateError) {
+              console.warn(`⚠️ load_content upsert/update failed: ${loadContentError.message || updateError.message}`);
+            } else {
+              loadContentFingerprint = parsedLoadFingerprint;
+              console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
+            }
+          } else {
+            loadContentFingerprint = parsedLoadFingerprint;
+            console.log(`📦 load_content upserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
           }
         } else {
           console.log(`⚠️ Skipping dedup check: ${dedupEligibleReason}`);
@@ -1571,6 +1616,7 @@ serve(async (req) => {
             parent_email_id: parentEmailId,
             dedup_eligible: dedupEligible,
             dedup_canonical_payload: isDuplicate ? canonicalPayload : null, // Store payload only for duplicates (for debugging)
+            load_content_fingerprint: loadContentFingerprint, // FK to global load_content table
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();
