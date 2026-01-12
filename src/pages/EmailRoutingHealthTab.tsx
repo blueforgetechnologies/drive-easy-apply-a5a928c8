@@ -76,7 +76,9 @@ interface ContentDedupStats {
 interface LoadContentMetrics {
   receipts_24h: number;
   eligible_receipts_24h: number;
+  eligible_with_fk_24h: number;
   unique_content_24h: number;
+  coverage_rate_24h: number;
   reuse_rate_24h: number;
   missing_fk_24h: number;
   eligible_1h: number;
@@ -88,7 +90,9 @@ interface LoadContentProviderBreakdown {
   provider: string;
   receipts: number;
   eligible: number;
+  eligible_with_fk: number;
   unique_content: number;
+  coverage_rate: number;
   reuse_rate: number;
 }
 
@@ -894,7 +898,7 @@ export default function EmailRoutingHealthTab() {
             )}
 
             {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Receipts (24h)</CardTitle>
@@ -903,7 +907,29 @@ export default function EmailRoutingHealthTab() {
                 <CardContent>
                   <div className="text-2xl font-bold">{loadContentMetrics?.receipts_24h ?? '-'}</div>
                   <p className="text-xs text-muted-foreground">
-                    {loadContentMetrics?.eligible_receipts_24h ?? 0} eligible for dedup
+                    {loadContentMetrics?.eligible_receipts_24h ?? 0} eligible, {loadContentMetrics?.eligible_with_fk_24h ?? 0} with FK
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Coverage Rate (24h)</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${
+                    (loadContentMetrics?.coverage_rate_24h ?? 0) >= 95 
+                      ? 'text-green-600' 
+                      : (loadContentMetrics?.coverage_rate_24h ?? 0) >= 80 
+                        ? 'text-yellow-600' 
+                        : 'text-red-600'
+                  }`}>
+                    {loadContentMetrics?.coverage_rate_24h ?? 0}%
+                  </div>
+                  <Progress value={loadContentMetrics?.coverage_rate_24h ?? 0} className="h-2 mt-2" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    % of eligible with FK
                   </p>
                 </CardContent>
               </Card>
@@ -928,15 +954,24 @@ export default function EmailRoutingHealthTab() {
                 </CardHeader>
                 <CardContent>
                   <div className={`text-2xl font-bold ${
-                    (loadContentMetrics?.reuse_rate_24h ?? 0) >= 50 
-                      ? 'text-green-600' 
-                      : (loadContentMetrics?.reuse_rate_24h ?? 0) >= 20 
-                        ? 'text-yellow-600' 
-                        : ''
+                    (loadContentMetrics?.eligible_with_fk_24h ?? 0) === 0
+                      ? ''
+                      : (loadContentMetrics?.reuse_rate_24h ?? 0) >= 50 
+                        ? 'text-green-600' 
+                        : (loadContentMetrics?.reuse_rate_24h ?? 0) >= 20 
+                          ? 'text-yellow-600' 
+                          : ''
                   }`}>
-                    {loadContentMetrics?.reuse_rate_24h ?? 0}%
+                    {(loadContentMetrics?.eligible_with_fk_24h ?? 0) === 0 
+                      ? 'N/A' 
+                      : `${loadContentMetrics?.reuse_rate_24h ?? 0}%`}
                   </div>
-                  <Progress value={loadContentMetrics?.reuse_rate_24h ?? 0} className="h-2 mt-2" />
+                  {(loadContentMetrics?.eligible_with_fk_24h ?? 0) > 0 && (
+                    <Progress value={loadContentMetrics?.reuse_rate_24h ?? 0} className="h-2 mt-2" />
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Based on eligible w/ FK only
+                  </p>
                 </CardContent>
               </Card>
 
@@ -976,6 +1011,8 @@ export default function EmailRoutingHealthTab() {
                         <TableHead>Provider</TableHead>
                         <TableHead className="text-right">Receipts</TableHead>
                         <TableHead className="text-right">Eligible</TableHead>
+                        <TableHead className="text-right">Eligible w/ FK</TableHead>
+                        <TableHead className="text-right">Coverage</TableHead>
                         <TableHead className="text-right">Unique Content</TableHead>
                         <TableHead className="text-right">Reuse Rate</TableHead>
                       </TableRow>
@@ -986,11 +1023,27 @@ export default function EmailRoutingHealthTab() {
                           <TableCell className="font-medium capitalize">{p.provider}</TableCell>
                           <TableCell className="text-right">{p.receipts}</TableCell>
                           <TableCell className="text-right">{p.eligible}</TableCell>
+                          <TableCell className="text-right">{p.eligible_with_fk}</TableCell>
                           <TableCell className="text-right">
-                            {p.provider === 'other' ? '-' : p.unique_content}
+                            {p.eligible === 0 ? (
+                              <span className="text-muted-foreground">-</span>
+                            ) : (
+                              <Badge className={
+                                p.coverage_rate >= 95 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
+                                  : p.coverage_rate >= 80 
+                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
+                              }>
+                                {p.coverage_rate}%
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
-                            {p.provider === 'other' ? (
+                            {p.provider === 'other' || p.eligible_with_fk === 0 ? '-' : p.unique_content}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {p.provider === 'other' || p.eligible_with_fk === 0 ? (
                               <span className="text-muted-foreground">N/A</span>
                             ) : (
                               <Badge className={
