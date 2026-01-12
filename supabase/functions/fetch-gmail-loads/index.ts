@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID')!;
 const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET')!;
@@ -72,6 +73,244 @@ async function getEffectiveTenantId(userEmail: string): Promise<{ tenantId: stri
   console.error(`[fetch-gmail-loads] CRITICAL: ${errorMsg}`);
   return { tenantId: null, error: errorMsg };
 }
+
+// ============================================================================
+// PARSED LOAD FINGERPRINT - Strict Exact-match deduplication
+// SHA256 of ALL parsed fields with meaning-preserving normalization.
+// Provider is REQUIRED to prevent cross-provider dedup.
+// ============================================================================
+
+const FINGERPRINT_VERSION = 1;
+
+function parseNumeric2Decimals(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') {
+    if (isNaN(value)) return null;
+    return Math.round(value * 100) / 100;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return null;
+    let normalized = trimmed;
+    if (/,\d{2}$/.test(normalized)) {
+      normalized = normalized.replace(/,(\d{2})$/, '.$1');
+    }
+    normalized = normalized.replace(/,/g, '');
+    normalized = normalized.replace(/[^0-9.-]/g, '');
+    if (normalized === '' || normalized === '-' || normalized === '.') return null;
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed)) return null;
+    return Math.round(parsed * 100) / 100;
+  }
+  return null;
+}
+
+function parseIntStrict(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && !isNaN(value)) return Math.floor(value);
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9-]/g, '');
+    if (!cleaned) return null;
+    const parsed = parseInt(cleaned, 10);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+function normalizeStringStrict(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+  return String(value).trim() || null;
+}
+
+function normalizeStringLower(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase();
+    return trimmed === '' ? null : trimmed;
+  }
+  return String(value).trim().toLowerCase() || null;
+}
+
+function normalizeDateStrict(dateStr: any): string | null {
+  if (dateStr === null || dateStr === undefined) return null;
+  if (typeof dateStr !== 'string') dateStr = String(dateStr);
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+  const mmddyy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mmddyy) {
+    const month = mmddyy[1].padStart(2, '0');
+    const day = mmddyy[2].padStart(2, '0');
+    let year = mmddyy[3];
+    if (year.length === 2) {
+      year = parseInt(year) > 50 ? '19' + year : '20' + year;
+    }
+    return `${year}-${month}-${day}`;
+  }
+  const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+  return null;
+}
+
+function normalizeBooleanStrict(value: any): boolean | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim();
+    if (lower === 'true' || lower === 'yes' || lower === '1') return true;
+    if (lower === 'false' || lower === 'no' || lower === '0') return false;
+  }
+  if (typeof value === 'number') return value !== 0;
+  return null;
+}
+
+function normalizeStops(stops: any): any[] | null {
+  if (stops === null || stops === undefined) return null;
+  if (!Array.isArray(stops)) return null;
+  if (stops.length === 0) return null;
+  return stops.map((stop: any, index: number) => ({
+    sequence: index,
+    city: normalizeStringStrict(stop?.city),
+    state: normalizeStringStrict(stop?.state)?.toUpperCase() || null,
+    zip: normalizeStringStrict(stop?.zip),
+    type: normalizeStringStrict(stop?.type)?.toLowerCase() || null,
+    date: normalizeDateStrict(stop?.date),
+    time: normalizeStringStrict(stop?.time),
+  }));
+}
+
+// Build canonical payload for fingerprinting
+// CRITICAL: provider is REQUIRED to prevent cross-provider dedup
+function buildCanonicalLoadPayload(parsedData: Record<string, any>, provider: string): Record<string, any> {
+  return {
+    fingerprint_version: FINGERPRINT_VERSION,
+    provider: provider.toLowerCase(), // REQUIRED, prevents cross-provider dedup
+    
+    broker_name: normalizeStringStrict(parsedData.broker_name),
+    broker_company: normalizeStringStrict(parsedData.broker_company),
+    broker_email: normalizeStringLower(parsedData.broker_email),
+    broker_phone: normalizeStringStrict(parsedData.broker_phone),
+    broker_address: normalizeStringStrict(parsedData.broker_address),
+    broker_city: normalizeStringStrict(parsedData.broker_city),
+    broker_state: normalizeStringStrict(parsedData.broker_state)?.toUpperCase() || null,
+    broker_zip: normalizeStringStrict(parsedData.broker_zip),
+    broker_fax: normalizeStringStrict(parsedData.broker_fax),
+    mc_number: normalizeStringStrict(parsedData.mc_number),
+    
+    order_number: normalizeStringStrict(parsedData.order_number),
+    order_number_secondary: normalizeStringStrict(parsedData.order_number_secondary),
+    customer: normalizeStringStrict(parsedData.customer),
+    
+    origin_city: normalizeStringStrict(parsedData.origin_city),
+    origin_state: normalizeStringStrict(parsedData.origin_state)?.toUpperCase() || null,
+    origin_zip: normalizeStringStrict(parsedData.origin_zip),
+    
+    destination_city: normalizeStringStrict(parsedData.destination_city),
+    destination_state: normalizeStringStrict(parsedData.destination_state)?.toUpperCase() || null,
+    destination_zip: normalizeStringStrict(parsedData.destination_zip),
+    
+    miles: parseNumeric2Decimals(parsedData.miles),
+    loaded_miles: parseNumeric2Decimals(parsedData.loaded_miles),
+    weight: parseNumeric2Decimals(parsedData.weight),
+    pieces: parseIntStrict(parsedData.pieces),
+    
+    rate: parseNumeric2Decimals(parsedData.rate),
+    posted_amount: parseNumeric2Decimals(parsedData.posted_amount),
+    
+    pickup_date: normalizeDateStrict(parsedData.pickup_date),
+    pickup_time: normalizeStringStrict(parsedData.pickup_time),
+    delivery_date: normalizeDateStrict(parsedData.delivery_date),
+    delivery_time: normalizeStringStrict(parsedData.delivery_time),
+    expires_datetime: normalizeStringStrict(parsedData.expires_datetime),
+    expires_at: normalizeStringStrict(parsedData.expires_at),
+    
+    vehicle_type: normalizeStringStrict(parsedData.vehicle_type)?.toLowerCase() || null,
+    load_type: normalizeStringStrict(parsedData.load_type)?.toLowerCase() || null,
+    
+    length: parseNumeric2Decimals(parsedData.length),
+    width: parseNumeric2Decimals(parsedData.width),
+    height: parseNumeric2Decimals(parsedData.height),
+    dimensions: normalizeStringStrict(parsedData.dimensions),
+    
+    hazmat: normalizeBooleanStrict(parsedData.hazmat),
+    team_required: normalizeBooleanStrict(parsedData.team_required),
+    stackable: normalizeBooleanStrict(parsedData.stackable),
+    dock_level: normalizeBooleanStrict(parsedData.dock_level),
+    
+    stops: normalizeStops(parsedData.stops),
+    stop_count: parseIntStrict(parsedData.stop_count),
+    has_multiple_stops: normalizeBooleanStrict(parsedData.has_multiple_stops),
+    
+    commodity: normalizeStringStrict(parsedData.commodity),
+    special_instructions: normalizeStringStrict(parsedData.special_instructions),
+    notes: normalizeStringStrict(parsedData.notes),
+    
+    broker: normalizeStringStrict((parsedData as any).broker),
+    email: normalizeStringLower((parsedData as any).email),
+    customer_name: normalizeStringStrict((parsedData as any).customer_name),
+  };
+}
+
+function isDedupEligible(canonicalPayload: Record<string, any>): { eligible: boolean; reason: string | null } {
+  const hasOrigin = canonicalPayload.origin_city && canonicalPayload.origin_state;
+  const hasDestination = canonicalPayload.destination_city && canonicalPayload.destination_state;
+  const hasBrokerIdentity = canonicalPayload.broker_company || canonicalPayload.broker_name || 
+                            canonicalPayload.broker_email || canonicalPayload.mc_number;
+  const hasPickupDate = canonicalPayload.pickup_date;
+  
+  if (!hasOrigin) return { eligible: false, reason: 'missing_origin_location' };
+  if (!hasDestination) return { eligible: false, reason: 'missing_destination_location' };
+  if (!hasBrokerIdentity) return { eligible: false, reason: 'missing_broker_identity' };
+  if (!hasPickupDate) return { eligible: false, reason: 'missing_pickup_date' };
+  
+  return { eligible: true, reason: null };
+}
+
+// Compute SHA256 fingerprint - provider is REQUIRED
+async function computeParsedLoadFingerprint(
+  parsedData: Record<string, any>,
+  provider: string
+): Promise<{
+  fingerprint: string;
+  canonicalPayload: Record<string, any>;
+  dedupEligible: boolean;
+  dedupEligibleReason: string | null;
+}> {
+  const canonicalPayload = buildCanonicalLoadPayload(parsedData, provider);
+  const eligibility = isDedupEligible(canonicalPayload);
+  
+  function sortObjectKeys(obj: any): any {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+    const sorted: Record<string, any> = {};
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = sortObjectKeys(obj[key]);
+    }
+    return sorted;
+  }
+  
+  const sortedPayload = sortObjectKeys(canonicalPayload);
+  const payloadString = JSON.stringify(sortedPayload);
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payloadString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return {
+    fingerprint,
+    canonicalPayload: sortedPayload,
+    dedupEligible: eligibility.eligible,
+    dedupEligibleReason: eligibility.reason,
+  };
+}
+
 
 async function refreshAccessToken(refreshToken: string): Promise<string> {
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -1042,6 +1281,79 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!existing) {
+          // ====================================================================
+          // FINGERPRINT + LOAD_CONTENT INSERT/UPDATE
+          // Provider is REQUIRED to prevent cross-provider dedup
+          // If emailSource is null/unknown → skip fingerprinting entirely
+          // ====================================================================
+          
+          let parsedLoadFingerprint: string | null = null;
+          let loadContentFingerprint: string | null = null;
+          let dedupEligible = false;
+          let dedupEligibleReason: string | null = 'provider_unknown';
+          
+          // REQUIRED: emailSource must be known for fingerprinting
+          if (emailSource && (emailSource === 'fullcircle' || emailSource === 'sylectus')) {
+            const fingerprintResult = await computeParsedLoadFingerprint(parsedData, emailSource);
+            parsedLoadFingerprint = fingerprintResult.fingerprint;
+            dedupEligible = fingerprintResult.dedupEligible;
+            dedupEligibleReason = fingerprintResult.dedupEligibleReason;
+            const canonicalPayload = fingerprintResult.canonicalPayload;
+            
+            console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Provider: ${emailSource} | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
+            
+            if (dedupEligible && parsedLoadFingerprint) {
+              const canonicalPayloadJson = JSON.stringify(canonicalPayload);
+              const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
+              
+              // Step A: Try INSERT first (new row)
+              const { error: lcInsertError } = await supabase
+                .from('load_content')
+                .insert({
+                  fingerprint: parsedLoadFingerprint,
+                  canonical_payload: canonicalPayload,
+                  first_seen_at: new Date().toISOString(),
+                  last_seen_at: new Date().toISOString(),
+                  receipt_count: 1,
+                  provider: emailSource,
+                  fingerprint_version: FINGERPRINT_VERSION,
+                  size_bytes: sizeBytes,
+                });
+              
+              if (lcInsertError) {
+                // Check if it's a unique violation (conflict)
+                const isConflict = lcInsertError.code === '23505' || 
+                                   lcInsertError.message?.includes('duplicate key') ||
+                                   lcInsertError.message?.includes('already exists');
+                
+                if (isConflict) {
+                  // Step B: Conflict - UPDATE existing row via RPC (atomic increment)
+                  const { error: rpcError } = await supabase.rpc('increment_load_content_receipt_count', { 
+                    p_fingerprint: parsedLoadFingerprint 
+                  });
+                  
+                  if (rpcError) {
+                    console.warn(`⚠️ load_content increment RPC failed: ${rpcError.message}`);
+                  } else {
+                    loadContentFingerprint = parsedLoadFingerprint;
+                    console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
+                  }
+                } else {
+                  // Not a conflict - log the actual error
+                  console.warn(`⚠️ load_content insert failed: ${lcInsertError.message}`);
+                }
+              } else {
+                // Step C: INSERT succeeded
+                loadContentFingerprint = parsedLoadFingerprint;
+                console.log(`📦 load_content inserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
+              }
+            } else {
+              console.log(`⚠️ Skipping load_content: ${dedupEligibleReason}`);
+            }
+          } else {
+            console.log(`⚠️ Skipping fingerprint: emailSource is null or unknown`);
+          }
+          
           // CRITICAL: Insert with tenant_id for proper scoping
           const { data: inserted, error: insertError } = await supabase
             .from('load_emails')
@@ -1058,7 +1370,11 @@ serve(async (req) => {
               expires_at: parsedData.expires_at || null,
               status: 'new',
               email_source: emailSource,
-              tenant_id: effectiveTenantId, // CRITICAL: Include tenant_id
+              tenant_id: effectiveTenantId,
+              // Fingerprint fields (null-safe)
+              parsed_load_fingerprint: parsedLoadFingerprint,
+              load_content_fingerprint: loadContentFingerprint,
+              dedup_eligible: dedupEligible,
             })
             .select('id, load_id')
             .single();
