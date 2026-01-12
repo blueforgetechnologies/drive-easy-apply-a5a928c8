@@ -70,16 +70,42 @@ function generateContentHash(parsedData: Record<string, any>): string {
 // - Critical fields missing → dedup_eligible = false (skip dedup for safety)
 // ============================================================================
 
-// Parse a numeric value strictly: returns number if valid, null otherwise
-function parseNumericStrict(value: any): number | null {
+// Parse a numeric value and normalize to exactly 2 decimal places
+// Handles European comma-decimals (e.g., "2850,50") and thousands separators
+function parseNumeric2Decimals(value: any): number | null {
   if (value === null || value === undefined) return null;
-  if (typeof value === 'number' && !isNaN(value)) return value;
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[^0-9.-]/g, '');
-    if (!cleaned) return null;
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? null : parsed;
+  
+  if (typeof value === 'number') {
+    if (isNaN(value)) return null;
+    return Math.round(value * 100) / 100; // Round to 2 decimals
   }
+  
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return null;
+    
+    // Handle European comma-decimal (e.g., "2850,50" → "2850.50")
+    // Only if ends with ,dd pattern
+    let normalized = trimmed;
+    if (/,\d{2}$/.test(normalized)) {
+      normalized = normalized.replace(/,(\d{2})$/, '.$1');
+    }
+    
+    // Remove thousands separators (remaining commas)
+    normalized = normalized.replace(/,/g, '');
+    
+    // Remove currency symbols and other non-numeric chars except . and -
+    normalized = normalized.replace(/[^0-9.-]/g, '');
+    
+    if (normalized === '' || normalized === '-' || normalized === '.') return null;
+    
+    // Parse as float
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed)) return null;
+    
+    return Math.round(parsed * 100) / 100; // Round to 2 decimals
+  }
+  
   return null;
 }
 
@@ -162,19 +188,7 @@ function normalizeBooleanStrict(value: any): boolean | null {
 // Fingerprint version - increment when canonicalization logic changes
 const FINGERPRINT_VERSION = 1;
 
-// Normalize coordinates for fingerprinting
-function normalizeCoordinates(coords: any): { lat: number; lng: number } | null {
-  if (coords === null || coords === undefined) return null;
-  if (typeof coords === 'object' && coords !== null) {
-    const lat = parseNumericStrict(coords.lat);
-    const lng = parseNumericStrict(coords.lng);
-    if (lat !== null && lng !== null) {
-      // Round to 5 decimal places for consistency (~1m precision)
-      return { lat: Math.round(lat * 100000) / 100000, lng: Math.round(lng * 100000) / 100000 };
-    }
-  }
-  return null;
-}
+// Note: Coordinates are EXCLUDED from fingerprinting to avoid floating point issues
 
 // Normalize stops array for fingerprinting (deterministic)
 function normalizeStops(stops: any): any[] | null {
@@ -229,18 +243,18 @@ function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<stri
     destination_state: normalizeStringStrict(parsedData.destination_state)?.toUpperCase() || null,
     destination_zip: normalizeStringStrict(parsedData.destination_zip),
     
-    // === Pickup coordinates ===
-    pickup_coordinates: normalizeCoordinates(parsedData.pickup_coordinates),
+    // === Pickup coordinates - EXCLUDED from fingerprint ===
+    // pickup_coordinates: excluded to avoid floating point comparison issues
     
-    // === Load details - null if missing, NOT 0 ===
-    miles: parseNumericStrict(parsedData.miles),
-    loaded_miles: parseNumericStrict(parsedData.loaded_miles),
-    weight: parseNumericStrict(parsedData.weight),
+    // === Load details - normalized to 2 decimals, null if missing ===
+    miles: parseNumeric2Decimals(parsedData.miles),
+    loaded_miles: parseNumeric2Decimals(parsedData.loaded_miles),
+    weight: parseNumeric2Decimals(parsedData.weight),
     pieces: parseIntStrict(parsedData.pieces),
     
-    // === Rate/pricing - null if missing, NOT 0 ===
-    rate: parseNumericStrict(parsedData.rate),
-    posted_amount: parseNumericStrict(parsedData.posted_amount),
+    // === Rate/pricing - normalized to 2 decimals, null if missing ===
+    rate: parseNumeric2Decimals(parsedData.rate),
+    posted_amount: parseNumeric2Decimals(parsedData.posted_amount),
     
     // === Dates (normalized to ISO or null) ===
     pickup_date: normalizeDateStrict(parsedData.pickup_date),
@@ -254,10 +268,10 @@ function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<stri
     vehicle_type: normalizeStringStrict(parsedData.vehicle_type)?.toLowerCase() || null,
     load_type: normalizeStringStrict(parsedData.load_type)?.toLowerCase() || null,
     
-    // === Dimensions - null if missing, NOT 0 ===
-    length: parseNumericStrict(parsedData.length),
-    width: parseNumericStrict(parsedData.width),
-    height: parseNumericStrict(parsedData.height),
+    // === Dimensions - normalized to 2 decimals, null if missing ===
+    length: parseNumeric2Decimals(parsedData.length),
+    width: parseNumeric2Decimals(parsedData.width),
+    height: parseNumeric2Decimals(parsedData.height),
     dimensions: normalizeStringStrict(parsedData.dimensions),
     
     // === Special requirements - null if missing ===
