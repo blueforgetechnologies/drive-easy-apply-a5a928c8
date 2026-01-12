@@ -6,11 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp, Layers, AlertTriangle } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp, Layers, AlertTriangle, Users } from "lucide-react";
 import { format, formatDistanceToNow, subDays, subHours } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import QuarantineFixHelper from "@/components/QuarantineFixHelper";
 
 interface RoutedEmail {
   id: string;
@@ -810,7 +811,7 @@ export default function EmailRoutingHealthTab() {
                         <TableHead>Subject</TableHead>
                         <TableHead>Header Used</TableHead>
                         <TableHead>Extracted Alias</TableHead>
-                        <TableHead>Failure Reason</TableHead>
+                        <TableHead>Failure Reason / Fix</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -859,9 +860,22 @@ export default function EmailRoutingHealthTab() {
                               <Badge variant="destructive">None found</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="max-w-[200px]">
-                            <div className="text-sm text-red-600 dark:text-red-400">
-                              {email.failure_reason}
+                          <TableCell className="max-w-[250px]">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm text-red-600 dark:text-red-400 truncate">
+                                {email.failure_reason}
+                              </span>
+                              <QuarantineFixHelper
+                                failureReason={email.failure_reason}
+                                deliveredToHeader={email.delivered_to_header}
+                                extractedAlias={email.extracted_alias}
+                                tenants={tenantAliases.map(t => ({
+                                  id: t.id,
+                                  name: t.name,
+                                  slug: t.slug,
+                                  gmail_alias: t.gmail_alias
+                                }))}
+                              />
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(email.status)}</TableCell>
