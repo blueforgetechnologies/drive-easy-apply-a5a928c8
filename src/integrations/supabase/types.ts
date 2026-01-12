@@ -2305,6 +2305,39 @@ export type Database = {
           },
         ]
       }
+      load_content: {
+        Row: {
+          canonical_payload: Json
+          fingerprint: string
+          fingerprint_version: number
+          first_seen_at: string
+          last_seen_at: string
+          provider: string | null
+          receipt_count: number
+          size_bytes: number | null
+        }
+        Insert: {
+          canonical_payload: Json
+          fingerprint: string
+          fingerprint_version: number
+          first_seen_at?: string
+          last_seen_at?: string
+          provider?: string | null
+          receipt_count?: number
+          size_bytes?: number | null
+        }
+        Update: {
+          canonical_payload?: Json
+          fingerprint?: string
+          fingerprint_version?: number
+          first_seen_at?: string
+          last_seen_at?: string
+          provider?: string | null
+          receipt_count?: number
+          size_bytes?: number | null
+        }
+        Relationships: []
+      }
       load_documents: {
         Row: {
           document_type: string | null
@@ -2379,6 +2412,7 @@ export type Database = {
           is_duplicate: boolean | null
           is_update: boolean | null
           issue_notes: string | null
+          load_content_fingerprint: string | null
           load_id: string | null
           marked_missed_at: string | null
           parent_email_id: string | null
@@ -2411,6 +2445,7 @@ export type Database = {
           is_duplicate?: boolean | null
           is_update?: boolean | null
           issue_notes?: string | null
+          load_content_fingerprint?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
           parent_email_id?: string | null
@@ -2443,6 +2478,7 @@ export type Database = {
           is_duplicate?: boolean | null
           is_update?: boolean | null
           issue_notes?: string | null
+          load_content_fingerprint?: string | null
           load_id?: string | null
           marked_missed_at?: string | null
           parent_email_id?: string | null
@@ -2463,6 +2499,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "loads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_load_emails_load_content"
+            columns: ["load_content_fingerprint"]
+            isOneToOne: false
+            referencedRelation: "load_content"
+            referencedColumns: ["fingerprint"]
           },
           {
             foreignKeyName: "load_emails_duplicate_of_id_fkey"
