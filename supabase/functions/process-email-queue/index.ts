@@ -289,6 +289,11 @@ function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<stri
     commodity: normalizeStringStrict(parsedData.commodity),
     special_instructions: normalizeStringStrict(parsedData.special_instructions),
     notes: normalizeStringStrict(parsedData.notes),
+    
+    // === Additional parsed fields (discovered in production data) ===
+    broker: normalizeStringStrict((parsedData as any).broker),
+    email: normalizeStringLower((parsedData as any).email),
+    customer_name: normalizeStringStrict((parsedData as any).customer_name),
   };
   
   return payload;
