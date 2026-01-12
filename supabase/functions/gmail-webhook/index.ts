@@ -108,16 +108,42 @@ function extractAliasFromHeaders(headers: { name: string; value: string }[]): He
   return result;
 }
 
-// Lookup tenant by custom inbound address (fallback when no +alias)
-// Uses normalized (lower + trim) comparison via the indexed column
-async function getTenantByInboundAddress(emailAddress: string): Promise<TenantInfo> {
-  const normalizedEmail = emailAddress.toLowerCase().trim();
+// Extract first email address from header value that may contain "Name <email>" or multiple recipients
+function extractFirstEmail(headerValue: string): string | null {
+  if (!headerValue) return null;
   
+  // Pattern 1: "Name <email@domain.com>" or just "<email@domain.com>"
+  const angleMatch = headerValue.match(/<([^>]+@[^>]+)>/);
+  if (angleMatch) {
+    return angleMatch[1].toLowerCase().trim();
+  }
+  
+  // Pattern 2: Plain email address (may have multiple comma-separated)
+  const plainMatch = headerValue.split(',')[0].trim();
+  if (plainMatch.includes('@')) {
+    return plainMatch.toLowerCase().trim();
+  }
+  
+  return null;
+}
+
+// Lookup tenant by custom inbound address (fallback when no +alias)
+// Uses exact match on normalized (lower + trim) email via the indexed column
+async function getTenantByInboundAddress(rawHeaderValue: string): Promise<TenantInfo> {
+  // Extract actual email from header (handles "Name <email>" format)
+  const email = extractFirstEmail(rawHeaderValue);
+  if (!email) {
+    console.log(`[gmail-webhook] Could not extract email from header value: ${rawHeaderValue.substring(0, 50)}`);
+    return { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+  }
+  
+  // Use exact match - email is already lowercased/trimmed by extractFirstEmail
+  // The DB has a unique index on lower(trim(email_address))
   const { data: mapping, error } = await supabase
     .from('tenant_inbound_addresses')
     .select('tenant_id, tenants!inner(id, name, is_paused, rate_limit_per_minute, rate_limit_per_day)')
     .eq('is_active', true)
-    .ilike('email_address', normalizedEmail)
+    .eq('email_address', email)
     .maybeSingle();
   
   if (error) {
@@ -127,7 +153,7 @@ async function getTenantByInboundAddress(emailAddress: string): Promise<TenantIn
   
   if (mapping && mapping.tenants) {
     const tenant = mapping.tenants as any;
-    console.log(`[gmail-webhook] ✅ Routed to tenant "${tenant.name}" via custom inbound address ${normalizedEmail}`);
+    console.log(`[gmail-webhook] ✅ Routed to tenant "${tenant.name}" via custom inbound address ${email}`);
     return {
       tenantId: tenant.id,
       isPaused: tenant.is_paused || false,
