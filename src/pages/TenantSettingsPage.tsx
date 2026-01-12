@@ -22,6 +22,7 @@ import {
   Copy
 } from "lucide-react";
 import InboundEmailRoutingCard from "@/components/InboundEmailRoutingCard";
+import CustomInboundAddresses from "@/components/CustomInboundAddresses";
 
 interface Tenant {
   id: string;
@@ -359,6 +360,12 @@ export default function TenantSettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Custom Inbound Addresses - Full Width */}
+      <CustomInboundAddresses
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+      />
 
       {/* Feature Flags Card - Full Width */}
       <Card>

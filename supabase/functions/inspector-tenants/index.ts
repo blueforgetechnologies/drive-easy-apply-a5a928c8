@@ -17,7 +17,8 @@ interface TenantMetrics {
   metrics: {
     users_count: number;
     drivers_count: number;
-    vehicles_count: number;
+    active_vehicles_count: number;
+    pending_vehicles_count: number;
     active_hunts_count: number;
   };
 }
@@ -109,10 +110,12 @@ Deno.serve(async (req) => {
     }
 
     // Fetch counts in parallel for efficiency (avoid N+1)
-    const [usersResult, driversResult, vehiclesResult, huntsResult] = await Promise.all([
+    // Vehicles: separate active vs pending counts for clarity
+    const [usersResult, driversResult, activeVehiclesResult, pendingVehiclesResult, huntsResult] = await Promise.all([
       serviceClient.from('tenant_users').select('tenant_id').eq('is_active', true),
       serviceClient.from('dispatchers').select('tenant_id').not('tenant_id', 'is', null),
-      serviceClient.from('vehicles').select('tenant_id').not('tenant_id', 'is', null),
+      serviceClient.from('vehicles').select('tenant_id').eq('status', 'active').not('tenant_id', 'is', null),
+      serviceClient.from('vehicles').select('tenant_id').eq('status', 'pending').not('tenant_id', 'is', null),
       serviceClient.from('hunt_plans').select('tenant_id').eq('enabled', true).not('tenant_id', 'is', null),
     ]);
 
@@ -130,7 +133,8 @@ Deno.serve(async (req) => {
 
     const userCounts = countByTenant(usersResult.data);
     const driverCounts = countByTenant(driversResult.data);
-    const vehicleCounts = countByTenant(vehiclesResult.data);
+    const activeVehicleCounts = countByTenant(activeVehiclesResult.data);
+    const pendingVehicleCounts = countByTenant(pendingVehiclesResult.data);
     const huntCounts = countByTenant(huntsResult.data);
 
     // Calculate email health status for each tenant
@@ -170,7 +174,8 @@ Deno.serve(async (req) => {
       metrics: {
         users_count: userCounts.get(tenant.id) || 0,
         drivers_count: driverCounts.get(tenant.id) || 0,
-        vehicles_count: vehicleCounts.get(tenant.id) || 0,
+        active_vehicles_count: activeVehicleCounts.get(tenant.id) || 0,
+        pending_vehicles_count: pendingVehicleCounts.get(tenant.id) || 0,
         active_hunts_count: huntCounts.get(tenant.id) || 0,
       }
     }));
