@@ -1702,11 +1702,10 @@ serve(async (req) => {
           .update({ status: 'completed', processed_at: new Date().toISOString() })
           .eq('id', item.id);
 
-        // Hunt matching - run for all loads with coordinates (cooldown RPC handles dedup)
-        // isDuplicate loads CAN re-trigger matching if cooldown has passed (60s based on received_at)
-        // The cooldown gating RPC will suppress if within cooldown window
+        // Hunt matching - run for ALL loads (new, update, duplicate) with coordinates + vehicle_type
+        // Cooldown gate controls re-triggering; we only suppress via cooldown or missing gate data
         // FAIL-CLOSED: Require fingerprint + receivedAt + tenantId for cooldown gating
-        if (insertedEmail && !isUpdate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+        if (insertedEmail && parsedData.pickup_coordinates && parsedData.vehicle_type) {
           const hasFp = loadContentFingerprint && loadContentFingerprint.trim() !== '';
           const hasReceivedAt = !!receivedAt;
           const hasTenant = !!tenantId;
@@ -1721,6 +1720,9 @@ serve(async (req) => {
           } else {
             if (isDuplicate) {
               console.log(`🔄 Duplicate load detected, attempting re-trigger via cooldown gate...`);
+            }
+            if (isUpdate) {
+              console.log(`🔄 Update detected for ${insertedEmail.load_id}, attempting match via cooldown gate...`);
             }
             matchLoadToHunts(
               insertedEmail.id, 
@@ -1766,9 +1768,10 @@ serve(async (req) => {
         }
       }
       // Only match hunts for the same tenant
+      // Include cooldown_seconds_min for configurable cooldown
       const huntQuery = supabase
         .from('hunt_plans')
-        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity, tenant_id')
+        .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity, tenant_id, cooldown_seconds_min')
         .eq('enabled', true);
       
       // Filter by tenant if provided
@@ -1863,12 +1866,28 @@ serve(async (req) => {
           continue; // FAIL-CLOSED: Cannot enforce cooldown without all gate data
         }
         
+        // Determine cooldown: hunt_plans.cooldown_seconds_min > tenants.cooldown_seconds_min > default 60
+        let cooldownSecondsMin = 60; // System default
+        if (hunt.cooldown_seconds_min != null) {
+          cooldownSecondsMin = hunt.cooldown_seconds_min;
+        } else if (effectiveTenantId) {
+          // Fetch tenant default if hunt doesn't have one
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('cooldown_seconds_min')
+            .eq('id', effectiveTenantId)
+            .maybeSingle();
+          if (tenantData?.cooldown_seconds_min != null) {
+            cooldownSecondsMin = tenantData.cooldown_seconds_min;
+          }
+        }
+        
         const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
           p_tenant_id: effectiveTenantId,
           p_hunt_plan_id: hunt.id,
           p_fingerprint: loadContentFingerprint,
           p_received_at: receivedAt.toISOString(),
-          p_cooldown_seconds: 60, // 1 minute MINIMUM cooldown
+          p_cooldown_seconds: cooldownSecondsMin,
           p_last_load_email_id: loadEmailId,
         });
         
@@ -1879,12 +1898,12 @@ serve(async (req) => {
         }
         
         if (!shouldTrigger) {
-          console.log(`[hunt-cooldown] suppressed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=60s`);
+          console.log(`[hunt-cooldown] suppressed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=${cooldownSecondsMin}s`);
           continue; // Skip this match - still in cooldown
         }
         
         // Log allowed actions for observability
-        console.log(`[hunt-cooldown] allowed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+        console.log(`[hunt-cooldown] allowed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=${cooldownSecondsMin}s`);
         
 
         await supabase.from('load_hunt_matches').insert({
