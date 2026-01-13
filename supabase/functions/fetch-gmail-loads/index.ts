@@ -945,33 +945,65 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
 
     // Cache miss - call Mapbox
     const query = encodeURIComponent(`${city}, ${state}, USA`);
+    console.log(`📍 Geocode cache MISS: ${city}, ${state} - calling Mapbox API`);
+    
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&limit=1`
     );
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data.features?.[0]?.center) {
-        const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
-        
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        await supabase
-          .from('geocode_cache')
-          .upsert({
-            location_key: locationKey,
-            city: city.trim(),
-            state: state.trim(),
-            latitude: coords.lat,
-            longitude: coords.lng,
-            month_created: currentMonth,
-          }, { onConflict: 'location_key' });
-        
-        console.log(`📍 Geocode cache MISS (stored): ${city}, ${state}`);
-        return coords;
+    // Log rate limit headers for monitoring
+    const rateLimitLimit = response.headers.get('x-rate-limit-limit');
+    const rateLimitRemaining = response.headers.get('x-rate-limit-remaining');
+    const rateLimitReset = response.headers.get('x-rate-limit-reset');
+    
+    if (rateLimitRemaining) {
+      console.log(`📍 Mapbox rate limit: ${rateLimitRemaining}/${rateLimitLimit} remaining, reset: ${rateLimitReset}`);
+    }
+    
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'Could not read body');
+      console.error(`📍 Mapbox API ERROR for "${city}, ${state}":`, {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorBody.substring(0, 500),
+        rateLimitRemaining,
+        rateLimitLimit,
+      });
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.features?.[0]?.center) {
+      const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
+      
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const { error: upsertError } = await supabase
+        .from('geocode_cache')
+        .upsert({
+          location_key: locationKey,
+          city: city.trim(),
+          state: state.trim(),
+          latitude: coords.lat,
+          longitude: coords.lng,
+          month_created: currentMonth,
+        }, { onConflict: 'location_key' });
+      
+      if (upsertError) {
+        console.error(`📍 Cache upsert FAILED for ${city}, ${state}:`, upsertError);
       }
+      
+      console.log(`📍 Geocoded & cached: ${city}, ${state} → ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+      return coords;
+    } else {
+      console.warn(`📍 Mapbox returned NO FEATURES for "${city}, ${state}"`, {
+        query: `${city}, ${state}, USA`,
+        featureCount: data.features?.length || 0,
+        attribution: data.attribution,
+      });
+      return null;
     }
   } catch (e) {
-    console.error('Geocoding error:', e);
+    console.error(`📍 Geocoding EXCEPTION for "${city}, ${state}":`, e);
   }
   return null;
 }
