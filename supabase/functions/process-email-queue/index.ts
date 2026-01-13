@@ -751,35 +751,46 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
     }
 
     // 2. Cache miss - call Mapbox API
+    console.log(`📍 Cache MISS: ${city}, ${state} - calling Mapbox API`);
     const query = encodeURIComponent(`${city}, ${state}, USA`);
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&limit=1`
     );
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data.features?.[0]?.center) {
-        const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
-        
-        // 3. Store in cache for future use
-        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-        await supabase
-          .from('geocode_cache')
-          .upsert({
-            location_key: locationKey,
-            city: city.trim(),
-            state: state.trim(),
-            latitude: coords.lat,
-            longitude: coords.lng,
-            month_created: currentMonth,
-          }, { onConflict: 'location_key' });
-        
-        console.log(`📍 Cache MISS (stored): ${city}, ${state}`);
-        return coords;
+    if (!response.ok) {
+      console.error(`📍 Mapbox API error: ${response.status} ${response.statusText} for "${city}, ${state}"`);
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.features?.[0]?.center) {
+      const coords = { lng: data.features[0].center[0], lat: data.features[0].center[1] };
+      
+      // 3. Store in cache for future use
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const { error: upsertError } = await supabase
+        .from('geocode_cache')
+        .upsert({
+          location_key: locationKey,
+          city: city.trim(),
+          state: state.trim(),
+          latitude: coords.lat,
+          longitude: coords.lng,
+          month_created: currentMonth,
+        }, { onConflict: 'location_key' });
+      
+      if (upsertError) {
+        console.error(`📍 Cache upsert error for ${city}, ${state}:`, upsertError);
       }
+      
+      console.log(`📍 Geocoded & cached: ${city}, ${state} → ${coords.lat}, ${coords.lng}`);
+      return coords;
+    } else {
+      console.error(`📍 Mapbox returned no features for "${city}, ${state}"`);
+      return null;
     }
   } catch (e) {
-    console.error('Geocoding error:', e);
+    console.error(`📍 Geocoding exception for ${city}, ${state}:`, e);
   }
   return null;
 }
