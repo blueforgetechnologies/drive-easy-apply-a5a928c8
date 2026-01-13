@@ -1702,8 +1702,13 @@ serve(async (req) => {
           .update({ status: 'completed', processed_at: new Date().toISOString() })
           .eq('id', item.id);
 
-        // Hunt matching - only for NEW loads, not updates or duplicates (avoid duplicate notifications)
-        if (insertedEmail && !isUpdate && !isDuplicate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+        // Hunt matching - run for all loads with coordinates (cooldown RPC handles dedup)
+        // isDuplicate loads CAN re-trigger matching if cooldown has passed (60s based on received_at)
+        // The cooldown gating RPC will suppress if within cooldown window
+        if (insertedEmail && !isUpdate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
+          if (isDuplicate) {
+            console.log(`🔄 Duplicate load detected, attempting re-trigger via cooldown gate...`);
+          }
           matchLoadToHunts(
             insertedEmail.id, 
             insertedEmail.load_id, 
@@ -1712,8 +1717,6 @@ serve(async (req) => {
             loadContentFingerprint, // Pass fingerprint for cooldown gating
             receivedAt // Pass received_at for cooldown comparison
           ).catch(() => {});
-        } else if (isDuplicate) {
-          console.log(`⏭️ Skipping hunt matching for duplicate load`);
         }
 
         return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id, isUpdate };

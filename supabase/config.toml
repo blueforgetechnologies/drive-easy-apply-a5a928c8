@@ -197,3 +197,18 @@ verify_jwt = true
 
 [functions.check-email-health]
 verify_jwt = false
+
+[functions.inspector-cooldown-metrics]
+verify_jwt = true
+
+[functions.check-broker-credit]
+verify_jwt = true
+
+[functions.manage-platform-integration]
+verify_jwt = true
+
+[functions.test-platform-integration]
+verify_jwt = true
+
+[functions.resolve-integration]
+verify_jwt = true

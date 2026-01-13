@@ -1382,11 +1382,27 @@ serve(async (req) => {
         // Check if email already exists
         const { data: existing } = await supabase
           .from('load_emails')
-          .select('id')
+          .select('id, load_id, received_at, load_content_fingerprint, parsed_data')
           .eq('email_id', fullMessage.id)
           .maybeSingle();
 
-        if (!existing) {
+        if (existing) {
+          // Email exists - still try matching via cooldown gate for re-trigger
+          // The cooldown RPC will suppress if within 60s window
+          const existingParsed = existing.parsed_data as any;
+          if (existingParsed?.pickup_coordinates && existingParsed?.vehicle_type && existing.load_content_fingerprint) {
+            console.log(`🔄 Existing email ${existing.load_id}, attempting re-trigger via cooldown gate...`);
+            const existingReceivedAt = existing.received_at ? new Date(existing.received_at) : new Date();
+            matchLoadToHunts(
+              existing.id,
+              existing.load_id,
+              existingParsed,
+              effectiveTenantId,
+              existing.load_content_fingerprint,
+              existingReceivedAt
+            ).catch(e => console.error('Hunt matching error (existing):', e));
+          }
+        } else {
           // ====================================================================
           // FINGERPRINT + LOAD_CONTENT INSERT/UPDATE
           // Provider is REQUIRED to prevent cross-provider dedup
