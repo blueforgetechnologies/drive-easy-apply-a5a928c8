@@ -1035,41 +1035,45 @@ export default function EmailRoutingHealthTab() {
                       {loadContentProviders.map((p) => (
                         <TableRow key={p.provider}>
                           <TableCell className="font-medium capitalize">{p.provider}</TableCell>
-                          <TableCell className="text-right">{p.receipts}</TableCell>
-                          <TableCell className="text-right">{p.eligible}</TableCell>
-                          <TableCell className="text-right">{p.eligible_with_fk}</TableCell>
-                          <TableCell className="text-right">
-                            {p.eligible === 0 ? (
-                              <span className="text-muted-foreground">-</span>
-                            ) : (
-                              <Badge className={
-                                p.coverage_rate >= 95 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
-                                  : p.coverage_rate >= 80 
-                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
-                              }>
-                                {p.coverage_rate}%
-                              </Badge>
-                            )}
+                          <TableCell className="text-right tabular-nums">{p.receipts}</TableCell>
+                          <TableCell className="text-right tabular-nums">{p.eligible}</TableCell>
+                          <TableCell className="text-right tabular-nums">{p.eligible_with_fk}</TableCell>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              {p.eligible === 0 ? (
+                                <span className="text-muted-foreground">-</span>
+                              ) : (
+                                <Badge className={
+                                  p.coverage_rate >= 95 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
+                                    : p.coverage_rate >= 80 
+                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
+                                }>
+                                  {p.coverage_rate}%
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right tabular-nums">
                             {p.provider === 'other' || p.eligible_with_fk === 0 ? '-' : p.unique_content}
                           </TableCell>
-                          <TableCell className="text-right">
-                            {p.provider === 'other' || p.eligible_with_fk === 0 ? (
-                              <span className="text-muted-foreground">N/A</span>
-                            ) : (
-                              <Badge className={
-                                p.reuse_rate >= 50 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
-                                  : p.reuse_rate >= 20 
-                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-                                    : 'bg-muted text-muted-foreground'
-                              }>
-                                {p.reuse_rate}%
-                              </Badge>
-                            )}
+                          <TableCell>
+                            <div className="flex justify-end">
+                              {p.provider === 'other' || p.eligible_with_fk === 0 ? (
+                                <span className="text-muted-foreground">N/A</span>
+                              ) : (
+                                <Badge className={
+                                  p.reuse_rate >= 50 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
+                                    : p.reuse_rate >= 20 
+                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                                      : 'bg-muted text-muted-foreground'
+                                }>
+                                  {p.reuse_rate}%
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
