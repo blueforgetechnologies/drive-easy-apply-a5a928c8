@@ -1971,6 +1971,7 @@ export type Database = {
           available_date: string | null
           available_feet: string | null
           available_time: string | null
+          cooldown_seconds_min: number | null
           created_at: string
           created_by: string | null
           destination_radius: string | null
@@ -1999,6 +2000,7 @@ export type Database = {
           available_date?: string | null
           available_feet?: string | null
           available_time?: string | null
+          cooldown_seconds_min?: number | null
           created_at?: string
           created_by?: string | null
           destination_radius?: string | null
@@ -2027,6 +2029,7 @@ export type Database = {
           available_date?: string | null
           available_feet?: string | null
           available_time?: string | null
+          cooldown_seconds_min?: number | null
           created_at?: string
           created_by?: string | null
           destination_radius?: string | null
@@ -5178,6 +5181,7 @@ export type Database = {
           api_key_hash: string | null
           carrier_address: string | null
           carrier_name: string | null
+          cooldown_seconds_min: number | null
           created_at: string
           daily_usage_count: number | null
           daily_usage_reset_at: string | null
@@ -5208,6 +5212,7 @@ export type Database = {
           api_key_hash?: string | null
           carrier_address?: string | null
           carrier_name?: string | null
+          cooldown_seconds_min?: number | null
           created_at?: string
           daily_usage_count?: number | null
           daily_usage_reset_at?: string | null
@@ -5238,6 +5243,7 @@ export type Database = {
           api_key_hash?: string | null
           carrier_address?: string | null
           carrier_name?: string | null
+          cooldown_seconds_min?: number | null
           created_at?: string
           daily_usage_count?: number | null
           daily_usage_reset_at?: string | null
