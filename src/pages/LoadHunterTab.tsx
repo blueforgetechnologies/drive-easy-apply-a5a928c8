@@ -3606,7 +3606,6 @@ export default function LoadHunterTab() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-0.5 pr-16">
                       <div className="font-medium text-sm leading-tight text-carved truncate">
-                        <span className="text-[10px] text-muted-foreground font-mono mr-1">[{vehicle.tenant_id?.slice(0, 6)}]</span>
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
                       <div className="text-xs text-carved-light leading-tight truncate">
