@@ -1441,6 +1441,7 @@ serve(async (req) => {
           let loadContentFingerprint: string | null = null;
           let dedupEligible = false;
           let dedupEligibleReason: string | null = 'provider_unknown';
+          let fingerprintMissingReason: string | null = 'provider_unknown';
           
           // REQUIRED: emailSource must be known for fingerprinting
           if (emailSource && (emailSource === 'fullcircle' || emailSource === 'sylectus')) {
@@ -1448,6 +1449,7 @@ serve(async (req) => {
             parsedLoadFingerprint = fingerprintResult.fingerprint;
             dedupEligible = fingerprintResult.dedupEligible;
             dedupEligibleReason = fingerprintResult.dedupEligibleReason;
+            fingerprintMissingReason = dedupEligible ? null : dedupEligibleReason;
             const canonicalPayload = fingerprintResult.canonicalPayload;
             
             console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Provider: ${emailSource} | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
@@ -1484,24 +1486,30 @@ serve(async (req) => {
                   
                   if (rpcError) {
                     console.warn(`⚠️ load_content increment RPC failed: ${rpcError.message}`);
+                    fingerprintMissingReason = 'load_content_upsert_failed';
                   } else {
                     loadContentFingerprint = parsedLoadFingerprint;
+                    fingerprintMissingReason = null;
                     console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
                   }
                 } else {
                   // Not a conflict - log the actual error
                   console.warn(`⚠️ load_content insert failed: ${lcInsertError.message}`);
+                  fingerprintMissingReason = 'load_content_upsert_failed';
                 }
               } else {
                 // Step C: INSERT succeeded
                 loadContentFingerprint = parsedLoadFingerprint;
+                fingerprintMissingReason = null;
                 console.log(`📦 load_content inserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
               }
             } else {
               console.log(`⚠️ Skipping load_content: ${dedupEligibleReason}`);
+              fingerprintMissingReason = dedupEligibleReason || 'not_dedup_eligible';
             }
           } else {
-            console.log(`⚠️ Skipping fingerprint: emailSource is null or unknown`);
+            console.warn(`⚠️ [fingerprint] MISSING fingerprint | tenant=${effectiveTenantId} | source=${emailSource} | ingestion=fetch-gmail-loads | reason=provider_unknown`);
+            fingerprintMissingReason = 'provider_unknown';
           }
           
           // Determine geocoding status:
@@ -1534,6 +1542,7 @@ serve(async (req) => {
               parsed_load_fingerprint: parsedLoadFingerprint,
               load_content_fingerprint: loadContentFingerprint,
               dedup_eligible: dedupEligible,
+              fingerprint_missing_reason: fingerprintMissingReason, // Reason if fingerprint/FK is missing
               // Attribution & geocoding tracking
               ingestion_source: 'fetch-gmail-loads',
               geocoding_status: geocodingStatus,

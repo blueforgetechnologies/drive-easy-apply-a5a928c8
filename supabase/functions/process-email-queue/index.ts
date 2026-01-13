@@ -211,10 +211,12 @@ function normalizeStops(stops: any): any[] | null {
 // Build canonical payload for fingerprinting from parsed_data
 // Uses STRICT normalization: null for missing, no defaults
 // Includes ALL fields from ParsedEmailData for 100% exact-match dedup
-function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<string, any> {
+// CRITICAL: provider is REQUIRED to prevent cross-provider dedup collisions
+function buildCanonicalLoadPayload(parsedData: Record<string, any>, provider: string): Record<string, any> {
   const payload: Record<string, any> = {
     // === Fingerprint metadata ===
     fingerprint_version: FINGERPRINT_VERSION,
+    provider: provider.toLowerCase(), // REQUIRED - prevents cross-provider dedup
     
     // === Broker info (case-insensitive for email) ===
     broker_name: normalizeStringStrict(parsedData.broker_name),
@@ -335,42 +337,83 @@ function isDedupEligible(canonicalPayload: Record<string, any>): { eligible: boo
 
 // Compute SHA256 fingerprint of parsed load data
 // Returns fingerprint, canonical payload, and eligibility
-async function computeParsedLoadFingerprint(parsedData: Record<string, any>): Promise<{
-  fingerprint: string;
-  canonicalPayload: Record<string, any>;
+// CRITICAL: provider is REQUIRED to prevent cross-provider dedup collisions
+async function computeParsedLoadFingerprint(
+  parsedData: Record<string, any>,
+  provider: string
+): Promise<{
+  fingerprint: string | null;
+  canonicalPayload: Record<string, any> | null;
   dedupEligible: boolean;
   dedupEligibleReason: string | null;
+  fingerprintMissingReason: string | null;
 }> {
-  const canonicalPayload = buildCanonicalLoadPayload(parsedData);
-  const eligibility = isDedupEligible(canonicalPayload);
-  
-  // Sort keys for deterministic serialization (deep sort for nested objects)
-  function sortObjectKeys(obj: any): any {
-    if (obj === null || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return obj.map(sortObjectKeys);
-    const sorted: Record<string, any> = {};
-    for (const key of Object.keys(obj).sort()) {
-      sorted[key] = sortObjectKeys(obj[key]);
-    }
-    return sorted;
+  // Guard: provider is required
+  if (!provider) {
+    console.error(`[fingerprint] MISSING PROVIDER - cannot compute fingerprint`);
+    return {
+      fingerprint: null,
+      canonicalPayload: null,
+      dedupEligible: false,
+      dedupEligibleReason: 'provider_missing',
+      fingerprintMissingReason: 'provider_missing',
+    };
   }
   
-  const sortedPayload = sortObjectKeys(canonicalPayload);
-  const payloadString = JSON.stringify(sortedPayload);
+  // Guard: parsedData is required
+  if (!parsedData || typeof parsedData !== 'object') {
+    console.error(`[fingerprint] MISSING PARSED_DATA - cannot compute fingerprint`);
+    return {
+      fingerprint: null,
+      canonicalPayload: null,
+      dedupEligible: false,
+      dedupEligibleReason: 'missing_parsed_data',
+      fingerprintMissingReason: 'missing_parsed_data',
+    };
+  }
   
-  // Compute SHA256
-  const encoder = new TextEncoder();
-  const data = encoder.encode(payloadString);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    const canonicalPayload = buildCanonicalLoadPayload(parsedData, provider);
+    const eligibility = isDedupEligible(canonicalPayload);
   
-  return {
-    fingerprint,
-    canonicalPayload: sortedPayload,
-    dedupEligible: eligibility.eligible,
-    dedupEligibleReason: eligibility.reason,
-  };
+  // Sort keys for deterministic serialization (deep sort for nested objects)
+    function sortObjectKeys(obj: any): any {
+      if (obj === null || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+      const sorted: Record<string, any> = {};
+      for (const key of Object.keys(obj).sort()) {
+        sorted[key] = sortObjectKeys(obj[key]);
+      }
+      return sorted;
+    }
+    
+    const sortedPayload = sortObjectKeys(canonicalPayload);
+    const payloadString = JSON.stringify(sortedPayload);
+    
+    // Compute SHA256
+    const encoder = new TextEncoder();
+    const data = encoder.encode(payloadString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return {
+      fingerprint,
+      canonicalPayload: sortedPayload,
+      dedupEligible: eligibility.eligible,
+      dedupEligibleReason: eligibility.reason,
+      fingerprintMissingReason: null, // Fingerprint computed successfully
+    };
+  } catch (error) {
+    console.error(`[fingerprint] EXCEPTION during fingerprint computation: ${error}`);
+    return {
+      fingerprint: null,
+      canonicalPayload: null,
+      dedupEligible: false,
+      dedupEligibleReason: 'exception_during_compute',
+      fingerprintMissingReason: 'exception_during_compute',
+    };
+  }
 }
 
 // Check for existing load with same fingerprint in same tenant
@@ -1567,18 +1610,31 @@ serve(async (req) => {
         // ====================================================================
         // PARSED LOAD FINGERPRINT - Strict Exact-match deduplication
         // Computes SHA256 of ALL parsed fields with meaning-preserving normalization
+        // Provider is REQUIRED to prevent cross-provider collisions
         // ====================================================================
-        const fingerprintResult = await computeParsedLoadFingerprint(parsedData);
-        const { fingerprint: parsedLoadFingerprint, canonicalPayload, dedupEligible, dedupEligibleReason } = fingerprintResult;
+        const fingerprintResult = await computeParsedLoadFingerprint(parsedData, emailSource || 'unknown');
+        const { 
+          fingerprint: parsedLoadFingerprint, 
+          canonicalPayload, 
+          dedupEligible, 
+          dedupEligibleReason,
+          fingerprintMissingReason 
+        } = fingerprintResult;
         
-        console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
+        // Log fingerprint result with diagnostic info
+        if (parsedLoadFingerprint) {
+          console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
+        } else {
+          console.warn(`⚠️ [fingerprint] MISSING fingerprint | tenant=${tenantId} | source=${emailSource} | ingestion=process-email-queue | reason=${fingerprintMissingReason}`);
+        }
         
         let isDuplicate = false;
         let duplicateOfId: string | null = null;
         let loadContentFingerprint: string | null = null;
+        let loadContentMissingReason: string | null = fingerprintMissingReason;
         
-        // Only check for duplicates if the load is eligible (has critical fields)
-        if (dedupEligible) {
+        // Only check for duplicates if the load is eligible AND fingerprint was computed
+        if (dedupEligible && parsedLoadFingerprint) {
           // Check for exact duplicate (same fingerprint within tenant in last 7 days)
           const existingDuplicate = await findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168);
           
@@ -1623,16 +1679,25 @@ serve(async (req) => {
             
             if (updateError) {
               console.warn(`⚠️ load_content upsert/update failed: ${loadContentError.message || updateError.message}`);
+              loadContentMissingReason = 'load_content_upsert_failed';
             } else {
               loadContentFingerprint = parsedLoadFingerprint;
+              loadContentMissingReason = null;
               console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
             }
           } else {
             loadContentFingerprint = parsedLoadFingerprint;
+            loadContentMissingReason = null;
             console.log(`📦 load_content upserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
           }
+        } else if (dedupEligible && !parsedLoadFingerprint) {
+          // Eligible but fingerprint missing - log this anomaly
+          console.warn(`⚠️ [fingerprint] Dedup eligible but fingerprint NULL | tenant=${tenantId} | source=${emailSource} | reason=${fingerprintMissingReason}`);
+          loadContentMissingReason = fingerprintMissingReason || 'fingerprint_null_despite_eligible';
         } else {
+          // Not eligible - record reason
           console.log(`⚠️ Skipping dedup check: ${dedupEligibleReason}`);
+          loadContentMissingReason = dedupEligibleReason || 'not_dedup_eligible';
         }
         
         // Also check legacy content hash for "update" detection (different from exact duplicate)
@@ -1678,14 +1743,15 @@ serve(async (req) => {
             tenant_id: tenantId,
             raw_payload_url: item.payload_url || null,
             content_hash: contentHash, // Legacy dedup
-            parsed_load_fingerprint: parsedLoadFingerprint, // Exact-match dedup
+            parsed_load_fingerprint: parsedLoadFingerprint, // Exact-match dedup (may be null)
             is_update: isUpdate,
             is_duplicate: isDuplicate,
             duplicate_of_id: duplicateOfId,
             parent_email_id: parentEmailId,
             dedup_eligible: dedupEligible,
             dedup_canonical_payload: isDuplicate ? canonicalPayload : null, // Store payload only for duplicates (for debugging)
-            load_content_fingerprint: loadContentFingerprint, // FK to global load_content table
+            load_content_fingerprint: loadContentFingerprint, // FK to global load_content table (only if eligible)
+            fingerprint_missing_reason: loadContentMissingReason, // Reason if fingerprint/FK is missing
             // Attribution & geocoding tracking
             ingestion_source: 'process-email-queue',
             geocoding_status: geocodingStatus,

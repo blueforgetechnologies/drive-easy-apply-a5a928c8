@@ -212,3 +212,6 @@ verify_jwt = true
 
 [functions.resolve-integration]
 verify_jwt = true
+
+[functions.backfill-fingerprints]
+verify_jwt = true
