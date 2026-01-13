@@ -2407,8 +2407,11 @@ export type Database = {
           expires_at: string | null
           from_email: string
           from_name: string | null
+          geocoding_error_code: string | null
+          geocoding_status: string | null
           has_issues: boolean | null
           id: string
+          ingestion_source: string | null
           is_duplicate: boolean | null
           is_update: boolean | null
           issue_notes: string | null
@@ -2440,8 +2443,11 @@ export type Database = {
           expires_at?: string | null
           from_email: string
           from_name?: string | null
+          geocoding_error_code?: string | null
+          geocoding_status?: string | null
           has_issues?: boolean | null
           id?: string
+          ingestion_source?: string | null
           is_duplicate?: boolean | null
           is_update?: boolean | null
           issue_notes?: string | null
@@ -2473,8 +2479,11 @@ export type Database = {
           expires_at?: string | null
           from_email?: string
           from_name?: string | null
+          geocoding_error_code?: string | null
+          geocoding_status?: string | null
           has_issues?: boolean | null
           id?: string
+          ingestion_source?: string | null
           is_duplicate?: boolean | null
           is_update?: boolean | null
           issue_notes?: string | null

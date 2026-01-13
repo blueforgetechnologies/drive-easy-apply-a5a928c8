@@ -1599,6 +1599,13 @@ serve(async (req) => {
           console.log(`🔄 Detected update to existing load ${existingSimilarLoad.load_id} (original from ${existingSimilarLoad.received_at})`);
         }
 
+        // Determine geocoding status based on parsed coordinates
+        const hasCoordinates = parsedData.pickup_coordinates?.lat && parsedData.pickup_coordinates?.lng;
+        const geocodingStatus = hasCoordinates ? 'success' : 'pending';
+        const geocodingErrorCode = hasIssues && issueNotes.some((n: string) => n.includes('Geocoding')) 
+          ? 'geocoding_failed' 
+          : null;
+
         // Insert into load_emails with tenant_id, content_hash, fingerprint and dedup fields
         const { data: insertedEmail, error: insertError } = await supabase
           .from('load_emails')
@@ -1628,6 +1635,10 @@ serve(async (req) => {
             dedup_eligible: dedupEligible,
             dedup_canonical_payload: isDuplicate ? canonicalPayload : null, // Store payload only for duplicates (for debugging)
             load_content_fingerprint: loadContentFingerprint, // FK to global load_content table
+            // Attribution & geocoding tracking
+            ingestion_source: 'process-email-queue',
+            geocoding_status: geocodingStatus,
+            geocoding_error_code: geocodingErrorCode,
           }, { onConflict: 'email_id' })
           .select('id, load_id, received_at')
           .single();
