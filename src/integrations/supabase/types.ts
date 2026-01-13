@@ -6344,6 +6344,16 @@ export type Database = {
       get_current_tenant_id: { Args: never; Returns: string }
       get_default_tenant_id: { Args: never; Returns: string }
       get_email_queue_pending_count: { Args: never; Returns: number }
+      get_multi_match_fingerprints: {
+        Args: never
+        Returns: {
+          first_received: string
+          hunt_plan_id: string
+          last_received: string
+          load_content_fingerprint: string
+          match_count: number
+        }[]
+      }
       get_tenant_integrations_safe: {
         Args: { p_tenant_id: string }
         Returns: {
