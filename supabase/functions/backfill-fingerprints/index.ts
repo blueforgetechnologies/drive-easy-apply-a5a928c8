@@ -304,7 +304,7 @@ serve(async (req) => {
     console.log(`[backfill] Starting fingerprint backfill | daysBack=${daysBack} | cutoff=${cutoffDate} | dryRun=${dryRun} | maxBatches=${maxBatches}`);
     
     // ========================================================================
-    // PHASE 1: Find rows missing parsed_load_fingerprint (with pagination)
+    // PHASE 1: Find rows missing parsed_load_fingerprint (with deterministic pagination)
     // ========================================================================
     const parsedFpStats: Record<string, { updated: number; failed: number; skipped: number }> = {};
     let parsedFpUpdated = 0;
@@ -313,13 +313,27 @@ serve(async (req) => {
     let parsedFpBatches = 0;
     let parsedFpTotalCandidates = 0;
     
+    // Cursor-based pagination: (received_at, id)
+    let lastReceivedAt: string | null = null;
+    let lastId: string | null = null;
+    
     while (parsedFpBatches < maxBatches) {
-      const { data: missingParsedFp, error: mpfError } = await supabase
+      // Build query with cursor-based pagination
+      let query = supabase
         .from('load_emails')
-        .select('id, tenant_id, email_source, ingestion_source, parsed_data')
+        .select('id, tenant_id, email_source, ingestion_source, parsed_data, received_at')
         .gte('received_at', cutoffDate)
         .is('parsed_load_fingerprint', null)
+        .order('received_at', { ascending: true })
+        .order('id', { ascending: true })
         .limit(batchSize);
+      
+      // Apply cursor if we have one
+      if (lastReceivedAt && lastId) {
+        query = query.or(`received_at.gt.${lastReceivedAt},and(received_at.eq.${lastReceivedAt},id.gt.${lastId})`);
+      }
+      
+      const { data: missingParsedFp, error: mpfError } = await query;
       
       if (mpfError) {
         console.error(`[backfill] Error fetching missing parsed_load_fingerprint: ${mpfError.message}`);
@@ -395,10 +409,15 @@ serve(async (req) => {
           parsedFpUpdated++;
         }
       }
+      
+      // Update cursor for next batch
+      const lastRow = missingParsedFp[missingParsedFp.length - 1];
+      lastReceivedAt = lastRow.received_at;
+      lastId = lastRow.id;
     }
     
     // ========================================================================
-    // PHASE 2: Find dedup_eligible rows missing load_content_fingerprint (with pagination)
+    // PHASE 2: Find dedup_eligible rows missing load_content_fingerprint (deterministic pagination)
     // ========================================================================
     const contentFkStats: Record<string, { updated: number; failed: number }> = {};
     let contentFkUpdated = 0;
@@ -406,15 +425,29 @@ serve(async (req) => {
     let contentFkBatches = 0;
     let contentFkTotalCandidates = 0;
     
+    // Reset cursor for Phase 2
+    let phase2LastReceivedAt: string | null = null;
+    let phase2LastId: string | null = null;
+    
     while (contentFkBatches < maxBatches) {
-      const { data: missingContentFk, error: mcfError } = await supabase
+      // Build query with cursor-based pagination
+      let p2Query = supabase
         .from('load_emails')
-        .select('id, tenant_id, email_source, ingestion_source, parsed_data, parsed_load_fingerprint')
+        .select('id, tenant_id, email_source, ingestion_source, parsed_data, parsed_load_fingerprint, received_at')
         .gte('received_at', cutoffDate)
         .eq('dedup_eligible', true)
         .is('load_content_fingerprint', null)
         .not('parsed_load_fingerprint', 'is', null)
+        .order('received_at', { ascending: true })
+        .order('id', { ascending: true })
         .limit(batchSize);
+      
+      // Apply cursor if we have one
+      if (phase2LastReceivedAt && phase2LastId) {
+        p2Query = p2Query.or(`received_at.gt.${phase2LastReceivedAt},and(received_at.eq.${phase2LastReceivedAt},id.gt.${phase2LastId})`);
+      }
+      
+      const { data: missingContentFk, error: mcfError } = await p2Query;
       
       if (mcfError) {
         console.error(`[backfill] Error fetching missing load_content_fingerprint: ${mcfError.message}`);
@@ -452,30 +485,17 @@ serve(async (req) => {
           const canonicalPayloadJson = JSON.stringify(result.canonicalPayload);
           const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
           
-          // Upsert into load_content (provider removed from fingerprint logic)
-          const { error: lcError } = await supabase
-            .from('load_content')
-            .upsert({
-              fingerprint: result.fingerprint,
-              canonical_payload: result.canonicalPayload,
-              first_seen_at: new Date().toISOString(),
-              last_seen_at: new Date().toISOString(),
-              receipt_count: 1,
-              fingerprint_version: FINGERPRINT_VERSION,
-              size_bytes: sizeBytes,
-            }, { onConflict: 'fingerprint', ignoreDuplicates: false });
+          // Use unified RPC: upsert_load_content (handles insert/increment atomically)
+          const { error: upsertError } = await supabase.rpc('upsert_load_content', {
+            p_fingerprint: result.fingerprint,
+            p_canonical_payload: result.canonicalPayload,
+            p_fingerprint_version: FINGERPRINT_VERSION,
+            p_size_bytes: sizeBytes,
+            p_provider: row.email_source || null,
+          });
           
-          if (lcError) {
-            // Try update fallback and increment receipt_count
-            await supabase
-              .from('load_content')
-              .update({ last_seen_at: new Date().toISOString() })
-              .eq('fingerprint', result.fingerprint);
-            
-            // Increment receipt_count atomically
-            await supabase.rpc('increment_load_content_receipt_count', { 
-              p_fingerprint: result.fingerprint 
-            });
+          if (upsertError) {
+            console.warn(`[backfill] load_content upsert failed for ${row.id}: ${upsertError.message}`);
           }
           
           // Update load_emails with FK
@@ -500,6 +520,11 @@ serve(async (req) => {
           contentFkUpdated++;
         }
       }
+      
+      // Update cursor for next batch
+      const lastRowP2 = missingContentFk[missingContentFk.length - 1];
+      phase2LastReceivedAt = lastRowP2.received_at;
+      phase2LastId = lastRowP2.id;
     }
     
     const response = {

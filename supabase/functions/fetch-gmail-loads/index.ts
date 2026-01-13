@@ -1486,50 +1486,23 @@ serve(async (req) => {
             const canonicalPayloadJson = JSON.stringify(canonicalPayload);
             const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
             
-            // Step A: Try INSERT first (new row)
-            const { error: lcInsertError } = await supabase
-              .from('load_content')
-              .insert({
-                fingerprint: parsedLoadFingerprint,
-                canonical_payload: canonicalPayload,
-                first_seen_at: new Date().toISOString(),
-                last_seen_at: new Date().toISOString(),
-                receipt_count: 1,
-                provider: emailSource,
-                fingerprint_version: FINGERPRINT_VERSION,
-                size_bytes: sizeBytes,
-              });
+            // Use unified RPC: upsert_load_content (handles insert/increment atomically)
+            const { data: upsertResult, error: upsertError } = await supabase.rpc('upsert_load_content', {
+              p_fingerprint: parsedLoadFingerprint,
+              p_canonical_payload: canonicalPayload,
+              p_fingerprint_version: FINGERPRINT_VERSION,
+              p_size_bytes: sizeBytes,
+              p_provider: emailSource || null,
+            });
             
-            if (lcInsertError) {
-              // Check if it's a unique violation (conflict)
-              const isConflict = lcInsertError.code === '23505' || 
-                                 lcInsertError.message?.includes('duplicate key') ||
-                                 lcInsertError.message?.includes('already exists');
-              
-              if (isConflict) {
-                // Step B: Conflict - UPDATE existing row via RPC (atomic increment)
-                const { error: rpcError } = await supabase.rpc('increment_load_content_receipt_count', { 
-                  p_fingerprint: parsedLoadFingerprint 
-                });
-                
-                if (rpcError) {
-                  console.warn(`⚠️ load_content increment RPC failed: ${rpcError.message}`);
-                  fingerprintMissingReason = 'load_content_upsert_failed';
-                } else {
-                  loadContentFingerprint = parsedLoadFingerprint;
-                  fingerprintMissingReason = null;
-                  console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
-                }
-              } else {
-                // Not a conflict - log the actual error
-                console.warn(`⚠️ load_content insert failed: ${lcInsertError.message}`);
-                fingerprintMissingReason = 'load_content_upsert_failed';
-              }
+            if (upsertError) {
+              console.warn(`⚠️ load_content upsert RPC failed: ${upsertError.message}`);
+              fingerprintMissingReason = 'load_content_upsert_failed';
             } else {
-              // Step C: INSERT succeeded
               loadContentFingerprint = parsedLoadFingerprint;
               fingerprintMissingReason = null;
-              console.log(`📦 load_content inserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
+              const action = upsertResult?.action || 'unknown';
+              console.log(`📦 load_content ${action}: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
             }
           } else if (!parsedLoadFingerprint) {
             // Fingerprint couldn't be computed - keep fingerprintMissingReason

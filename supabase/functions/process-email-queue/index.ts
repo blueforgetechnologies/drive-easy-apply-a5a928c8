@@ -1631,58 +1631,30 @@ serve(async (req) => {
             console.log(`🔄 DUPLICATE detected: matches ${existingDuplicate.load_id} (fingerprint: ${parsedLoadFingerprint.substring(0, 12)})`);
           }
           
-          // ====================================================================
-          // CROSS-TENANT DEDUP: UPSERT into global load_content table
-          // Use INSERT then atomic RPC increment on conflict for receipt_count
-          // ====================================================================
-          const canonicalPayloadJson = JSON.stringify(canonicalPayload);
-          const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
-          
-          // Step 1: Try INSERT first (new fingerprint)
-          const { error: insertError } = await supabase
-            .from('load_content')
-            .insert({
-              fingerprint: parsedLoadFingerprint,
-              canonical_payload: canonicalPayload,
-              first_seen_at: new Date().toISOString(),
-              last_seen_at: new Date().toISOString(),
-              receipt_count: 1,
-              provider: emailSource || null,
-              fingerprint_version: FINGERPRINT_VERSION,
-              size_bytes: sizeBytes,
-            });
-          
-          if (insertError) {
-            // Check if conflict (row already exists)
-            const isConflict = insertError.code === '23505' || 
-                               insertError.message?.includes('duplicate key') ||
-                               insertError.message?.includes('already exists');
-            
-            if (isConflict) {
-              // Step 2: Conflict - use RPC for atomic increment of receipt_count
-              const { error: rpcError } = await supabase.rpc('increment_load_content_receipt_count', { 
-                p_fingerprint: parsedLoadFingerprint 
-              });
-              
-              if (rpcError) {
-                console.warn(`⚠️ load_content increment RPC failed: ${rpcError.message}`);
-                loadContentMissingReason = 'load_content_upsert_failed';
-              } else {
-                loadContentFingerprint = parsedLoadFingerprint;
-                loadContentMissingReason = null;
-                console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
-              }
-            } else {
-              // Non-conflict error
-              console.warn(`⚠️ load_content insert failed: ${insertError.message}`);
-              loadContentMissingReason = 'load_content_upsert_failed';
-            }
-          } else {
-            // Insert succeeded
-            loadContentFingerprint = parsedLoadFingerprint;
-            loadContentMissingReason = null;
-            console.log(`📦 load_content inserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
-          }
+        // ====================================================================
+        // CROSS-TENANT DEDUP: UPSERT into global load_content table
+        // Use unified RPC: upsert_load_content (handles insert/increment atomically)
+        // ====================================================================
+        const canonicalPayloadJson = JSON.stringify(canonicalPayload);
+        const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
+        
+        const { data: upsertResult, error: upsertError } = await supabase.rpc('upsert_load_content', {
+          p_fingerprint: parsedLoadFingerprint,
+          p_canonical_payload: canonicalPayload,
+          p_fingerprint_version: FINGERPRINT_VERSION,
+          p_size_bytes: sizeBytes,
+          p_provider: emailSource || null,
+        });
+        
+        if (upsertError) {
+          console.warn(`⚠️ load_content upsert RPC failed: ${upsertError.message}`);
+          loadContentMissingReason = 'load_content_upsert_failed';
+        } else {
+          loadContentFingerprint = parsedLoadFingerprint;
+          loadContentMissingReason = null;
+          const action = upsertResult?.action || 'unknown';
+          console.log(`📦 load_content ${action}: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
+        }
         } else if (!parsedLoadFingerprint) {
           // Fingerprint couldn't be computed - keep fingerprintMissingReason
           console.warn(`⚠️ [fingerprint] Could not compute fingerprint | tenant=${tenantId} | source=${emailSource} | reason=${fingerprintMissingReason}`);

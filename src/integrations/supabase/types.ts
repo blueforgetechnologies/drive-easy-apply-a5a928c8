@@ -6413,10 +6413,6 @@ export type Database = {
         Args: { _role: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      increment_load_content_receipt_count: {
-        Args: { p_fingerprint: string }
-        Returns: undefined
-      }
       is_email_invited: { Args: { check_email: string }; Returns: boolean }
       is_feature_enabled: {
         Args: { _feature_key: string; _tenant_id: string; _user_role?: string }
@@ -6443,6 +6439,16 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: boolean
+      }
+      upsert_load_content: {
+        Args: {
+          p_canonical_payload: Json
+          p_fingerprint: string
+          p_fingerprint_version?: number
+          p_provider?: string
+          p_size_bytes?: number
+        }
+        Returns: Json
       }
       worker_heartbeat: {
         Args: {

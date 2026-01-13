@@ -135,6 +135,9 @@ verify_jwt = true
 [functions.inspector-billing]
 verify_jwt = true
 
+[functions.inspector-dedup-health]
+verify_jwt = true
+
 [functions.stripe-webhook]
 verify_jwt = false
 
