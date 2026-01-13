@@ -1386,6 +1386,10 @@ serve(async (req) => {
             console.log(`⚠️ Skipping fingerprint: emailSource is null or unknown`);
           }
           
+          // Determine geocoding status based on parsed coordinates
+          const hasCoordinates = parsedData.pickup_coordinates?.lat && parsedData.pickup_coordinates?.lng;
+          const geocodingStatus = hasCoordinates ? 'success' : 'pending';
+          
           // CRITICAL: Insert with tenant_id for proper scoping
           const { data: inserted, error: insertError } = await supabase
             .from('load_emails')
@@ -1407,6 +1411,9 @@ serve(async (req) => {
               parsed_load_fingerprint: parsedLoadFingerprint,
               load_content_fingerprint: loadContentFingerprint,
               dedup_eligible: dedupEligible,
+              // Attribution & geocoding tracking
+              ingestion_source: 'fetch-gmail-loads',
+              geocoding_status: geocodingStatus,
             })
             .select('id, load_id')
             .single();
