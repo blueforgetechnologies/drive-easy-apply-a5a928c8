@@ -127,33 +127,46 @@ export async function matchLoadToHunts(
     if (existingMatch && existingMatch > 0) continue;
 
     // COOLDOWN GATING: Check if we should trigger action for this fingerprint
-    // Default cooldown is 60 seconds (1 minute) to allow re-triggering
-    // FAIL-CLOSED: If RPC errors, suppress the match to prevent duplicates
-    const huntTenantId = tenantId || hunt.tenant_id;
-    if (loadContentFingerprint && huntTenantId && receivedAt) {
-      const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
-        p_tenant_id: huntTenantId,
-        p_hunt_plan_id: hunt.id,
-        p_fingerprint: loadContentFingerprint,
-        p_received_at: receivedAt.toISOString(),
-        p_cooldown_seconds: 60, // 1 minute cooldown
-        p_last_load_email_id: loadEmailId,
-      });
-      
-      if (cooldownError) {
-        // FAIL-CLOSED: On RPC error, suppress match to prevent duplicates
-        console.error(`[hunt-cooldown] RPC error (SUPPRESSING match):`, cooldownError);
-        continue; // Skip this match - gate is unhealthy
-      }
-      
-      if (!shouldTrigger) {
-        console.log(`[hunt-cooldown] suppressed tenant=${huntTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=60s`);
-        continue; // Skip this match - still in cooldown
-      }
-      
-      // Log allowed actions for observability
-      console.log(`[hunt-cooldown] allowed tenant=${huntTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+    // Cooldown is a MINIMUM threshold: suppress if delta < cooldown; allow if delta >= cooldown. No upper bound.
+    // FAIL-CLOSED: If any gate data missing or RPC errors, suppress the match to prevent duplicates
+    const effectiveTenantId = tenantId || hunt.tenant_id;
+    const hasFp = loadContentFingerprint && loadContentFingerprint.trim() !== '';
+    const hasReceivedAt = !!receivedAt;
+    const hasTenant = !!effectiveTenantId;
+    
+    if (!hasFp || !hasReceivedAt || !hasTenant) {
+      const missing = [
+        !hasFp ? 'fingerprint' : null,
+        !hasReceivedAt ? 'receivedAt' : null,
+        !hasTenant ? 'tenant' : null,
+      ].filter(Boolean).join('|');
+      console.log(`[hunt-cooldown] suppressed_missing_gate_data tenant=${effectiveTenantId || 'null'} hunt=${hunt.id} load_email_id=${loadEmailId} missing=${missing}`);
+      continue; // FAIL-CLOSED: Cannot enforce cooldown without all gate data
     }
+    
+    const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
+      p_tenant_id: effectiveTenantId,
+      p_hunt_plan_id: hunt.id,
+      p_fingerprint: loadContentFingerprint,
+      p_received_at: receivedAt.toISOString(),
+      p_cooldown_seconds: 60, // 1 minute MINIMUM cooldown
+      p_last_load_email_id: loadEmailId,
+    });
+    
+    if (cooldownError) {
+      // FAIL-CLOSED: On RPC error, suppress match to prevent duplicates
+      console.error(`[hunt-cooldown] RPC error (SUPPRESSING match):`, cooldownError);
+      continue; // Skip this match - gate is unhealthy
+    }
+    
+    if (!shouldTrigger) {
+      console.log(`[hunt-cooldown] suppressed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=60s`);
+      continue; // Skip this match - still in cooldown
+    }
+    
+    // Log allowed actions for observability
+    console.log(`[hunt-cooldown] allowed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+    
 
     // Insert match
     const { error } = await supabase.from('load_hunt_matches').insert({

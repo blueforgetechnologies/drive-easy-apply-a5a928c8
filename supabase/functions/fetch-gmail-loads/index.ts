@@ -1387,21 +1387,20 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existing) {
-          // Email exists - still try matching via cooldown gate for re-trigger
-          // The cooldown RPC will suppress if within 60s window
-          const existingParsed = existing.parsed_data as any;
-          if (existingParsed?.pickup_coordinates && existingParsed?.vehicle_type && existing.load_content_fingerprint) {
-            console.log(`🔄 Existing email ${existing.load_id}, attempting re-trigger via cooldown gate...`);
-            const existingReceivedAt = existing.received_at ? new Date(existing.received_at) : new Date();
-            matchLoadToHunts(
-              existing.id,
-              existing.load_id,
-              existingParsed,
-              effectiveTenantId,
-              existing.load_content_fingerprint,
-              existingReceivedAt
-            ).catch(e => console.error('Hunt matching error (existing):', e));
-          }
+          // ============================================================================
+          // NOTE: Re-triggering for existing emails is NOT possible via this code path.
+          // existingMatch(load_email_id, hunt_plan_id) will ALWAYS block because this
+          // email already has matches for all applicable hunt plans.
+          // 
+          // Re-trigger ONLY occurs when:
+          //   1. A NEW email ID arrives with the SAME load_content_fingerprint
+          //   2. The new email's received_at is >= 60 seconds after last_received_at
+          //   3. The cooldown RPC (should_trigger_hunt_for_fingerprint) returns true
+          //
+          // This is by design: deduplication is content-based, but action triggering
+          // is per-email with cooldown gating.
+          // ============================================================================
+          console.log(`ℹ️ Existing email ${existing.load_id} (email_id=${fullMessage.id}) - skipping, re-trigger only on NEW email IDs`);
         } else {
           // ====================================================================
           // FINGERPRINT + LOAD_CONTENT INSERT/UPDATE
@@ -1521,17 +1520,31 @@ serve(async (req) => {
             console.log(`Processed email for tenant ${effectiveTenantId}: ${subject}`);
             
             // Run hunt matching if we have coordinates and vehicle type
+            // FAIL-CLOSED: Require fingerprint + receivedAt + tenantId for cooldown gating
             if (inserted && parsedData.pickup_coordinates && parsedData.vehicle_type) {
-              matchLoadToHunts(
-                inserted.id, 
-                inserted.load_id, 
-                parsedData,
-                effectiveTenantId,
-                loadContentFingerprint,
-                receivedDate
-              ).catch(e => 
-                console.error('Hunt matching error:', e)
-              );
+              const hasFp = loadContentFingerprint && loadContentFingerprint.trim() !== '';
+              const hasReceivedAt = !!receivedDate;
+              const hasTenant = !!effectiveTenantId;
+              
+              if (!hasFp || !hasReceivedAt || !hasTenant) {
+                const missing = [
+                  !hasFp ? 'fingerprint' : null,
+                  !hasReceivedAt ? 'receivedAt' : null,
+                  !hasTenant ? 'tenant' : null,
+                ].filter(Boolean).join('|');
+                console.log(`[hunt-cooldown] suppressed_missing_gate_data tenant=${effectiveTenantId || 'null'} load_email_id=${inserted.id} missing=${missing}`);
+              } else {
+                matchLoadToHunts(
+                  inserted.id, 
+                  inserted.load_id, 
+                  parsedData,
+                  effectiveTenantId,
+                  loadContentFingerprint,
+                  receivedDate
+                ).catch(e => 
+                  console.error('Hunt matching error:', e)
+                );
+              }
             }
           }
         }

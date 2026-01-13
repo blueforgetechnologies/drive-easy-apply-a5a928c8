@@ -1705,18 +1705,32 @@ serve(async (req) => {
         // Hunt matching - run for all loads with coordinates (cooldown RPC handles dedup)
         // isDuplicate loads CAN re-trigger matching if cooldown has passed (60s based on received_at)
         // The cooldown gating RPC will suppress if within cooldown window
+        // FAIL-CLOSED: Require fingerprint + receivedAt + tenantId for cooldown gating
         if (insertedEmail && !isUpdate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
-          if (isDuplicate) {
-            console.log(`🔄 Duplicate load detected, attempting re-trigger via cooldown gate...`);
+          const hasFp = loadContentFingerprint && loadContentFingerprint.trim() !== '';
+          const hasReceivedAt = !!receivedAt;
+          const hasTenant = !!tenantId;
+          
+          if (!hasFp || !hasReceivedAt || !hasTenant) {
+            const missing = [
+              !hasFp ? 'fingerprint' : null,
+              !hasReceivedAt ? 'receivedAt' : null,
+              !hasTenant ? 'tenant' : null,
+            ].filter(Boolean).join('|');
+            console.log(`[hunt-cooldown] suppressed_missing_gate_data tenant=${tenantId || 'null'} load_email_id=${insertedEmail.id} missing=${missing}`);
+          } else {
+            if (isDuplicate) {
+              console.log(`🔄 Duplicate load detected, attempting re-trigger via cooldown gate...`);
+            }
+            matchLoadToHunts(
+              insertedEmail.id, 
+              insertedEmail.load_id, 
+              parsedData, 
+              tenantId,
+              loadContentFingerprint, // Pass fingerprint for cooldown gating
+              receivedAt // Pass received_at for cooldown comparison
+            ).catch(() => {});
           }
-          matchLoadToHunts(
-            insertedEmail.id, 
-            insertedEmail.load_id, 
-            parsedData, 
-            tenantId,
-            loadContentFingerprint, // Pass fingerprint for cooldown gating
-            receivedAt // Pass received_at for cooldown comparison
-          ).catch(() => {});
         }
 
         return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id, isUpdate };
@@ -1832,32 +1846,46 @@ serve(async (req) => {
         if (existingMatch && existingMatch > 0) continue;
 
         // COOLDOWN GATING: Check if we should trigger action for this fingerprint
-        // Default cooldown is 60 seconds (1 minute) to allow re-triggering
-        // FAIL-CLOSED: If RPC errors, suppress the match to prevent duplicates
-        if (loadContentFingerprint && tenantId && receivedAt) {
-          const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
-            p_tenant_id: tenantId,
-            p_hunt_plan_id: hunt.id,
-            p_fingerprint: loadContentFingerprint,
-            p_received_at: receivedAt.toISOString(),
-            p_cooldown_seconds: 60, // 1 minute cooldown
-            p_last_load_email_id: loadEmailId,
-          });
-          
-          if (cooldownError) {
-            // FAIL-CLOSED: On RPC error, suppress match to prevent duplicates
-            console.error(`[hunt-cooldown] RPC error (SUPPRESSING match):`, cooldownError);
-            continue; // Skip this match - gate is unhealthy
-          }
-          
-          if (!shouldTrigger) {
-            console.log(`[hunt-cooldown] suppressed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=60s`);
-            continue; // Skip this match - still in cooldown
-          }
-          
-          // Log allowed actions for observability
-          console.log(`[hunt-cooldown] allowed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+        // Cooldown is a MINIMUM threshold: suppress if delta < cooldown; allow if delta >= cooldown. No upper bound.
+        // FAIL-CLOSED: If any gate data missing or RPC errors, suppress the match to prevent duplicates
+        const effectiveTenantId = tenantId || hunt.tenant_id;
+        const hasFp = loadContentFingerprint && loadContentFingerprint.trim() !== '';
+        const hasReceivedAt = !!receivedAt;
+        const hasTenant = !!effectiveTenantId;
+        
+        if (!hasFp || !hasReceivedAt || !hasTenant) {
+          const missing = [
+            !hasFp ? 'fingerprint' : null,
+            !hasReceivedAt ? 'receivedAt' : null,
+            !hasTenant ? 'tenant' : null,
+          ].filter(Boolean).join('|');
+          console.log(`[hunt-cooldown] suppressed_missing_gate_data tenant=${effectiveTenantId || 'null'} hunt=${hunt.id} load_email_id=${loadEmailId} missing=${missing}`);
+          continue; // FAIL-CLOSED: Cannot enforce cooldown without all gate data
         }
+        
+        const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
+          p_tenant_id: effectiveTenantId,
+          p_hunt_plan_id: hunt.id,
+          p_fingerprint: loadContentFingerprint,
+          p_received_at: receivedAt.toISOString(),
+          p_cooldown_seconds: 60, // 1 minute MINIMUM cooldown
+          p_last_load_email_id: loadEmailId,
+        });
+        
+        if (cooldownError) {
+          // FAIL-CLOSED: On RPC error, suppress match to prevent duplicates
+          console.error(`[hunt-cooldown] RPC error (SUPPRESSING match):`, cooldownError);
+          continue; // Skip this match - gate is unhealthy
+        }
+        
+        if (!shouldTrigger) {
+          console.log(`[hunt-cooldown] suppressed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=60s`);
+          continue; // Skip this match - still in cooldown
+        }
+        
+        // Log allowed actions for observability
+        console.log(`[hunt-cooldown] allowed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+        
 
         await supabase.from('load_hunt_matches').insert({
           load_email_id: loadEmailId,
