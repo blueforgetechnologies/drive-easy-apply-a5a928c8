@@ -1830,6 +1830,7 @@ serve(async (req) => {
 
         // COOLDOWN GATING: Check if we should trigger action for this fingerprint
         // Default cooldown is 60 seconds (1 minute) to allow re-triggering
+        // FAIL-CLOSED: If RPC errors, suppress the match to prevent duplicates
         if (loadContentFingerprint && tenantId && receivedAt) {
           const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
             p_tenant_id: tenantId,
@@ -1841,11 +1842,18 @@ serve(async (req) => {
           });
           
           if (cooldownError) {
-            console.error(`[hunt-cooldown] RPC error:`, cooldownError);
-          } else if (!shouldTrigger) {
-            console.log(`[hunt-cooldown] suppressed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+            // FAIL-CLOSED: On RPC error, suppress match to prevent duplicates
+            console.error(`[hunt-cooldown] RPC error (SUPPRESSING match):`, cooldownError);
+            continue; // Skip this match - gate is unhealthy
+          }
+          
+          if (!shouldTrigger) {
+            console.log(`[hunt-cooldown] suppressed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=60s`);
             continue; // Skip this match - still in cooldown
           }
+          
+          // Log allowed actions for observability
+          console.log(`[hunt-cooldown] allowed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
         }
 
         await supabase.from('load_hunt_matches').insert({

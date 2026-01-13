@@ -1913,6 +1913,7 @@ export type Database = {
           id: string
           last_action_at: string
           last_load_email_id: string | null
+          last_received_at: string | null
           load_content_fingerprint: string
           tenant_id: string
           updated_at: string | null
@@ -1924,6 +1925,7 @@ export type Database = {
           id?: string
           last_action_at: string
           last_load_email_id?: string | null
+          last_received_at?: string | null
           load_content_fingerprint: string
           tenant_id: string
           updated_at?: string | null
@@ -1935,6 +1937,7 @@ export type Database = {
           id?: string
           last_action_at?: string
           last_load_email_id?: string | null
+          last_received_at?: string | null
           load_content_fingerprint?: string
           tenant_id?: string
           updated_at?: string | null
