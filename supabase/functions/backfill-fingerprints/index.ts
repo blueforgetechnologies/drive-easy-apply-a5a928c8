@@ -120,10 +120,11 @@ function normalizeStops(stops: any): any[] | null {
   }));
 }
 
-function buildCanonicalLoadPayload(parsedData: Record<string, any>, provider: string): Record<string, any> {
+// NOTE: Provider is NOT included in fingerprint - we want cross-provider dedup
+function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<string, any> {
   return {
     fingerprint_version: FINGERPRINT_VERSION,
-    provider: provider.toLowerCase(),
+    // NOTE: provider intentionally NOT included
     
     broker_name: normalizeStringStrict(parsedData.broker_name),
     broker_company: normalizeStringStrict(parsedData.broker_company),
@@ -204,18 +205,18 @@ function isDedupEligible(canonicalPayload: Record<string, any>): { eligible: boo
   return { eligible: true, reason: null };
 }
 
-async function computeFingerprint(parsedData: Record<string, any>, provider: string): Promise<{
+async function computeFingerprint(parsedData: Record<string, any>): Promise<{
   fingerprint: string | null;
   canonicalPayload: Record<string, any> | null;
   dedupEligible: boolean;
   dedupEligibleReason: string | null;
 }> {
-  if (!provider || !parsedData) {
+  if (!parsedData) {
     return { fingerprint: null, canonicalPayload: null, dedupEligible: false, dedupEligibleReason: 'missing_inputs' };
   }
   
   try {
-    const canonicalPayload = buildCanonicalLoadPayload(parsedData, provider);
+    const canonicalPayload = buildCanonicalLoadPayload(parsedData);
     const eligibility = isDedupEligible(canonicalPayload);
     
     function sortObjectKeys(obj: any): any {
@@ -326,7 +327,6 @@ serve(async (req) => {
         parsedFpStats[key] = { updated: 0, failed: 0, skipped: 0 };
       }
       
-      const provider = row.email_source || 'unknown';
       const parsedData = row.parsed_data as Record<string, any>;
       
       if (!parsedData || typeof parsedData !== 'object') {
@@ -335,7 +335,7 @@ serve(async (req) => {
         continue;
       }
       
-      const result = await computeFingerprint(parsedData, provider);
+      const result = await computeFingerprint(parsedData);
       
       if (!result.fingerprint) {
         parsedFpStats[key].skipped++;
@@ -401,7 +401,6 @@ serve(async (req) => {
       }
       
       const fingerprint = row.parsed_load_fingerprint;
-      const provider = row.email_source || 'unknown';
       const parsedData = row.parsed_data as Record<string, any>;
       
       if (!fingerprint) {
@@ -411,7 +410,7 @@ serve(async (req) => {
       }
       
       // Recompute canonical payload for load_content upsert
-      const result = await computeFingerprint(parsedData, provider);
+      const result = await computeFingerprint(parsedData);
       
       if (!dryRun && result.fingerprint && result.canonicalPayload) {
         const canonicalPayloadJson = JSON.stringify(result.canonicalPayload);
