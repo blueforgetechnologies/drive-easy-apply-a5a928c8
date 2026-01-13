@@ -296,168 +296,209 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const daysBack = body.days_back || 7;
     const batchSize = body.batch_size || 100;
+    const maxBatches = body.max_batches || 50;
     const dryRun = body.dry_run === true;
     
     const cutoffDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
     
-    console.log(`[backfill] Starting fingerprint backfill | daysBack=${daysBack} | cutoff=${cutoffDate} | dryRun=${dryRun}`);
+    console.log(`[backfill] Starting fingerprint backfill | daysBack=${daysBack} | cutoff=${cutoffDate} | dryRun=${dryRun} | maxBatches=${maxBatches}`);
     
     // ========================================================================
-    // PHASE 1: Find rows missing parsed_load_fingerprint
+    // PHASE 1: Find rows missing parsed_load_fingerprint (with pagination)
     // ========================================================================
-    const { data: missingParsedFp, error: mpfError } = await supabase
-      .from('load_emails')
-      .select('id, tenant_id, email_source, ingestion_source, parsed_data')
-      .gte('received_at', cutoffDate)
-      .is('parsed_load_fingerprint', null)
-      .limit(batchSize);
-    
-    if (mpfError) {
-      console.error(`[backfill] Error fetching missing parsed_load_fingerprint: ${mpfError.message}`);
-    }
-    
     const parsedFpStats: Record<string, { updated: number; failed: number; skipped: number }> = {};
     let parsedFpUpdated = 0;
     let parsedFpFailed = 0;
     let parsedFpSkipped = 0;
+    let parsedFpBatches = 0;
+    let parsedFpTotalCandidates = 0;
     
-    for (const row of missingParsedFp || []) {
-      const key = `${row.email_source || 'unknown'}|${row.ingestion_source || 'unknown'}`;
-      if (!parsedFpStats[key]) {
-        parsedFpStats[key] = { updated: 0, failed: 0, skipped: 0 };
+    while (parsedFpBatches < maxBatches) {
+      const { data: missingParsedFp, error: mpfError } = await supabase
+        .from('load_emails')
+        .select('id, tenant_id, email_source, ingestion_source, parsed_data')
+        .gte('received_at', cutoffDate)
+        .is('parsed_load_fingerprint', null)
+        .limit(batchSize);
+      
+      if (mpfError) {
+        console.error(`[backfill] Error fetching missing parsed_load_fingerprint: ${mpfError.message}`);
+        break;
       }
       
-      const parsedData = row.parsed_data as Record<string, any>;
-      
-      if (!parsedData || typeof parsedData !== 'object') {
-        parsedFpStats[key].skipped++;
-        parsedFpSkipped++;
-        continue;
+      if (!missingParsedFp || missingParsedFp.length === 0) {
+        console.log(`[backfill] Phase 1: No more rows to process after ${parsedFpBatches} batches`);
+        break;
       }
       
-      const result = await computeFingerprint(parsedData);
+      parsedFpBatches++;
+      parsedFpTotalCandidates += missingParsedFp.length;
+      console.log(`[backfill] Phase 1 batch ${parsedFpBatches}: processing ${missingParsedFp.length} rows`);
       
-      if (!result.fingerprint) {
-        parsedFpStats[key].skipped++;
-        parsedFpSkipped++;
+      for (const row of missingParsedFp) {
+        const key = `${row.email_source || 'unknown'}|${row.ingestion_source || 'unknown'}`;
+        if (!parsedFpStats[key]) {
+          parsedFpStats[key] = { updated: 0, failed: 0, skipped: 0 };
+        }
+        
+        const parsedData = row.parsed_data as Record<string, any>;
+        
+        if (!parsedData || typeof parsedData !== 'object') {
+          parsedFpStats[key].skipped++;
+          parsedFpSkipped++;
+          
+          if (!dryRun) {
+            await supabase
+              .from('load_emails')
+              .update({ fingerprint_missing_reason: 'missing_parsed_data' })
+              .eq('id', row.id);
+          }
+          continue;
+        }
+        
+        const result = await computeFingerprint(parsedData);
+        
+        if (!result.fingerprint) {
+          parsedFpStats[key].skipped++;
+          parsedFpSkipped++;
+          
+          if (!dryRun) {
+            await supabase
+              .from('load_emails')
+              .update({ fingerprint_missing_reason: result.dedupEligibleReason || 'backfill_compute_failed' })
+              .eq('id', row.id);
+          }
+          continue;
+        }
         
         if (!dryRun) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('load_emails')
-            .update({ fingerprint_missing_reason: result.dedupEligibleReason || 'backfill_compute_failed' })
+            .update({
+              parsed_load_fingerprint: result.fingerprint,
+              dedup_eligible: result.dedupEligible,
+              dedup_eligible_reason: result.dedupEligible ? null : result.dedupEligibleReason,
+              fingerprint_missing_reason: null,
+            })
             .eq('id', row.id);
-        }
-        continue;
-      }
-      
-      if (!dryRun) {
-        const { error: updateError } = await supabase
-          .from('load_emails')
-          .update({
-            parsed_load_fingerprint: result.fingerprint,
-            dedup_eligible: result.dedupEligible,
-            fingerprint_missing_reason: result.dedupEligible ? null : result.dedupEligibleReason,
-          })
-          .eq('id', row.id);
-        
-        if (updateError) {
-          console.warn(`[backfill] Failed to update parsed_load_fingerprint for ${row.id}: ${updateError.message}`);
-          parsedFpStats[key].failed++;
-          parsedFpFailed++;
+          
+          if (updateError) {
+            console.warn(`[backfill] Failed to update parsed_load_fingerprint for ${row.id}: ${updateError.message}`);
+            parsedFpStats[key].failed++;
+            parsedFpFailed++;
+          } else {
+            parsedFpStats[key].updated++;
+            parsedFpUpdated++;
+          }
         } else {
           parsedFpStats[key].updated++;
           parsedFpUpdated++;
         }
-      } else {
-        parsedFpStats[key].updated++;
-        parsedFpUpdated++;
       }
     }
     
     // ========================================================================
-    // PHASE 2: Find dedup_eligible rows missing load_content_fingerprint
+    // PHASE 2: Find dedup_eligible rows missing load_content_fingerprint (with pagination)
     // ========================================================================
-    const { data: missingContentFk, error: mcfError } = await supabase
-      .from('load_emails')
-      .select('id, tenant_id, email_source, ingestion_source, parsed_data, parsed_load_fingerprint')
-      .gte('received_at', cutoffDate)
-      .eq('dedup_eligible', true)
-      .is('load_content_fingerprint', null)
-      .not('parsed_load_fingerprint', 'is', null)
-      .limit(batchSize);
-    
-    if (mcfError) {
-      console.error(`[backfill] Error fetching missing load_content_fingerprint: ${mcfError.message}`);
-    }
-    
     const contentFkStats: Record<string, { updated: number; failed: number }> = {};
     let contentFkUpdated = 0;
     let contentFkFailed = 0;
+    let contentFkBatches = 0;
+    let contentFkTotalCandidates = 0;
     
-    for (const row of missingContentFk || []) {
-      const key = `${row.email_source || 'unknown'}|${row.ingestion_source || 'unknown'}`;
-      if (!contentFkStats[key]) {
-        contentFkStats[key] = { updated: 0, failed: 0 };
+    while (contentFkBatches < maxBatches) {
+      const { data: missingContentFk, error: mcfError } = await supabase
+        .from('load_emails')
+        .select('id, tenant_id, email_source, ingestion_source, parsed_data, parsed_load_fingerprint')
+        .gte('received_at', cutoffDate)
+        .eq('dedup_eligible', true)
+        .is('load_content_fingerprint', null)
+        .not('parsed_load_fingerprint', 'is', null)
+        .limit(batchSize);
+      
+      if (mcfError) {
+        console.error(`[backfill] Error fetching missing load_content_fingerprint: ${mcfError.message}`);
+        break;
       }
       
-      const fingerprint = row.parsed_load_fingerprint;
-      const parsedData = row.parsed_data as Record<string, any>;
-      
-      if (!fingerprint) {
-        contentFkStats[key].failed++;
-        contentFkFailed++;
-        continue;
+      if (!missingContentFk || missingContentFk.length === 0) {
+        console.log(`[backfill] Phase 2: No more rows to process after ${contentFkBatches} batches`);
+        break;
       }
       
-      // Recompute canonical payload for load_content upsert
-      const result = await computeFingerprint(parsedData);
+      contentFkBatches++;
+      contentFkTotalCandidates += missingContentFk.length;
+      console.log(`[backfill] Phase 2 batch ${contentFkBatches}: processing ${missingContentFk.length} rows`);
       
-      if (!dryRun && result.fingerprint && result.canonicalPayload) {
-        const canonicalPayloadJson = JSON.stringify(result.canonicalPayload);
-        const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
-        
-        // Upsert into load_content
-        const { error: lcError } = await supabase
-          .from('load_content')
-          .upsert({
-            fingerprint: result.fingerprint,
-            canonical_payload: result.canonicalPayload,
-            first_seen_at: new Date().toISOString(),
-            last_seen_at: new Date().toISOString(),
-            receipt_count: 1,
-            provider: provider,
-            fingerprint_version: FINGERPRINT_VERSION,
-            size_bytes: sizeBytes,
-          }, { onConflict: 'fingerprint', ignoreDuplicates: false });
-        
-        if (lcError) {
-          // Try update fallback
-          await supabase
-            .from('load_content')
-            .update({ last_seen_at: new Date().toISOString() })
-            .eq('fingerprint', result.fingerprint);
+      for (const row of missingContentFk) {
+        const key = `${row.email_source || 'unknown'}|${row.ingestion_source || 'unknown'}`;
+        if (!contentFkStats[key]) {
+          contentFkStats[key] = { updated: 0, failed: 0 };
         }
         
-        // Update load_emails with FK
-        const { error: leError } = await supabase
-          .from('load_emails')
-          .update({
-            load_content_fingerprint: result.fingerprint,
-            fingerprint_missing_reason: null,
-          })
-          .eq('id', row.id);
+        const fingerprint = row.parsed_load_fingerprint;
+        const parsedData = row.parsed_data as Record<string, any>;
         
-        if (leError) {
-          console.warn(`[backfill] Failed to update load_content_fingerprint for ${row.id}: ${leError.message}`);
+        if (!fingerprint) {
           contentFkStats[key].failed++;
           contentFkFailed++;
-        } else {
+          continue;
+        }
+        
+        // Recompute canonical payload for load_content upsert
+        const result = await computeFingerprint(parsedData);
+        
+        if (!dryRun && result.fingerprint && result.canonicalPayload) {
+          const canonicalPayloadJson = JSON.stringify(result.canonicalPayload);
+          const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
+          
+          // Upsert into load_content (provider removed from fingerprint logic)
+          const { error: lcError } = await supabase
+            .from('load_content')
+            .upsert({
+              fingerprint: result.fingerprint,
+              canonical_payload: result.canonicalPayload,
+              first_seen_at: new Date().toISOString(),
+              last_seen_at: new Date().toISOString(),
+              receipt_count: 1,
+              fingerprint_version: FINGERPRINT_VERSION,
+              size_bytes: sizeBytes,
+            }, { onConflict: 'fingerprint', ignoreDuplicates: false });
+          
+          if (lcError) {
+            // Try update fallback and increment receipt_count
+            await supabase
+              .from('load_content')
+              .update({ last_seen_at: new Date().toISOString() })
+              .eq('fingerprint', result.fingerprint);
+            
+            // Increment receipt_count atomically
+            await supabase.rpc('increment_load_content_receipt_count', { 
+              p_fingerprint: result.fingerprint 
+            });
+          }
+          
+          // Update load_emails with FK
+          const { error: leError } = await supabase
+            .from('load_emails')
+            .update({
+              load_content_fingerprint: result.fingerprint,
+              fingerprint_missing_reason: null,
+            })
+            .eq('id', row.id);
+          
+          if (leError) {
+            console.warn(`[backfill] Failed to update load_content_fingerprint for ${row.id}: ${leError.message}`);
+            contentFkStats[key].failed++;
+            contentFkFailed++;
+          } else {
+            contentFkStats[key].updated++;
+            contentFkUpdated++;
+          }
+        } else if (dryRun) {
           contentFkStats[key].updated++;
           contentFkUpdated++;
         }
-      } else if (dryRun) {
-        contentFkStats[key].updated++;
-        contentFkUpdated++;
       }
     }
     
@@ -467,9 +508,11 @@ serve(async (req) => {
       cutoff_date: cutoffDate,
       days_back: daysBack,
       batch_size: batchSize,
+      max_batches: maxBatches,
       
       parsed_load_fingerprint: {
-        candidates_found: missingParsedFp?.length || 0,
+        batches_processed: parsedFpBatches,
+        total_candidates: parsedFpTotalCandidates,
         updated: parsedFpUpdated,
         failed: parsedFpFailed,
         skipped: parsedFpSkipped,
@@ -477,7 +520,8 @@ serve(async (req) => {
       },
       
       load_content_fingerprint: {
-        candidates_found: missingContentFk?.length || 0,
+        batches_processed: contentFkBatches,
+        total_candidates: contentFkTotalCandidates,
         updated: contentFkUpdated,
         failed: contentFkFailed,
         by_source: contentFkStats,
