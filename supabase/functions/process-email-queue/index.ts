@@ -1259,6 +1259,9 @@ function parseSubjectLine(subject: string): Record<string, any> {
 }
 
 serve(async (req) => {
+  // VERSION LOG - runs on every invocation for deployment verification
+  console.log('PROCESS_EMAIL_QUEUE_VERSION=v2');
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
