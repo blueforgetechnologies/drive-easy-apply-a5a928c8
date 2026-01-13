@@ -723,9 +723,24 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
   return data;
 }
 
-async function geocodeLocation(city: string, state: string): Promise<{lat: number, lng: number} | null> {
+// Geocoding result with error code for diagnostics
+type GeocodeResult = {
+  coords: { lat: number; lng: number } | null;
+  errorCode: string | null;
+};
+
+async function geocodeLocation(city: string, state: string): Promise<GeocodeResult> {
   const mapboxToken = Deno.env.get('VITE_MAPBOX_TOKEN');
-  if (!mapboxToken || !city || !state) return null;
+  
+  // Validate inputs
+  if (!mapboxToken) {
+    console.error(`📍 GEOCODE ERROR: token_missing for "${city}, ${state}"`);
+    return { coords: null, errorCode: 'token_missing' };
+  }
+  if (!city || !state) {
+    console.error(`📍 GEOCODE ERROR: missing_input (city=${city}, state=${state})`);
+    return { coords: null, errorCode: 'missing_input' };
+  }
 
   // Normalize the location key (lowercase, trimmed)
   const locationKey = `${city.toLowerCase().trim()}, ${state.toLowerCase().trim()}`;
@@ -747,7 +762,7 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
         .then(() => {});
       
       console.log(`📍 Cache HIT: ${city}, ${state}`);
-      return { lat: Number(cached.latitude), lng: Number(cached.longitude) };
+      return { coords: { lat: Number(cached.latitude), lng: Number(cached.longitude) }, errorCode: null };
     }
 
     // 2. Cache miss - call Mapbox API
@@ -757,9 +772,28 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&limit=1`
     );
     
+    // Log rate limit headers
+    const rateLimitRemaining = response.headers.get('x-rate-limit-remaining');
+    const rateLimitLimit = response.headers.get('x-rate-limit-limit');
+    if (rateLimitRemaining) {
+      console.log(`📍 Mapbox rate limit: ${rateLimitRemaining}/${rateLimitLimit} remaining`);
+    }
+    
     if (!response.ok) {
-      console.error(`📍 Mapbox API error: ${response.status} ${response.statusText} for "${city}, ${state}"`);
-      return null;
+      const errorBody = await response.text().catch(() => 'Could not read body');
+      const httpErrorCode = response.status === 401 ? 'http_401' 
+        : response.status === 403 ? 'http_403'
+        : response.status === 429 ? 'http_429'
+        : `http_${response.status}`;
+      
+      console.error(`📍 GEOCODE ERROR: ${httpErrorCode} for "${city}, ${state}"`, {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorBody.substring(0, 200),
+        rateLimitRemaining,
+        rateLimitLimit,
+      });
+      return { coords: null, errorCode: httpErrorCode };
     }
     
     const data = await response.json();
@@ -784,15 +818,18 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
       }
       
       console.log(`📍 Geocoded & cached: ${city}, ${state} → ${coords.lat}, ${coords.lng}`);
-      return coords;
+      return { coords, errorCode: null };
     } else {
-      console.error(`📍 Mapbox returned no features for "${city}, ${state}"`);
-      return null;
+      console.warn(`📍 GEOCODE ERROR: no_features for "${city}, ${state}"`, {
+        query: `${city}, ${state}, USA`,
+        featureCount: data.features?.length || 0,
+      });
+      return { coords: null, errorCode: 'no_features' };
     }
   } catch (e) {
-    console.error(`📍 Geocoding exception for ${city}, ${state}:`, e);
+    console.error(`📍 GEOCODE ERROR: exception for "${city}, ${state}":`, e);
+    return { coords: null, errorCode: 'exception' };
   }
-  return null;
 }
 
 // Lookup city from zip code using Mapbox geocoding
@@ -1444,22 +1481,27 @@ serve(async (req) => {
 
         // Geocode if we have origin location
         let geocodeFailed = false;
+        let geocodingErrorCode: string | null = null;
         if (parsedData.origin_city && parsedData.origin_state) {
-          const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
-          if (coords) {
-            parsedData.pickup_coordinates = coords;
+          const geocodeResult = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
+          if (geocodeResult.coords) {
+            parsedData.pickup_coordinates = geocodeResult.coords;
           } else {
             geocodeFailed = true;
+            geocodingErrorCode = geocodeResult.errorCode;
           }
+        } else {
+          // No city/state to geocode
+          geocodingErrorCode = 'missing_input';
         }
 
         // Check for issues
         const hasIssues = !parsedData.broker_email && !isFullCircleTMS || !parsedData.origin_city || !parsedData.vehicle_type || geocodeFailed;
-        const issueNotes = [];
+        const issueNotes: string[] = [];
         if (!parsedData.broker_email && !isFullCircleTMS) issueNotes.push('Missing broker email');
         if (!parsedData.origin_city) issueNotes.push('Missing origin location');
         if (!parsedData.vehicle_type) issueNotes.push('Missing vehicle type');
-        if (geocodeFailed) issueNotes.push('Geocoding failed');
+        if (geocodeFailed) issueNotes.push(`Geocoding failed: ${geocodingErrorCode}`);
 
         // Extract sender info
         const fromMatch = from.match(/^(.+?)\s*<(.+?)>$/);
@@ -1601,10 +1643,7 @@ serve(async (req) => {
 
         // Determine geocoding status based on parsed coordinates
         const hasCoordinates = parsedData.pickup_coordinates?.lat && parsedData.pickup_coordinates?.lng;
-        const geocodingStatus = hasCoordinates ? 'success' : 'pending';
-        const geocodingErrorCode = hasIssues && issueNotes.some((n: string) => n.includes('Geocoding')) 
-          ? 'geocoding_failed' 
-          : null;
+        const geocodingStatus = hasCoordinates ? 'success' : (geocodingErrorCode ? 'failed' : 'pending');
 
         // Insert into load_emails with tenant_id, content_hash, fingerprint and dedup fields
         const { data: insertedEmail, error: insertError } = await supabase

@@ -918,10 +918,25 @@ function parseLoadEmail(subject: string, bodyText: string): any {
   return parsed;
 }
 
+// Geocoding result with error code for diagnostics
+type GeocodeResult = {
+  coords: { lat: number; lng: number } | null;
+  errorCode: string | null;
+};
+
 // Geocode location using Mapbox and cache
-async function geocodeLocation(city: string, state: string): Promise<{lat: number, lng: number} | null> {
+async function geocodeLocation(city: string, state: string): Promise<GeocodeResult> {
   const mapboxToken = Deno.env.get('VITE_MAPBOX_TOKEN');
-  if (!mapboxToken || !city || !state) return null;
+  
+  // Validate inputs
+  if (!mapboxToken) {
+    console.error(`📍 GEOCODE ERROR: token_missing for "${city}, ${state}"`);
+    return { coords: null, errorCode: 'token_missing' };
+  }
+  if (!city || !state) {
+    console.error(`📍 GEOCODE ERROR: missing_input (city=${city}, state=${state})`);
+    return { coords: null, errorCode: 'missing_input' };
+  }
 
   const locationKey = `${city.toLowerCase().trim()}, ${state.toLowerCase().trim()}`;
 
@@ -940,7 +955,7 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
         .eq('id', cached.id)
         .then(() => {});
       console.log(`📍 Geocode cache HIT: ${city}, ${state}`);
-      return { lat: Number(cached.latitude), lng: Number(cached.longitude) };
+      return { coords: { lat: Number(cached.latitude), lng: Number(cached.longitude) }, errorCode: null };
     }
 
     // Cache miss - call Mapbox
@@ -962,14 +977,19 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
     
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'Could not read body');
-      console.error(`📍 Mapbox API ERROR for "${city}, ${state}":`, {
+      const httpErrorCode = response.status === 401 ? 'http_401' 
+        : response.status === 403 ? 'http_403'
+        : response.status === 429 ? 'http_429'
+        : `http_${response.status}`;
+      
+      console.error(`📍 GEOCODE ERROR: ${httpErrorCode} for "${city}, ${state}"`, {
         status: response.status,
         statusText: response.statusText,
-        body: errorBody.substring(0, 500),
+        body: errorBody.substring(0, 200),
         rateLimitRemaining,
         rateLimitLimit,
       });
-      return null;
+      return { coords: null, errorCode: httpErrorCode };
     }
     
     const data = await response.json();
@@ -993,19 +1013,19 @@ async function geocodeLocation(city: string, state: string): Promise<{lat: numbe
       }
       
       console.log(`📍 Geocoded & cached: ${city}, ${state} → ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
-      return coords;
+      return { coords, errorCode: null };
     } else {
-      console.warn(`📍 Mapbox returned NO FEATURES for "${city}, ${state}"`, {
+      console.warn(`📍 GEOCODE ERROR: no_features for "${city}, ${state}"`, {
         query: `${city}, ${state}, USA`,
         featureCount: data.features?.length || 0,
         attribution: data.attribution,
       });
-      return null;
+      return { coords: null, errorCode: 'no_features' };
     }
   } catch (e) {
-    console.error(`📍 Geocoding EXCEPTION for "${city}, ${state}":`, e);
+    console.error(`📍 GEOCODE ERROR: exception for "${city}, ${state}":`, e);
+    return { coords: null, errorCode: 'exception' };
   }
-  return null;
 }
 
 // SMART MATCHING: Regional pre-filter before checking individual hunts
@@ -1292,12 +1312,17 @@ serve(async (req) => {
           : parseLoadEmail(subject, bodyText);
 
         // Geocode if we have origin location
+        let geocodingErrorCode: string | null = null;
         if (parsedData.origin_city && parsedData.origin_state) {
-          const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
-          if (coords) {
-            parsedData.pickup_coordinates = coords;
+          const geocodeResult = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
+          if (geocodeResult.coords) {
+            parsedData.pickup_coordinates = geocodeResult.coords;
             console.log(`📍 Geocoded ${parsedData.origin_city}, ${parsedData.origin_state}`);
+          } else {
+            geocodingErrorCode = geocodeResult.errorCode;
           }
+        } else {
+          geocodingErrorCode = 'missing_input';
         }
 
         // Check and create customer if needed (with tenant context)
@@ -1388,7 +1413,7 @@ serve(async (req) => {
           
           // Determine geocoding status based on parsed coordinates
           const hasCoordinates = parsedData.pickup_coordinates?.lat && parsedData.pickup_coordinates?.lng;
-          const geocodingStatus = hasCoordinates ? 'success' : 'pending';
+          const geocodingStatus = hasCoordinates ? 'success' : (geocodingErrorCode ? 'failed' : 'pending');
           
           // CRITICAL: Insert with tenant_id for proper scoping
           const { data: inserted, error: insertError } = await supabase
@@ -1414,6 +1439,7 @@ serve(async (req) => {
               // Attribution & geocoding tracking
               ingestion_source: 'fetch-gmail-loads',
               geocoding_status: geocodingStatus,
+              geocoding_error_code: geocodingErrorCode,
             })
             .select('id, load_id')
             .single();
