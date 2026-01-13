@@ -128,30 +128,40 @@ function extractFirstEmail(headerValue: string): string | null {
 }
 
 // Lookup tenant by custom inbound address (fallback when no +alias)
-// Uses exact match on normalized (lower + trim) email via the indexed column
+// Uses case-insensitive match via ilike on the stored email_address
+// UNIQUENESS: idx_tenant_inbound_addresses_email_unique enforces one tenant per address globally
+// FAIL-CLOSED: If query returns multiple (shouldn't happen), we reject routing
 async function getTenantByInboundAddress(rawHeaderValue: string): Promise<TenantInfo> {
+  const defaultResult: TenantInfo = { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+  
   // Extract actual email from header (handles "Name <email>" format)
   const email = extractFirstEmail(rawHeaderValue);
   if (!email) {
     console.log(`[gmail-webhook] Could not extract email from header value: ${rawHeaderValue.substring(0, 50)}`);
-    return { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+    return defaultResult;
   }
   
-  // Use exact match - email is already lowercased/trimmed by extractFirstEmail
-  // The DB has a unique index on lower(trim(email_address))
-  const { data: mapping, error } = await supabase
+  // Case-insensitive lookup - DB has unique index on lower(trim(email_address))
+  // but stored value might have original case, so we use ilike for matching
+  const { data: mappings, error } = await supabase
     .from('tenant_inbound_addresses')
     .select('tenant_id, tenants!inner(id, name, is_paused, rate_limit_per_minute, rate_limit_per_day)')
     .eq('is_active', true)
-    .eq('email_address', email)
-    .maybeSingle();
+    .ilike('email_address', email);
   
   if (error) {
     console.error(`[gmail-webhook] Inbound address lookup error:`, error);
-    return { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+    return defaultResult;
   }
   
-  if (mapping && mapping.tenants) {
+  // FAIL-CLOSED: Reject ambiguous routing (should never happen due to unique index)
+  if (mappings && mappings.length > 1) {
+    console.error(`[gmail-webhook] ❌ AMBIGUOUS ROUTING: ${email} matched ${mappings.length} tenants - failing closed`);
+    return defaultResult;
+  }
+  
+  if (mappings && mappings.length === 1) {
+    const mapping = mappings[0];
     const tenant = mapping.tenants as any;
     console.log(`[gmail-webhook] ✅ Routed to tenant "${tenant.name}" via custom inbound address ${email}`);
     return {
@@ -163,7 +173,7 @@ async function getTenantByInboundAddress(rawHeaderValue: string): Promise<Tenant
     };
   }
   
-  return { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
+  return defaultResult;
 }
 
 // Get tenant ID from gmail alias (fail-closed: no fallback to default)
