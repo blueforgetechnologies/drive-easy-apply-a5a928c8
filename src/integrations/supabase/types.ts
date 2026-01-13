@@ -2465,6 +2465,7 @@ export type Database = {
           created_at: string
           dedup_canonical_payload: Json | null
           dedup_eligible: boolean | null
+          dedup_eligible_reason: string | null
           duplicate_of_id: string | null
           email_id: string
           email_source: string
@@ -2502,6 +2503,7 @@ export type Database = {
           created_at?: string
           dedup_canonical_payload?: Json | null
           dedup_eligible?: boolean | null
+          dedup_eligible_reason?: string | null
           duplicate_of_id?: string | null
           email_id: string
           email_source?: string
@@ -2539,6 +2541,7 @@ export type Database = {
           created_at?: string
           dedup_canonical_payload?: Json | null
           dedup_eligible?: boolean | null
+          dedup_eligible_reason?: string | null
           duplicate_of_id?: string | null
           email_id?: string
           email_source?: string

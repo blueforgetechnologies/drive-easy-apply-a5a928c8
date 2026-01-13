@@ -185,11 +185,11 @@ function normalizeStops(stops: any): any[] | null {
 }
 
 // Build canonical payload for fingerprinting
-// CRITICAL: provider is REQUIRED to prevent cross-provider dedup
-function buildCanonicalLoadPayload(parsedData: Record<string, any>, provider: string): Record<string, any> {
+// NOTE: Provider is NOT included - we want cross-provider dedup to work
+function buildCanonicalLoadPayload(parsedData: Record<string, any>): Record<string, any> {
   return {
     fingerprint_version: FINGERPRINT_VERSION,
-    provider: provider.toLowerCase(), // REQUIRED, prevents cross-provider dedup
+    // NOTE: provider intentionally NOT included - same load from different providers should match
     
     broker_name: normalizeStringStrict(parsedData.broker_name),
     broker_company: normalizeStringStrict(parsedData.broker_company),
@@ -271,44 +271,66 @@ function isDedupEligible(canonicalPayload: Record<string, any>): { eligible: boo
   return { eligible: true, reason: null };
 }
 
-// Compute SHA256 fingerprint - provider is REQUIRED
+// Compute SHA256 fingerprint - ALWAYS compute for observability
 async function computeParsedLoadFingerprint(
-  parsedData: Record<string, any>,
-  provider: string
+  parsedData: Record<string, any>
 ): Promise<{
-  fingerprint: string;
-  canonicalPayload: Record<string, any>;
+  fingerprint: string | null;
+  canonicalPayload: Record<string, any> | null;
   dedupEligible: boolean;
   dedupEligibleReason: string | null;
+  fingerprintMissingReason: string | null;
 }> {
-  const canonicalPayload = buildCanonicalLoadPayload(parsedData, provider);
-  const eligibility = isDedupEligible(canonicalPayload);
-  
-  function sortObjectKeys(obj: any): any {
-    if (obj === null || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return obj.map(sortObjectKeys);
-    const sorted: Record<string, any> = {};
-    for (const key of Object.keys(obj).sort()) {
-      sorted[key] = sortObjectKeys(obj[key]);
-    }
-    return sorted;
+  if (!parsedData || typeof parsedData !== 'object') {
+    return {
+      fingerprint: null,
+      canonicalPayload: null,
+      dedupEligible: false,
+      dedupEligibleReason: null,
+      fingerprintMissingReason: 'missing_parsed_data',
+    };
   }
   
-  const sortedPayload = sortObjectKeys(canonicalPayload);
-  const payloadString = JSON.stringify(sortedPayload);
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(payloadString);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  
-  return {
-    fingerprint,
-    canonicalPayload: sortedPayload,
-    dedupEligible: eligibility.eligible,
-    dedupEligibleReason: eligibility.reason,
-  };
+  try {
+    const canonicalPayload = buildCanonicalLoadPayload(parsedData);
+    const eligibility = isDedupEligible(canonicalPayload);
+    
+    function sortObjectKeys(obj: any): any {
+      if (obj === null || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+      const sorted: Record<string, any> = {};
+      for (const key of Object.keys(obj).sort()) {
+        sorted[key] = sortObjectKeys(obj[key]);
+      }
+      return sorted;
+    }
+    
+    const sortedPayload = sortObjectKeys(canonicalPayload);
+    const payloadString = JSON.stringify(sortedPayload);
+    
+    const encoder = new TextEncoder();
+    const data = encoder.encode(payloadString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return {
+      fingerprint,
+      canonicalPayload: sortedPayload,
+      dedupEligible: eligibility.eligible,
+      dedupEligibleReason: eligibility.reason,
+      fingerprintMissingReason: null,
+    };
+  } catch (error) {
+    console.error(`[fingerprint] EXCEPTION: ${error}`);
+    return {
+      fingerprint: null,
+      canonicalPayload: null,
+      dedupEligible: false,
+      dedupEligibleReason: null,
+      fingerprintMissingReason: 'exception_during_compute',
+    };
+  }
 }
 
 
@@ -1433,83 +1455,89 @@ serve(async (req) => {
         } else {
           // ====================================================================
           // FINGERPRINT + LOAD_CONTENT INSERT/UPDATE
-          // Provider is REQUIRED to prevent cross-provider dedup
-          // If emailSource is null/unknown → skip fingerprinting entirely
+          // ALWAYS compute fingerprint for observability
+          // Only write load_content FK when dedup-eligible
           // ====================================================================
           
           let parsedLoadFingerprint: string | null = null;
           let loadContentFingerprint: string | null = null;
           let dedupEligible = false;
-          let dedupEligibleReason: string | null = 'provider_unknown';
-          let fingerprintMissingReason: string | null = 'provider_unknown';
+          let dedupEligibleReason: string | null = null;
+          let fingerprintMissingReason: string | null = null;
+          let canonicalPayload: Record<string, any> | null = null;
           
-          // REQUIRED: emailSource must be known for fingerprinting
-          if (emailSource && (emailSource === 'fullcircle' || emailSource === 'sylectus')) {
-            const fingerprintResult = await computeParsedLoadFingerprint(parsedData, emailSource);
-            parsedLoadFingerprint = fingerprintResult.fingerprint;
-            dedupEligible = fingerprintResult.dedupEligible;
-            dedupEligibleReason = fingerprintResult.dedupEligibleReason;
-            fingerprintMissingReason = dedupEligible ? null : dedupEligibleReason;
-            const canonicalPayload = fingerprintResult.canonicalPayload;
+          // Always compute fingerprint for observability
+          const fingerprintResult = await computeParsedLoadFingerprint(parsedData);
+          parsedLoadFingerprint = fingerprintResult.fingerprint;
+          dedupEligible = fingerprintResult.dedupEligible;
+          dedupEligibleReason = fingerprintResult.dedupEligibleReason;
+          fingerprintMissingReason = fingerprintResult.fingerprintMissingReason;
+          canonicalPayload = fingerprintResult.canonicalPayload;
+          
+          // Log fingerprint result
+          if (parsedLoadFingerprint) {
+            console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
+          } else {
+            console.warn(`⚠️ [fingerprint] MISSING | tenant=${effectiveTenantId} | source=${emailSource} | ingestion=fetch-gmail-loads | reason=${fingerprintMissingReason}`);
+          }
+          
+          // Only write load_content FK when eligible AND fingerprint computed
+          if (dedupEligible && parsedLoadFingerprint && canonicalPayload) {
+            const canonicalPayloadJson = JSON.stringify(canonicalPayload);
+            const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
             
-            console.log(`🔑 Fingerprint: ${parsedLoadFingerprint.substring(0, 12)}... | Provider: ${emailSource} | Dedup eligible: ${dedupEligible}${dedupEligibleReason ? ` (${dedupEligibleReason})` : ''}`);
+            // Step A: Try INSERT first (new row)
+            const { error: lcInsertError } = await supabase
+              .from('load_content')
+              .insert({
+                fingerprint: parsedLoadFingerprint,
+                canonical_payload: canonicalPayload,
+                first_seen_at: new Date().toISOString(),
+                last_seen_at: new Date().toISOString(),
+                receipt_count: 1,
+                provider: emailSource,
+                fingerprint_version: FINGERPRINT_VERSION,
+                size_bytes: sizeBytes,
+              });
             
-            if (dedupEligible && parsedLoadFingerprint) {
-              const canonicalPayloadJson = JSON.stringify(canonicalPayload);
-              const sizeBytes = new TextEncoder().encode(canonicalPayloadJson).length;
+            if (lcInsertError) {
+              // Check if it's a unique violation (conflict)
+              const isConflict = lcInsertError.code === '23505' || 
+                                 lcInsertError.message?.includes('duplicate key') ||
+                                 lcInsertError.message?.includes('already exists');
               
-              // Step A: Try INSERT first (new row)
-              const { error: lcInsertError } = await supabase
-                .from('load_content')
-                .insert({
-                  fingerprint: parsedLoadFingerprint,
-                  canonical_payload: canonicalPayload,
-                  first_seen_at: new Date().toISOString(),
-                  last_seen_at: new Date().toISOString(),
-                  receipt_count: 1,
-                  provider: emailSource,
-                  fingerprint_version: FINGERPRINT_VERSION,
-                  size_bytes: sizeBytes,
+              if (isConflict) {
+                // Step B: Conflict - UPDATE existing row via RPC (atomic increment)
+                const { error: rpcError } = await supabase.rpc('increment_load_content_receipt_count', { 
+                  p_fingerprint: parsedLoadFingerprint 
                 });
-              
-              if (lcInsertError) {
-                // Check if it's a unique violation (conflict)
-                const isConflict = lcInsertError.code === '23505' || 
-                                   lcInsertError.message?.includes('duplicate key') ||
-                                   lcInsertError.message?.includes('already exists');
                 
-                if (isConflict) {
-                  // Step B: Conflict - UPDATE existing row via RPC (atomic increment)
-                  const { error: rpcError } = await supabase.rpc('increment_load_content_receipt_count', { 
-                    p_fingerprint: parsedLoadFingerprint 
-                  });
-                  
-                  if (rpcError) {
-                    console.warn(`⚠️ load_content increment RPC failed: ${rpcError.message}`);
-                    fingerprintMissingReason = 'load_content_upsert_failed';
-                  } else {
-                    loadContentFingerprint = parsedLoadFingerprint;
-                    fingerprintMissingReason = null;
-                    console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
-                  }
-                } else {
-                  // Not a conflict - log the actual error
-                  console.warn(`⚠️ load_content insert failed: ${lcInsertError.message}`);
+                if (rpcError) {
+                  console.warn(`⚠️ load_content increment RPC failed: ${rpcError.message}`);
                   fingerprintMissingReason = 'load_content_upsert_failed';
+                } else {
+                  loadContentFingerprint = parsedLoadFingerprint;
+                  fingerprintMissingReason = null;
+                  console.log(`📦 load_content updated (existing): ${parsedLoadFingerprint.substring(0, 12)}...`);
                 }
               } else {
-                // Step C: INSERT succeeded
-                loadContentFingerprint = parsedLoadFingerprint;
-                fingerprintMissingReason = null;
-                console.log(`📦 load_content inserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
+                // Not a conflict - log the actual error
+                console.warn(`⚠️ load_content insert failed: ${lcInsertError.message}`);
+                fingerprintMissingReason = 'load_content_upsert_failed';
               }
             } else {
-              console.log(`⚠️ Skipping load_content: ${dedupEligibleReason}`);
-              fingerprintMissingReason = dedupEligibleReason || 'not_dedup_eligible';
+              // Step C: INSERT succeeded
+              loadContentFingerprint = parsedLoadFingerprint;
+              fingerprintMissingReason = null;
+              console.log(`📦 load_content inserted: ${parsedLoadFingerprint.substring(0, 12)}... (${sizeBytes} bytes)`);
             }
+          } else if (!parsedLoadFingerprint) {
+            // Fingerprint couldn't be computed - keep fingerprintMissingReason
+            console.warn(`⚠️ [fingerprint] Could not compute | tenant=${effectiveTenantId} | source=${emailSource} | reason=${fingerprintMissingReason}`);
           } else {
-            console.warn(`⚠️ [fingerprint] MISSING fingerprint | tenant=${effectiveTenantId} | source=${emailSource} | ingestion=fetch-gmail-loads | reason=provider_unknown`);
-            fingerprintMissingReason = 'provider_unknown';
+            // Not eligible - don't set fingerprint_missing_reason (that's for compute/store failures)
+            console.log(`⚠️ Skipping load_content FK: not dedup eligible (${dedupEligibleReason})`);
+            fingerprintMissingReason = null; // NOT a fingerprint failure
           }
           
           // Determine geocoding status:
@@ -1542,7 +1570,8 @@ serve(async (req) => {
               parsed_load_fingerprint: parsedLoadFingerprint,
               load_content_fingerprint: loadContentFingerprint,
               dedup_eligible: dedupEligible,
-              fingerprint_missing_reason: fingerprintMissingReason, // Reason if fingerprint/FK is missing
+              dedup_eligible_reason: dedupEligibleReason, // Separate column for eligibility reason
+              fingerprint_missing_reason: fingerprintMissingReason, // ONLY for compute/store failures
               // Attribution & geocoding tracking
               ingestion_source: 'fetch-gmail-loads',
               geocoding_status: geocodingStatus,
