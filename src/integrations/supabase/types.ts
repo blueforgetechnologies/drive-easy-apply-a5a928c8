@@ -1905,6 +1905,64 @@ export type Database = {
           },
         ]
       }
+      hunt_fingerprint_actions: {
+        Row: {
+          action_count: number
+          created_at: string | null
+          hunt_plan_id: string
+          id: string
+          last_action_at: string
+          last_load_email_id: string | null
+          load_content_fingerprint: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_count?: number
+          created_at?: string | null
+          hunt_plan_id: string
+          id?: string
+          last_action_at: string
+          last_load_email_id?: string | null
+          load_content_fingerprint: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_count?: number
+          created_at?: string | null
+          hunt_plan_id?: string
+          id?: string
+          last_action_at?: string
+          last_load_email_id?: string | null
+          load_content_fingerprint?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hunt_fingerprint_actions_hunt_plan_id_fkey"
+            columns: ["hunt_plan_id"]
+            isOneToOne: false
+            referencedRelation: "hunt_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hunt_fingerprint_actions_last_load_email_id_fkey"
+            columns: ["last_load_email_id"]
+            isOneToOne: false
+            referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hunt_fingerprint_actions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hunt_plans: {
         Row: {
           available_date: string | null
@@ -6349,6 +6407,17 @@ export type Database = {
       resolve_integration_config: {
         Args: { p_integration_key: string; p_tenant_id: string }
         Returns: Json
+      }
+      should_trigger_hunt_for_fingerprint: {
+        Args: {
+          p_cooldown_seconds?: number
+          p_fingerprint: string
+          p_hunt_plan_id: string
+          p_last_load_email_id?: string
+          p_received_at: string
+          p_tenant_id: string
+        }
+        Returns: boolean
       }
       worker_heartbeat: {
         Args: {

@@ -1031,11 +1031,25 @@ async function geocodeLocation(city: string, state: string): Promise<GeocodeResu
 // SMART MATCHING: Regional pre-filter before checking individual hunts
 // This reduces distance calculations by 60-80% by first checking if email
 // is within a broad region (500mi) of ANY hunt before checking all hunts individually
-async function matchLoadToHunts(loadEmailId: string, loadId: string, parsedData: any) {
-  const { data: enabledHunts } = await supabase
+async function matchLoadToHunts(
+  loadEmailId: string, 
+  loadId: string, 
+  parsedData: any,
+  tenantId: string | null = null,
+  loadContentFingerprint: string | null = null,
+  receivedAt: Date | null = null
+) {
+  // Filter hunts by tenant if provided for proper isolation
+  const huntQuery = supabase
     .from('hunt_plans')
-    .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity')
+    .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity, tenant_id')
     .eq('enabled', true);
+  
+  if (tenantId) {
+    huntQuery.eq('tenant_id', tenantId);
+  }
+  
+  const { data: enabledHunts } = await huntQuery;
 
   if (!enabledHunts?.length) return;
 
@@ -1126,6 +1140,27 @@ async function matchLoadToHunts(loadEmailId: string, loadId: string, parsedData:
 
     if (existingMatch && existingMatch > 0) continue;
 
+    // COOLDOWN GATING: Check if we should trigger action for this fingerprint
+    // Default cooldown is 60 seconds (1 minute) to allow re-triggering
+    const huntTenantId = tenantId || hunt.tenant_id;
+    if (loadContentFingerprint && huntTenantId && receivedAt) {
+      const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
+        p_tenant_id: huntTenantId,
+        p_hunt_plan_id: hunt.id,
+        p_fingerprint: loadContentFingerprint,
+        p_received_at: receivedAt.toISOString(),
+        p_cooldown_seconds: 60, // 1 minute cooldown
+        p_last_load_email_id: loadEmailId,
+      });
+      
+      if (cooldownError) {
+        console.error(`[hunt-cooldown] RPC error:`, cooldownError);
+      } else if (!shouldTrigger) {
+        console.log(`[hunt-cooldown] suppressed tenant=${huntTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+        continue; // Skip this match - still in cooldown
+      }
+    }
+
     await supabase.from('load_hunt_matches').insert({
       load_email_id: loadEmailId,
       hunt_plan_id: hunt.id,
@@ -1134,6 +1169,7 @@ async function matchLoadToHunts(loadEmailId: string, loadId: string, parsedData:
       is_active: true,
       match_status: 'active',
       matched_at: new Date().toISOString(),
+      tenant_id: huntTenantId, // Include tenant_id for multi-tenant isolation
     });
     matchesCreated++;
   }
@@ -1462,7 +1498,14 @@ serve(async (req) => {
             
             // Run hunt matching if we have coordinates and vehicle type
             if (inserted && parsedData.pickup_coordinates && parsedData.vehicle_type) {
-              matchLoadToHunts(inserted.id, inserted.load_id, parsedData).catch(e => 
+              matchLoadToHunts(
+                inserted.id, 
+                inserted.load_id, 
+                parsedData,
+                effectiveTenantId,
+                loadContentFingerprint,
+                receivedDate
+              ).catch(e => 
                 console.error('Hunt matching error:', e)
               );
             }

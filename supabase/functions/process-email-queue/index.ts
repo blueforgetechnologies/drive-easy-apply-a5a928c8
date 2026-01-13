@@ -1704,7 +1704,14 @@ serve(async (req) => {
 
         // Hunt matching - only for NEW loads, not updates or duplicates (avoid duplicate notifications)
         if (insertedEmail && !isUpdate && !isDuplicate && parsedData.pickup_coordinates && parsedData.vehicle_type) {
-          matchLoadToHunts(insertedEmail.id, insertedEmail.load_id, parsedData, tenantId).catch(() => {});
+          matchLoadToHunts(
+            insertedEmail.id, 
+            insertedEmail.load_id, 
+            parsedData, 
+            tenantId,
+            loadContentFingerprint, // Pass fingerprint for cooldown gating
+            receivedAt // Pass received_at for cooldown comparison
+          ).catch(() => {});
         } else if (isDuplicate) {
           console.log(`⏭️ Skipping hunt matching for duplicate load`);
         }
@@ -1720,8 +1727,15 @@ serve(async (req) => {
       }
     };
 
-    // Helper function for hunt matching - now tenant-aware with feature flag check
-    const matchLoadToHunts = async (loadEmailId: string, loadId: string, parsedData: any, tenantId: string | null) => {
+    // Helper function for hunt matching - now tenant-aware with feature flag check and cooldown gating
+    const matchLoadToHunts = async (
+      loadEmailId: string, 
+      loadId: string, 
+      parsedData: any, 
+      tenantId: string | null,
+      loadContentFingerprint: string | null = null,
+      receivedAt: Date | null = null
+    ) => {
       // Check if matching is enabled for this tenant
       if (tenantId) {
         const { data: matchingEnabled } = await supabase.rpc('is_feature_enabled', {
@@ -1813,6 +1827,26 @@ serve(async (req) => {
           .eq('hunt_plan_id', hunt.id);
 
         if (existingMatch && existingMatch > 0) continue;
+
+        // COOLDOWN GATING: Check if we should trigger action for this fingerprint
+        // Default cooldown is 60 seconds (1 minute) to allow re-triggering
+        if (loadContentFingerprint && tenantId && receivedAt) {
+          const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
+            p_tenant_id: tenantId,
+            p_hunt_plan_id: hunt.id,
+            p_fingerprint: loadContentFingerprint,
+            p_received_at: receivedAt.toISOString(),
+            p_cooldown_seconds: 60, // 1 minute cooldown
+            p_last_load_email_id: loadEmailId,
+          });
+          
+          if (cooldownError) {
+            console.error(`[hunt-cooldown] RPC error:`, cooldownError);
+          } else if (!shouldTrigger) {
+            console.log(`[hunt-cooldown] suppressed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()}`);
+            continue; // Skip this match - still in cooldown
+          }
+        }
 
         await supabase.from('load_hunt_matches').insert({
           load_email_id: loadEmailId,
