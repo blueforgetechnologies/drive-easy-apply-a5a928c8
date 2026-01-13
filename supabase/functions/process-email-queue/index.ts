@@ -1482,7 +1482,11 @@ serve(async (req) => {
         // Geocode if we have origin location
         let geocodeFailed = false;
         let geocodingErrorCode: string | null = null;
+        let geocodingWasAttempted = false;
+        
         if (parsedData.origin_city && parsedData.origin_state) {
+          geocodingWasAttempted = true;
+          console.log('GEOCODE_VERSION=v2');
           const geocodeResult = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
           if (geocodeResult.coords) {
             parsedData.pickup_coordinates = geocodeResult.coords;
@@ -1491,7 +1495,7 @@ serve(async (req) => {
             geocodingErrorCode = geocodeResult.errorCode;
           }
         } else {
-          // No city/state to geocode
+          // No city/state to geocode - not a failure, just pending
           geocodingErrorCode = 'missing_input';
         }
 
@@ -1641,9 +1645,14 @@ serve(async (req) => {
           console.log(`🔄 Detected update to existing load ${existingSimilarLoad.load_id} (original from ${existingSimilarLoad.received_at})`);
         }
 
-        // Determine geocoding status based on parsed coordinates
+        // Determine geocoding status:
+        // - 'success' = geocoding was attempted AND returned coords
+        // - 'failed' = geocoding was attempted AND failed (with error code)
+        // - 'pending' = geocoding was NOT attempted (missing inputs)
         const hasCoordinates = parsedData.pickup_coordinates?.lat && parsedData.pickup_coordinates?.lng;
-        const geocodingStatus = hasCoordinates ? 'success' : (geocodingErrorCode ? 'failed' : 'pending');
+        const geocodingStatus = hasCoordinates 
+          ? 'success' 
+          : (geocodingWasAttempted ? 'failed' : 'pending');
 
         // Insert into load_emails with tenant_id, content_hash, fingerprint and dedup fields
         const { data: insertedEmail, error: insertError } = await supabase
