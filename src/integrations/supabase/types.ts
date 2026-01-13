@@ -2469,6 +2469,7 @@ export type Database = {
           email_id: string
           email_source: string
           expires_at: string | null
+          fingerprint_missing_reason: string | null
           from_email: string
           from_name: string | null
           geocoding_error_code: string | null
@@ -2505,6 +2506,7 @@ export type Database = {
           email_id: string
           email_source?: string
           expires_at?: string | null
+          fingerprint_missing_reason?: string | null
           from_email: string
           from_name?: string | null
           geocoding_error_code?: string | null
@@ -2541,6 +2543,7 @@ export type Database = {
           email_id?: string
           email_source?: string
           expires_at?: string | null
+          fingerprint_missing_reason?: string | null
           from_email?: string
           from_name?: string | null
           geocoding_error_code?: string | null
