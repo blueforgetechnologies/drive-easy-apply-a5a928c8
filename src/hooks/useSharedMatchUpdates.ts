@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenantFilter } from './useTenantFilter';
 
 interface MatchUpdate {
   data: any[];
@@ -92,12 +91,17 @@ function initChannelForTenant(tenantId: string) {
         event: '*', 
         schema: 'public', 
         table: 'load_hunt_matches',
-        // Realtime filter by tenant_id (via hunt_plans join is not possible here, so we use code guard below)
+        // NOW FILTERED BY tenant_id thanks to DB migration
+        filter: `tenant_id=eq.${tenantId}`
       },
       (payload) => {
-        // CODE GUARD: Ignore if tenant_id doesn't match
-        // Note: load_hunt_matches may not have tenant_id directly, so we refetch to be safe
-        console.log(`[SharedMatches] Match change detected, refetching for tenant ${tenantId}`);
+        // CODE GUARD: Double-check tenant_id matches
+        const payloadTenantId = (payload.new as any)?.tenant_id || (payload.old as any)?.tenant_id;
+        if (payloadTenantId && payloadTenantId !== tenantId) {
+          console.warn('[SharedMatches] IGNORED cross-tenant match event:', payloadTenantId, 'vs', tenantId);
+          return;
+        }
+        console.log(`[SharedMatches] Match change detected for tenant ${tenantId}, refetching`);
         fetchMatchesForTenant(tenantId);
       }
     )
@@ -112,7 +116,7 @@ function initChannelForTenant(tenantId: string) {
       (payload) => {
         // CODE GUARD: Double-check tenant_id
         if ((payload.new as any)?.tenant_id !== tenantId) {
-          console.warn('[SharedMatches] Ignoring cross-tenant email insert');
+          console.warn('[SharedMatches] IGNORED cross-tenant email insert:', (payload.new as any)?.tenant_id, 'vs', tenantId);
           return;
         }
         console.log(`[SharedMatches] New email for tenant ${tenantId}, refetching`);
@@ -142,13 +146,16 @@ function cleanupChannelForTenant(tenantId: string) {
 /**
  * Tenant-scoped hook for match updates.
  * 
+ * CONTRACT: Caller MUST pass tenantId explicitly.
+ * This hook does NOT call useTenantFilter() internally.
+ * 
  * CRITICAL: This hook is now strictly tenant-scoped:
  * - Each tenant has its own cache, channel, and state
  * - No cross-tenant data sharing is possible
  * - All queries include tenant_id filter
+ * - Realtime is filtered by tenant_id
  */
-export function useSharedMatchUpdates() {
-  const { tenantId } = useTenantFilter();
+export function useSharedMatchUpdates(tenantId: string | null) {
   const [, forceUpdate] = useState({});
   const mountedRef = useRef(true);
   const currentTenantIdRef = useRef<string | null>(null);
@@ -220,9 +227,11 @@ export function useSharedMatchUpdates() {
 
 /**
  * Tenant-scoped match counts.
+ * 
+ * CONTRACT: Caller MUST pass tenantId explicitly.
  */
-export function useSharedMatchCounts() {
-  const { matches } = useSharedMatchUpdates();
+export function useSharedMatchCounts(tenantId: string | null) {
+  const { matches } = useSharedMatchUpdates(tenantId);
 
   return {
     unreviewedCount: matches.filter(m => m.match_status === 'active' && m.is_active).length,

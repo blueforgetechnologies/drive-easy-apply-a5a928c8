@@ -478,6 +478,7 @@ export default function LoadHunterTab() {
         distance_miles: number | null;
         is_active: boolean;
         match_status: string;
+        tenant_id: string;
       }> = [];
       
       // Check each load against hunt plans (only if load_id > that hunt's floor)
@@ -525,6 +526,7 @@ export default function LoadHunterTab() {
               distance_miles: matchDistance || null,
               is_active: true,
               match_status: 'active',
+              tenant_id: tenantId!, // Will be validated by trigger
             });
           }
         }
@@ -1322,8 +1324,7 @@ export default function LoadHunterTab() {
       )
       .subscribe();
 
-    // Subscribe to real-time updates for load_hunt_matches
-    // Note: load_hunt_matches doesn't have tenant_id directly, so we use code guard only
+    // Subscribe to real-time updates for load_hunt_matches - NOW WITH tenant_id FILTER
     const matchesChannel = supabase
       .channel(`load-hunt-matches-changes-${tenantId}`)
       .on(
@@ -1331,11 +1332,17 @@ export default function LoadHunterTab() {
         {
           event: '*',
           schema: 'public',
-          table: 'load_hunt_matches'
+          table: 'load_hunt_matches',
+          filter: `tenant_id=eq.${tenantId}` // Realtime filter - now possible with tenant_id column
         },
         (payload) => {
-          // Reload all matches - the loaders will filter by tenant
-          console.log(`[Realtime] Match change detected, reloading for tenant ${tenantId}`);
+          // CODE GUARD: Double-check tenant_id matches
+          const record = (payload.new || payload.old) as any;
+          if (record?.tenant_id && record.tenant_id !== tenantId) {
+            console.warn('[Realtime] IGNORED cross-tenant match change');
+            return;
+          }
+          console.log(`[Realtime] Match change for tenant ${tenantId}:`, payload);
           loadHuntMatches();
           loadUnreviewedMatches();
         }
@@ -2715,6 +2722,7 @@ export default function LoadHunterTab() {
             distance_miles: number | null;
             is_active: boolean;
             match_status: string;
+            tenant_id: string;
           }> = [];
           
           for (const load of backfillLoads) {
@@ -2731,6 +2739,7 @@ export default function LoadHunterTab() {
                 distance_miles: matchResult.distance || null,
                 is_active: true,
                 match_status: 'active',
+                tenant_id: tenantId!,
               });
             }
           }
@@ -2919,6 +2928,7 @@ export default function LoadHunterTab() {
               distance_miles: number | null;
               is_active: boolean;
               match_status: string;
+              tenant_id: string;
             }> = [];
             
             for (const load of backfillLoads) {
@@ -2935,6 +2945,7 @@ export default function LoadHunterTab() {
                   distance_miles: matchResult.distance || null,
                   is_active: true,
                   match_status: 'active',
+                  tenant_id: tenantId!,
                 });
               }
             }

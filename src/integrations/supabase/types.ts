@@ -2769,7 +2769,7 @@ export type Database = {
           match_score: number | null
           match_status: string
           matched_at: string
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string
           vehicle_id: string
         }
@@ -2787,7 +2787,7 @@ export type Database = {
           match_score?: number | null
           match_status?: string
           matched_at?: string
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string
           vehicle_id: string
         }
@@ -2805,7 +2805,7 @@ export type Database = {
           match_score?: number | null
           match_status?: string
           matched_at?: string
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string
           vehicle_id?: string
         }
