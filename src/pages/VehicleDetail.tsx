@@ -112,8 +112,8 @@ export default function VehicleDetail() {
         .select('id, personal_info, driver_status')
         .in('driver_status', ['Active', 'active', 'ACTIVE']);
       
-      // Apply tenant filter
-      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+      // ALWAYS apply tenant filter
+      if (shouldFilter && tenantId) {
         query = query.eq('tenant_id', tenantId);
       }
       
@@ -132,8 +132,8 @@ export default function VehicleDetail() {
         .select('id, first_name, last_name, status')
         .in('status', ['Active', 'active', 'ACTIVE']);
       
-      // Apply tenant filter
-      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+      // ALWAYS apply tenant filter
+      if (shouldFilter && tenantId) {
         query = query.eq('tenant_id', tenantId);
       }
       
@@ -152,8 +152,8 @@ export default function VehicleDetail() {
         .select('id, name, status')
         .in('status', ['Active', 'active', 'ACTIVE']);
       
-      // Apply tenant filter
-      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+      // ALWAYS apply tenant filter
+      if (shouldFilter && tenantId) {
         query = query.eq('tenant_id', tenantId);
       }
       
@@ -172,8 +172,8 @@ export default function VehicleDetail() {
         .select('id, name, status')
         .in('status', ['Active', 'active', 'ACTIVE']);
       
-      // Apply tenant filter
-      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+      // ALWAYS apply tenant filter
+      if (shouldFilter && tenantId) {
         query = query.eq('tenant_id', tenantId);
       }
       

@@ -22,14 +22,13 @@ interface LoadsCounts {
  * Get tenant-scoped loads counts for badges
  */
 export function useLoadsCount(): LoadsCounts {
-  const { query, tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isReady } = useTenantQuery();
+  const { query, tenantId, shouldFilter, isPlatformAdmin, isReady } = useTenantQuery();
 
   const queryKey = [
     "tenant-loads-count",
     tenantId,
     shouldFilter,
     isPlatformAdmin,
-    showAllTenants,
   ];
 
   const { data, isLoading } = useQuery({

@@ -16,7 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const MapTab = () => {
   useMapLoadTracker('MapTab');
   const isMobile = useIsMobile();
-  const { query, tenantId, isReady, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantQuery();
+  const { query, tenantId, isReady, shouldFilter, isPlatformAdmin } = useTenantQuery();
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -96,7 +96,7 @@ const MapTab = () => {
     if (!isReady) return;
     
     // DEV LOG: Tenant isolation debugging
-    console.log('[MapTab] loadVehicles:', { tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isReady });
+    console.log('[MapTab] loadVehicles:', { tenantId, shouldFilter, isPlatformAdmin, isReady });
     
     // SECURITY: Use tenant-scoped query helper
     const { data, error } = await query('vehicles')

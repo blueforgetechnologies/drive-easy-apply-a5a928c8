@@ -86,8 +86,8 @@ export default function LoadDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Build tenant-filtered queries for tenant-owned tables
-      const shouldApplyFilter = !(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId;
+      // ALWAYS apply tenant filter (no more bypass)
+      const shouldApplyFilter = shouldFilter && tenantId;
       
       // Base queries
       let driversQuery = supabase.from("applications").select("id, personal_info").eq("driver_status", "active");

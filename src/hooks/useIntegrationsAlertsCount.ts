@@ -21,14 +21,13 @@ interface IntegrationsAlertsCounts {
  * Get tenant-scoped integration alerts count for badges
  */
 export function useIntegrationsAlertsCount(): IntegrationsAlertsCounts {
-  const { query, tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isReady } = useTenantQuery();
+  const { query, tenantId, shouldFilter, isPlatformAdmin, isReady } = useTenantQuery();
 
   const queryKey = [
     "tenant-integrations-alerts",
     tenantId,
     shouldFilter,
     isPlatformAdmin,
-    showAllTenants,
   ];
 
   const { data, isLoading } = useQuery({

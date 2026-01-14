@@ -155,11 +155,6 @@ export default function DebugTenantDataTab() {
                 ) : (
                   <Badge variant="secondary">Normal</Badge>
                 )}
-                {showAllTenants && (
-                  <Badge variant="outline" className="border-amber-500 text-amber-600">
-                    All Tenants
-                  </Badge>
-                )}
               </div>
             </div>
           </div>

@@ -88,8 +88,8 @@ export default function TenantIsolationTestsTab() {
       status: shouldFilter ? "pass" : "warn",
       message: shouldFilter 
         ? "Tenant filtering is ENABLED (normal mode)"
-        : "Tenant filtering is DISABLED (platform admin viewing all)",
-      details: `shouldFilter=${shouldFilter}, showAllTenants=${showAllTenants}`
+        : "Tenant filtering is always enabled",
+      details: `shouldFilter=${shouldFilter}`
     });
 
     // Test 3: Customers Tenant Scoping
@@ -415,10 +415,10 @@ export default function TenantIsolationTestsTab() {
               </div>
             </div>
             <div>
-              <span className="text-muted-foreground">All Tenants Mode:</span>
+              <span className="text-muted-foreground">Tenant Filtering:</span>
               <div className="mt-1">
-                <Badge variant={showAllTenants ? "destructive" : "outline"}>
-                  {showAllTenants ? "ENABLED" : "DISABLED"}
+                <Badge variant="secondary">
+                  ALWAYS ON
                 </Badge>
               </div>
             </div>

@@ -24,7 +24,7 @@ interface AlertCounts {
  * const { vehicleAlerts, carrierAlerts, totalBusinessAlerts, isLoading } = useTenantAlertCounts();
  */
 export function useTenantAlertCounts(): AlertCounts {
-  const { query, tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isReady } = useTenantQuery();
+  const { query, tenantId, shouldFilter, isPlatformAdmin, isReady } = useTenantQuery();
 
   // Create a stable query key that includes all tenant context
   const queryKey = [
@@ -32,7 +32,6 @@ export function useTenantAlertCounts(): AlertCounts {
     tenantId,
     shouldFilter,
     isPlatformAdmin,
-    showAllTenants,
   ];
 
   const { data, isLoading } = useQuery({
