@@ -49,28 +49,28 @@ export function useLoadHunterCounts(): LoadHunterCounts {
         .select("match_id", { count: "exact", head: true })
         .eq("tenant_id", tenantId);
 
-      // Skipped - join to hunt_plans for tenant_id
+      // Skipped - NOW uses direct tenant_id column (added via migration)
       const { count: skippedCount } = await supabase
         .from("load_hunt_matches")
-        .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("match_status", "skipped")
-        .eq("hunt_plans.tenant_id", tenantId);
+        .eq("tenant_id", tenantId);
 
-      // Bid
+      // Bid - uses direct tenant_id column
       const { count: bidCount } = await supabase
         .from("load_hunt_matches")
-        .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("match_status", "bid")
-        .eq("hunt_plans.tenant_id", tenantId);
+        .eq("tenant_id", tenantId);
 
-      // Booked
+      // Booked - uses direct tenant_id column
       const { count: bookedCount } = await supabase
         .from("load_hunt_matches")
-        .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("match_status", "booked")
-        .eq("hunt_plans.tenant_id", tenantId);
+        .eq("tenant_id", tenantId);
 
-      // Missed
+      // Missed - join to hunt_plans for tenant_id (missed_loads_history doesn't have tenant_id)
       const { count: missedCount } = await supabase
         .from("missed_loads_history")
         .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
