@@ -1299,7 +1299,7 @@ export default function EmailRoutingHealthTab() {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : !routingDebugData ? (
+              ) : !routingDebugData?.summary ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground mb-4">Click "Load Debug Data" to fetch routing debug information</p>
                   <p className="text-xs text-muted-foreground">
@@ -1312,19 +1312,19 @@ export default function EmailRoutingHealthTab() {
                   <div className="grid gap-4 md:grid-cols-4">
                     <div className="p-4 rounded-lg border bg-muted/30">
                       <div className="text-sm text-muted-foreground">Time Window</div>
-                      <div className="text-2xl font-bold">{routingDebugData.summary.time_window_hours}h</div>
+                      <div className="text-2xl font-bold">{routingDebugData.summary.time_window_hours ?? 24}h</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-muted/30">
                       <div className="text-sm text-muted-foreground">Total Emails</div>
-                      <div className="text-2xl font-bold">{routingDebugData.summary.total_emails}</div>
+                      <div className="text-2xl font-bold">{routingDebugData.summary.total_emails ?? 0}</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-green-100 dark:bg-green-900/30">
                       <div className="text-sm text-muted-foreground">Routed</div>
-                      <div className="text-2xl font-bold text-green-600">{routingDebugData.summary.routed}</div>
+                      <div className="text-2xl font-bold text-green-600">{routingDebugData.summary.routed ?? 0}</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-red-100 dark:bg-red-900/30">
                       <div className="text-sm text-muted-foreground">Quarantined</div>
-                      <div className="text-2xl font-bold text-red-600">{routingDebugData.summary.quarantined}</div>
+                      <div className="text-2xl font-bold text-red-600">{routingDebugData.summary.quarantined ?? 0}</div>
                     </div>
                   </div>
 
@@ -1436,7 +1436,7 @@ export default function EmailRoutingHealthTab() {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : !isolationCheckData ? (
+              ) : !isolationCheckData?.summary ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground mb-4">Click "Run Isolation Check" to verify tenant data isolation</p>
                   <p className="text-xs text-muted-foreground">
@@ -1459,7 +1459,7 @@ export default function EmailRoutingHealthTab() {
                       <AlertTriangle className="h-4 w-4" />
                       <AlertTitle>Isolation Status: FAIL</AlertTitle>
                       <AlertDescription>
-                        {isolationCheckData.summary.cross_tenant_issues.map((issue, idx) => (
+                        {(isolationCheckData.summary.cross_tenant_issues ?? []).map((issue, idx) => (
                           <div key={idx}>• {issue}</div>
                         ))}
                       </AlertDescription>
@@ -1470,23 +1470,23 @@ export default function EmailRoutingHealthTab() {
                   <div className="grid gap-4 md:grid-cols-5">
                     <div className="p-4 rounded-lg border bg-muted/30">
                       <div className="text-sm text-muted-foreground">Time Window</div>
-                      <div className="text-2xl font-bold">{isolationCheckData.summary.time_window_hours}h</div>
+                      <div className="text-2xl font-bold">{isolationCheckData.summary.time_window_hours ?? 24}h</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-muted/30">
                       <div className="text-sm text-muted-foreground">Tenants</div>
-                      <div className="text-2xl font-bold">{isolationCheckData.summary.total_tenants}</div>
+                      <div className="text-2xl font-bold">{isolationCheckData.summary.total_tenants ?? 0}</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-green-100 dark:bg-green-900/30">
                       <div className="text-sm text-muted-foreground">Routed Emails</div>
-                      <div className="text-2xl font-bold text-green-600">{isolationCheckData.summary.total_routed_emails}</div>
+                      <div className="text-2xl font-bold text-green-600">{isolationCheckData.summary.total_routed_emails ?? 0}</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-red-100 dark:bg-red-900/30">
                       <div className="text-sm text-muted-foreground">Quarantined</div>
-                      <div className="text-2xl font-bold text-red-600">{isolationCheckData.summary.total_quarantined}</div>
+                      <div className="text-2xl font-bold text-red-600">{isolationCheckData.summary.total_quarantined ?? 0}</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-blue-100 dark:bg-blue-900/30">
                       <div className="text-sm text-muted-foreground">Total Matches</div>
-                      <div className="text-2xl font-bold text-blue-600">{isolationCheckData.summary.total_matches}</div>
+                      <div className="text-2xl font-bold text-blue-600">{isolationCheckData.summary.total_matches ?? 0}</div>
                     </div>
                   </div>
 
@@ -1500,25 +1500,25 @@ export default function EmailRoutingHealthTab() {
                         <div className="p-3 rounded-lg border">
                           <div className="text-xs text-muted-foreground">email_queue NULL</div>
                           <div className={`text-xl font-bold ${
-                            isolationCheckData.summary.null_tenant_issues.email_queue_null > 0 ? 'text-red-600' : 'text-green-600'
+                            (isolationCheckData.summary.null_tenant_issues?.email_queue_null ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {isolationCheckData.summary.null_tenant_issues.email_queue_null}
+                            {isolationCheckData.summary.null_tenant_issues?.email_queue_null ?? 0}
                           </div>
                         </div>
                         <div className="p-3 rounded-lg border">
                           <div className="text-xs text-muted-foreground">load_emails NULL</div>
                           <div className={`text-xl font-bold ${
-                            isolationCheckData.summary.null_tenant_issues.load_emails_null > 0 ? 'text-red-600' : 'text-green-600'
+                            (isolationCheckData.summary.null_tenant_issues?.load_emails_null ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {isolationCheckData.summary.null_tenant_issues.load_emails_null}
+                            {isolationCheckData.summary.null_tenant_issues?.load_emails_null ?? 0}
                           </div>
                         </div>
                         <div className="p-3 rounded-lg border">
                           <div className="text-xs text-muted-foreground">hunt_plans NULL</div>
                           <div className={`text-xl font-bold ${
-                            isolationCheckData.summary.null_tenant_issues.hunt_plans_null > 0 ? 'text-red-600' : 'text-green-600'
+                            (isolationCheckData.summary.null_tenant_issues?.hunt_plans_null ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {isolationCheckData.summary.null_tenant_issues.hunt_plans_null}
+                            {isolationCheckData.summary.null_tenant_issues?.hunt_plans_null ?? 0}
                           </div>
                         </div>
                       </div>
@@ -1528,7 +1528,7 @@ export default function EmailRoutingHealthTab() {
                   {/* Per-Tenant Breakdown */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">Per-Tenant Counts ({isolationCheckData.summary.time_window_hours}h window)</CardTitle>
+                      <CardTitle className="text-sm font-medium">Per-Tenant Counts ({isolationCheckData.summary.time_window_hours ?? 24}h window)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="overflow-x-auto">
