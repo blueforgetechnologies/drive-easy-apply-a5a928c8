@@ -19,7 +19,9 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  Copy
+  Copy,
+  Pause,
+  Play
 } from "lucide-react";
 import InboundEmailRoutingCard from "@/components/InboundEmailRoutingCard";
 import CustomInboundAddresses from "@/components/CustomInboundAddresses";
@@ -67,6 +69,7 @@ export default function TenantSettingsPage() {
   const [gmailAlias, setGmailAlias] = useState("");
   const [rateLimitMinute, setRateLimitMinute] = useState(60);
   const [rateLimitDay, setRateLimitDay] = useState(10000);
+  const [isPaused, setIsPaused] = useState(false);
   const [pendingFlagChanges, setPendingFlagChanges] = useState<Map<string, boolean>>(new Map());
 
   useEffect(() => {
@@ -92,6 +95,7 @@ export default function TenantSettingsPage() {
       setGmailAlias(tenantData.gmail_alias || "");
       setRateLimitMinute(tenantData.rate_limit_per_minute || 60);
       setRateLimitDay(tenantData.rate_limit_per_day || 10000);
+      setIsPaused(tenantData.is_paused || false);
       
       if (flagsRes.data) {
         setFeatureFlags(flagsRes.data as FeatureFlag[]);
@@ -141,7 +145,8 @@ export default function TenantSettingsPage() {
         .update({
           gmail_alias: gmailAlias || null,
           rate_limit_per_minute: rateLimitMinute,
-          rate_limit_per_day: rateLimitDay
+          rate_limit_per_day: rateLimitDay,
+          is_paused: isPaused
         })
         .eq("id", tenant.id);
 
@@ -183,6 +188,7 @@ export default function TenantSettingsPage() {
       gmailAlias !== (tenant.gmail_alias || "") ||
       rateLimitMinute !== (tenant.rate_limit_per_minute || 60) ||
       rateLimitDay !== (tenant.rate_limit_per_day || 10000) ||
+      isPaused !== (tenant.is_paused || false) ||
       pendingFlagChanges.size > 0
     );
   };
@@ -271,6 +277,35 @@ export default function TenantSettingsPage() {
             <div className="ml-auto text-xs text-muted-foreground font-mono">
               ID: {tenant.id}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pause Ingestion Toggle */}
+      <Card className={isPaused ? "border-destructive bg-destructive/5" : "border-green-500/30 bg-green-50/30"}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {isPaused ? (
+                <Pause className="h-6 w-6 text-destructive" />
+              ) : (
+                <Play className="h-6 w-6 text-green-600" />
+              )}
+              <div>
+                <h3 className="font-semibold">
+                  Email Ingestion: {isPaused ? "PAUSED" : "Active"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {isPaused 
+                    ? "Incoming emails for this tenant are being skipped (not quarantined)" 
+                    : "Emails are being processed normally for this tenant"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={!isPaused}
+              onCheckedChange={(checked) => setIsPaused(!checked)}
+            />
           </div>
         </CardContent>
       </Card>
