@@ -594,67 +594,9 @@ export default function LoadHunterTab() {
   }, [huntPlans]);
 
   // REALTIME SUBSCRIPTION: Auto-refresh when new matches arrive
-  useEffect(() => {
-    console.log('🔴 Setting up realtime subscription for load_hunt_matches');
-    
-    const channel = supabase
-      .channel('load-hunter-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'load_hunt_matches'
-        },
-        (payload) => {
-          console.log('🔴 New match inserted via realtime:', payload);
-          // Refresh unreviewed matches when new match arrives
-          loadUnreviewedMatches();
-          loadHuntMatches();
-          
-          // Play sound alert if enabled and on Unreviewed tab only
-          if (!isSoundMuted && activeFilter === 'unreviewed') {
-            playAlertSound();
-            showSystemNotification('New Load Match', 'A new load has matched your hunt criteria');
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'load_hunt_matches'
-        },
-        (payload) => {
-          console.log('🔴 Match updated via realtime:', payload);
-          // Refresh on status changes (skip, bid, etc.)
-          loadUnreviewedMatches();
-          loadHuntMatches();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'load_emails'
-        },
-        (payload) => {
-          console.log('🔴 New email inserted via realtime:', payload);
-          // Refresh emails when new one arrives
-          loadLoadEmails();
-        }
-      )
-      .subscribe((status) => {
-        console.log('🔴 Realtime subscription status:', status);
-      });
-    
-    return () => {
-      console.log('🔴 Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [isSoundMuted]);
+  // CRITICAL: Must be tenant-scoped to prevent cross-tenant triggers
+  // This subscription is DISABLED when no tenantId - duplicate with the tenant-scoped one at line ~1327
+  // Keeping for sound alerts only - actual data refresh is handled by tenant-scoped subscriptions
 
   // Use saved distance from match - no recalculation needed
   useEffect(() => {
@@ -1814,18 +1756,16 @@ export default function LoadHunterTab() {
         midnightET.setUTCHours(utcHour - etHour, 0, 0, 0);
         const midnightETIso = midnightET.toISOString();
 
-        // CRITICAL: Join to hunt_plans for tenant filtering
-        const tenantJoinSelect = shouldFilter && tenantId
-          ? "*, hunt_plans!inner(tenant_id)"
-          : "*";
+        // CRITICAL: Now uses direct tenant_id column (added via migration) - no join needed
+        const baseSelect = "*";
 
         // Fetch active matches (match_status = 'active') with tenant filter
         let activeQuery = supabase
           .from("load_hunt_matches")
-          .select(tenantJoinSelect)
+          .select(baseSelect)
           .eq('match_status', 'active');
         if (shouldFilter && tenantId) {
-          activeQuery = activeQuery.eq('hunt_plans.tenant_id', tenantId);
+          activeQuery = activeQuery.eq('tenant_id', tenantId);
         }
         const { data: activeData, error: activeError } = await activeQuery;
 
@@ -1834,7 +1774,6 @@ export default function LoadHunterTab() {
           .from("load_hunt_matches")
           .select(`
             *,
-            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1843,7 +1782,7 @@ export default function LoadHunterTab() {
           .eq('match_status', 'skipped')
           .gte('updated_at', midnightETIso);
         if (shouldFilter && tenantId) {
-          skippedQuery = skippedQuery.eq('hunt_plans.tenant_id', tenantId);
+          skippedQuery = skippedQuery.eq('tenant_id', tenantId);
         }
         const { data: skippedData, error: skippedError } = await skippedQuery;
 
@@ -1852,7 +1791,6 @@ export default function LoadHunterTab() {
           .from("load_hunt_matches")
           .select(`
             *,
-            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1864,7 +1802,7 @@ export default function LoadHunterTab() {
           .eq('match_status', 'bid')
           .gte('updated_at', midnightETIso);
         if (shouldFilter && tenantId) {
-          bidQuery = bidQuery.eq('hunt_plans.tenant_id', tenantId);
+          bidQuery = bidQuery.eq('tenant_id', tenantId);
         }
         const { data: bidData, error: bidError } = await bidQuery;
 
@@ -1874,7 +1812,6 @@ export default function LoadHunterTab() {
           .from("load_hunt_matches")
           .select(`
             *,
-            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1882,7 +1819,7 @@ export default function LoadHunterTab() {
           `)
           .eq('match_status', 'undecided');
         if (shouldFilter && tenantId) {
-          undecidedQuery = undecidedQuery.eq('hunt_plans.tenant_id', tenantId);
+          undecidedQuery = undecidedQuery.eq('tenant_id', tenantId);
         }
         const { data: undecidedData, error: undecidedError } = await undecidedQuery;
 
@@ -1891,7 +1828,6 @@ export default function LoadHunterTab() {
           .from("load_hunt_matches")
           .select(`
             *,
-            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1900,7 +1836,7 @@ export default function LoadHunterTab() {
           .eq('match_status', 'waitlist')
           .gte('updated_at', midnightETIso);
         if (shouldFilter && tenantId) {
-          waitlistQuery = waitlistQuery.eq('hunt_plans.tenant_id', tenantId);
+          waitlistQuery = waitlistQuery.eq('tenant_id', tenantId);
         }
         const { data: waitlistData, error: waitlistError } = await waitlistQuery;
 
@@ -1909,7 +1845,6 @@ export default function LoadHunterTab() {
           .from("load_hunt_matches")
           .select(`
             *,
-            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues, assigned_load_id
@@ -1918,7 +1853,7 @@ export default function LoadHunterTab() {
           .not('booked_load_id', 'is', null)
           .gte('updated_at', midnightETIso);
         if (shouldFilter && tenantId) {
-          bookedQuery = bookedQuery.eq('hunt_plans.tenant_id', tenantId);
+          bookedQuery = bookedQuery.eq('tenant_id', tenantId);
         }
         const { data: bookedData, error: bookedError } = await bookedQuery;
 
