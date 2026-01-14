@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
   RefreshCw, Check, X, Settings2, Shield, 
   ChevronDown, ChevronRight, ToggleLeft, ToggleRight,
-  Building2, Zap, AlertTriangle, Info
+  Building2, Zap, AlertTriangle, Info, Trash2, Power
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,13 +33,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Fragment } from 'react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
 import { useTenantContext } from '@/contexts/TenantContext';
 
 interface FeatureFlag {
@@ -90,6 +99,9 @@ export default function RolloutsTab() {
   const [channelDialogOpen, setChannelDialogOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [newChannel, setNewChannel] = useState('');
+  
+  // Bulk action dialogs
+  const [allOffDialogOpen, setAllOffDialogOpen] = useState(false);
   
   // Expanded sections
   const [expandedFlags, setExpandedFlags] = useState<Set<string>>(new Set());
@@ -155,6 +167,59 @@ export default function RolloutsTab() {
     return flag.default_enabled;
   }
 
+  // ==================== GLOBAL DEFAULT CONTROLS ====================
+  async function toggleGlobalDefault(flagId: string, currentValue: boolean) {
+    setUpdating(`global-${flagId}`);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'set_global_default',
+          feature_flag_id: flagId,
+          enabled: !currentValue,
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to update global default');
+        return;
+      }
+      
+      toast.success(`Global default ${!currentValue ? 'enabled' : 'disabled'}`);
+      await loadData();
+    } catch (err) {
+      console.error('Error updating global default:', err);
+      toast.error('Failed to update global default');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function setAllGlobalDefaultsOff() {
+    setUpdating('all-off');
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: { action: 'set_all_global_defaults_off' },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to set all global defaults OFF');
+        return;
+      }
+      
+      toast.success(`Set ${result.updated_count} global defaults to OFF`);
+      setAllOffDialogOpen(false);
+      await loadData();
+    } catch (err) {
+      console.error('Error setting all global defaults OFF:', err);
+      toast.error('Failed to set all global defaults OFF');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  // ==================== CHANNEL DEFAULT CONTROLS ====================
   async function toggleChannelDefault(flagId: string, channel: string, currentValue: boolean | null) {
     const newValue = currentValue === null ? true : !currentValue;
     setUpdating(`${flagId}-${channel}`);
@@ -184,6 +249,60 @@ export default function RolloutsTab() {
     }
   }
 
+  async function clearChannelDefault(flagId: string, channel: string) {
+    setUpdating(`clear-${flagId}-${channel}`);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'clear_channel_default',
+          feature_flag_id: flagId,
+          release_channel: channel,
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to clear channel default');
+        return;
+      }
+      
+      toast.success('Channel default cleared');
+      await loadData();
+    } catch (err) {
+      console.error('Error clearing channel default:', err);
+      toast.error('Failed to clear channel default');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function clearAllChannelDefaults(flagId: string) {
+    setUpdating(`clear-all-channels-${flagId}`);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'clear_all_channel_defaults',
+          feature_flag_id: flagId,
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to clear channel defaults');
+        return;
+      }
+      
+      toast.success(`Cleared ${result.cleared_count} channel defaults`);
+      await loadData();
+    } catch (err) {
+      console.error('Error clearing channel defaults:', err);
+      toast.error('Failed to clear channel defaults');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  // ==================== TENANT OVERRIDE CONTROLS ====================
   async function toggleTenantOverride(flagId: string, tenantId: string, currentValue: boolean | null) {
     const tenantName = data?.tenants.find(t => t.id === tenantId)?.name || 'tenant';
     const newValue = currentValue === null ? true : !currentValue;
@@ -237,6 +356,32 @@ export default function RolloutsTab() {
     } catch (err) {
       console.error('Error removing tenant override:', err);
       toast.error('Failed to remove override');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function clearAllTenantOverrides(flagId: string) {
+    setUpdating(`clear-all-overrides-${flagId}`);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
+        body: {
+          action: 'clear_all_tenant_overrides',
+          feature_flag_id: flagId,
+        },
+      });
+
+      if (error || result?.error) {
+        toast.error(error?.message || result?.error || 'Failed to clear tenant overrides');
+        return;
+      }
+      
+      toast.success(`Cleared ${result.cleared_count} tenant overrides`);
+      await loadData();
+    } catch (err) {
+      console.error('Error clearing tenant overrides:', err);
+      toast.error('Failed to clear tenant overrides');
     } finally {
       setUpdating(null);
     }
@@ -351,11 +496,37 @@ export default function RolloutsTab() {
             Manage feature flags across release channels and tenants
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={() => setAllOffDialogOpen(true)}
+            disabled={updating !== null}
+          >
+            <Power className="h-4 w-4 mr-2" />
+            All Global OFF
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {/* Resolution Priority Notice */}
+      <Card className="bg-muted/50">
+        <CardContent className="pt-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="font-medium">Resolution Priority</p>
+              <p className="text-sm text-muted-foreground">
+                Killswitch OFF → Tenant Override → Channel Default → Global Default
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Channel Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -409,6 +580,8 @@ export default function RolloutsTab() {
               {data.flags.map(flag => {
                 const isExpanded = expandedFlags.has(flag.id);
                 const hasOverrides = data.tenantOverrides.some(o => o.feature_flag_id === flag.id);
+                const hasChannelDefaults = data.channelDefaults.some(c => c.feature_flag_id === flag.id);
+                const isUpdatingGlobal = updating === `global-${flag.id}`;
                 
                 return (
                   <Fragment key={flag.id}>
@@ -430,11 +603,17 @@ export default function RolloutsTab() {
                         </div>
                       </TableCell>
                       <TableCell className="w-[140px] min-w-[140px] text-center">
-                        {flag.default_enabled ? (
-                          <Check className="h-4 w-4 text-green-600 mx-auto" />
-                        ) : (
-                          <X className="h-4 w-4 text-muted-foreground mx-auto" />
-                        )}
+                        <div className="flex flex-col items-center gap-1">
+                          <Switch
+                            checked={flag.default_enabled}
+                            onCheckedChange={() => toggleGlobalDefault(flag.id, flag.default_enabled)}
+                            disabled={isUpdatingGlobal}
+                            className="data-[state=checked]:bg-green-600"
+                          />
+                          <span className="text-[10px] text-muted-foreground">
+                            {flag.default_enabled ? 'ON' : 'OFF'}
+                          </span>
+                        </div>
                       </TableCell>
                       {channels.map(channel => {
                         const channelDefault = getChannelDefault(flag.id, channel);
@@ -475,10 +654,36 @@ export default function RolloutsTab() {
                     {isExpanded && (
                       <TableRow key={`${flag.id}-details`} className="bg-muted/30">
                         <TableCell colSpan={6} className="py-4">
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             <p className="text-sm text-muted-foreground">
                               {flag.description || 'No description available'}
                             </p>
+                            
+                            {/* Clear Actions */}
+                            <div className="flex gap-2">
+                              {hasChannelDefaults && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => clearAllChannelDefaults(flag.id)}
+                                  disabled={updating?.startsWith('clear-')}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Clear Channel Defaults
+                                </Button>
+                              )}
+                              {hasOverrides && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => clearAllTenantOverrides(flag.id)}
+                                  disabled={updating?.startsWith('clear-')}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Clear Tenant Overrides
+                                </Button>
+                              )}
+                            </div>
                             
                             {/* Tenant Overrides */}
                             <div>
@@ -634,6 +839,31 @@ export default function RolloutsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* All Global OFF Confirmation */}
+      <AlertDialog open={allOffDialogOpen} onOpenChange={setAllOffDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set All Global Defaults OFF?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will disable all feature flags globally. Features will only be available
+              where channel defaults or tenant overrides explicitly enable them.
+              <br /><br />
+              <strong>This action is logged and reversible.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={setAllGlobalDefaultsOff}
+              disabled={updating === 'all-off'}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updating === 'all-off' ? 'Updating...' : 'Set All OFF'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
