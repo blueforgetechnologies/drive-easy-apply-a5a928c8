@@ -81,7 +81,7 @@ interface HighwayData {
 export default function CarrierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [carrier, setCarrier] = useState<CarrierData | null>(null);
@@ -107,8 +107,8 @@ export default function CarrierDetail() {
         .eq("status", "active")
         .order("name");
 
-      // Apply tenant filter
-      if (!(isPlatformAdmin && showAllTenants) && shouldFilter && tenantId) {
+      // Apply tenant filter - ALWAYS ON
+      if (shouldFilter && tenantId) {
         query = query.eq("tenant_id", tenantId);
       }
 

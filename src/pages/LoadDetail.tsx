@@ -29,7 +29,7 @@ import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 export default function LoadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [load, setLoad] = useState<any>(null);

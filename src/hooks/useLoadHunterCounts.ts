@@ -3,8 +3,10 @@
  * 
  * Provides match counts that:
  * - Reset to 0 immediately on tenant switch
- * - Include tenantId in query keys for proper cache invalidation
+ * - Include tenantId + epoch in query keys for proper cache invalidation
  * - Query the unreviewed_matches view with tenant filtering
+ * 
+ * SECURITY: Tenant filtering is ALWAYS ON. No bypass.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -24,75 +26,57 @@ interface LoadHunterCounts {
  * Get tenant-scoped Load Hunter match counts for badges
  */
 export function useLoadHunterCounts(): LoadHunterCounts {
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { tenantId, shouldFilter, tenantEpoch } = useTenantFilter();
   
-  const isReady = !shouldFilter || !!tenantId;
+  // Only ready when we have a tenant
+  const isReady = !!tenantId;
 
-  const queryKey = [
-    "tenant-load-hunter-counts",
-    tenantId,
-    shouldFilter,
-    isPlatformAdmin,
-    showAllTenants,
-  ];
+  // Query key includes tenantId and epoch for cache invalidation on switch
+  const queryKey = ["load-hunter-counts", tenantId, tenantEpoch];
 
   const { data, isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!isReady) {
+      if (!isReady || !tenantId) {
         return { unreviewedCount: 0, skippedCount: 0, bidCount: 0, bookedCount: 0, missedCount: 0 };
       }
 
-      // Query unreviewed matches with tenant filter
-      // The view now includes tenant_id from hunt_plans
-      let unreviewedQuery = supabase
-        .from("unreviewed_matches")
-        .select("match_id", { count: "exact", head: true });
-      
-      if (shouldFilter && tenantId) {
-        unreviewedQuery = unreviewedQuery.eq("tenant_id", tenantId);
-      }
-      
-      const { count: unreviewedCount } = await unreviewedQuery;
+      console.log(`[LoadHunterCounts] Fetching for tenant: ${tenantId}, epoch: ${tenantEpoch}`);
 
-      // Query other match statuses from load_hunt_matches
-      // Join to hunt_plans for tenant_id
-      let baseQuery = supabase.from("load_hunt_matches");
-      
-      // Skipped
-      let skippedQuery = baseQuery
+      // Query unreviewed matches with tenant filter - ALWAYS
+      const { count: unreviewedCount } = await supabase
+        .from("unreviewed_matches")
+        .select("match_id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId);
+
+      // Skipped - join to hunt_plans for tenant_id
+      const { count: skippedCount } = await supabase
+        .from("load_hunt_matches")
         .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
-        .eq("match_status", "skipped");
-      if (shouldFilter && tenantId) {
-        skippedQuery = skippedQuery.eq("hunt_plans.tenant_id", tenantId);
-      }
-      const { count: skippedCount } = await skippedQuery;
+        .eq("match_status", "skipped")
+        .eq("hunt_plans.tenant_id", tenantId);
 
       // Bid
-      let bidQuery = supabase.from("load_hunt_matches")
+      const { count: bidCount } = await supabase
+        .from("load_hunt_matches")
         .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
-        .eq("match_status", "bid");
-      if (shouldFilter && tenantId) {
-        bidQuery = bidQuery.eq("hunt_plans.tenant_id", tenantId);
-      }
-      const { count: bidCount } = await bidQuery;
+        .eq("match_status", "bid")
+        .eq("hunt_plans.tenant_id", tenantId);
 
       // Booked
-      let bookedQuery = supabase.from("load_hunt_matches")
+      const { count: bookedCount } = await supabase
+        .from("load_hunt_matches")
         .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
-        .eq("match_status", "booked");
-      if (shouldFilter && tenantId) {
-        bookedQuery = bookedQuery.eq("hunt_plans.tenant_id", tenantId);
-      }
-      const { count: bookedCount } = await bookedQuery;
+        .eq("match_status", "booked")
+        .eq("hunt_plans.tenant_id", tenantId);
 
-      // Missed - query missed_loads_history with hunt_plans join
-      let missedQuery = supabase.from("missed_loads_history")
-        .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true });
-      if (shouldFilter && tenantId) {
-        missedQuery = missedQuery.eq("hunt_plans.tenant_id", tenantId);
-      }
-      const { count: missedCount } = await missedQuery;
+      // Missed
+      const { count: missedCount } = await supabase
+        .from("missed_loads_history")
+        .select("id, hunt_plans!inner(tenant_id)", { count: "exact", head: true })
+        .eq("hunt_plans.tenant_id", tenantId);
+
+      console.log(`[LoadHunterCounts] Results: unreviewed=${unreviewedCount}, skipped=${skippedCount}, bid=${bidCount}, booked=${bookedCount}, missed=${missedCount}`);
 
       return {
         unreviewedCount: unreviewedCount ?? 0,
@@ -104,7 +88,7 @@ export function useLoadHunterCounts(): LoadHunterCounts {
     },
     enabled: isReady,
     placeholderData: { unreviewedCount: 0, skippedCount: 0, bidCount: 0, bookedCount: 0, missedCount: 0 },
-    staleTime: 15_000, // Refresh more frequently for real-time feel
+    staleTime: 15_000, // Refresh frequently for real-time feel
     refetchOnWindowFocus: true,
   });
 
