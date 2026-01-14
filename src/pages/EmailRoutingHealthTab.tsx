@@ -6,12 +6,64 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp, Layers, AlertTriangle, Users } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Mail, Shield, Inbox, Filter, Database, Recycle, TrendingUp, Layers, AlertTriangle, Users, Search, Lock, Loader2 } from "lucide-react";
 import { format, formatDistanceToNow, subDays, subHours } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import QuarantineFixHelper from "@/components/QuarantineFixHelper";
+
+// Routing Debug interfaces
+interface RoutingDebugEmail {
+  gmail_message_id: string;
+  received_at: string;
+  extracted_alias: string | null;
+  routing_method: string | null;
+  resolved_tenant_name: string | null;
+  outcome: 'routed' | 'quarantined';
+  failure_reason: string | null;
+}
+
+interface RoutingDebugResponse {
+  summary: {
+    time_window_hours: number;
+    total_emails: number;
+    routed: number;
+    quarantined: number;
+  };
+  emails: RoutingDebugEmail[];
+}
+
+// Tenant Isolation Check interfaces
+interface TenantIsolationCounts {
+  tenant_id: string;
+  tenant_name: string;
+  email_queue_count: number;
+  unroutable_emails_count: number;
+  load_emails_count: number;
+  matches_count: number;
+  hunt_plans_count: number;
+}
+
+interface IsolationCheckResponse {
+  summary: {
+    time_window_hours: number;
+    cutoff_time: string;
+    total_tenants: number;
+    total_routed_emails: number;
+    total_quarantined: number;
+    total_load_emails: number;
+    total_matches: number;
+    null_tenant_issues: {
+      email_queue_null: number;
+      load_emails_null: number;
+      hunt_plans_null: number;
+    };
+    cross_tenant_issues: string[];
+    isolation_status: 'PASS' | 'FAIL';
+  };
+  by_tenant: TenantIsolationCounts[];
+}
 
 interface RoutedEmail {
   id: string;
@@ -307,7 +359,48 @@ export default function EmailRoutingHealthTab() {
     },
   });
 
-  // Calculate stats
+  // Fetch routing debug data
+  const { data: routingDebugData, isLoading: loadingRoutingDebug, refetch: refetchRoutingDebug } = useQuery({
+    queryKey: ['email-routing-health', 'routing-debug', refreshKey],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data, error } = await supabase.functions.invoke('inspector-routing-debug', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { hours: 24, limit: 100 },
+      });
+
+      if (error) {
+        console.error('Error fetching routing debug:', error);
+        return null;
+      }
+      return data as RoutingDebugResponse;
+    },
+    enabled: false, // Manual trigger only
+  });
+
+  // Fetch tenant isolation check data
+  const { data: isolationCheckData, isLoading: loadingIsolationCheck, refetch: refetchIsolationCheck } = useQuery({
+    queryKey: ['email-routing-health', 'isolation-check', refreshKey],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data, error } = await supabase.functions.invoke('inspector-tenant-isolation-check', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { hours: 24 },
+      });
+
+      if (error) {
+        console.error('Error fetching isolation check:', error);
+        return null;
+      }
+      return data as IsolationCheckResponse;
+    },
+    enabled: false, // Manual trigger only
+  });
+
   const stats = {
     totalRouted: routedEmails.length,
     totalQuarantined: quarantinedEmails.length,
@@ -676,7 +769,7 @@ export default function EmailRoutingHealthTab() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="routed" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="routed" className="gap-2">
             <Inbox className="h-4 w-4" />
             Routed Emails ({stats.totalRouted})
@@ -692,6 +785,17 @@ export default function EmailRoutingHealthTab() {
               <Badge variant={dedupRegressionLevel === 'critical' ? 'destructive' : 'secondary'} className="ml-1 h-5 px-1.5">
                 !
               </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="routing-debug" className="gap-2">
+            <Search className="h-4 w-4" />
+            Routing Debug
+          </TabsTrigger>
+          <TabsTrigger value="isolation-check" className="gap-2">
+            <Lock className="h-4 w-4" />
+            Isolation Check
+            {isolationCheckData?.summary?.isolation_status === 'FAIL' && (
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5">!</Badge>
             )}
           </TabsTrigger>
         </TabsList>
@@ -1159,6 +1263,304 @@ export default function EmailRoutingHealthTab() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Routing Debug Tab */}
+        <TabsContent value="routing-debug">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5" />
+                    Routing Debug Inspector
+                  </CardTitle>
+                  <CardDescription>
+                    Detailed view of email routing decisions for the last 24 hours
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => refetchRoutingDebug()} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={loadingRoutingDebug}
+                >
+                  {loadingRoutingDebug ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Load Debug Data
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingRoutingDebug ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !routingDebugData ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">Click "Load Debug Data" to fetch routing debug information</p>
+                  <p className="text-xs text-muted-foreground">
+                    This queries the inspector-routing-debug endpoint for detailed routing decisions
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="text-sm text-muted-foreground">Time Window</div>
+                      <div className="text-2xl font-bold">{routingDebugData.summary.time_window_hours}h</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="text-sm text-muted-foreground">Total Emails</div>
+                      <div className="text-2xl font-bold">{routingDebugData.summary.total_emails}</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-green-100 dark:bg-green-900/30">
+                      <div className="text-sm text-muted-foreground">Routed</div>
+                      <div className="text-2xl font-bold text-green-600">{routingDebugData.summary.routed}</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-red-100 dark:bg-red-900/30">
+                      <div className="text-sm text-muted-foreground">Quarantined</div>
+                      <div className="text-2xl font-bold text-red-600">{routingDebugData.summary.quarantined}</div>
+                    </div>
+                  </div>
+
+                  {/* Emails Table */}
+                  {routingDebugData.emails?.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Received</TableHead>
+                            <TableHead>Gmail Message ID</TableHead>
+                            <TableHead>Extracted Alias</TableHead>
+                            <TableHead>Routing Method</TableHead>
+                            <TableHead>Resolved Tenant</TableHead>
+                            <TableHead>Outcome</TableHead>
+                            <TableHead>Failure Reason</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {routingDebugData.emails.map((email, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="whitespace-nowrap text-xs">
+                                {format(new Date(email.received_at), 'MMM d, HH:mm')}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs max-w-[150px] truncate">
+                                {email.gmail_message_id}
+                              </TableCell>
+                              <TableCell>
+                                {email.extracted_alias ? (
+                                  <Badge variant="outline">{email.extracted_alias}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">none</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {email.routing_method ? (
+                                  <Badge 
+                                    className={
+                                      email.routing_method === 'Delivered-To' 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                                        : email.routing_method === 'X-Original-To'
+                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
+                                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                                    }
+                                  >
+                                    {email.routing_method}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {email.resolved_tenant_name || '—'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={email.outcome === 'routed' ? 'default' : 'destructive'}
+                                  className={email.outcome === 'routed' ? 'bg-green-600' : ''}
+                                >
+                                  {email.outcome}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                                {email.failure_reason || '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tenant Isolation Check Tab */}
+        <TabsContent value="isolation-check">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5" />
+                    Tenant Isolation Smoke Test
+                  </CardTitle>
+                  <CardDescription>
+                    Verify data is correctly isolated per tenant with no cross-tenant leakage
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => refetchIsolationCheck()} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={loadingIsolationCheck}
+                >
+                  {loadingIsolationCheck ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Run Isolation Check
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingIsolationCheck ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !isolationCheckData ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">Click "Run Isolation Check" to verify tenant data isolation</p>
+                  <p className="text-xs text-muted-foreground">
+                    This queries counts grouped by tenant_id for email_queue, load_emails, and matches
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Status Alert */}
+                  {isolationCheckData.summary.isolation_status === 'PASS' ? (
+                    <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <AlertTitle className="text-green-600">Isolation Status: PASS</AlertTitle>
+                      <AlertDescription>
+                        No cross-tenant data leakage detected. All tenant_id values are properly set.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Isolation Status: FAIL</AlertTitle>
+                      <AlertDescription>
+                        {isolationCheckData.summary.cross_tenant_issues.map((issue, idx) => (
+                          <div key={idx}>• {issue}</div>
+                        ))}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Summary Cards */}
+                  <div className="grid gap-4 md:grid-cols-5">
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="text-sm text-muted-foreground">Time Window</div>
+                      <div className="text-2xl font-bold">{isolationCheckData.summary.time_window_hours}h</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="text-sm text-muted-foreground">Tenants</div>
+                      <div className="text-2xl font-bold">{isolationCheckData.summary.total_tenants}</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-green-100 dark:bg-green-900/30">
+                      <div className="text-sm text-muted-foreground">Routed Emails</div>
+                      <div className="text-2xl font-bold text-green-600">{isolationCheckData.summary.total_routed_emails}</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-red-100 dark:bg-red-900/30">
+                      <div className="text-sm text-muted-foreground">Quarantined</div>
+                      <div className="text-2xl font-bold text-red-600">{isolationCheckData.summary.total_quarantined}</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-blue-100 dark:bg-blue-900/30">
+                      <div className="text-sm text-muted-foreground">Total Matches</div>
+                      <div className="text-2xl font-bold text-blue-600">{isolationCheckData.summary.total_matches}</div>
+                    </div>
+                  </div>
+
+                  {/* NULL Tenant Issues */}
+                  <Card className="border-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">NULL tenant_id Checks</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="p-3 rounded-lg border">
+                          <div className="text-xs text-muted-foreground">email_queue NULL</div>
+                          <div className={`text-xl font-bold ${
+                            isolationCheckData.summary.null_tenant_issues.email_queue_null > 0 ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {isolationCheckData.summary.null_tenant_issues.email_queue_null}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg border">
+                          <div className="text-xs text-muted-foreground">load_emails NULL</div>
+                          <div className={`text-xl font-bold ${
+                            isolationCheckData.summary.null_tenant_issues.load_emails_null > 0 ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {isolationCheckData.summary.null_tenant_issues.load_emails_null}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg border">
+                          <div className="text-xs text-muted-foreground">hunt_plans NULL</div>
+                          <div className={`text-xl font-bold ${
+                            isolationCheckData.summary.null_tenant_issues.hunt_plans_null > 0 ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {isolationCheckData.summary.null_tenant_issues.hunt_plans_null}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Per-Tenant Breakdown */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium">Per-Tenant Counts ({isolationCheckData.summary.time_window_hours}h window)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tenant</TableHead>
+                              <TableHead className="text-right">Email Queue</TableHead>
+                              <TableHead className="text-right">Load Emails</TableHead>
+                              <TableHead className="text-right">Matches</TableHead>
+                              <TableHead className="text-right">Active Hunt Plans</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {isolationCheckData.by_tenant.map((tenant) => (
+                              <TableRow key={tenant.tenant_id}>
+                                <TableCell className="font-medium">{tenant.tenant_name}</TableCell>
+                                <TableCell className="text-right">{tenant.email_queue_count}</TableCell>
+                                <TableCell className="text-right">{tenant.load_emails_count}</TableCell>
+                                <TableCell className="text-right">{tenant.matches_count}</TableCell>
+                                <TableCell className="text-right">{tenant.hunt_plans_count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
