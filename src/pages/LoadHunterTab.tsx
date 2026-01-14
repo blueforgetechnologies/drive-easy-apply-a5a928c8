@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { TenantDebugBadge } from "@/components/TenantDebugBadge";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { prefetchMapboxToken } from "@/components/LoadRouteMap";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
@@ -1219,7 +1220,32 @@ export default function LoadHunterTab() {
     fetchUserDispatcherInfo();
   }, [tenantId, shouldFilter]);
 
+  // CRITICAL: Reset all state when tenant changes BEFORE loading new data
+  // This prevents stale cross-tenant data from appearing
   useEffect(() => {
+    console.log('🔄 Tenant changed, clearing all state:', { tenantId, shouldFilter });
+    
+    // Clear all data immediately
+    setVehicles([]);
+    setDrivers([]);
+    setLoadEmails([]);
+    setHuntPlans([]);
+    setLoadMatches([]);
+    setSkippedMatches([]);
+    setBidMatches([]);
+    setBookedMatches([]);
+    setUndecidedMatches([]);
+    setWaitlistMatches([]);
+    setUnreviewedViewData([]);
+    setMissedHistory([]);
+    setMatchedLoadIds(new Set());
+    setLoadHuntMap(new Map());
+    setLoadDistances(new Map());
+    setSelectedVehicle(null);
+    setSelectedEmailForDetail(null);
+    setSelectedMatchForDetail(null);
+    
+    // Now load fresh data for the new tenant
     loadVehicles();
     loadDrivers();
     loadLoadEmails();
@@ -1570,19 +1596,34 @@ export default function LoadHunterTab() {
   };
 
   const loadLoadEmails = async (retries = 3) => {
-    console.log('📧 Loading emails...');
+    console.log('📧 Loading emails...', { tenantId, shouldFilter });
+    
+    // SECURITY: Don't load if tenant filter required but no tenant selected
+    if (shouldFilter && !tenantId) {
+      console.log('📧 No tenant context, clearing emails');
+      setLoadEmails([]);
+      return;
+    }
+    
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         // Only fetch emails processed in the last 30 minutes - fresh emails only
         const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         
         // Sort by received_at (when email was originally received) - most recent first
-        const { data, error } = await supabase
+        let query = supabase
           .from("load_emails")
           .select("*")
           .gte("created_at", thirtyMinutesAgo)
           .order("received_at", { ascending: false })
           .limit(5000);
+
+        // Apply tenant filter - CRITICAL for isolation
+        if (shouldFilter && tenantId) {
+          query = query.eq("tenant_id", tenantId);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
           console.error(`📧 Attempt ${attempt} failed:`, error);
@@ -1593,7 +1634,7 @@ export default function LoadHunterTab() {
           await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
           continue;
         }
-        console.log(`✅ Loaded ${data?.length || 0} emails (last 48h by created_at)`);
+        console.log(`✅ Loaded ${data?.length || 0} emails (tenant: ${tenantId})`);
         setLoadEmails(data || []);
         return;
       } catch (err) {
@@ -1684,7 +1725,20 @@ export default function LoadHunterTab() {
   };
 
   const loadHuntMatches = async (retries = 3) => {
-    console.log('🔗 Loading hunt matches...');
+    console.log('🔗 Loading hunt matches...', { tenantId, shouldFilter });
+    
+    // SECURITY: Don't load if tenant filter required but no tenant selected
+    if (shouldFilter && !tenantId) {
+      console.log('🔗 No tenant context, clearing matches');
+      setLoadMatches([]);
+      setSkippedMatches([]);
+      setBidMatches([]);
+      setUndecidedMatches([]);
+      setWaitlistMatches([]);
+      setBookedMatches([]);
+      return;
+    }
+    
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         // Get midnight ET for today (skipped/bids only show today's matches)
@@ -1696,17 +1750,27 @@ export default function LoadHunterTab() {
         midnightET.setUTCHours(utcHour - etHour, 0, 0, 0);
         const midnightETIso = midnightET.toISOString();
 
-        // Fetch active matches (match_status = 'active')
-        const { data: activeData, error: activeError } = await supabase
+        // CRITICAL: Join to hunt_plans for tenant filtering
+        const tenantJoinSelect = shouldFilter && tenantId
+          ? "*, hunt_plans!inner(tenant_id)"
+          : "*";
+
+        // Fetch active matches (match_status = 'active') with tenant filter
+        let activeQuery = supabase
           .from("load_hunt_matches")
-          .select("*")
+          .select(tenantJoinSelect)
           .eq('match_status', 'active');
+        if (shouldFilter && tenantId) {
+          activeQuery = activeQuery.eq('hunt_plans.tenant_id', tenantId);
+        }
+        const { data: activeData, error: activeError } = await activeQuery;
 
         // Fetch manually skipped matches (match_status = 'skipped', today only) - include email data
-        const { data: skippedData, error: skippedError } = await supabase
+        let skippedQuery = supabase
           .from("load_hunt_matches")
           .select(`
             *,
+            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1714,12 +1778,17 @@ export default function LoadHunterTab() {
           `)
           .eq('match_status', 'skipped')
           .gte('updated_at', midnightETIso);
+        if (shouldFilter && tenantId) {
+          skippedQuery = skippedQuery.eq('hunt_plans.tenant_id', tenantId);
+        }
+        const { data: skippedData, error: skippedError } = await skippedQuery;
 
         // Fetch bid matches (match_status = 'bid', today only - clears at midnight) - include email data and bid status
-        const { data: bidData, error: bidError } = await supabase
+        let bidQuery = supabase
           .from("load_hunt_matches")
           .select(`
             *,
+            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1730,25 +1799,35 @@ export default function LoadHunterTab() {
           `)
           .eq('match_status', 'bid')
           .gte('updated_at', midnightETIso);
+        if (shouldFilter && tenantId) {
+          bidQuery = bidQuery.eq('hunt_plans.tenant_id', tenantId);
+        }
+        const { data: bidData, error: bidError } = await bidQuery;
 
         // Fetch undecided matches (match_status = 'undecided') - include email data
         // These are matches that were viewed but no action taken
-        const { data: undecidedData, error: undecidedError } = await supabase
+        let undecidedQuery = supabase
           .from("load_hunt_matches")
           .select(`
             *,
+            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
             )
           `)
           .eq('match_status', 'undecided');
+        if (shouldFilter && tenantId) {
+          undecidedQuery = undecidedQuery.eq('hunt_plans.tenant_id', tenantId);
+        }
+        const { data: undecidedData, error: undecidedError } = await undecidedQuery;
 
         // Fetch waitlist matches (match_status = 'waitlist', today only) - include email data
-        const { data: waitlistData, error: waitlistError } = await supabase
+        let waitlistQuery = supabase
           .from("load_hunt_matches")
           .select(`
             *,
+            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
@@ -1756,12 +1835,17 @@ export default function LoadHunterTab() {
           `)
           .eq('match_status', 'waitlist')
           .gte('updated_at', midnightETIso);
+        if (shouldFilter && tenantId) {
+          waitlistQuery = waitlistQuery.eq('hunt_plans.tenant_id', tenantId);
+        }
+        const { data: waitlistData, error: waitlistError } = await waitlistQuery;
 
         // Fetch booked matches (has booked_load_id, today only) - include email data
-        const { data: bookedData, error: bookedError } = await supabase
+        let bookedQuery = supabase
           .from("load_hunt_matches")
           .select(`
             *,
+            hunt_plans!inner(tenant_id),
             load_emails (
               id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
               received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues, assigned_load_id
@@ -1769,6 +1853,10 @@ export default function LoadHunterTab() {
           `)
           .not('booked_load_id', 'is', null)
           .gte('updated_at', midnightETIso);
+        if (shouldFilter && tenantId) {
+          bookedQuery = bookedQuery.eq('hunt_plans.tenant_id', tenantId);
+        }
+        const { data: bookedData, error: bookedError } = await bookedQuery;
 
         if (activeError || skippedError || bidError || undecidedError || waitlistError || bookedError) {
           console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError || bookedError);
@@ -1787,7 +1875,7 @@ export default function LoadHunterTab() {
         const waitlist = waitlistData || [];
         const booked = bookedData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked (tenant: ${tenantId})`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
@@ -3127,6 +3215,9 @@ export default function LoadHunterTab() {
     <div className="flex flex-col flex-1 min-h-0">
       {/* Filter Bar - Full Width - Always Visible */}
       <div className="flex items-center gap-2 py-2 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
+          {/* Tenant Debug Badge - TEMPORARY for isolation testing */}
+          <TenantDebugBadge showFull className="mr-2" />
+          
           {/* Mode Buttons - Merged Toggle */}
           <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
             <Button 

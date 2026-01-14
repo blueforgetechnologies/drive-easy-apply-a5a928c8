@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { TenantDebugBadge } from "@/components/TenantDebugBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -245,6 +246,12 @@ export default function TenantSettingsPage() {
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
+      </div>
+
+      {/* Tenant Debug Badge - TEMPORARY for isolation testing */}
+      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <p className="text-xs text-yellow-700 mb-2 font-medium">🔍 Tenant Isolation Debug (temporary)</p>
+        <TenantDebugBadge showFull />
       </div>
 
       {/* Tenant Info Card */}
