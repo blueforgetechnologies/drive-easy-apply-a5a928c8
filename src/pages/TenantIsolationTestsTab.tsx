@@ -34,7 +34,7 @@ interface TestResult {
 }
 
 export default function TenantIsolationTestsTab() {
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin } = useTenantFilter();
   const { query, isReady } = useTenantQuery();
   const [tests, setTests] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);

@@ -39,7 +39,7 @@ interface DebugData {
 export default function DebugTenantDataTab() {
   const navigate = useNavigate();
   const { effectiveTenant, isPlatformAdmin, isImpersonating } = useTenantContext();
-  const { tenantId, showAllTenants } = useTenantFilter();
+  const { tenantId } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DebugData | null>(null);
   const [error, setError] = useState<string | null>(null);

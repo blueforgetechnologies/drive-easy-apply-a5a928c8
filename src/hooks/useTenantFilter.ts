@@ -1,12 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
 import { useTenantContext } from '@/contexts/TenantContext';
 
 /**
- * SECURITY: "All Tenants" mode is strictly controlled:
- * - ONLY available to platform admins in the "internal" release channel
- * - NEVER persisted (ephemeral state only)
- * - Auto-resets on tenant switch, refresh, logout
- * - Hard-blocked for pilot/general tenants
+ * SECURITY: Tenant filtering is ALWAYS ON for all normal screens.
+ * 
+ * There is NO bypass capability in this hook anymore.
+ * "All Tenants" mode ONLY exists inside Platform Inspector tools
+ * via a separate hook (useInspectorAllTenantsMode) that normal
+ * screens cannot access.
+ * 
+ * Rules enforced:
+ * - shouldFilter: always true when tenantId exists
+ * - No showAllTenants toggle
+ * - No bypass option
  */
 
 /**
@@ -14,53 +19,75 @@ import { useTenantContext } from '@/contexts/TenantContext';
  * 
  * Returns:
  * - tenantId: The effective tenant ID (impersonation-aware)
- * - showAllTenants: Whether to bypass tenant filtering (internal admins only)
- * - setShowAllTenants: Toggle function (gated by channel + admin check)
- * - shouldFilter: Whether queries should include tenant_id filter
+ * - shouldFilter: ALWAYS true when tenantId exists (no bypass)
  * - isPlatformAdmin: Whether user can access admin features
  * - isInternalChannel: Whether current tenant is "internal" release channel
+ * - tenantEpoch: Increments on tenant switch (for cache invalidation)
  */
 export function useTenantFilter() {
-  const { effectiveTenant, isPlatformAdmin } = useTenantContext();
+  const { effectiveTenant, isPlatformAdmin, tenantEpoch } = useTenantContext();
   
-  // SECURITY: Ephemeral state only - NEVER persisted to localStorage
-  const [showAllTenants, setShowAllTenantsState] = useState<boolean>(false);
+  const tenantId = effectiveTenant?.id ?? null;
   
   // SECURITY: Check if current tenant is "internal" release channel
   const isInternalChannel = effectiveTenant?.release_channel === 'internal';
   
-  // SECURITY: "All Tenants" is ONLY allowed for platform admins in internal channel
-  const canUseAllTenantsMode = isPlatformAdmin && isInternalChannel;
-  
-  // SECURITY: Force OFF when tenant changes or channel restrictions apply
-  useEffect(() => {
-    if (showAllTenants && !canUseAllTenantsMode) {
-      console.warn('[TenantFilter] Forcing All Tenants OFF - not allowed for this tenant/channel');
-      setShowAllTenantsState(false);
-    }
-  }, [effectiveTenant?.id, canUseAllTenantsMode, showAllTenants]);
-
-  const setShowAllTenants = useCallback((value: boolean) => {
-    // SECURITY: Hard block - only internal platform admins can enable
-    if (value && !canUseAllTenantsMode) {
-      console.error('[TenantFilter] BLOCKED: All Tenants mode requires platform admin + internal channel');
-      return;
-    }
-    setShowAllTenantsState(value);
-  }, [canUseAllTenantsMode]);
-
-  // Apply filter unless explicitly in All Tenants mode (and authorized)
-  const effectiveShowAllTenants = canUseAllTenantsMode && showAllTenants;
-  const shouldFilter = !effectiveShowAllTenants;
+  // SECURITY: Tenant filtering is ALWAYS ON when tenantId exists
+  // There is NO bypass for normal screens
+  const shouldFilter = !!tenantId;
   
   return {
-    tenantId: effectiveTenant?.id ?? null,
+    tenantId,
     tenantSlug: effectiveTenant?.slug ?? null,
-    showAllTenants: effectiveShowAllTenants,
-    setShowAllTenants,
     shouldFilter,
     isPlatformAdmin,
     isInternalChannel,
-    canUseAllTenantsMode,
+    tenantEpoch: tenantEpoch ?? 0,
   };
 }
+
+/**
+ * INSPECTOR-ONLY: Hook for "All Tenants" bypass mode.
+ * 
+ * This hook is ONLY to be used by Platform Inspector components.
+ * It provides a toggle to view cross-tenant data, but ONLY when:
+ * - User is a platform admin
+ * - Current tenant is in "internal" release channel
+ * - Explicit toggle is ON (default OFF, not persisted)
+ * 
+ * Normal screens MUST use useTenantFilter() which has no bypass.
+ */
+export function useInspectorAllTenantsMode() {
+  const { effectiveTenant, isPlatformAdmin } = useTenantContext();
+  const [allTenantsEnabled, setAllTenantsEnabled] = useState(false);
+  
+  const isInternalChannel = effectiveTenant?.release_channel === 'internal';
+  const canUseAllTenantsMode = isPlatformAdmin && isInternalChannel;
+  
+  // SECURITY: Force OFF when not authorized
+  useEffect(() => {
+    if (allTenantsEnabled && !canUseAllTenantsMode) {
+      console.warn('[InspectorAllTenantsMode] Forcing OFF - not authorized');
+      setAllTenantsEnabled(false);
+    }
+  }, [effectiveTenant?.id, canUseAllTenantsMode, allTenantsEnabled]);
+  
+  const setAllTenants = useCallback((value: boolean) => {
+    if (value && !canUseAllTenantsMode) {
+      console.error('[InspectorAllTenantsMode] BLOCKED: requires platform admin + internal channel');
+      return;
+    }
+    setAllTenantsEnabled(value);
+  }, [canUseAllTenantsMode]);
+  
+  return {
+    allTenantsEnabled: canUseAllTenantsMode && allTenantsEnabled,
+    setAllTenantsEnabled: setAllTenants,
+    canUseAllTenantsMode,
+    // When all tenants is enabled, shouldFilter is false
+    shouldFilter: !(canUseAllTenantsMode && allTenantsEnabled),
+  };
+}
+
+// Need these imports for the inspector hook
+import { useState, useEffect, useCallback } from 'react';

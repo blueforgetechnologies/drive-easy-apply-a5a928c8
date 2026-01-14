@@ -45,6 +45,8 @@ interface TenantContextValue {
   isImpersonating: boolean;
   impersonatedTenant: Tenant | null;
   effectiveTenant: Tenant | null; // Returns impersonated tenant if active, otherwise currentTenant
+  // Epoch for cache invalidation on tenant switch
+  tenantEpoch: number;
 }
 
 const TenantContext = createContext<TenantContextValue | null>(null);
@@ -56,6 +58,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [impersonatedTenant, setImpersonatedTenant] = useState<Tenant | null>(null);
+  const [tenantEpoch, setTenantEpoch] = useState(0);
   const validationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const previousEffectiveTenantIdRef = useRef<string | null>(null);
   const isValidatingRef = useRef(false);
@@ -228,14 +231,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return impersonatedTenant || currentTenant;
   }, [impersonatedTenant, currentTenant]);
 
-  // Invalidate queries ONLY when effective tenant ID changes
+  // Invalidate queries AND bump epoch when effective tenant ID changes
   useEffect(() => {
     const newEffectiveId = effectiveTenant?.id || null;
     const previousId = previousEffectiveTenantIdRef.current;
     
     // Only invalidate if we had a previous value and it changed
     if (previousId !== null && previousId !== newEffectiveId) {
-      console.log('[TenantContext] Effective tenant changed from', previousId, 'to', newEffectiveId, '- invalidating queries');
+      console.log('[TenantContext] Effective tenant changed from', previousId, 'to', newEffectiveId, '- invalidating queries and bumping epoch');
+      setTenantEpoch(prev => prev + 1);
       queryClient.invalidateQueries();
     }
     
@@ -394,6 +398,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       isImpersonating,
       impersonatedTenant,
       effectiveTenant,
+      tenantEpoch,
     }}>
       {children}
     </TenantContext.Provider>

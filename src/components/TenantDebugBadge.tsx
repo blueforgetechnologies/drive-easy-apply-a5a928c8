@@ -13,7 +13,7 @@ interface TenantDebugBadgeProps {
 }
 
 export function TenantDebugBadge({ className = "", showFull = false }: TenantDebugBadgeProps) {
-  const { tenantId, tenantSlug, shouldFilter, isPlatformAdmin, showAllTenants, isInternalChannel } = useTenantFilter();
+  const { tenantId, tenantSlug, shouldFilter, isPlatformAdmin, isInternalChannel, tenantEpoch } = useTenantFilter();
   const { effectiveTenant, impersonatedTenant } = useTenantContext();
 
   // Short ID for display (first 8 chars)
@@ -22,14 +22,11 @@ export function TenantDebugBadge({ className = "", showFull = false }: TenantDeb
   const isImpersonating = !!impersonatedTenant;
   const filterStatus = shouldFilter ? "FILTERED" : "UNFILTERED";
   
-  // Determine status color
+  // Determine status color (tenant filtering is now always on when tenantId exists)
   let statusColor = "bg-green-100 text-green-800 border-green-300";
   let StatusIcon = CheckCircle2;
   
-  if (showAllTenants) {
-    statusColor = "bg-red-100 text-red-800 border-red-300";
-    StatusIcon = AlertTriangle;
-  } else if (isImpersonating) {
+  if (isImpersonating) {
     statusColor = "bg-amber-100 text-amber-800 border-amber-300";
     StatusIcon = Bug;
   } else if (!tenantId) {
@@ -61,15 +58,13 @@ export function TenantDebugBadge({ className = "", showFull = false }: TenantDeb
             {filterStatus}
           </Badge>
           
+          <Badge variant="outline" className="bg-background text-xs">
+            epoch: {tenantEpoch}
+          </Badge>
+          
           {isImpersonating && (
             <Badge variant="secondary" className="bg-amber-500 text-white">
               IMPERSONATING
-            </Badge>
-          )}
-          
-          {showAllTenants && (
-            <Badge variant="destructive" className="animate-pulse">
-              ⚠️ ALL TENANTS MODE
             </Badge>
           )}
           

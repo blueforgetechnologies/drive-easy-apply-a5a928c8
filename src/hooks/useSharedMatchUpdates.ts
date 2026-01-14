@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenantFilter } from './useTenantFilter';
 
 interface MatchUpdate {
   data: any[];
@@ -7,102 +8,150 @@ interface MatchUpdate {
   isLoading: boolean;
 }
 
-// Singleton to share state across all hook instances
-let sharedState: MatchUpdate = {
-  data: [],
-  lastUpdated: new Date(0),
-  isLoading: false
-};
+// Per-tenant state cache - keyed by tenantId
+const tenantStateCache = new Map<string, MatchUpdate>();
+const tenantSubscribers = new Map<string, Set<() => void>>();
+const tenantChannels = new Map<string, ReturnType<typeof supabase.channel>>();
+const tenantFetchPromises = new Map<string, Promise<any>>();
 
-let subscribers: Set<() => void> = new Set();
-let channelRef: ReturnType<typeof supabase.channel> | null = null;
-let fetchPromise: Promise<any> | null = null;
+function getOrCreateState(tenantId: string): MatchUpdate {
+  if (!tenantStateCache.has(tenantId)) {
+    tenantStateCache.set(tenantId, {
+      data: [],
+      lastUpdated: new Date(0),
+      isLoading: false
+    });
+  }
+  return tenantStateCache.get(tenantId)!;
+}
 
-// Shared fetch function - only one fetch at a time across all instances
-async function fetchMatchesOnce(): Promise<any[]> {
-  // If a fetch is already in progress, return that promise
-  if (fetchPromise) {
-    return fetchPromise;
+function getSubscribers(tenantId: string): Set<() => void> {
+  if (!tenantSubscribers.has(tenantId)) {
+    tenantSubscribers.set(tenantId, new Set());
+  }
+  return tenantSubscribers.get(tenantId)!;
+}
+
+function notifySubscribers(tenantId: string) {
+  getSubscribers(tenantId).forEach(callback => callback());
+}
+
+// Tenant-scoped fetch function
+async function fetchMatchesForTenant(tenantId: string): Promise<any[]> {
+  // If a fetch is already in progress for this tenant, return that promise
+  if (tenantFetchPromises.has(tenantId)) {
+    return tenantFetchPromises.get(tenantId)!;
   }
 
-  sharedState.isLoading = true;
-  notifySubscribers();
+  const state = getOrCreateState(tenantId);
+  state.isLoading = true;
+  notifySubscribers(tenantId);
 
-  fetchPromise = (async () => {
+  const fetchPromise = (async () => {
     try {
+      console.log(`[SharedMatches] Fetching for tenant: ${tenantId}`);
+      
+      // CRITICAL: Always filter by tenant_id
       const { data, error } = await supabase
         .from('unreviewed_matches')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('received_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching shared matches:', error);
-        return sharedState.data;
+        console.error('[SharedMatches] Error fetching:', error);
+        return state.data;
       }
 
-      sharedState.data = data || [];
-      sharedState.lastUpdated = new Date();
+      state.data = data || [];
+      state.lastUpdated = new Date();
+      console.log(`[SharedMatches] Loaded ${data?.length || 0} matches for tenant ${tenantId}`);
       return data || [];
     } finally {
-      sharedState.isLoading = false;
-      fetchPromise = null;
-      notifySubscribers();
+      state.isLoading = false;
+      tenantFetchPromises.delete(tenantId);
+      notifySubscribers(tenantId);
     }
   })();
 
+  tenantFetchPromises.set(tenantId, fetchPromise);
   return fetchPromise;
 }
 
-function notifySubscribers() {
-  subscribers.forEach(callback => callback());
-}
+// Initialize tenant-scoped realtime channel
+function initChannelForTenant(tenantId: string) {
+  if (tenantChannels.has(tenantId)) return;
 
-// Initialize realtime channel once
-function initChannel() {
-  if (channelRef) return;
-
-  console.log('🔴 Initializing shared realtime channel for matches');
-  channelRef = supabase
-    .channel('shared-match-updates')
+  console.log(`[SharedMatches] Initializing realtime channel for tenant: ${tenantId}`);
+  
+  const channel = supabase
+    .channel(`shared-match-updates-${tenantId}`)
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'load_hunt_matches' },
-      () => {
-        console.log('🔴 Shared channel: match change detected');
-        fetchMatchesOnce();
+      { 
+        event: '*', 
+        schema: 'public', 
+        table: 'load_hunt_matches',
+        // Realtime filter by tenant_id (via hunt_plans join is not possible here, so we use code guard below)
+      },
+      (payload) => {
+        // CODE GUARD: Ignore if tenant_id doesn't match
+        // Note: load_hunt_matches may not have tenant_id directly, so we refetch to be safe
+        console.log(`[SharedMatches] Match change detected, refetching for tenant ${tenantId}`);
+        fetchMatchesForTenant(tenantId);
       }
     )
     .on(
       'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'load_emails' },
-      () => {
-        console.log('🔴 Shared channel: new email detected');
-        fetchMatchesOnce();
+      { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'load_emails',
+        filter: `tenant_id=eq.${tenantId}`
+      },
+      (payload) => {
+        // CODE GUARD: Double-check tenant_id
+        if ((payload.new as any)?.tenant_id !== tenantId) {
+          console.warn('[SharedMatches] Ignoring cross-tenant email insert');
+          return;
+        }
+        console.log(`[SharedMatches] New email for tenant ${tenantId}, refetching`);
+        fetchMatchesForTenant(tenantId);
       }
     )
     .subscribe((status) => {
-      console.log('🔴 Shared channel status:', status);
+      console.log(`[SharedMatches] Channel status for ${tenantId}:`, status);
     });
+
+  tenantChannels.set(tenantId, channel);
 }
 
-// Cleanup channel when all subscribers are gone
-function cleanupChannel() {
-  if (subscribers.size === 0 && channelRef) {
-    console.log('🔴 Cleaning up shared channel');
-    supabase.removeChannel(channelRef);
-    channelRef = null;
+// Cleanup tenant channel
+function cleanupChannelForTenant(tenantId: string) {
+  const subscribers = getSubscribers(tenantId);
+  if (subscribers.size === 0 && tenantChannels.has(tenantId)) {
+    console.log(`[SharedMatches] Cleaning up channel for tenant ${tenantId}`);
+    const channel = tenantChannels.get(tenantId)!;
+    supabase.removeChannel(channel);
+    tenantChannels.delete(tenantId);
+    // Also clear cached state for this tenant
+    tenantStateCache.delete(tenantId);
   }
 }
 
 /**
- * Shared hook for match updates - reduces database polling by sharing
- * a single realtime subscription and data fetch across all dispatcher instances.
+ * Tenant-scoped hook for match updates.
  * 
- * Cost savings: ~70% reduction in UI polling queries
+ * CRITICAL: This hook is now strictly tenant-scoped:
+ * - Each tenant has its own cache, channel, and state
+ * - No cross-tenant data sharing is possible
+ * - All queries include tenant_id filter
  */
 export function useSharedMatchUpdates() {
+  const { tenantId } = useTenantFilter();
   const [, forceUpdate] = useState({});
   const mountedRef = useRef(true);
+  const currentTenantIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(() => {
     if (mountedRef.current) {
@@ -113,34 +162,65 @@ export function useSharedMatchUpdates() {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Subscribe to updates
-    subscribers.add(refresh);
+    // If no tenant, return empty state
+    if (!tenantId) {
+      return;
+    }
+
+    // If tenant changed, clean up old subscription
+    if (currentTenantIdRef.current && currentTenantIdRef.current !== tenantId) {
+      const oldTenantId = currentTenantIdRef.current;
+      const oldSubscribers = getSubscribers(oldTenantId);
+      oldSubscribers.delete(refresh);
+      cleanupChannelForTenant(oldTenantId);
+    }
+
+    currentTenantIdRef.current = tenantId;
     
-    // Initialize channel if needed
-    initChannel();
+    // Subscribe to updates for this tenant
+    getSubscribers(tenantId).add(refresh);
+    
+    // Initialize channel for this tenant
+    initChannelForTenant(tenantId);
     
     // Fetch initial data if stale (older than 30 seconds)
-    const isStale = Date.now() - sharedState.lastUpdated.getTime() > 30000;
-    if (isStale || sharedState.data.length === 0) {
-      fetchMatchesOnce();
+    const state = getOrCreateState(tenantId);
+    const isStale = Date.now() - state.lastUpdated.getTime() > 30000;
+    if (isStale || state.data.length === 0) {
+      fetchMatchesForTenant(tenantId);
     }
 
     return () => {
       mountedRef.current = false;
-      subscribers.delete(refresh);
-      cleanupChannel();
+      if (tenantId) {
+        getSubscribers(tenantId).delete(refresh);
+        cleanupChannelForTenant(tenantId);
+      }
     };
-  }, [refresh]);
+  }, [tenantId, refresh]);
 
+  // Return tenant-specific state or empty defaults
+  if (!tenantId) {
+    return {
+      matches: [],
+      lastUpdated: new Date(0),
+      isLoading: false,
+      refetch: () => Promise.resolve([])
+    };
+  }
+
+  const state = getOrCreateState(tenantId);
   return {
-    matches: sharedState.data,
-    lastUpdated: sharedState.lastUpdated,
-    isLoading: sharedState.isLoading,
-    refetch: fetchMatchesOnce
+    matches: state.data,
+    lastUpdated: state.lastUpdated,
+    isLoading: state.isLoading,
+    refetch: () => fetchMatchesForTenant(tenantId)
   };
 }
 
-// Get counts without additional queries
+/**
+ * Tenant-scoped match counts.
+ */
 export function useSharedMatchCounts() {
   const { matches } = useSharedMatchUpdates();
 

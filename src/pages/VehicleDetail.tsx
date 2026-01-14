@@ -21,7 +21,7 @@ import MaintenanceReminderDialog from "@/components/MaintenanceReminderDialog";
 export default function VehicleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<any>({});

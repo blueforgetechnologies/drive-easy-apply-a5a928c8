@@ -1265,48 +1265,67 @@ export default function LoadHunterTab() {
     loadAllDispatchers();
     fetchMapboxToken();
 
-    // Subscribe to real-time updates for load_emails
+    // CRITICAL: Only subscribe if we have a tenant context
+    if (!tenantId) {
+      console.log('[Realtime] No tenantId, skipping realtime subscriptions');
+      return () => {};
+    }
+
+    console.log(`[Realtime] Setting up tenant-scoped channels for tenant: ${tenantId}`);
+
+    // Subscribe to real-time updates for load_emails - TENANT FILTERED
     const emailsChannel = supabase
-      .channel('load-emails-changes')
+      .channel(`load-emails-changes-${tenantId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'load_emails'
+          table: 'load_emails',
+          filter: `tenant_id=eq.${tenantId}` // Realtime filter
         },
         (payload) => {
-          console.log('New load email received:', payload);
-          // Add the new email to the list
+          // CODE GUARD: Double-check tenant_id matches
+          const newEmail = payload.new as any;
+          if (newEmail?.tenant_id !== tenantId) {
+            console.warn('[Realtime] Ignoring cross-tenant email insert');
+            return;
+          }
+          console.log(`[Realtime] New load email for tenant ${tenantId}:`, payload);
           setLoadEmails((current) => [payload.new, ...current]);
-          // Reset to page 1 so user sees the new email at the top
           setCurrentPage(1);
-          // NOTE: No toast here - notifications only for MATCHES (handled in load-hunter-realtime channel)
         }
       )
       .subscribe();
 
-    // Subscribe to real-time updates for hunt_plans
+    // Subscribe to real-time updates for hunt_plans - TENANT FILTERED
     const huntPlansChannel = supabase
-      .channel('hunt-plans-changes')
+      .channel(`hunt-plans-changes-${tenantId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'hunt_plans'
+          table: 'hunt_plans',
+          filter: `tenant_id=eq.${tenantId}` // Realtime filter
         },
         (payload) => {
-          console.log('Hunt plan change:', payload);
-          // Reload hunt plans on any change
+          // CODE GUARD: Double-check tenant_id matches
+          const record = (payload.new || payload.old) as any;
+          if (record?.tenant_id !== tenantId) {
+            console.warn('[Realtime] Ignoring cross-tenant hunt plan change');
+            return;
+          }
+          console.log(`[Realtime] Hunt plan change for tenant ${tenantId}:`, payload);
           loadHuntPlans();
         }
       )
       .subscribe();
 
     // Subscribe to real-time updates for load_hunt_matches
+    // Note: load_hunt_matches doesn't have tenant_id directly, so we use code guard only
     const matchesChannel = supabase
-      .channel('load-hunt-matches-changes')
+      .channel(`load-hunt-matches-changes-${tenantId}`)
       .on(
         'postgres_changes',
         {
@@ -1315,27 +1334,33 @@ export default function LoadHunterTab() {
           table: 'load_hunt_matches'
         },
         (payload) => {
-          console.log('Load hunt match change:', payload);
-          // Reload matches on any change
+          // Reload all matches - the loaders will filter by tenant
+          console.log(`[Realtime] Match change detected, reloading for tenant ${tenantId}`);
           loadHuntMatches();
-          loadUnreviewedMatches(); // Also refresh server-side view
+          loadUnreviewedMatches();
         }
       )
       .subscribe();
 
-    // Subscribe to real-time updates for vehicles (dispatcher assignments)
+    // Subscribe to real-time updates for vehicles - TENANT FILTERED
     const vehiclesChannel = supabase
-      .channel('vehicles-changes')
+      .channel(`vehicles-changes-${tenantId}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'vehicles'
+          table: 'vehicles',
+          filter: `tenant_id=eq.${tenantId}` // Realtime filter
         },
         (payload) => {
-          console.log('Vehicle change:', payload);
-          // Use refs to call the latest versions of these functions
+          // CODE GUARD: Double-check tenant_id matches
+          const vehicle = (payload.new || payload.old) as any;
+          if (vehicle?.tenant_id !== tenantId) {
+            console.warn('[Realtime] Ignoring cross-tenant vehicle update');
+            return;
+          }
+          console.log(`[Realtime] Vehicle change for tenant ${tenantId}:`, payload);
           loadVehiclesRef.current?.();
           refreshMyVehicleIdsRef.current?.();
         }
@@ -1343,6 +1368,7 @@ export default function LoadHunterTab() {
       .subscribe();
 
     return () => {
+      console.log(`[Realtime] Cleaning up channels for tenant ${tenantId}`);
       supabase.removeChannel(emailsChannel);
       supabase.removeChannel(huntPlansChannel);
       supabase.removeChannel(matchesChannel);

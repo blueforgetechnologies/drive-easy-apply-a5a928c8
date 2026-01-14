@@ -3,6 +3,9 @@
  * 
  * Provides a convenient way to get tenant-scoped query builders
  * that automatically apply tenant_id filtering.
+ * 
+ * SECURITY: Tenant filtering is ALWAYS ON for normal screens.
+ * There is no bypass capability in this hook.
  */
 
 import { useTenantFilter } from "./useTenantFilter";
@@ -14,7 +17,7 @@ interface UseTenantQueryResult {
    * Create a tenant-scoped query for a table.
    * Automatically applies tenant_id filter for tenant-owned tables.
    */
-  query: <T extends string>(tableName: T, options?: { bypassTenantFilter?: boolean }) => ReturnType<typeof tenantQuery>;
+  query: <T extends string>(tableName: T) => ReturnType<typeof tenantQuery>;
   
   /**
    * Apply tenant filter to an existing query builder.
@@ -32,7 +35,7 @@ interface UseTenantQueryResult {
   tenantId: string | null;
   
   /**
-   * Whether queries should filter by tenant.
+   * Whether queries should filter by tenant (always true when tenantId exists).
    */
   shouldFilter: boolean;
   
@@ -42,9 +45,9 @@ interface UseTenantQueryResult {
   isPlatformAdmin: boolean;
   
   /**
-   * Whether "show all tenants" is enabled (platform admin only).
+   * Tenant epoch for cache invalidation.
    */
-  showAllTenants: boolean;
+  tenantEpoch: number;
   
   /**
    * Whether tenant is ready (has ID and should filter, or bypass is allowed).
@@ -68,27 +71,25 @@ interface UseTenantQueryResult {
  * await supabase.from("vehicles").insert(withTenant({ vehicle_number: "123" }));
  */
 export function useTenantQuery(): UseTenantQueryResult {
-  const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants, isInternalChannel, canUseAllTenantsMode } = useTenantFilter();
+  const { tenantId, shouldFilter, isPlatformAdmin, isInternalChannel, tenantEpoch } = useTenantFilter();
   
   // Full context passed to all tenant query utilities - SINGLE SOURCE OF TRUTH
-  // SECURITY: Include all fields required for proper authorization checks
+  // SECURITY: No bypass options - tenant filtering is always on
   const context = { 
     tenantId, 
     shouldFilter, 
     isPlatformAdmin, 
-    showAllTenants,
     isInternalChannel,
-    canUseAllTenantsMode,
   };
   
   return {
-    query: (tableName, options) => tenantQuery(tableName, context, options),
+    query: (tableName) => tenantQuery(tableName, context),
     filter: (query) => applyTenantFilter(query, context),
     withTenant: (data) => withTenantId(data, tenantId),
     tenantId,
     shouldFilter,
     isPlatformAdmin,
-    showAllTenants,
+    tenantEpoch,
     isReady: !shouldFilter || !!tenantId,
   };
 }

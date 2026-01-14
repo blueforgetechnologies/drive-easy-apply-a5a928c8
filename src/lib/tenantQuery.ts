@@ -3,6 +3,9 @@
  * 
  * This module provides a single source of truth for tenant filtering in the UI.
  * All queries to tenant-owned tables MUST use these utilities to ensure data isolation.
+ * 
+ * SECURITY: Tenant filtering is ALWAYS ON for normal screens.
+ * There is no bypass capability in this module.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -64,85 +67,36 @@ export function isTenantOwnedTable(tableName: string): tableName is TenantOwnedT
 }
 
 /**
- * Options for tenant query
- */
-export interface TenantQueryOptions {
-  /** Bypass tenant filtering (ONLY for platform admin debug pages in internal channel) */
-  bypassTenantFilter?: boolean;
-}
-
-/**
  * Context for tenant filtering - must be passed by the calling component
  * This is the SINGLE SOURCE OF TRUTH for tenant filtering decisions.
  */
 export interface TenantContext {
   tenantId: string | null;
   shouldFilter: boolean;
-  /** Platform admin flag - required for bypass */
+  /** Platform admin flag */
   isPlatformAdmin?: boolean;
-  /** Show all tenants toggle - only effective for platform admins in internal channel */
-  showAllTenants?: boolean;
   /** Whether current tenant is in internal release channel */
   isInternalChannel?: boolean;
-  /** Whether bypass is allowed (computed: isPlatformAdmin AND isInternalChannel) */
-  canUseAllTenantsMode?: boolean;
 }
 
 /**
- * SECURITY: Hard check for "All Tenants" bypass authorization.
- * Returns true ONLY if:
- * - User is a platform admin AND
- * - Current tenant is in "internal" release channel AND
- * - showAllTenants is explicitly enabled
- * 
- * Any other combination returns false (apply tenant filter).
- */
-function isAllTenantsBypassAuthorized(context: TenantContext): boolean {
-  // SECURITY: Triple check - all three conditions must be true
-  const authorized = !!(
-    context.isPlatformAdmin && 
-    context.isInternalChannel && 
-    context.showAllTenants
-  );
-  
-  // SECURITY: Log bypass attempts for audit trail
-  if (context.showAllTenants && !authorized) {
-    console.error(
-      '[TenantQuery] BLOCKED: Unauthorized All Tenants bypass attempt.',
-      { isPlatformAdmin: context.isPlatformAdmin, isInternalChannel: context.isInternalChannel }
-    );
-  }
-  
-  return authorized;
-}
-
-/**
- * Determines if tenant filtering should be applied.
- * This is the SINGLE SOURCE OF TRUTH for filtering logic.
- * 
+ * SECURITY: Determines if tenant filtering should be applied.
  * Returns true (apply filter) when:
- * - NOT authorized for All Tenants bypass AND
- * - shouldFilter is true AND
- * - tenantId exists
+ * - shouldFilter is true AND tenantId exists
+ * 
+ * There is NO bypass for normal screens.
  */
 export function shouldApplyTenantFilter(context: TenantContext): boolean {
-  // SECURITY: Check for authorized bypass first
-  if (isAllTenantsBypassAuthorized(context)) {
-    return false;
-  }
-  // Apply filter when shouldFilter is true and tenantId exists
   return context.shouldFilter && !!context.tenantId;
 }
 
 /**
  * Creates a tenant-scoped query builder.
  * 
- * For tenant-owned tables, this automatically applies the tenant_id filter
- * unless bypassTenantFilter is true (for platform admin debug pages).
+ * For tenant-owned tables, this automatically applies the tenant_id filter.
  * 
  * @param tableName - The table to query
  * @param context - The tenant context from useTenantFilter()
- * @param options - Query options including bypass flag
  * @returns A Supabase query builder with tenant filtering applied
  * 
  * @example
@@ -151,16 +105,12 @@ export function shouldApplyTenantFilter(context: TenantContext): boolean {
  */
 export function tenantQuery<T extends string>(
   tableName: T,
-  context: TenantContext,
-  options: TenantQueryOptions = {}
+  context: TenantContext
 ) {
   const query = supabase.from(tableName as any);
   
   // Check if this is a tenant-owned table that needs filtering
-  // Use shouldApplyTenantFilter as the SINGLE SOURCE OF TRUTH
-  const applyFilter = isTenantOwnedTable(tableName) && 
-                      !options.bypassTenantFilter && 
-                      shouldApplyTenantFilter(context);
+  const applyFilter = isTenantOwnedTable(tableName) && shouldApplyTenantFilter(context);
   
   if (applyFilter && context.tenantId) {
     // Return a query builder that will automatically have tenant filter applied
@@ -178,7 +128,7 @@ export function tenantQuery<T extends string>(
     };
   }
   
-  // For non-tenant tables or when filtering is bypassed, return the raw query
+  // For non-tenant tables or when tenantId is null, return the raw query
   return {
     select: (columns?: string, options?: Parameters<typeof query.select>[1]) => 
       query.select(columns, options),
@@ -196,16 +146,15 @@ export function tenantQuery<T extends string>(
 /**
  * Apply tenant filter to an existing query builder.
  * Use this when you need more control over the query construction.
- * Uses shouldApplyTenantFilter as the SINGLE SOURCE OF TRUTH.
  * 
  * @param query - An existing Supabase query builder
  * @param context - The tenant context from useTenantFilter()
  * @returns The query with tenant filter applied (if applicable)
  * 
  * @example
- * const { tenantId, shouldFilter, isPlatformAdmin, showAllTenants } = useTenantFilter();
+ * const { tenantId, shouldFilter } = useTenantFilter();
  * let query = supabase.from("vehicles").select("*").eq("status", "active");
- * query = applyTenantFilter(query, { tenantId, shouldFilter, isPlatformAdmin, showAllTenants });
+ * query = applyTenantFilter(query, { tenantId, shouldFilter });
  */
 export function applyTenantFilter<T>(
   query: T,
