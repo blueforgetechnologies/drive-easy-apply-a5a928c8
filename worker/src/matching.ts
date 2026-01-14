@@ -41,20 +41,22 @@ export async function matchLoadToHunts(
     }
   }
 
-  // Get enabled hunt plans for this tenant
+  // CRITICAL: Tenant isolation enforcement
+  // If no tenantId provided, we CANNOT match - this prevents cross-tenant matches
+  if (!tenantId) {
+    console.log(`[matching] BLOCKED - No tenant_id provided, cannot match without tenant context`);
+    return 0;
+  }
+
+  // Get enabled hunt plans ONLY for this tenant - never global
   // Include cooldown_seconds_min for configurable cooldown
-  const huntQuery = supabase
+  const { data: enabledHunts } = await supabase
     .from('hunt_plans')
     .select(
       'id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, floor_load_id, load_capacity, tenant_id, cooldown_seconds_min'
     )
-    .eq('enabled', true);
-
-  if (tenantId) {
-    huntQuery.eq('tenant_id', tenantId);
-  }
-
-  const { data: enabledHunts } = await huntQuery;
+    .eq('enabled', true)
+    .eq('tenant_id', tenantId); // MANDATORY tenant filter
 
   if (!enabledHunts?.length) return 0;
 
@@ -130,18 +132,16 @@ export async function matchLoadToHunts(
     // COOLDOWN GATING: Check if we should trigger action for this fingerprint
     // Cooldown is a MINIMUM threshold: suppress if delta < cooldown; allow if delta >= cooldown. No upper bound.
     // FAIL-CLOSED: If any gate data missing or RPC errors, suppress the match to prevent duplicates
-    const effectiveTenantId = tenantId || hunt.tenant_id;
+    // NOTE: tenantId is guaranteed to be non-null by the check at function start
     const hasFp = loadContentFingerprint && loadContentFingerprint.trim() !== '';
     const hasReceivedAt = !!receivedAt;
-    const hasTenant = !!effectiveTenantId;
     
-    if (!hasFp || !hasReceivedAt || !hasTenant) {
+    if (!hasFp || !hasReceivedAt) {
       const missing = [
         !hasFp ? 'fingerprint' : null,
         !hasReceivedAt ? 'receivedAt' : null,
-        !hasTenant ? 'tenant' : null,
       ].filter(Boolean).join('|');
-      console.log(`[hunt-cooldown] suppressed_missing_gate_data tenant=${effectiveTenantId || 'null'} hunt=${hunt.id} load_email_id=${loadEmailId} missing=${missing}`);
+      console.log(`[hunt-cooldown] suppressed_missing_gate_data tenant=${tenantId} hunt=${hunt.id} load_email_id=${loadEmailId} missing=${missing}`);
       continue; // FAIL-CLOSED: Cannot enforce cooldown without all gate data
     }
     
@@ -149,12 +149,12 @@ export async function matchLoadToHunts(
     let cooldownSecondsMin = 60; // System default
     if ((hunt as any).cooldown_seconds_min != null) {
       cooldownSecondsMin = (hunt as any).cooldown_seconds_min;
-    } else if (effectiveTenantId) {
+    } else {
       // Fetch tenant default if hunt doesn't have one
       const { data: tenantData } = await supabase
         .from('tenants')
         .select('cooldown_seconds_min')
-        .eq('id', effectiveTenantId)
+        .eq('id', tenantId)
         .maybeSingle();
       if (tenantData?.cooldown_seconds_min != null) {
         cooldownSecondsMin = tenantData.cooldown_seconds_min;
@@ -162,7 +162,7 @@ export async function matchLoadToHunts(
     }
     
     const { data: shouldTrigger, error: cooldownError } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
-      p_tenant_id: effectiveTenantId,
+      p_tenant_id: tenantId,
       p_hunt_plan_id: hunt.id,
       p_fingerprint: loadContentFingerprint,
       p_received_at: receivedAt.toISOString(),
@@ -177,15 +177,21 @@ export async function matchLoadToHunts(
     }
     
     if (!shouldTrigger) {
-      console.log(`[hunt-cooldown] suppressed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=${cooldownSecondsMin}s`);
+      console.log(`[hunt-cooldown] suppressed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=${cooldownSecondsMin}s`);
       continue; // Skip this match - still in cooldown
     }
     
     // Log allowed actions for observability
-    console.log(`[hunt-cooldown] allowed tenant=${effectiveTenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=${cooldownSecondsMin}s`);
+    console.log(`[hunt-cooldown] allowed tenant=${tenantId} hunt=${hunt.id} fp=${loadContentFingerprint.substring(0, 8)}... received_at=${receivedAt.toISOString()} cooldown=${cooldownSecondsMin}s`);
     
+    // CRITICAL: Final tenant isolation check before insert
+    // hunt.tenant_id MUST equal tenantId (already guaranteed by query filter, but defense-in-depth)
+    if (hunt.tenant_id !== tenantId) {
+      console.error(`[matching] BLOCKED cross-tenant match: load_email tenant=${tenantId} hunt tenant=${hunt.tenant_id}`);
+      continue;
+    }
 
-    // Insert match
+    // Insert match with correct tenant_id from hunt (which equals load email tenant)
     const { error } = await supabase.from('load_hunt_matches').insert({
       load_email_id: loadEmailId,
       hunt_plan_id: hunt.id,
@@ -194,7 +200,7 @@ export async function matchLoadToHunts(
       is_active: true,
       match_status: 'active',
       matched_at: new Date().toISOString(),
-      tenant_id: huntTenantId,
+      tenant_id: tenantId, // Use the validated tenantId from load_email
     });
 
     if (!error) {

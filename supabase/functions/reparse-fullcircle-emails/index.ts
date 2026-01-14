@@ -492,12 +492,21 @@ async function applyParserHints(
   }
 }
 
-// Match load to active hunt plans
-async function matchLoadToHunts(loadEmailId: string, parsedData: any) {
+// Match load to active hunt plans - WITH TENANT ISOLATION
+async function matchLoadToHunts(loadEmailId: string, parsedData: any, loadEmailTenantId: string | null) {
+  // CRITICAL: Tenant isolation enforcement
+  // If no tenant_id provided, we CANNOT match - this prevents cross-tenant matches
+  if (!loadEmailTenantId) {
+    console.log(`[reparse-fullcircle] BLOCKED - No tenant_id for load_email ${loadEmailId}, cannot match without tenant context`);
+    return 0;
+  }
+
+  // Get enabled hunt plans ONLY for this tenant - never global (MANDATORY tenant filter)
   const { data: enabledHunts } = await supabase
     .from('hunt_plans')
-    .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, load_capacity')
-    .eq('enabled', true);
+    .select('id, vehicle_id, hunt_coordinates, pickup_radius, vehicle_size, load_capacity, tenant_id')
+    .eq('enabled', true)
+    .eq('tenant_id', loadEmailTenantId); // MANDATORY tenant filter
 
   if (!enabledHunts?.length) return 0;
 
@@ -519,6 +528,12 @@ async function matchLoadToHunts(loadEmailId: string, parsedData: any) {
   let matchesCreated = 0;
 
   for (const hunt of enabledHunts) {
+    // CRITICAL: Final tenant isolation check (defense-in-depth)
+    if (hunt.tenant_id !== loadEmailTenantId) {
+      console.error(`[reparse-fullcircle] BLOCKED cross-tenant match: load_email tenant=${loadEmailTenantId} hunt tenant=${hunt.tenant_id}`);
+      continue;
+    }
+
     const huntCoords = hunt.hunt_coordinates as { lat: number; lng: number } | null;
     if (!huntCoords?.lat || !huntCoords?.lng) continue;
 
@@ -577,6 +592,7 @@ async function matchLoadToHunts(loadEmailId: string, parsedData: any) {
       is_active: true,
       match_status: 'active',
       matched_at: new Date().toISOString(),
+      tenant_id: loadEmailTenantId, // Use validated tenant from load_email
     });
     matchesCreated++;
   }
@@ -593,7 +609,7 @@ serve(async (req) => {
     // Find all Full Circle TMS emails that need geocoding (missing pickup_coordinates)
     const { data: emails, error: fetchError } = await supabase
       .from('load_emails')
-      .select('id, subject, body_text, body_html, parsed_data, email_source')
+      .select('id, subject, body_text, body_html, parsed_data, email_source, tenant_id')
       .eq('email_source', 'fullcircle')
       .limit(500);
 
@@ -649,9 +665,9 @@ serve(async (req) => {
 
       updated++;
 
-      // Run hunt matching if we have coordinates
+      // Run hunt matching if we have coordinates (with tenant isolation)
       if (parsedData.pickup_coordinates && parsedData.vehicle_type) {
-        const matches = await matchLoadToHunts(email.id, parsedData);
+        const matches = await matchLoadToHunts(email.id, parsedData, email.tenant_id);
         matchesCreated += matches;
       }
 
