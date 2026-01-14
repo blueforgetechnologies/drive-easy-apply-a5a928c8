@@ -39,13 +39,16 @@ export default function CustomInboundAddresses({
   const [newAddress, setNewAddress] = useState("");
   const [newNotes, setNewNotes] = useState("");
 
-  useEffect(() => {
-    loadAddresses();
-  }, [tenantId]);
-
+  // Reload function that uses current tenantId from props
   const loadAddresses = async () => {
+    if (!tenantId) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
+      console.log(`[CustomInboundAddresses] Loading addresses for tenant: ${tenantId}`);
       const { data, error } = await supabase
         .from("tenant_inbound_addresses")
         .select("*")
@@ -53,6 +56,8 @@ export default function CustomInboundAddresses({
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      
+      console.log(`[CustomInboundAddresses] Loaded ${data?.length || 0} addresses for tenant: ${tenantId}`);
       setAddresses((data as InboundAddress[]) || []);
     } catch (error: any) {
       console.error("Error loading inbound addresses:", error);
@@ -61,6 +66,13 @@ export default function CustomInboundAddresses({
       setLoading(false);
     }
   };
+
+  // Load addresses when tenantId changes - clear previous state first
+  useEffect(() => {
+    // Clear addresses immediately when tenant changes to prevent stale data
+    setAddresses([]);
+    loadAddresses();
+  }, [tenantId]);
 
   const handleAddAddress = async () => {
     const trimmedEmail = newAddress.trim().toLowerCase();
