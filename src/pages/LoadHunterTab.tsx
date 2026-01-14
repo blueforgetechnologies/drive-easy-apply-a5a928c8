@@ -179,6 +179,7 @@ export default function LoadHunterTab() {
   const [canonicalVehicleTypes, setCanonicalVehicleTypes] = useState<{ value: string; label: string }[]>([]);
   const [vehicleTypeMappings, setVehicleTypeMappings] = useState<Map<string, string>>(new Map());
   const [showArchiveResults, setShowArchiveResults] = useState(false);
+  const [emailTimeWindow, setEmailTimeWindow] = useState<'30m' | '6h' | '24h'>('30m'); // DEBUG: Time window selector
   const itemsPerPage = 14;
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
@@ -1346,7 +1347,11 @@ export default function LoadHunterTab() {
   // DISABLED: Sound notifications - not supposed to notify
   // Sound and system notifications have been disabled per user request
 
-  // Interval to check for missed loads (15 min) and deactivate stale matches (30 min)
+  // Reload emails when time window changes
+  useEffect(() => {
+    console.log('⏰ Time window changed to:', emailTimeWindow);
+    loadLoadEmails();
+  }, [emailTimeWindow]);
   useEffect(() => {
     // Run immediately on mount
     checkAndMarkMissedLoads();
@@ -1607,14 +1612,17 @@ export default function LoadHunterTab() {
     
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        // Only fetch emails processed in the last 30 minutes - fresh emails only
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        // DEBUG: Calculate time cutoff based on selected window
+        const timeWindowMs = emailTimeWindow === '30m' ? 30 * 60 * 1000 
+                           : emailTimeWindow === '6h' ? 6 * 60 * 60 * 1000 
+                           : 24 * 60 * 60 * 1000;
+        const cutoffTime = new Date(Date.now() - timeWindowMs).toISOString();
         
         // Sort by received_at (when email was originally received) - most recent first
         let query = supabase
           .from("load_emails")
           .select("*")
-          .gte("created_at", thirtyMinutesAgo)
+          .gte("created_at", cutoffTime)
           .order("received_at", { ascending: false })
           .limit(5000);
 
@@ -3588,6 +3596,18 @@ export default function LoadHunterTab() {
                 </div>
               </PopoverContent>
             </Popover>
+            
+            {/* DEBUG: Time Window Selector */}
+            <Select value={emailTimeWindow} onValueChange={(v: '30m' | '6h' | '24h') => setEmailTimeWindow(v)}>
+              <SelectTrigger className="h-7 w-[72px] text-xs rounded-full btn-glossy border-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30m">30m</SelectItem>
+                <SelectItem value="6h">6h</SelectItem>
+                <SelectItem value="24h">24h</SelectItem>
+              </SelectContent>
+            </Select>
             
             <Button 
               variant="ghost"

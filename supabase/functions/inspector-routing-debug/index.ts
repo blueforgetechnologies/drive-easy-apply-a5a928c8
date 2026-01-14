@@ -243,9 +243,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        time_window_hours: hoursBack,
+        summary: {
+          time_window_hours: hoursBack,
+          total_emails: decisions.length,
+          routed: stats.routed,
+          quarantined: stats.quarantined,
+        },
+        emails: decisions.slice(0, limit),
         stats,
-        recent_decisions: decisions.slice(0, limit),
         config: {
           alias_mappings: aliasConfig,
           inbound_address_mappings: addressMappings,
