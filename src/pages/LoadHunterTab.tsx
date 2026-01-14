@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,8 +179,14 @@ export default function LoadHunterTab() {
   const [canonicalVehicleTypes, setCanonicalVehicleTypes] = useState<{ value: string; label: string }[]>([]);
   const [vehicleTypeMappings, setVehicleTypeMappings] = useState<Map<string, string>>(new Map());
   const [showArchiveResults, setShowArchiveResults] = useState(false);
-  const [emailTimeWindow, setEmailTimeWindow] = useState<'30m' | '6h' | '24h'>('30m'); // DEBUG: Time window selector
+  const [emailTimeWindow, setEmailTimeWindow] = useState<'30m' | '6h' | '24h' | 'session'>('30m'); // DEBUG: Time window selector
+  const [sessionStart] = useState(() => new Date().toISOString()); // Capture page open time for "Since open" filter
   const itemsPerPage = 14;
+  
+  // REQUEST ID GUARDS: Prevent stale async writes during tenant switch or rapid refreshes
+  const loadEmailsReqIdRef = useRef(0);
+  const loadMatchesReqIdRef = useRef(0);
+  const loadUnreviewedReqIdRef = useRef(0);
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
@@ -1347,11 +1353,8 @@ export default function LoadHunterTab() {
   // DISABLED: Sound notifications - not supposed to notify
   // Sound and system notifications have been disabled per user request
 
-  // Reload emails when time window changes
-  useEffect(() => {
-    console.log('⏰ Time window changed to:', emailTimeWindow);
-    loadLoadEmails();
-  }, [emailTimeWindow]);
+  // Reload emails when time window changes - handled by tenant change effect which calls loadLoadEmails
+  // The emailTimeWindow is in the useCallback deps, so the function updates when it changes
   useEffect(() => {
     // Run immediately on mount
     checkAndMarkMissedLoads();
@@ -1600,23 +1603,33 @@ export default function LoadHunterTab() {
     }
   };
 
-  const loadLoadEmails = async (retries = 3) => {
-    console.log('📧 Loading emails...', { tenantId, shouldFilter });
+  const loadLoadEmails = useCallback(async (retries = 3) => {
+    // REQUEST ID GUARD: Increment and capture current request ID
+    const myReqId = ++loadEmailsReqIdRef.current;
+    console.log('📧 Loading emails...', { tenantId, shouldFilter, reqId: myReqId });
     
     // SECURITY: Don't load if tenant filter required but no tenant selected
     if (shouldFilter && !tenantId) {
       console.log('📧 No tenant context, clearing emails');
-      setLoadEmails([]);
+      if (myReqId === loadEmailsReqIdRef.current) {
+        setLoadEmails([]);
+      }
       return;
     }
     
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         // DEBUG: Calculate time cutoff based on selected window
-        const timeWindowMs = emailTimeWindow === '30m' ? 30 * 60 * 1000 
-                           : emailTimeWindow === '6h' ? 6 * 60 * 60 * 1000 
-                           : 24 * 60 * 60 * 1000;
-        const cutoffTime = new Date(Date.now() - timeWindowMs).toISOString();
+        let cutoffTime: string;
+        if (emailTimeWindow === 'session') {
+          // "Since open" - use sessionStart timestamp
+          cutoffTime = sessionStart;
+        } else {
+          const timeWindowMs = emailTimeWindow === '30m' ? 30 * 60 * 1000 
+                             : emailTimeWindow === '6h' ? 6 * 60 * 60 * 1000 
+                             : 24 * 60 * 60 * 1000;
+          cutoffTime = new Date(Date.now() - timeWindowMs).toISOString();
+        }
         
         // Sort by received_at (when email was originally received) - most recent first
         let query = supabase
@@ -1633,6 +1646,12 @@ export default function LoadHunterTab() {
 
         const { data, error } = await query;
 
+        // REQUEST ID GUARD: Only update state if this is still the latest request
+        if (myReqId !== loadEmailsReqIdRef.current) {
+          console.log(`📧 Request ${myReqId} stale (current: ${loadEmailsReqIdRef.current}), discarding`);
+          return;
+        }
+
         if (error) {
           console.error(`📧 Attempt ${attempt} failed:`, error);
           if (attempt === retries) {
@@ -1642,7 +1661,7 @@ export default function LoadHunterTab() {
           await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
           continue;
         }
-        console.log(`✅ Loaded ${data?.length || 0} emails (tenant: ${tenantId})`);
+        console.log(`✅ Loaded ${data?.length || 0} emails (tenant: ${tenantId}, reqId: ${myReqId})`);
         setLoadEmails(data || []);
         return;
       } catch (err) {
@@ -1653,7 +1672,7 @@ export default function LoadHunterTab() {
         await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
       }
     }
-  };
+  }, [tenantId, shouldFilter, emailTimeWindow, sessionStart]);
 
   const loadHuntPlans = async (retries = 3) => {
     console.log('🎯 Loading hunt plans...');
@@ -1732,18 +1751,22 @@ export default function LoadHunterTab() {
     }
   };
 
-  const loadHuntMatches = async (retries = 3) => {
-    console.log('🔗 Loading hunt matches...', { tenantId, shouldFilter });
+  const loadHuntMatches = useCallback(async (retries = 3) => {
+    // REQUEST ID GUARD: Increment and capture current request ID
+    const myReqId = ++loadMatchesReqIdRef.current;
+    console.log('🔗 Loading hunt matches...', { tenantId, shouldFilter, reqId: myReqId });
     
     // SECURITY: Don't load if tenant filter required but no tenant selected
     if (shouldFilter && !tenantId) {
       console.log('🔗 No tenant context, clearing matches');
-      setLoadMatches([]);
-      setSkippedMatches([]);
-      setBidMatches([]);
-      setUndecidedMatches([]);
-      setWaitlistMatches([]);
-      setBookedMatches([]);
+      if (myReqId === loadMatchesReqIdRef.current) {
+        setLoadMatches([]);
+        setSkippedMatches([]);
+        setBidMatches([]);
+        setUndecidedMatches([]);
+        setWaitlistMatches([]);
+        setBookedMatches([]);
+      }
       return;
     }
     
@@ -1876,6 +1899,12 @@ export default function LoadHunterTab() {
           continue;
         }
         
+        // REQUEST ID GUARD: Only update state if this is still the latest request
+        if (myReqId !== loadMatchesReqIdRef.current) {
+          console.log(`🔗 Request ${myReqId} stale (current: ${loadMatchesReqIdRef.current}), discarding`);
+          return;
+        }
+        
         const active = activeData || [];
         const skipped = skippedData || [];
         const bids = bidData || [];
@@ -1883,7 +1912,7 @@ export default function LoadHunterTab() {
         const waitlist = waitlistData || [];
         const booked = bookedData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked (tenant: ${tenantId})`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked (tenant: ${tenantId}, reqId: ${myReqId})`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
@@ -1916,17 +1945,21 @@ export default function LoadHunterTab() {
         await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
       }
     }
-  };
+  }, [tenantId, shouldFilter]);
 
   // Load unreviewed matches efficiently from database view (server-side filtering)
   // CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
-  const loadUnreviewedMatches = async (retries = 3) => {
-    console.log('🚀 Loading unreviewed matches from view...', { tenantId, shouldFilter });
+  const loadUnreviewedMatches = useCallback(async (retries = 3) => {
+    // REQUEST ID GUARD: Increment and capture current request ID
+    const myReqId = ++loadUnreviewedReqIdRef.current;
+    console.log('🚀 Loading unreviewed matches from view...', { tenantId, shouldFilter, reqId: myReqId });
     
     // Reset to empty if no tenant context yet
     if (shouldFilter && !tenantId) {
       console.log('⏳ No tenant context yet, showing empty matches');
-      setUnreviewedViewData([]);
+      if (myReqId === loadUnreviewedReqIdRef.current) {
+        setUnreviewedViewData([]);
+      }
       return;
     }
     
@@ -1953,7 +1986,13 @@ export default function LoadHunterTab() {
           continue;
         }
         
-        console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view (tenant: ${tenantId})`);
+        // REQUEST ID GUARD: Only update state if this is still the latest request
+        if (myReqId !== loadUnreviewedReqIdRef.current) {
+          console.log(`🚀 Request ${myReqId} stale (current: ${loadUnreviewedReqIdRef.current}), discarding`);
+          return;
+        }
+        
+        console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view (tenant: ${tenantId}, reqId: ${myReqId})`);
         console.log('📊 Sample match:', data?.[0]);
         console.log('📊 Current myVehicleIds:', myVehicleIds);
         console.log('📊 Current activeMode:', activeMode);
@@ -1967,7 +2006,7 @@ export default function LoadHunterTab() {
         await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
       }
     }
-  };
+  }, [tenantId, shouldFilter, myVehicleIds, activeMode]);
 
   // Load missed history from database - shows all loads that went 15+ min without action
   const loadMissedHistory = async () => {
@@ -2040,6 +2079,12 @@ export default function LoadHunterTab() {
       console.error('Error in loadMissedHistory:', err);
     }
   };
+
+  // Reload emails when time window changes
+  useEffect(() => {
+    console.log('⏰ Time window changed to:', emailTimeWindow);
+    loadLoadEmails();
+  }, [emailTimeWindow, loadLoadEmails]);
 
   // Check for matches that are 15+ minutes old and create copies in missed_loads_history
   // ONLY for matches with match_status = 'active' (not skipped, bid, waitlist, undecided)
@@ -3598,11 +3643,12 @@ export default function LoadHunterTab() {
             </Popover>
             
             {/* DEBUG: Time Window Selector */}
-            <Select value={emailTimeWindow} onValueChange={(v: '30m' | '6h' | '24h') => setEmailTimeWindow(v)}>
-              <SelectTrigger className="h-7 w-[72px] text-xs rounded-full btn-glossy border-0">
+            <Select value={emailTimeWindow} onValueChange={(v: '30m' | '6h' | '24h' | 'session') => setEmailTimeWindow(v)}>
+              <SelectTrigger className={`h-7 w-[90px] text-xs rounded-full border-0 ${emailTimeWindow === 'session' ? 'btn-glossy-success text-white' : 'btn-glossy'}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="session">Since open</SelectItem>
                 <SelectItem value="30m">30m</SelectItem>
                 <SelectItem value="6h">6h</SelectItem>
                 <SelectItem value="24h">24h</SelectItem>
