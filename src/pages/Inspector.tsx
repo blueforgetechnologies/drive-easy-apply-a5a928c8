@@ -356,15 +356,15 @@ export default function Inspector() {
   function getEmailHealthBadge(status: string | null) {
     switch (status) {
       case "healthy":
-        return <Badge variant="default" className="bg-green-600">🟢 Healthy</Badge>;
+        return <Badge className="bg-green-600 text-white border-0 shadow-sm">🟢 Healthy</Badge>;
       case "warning":
-        return <Badge variant="secondary" className="bg-yellow-500 text-black">🟡 Warning</Badge>;
+        return <Badge className="bg-yellow-500 text-black border-0 shadow-sm">🟡 Warning</Badge>;
       case "critical":
-        return <Badge variant="destructive">🔴 Critical</Badge>;
+        return <Badge className="bg-red-600 text-white border-0 shadow-sm">🔴 Critical</Badge>;
       case "no_source":
-        return <Badge variant="outline">⚪ No Source</Badge>;
+        return <Badge variant="outline" className="bg-muted/80">⚪ No Source</Badge>;
       default:
-        return <Badge variant="outline">—</Badge>;
+        return <Badge variant="outline" className="bg-muted/80">—</Badge>;
     }
   }
 
