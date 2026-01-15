@@ -1174,9 +1174,12 @@ export default function LoadHunterTab() {
   // CRITICAL: Reset all state when tenant changes BEFORE loading new data
   // This prevents stale cross-tenant data from appearing
   useEffect(() => {
-    console.log('🔄 Tenant changed, clearing all state:', { tenantId, shouldFilter });
+    // STRICT tenantReady guard - tenant filtering is ALWAYS ON now
+    const tenantReady = !!tenantId;
     
-    // Clear all data immediately
+    console.log('🔄 Tenant effect triggered:', { tenantId, tenantReady, shouldFilter });
+    
+    // Always clear state first on any tenant change (including null)
     setVehicles([]);
     setDrivers([]);
     setLoadEmails([]);
@@ -1196,7 +1199,16 @@ export default function LoadHunterTab() {
     setSelectedEmailForDetail(null);
     setSelectedMatchForDetail(null);
     
-    // Now load fresh data for the new tenant
+    // CRITICAL: If tenant not ready, DO NOT run loaders or subscribe
+    // This prevents null-tenant queries during mount/switch flicker
+    if (!tenantReady) {
+      console.log('[LoadHunter] ⚠️ tenantReady=false, skipping all loaders and subscriptions');
+      return () => {}; // No cleanup needed - no channels created
+    }
+    
+    console.log(`[LoadHunter] ✅ tenantReady=true (${tenantId}), running loaders...`);
+    
+    // Only run loaders when tenant is ready
     loadVehicles();
     loadDrivers();
     loadLoadEmails();
@@ -1208,12 +1220,6 @@ export default function LoadHunterTab() {
     loadCanonicalVehicleTypes();
     loadAllDispatchers();
     fetchMapboxToken();
-
-    // CRITICAL: Only subscribe if we have a tenant context
-    if (!tenantId) {
-      console.log('[Realtime] No tenantId, skipping realtime subscriptions');
-      return () => {};
-    }
 
     console.log(`[Realtime] Setting up tenant-scoped channels for tenant: ${tenantId}`);
 
