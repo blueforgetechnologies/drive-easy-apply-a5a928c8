@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { EmailRoutingOverview } from "@/components/EmailRoutingOverview";
 
 interface Tenant {
   id: string;
@@ -734,6 +735,9 @@ export default function PlatformAdminTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Email Routing Overview */}
+      <EmailRoutingOverview />
 
       {/* Tenants Section */}
       <Card>
