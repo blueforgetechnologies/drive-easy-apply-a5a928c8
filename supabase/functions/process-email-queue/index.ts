@@ -1770,11 +1770,18 @@ serve(async (req) => {
         return { success: true, queuedAt: item.queued_at, loadId: insertedEmail?.load_id, isUpdate };
       } catch (error) {
         const newStatus = item.attempts >= 3 ? 'failed' : 'pending';
+        // Properly serialize error - handles both Error instances and plain objects
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : (typeof error === 'object' && error !== null 
+              ? JSON.stringify(error) 
+              : String(error));
         await supabase
           .from('email_queue')
-          .update({ status: newStatus, last_error: String(error) })
+          .update({ status: newStatus, last_error: errorMessage })
           .eq('id', item.id);
-        return { success: false, queuedAt: item.queued_at, error: String(error) };
+        console.error(`[process-email-queue] Error processing ${item.gmail_message_id}:`, errorMessage);
+        return { success: false, queuedAt: item.queued_at, error: errorMessage };
       }
     };
 
