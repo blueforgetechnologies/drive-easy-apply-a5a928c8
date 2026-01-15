@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, ArrowDown, CheckCircle2, RefreshCw, AlertTriangle, Crown } from "lucide-react";
+import { Mail, ArrowDown, CheckCircle2, RefreshCw, AlertTriangle, Crown, Link2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface TenantEmailConfig {
   tenant_id: string;
@@ -17,10 +18,12 @@ interface TenantEmailConfig {
 
 export function EmailRoutingOverview() {
   const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
   const [configs, setConfigs] = useState<TenantEmailConfig[]>([]);
   const [oauthOwner, setOauthOwner] = useState<TenantEmailConfig | null>(null);
   const [otherTenants, setOtherTenants] = useState<TenantEmailConfig[]>([]);
   const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
+  const [defaultTenantId, setDefaultTenantId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -28,7 +31,7 @@ export function EmailRoutingOverview() {
       // Get all tenants with their Gmail config
       const { data: tenants } = await supabase
         .from("tenants")
-        .select("id, name, gmail_alias")
+        .select("id, name, gmail_alias, slug")
         .order("name");
 
       // Get Gmail tokens via edge function (RLS blocks direct access)
@@ -48,6 +51,12 @@ export function EmailRoutingOverview() {
           setConnectedGmail(connectedToken.user_email);
         } else {
           setConnectedGmail(null);
+        }
+
+        // Find the default tenant for connecting Gmail
+        const defaultTenant = tenants.find(t => t.slug === 'default' || t.name === 'Default Tenant');
+        if (defaultTenant) {
+          setDefaultTenantId(defaultTenant.id);
         }
 
         const configList: TenantEmailConfig[] = tenants.map(tenant => {
@@ -76,8 +85,54 @@ export function EmailRoutingOverview() {
     }
   };
 
+  const handleConnectGmail = async () => {
+    if (!defaultTenantId) {
+      toast.error("No default tenant found");
+      return;
+    }
+    
+    setConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: { action: 'start', tenantId: defaultTenantId }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.authUrl) {
+        // Open OAuth popup
+        const popup = window.open(
+          data.authUrl,
+          'gmail_oauth',
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+
+        if (!popup) {
+          toast.error("Please allow popups to connect Gmail");
+        }
+      }
+    } catch (error: any) {
+      console.error("Gmail connect error:", error);
+      toast.error(error.message || "Failed to start Gmail connection");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
+
+    // Listen for OAuth completion messages from popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'gmail_oauth_complete') {
+        toast.success("Gmail connected successfully!");
+        loadData();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   if (loading) {
@@ -157,38 +212,51 @@ export function EmailRoutingOverview() {
             </div>
           ) : (
             <div className="p-5 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-amber-400 text-white">
-                  <AlertTriangle className="h-6 w-6" />
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-amber-400 text-white">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-amber-700 dark:text-amber-400">No Gmail Connected</p>
+                    <p className="text-sm text-muted-foreground">
+                      Connect a Gmail account to enable email routing for all tenants
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-lg text-amber-700 dark:text-amber-400">No Gmail Connected</p>
-                  <p className="text-sm text-muted-foreground">
-                    The platform owner must connect a Gmail account first
-                  </p>
-                </div>
+                <Button 
+                  onClick={handleConnectGmail} 
+                  disabled={connecting || !defaultTenantId}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {connecting ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="h-4 w-4 mr-2" />
+                      Connect Gmail
+                    </>
+                  )}
+                </Button>
               </div>
               
               {/* Instructions when no Gmail is connected */}
               <div className="p-4 rounded-lg bg-white dark:bg-background border border-amber-200 dark:border-amber-800">
-                <p className="font-semibold text-amber-800 dark:text-amber-300 mb-3">⚠️ New Tenants Cannot Receive Emails Until:</p>
+                <p className="font-semibold text-amber-800 dark:text-amber-300 mb-3">📋 After Connecting Gmail:</p>
                 <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                   <li>
-                    <strong>Platform Admin</strong> connects a Gmail account (e.g., <code className="bg-muted px-1 rounded">loads@yourcompany.com</code>)
+                    All tenant <strong>alias emails</strong> will become active (e.g., <code className="bg-muted px-1 rounded">yourmail+tenantslug@gmail.com</code>)
                   </li>
                   <li>
-                    The tenant is given their <strong>alias email</strong> (shown after tenant creation)
+                    Each tenant configures <strong>Sylectus/FullCircle</strong> to send load notifications to their alias
                   </li>
                   <li>
-                    The tenant configures <strong>Sylectus/FullCircle</strong> to send load notifications to that alias
+                    Emails automatically route to the correct tenant based on the <strong>+alias</strong>
                   </li>
                 </ol>
-                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">💡 To connect Gmail:</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                    Go to the Default Tenant's settings and click "Connect Gmail Account"
-                  </p>
-                </div>
               </div>
             </div>
           )}
