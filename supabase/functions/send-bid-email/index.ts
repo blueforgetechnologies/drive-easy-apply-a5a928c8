@@ -96,16 +96,11 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`[send-bid-email] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
     
-    // Use verified sender domain - user's email goes in Reply-To only
-    // Resend requires the "from" domain to be verified in their dashboard
-    const verifiedSenderDomain = 'nexustechsolution.com';
-    const senderEmail = `dispatch@${verifiedSenderDomain}`;
-    
-    // User's actual email goes in reply-to so responses go to them
-    const replyToEmail = data.from_email?.toLowerCase() || senderEmail;
+    // Normalize email domain to lowercase for Resend domain verification compatibility
+    const normalizedFromEmail = data.from_email?.toLowerCase() || 'dispatch@nexustechsolution.com';
     
     console.log("Sending bid email to:", data.to);
-    console.log("From:", data.from_name, "<", senderEmail, "> (Reply-To:", replyToEmail, ")");
+    console.log("From:", data.from_name, "<", normalizedFromEmail, ">");
 
     // Build selected templates HTML section
     const selectedTemplatesHtml = data.selected_templates && data.selected_templates.length > 0
@@ -221,12 +216,12 @@ Reference #: ${data.reference_id || 'N/A'}
     }
 
     const emailPayload: any = {
-      from: `${data.company_name || 'Company'} <${senderEmail}>`,
+      from: `${data.company_name || 'Company'} <${normalizedFromEmail}>`,
       to: [data.to],
       subject: data.subject,
       html: htmlBody,
       text: textBody,
-      reply_to: replyToEmail,
+      reply_to: normalizedFromEmail,
     };
 
     // Add CC if provided
