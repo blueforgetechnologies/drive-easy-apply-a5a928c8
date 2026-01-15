@@ -1171,9 +1171,39 @@ export default function LoadHunterTab() {
     fetchUserDispatcherInfo();
   }, [tenantId, shouldFilter]);
 
+  // REFS for channel cleanup - ensures cleanup works even if tenantReady=false
+  const emailsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const huntPlansChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const matchesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const vehiclesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // BULLETPROOF cleanup function - removes all channels stored in refs
+  const cleanupChannels = useCallback(() => {
+    console.log('[Realtime] cleanupChannels() called');
+    if (emailsChannelRef.current) {
+      supabase.removeChannel(emailsChannelRef.current);
+      emailsChannelRef.current = null;
+    }
+    if (huntPlansChannelRef.current) {
+      supabase.removeChannel(huntPlansChannelRef.current);
+      huntPlansChannelRef.current = null;
+    }
+    if (matchesChannelRef.current) {
+      supabase.removeChannel(matchesChannelRef.current);
+      matchesChannelRef.current = null;
+    }
+    if (vehiclesChannelRef.current) {
+      supabase.removeChannel(vehiclesChannelRef.current);
+      vehiclesChannelRef.current = null;
+    }
+  }, []);
+
   // CRITICAL: Reset all state when tenant changes BEFORE loading new data
   // This prevents stale cross-tenant data from appearing
   useEffect(() => {
+    // FIRST: Always cleanup existing channels at TOP of effect
+    cleanupChannels();
+    
     // STRICT tenantReady guard - tenant filtering is ALWAYS ON now
     const tenantReady = !!tenantId;
     
@@ -1203,7 +1233,7 @@ export default function LoadHunterTab() {
     // This prevents null-tenant queries during mount/switch flicker
     if (!tenantReady) {
       console.log('[LoadHunter] ⚠️ tenantReady=false, skipping all loaders and subscriptions');
-      return () => {}; // No cleanup needed - no channels created
+      return cleanupChannels; // Return cleanup for unmount
     }
     
     console.log(`[LoadHunter] ✅ tenantReady=true (${tenantId}), running loaders...`);
@@ -1224,7 +1254,7 @@ export default function LoadHunterTab() {
     console.log(`[Realtime] Setting up tenant-scoped channels for tenant: ${tenantId}`);
 
     // Subscribe to real-time updates for load_emails - TENANT FILTERED
-    const emailsChannel = supabase
+    emailsChannelRef.current = supabase
       .channel(`load-emails-changes-${tenantId}`)
       .on(
         'postgres_changes',
@@ -1249,7 +1279,7 @@ export default function LoadHunterTab() {
       .subscribe();
 
     // Subscribe to real-time updates for hunt_plans - TENANT FILTERED
-    const huntPlansChannel = supabase
+    huntPlansChannelRef.current = supabase
       .channel(`hunt-plans-changes-${tenantId}`)
       .on(
         'postgres_changes',
@@ -1273,7 +1303,7 @@ export default function LoadHunterTab() {
       .subscribe();
 
     // Subscribe to real-time updates for load_hunt_matches - NOW WITH tenant_id FILTER
-    const matchesChannel = supabase
+    matchesChannelRef.current = supabase
       .channel(`load-hunt-matches-changes-${tenantId}`)
       .on(
         'postgres_changes',
@@ -1298,7 +1328,7 @@ export default function LoadHunterTab() {
       .subscribe();
 
     // Subscribe to real-time updates for vehicles - TENANT FILTERED
-    const vehiclesChannel = supabase
+    vehiclesChannelRef.current = supabase
       .channel(`vehicles-changes-${tenantId}`)
       .on(
         'postgres_changes',
@@ -1322,14 +1352,9 @@ export default function LoadHunterTab() {
       )
       .subscribe();
 
-    return () => {
-      console.log(`[Realtime] Cleaning up channels for tenant ${tenantId}`);
-      supabase.removeChannel(emailsChannel);
-      supabase.removeChannel(huntPlansChannel);
-      supabase.removeChannel(matchesChannel);
-      supabase.removeChannel(vehiclesChannel);
-    };
-  }, [tenantId, shouldFilter]);
+    // Return cleanup function for unmount
+    return cleanupChannels;
+  }, [tenantId, shouldFilter, cleanupChannels]);
 
   // DISABLED: Sound notifications - not supposed to notify
   // Sound and system notifications have been disabled per user request
