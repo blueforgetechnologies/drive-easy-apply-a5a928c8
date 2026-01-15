@@ -156,7 +156,7 @@ export function EmailRoutingOverview() {
               </div>
             </div>
           ) : (
-            <div className="p-5 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20">
+            <div className="p-5 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-full bg-amber-400 text-white">
                   <AlertTriangle className="h-6 w-6" />
@@ -164,13 +164,56 @@ export function EmailRoutingOverview() {
                 <div>
                   <p className="font-bold text-lg text-amber-700 dark:text-amber-400">No Gmail Connected</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect a Gmail account to enable email polling for all tenants
+                    The platform owner must connect a Gmail account first
+                  </p>
+                </div>
+              </div>
+              
+              {/* Instructions when no Gmail is connected */}
+              <div className="p-4 rounded-lg bg-white dark:bg-background border border-amber-200 dark:border-amber-800">
+                <p className="font-semibold text-amber-800 dark:text-amber-300 mb-3">⚠️ New Tenants Cannot Receive Emails Until:</p>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                  <li>
+                    <strong>Platform Admin</strong> connects a Gmail account (e.g., <code className="bg-muted px-1 rounded">loads@yourcompany.com</code>)
+                  </li>
+                  <li>
+                    The tenant is given their <strong>alias email</strong> (shown after tenant creation)
+                  </li>
+                  <li>
+                    The tenant configures <strong>Sylectus/FullCircle</strong> to send load notifications to that alias
+                  </li>
+                </ol>
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">💡 To connect Gmail:</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                    Go to the Default Tenant's settings and click "Connect Gmail Account"
                   </p>
                 </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* New Tenant Onboarding Steps - Only show when Gmail IS connected */}
+        {connectedGmail && (
+          <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 border border-green-200 dark:border-green-800">
+            <p className="font-semibold text-green-800 dark:text-green-300 mb-3">✅ What a New Tenant Needs to Do:</p>
+            <ol className="list-decimal list-inside space-y-2 text-sm">
+              <li className="text-muted-foreground">
+                <strong>Get their alias email</strong> - created automatically when you add them (shown below)
+              </li>
+              <li className="text-muted-foreground">
+                <strong>Configure Sylectus/FullCircle</strong> to send load notifications to their alias email
+              </li>
+              <li className="text-muted-foreground">
+                <strong>That's it!</strong> - emails will automatically route to their tenant
+              </li>
+            </ol>
+            <p className="text-xs text-muted-foreground mt-3 pt-2 border-t border-green-200 dark:border-green-700">
+              No additional Gmail OAuth needed - all tenants share the connection above
+            </p>
+          </div>
+        )}
 
         {/* Arrow Divider */}
         {otherTenants.length > 0 && connectedGmail && (
@@ -212,13 +255,18 @@ export function EmailRoutingOverview() {
                         }`} />
                         <div>
                           <p className="font-semibold">{config.tenant_name}</p>
-                          {config.gmail_alias && aliasEmail ? (
+                          {config.gmail_alias && connectedGmail ? (
                             <div className="mt-1">
-                              <p className="text-xs text-muted-foreground">Configure Sylectus/FullCircle to send to:</p>
+                              <p className="text-xs text-muted-foreground">Give this email to the tenant for Sylectus/FullCircle:</p>
                               <p className="font-mono text-sm text-blue-600 dark:text-blue-400 font-medium">
                                 {aliasEmail}
                               </p>
                             </div>
+                          ) : !connectedGmail ? (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                              Waiting for Gmail OAuth connection
+                            </p>
                           ) : (
                             <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                               <AlertTriangle className="h-3 w-3 text-amber-500" />
