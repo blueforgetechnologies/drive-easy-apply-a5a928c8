@@ -151,6 +151,53 @@ worker/
 └── .env.example
 ```
 
+## VPS Auto-Deploy Setup
+
+The worker auto-deploys via GitHub Actions when you push changes to `worker/**`.
+
+### Required GitHub Secrets
+
+Add these in **GitHub → Settings → Secrets and variables → Actions**:
+
+| Secret | Example | Description |
+|--------|---------|-------------|
+| `VPS_HOST` | `123.45.67.89` | Your VPS IP address |
+| `VPS_USER` | `deploy` | SSH username on the VPS |
+| `VPS_SSH_KEY` | (private key) | Full SSH private key for authentication |
+| `VPS_PORT` | `22` | SSH port (usually 22) |
+| `WORKER_PATH` | `/home/deploy/tms` | Path where repo is cloned on VPS |
+
+### One-Time VPS Setup
+
+```bash
+# 1. SSH into your VPS
+ssh user@your-vps-ip
+
+# 2. Clone the repo
+cd /home/deploy
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git tms
+cd tms/worker
+
+# 3. Create .env from example
+cp .env.example .env
+nano .env  # Fill in real values
+
+# 4. Initial build
+docker compose up -d --build
+```
+
+### Verify Deployment
+
+After deploy, check the health endpoint:
+
+```bash
+curl http://your-vps-ip:8080/health
+# Should return: {"status":"healthy","uptime":...}
+
+curl http://your-vps-ip:8080/ready
+# Should return: {"ready":true}
+```
+
 ## Security Notes
 
 - **Never commit `.env` file** - it contains secrets
