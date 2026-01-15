@@ -2,6 +2,7 @@
  * Email Queue Processing Module
  * 
  * Processes outbound emails from the queue and sends them via Resend.
+ * v1.0.1 - VPS deployment active
  */
 
 import { sendEmail } from './resend.js';
