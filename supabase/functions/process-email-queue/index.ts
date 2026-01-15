@@ -1418,17 +1418,42 @@ serve(async (req) => {
           return { success: true, queuedAt: item.queued_at };
         }
 
-        // Fetch full message from Gmail
-        const msgResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.gmail_message_id}?format=full`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-
-        if (!msgResponse.ok) {
-          throw new Error(`Gmail API error: ${msgResponse.status}`);
+        // Try to load from stored payload first, then fall back to Gmail API
+        let message: any = null;
+        
+        if (item.payload_url) {
+          // Load from stored payload in Supabase storage
+          try {
+            const { data: payloadData, error: storageError } = await supabase
+              .storage
+              .from('raw-email-payloads')
+              .download(item.payload_url);
+            
+            if (!storageError && payloadData) {
+              const payloadText = await payloadData.text();
+              message = JSON.parse(payloadText);
+              console.log(`📦 Loaded message from stored payload: ${item.gmail_message_id}`);
+            }
+          } catch (e) {
+            console.warn(`⚠️ Failed to load stored payload for ${item.gmail_message_id}, will try Gmail API:`, e);
+          }
         }
+        
+        // Fall back to Gmail API if no stored payload
+        if (!message) {
+          const msgResponse = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.gmail_message_id}?format=full`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
 
-        const message = await msgResponse.json();
+          if (!msgResponse.ok) {
+            const errorBody = await msgResponse.text();
+            console.error(`Gmail API error for ${item.gmail_message_id}: ${msgResponse.status} - ${errorBody}`);
+            throw new Error(`Gmail API error: ${msgResponse.status} - ${errorBody.substring(0, 200)}`);
+          }
+
+          message = await msgResponse.json();
+        }
 
         // Extract email data
         const headers = message.payload?.headers || [];
