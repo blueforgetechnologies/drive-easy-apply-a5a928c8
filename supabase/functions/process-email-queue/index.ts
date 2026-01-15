@@ -1420,6 +1420,7 @@ serve(async (req) => {
 
         // Try to load from stored payload first, then fall back to Gmail API
         let message: any = null;
+        let storageLoadError: string | null = null;
         
         if (item.payload_url) {
           // Load from stored payload in Supabase storage
@@ -1429,13 +1430,27 @@ serve(async (req) => {
               .from('raw-email-payloads')
               .download(item.payload_url);
             
-            if (!storageError && payloadData) {
+            if (storageError) {
+              // Properly serialize storage error
+              storageLoadError = storageError instanceof Error 
+                ? storageError.message 
+                : (typeof storageError === 'object' 
+                    ? JSON.stringify(storageError) 
+                    : String(storageError));
+              console.warn(`⚠️ Storage error for ${item.gmail_message_id}: ${storageLoadError}`);
+            } else if (payloadData) {
               const payloadText = await payloadData.text();
               message = JSON.parse(payloadText);
               console.log(`📦 Loaded message from stored payload: ${item.gmail_message_id}`);
             }
           } catch (e) {
-            console.warn(`⚠️ Failed to load stored payload for ${item.gmail_message_id}, will try Gmail API:`, e);
+            // Properly serialize catch error
+            storageLoadError = e instanceof Error 
+              ? e.message 
+              : (typeof e === 'object' && e !== null
+                  ? JSON.stringify(e)
+                  : String(e));
+            console.warn(`⚠️ Failed to load stored payload for ${item.gmail_message_id}: ${storageLoadError}`);
           }
         }
         
@@ -1448,8 +1463,13 @@ serve(async (req) => {
 
           if (!msgResponse.ok) {
             const errorBody = await msgResponse.text();
-            console.error(`Gmail API error for ${item.gmail_message_id}: ${msgResponse.status} - ${errorBody}`);
-            throw new Error(`Gmail API error: ${msgResponse.status} - ${errorBody.substring(0, 200)}`);
+            const errorStatus = msgResponse.status;
+            console.error(`Gmail API error for ${item.gmail_message_id}: ${errorStatus} - ${errorBody}`);
+            // Include storage error context if we tried storage first
+            const fullError = storageLoadError 
+              ? `Storage failed: ${storageLoadError}; Gmail API error: ${errorStatus}`
+              : `Gmail API error: ${errorStatus}`;
+            throw new Error(fullError);
           }
 
           message = await msgResponse.json();
