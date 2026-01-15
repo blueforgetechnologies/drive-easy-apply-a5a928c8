@@ -1,0 +1,28 @@
+name: Deploy VPS Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'worker/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd ${{ secrets.WORKER_PATH }}
+            git pull origin main
+            cd worker
+            docker compose down
+            docker compose up -d --build
+            echo "Deployment complete at $(date)"
+            docker compose ps
