@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import InboundEmailRoutingCard from "@/components/InboundEmailRoutingCard";
 import CustomInboundAddresses from "@/components/CustomInboundAddresses";
+import TenantGmailConnection from "@/components/TenantGmailConnection";
 
 interface Tenant {
   id: string;
@@ -402,6 +403,12 @@ export default function TenantSettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Gmail Connections - Full Width */}
+      <TenantGmailConnection
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+      />
 
       {/* Custom Inbound Addresses - Full Width */}
       <CustomInboundAddresses
