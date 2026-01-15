@@ -12,9 +12,20 @@ import {
   RefreshCw, 
   CheckCircle2, 
   AlertCircle,
-  ExternalLink,
-  BarChart3
+  BarChart3,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface GmailToken {
   id: string;
@@ -50,6 +61,7 @@ function detectProvider(fromEmail: string): string {
 export default function TenantGmailConnection({ tenantId, tenantName }: TenantGmailConnectionProps) {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [connectedTokens, setConnectedTokens] = useState<GmailToken[]>([]);
   const [emailSourceStats, setEmailSourceStats] = useState<EmailSourceStats[]>([]);
 
@@ -130,20 +142,40 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
     }
   };
 
-  const handleSetupPush = async (tokenEmail: string) => {
+  const handleDisconnect = async (tokenId: string, email: string) => {
+    setDisconnecting(tokenId);
     try {
-      const { data, error } = await supabase.functions.invoke('gmail-auth', {
-        body: { action: 'setup-push', tenantId }
+      const { data, error } = await supabase.functions.invoke('tenant-gmail-status', {
+        body: { tenantId, action: 'disconnect', tokenId }
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success("Push notifications configured successfully");
+      toast.success(`Disconnected ${email}`);
       loadData();
     } catch (error: any) {
-      console.error("Setup push error:", error);
-      toast.error(error.message || "Failed to setup push notifications");
+      console.error("Disconnect error:", error);
+      toast.error(error.message || "Failed to disconnect Gmail");
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
+  const handleRefreshToken = async (tokenId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: { action: 'refresh', tenantId, tokenId }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Token refreshed successfully");
+      loadData();
+    } catch (error: any) {
+      console.error("Refresh error:", error);
+      toast.error(error.message || "Failed to refresh token - try reconnecting");
     }
   };
 
@@ -183,7 +215,7 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
           Gmail Connections
         </CardTitle>
         <CardDescription>
-          Direct Gmail account connections for polling load emails
+          Direct Gmail account connections for polling load emails from Sylectus, Full Circle, and other loadboards
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -192,41 +224,82 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
           <div className="space-y-3">
             <h4 className="text-sm font-medium flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              Connected Accounts
+              Connected Accounts ({connectedTokens.length})
             </h4>
             {connectedTokens.map((token) => {
               const expired = isTokenExpired(token.token_expiry);
               return (
                 <div 
                   key={token.id} 
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
-                    expired ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
+                    expired ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/20' : 'border-green-300 bg-green-50 dark:bg-green-950/20'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Mail className={`h-5 w-5 ${expired ? 'text-amber-600' : 'text-green-600'}`} />
+                    <Mail className={`h-5 w-5 flex-shrink-0 ${expired ? 'text-amber-600' : 'text-green-600'}`} />
                     <div>
                       <p className="font-medium">{token.user_email}</p>
                       <p className="text-xs text-muted-foreground">
-                        Token {expired ? 'expired' : 'valid until'}: {new Date(token.token_expiry).toLocaleString()}
+                        {expired ? (
+                          <span className="text-amber-600">Token expired - emails may not be syncing</span>
+                        ) : (
+                          <>Valid until: {new Date(token.token_expiry).toLocaleString()}</>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Last updated: {new Date(token.updated_at).toLocaleString()}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {expired && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Needs Refresh
-                      </Badge>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleRefreshToken(token.id)}
+                        className="text-amber-600 border-amber-300 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Refresh
+                      </Button>
                     )}
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleSetupPush(token.user_email)}
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Setup Push
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                          disabled={disconnecting === token.id}
+                        >
+                          {disconnecting === token.id ? (
+                            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3 mr-1" />
+                          )}
+                          Disconnect
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Disconnect Gmail Account?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will stop polling emails from <strong>{token.user_email}</strong>. 
+                            New load emails will no longer be imported from this account.
+                            <br /><br />
+                            <strong>Note:</strong> Existing emails in the system will not be deleted.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDisconnect(token.id, token.user_email)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Yes, Disconnect
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               );
@@ -288,9 +361,9 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
         )}
 
         {/* Help Text */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
-          <strong>How it works:</strong> When you connect a Gmail account, the system will poll for new emails from Sylectus, Full Circle, and other loadboard providers. 
-          Emails are automatically parsed and displayed in the Load Hunter tab.
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg text-xs text-blue-700 dark:text-blue-300">
+          <strong>How it works:</strong> When you connect a Gmail account, the system will automatically poll for new emails from Sylectus, Full Circle, and other loadboard providers. 
+          Emails are parsed and displayed in the Load Hunter tab. To change the connected email, disconnect the current one and connect a new account.
         </div>
       </CardContent>
     </Card>
