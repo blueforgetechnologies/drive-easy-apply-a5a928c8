@@ -18,8 +18,8 @@ serve(async (req) => {
     // Create admin client to bypass RLS
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     
-    // Get tenant ID from request
-    const { tenantId } = await req.json();
+    // Get request body
+    const { tenantId, action, tokenId } = await req.json();
     
     if (!tenantId) {
       return new Response(
@@ -65,6 +65,29 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Access denied to this tenant' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle disconnect action
+    if (action === 'disconnect' && tokenId) {
+      const { error: deleteError } = await supabaseAdmin
+        .from('gmail_tokens')
+        .delete()
+        .eq('id', tokenId)
+        .eq('tenant_id', tenantId); // Ensure token belongs to this tenant
+
+      if (deleteError) {
+        console.error('Error disconnecting Gmail:', deleteError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to disconnect Gmail account' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[tenant-gmail-status] Disconnected tokenId=${tokenId} for tenantId=${tenantId}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Gmail account disconnected' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
