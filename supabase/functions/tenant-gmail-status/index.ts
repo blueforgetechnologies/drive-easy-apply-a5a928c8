@@ -51,15 +51,25 @@ serve(async (req) => {
       );
     }
 
-    // Check user has access to this tenant via users table
-    const { data: userRecord } = await supabaseAdmin
-      .from('users')
-      .select('tenant_id, role')
+    // Check if user is platform admin via profiles table
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('is_platform_admin')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    const isPlatformAdmin = userRecord?.role === 'platform_admin';
-    const hasAccess = isPlatformAdmin || userRecord?.tenant_id === tenantId;
+    const isPlatformAdmin = profile?.is_platform_admin === true;
+
+    // Check tenant membership via tenant_users table
+    const { data: membership } = await supabaseAdmin
+      .from('tenant_users')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    const hasAccess = isPlatformAdmin || !!membership;
 
     if (!hasAccess) {
       return new Response(
