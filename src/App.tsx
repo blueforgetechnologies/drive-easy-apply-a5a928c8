@@ -55,6 +55,7 @@ import DebugTenantDataTab from "./pages/DebugTenantDataTab";
 import TenantVerificationTab from "./pages/TenantVerificationTab";
 import IsolationAuditTab from "./pages/IsolationAuditTab";
 import TenantIsolationTestsTab from "./pages/TenantIsolationTestsTab";
+import CustomerOnboardingTab from "./pages/CustomerOnboardingTab";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +113,7 @@ const App = () => (
               <Route path="/dashboard/debug/tenant-verification" element={<DashboardLayout><TenantVerificationTab /></DashboardLayout>} />
               <Route path="/dashboard/debug/isolation-audit" element={<DashboardLayout><IsolationAuditTab /></DashboardLayout>} />
               <Route path="/dashboard/debug/tenant-isolation-tests" element={<DashboardLayout><TenantIsolationTestsTab /></DashboardLayout>} />
+              <Route path="/dashboard/admin/customers" element={<DashboardLayout><CustomerOnboardingTab /></DashboardLayout>} />
               <Route path="/system-prompt" element={<SystemPromptExport />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
