@@ -181,32 +181,53 @@ export function EmailRoutingOverview() {
           </div>
           
           {oauthOwner ? (
-            <div className="p-5 rounded-xl border-2 border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-green-500 text-white">
-                    <Mail className="h-6 w-6" />
+            <div className="relative overflow-hidden p-6 rounded-2xl border-2 border-green-500/50 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-950/40 dark:via-emerald-950/30 dark:to-teal-950/20 shadow-lg shadow-green-100 dark:shadow-green-950/20">
+              {/* Success glow effect */}
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-green-400/20 rounded-full blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-400/15 rounded-full blur-2xl" />
+              
+              <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                <div className="flex items-start gap-5">
+                  {/* Animated success icon */}
+                  <div className="relative">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30">
+                      <Mail className="h-8 w-8" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 p-1 rounded-full bg-white dark:bg-background shadow-md">
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-lg">{oauthOwner.tenant_name}</p>
-                      <Badge className="bg-green-500 text-white">
+                  
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-xl text-foreground">{oauthOwner.tenant_name}</h3>
+                      <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-sm">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
-                        OAuth Connected
+                        Connected
                       </Badge>
                     </div>
-                    <p className="text-lg font-mono text-green-700 dark:text-green-400 mt-1">
-                      {connectedGmail}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      All load emails are polled from this Gmail inbox
+                    
+                    {/* Gmail address display */}
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 dark:bg-background/60 border border-green-200 dark:border-green-800 shadow-sm">
+                      <Mail className="h-4 w-4 text-green-600" />
+                      <span className="font-mono text-lg font-semibold text-green-700 dark:text-green-400">
+                        {connectedGmail}
+                      </span>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      ✓ All load emails are polled from this inbox and routed to tenants via +alias
                     </p>
                   </div>
                 </div>
+                
                 {oauthOwner.gmail_alias && (
-                  <Badge variant="secondary" className="font-mono text-base px-3 py-1">
-                    {oauthOwner.gmail_alias}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs text-muted-foreground">Alias</span>
+                    <Badge variant="secondary" className="font-mono text-base px-4 py-2 bg-white dark:bg-background shadow-sm">
+                      {oauthOwner.gmail_alias}
+                    </Badge>
+                  </div>
                 )}
               </div>
             </div>
