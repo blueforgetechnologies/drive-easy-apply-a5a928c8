@@ -19,7 +19,19 @@ export interface ProcessResult {
  */
 export async function processQueueItem(item: QueueItem): Promise<ProcessResult> {
   try {
-    // Validate required fields for sending
+    // IMPORTANT: Skip inbound load emails - they should be processed by the Edge Function
+    // Inbound emails have gmail_message_id but no to_email or subject populated
+    // They have payload_url pointing to stored raw email content
+    if (item.gmail_message_id && item.payload_url && !item.subject && !item.body_html) {
+      console.log(`[process] Skipping inbound load email ${item.gmail_message_id} - should be processed by Edge Function`);
+      return {
+        success: true, // Return success so it's not marked as failed
+        email_sent: false,
+        error: 'inbound_email_skipped' // Not an error, just skipped
+      };
+    }
+
+    // Validate required fields for sending outbound emails
     if (!item.to_email) {
       return { 
         success: false, 

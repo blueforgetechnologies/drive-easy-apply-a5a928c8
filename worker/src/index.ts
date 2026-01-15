@@ -454,15 +454,25 @@ async function workerLoop(): Promise<void> {
               const result = await processQueueItem(item);
 
               if (result.success) {
-                await completeItem(item.id, 'sent');
-                METRICS.emailsSent++;
-                log('info', `Email sent`, {
-                  id: item.id.substring(0, 8),
-                  to: item.to_email,
-                  email_sent: true,
-                  message_id: result.messageId,
-                  duration_ms: Date.now() - itemStart,
-                });
+                // Check if this was a skipped inbound email
+                if (result.error === 'inbound_email_skipped') {
+                  // Don't count as sent, just mark as pending for Edge Function
+                  // Actually, leave it in 'processing' state - the Edge Function cron will pick it up
+                  // Or mark as a special status
+                  log('debug', `Skipped inbound email`, { id: item.id.substring(0, 8) });
+                  // Reset to pending so the Edge Function can process it
+                  await supabase.from('email_queue').update({ status: 'pending', processing_started_at: null }).eq('id', item.id);
+                } else {
+                  await completeItem(item.id, 'sent');
+                  METRICS.emailsSent++;
+                  log('info', `Email sent`, {
+                    id: item.id.substring(0, 8),
+                    to: item.to_email,
+                    email_sent: true,
+                    message_id: result.messageId,
+                    duration_ms: Date.now() - itemStart,
+                  });
+                }
               } else {
                 // Check for rate limit error
                 if (result.error?.includes('429') || result.error?.includes('rate limit')) {
