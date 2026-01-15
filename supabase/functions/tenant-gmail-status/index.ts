@@ -78,26 +78,25 @@ serve(async (req) => {
       );
     }
 
-    // Handle disconnect action - set tenant_id to NULL instead of deleting
-    // This preserves the OAuth token while dissociating it from this tenant
+    // Handle disconnect action
     if (action === 'disconnect' && tokenId) {
-      const { error: updateError } = await supabaseAdmin
+      const { error: deleteError } = await supabaseAdmin
         .from('gmail_tokens')
-        .update({ tenant_id: null })
+        .delete()
         .eq('id', tokenId)
         .eq('tenant_id', tenantId); // Ensure token belongs to this tenant
 
-      if (updateError) {
-        console.error('Error disconnecting Gmail:', updateError);
+      if (deleteError) {
+        console.error('Error disconnecting Gmail:', deleteError);
         return new Response(
           JSON.stringify({ error: 'Failed to disconnect Gmail account' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log(`[tenant-gmail-status] Dissociated tokenId=${tokenId} from tenantId=${tenantId} (set tenant_id=NULL)`);
+      console.log(`[tenant-gmail-status] Disconnected tokenId=${tokenId} for tenantId=${tenantId}`);
       return new Response(
-        JSON.stringify({ success: true, message: 'Gmail account disconnected from tenant' }),
+        JSON.stringify({ success: true, message: 'Gmail account disconnected' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
