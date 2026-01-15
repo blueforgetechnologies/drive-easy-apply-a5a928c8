@@ -31,16 +31,19 @@ export function EmailRoutingOverview() {
         .select("id, name, gmail_alias")
         .order("name");
 
-      // Get all Gmail tokens
-      const { data: tokens } = await supabase
-        .from("gmail_tokens")
-        .select("tenant_id, user_email, token_expiry");
+      // Get Gmail tokens via edge function (RLS blocks direct access)
+      const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke(
+        "gmail-tenant-mapping",
+        { body: { action: "list" } }
+      );
+
+      const tokens = tokenError ? [] : (tokenResponse?.gmail_tokens || []);
 
       if (tenants) {
-        const tokenMap = new Map(tokens?.map(t => [t.tenant_id, t]) || []);
+        const tokenMap = new Map(tokens.map((t: any) => [t.tenant_id, t]));
         
         // Find the connected Gmail (the one with OAuth)
-        const connectedToken = tokens?.[0];
+        const connectedToken = tokens[0];
         if (connectedToken) {
           setConnectedGmail(connectedToken.user_email);
         } else {
@@ -48,7 +51,7 @@ export function EmailRoutingOverview() {
         }
 
         const configList: TenantEmailConfig[] = tenants.map(tenant => {
-          const token = tokenMap.get(tenant.id);
+          const token = tokenMap.get(tenant.id) as any;
           return {
             tenant_id: tenant.id,
             tenant_name: tenant.name,
