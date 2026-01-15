@@ -1,0 +1,138 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Create admin client to bypass RLS
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    
+    // Get tenant ID from request
+    const { tenantId } = await req.json();
+    
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ error: 'tenantId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get JWT to verify user has access to this tenant
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user auth
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid user session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check user has access to this tenant via users table
+    const { data: userRecord } = await supabaseAdmin
+      .from('users')
+      .select('tenant_id, role')
+      .eq('id', user.id)
+      .single();
+
+    const isPlatformAdmin = userRecord?.role === 'platform_admin';
+    const hasAccess = isPlatformAdmin || userRecord?.tenant_id === tenantId;
+
+    if (!hasAccess) {
+      return new Response(
+        JSON.stringify({ error: 'Access denied to this tenant' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get Gmail tokens for this tenant (safe fields only - no actual tokens!)
+    const { data: tokens, error: tokensError } = await supabaseAdmin
+      .from('gmail_tokens')
+      .select('id, user_email, tenant_id, token_expiry, updated_at')
+      .eq('tenant_id', tenantId);
+
+    if (tokensError) {
+      console.error('Error fetching tokens:', tokensError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch Gmail status' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get email source stats from load_emails
+    const { data: emails, error: emailsError } = await supabaseAdmin
+      .from('load_emails')
+      .select('from_email, received_at')
+      .eq('tenant_id', tenantId)
+      .order('received_at', { ascending: false })
+      .limit(500);
+
+    let emailSourceStats: { from_email: string; count: number; last_email: string }[] = [];
+    
+    if (!emailsError && emails) {
+      const statsMap = new Map<string, { count: number; last_email: string }>();
+      
+      for (const email of emails) {
+        const key = email.from_email || 'unknown';
+        const existing = statsMap.get(key);
+        if (existing) {
+          existing.count++;
+        } else {
+          statsMap.set(key, { 
+            count: 1, 
+            last_email: email.received_at 
+          });
+        }
+      }
+
+      emailSourceStats = Array.from(statsMap.entries())
+        .map(([from_email, data]) => ({
+          from_email,
+          count: data.count,
+          last_email: data.last_email
+        }))
+        .sort((a, b) => b.count - a.count);
+    }
+
+    console.log(`[tenant-gmail-status] tenantId=${tenantId}, tokens=${tokens?.length || 0}, emails=${emails?.length || 0}`);
+
+    return new Response(
+      JSON.stringify({
+        connectedAccounts: tokens || [],
+        emailSourceStats
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: unknown) {
+    console.error('Error in tenant-gmail-status:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

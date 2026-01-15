@@ -56,49 +56,25 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Load connected Gmail tokens for this tenant
-      const { data: tokens, error: tokensError } = await supabase
-        .from("gmail_tokens")
-        .select("id, user_email, tenant_id, token_expiry, updated_at")
-        .eq("tenant_id", tenantId);
+      // Use edge function to bypass RLS on gmail_tokens table
+      const { data, error } = await supabase.functions.invoke('tenant-gmail-status', {
+        body: { tenantId }
+      });
 
-      if (tokensError) throw tokensError;
-      setConnectedTokens(tokens || []);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Load email source statistics
-      const { data: emails, error: emailsError } = await supabase
-        .from("load_emails")
-        .select("from_email, received_at")
-        .eq("tenant_id", tenantId)
-        .order("received_at", { ascending: false })
-        .limit(500);
+      // Set connected accounts
+      setConnectedTokens(data.connectedAccounts || []);
 
-      if (!emailsError && emails) {
-        // Aggregate by from_email domain
-        const statsMap = new Map<string, { count: number; last_email: string }>();
-        
-        for (const email of emails) {
-          const key = email.from_email || 'unknown';
-          const existing = statsMap.get(key);
-          if (existing) {
-            existing.count++;
-          } else {
-            statsMap.set(key, { 
-              count: 1, 
-              last_email: email.received_at 
-            });
-          }
-        }
-
-        const stats: EmailSourceStats[] = Array.from(statsMap.entries())
-          .map(([from_email, data]) => ({
-            from_email,
-            provider: detectProvider(from_email),
-            count: data.count,
-            last_email: data.last_email
-          }))
-          .sort((a, b) => b.count - a.count);
-
+      // Process email source stats
+      if (data.emailSourceStats) {
+        const stats: EmailSourceStats[] = data.emailSourceStats.map((stat: any) => ({
+          from_email: stat.from_email,
+          provider: detectProvider(stat.from_email),
+          count: stat.count,
+          last_email: stat.last_email
+        }));
         setEmailSourceStats(stats);
       }
     } catch (error: any) {
