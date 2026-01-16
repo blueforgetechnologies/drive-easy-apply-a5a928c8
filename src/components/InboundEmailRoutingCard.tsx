@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +35,6 @@ interface InboundEmailRoutingCardProps {
   lastEmailReceivedAt: string | null;
 }
 
-// The base email for plus-addressing - should match your Gmail setup
-const BASE_EMAIL = "talbilogistics";
-const EMAIL_DOMAIN = "gmail.com";
-
 export default function InboundEmailRoutingCard({
   tenantId,
   tenantName,
@@ -55,9 +51,32 @@ export default function InboundEmailRoutingCard({
       routedToTenant?: string;
     };
   } | null>(null);
+  const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
 
-  const carrierEmail = gmailAlias 
-    ? `${BASE_EMAIL}${gmailAlias}@${EMAIL_DOMAIN}`
+  // Fetch the connected Gmail from the OAuth owner
+  useEffect(() => {
+    const fetchConnectedGmail = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('gmail-tenant-mapping', {
+          body: { action: 'list' }
+        });
+        
+        if (!error && data?.gmail_tokens?.[0]?.user_email) {
+          setConnectedGmail(data.gmail_tokens[0].user_email);
+        }
+      } catch (err) {
+        console.error('Error fetching connected Gmail:', err);
+      }
+    };
+    
+    fetchConnectedGmail();
+  }, []);
+
+  // Construct the carrier email from the connected Gmail
+  const baseEmail = connectedGmail?.split("@")[0] || "email";
+  const domain = connectedGmail?.split("@")[1] || "gmail.com";
+  const carrierEmail = gmailAlias && connectedGmail
+    ? `${baseEmail}${gmailAlias}@${domain}`
     : null;
 
   const copyToClipboard = () => {
@@ -216,7 +235,7 @@ export default function InboundEmailRoutingCard({
                   <p className="font-medium mb-2">Email Address Format</p>
                   <p className="text-muted-foreground">
                     We use <strong>plus-addressing</strong> (also called subaddressing) to route emails. 
-                    The format is: <code className="bg-background px-1 rounded">{BASE_EMAIL}+ALIAS@{EMAIL_DOMAIN}</code>
+                    The format is: <code className="bg-background px-1 rounded">{baseEmail}+ALIAS@{domain}</code>
                   </p>
                   <p className="text-muted-foreground mt-2">
                     Your alias is: <Badge variant="secondary">{gmailAlias || 'Not configured'}</Badge>
@@ -303,7 +322,7 @@ export default function InboundEmailRoutingCard({
                   <AlertTitle>Important</AlertTitle>
                   <AlertDescription>
                     The email MUST include the <code className="bg-muted px-1 rounded">{gmailAlias}</code> portion 
-                    (the plus-address). If the carrier sends to <code className="bg-muted px-1 rounded">{BASE_EMAIL}@{EMAIL_DOMAIN}</code> 
+                    (the plus-address). If the carrier sends to <code className="bg-muted px-1 rounded">{baseEmail}@{domain}</code> 
                     without the alias, the email will be quarantined.
                   </AlertDescription>
                 </Alert>
