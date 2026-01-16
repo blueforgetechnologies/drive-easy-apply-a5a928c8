@@ -52,10 +52,12 @@ export default function InboundEmailRoutingCard({
     };
   } | null>(null);
   const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
+  const [loadingGmail, setLoadingGmail] = useState(true);
 
   // Fetch the connected Gmail from the OAuth owner
   useEffect(() => {
     const fetchConnectedGmail = async () => {
+      setLoadingGmail(true);
       try {
         const { data, error } = await supabase.functions.invoke('gmail-tenant-mapping', {
           body: { action: 'list' }
@@ -66,6 +68,8 @@ export default function InboundEmailRoutingCard({
         }
       } catch (err) {
         console.error('Error fetching connected Gmail:', err);
+      } finally {
+        setLoadingGmail(false);
       }
     };
     
@@ -199,9 +203,18 @@ export default function InboundEmailRoutingCard({
             </div>
             <div className="flex items-center gap-2">
               <code className="flex-1 p-3 bg-background border-2 border-dashed rounded-lg text-sm font-mono break-all select-all">
-                {carrierEmail}
+                {loadingGmail ? (
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </span>
+                ) : carrierEmail ? (
+                  carrierEmail
+                ) : (
+                  <span className="text-muted-foreground">No Gmail connected</span>
+                )}
               </code>
-              <Button onClick={copyToClipboard} size="sm" className="shrink-0">
+              <Button onClick={copyToClipboard} size="sm" className="shrink-0" disabled={!carrierEmail || loadingGmail}>
                 <Copy className="h-4 w-4 mr-1" />
                 Copy
               </Button>
