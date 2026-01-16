@@ -63,8 +63,8 @@ export default function InboundEmailRoutingCard({
           body: { action: 'list' }
         });
         
-        if (!error && data?.gmail_tokens?.[0]?.user_email) {
-          setConnectedGmail(data.gmail_tokens[0].user_email);
+        if (!error && data?.tokens?.[0]?.user_email) {
+          setConnectedGmail(data.tokens[0].user_email);
         }
       } catch (err) {
         console.error('Error fetching connected Gmail:', err);
