@@ -31,6 +31,57 @@ const corsHeaders = {
 // Global tenant context for this execution
 let effectiveTenantId: string | null = null;
 
+// Extract gmail alias from email address (e.g., p.d+talbi@... -> +talbi)
+function extractGmailAlias(email: string | null): string | null {
+  if (!email) return null;
+  
+  // Match the pattern: anything+alias@domain
+  const match = email.match(/([^@]+)\+([^@]+)@/);
+  if (match && match[2]) {
+    return `+${match[2]}`;
+  }
+  return null;
+}
+
+// Get tenant by alias from tenants table
+async function getTenantByAlias(alias: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
+  const { data: tenant, error } = await supabase
+    .from('tenants')
+    .select('id, name')
+    .eq('gmail_alias', alias)
+    .maybeSingle();
+  
+  if (tenant) {
+    return { tenantId: tenant.id, tenantName: tenant.name };
+  }
+  return { tenantId: null, tenantName: null };
+}
+
+// Route email to correct tenant based on Delivered-To header alias
+async function routeEmailToTenant(headers: any[]): Promise<{ tenantId: string | null; tenantName: string | null; alias: string | null; routingMethod: string | null }> {
+  // Priority order for header extraction (same as gmail-webhook)
+  const headerPriority = ['Delivered-To', 'X-Original-To', 'Envelope-To', 'To'];
+  
+  for (const headerName of headerPriority) {
+    const header = headers.find((h: any) => h.name.toLowerCase() === headerName.toLowerCase());
+    if (header?.value) {
+      const alias = extractGmailAlias(header.value);
+      if (alias) {
+        const result = await getTenantByAlias(alias);
+        if (result.tenantId) {
+          console.log(`[fetch-gmail-loads] ✅ Routed to "${result.tenantName}" via ${headerName} alias ${alias}`);
+          return { ...result, alias, routingMethod: headerName };
+        }
+        console.warn(`[fetch-gmail-loads] ⚠️ No tenant found for alias ${alias} from ${headerName}`);
+      }
+    }
+  }
+  
+  // FAIL-CLOSED: No fallback to default tenant
+  return { tenantId: null, tenantName: null, alias: null, routingMethod: null };
+}
+
+// Legacy function for backward compatibility - used when we need a default tenant for the Gmail account
 async function getEffectiveTenantId(userEmail: string): Promise<{ tenantId: string | null; error: string | null }> {
   // PRIORITY 1: Check gmail_tokens table for tenant_id (most reliable mapping)
   const { data: tokenData, error: tokenError } = await supabase
@@ -40,7 +91,7 @@ async function getEffectiveTenantId(userEmail: string): Promise<{ tenantId: stri
     .maybeSingle();
   
   if (tokenData?.tenant_id) {
-    console.log(`[fetch-gmail-loads] Found tenant from gmail_tokens: ${tokenData.tenant_id}`);
+    console.log(`[fetch-gmail-loads] Found default tenant from gmail_tokens: ${tokenData.tenant_id}`);
     return { tenantId: tokenData.tenant_id, error: null };
   }
   
@@ -1304,39 +1355,7 @@ serve(async (req) => {
     const gmailUserEmail = 'p.d@talbilogistics.com';
     console.log('Fetching Gmail emails...');
 
-    // CRITICAL: Get tenant context first - NO FALLBACK ALLOWED
-    const tenantResult = await getEffectiveTenantId(gmailUserEmail);
-    if (!tenantResult.tenantId) {
-      console.error(`[fetch-gmail-loads] ABORTING: ${tenantResult.error}`);
-      
-      // Log this failed attempt for audit (fire and forget)
-      try {
-        await supabase.from('audit_logs').insert({
-          action: 'gmail_fetch_no_tenant',
-          entity_type: 'gmail_tokens',
-          entity_id: gmailUserEmail,
-          notes: tenantResult.error,
-          tenant_id: '00000000-0000-0000-0000-000000000000', // Placeholder for system audit
-        });
-      } catch (auditError) {
-        console.warn('[fetch-gmail-loads] Could not log audit event:', auditError);
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'No tenant context available', 
-          details: tenantResult.error,
-          action_required: 'Configure tenant_id in gmail_tokens table or set up tenant_integrations with matching gmail email'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    effectiveTenantId = tenantResult.tenantId;
-    
-    // DEBUG: Log tenant isolation context (no email bodies)
-    console.log(`[TENANT-ISOLATION-DEBUG] gmail_user_email=${gmailUserEmail}, effectiveTenantId=${effectiveTenantId}`);
-
-    // Get access token
+    // Get access token (we still need the Gmail account to be configured)
     const accessToken = await getAccessToken(gmailUserEmail);
     console.log('Access token retrieved');
 
@@ -1353,12 +1372,14 @@ serve(async (req) => {
 
     if (!messagesData.messages || messagesData.messages.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No new emails found', count: 0, tenant_id: effectiveTenantId }),
+        JSON.stringify({ message: 'No new emails found', count: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     let processedCount = 0;
+    let skippedNoTenant = 0;
+    const tenantCounts: Record<string, number> = {};
 
     // Process each message
     for (const message of messagesData.messages) {
@@ -1375,6 +1396,21 @@ serve(async (req) => {
         
         // Extract headers
         const headers = fullMessage.payload?.headers || [];
+        
+        // CRITICAL: Route each email to correct tenant based on Delivered-To alias
+        const routingResult = await routeEmailToTenant(headers);
+        
+        if (!routingResult.tenantId) {
+          // FAIL-CLOSED: Skip emails that can't be routed to a tenant
+          const deliveredTo = headers.find((h: any) => h.name.toLowerCase() === 'delivered-to')?.value || 'unknown';
+          console.warn(`[fetch-gmail-loads] ⚠️ SKIPPING email - no tenant for Delivered-To: ${deliveredTo}`);
+          skippedNoTenant++;
+          continue;
+        }
+        
+        // Set the tenant for this email
+        effectiveTenantId = routingResult.tenantId;
+        
         const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
         const subjectHeader = headers.find((h: any) => h.name.toLowerCase() === 'subject');
         const dateHeader = headers.find((h: any) => h.name.toLowerCase() === 'date');
@@ -1563,7 +1599,9 @@ serve(async (req) => {
             console.error('Error inserting email:', insertError);
           } else {
             processedCount++;
-            console.log(`Processed email for tenant ${effectiveTenantId}: ${subject}`);
+            // Track per-tenant counts
+            tenantCounts[routingResult.tenantName || effectiveTenantId] = (tenantCounts[routingResult.tenantName || effectiveTenantId] || 0) + 1;
+            console.log(`Processed email for tenant ${routingResult.tenantName} (${effectiveTenantId}): ${subject}`);
             
             // Run hunt matching if we have coordinates and vehicle type
             // FAIL-CLOSED: Require fingerprint + receivedAt + tenantId for cooldown gating
@@ -1599,14 +1637,15 @@ serve(async (req) => {
       }
     }
 
-    // DEBUG: Log final count for tenant isolation verification
-    console.log(`[TENANT-ISOLATION-DEBUG] gmail_user_email=${gmailUserEmail}, effectiveTenantId=${effectiveTenantId}, inserted_load_emails_count=${processedCount}`);
+    // Log summary for tenant isolation verification
+    console.log(`[fetch-gmail-loads] SUMMARY: processed=${processedCount}, skipped_no_tenant=${skippedNoTenant}, by_tenant=${JSON.stringify(tenantCounts)}`);
 
     return new Response(
       JSON.stringify({ 
         message: 'Emails fetched successfully', 
         count: processedCount,
-        tenant_id: effectiveTenantId,
+        skipped_no_tenant: skippedNoTenant,
+        by_tenant: tenantCounts,
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
