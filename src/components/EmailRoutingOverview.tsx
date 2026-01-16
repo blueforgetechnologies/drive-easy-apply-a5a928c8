@@ -72,10 +72,17 @@ export function EmailRoutingOverview() {
 
         setConfigs(configList);
         
-        // Separate OAuth owner from other tenants
+        // The OAuth owner is the "Central Mail Hub" - shown at top
+        // All tenants (including Default Tenant renamed to "Dev Lab") go in the list below
         const owner = configList.find(c => c.has_connection);
         setOauthOwner(owner || null);
-        setOtherTenants(configList.filter(c => !c.has_connection));
+        
+        // Include all tenants in the routing list, renaming "Default Tenant" to "Dev Lab"
+        const allTenants = configList.map(c => ({
+          ...c,
+          tenant_name: c.tenant_name === 'Default Tenant' ? 'Dev Lab' : c.tenant_name
+        }));
+        setOtherTenants(allTenants);
       }
     } catch (error) {
       console.error("Error loading email routing config:", error);
@@ -172,11 +179,11 @@ export function EmailRoutingOverview() {
       </CardHeader>
       <CardContent className="space-y-6">
         
-        {/* OAuth Owner - Primary Section */}
+        {/* Central Mail Hub - Primary Section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Crown className="h-4 w-4 text-amber-500" />
-            Gmail OAuth Owner (Source of All Emails)
+            Central Mail Hub
           </div>
           
           {oauthOwner ? (
@@ -199,10 +206,10 @@ export function EmailRoutingOverview() {
                   
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-xl text-foreground">{oauthOwner.tenant_name}</h3>
+                      <h3 className="font-bold text-xl text-foreground">Primary Gmail Connection</h3>
                       <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-sm">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Connected
+                        Active
                       </Badge>
                     </div>
                     
@@ -215,19 +222,10 @@ export function EmailRoutingOverview() {
                     </div>
                     
                     <p className="text-sm text-muted-foreground max-w-md">
-                      ✓ All load emails are polled from this inbox and routed to tenants via +alias
+                      ✓ All load emails flow through this inbox and route to tenants via +alias
                     </p>
                   </div>
                 </div>
-                
-                {oauthOwner.gmail_alias && (
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs text-muted-foreground">Alias</span>
-                    <Badge variant="secondary" className="font-mono text-base px-4 py-2 bg-white dark:bg-background shadow-sm">
-                      {oauthOwner.gmail_alias}
-                    </Badge>
-                  </div>
-                )}
               </div>
             </div>
           ) : (
@@ -313,12 +311,12 @@ export function EmailRoutingOverview() {
           </div>
         )}
 
-        {/* Other Tenants - Alias Routing */}
+        {/* All Tenants - Alias Routing */}
         {otherTenants.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Mail className="h-4 w-4 text-blue-500" />
-              Tenants Using Alias Routing ({otherTenants.length})
+              Tenant Channels ({otherTenants.length})
             </div>
             
             <div className="grid gap-3">
