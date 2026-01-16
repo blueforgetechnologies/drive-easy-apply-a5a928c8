@@ -19,8 +19,9 @@
 
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { claimBatch, completeItem, failItem, resetStaleItems } from './claim.js';
+import { claimBatch, claimInboundBatch, completeItem, failItem, resetStaleItems } from './claim.js';
 import { processQueueItem } from './process.js';
+import { processInboundEmail } from './inbound.js';
 import { supabase } from './supabase.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -420,15 +421,52 @@ async function workerLoop(): Promise<void> {
         lastStaleReset = Date.now();
       }
 
-      // Claim a batch of items atomically
+      // Claim a batch of OUTBOUND items atomically
       const batch = await claimBatch(currentConfig.batch_size);
 
-      if (batch.length === 0) {
+      // Also claim INBOUND emails for parsing (load emails)
+      const inboundBatch = await claimInboundBatch(50);
+
+      if (batch.length === 0 && inboundBatch.length === 0) {
         await sleep(currentConfig.loop_interval_ms);
         continue;
       }
 
-      log('debug', `Claimed batch`, { size: batch.length });
+      // Process INBOUND emails first (higher priority - time sensitive)
+      if (inboundBatch.length > 0) {
+        log('info', `Processing ${inboundBatch.length} inbound load emails`);
+        const inboundStart = Date.now();
+        
+        for (const item of inboundBatch) {
+          try {
+            const result = await processInboundEmail(item);
+            if (result.success) {
+              log('debug', `Inbound processed`, { 
+                id: item.id.substring(0, 8), 
+                loadId: result.loadId,
+                isDuplicate: result.isDuplicate 
+              });
+            } else {
+              log('warn', `Inbound failed`, { id: item.id.substring(0, 8), error: result.error });
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            log('error', `Inbound exception`, { id: item.id.substring(0, 8), error: errorMessage });
+          }
+        }
+        
+        log('info', `Inbound batch complete`, { 
+          size: inboundBatch.length, 
+          duration_ms: Date.now() - inboundStart 
+        });
+      }
+
+      // Process OUTBOUND emails
+      if (batch.length === 0) {
+        continue;
+      }
+
+      log('debug', `Claimed outbound batch`, { size: batch.length });
       const startTime = Date.now();
       METRICS.lastBatchSize = batch.length;
 

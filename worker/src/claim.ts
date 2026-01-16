@@ -17,9 +17,23 @@ export interface QueueItem {
   from_name: string | null;
 }
 
+export interface InboundQueueItem {
+  id: string;
+  tenant_id: string | null;
+  gmail_message_id: string;
+  gmail_history_id: string | null;
+  payload_url: string | null;
+  attempts: number;
+  queued_at: string;
+  subject: string | null;
+  from_email: string | null;
+  body_html: string | null;
+  body_text: string | null;
+}
+
 /**
- * Atomically claim a batch of email queue items using FOR UPDATE SKIP LOCKED.
- * This prevents multiple workers from processing the same items.
+ * Atomically claim a batch of OUTBOUND email queue items using FOR UPDATE SKIP LOCKED.
+ * These are emails with to_email populated (sent via Resend).
  */
 export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
   const { data, error } = await supabase.rpc('claim_email_queue_batch', {
@@ -32,6 +46,50 @@ export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
   }
 
   return (data || []) as QueueItem[];
+}
+
+/**
+ * Claim a batch of INBOUND email queue items for parsing.
+ * These are emails with payload_url but no to_email (load emails from Gmail).
+ */
+export async function claimInboundBatch(batchSize: number = 50): Promise<InboundQueueItem[]> {
+  // Query for inbound emails: have payload_url, no to_email, status=pending
+  const { data, error } = await supabase
+    .from('email_queue')
+    .select('id, tenant_id, gmail_message_id, gmail_history_id, payload_url, attempts, queued_at, subject, from_email, body_html, body_text')
+    .eq('status', 'pending')
+    .not('payload_url', 'is', null)
+    .is('to_email', null)
+    .order('queued_at', { ascending: true })
+    .limit(batchSize);
+
+  if (error) {
+    console.error('[claim] Error claiming inbound batch:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Mark as processing atomically
+  const ids = data.map(item => item.id);
+  const { error: updateError } = await supabase
+    .from('email_queue')
+    .update({ 
+      status: 'processing', 
+      processing_started_at: new Date().toISOString() 
+    })
+    .in('id', ids);
+
+  if (updateError) {
+    console.error('[claim] Error marking inbound items as processing:', updateError);
+    // Return empty - items weren't locked
+    return [];
+  }
+
+  console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
+  return data as InboundQueueItem[];
 }
 
 /**
