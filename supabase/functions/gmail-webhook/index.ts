@@ -979,39 +979,6 @@ serve(async (req) => {
       }).catch(() => {})
     ));
 
-    // ========================================================================
-    // INLINE PROCESSING FALLBACK: Trigger process-email-queue as background task
-    // This ensures emails are parsed/geocoded/matched even if VPS worker is down
-    // Uses EdgeRuntime.waitUntil() to run after response is sent
-    // ========================================================================
-    if (totalQueued > 0) {
-      const triggerQueueProcessing = async () => {
-        try {
-          console.log(`[gmail-webhook] 🔄 Triggering inline queue processing for ${totalQueued} emails...`);
-          const response = await fetch(`${supabaseUrl}/functions/v1/process-email-queue`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ batchSize: Math.min(totalQueued, 10) }),
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            console.log(`[gmail-webhook] ✅ Queue processing complete: ${JSON.stringify(result)}`);
-          } else {
-            console.error(`[gmail-webhook] ❌ Queue processing failed: ${response.status}`);
-          }
-        } catch (err) {
-          console.error(`[gmail-webhook] ❌ Queue processing error:`, err);
-        }
-      };
-      
-      // Fire-and-forget - don't await, let it run in background
-      triggerQueueProcessing();
-    }
-
     const elapsed = Date.now() - startTime;
     
     // Log content dedup stats if enabled
