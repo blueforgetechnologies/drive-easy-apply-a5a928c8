@@ -4,9 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, ArrowDown, CheckCircle2, RefreshCw, AlertTriangle, Crown, Link2 } from "lucide-react";
+import { Mail, ArrowDown, CheckCircle2, RefreshCw, AlertTriangle, Crown, Link2, Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-
 interface TenantEmailConfig {
   tenant_id: string;
   tenant_name: string;
@@ -328,46 +327,73 @@ export function EmailRoutingOverview() {
                   ? `${baseEmail}${config.gmail_alias}@${domain}`
                   : null;
                 
+                const handleCopyEmail = () => {
+                  if (aliasEmail) {
+                    navigator.clipboard.writeText(aliasEmail);
+                    toast.success(`Copied: ${aliasEmail}`);
+                  }
+                };
+                
                 return (
                   <div 
                     key={config.tenant_id}
-                    className={`p-4 rounded-lg border ${
+                    className={`p-4 rounded-xl border-2 ${
                       config.gmail_alias 
-                        ? "border-blue-300 bg-blue-50/50 dark:bg-blue-950/20"
+                        ? "border-blue-400/50 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20"
                         : "border-muted bg-muted/30"
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${
-                          config.gmail_alias ? "bg-blue-500" : "bg-muted-foreground/30"
-                        }`} />
-                        <div>
-                          <p className="font-semibold">{config.tenant_name}</p>
-                          {config.gmail_alias && connectedGmail ? (
-                            <div className="mt-1">
-                              <p className="text-xs text-muted-foreground">Give this email to the tenant for Sylectus/FullCircle:</p>
-                              <p className="font-mono text-sm text-blue-600 dark:text-blue-400 font-medium">
-                                {aliasEmail}
-                              </p>
-                            </div>
-                          ) : !connectedGmail ? (
-                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                              <AlertTriangle className="h-3 w-3 text-amber-500" />
-                              Waiting for Gmail OAuth connection
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                              <AlertTriangle className="h-3 w-3 text-amber-500" />
-                              No alias configured - cannot receive emails
-                            </p>
-                          )}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${
+                            config.gmail_alias ? "bg-blue-500" : "bg-muted-foreground/30"
+                          }`} />
+                          <p className="font-bold text-lg">{config.tenant_name}</p>
                         </div>
+                        {config.gmail_alias && (
+                          <Badge variant="secondary" className="font-mono text-xs">
+                            alias: {config.gmail_alias}
+                          </Badge>
+                        )}
                       </div>
-                      {config.gmail_alias && (
-                        <Badge variant="outline" className="font-mono">
-                          {config.gmail_alias}
-                        </Badge>
+                      
+                      {config.gmail_alias && connectedGmail ? (
+                        <div className="ml-6 space-y-2">
+                          <p className="text-xs text-muted-foreground font-medium">
+                            📧 Use this email in Sylectus/FullCircle:
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-lg bg-white dark:bg-background border-2 border-blue-300 dark:border-blue-700 shadow-sm">
+                              <Mail className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              <span className="font-mono text-base font-bold text-blue-700 dark:text-blue-300 break-all">
+                                {aliasEmail}
+                              </span>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={handleCopyEmail}
+                              className="flex-shrink-0 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Emails to this address will route to {config.tenant_name}
+                          </p>
+                        </div>
+                      ) : !connectedGmail ? (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 ml-6">
+                          <AlertTriangle className="h-3 w-3 text-amber-500" />
+                          Waiting for Gmail OAuth connection
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 ml-6">
+                          <AlertTriangle className="h-3 w-3 text-amber-500" />
+                          No alias configured - cannot receive emails
+                        </p>
                       )}
                     </div>
                   </div>
