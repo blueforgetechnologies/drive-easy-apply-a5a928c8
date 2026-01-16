@@ -39,7 +39,7 @@ export function EmailRoutingOverview() {
         { body: { action: "list" } }
       );
 
-      const tokens = tokenError ? [] : (tokenResponse?.gmail_tokens || []);
+      const tokens = tokenError ? [] : (tokenResponse?.tokens || []);
 
       if (tenants) {
         const tokenMap = new Map(tokens.map((t: any) => [t.tenant_id, t]));
