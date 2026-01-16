@@ -2351,7 +2351,7 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "unreviewed_matches"
-            referencedColumns: ["match_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "load_bids_tenant_id_fkey"
@@ -3497,7 +3497,7 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "unreviewed_matches"
-            referencedColumns: ["match_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "loads_tenant_id_fkey"
@@ -3872,7 +3872,7 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "unreviewed_matches"
-            referencedColumns: ["match_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "match_action_history_tenant_id_fkey"
@@ -6113,22 +6113,11 @@ export type Database = {
     Views: {
       content_dedup_metrics: {
         Row: {
-          avg_content_size_bytes: number | null
-          avg_reuse_count: number | null
-          estimated_bytes_saved: number | null
-          max_reuse_count: number | null
-          provider_breakdown: Json | null
-          quarantine_24h: number | null
-          quarantine_7d: number | null
-          receipts_24h: number | null
-          receipts_7d: number | null
-          tenant_feature_status: Json | null
-          total_content_uses: number | null
+          dedup_savings_percent: number | null
+          duplicate_receipts_saved: number | null
+          reused_content: number | null
+          total_content_rows: number | null
           total_receipts: number | null
-          total_stored_bytes: number | null
-          unique_content_24h: number | null
-          unique_content_7d: number | null
-          unique_content_count: number | null
         }
         Relationships: []
       }
@@ -6171,59 +6160,46 @@ export type Database = {
       }
       load_dedup_metrics: {
         Row: {
-          dedup_rate_pct: number | null
-          duplicates_24h: number | null
-          loads_24h: number | null
-          tenant_breakdown: Json | null
-          total_duplicates: number | null
-          total_loads: number | null
-          unique_fingerprints: number | null
+          dedup_eligible_count: number | null
+          duplicate_rate: number | null
+          duplicates_detected: number | null
+          fk_coverage_rate: number | null
+          total_emails: number | null
+          with_content_fk: number | null
         }
         Relationships: []
       }
       unreviewed_matches: {
         Row: {
-          content_hash: string | null
+          bid_at: string | null
+          bid_by: string | null
+          bid_rate: number | null
+          booked_load_id: string | null
+          created_at: string | null
           distance_miles: number | null
-          email_id: string | null
-          email_source: string | null
-          email_status: string | null
-          expires_at: string | null
           from_email: string | null
-          from_name: string | null
-          hunt_enabled: boolean | null
           hunt_plan_id: string | null
-          hunt_zip: string | null
+          hunt_vehicle_id: string | null
+          id: string | null
           is_active: boolean | null
-          is_update: boolean | null
           load_email_id: string | null
-          load_id: string | null
-          match_id: string | null
+          match_score: number | null
           match_status: string | null
           matched_at: string | null
-          parent_email_id: string | null
           parsed_data: Json | null
-          pickup_radius: string | null
           plan_name: string | null
           received_at: string | null
           subject: string | null
           tenant_id: string | null
+          updated_at: string | null
           vehicle_id: string | null
-          vehicle_size: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "hunt_plans_tenant_id_fkey"
-            columns: ["tenant_id"]
+            foreignKeyName: "load_hunt_matches_booked_load_id_fkey"
+            columns: ["booked_load_id"]
             isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "load_emails_parent_email_id_fkey"
-            columns: ["parent_email_id"]
-            isOneToOne: false
-            referencedRelation: "load_emails"
+            referencedRelation: "loads"
             referencedColumns: ["id"]
           },
           {
@@ -6238,6 +6214,13 @@ export type Database = {
             columns: ["load_email_id"]
             isOneToOne: false
             referencedRelation: "load_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_hunt_matches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
