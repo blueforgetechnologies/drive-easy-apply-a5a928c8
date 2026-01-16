@@ -6325,9 +6325,10 @@ export type Database = {
       cleanup_pubsub_tracking: { Args: never; Returns: number }
       cleanup_tenant_rate_limits: { Args: never; Returns: number }
       cleanup_vehicle_location_history: { Args: never; Returns: number }
-      complete_email_queue_item:
-        | { Args: { p_id: string }; Returns: undefined }
-        | { Args: { p_id: string; p_status?: string }; Returns: undefined }
+      complete_email_queue_item: {
+        Args: { p_id: string; p_status?: string }
+        Returns: undefined
+      }
       fail_email_queue_item: {
         Args: { p_attempts: number; p_error: string; p_id: string }
         Returns: undefined
