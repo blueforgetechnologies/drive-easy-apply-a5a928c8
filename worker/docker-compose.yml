@@ -33,6 +33,7 @@ services:
       - VITE_MAPBOX_TOKEN=${VITE_MAPBOX_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - HEALTH_PORT=8080
+      - WORKER_ID=${HOSTNAME:-worker-$$}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/ready"]
       interval: 30s
