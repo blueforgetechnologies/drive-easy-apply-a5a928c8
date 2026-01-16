@@ -124,6 +124,12 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 const currentLogLevel = LOG_LEVELS[STATIC_CONFIG.LOG_LEVEL as LogLevel] ?? LOG_LEVELS.info;
 
+function getWorkerId(): string {
+  // In Docker, HOSTNAME is set inside the container (usually to the container id)
+  // This gives us a stable-per-container unique ID even when WORKER_ID isn't configured.
+  return process.env.WORKER_ID || process.env.HOSTNAME || 'worker-1';
+}
+
 function log(level: LogLevel, message: string, meta?: Record<string, any>): void {
   if (LOG_LEVELS[level] < currentLogLevel) return;
 
@@ -131,7 +137,7 @@ function log(level: LogLevel, message: string, meta?: Record<string, any>): void
     ts: new Date().toISOString(),
     level,
     msg: message,
-    worker: process.env.WORKER_ID || 'worker-1',
+    worker: getWorkerId(),
     ...meta,
   };
 
@@ -214,31 +220,77 @@ async function clearRestartSignal(): Promise<void> {
 }
 
 async function reportHeartbeat(): Promise<void> {
+  const workerId = getWorkerId();
+  const status = METRICS.rateLimitBackoffUntil > Date.now() ? 'degraded' : 'healthy';
+
+  const payload = {
+    id: workerId,
+    last_heartbeat: new Date().toISOString(),
+    status,
+    emails_sent: METRICS.emailsSent,
+    emails_failed: METRICS.emailsFailed,
+    loops_completed: METRICS.loopCount,
+    current_batch_size: METRICS.lastBatchSize,
+    rate_limit_until:
+      METRICS.rateLimitBackoffUntil > Date.now()
+        ? new Date(METRICS.rateLimitBackoffUntil).toISOString()
+        : null,
+    error_message: null as string | null,
+    host_info: {
+      uptime_ms: Date.now() - METRICS.startedAt.getTime(),
+      config_source: METRICS.configSource,
+      node_version: process.version,
+    },
+  };
+
   try {
-    const workerId = process.env.WORKER_ID || 'worker-1';
-    const status = METRICS.rateLimitBackoffUntil > Date.now() ? 'degraded' : 'healthy';
-    
-    await supabase.rpc('worker_heartbeat', {
+    // Prefer RPC (centralized logic + upsert)
+    const { error } = await supabase.rpc('worker_heartbeat', {
       p_worker_id: workerId,
       p_status: status,
       p_emails_sent: METRICS.emailsSent,
       p_emails_failed: METRICS.emailsFailed,
       p_loops_completed: METRICS.loopCount,
       p_current_batch_size: METRICS.lastBatchSize,
-      p_rate_limit_until: METRICS.rateLimitBackoffUntil > Date.now() 
-        ? new Date(METRICS.rateLimitBackoffUntil).toISOString() 
-        : null,
+      p_rate_limit_until:
+        METRICS.rateLimitBackoffUntil > Date.now()
+          ? new Date(METRICS.rateLimitBackoffUntil).toISOString()
+          : null,
       p_error_message: null,
-      p_host_info: {
-        uptime_ms: Date.now() - METRICS.startedAt.getTime(),
-        config_source: METRICS.configSource,
-        node_version: process.version,
-      },
+      p_host_info: payload.host_info,
     });
-    
-    log('debug', 'Heartbeat reported to database', { worker_id: workerId, status });
-  } catch (error) {
-    log('warn', 'Failed to report heartbeat', { error: String(error) });
+
+    if (error) {
+      // IMPORTANT: supabase-js returns errors in { error }, it does not throw.
+      log('warn', 'Failed to report heartbeat via RPC', {
+        worker_id: workerId,
+        error: error.message,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+      });
+
+      // Fallback: write directly (service role bypasses RLS)
+      const { error: upsertError } = await supabase
+        .from('worker_heartbeats')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (upsertError) {
+        log('warn', 'Failed to report heartbeat via fallback upsert', {
+          worker_id: workerId,
+          error: upsertError.message,
+          code: (upsertError as any).code,
+          details: (upsertError as any).details,
+          hint: (upsertError as any).hint,
+        });
+      }
+    }
+  } catch (err) {
+    // Only catches unexpected exceptions (network, etc.)
+    log('warn', 'Exception reporting heartbeat', {
+      worker_id: workerId,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
