@@ -145,14 +145,25 @@ function extractPostedExpires(bodyText: string): { posted_at: string | null; exp
     }
   }
   
-  // Apply the rule: if expires_at <= posted_at, set expires_at = posted_at + 30 minutes
-  if (posted_at && expires_at) {
-    const postedTime = new Date(posted_at).getTime();
+  // EXPIRATION CORRECTION RULES (3-step guarantee)
+  const now = Date.now();
+  
+  // Rule 1: If posted_at is null, set to now
+  if (!posted_at) {
+    posted_at = new Date(now).toISOString();
+    console.log(`[backfill] Rule 1: posted_at was null, set to now`);
+  }
+  
+  // Rule 2: If expires_at is null OR expires_at <= posted_at, set expires_at = posted_at + 30min
+  const postedTime = new Date(posted_at).getTime();
+  if (!expires_at) {
+    expires_at = new Date(postedTime + 30 * 60 * 1000).toISOString();
+    console.log(`[backfill] Rule 2: expires_at was null, set to posted_at + 30min`);
+  } else {
     const expiresTime = new Date(expires_at).getTime();
     if (expiresTime <= postedTime) {
-      const correctedExpires = new Date(postedTime + 30 * 60 * 1000);
-      expires_at = correctedExpires.toISOString();
-      console.log(`[backfill] Corrected expires_at: was before posted_at, now posted_at + 30min`);
+      expires_at = new Date(postedTime + 30 * 60 * 1000).toISOString();
+      console.log(`[backfill] Rule 2: expires_at <= posted_at, corrected to posted_at + 30min`);
     }
   }
   

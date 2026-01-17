@@ -548,17 +548,33 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       ? 'success' 
       : (geocodingWasAttempted ? 'failed' : 'pending');
     
-    // FAILSAFE: Correct expires_at if already expired on arrival
-    // This ensures we never lose loads due to stale expiration times
-    if (parsedData.expires_at) {
-      const now = Date.now();
+    // FAILSAFE: 3-rule expiration correction (backup if parser missed it)
+    const now = Date.now();
+    
+    // Rule 1: Ensure posted_at exists
+    if (!parsedData.posted_at) {
+      parsedData.posted_at = new Date(now).toISOString();
+      console.log(`[inbound] FAILSAFE Rule 1: posted_at was null, set to now`);
+    }
+    
+    // Rule 2: Ensure expires_at is valid relative to posted_at
+    const postedTime = new Date(parsedData.posted_at).getTime();
+    if (!parsedData.expires_at) {
+      parsedData.expires_at = new Date(postedTime + 30 * 60 * 1000).toISOString();
+      console.log(`[inbound] FAILSAFE Rule 2: expires_at was null, set to posted_at + 30min`);
+    } else {
       const expiresTime = new Date(parsedData.expires_at).getTime();
-      if (expiresTime < now) {
-        // Extend to now + 30 minutes per user requirement
-        const correctedExpires = new Date(now + 30 * 60 * 1000);
-        console.log(`[inbound] FAILSAFE: expires_at was already expired (${parsedData.expires_at}), extending to now + 30min -> ${correctedExpires.toISOString()}`);
-        parsedData.expires_at = correctedExpires.toISOString();
+      if (expiresTime <= postedTime) {
+        parsedData.expires_at = new Date(postedTime + 30 * 60 * 1000).toISOString();
+        console.log(`[inbound] FAILSAFE Rule 2: expires_at <= posted_at, corrected to posted_at + 30min`);
       }
+    }
+    
+    // Rule 3: Ensure expires_at is not already in the past
+    const finalExpiresTime = new Date(parsedData.expires_at).getTime();
+    if (finalExpiresTime < now) {
+      parsedData.expires_at = new Date(now + 30 * 60 * 1000).toISOString();
+      console.log(`[inbound] FAILSAFE Rule 3: expires_at was already expired, extended to now + 30min`);
     }
     
     // Insert into load_emails
