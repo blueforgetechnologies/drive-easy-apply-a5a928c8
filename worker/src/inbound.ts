@@ -322,12 +322,13 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       ? new Date(parseInt(message.internalDate, 10)) 
       : new Date();
     
-    // Extract body
+    // Extract body - with defensive checks for missing payload structure
     const extractBody = (part: any, mimeType: string): string => {
+      if (!part) return '';
       if (part.mimeType === mimeType && part.body?.data) {
         return Buffer.from(part.body.data, 'base64').toString('utf-8');
       }
-      if (part.parts) {
+      if (part.parts && Array.isArray(part.parts)) {
         for (const p of part.parts) {
           const text = extractBody(p, mimeType);
           if (text) return text;
@@ -336,8 +337,10 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       return '';
     };
     
-    const bodyText = extractBody(message.payload, 'text/plain') || extractBody(message.payload, 'text/html');
-    const bodyHtml = extractBody(message.payload, 'text/html');
+    // Ensure message.payload exists before extracting body
+    const payload = message.payload || {};
+    const bodyText = extractBody(payload, 'text/plain') || extractBody(payload, 'text/html');
+    const bodyHtml = extractBody(payload, 'text/html');
     
     // Detect email source
     let emailSource = 'sylectus';
