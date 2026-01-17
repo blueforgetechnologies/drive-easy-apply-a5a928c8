@@ -20,15 +20,15 @@ export interface ProcessResult {
  */
 export async function processQueueItem(item: QueueItem): Promise<ProcessResult> {
   try {
-    // IMPORTANT: Skip inbound load emails - they should be processed by the Edge Function
-    // Inbound emails have gmail_message_id but no to_email or subject populated
-    // They have payload_url pointing to stored raw email content
-    if (item.gmail_message_id && item.payload_url && !item.subject && !item.body_html) {
-      console.log(`[process] Skipping inbound load email ${item.gmail_message_id} - should be processed by Edge Function`);
+    // IMPORTANT: Inbound load emails should NOT reach this function
+    // They are handled by processInboundEmail via claimInboundBatch
+    // If we see one here, it means the claiming logic has a bug
+    if (item.payload_url && !item.subject && !item.body_html) {
+      console.warn(`[process] ⚠️ Inbound email ${item.gmail_message_id} incorrectly routed to outbound processor - returning for inbound processing`);
       return {
-        success: true, // Return success so it's not marked as failed
+        success: true,
         email_sent: false,
-        error: 'inbound_email_skipped' // Not an error, just skipped
+        error: 'inbound_email_misrouted'
       };
     }
 
