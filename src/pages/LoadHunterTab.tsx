@@ -2201,25 +2201,25 @@ export default function LoadHunterTab() {
 
       const activeCount = staleMatches.filter(m => m.match_status === 'active').length;
       const undecidedCount = staleMatches.filter(m => m.match_status === 'undecided').length;
-      console.log(`🕐 Found ${staleMatches.length} stale matches (40+ min old) - DELETING (${activeCount} active, ${undecidedCount} undecided)`);
+      console.log(`🕐 Found ${staleMatches.length} stale matches (40+ min old) - MARKING AS EXPIRED (${activeCount} active, ${undecidedCount} undecided)`);
 
-      // DELETE in batches of 50 to avoid URL length limits
+      // UPDATE to 'expired' in batches of 50 to avoid URL length limits
       const BATCH_SIZE = 50;
       for (let i = 0; i < staleMatches.length; i += BATCH_SIZE) {
         const batch = staleMatches.slice(i, i + BATCH_SIZE);
         const batchIds = batch.map(m => m.id);
         
-        const { error: deleteError } = await supabase
+        const { error: updateError } = await supabase
           .from('load_hunt_matches')
-          .delete()
+          .update({ match_status: 'expired' })
           .in('id', batchIds);
 
-        if (deleteError) {
-          console.error(`Error deleting batch ${i / BATCH_SIZE + 1}:`, deleteError);
+        if (updateError) {
+          console.error(`Error expiring batch ${i / BATCH_SIZE + 1}:`, updateError);
         }
       }
 
-      console.log(`✅ Deleted ${staleMatches.length} stale matches`);
+      console.log(`✅ Marked ${staleMatches.length} stale matches as expired`);
       
       // Reload matches
       await loadUnreviewedMatches();
