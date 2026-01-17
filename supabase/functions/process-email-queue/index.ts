@@ -743,7 +743,7 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
     }
   }
 
-  // RULE: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
+  // RULE 1: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
   if (data.posted_at && data.expires_at) {
     const postedTime = new Date(data.posted_at).getTime();
     const expiresTime = new Date(data.expires_at).getTime();
@@ -751,6 +751,18 @@ function parseSylectusEmail(subject: string, bodyText: string): Record<string, a
       const correctedExpires = new Date(postedTime + 40 * 60 * 1000);
       data.expires_at = correctedExpires.toISOString();
       console.log(`📅 Corrected expires_at: was before posted_at, now posted_at + 40min -> ${data.expires_at}`);
+    }
+  }
+  
+  // RULE 2: If expires_at is in the past (already expired on arrival), extend to now + 40 minutes
+  // This handles loads that arrive after their expiration time
+  if (data.expires_at) {
+    const now = Date.now();
+    const expiresTime = new Date(data.expires_at).getTime();
+    if (expiresTime < now) {
+      const correctedExpires = new Date(now + 40 * 60 * 1000);
+      data.expires_at = correctedExpires.toISOString();
+      console.log(`📅 Corrected expires_at: was already expired on arrival, now now() + 40min -> ${data.expires_at}`);
     }
   }
 
@@ -1083,7 +1095,7 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
     }
   }
 
-  // RULE: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
+  // RULE 1: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
   if (data.posted_at && data.expires_at) {
     const postedTime = new Date(data.posted_at).getTime();
     const expiresTime = new Date(data.expires_at).getTime();
@@ -1091,6 +1103,18 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
       const correctedExpires = new Date(postedTime + 40 * 60 * 1000);
       data.expires_at = correctedExpires.toISOString();
       console.log(`📅 FCTMS: Corrected expires_at: was before posted_at, now posted_at + 40min -> ${data.expires_at}`);
+    }
+  }
+  
+  // RULE 2: If expires_at is in the past (already expired on arrival), extend to now + 40 minutes
+  // This handles loads that arrive after their expiration time
+  if (data.expires_at) {
+    const now = Date.now();
+    const expiresTime = new Date(data.expires_at).getTime();
+    if (expiresTime < now) {
+      const correctedExpires = new Date(now + 40 * 60 * 1000);
+      data.expires_at = correctedExpires.toISOString();
+      console.log(`📅 FCTMS: Corrected expires_at: was already expired on arrival, now now() + 40min -> ${data.expires_at}`);
     }
   }
   
