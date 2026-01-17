@@ -86,14 +86,22 @@ function extractBodiesFromMessage(message: GmailMessage): { textPlain: string; t
 }
 
 async function loadMessageFromStorage(rawPayloadUrl: string): Promise<GmailMessage | null> {
+  console.log(`[reparse] Attempting to load from storage: ${rawPayloadUrl}`);
   try {
     const { data, error } = await supabase.storage.from("email-payloads").download(rawPayloadUrl);
     if (error) {
       console.log(`[reparse] storage download failed: ${rawPayloadUrl} - ${error.message}`);
       return null;
     }
+    if (!data) {
+      console.log(`[reparse] storage returned no data for: ${rawPayloadUrl}`);
+      return null;
+    }
     const text = await data.text();
-    return JSON.parse(text) as GmailMessage;
+    console.log(`[reparse] Loaded payload ${text.length} bytes from storage`);
+    const parsed = JSON.parse(text) as GmailMessage;
+    console.log(`[reparse] Parsed payload has subject: ${getHeaderValue(parsed.payload?.headers, "Subject")?.substring(0, 50) || "(empty)"}`);
+    return parsed;
   } catch (e) {
     console.log(`[reparse] storage payload parse failed: ${rawPayloadUrl} - ${e instanceof Error ? e.message : String(e)}`);
     return null;
