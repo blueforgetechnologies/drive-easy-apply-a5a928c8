@@ -701,6 +701,10 @@ export default function LoadHunterTab() {
     console.log(`📧 All filter: ${filteredEmails.length} emails (${loadEmails.length} processed + ${failedQueueItems.length} failed)`);
   }
 
+  // DISPATCH MODE BYPASS: If no dispatcher/vehicles assigned, show ALL matches (don't hide everything)
+  // This prevents the confusing "0 matches" when the user just isn't set up as a dispatcher
+  const shouldBypassVehicleFilter = activeMode === 'dispatch' && myVehicleIds.length === 0;
+  
   // Get filtered matches for unreviewed - USE SERVER-SIDE VIEW DATA for scalability
   const filteredMatches = activeFilter === 'unreviewed'
     ? unreviewedViewData
@@ -708,9 +712,9 @@ export default function LoadHunterTab() {
           // Filter by specific vehicle if filterVehicleId is set (badge click)
           if (filterVehicleId && match.vehicle_id !== filterVehicleId) return false;
           // Filter by dispatcher's vehicles when in MY TRUCKS mode
-          // In dispatch mode, only show matches for assigned vehicles (empty if none assigned)
-          if (activeMode === 'dispatch') {
-            if (myVehicleIds.length === 0 || !myVehicleIds.includes(match.vehicle_id)) return false;
+          // BYPASS: If no vehicles assigned, show all matches instead of hiding everything
+          if (activeMode === 'dispatch' && !shouldBypassVehicleFilter) {
+            if (!myVehicleIds.includes(match.vehicle_id)) return false;
           }
           // Filter by email source - if no sources selected, show nothing
           if (selectedSources.length === 0) return false;
@@ -759,18 +763,17 @@ export default function LoadHunterTab() {
   }
 
   // Count uses server-side view data for accuracy
+  // BYPASS: If no vehicles assigned in dispatch mode, count ALL matches
   const unreviewedCount = unreviewedViewData.filter(match => {
-    // In dispatch mode, only count matches for assigned vehicles (0 if none assigned)
-    if (activeMode === 'dispatch') {
-      if (myVehicleIds.length === 0 || !myVehicleIds.includes(match.vehicle_id)) return false;
+    if (activeMode === 'dispatch' && !shouldBypassVehicleFilter) {
+      if (!myVehicleIds.includes(match.vehicle_id)) return false;
     }
     return true;
   }).length;
   
-  // Filter helper for dispatch mode
+  // Filter helper for dispatch mode - BYPASS when no vehicles assigned
   const filterByAssignedVehicles = <T extends { vehicle_id?: string | null }>(items: T[]) => {
-    if (activeMode === 'dispatch') {
-      if (myVehicleIds.length === 0) return [];
+    if (activeMode === 'dispatch' && !shouldBypassVehicleFilter) {
       return items.filter(item => item.vehicle_id && myVehicleIds.includes(item.vehicle_id));
     }
     return items;
@@ -1181,57 +1184,71 @@ export default function LoadHunterTab() {
   };
 
   // Fetch current user's dispatcher info and assigned vehicles
+  // CRITICAL: Clear stale state immediately on tenant change to prevent cross-tenant filtering
   useEffect(() => {
+    // IMMEDIATELY clear stale dispatcher/vehicle state when tenant changes
+    // This prevents showing matches filtered by wrong tenant's vehicles
+    setCurrentDispatcherId(null);
+    setCurrentDispatcherInfo(null);
+    currentDispatcherIdRef.current = null;
+    setMyVehicleIds([]);
+    console.log('🔄 Tenant changed to', tenantId, '- cleared dispatcher state');
+    
     const fetchUserDispatcherInfo = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('🔍 Current user:', user?.email);
+      console.log('🔍 Current user:', user?.email, 'for tenant:', tenantId);
       
-      if (user?.email) {
-        // Check if user is a dispatcher - apply tenant filter
-        let dispatcherQuery = supabase
-          .from('dispatchers')
-          .select('id, first_name, last_name, email, show_all_tab')
-          .ilike('email', user.email);
+      if (!user?.email) {
+        console.log('❌ No user email found');
+        return;
+      }
+      
+      if (!tenantId) {
+        console.log('⏳ No tenant ID yet, skipping dispatcher lookup');
+        return;
+      }
+      
+      // Check if user is a dispatcher - ALWAYS filter by tenant
+      const { data: dispatcher, error: dispatcherError } = await supabase
+        .from('dispatchers')
+        .select('id, first_name, last_name, email, show_all_tab')
+        .ilike('email', user.email)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      
+      console.log('🔍 Dispatcher lookup for tenant', tenantId, ':', { dispatcher, error: dispatcherError });
+      
+      if (dispatcher) {
+        setCurrentDispatcherId(dispatcher.id);
+        setCurrentDispatcherInfo(dispatcher);
+        currentDispatcherIdRef.current = dispatcher.id;
+        console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
         
-        if (shouldFilter && tenantId) {
-          dispatcherQuery = dispatcherQuery.eq('tenant_id', tenantId);
-        }
-
-        const { data: dispatcher, error: dispatcherError } = await dispatcherQuery.maybeSingle();
+        // Get vehicles assigned to this dispatcher
+        const { data: assignedVehicles, error: vehiclesError } = await supabase
+          .from('vehicles')
+          .select('id, vehicle_number')
+          .eq('primary_dispatcher_id', dispatcher.id)
+          .eq('tenant_id', tenantId);
         
-        console.log('🔍 Dispatcher lookup:', { dispatcher, error: dispatcherError });
+        console.log('🔍 Assigned vehicles:', { assignedVehicles, error: vehiclesError });
         
-        if (dispatcher) {
-          setCurrentDispatcherId(dispatcher.id);
-          setCurrentDispatcherInfo(dispatcher);
-          currentDispatcherIdRef.current = dispatcher.id;
-          console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
-          
-          // Get vehicles assigned to this dispatcher - apply tenant filter
-          let vehiclesQuery = supabase
-            .from('vehicles')
-            .select('id, vehicle_number')
-            .eq('primary_dispatcher_id', dispatcher.id);
-          
-          if (shouldFilter && tenantId) {
-            vehiclesQuery = vehiclesQuery.eq('tenant_id', tenantId);
-          }
-
-          const { data: assignedVehicles, error: vehiclesError } = await vehiclesQuery;
-          
-          console.log('🔍 Assigned vehicles:', { assignedVehicles, error: vehiclesError });
-          
-          if (assignedVehicles) {
-            setMyVehicleIds(assignedVehicles.map(v => v.id));
-            console.log('✅ My vehicle IDs:', assignedVehicles.map(v => v.id));
-          }
+        if (assignedVehicles && assignedVehicles.length > 0) {
+          setMyVehicleIds(assignedVehicles.map(v => v.id));
+          console.log('✅ My vehicle IDs:', assignedVehicles.map(v => v.id));
         } else {
-          console.log('❌ No dispatcher found for email:', user.email);
+          // Dispatcher exists but has no assigned vehicles - keep empty array
+          console.log('⚠️ Dispatcher has no assigned vehicles');
+          setMyVehicleIds([]);
         }
+      } else {
+        // No dispatcher found for this tenant - state already cleared above
+        console.log('❌ No dispatcher found for email:', user.email, 'in tenant:', tenantId);
       }
     };
+    
     fetchUserDispatcherInfo();
-  }, [tenantId, shouldFilter]);
+  }, [tenantId]);
 
   // REFS for channel cleanup - ensures cleanup works even if tenantReady=false
   const emailsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
