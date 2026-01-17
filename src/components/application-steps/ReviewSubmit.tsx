@@ -48,7 +48,7 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         throw new Error("Could not determine tenant. Please try again.");
       }
 
-      // First, mark the invite as used
+      // Mark the invite as used
       const { error: inviteError } = await supabase
         .from('driver_invites')
         .update({ application_started_at: new Date().toISOString() })
@@ -56,18 +56,19 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
 
       if (inviteError) {
         console.error("Error marking invite as used:", inviteError);
-        // Continue anyway - the RLS policy will catch invalid invites
       }
 
-      // Save to database with invite_id and tenant_id
+      // Extract direct deposit info to top-level fields for driver screen
+      const directDeposit = data.directDeposit || {};
+      const licenseInfo = data.licenseInfo || {};
+
+      // Update the existing pending application record with all driver details
       const { error: dbError } = await supabase
         .from('applications')
-        .insert({
-          invite_id: data.inviteId,
-          tenant_id: tenantId,
+        .update({
           personal_info: data.personalInfo,
           payroll_policy: data.payrollPolicy || {},
-          license_info: data.licenseInfo,
+          license_info: licenseInfo,
           driving_history: data.drivingHistory || {},
           employment_history: data.employmentHistory || {},
           document_upload: data.documents || {},
@@ -76,11 +77,26 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           no_rider_policy: data.noRiderPolicy || {},
           safe_driving_policy: data.safeDrivingPolicy || {},
           contractor_agreement: data.contractorAgreement || {},
-          direct_deposit: data.directDeposit || {},
+          direct_deposit: directDeposit,
           why_hire_you: data.whyHireYou || {},
           status: 'pending',
-          driver_status: 'pending'
-        });
+          driver_status: 'pending',
+          submitted_at: new Date().toISOString(),
+          // Sync top-level driver fields from application data
+          driver_address: `${data.personalInfo?.address || ''}, ${data.personalInfo?.city || ''}, ${data.personalInfo?.state || ''} ${data.personalInfo?.zip || ''}`.trim(),
+          cell_phone: data.personalInfo?.phone || null,
+          home_phone: data.personalInfo?.homePhone || null,
+          // Sync banking info
+          bank_name: directDeposit.bankName || null,
+          account_name: `${directDeposit.firstName || ''} ${directDeposit.lastName || ''}`.trim() || null,
+          routing_number: directDeposit.routingNumber || null,
+          checking_number: directDeposit.accountNumber || null,
+          account_type: directDeposit.accountType || null,
+          // Sync license expiry dates
+          driver_record_expiry: licenseInfo.licenseExpiration || null,
+          medical_card_expiry: licenseInfo.medicalCardExpiration || null,
+        })
+        .eq('invite_id', data.inviteId);
 
       if (dbError) {
         console.error("Error saving to database:", dbError);
