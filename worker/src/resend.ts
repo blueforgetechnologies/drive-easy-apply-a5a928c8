@@ -66,7 +66,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
+    const data = await response.json() as { id?: string; message?: string; error?: string };
 
     if (!response.ok) {
       const errorMessage = data.message || data.error || `HTTP ${response.status}`;
