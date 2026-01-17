@@ -3018,6 +3018,7 @@ export type Database = {
           original_value: string
           reviewed_at: string | null
           source: Database["public"]["Enums"]["email_source"]
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3030,6 +3031,7 @@ export type Database = {
           original_value: string
           reviewed_at?: string | null
           source: Database["public"]["Enums"]["email_source"]
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3042,9 +3044,18 @@ export type Database = {
           original_value?: string
           reviewed_at?: string | null
           source?: Database["public"]["Enums"]["email_source"]
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "loadboard_filters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       loads: {
         Row: {
@@ -4010,6 +4021,7 @@ export type Database = {
           pay_type: string
           priority: number
           rate: number
+          tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -4023,6 +4035,7 @@ export type Database = {
           pay_type: string
           priority?: number
           rate: number
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -4036,9 +4049,18 @@ export type Database = {
           pay_type?: string
           priority?: number
           rate?: number
+          tenant_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pay_structures_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payees: {
         Row: {
