@@ -16,10 +16,11 @@ import {
   ArrowLeft, Save, Trash2, User, CreditCard, FileText, 
   Phone, Mail, Calendar, MapPin, Shield, Briefcase,
   Building2, DollarSign, AlertCircle, Upload, Eye, Clock,
-  TrendingUp, Wallet, MinusCircle, Check
+  TrendingUp, Wallet, MinusCircle, Check, ClipboardList
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { ApplicationViewer } from "@/components/driver/ApplicationViewer";
 
 export default function ApplicationDetail() {
   const { id } = useParams();
@@ -185,8 +186,12 @@ export default function ApplicationDetail() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="personal" className="space-y-6">
-          <TabsList className="bg-white dark:bg-slate-800 p-1 shadow-sm">
+        <Tabs defaultValue="application" className="space-y-6">
+          <TabsList className="bg-white dark:bg-slate-800 p-1 shadow-sm flex-wrap">
+            <TabsTrigger value="application" className="data-[state=active]:bg-indigo-500 data-[state=active]:text-white">
+              <ClipboardList className="w-4 h-4 mr-2" />
+              Application
+            </TabsTrigger>
             <TabsTrigger value="personal" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
               <User className="w-4 h-4 mr-2" />
               Personal
@@ -204,6 +209,11 @@ export default function ApplicationDetail() {
               Employment
             </TabsTrigger>
           </TabsList>
+
+          {/* Application Tab - Read-only professional view */}
+          <TabsContent value="application">
+            <ApplicationViewer data={formData} />
+          </TabsContent>
 
           {/* Personal Tab */}
           <TabsContent value="personal" className="space-y-6">
