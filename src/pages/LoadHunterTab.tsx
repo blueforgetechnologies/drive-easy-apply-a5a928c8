@@ -248,6 +248,34 @@ export default function LoadHunterTab() {
   const getCurrentTime = () => new Date();
   const getThirtyMinutesAgo = () => new Date(getCurrentTime().getTime() - 30 * 60 * 1000);
   
+  // Helper to get Eastern timezone offset (handles EST vs EDT automatically)
+  // Returns the offset in hours (negative, e.g., -5 for EST, -4 for EDT)
+  const getEasternTimezoneOffset = (date: Date): number => {
+    // Create a formatter that gives us the timezone offset
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      timeZoneName: 'shortOffset',
+    });
+    
+    const parts = formatter.formatToParts(date);
+    const tzPart = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
+    
+    // Parse offset like "GMT-5" or "GMT-4"
+    const match = tzPart.match(/GMT([+-]?\d+)/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    
+    // Fallback: determine based on date (DST is March to November in US)
+    const month = date.getMonth(); // 0-indexed
+    // DST typically runs from second Sunday of March to first Sunday of November
+    // Simplified: March (2) through October (9) is roughly EDT
+    if (month >= 2 && month <= 9) {
+      return -4; // EDT
+    }
+    return -5; // EST
+  };
+  
   // Helper function to calculate distance between two zip codes using Haversine formula
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 3959; // Radius of the Earth in miles
@@ -1826,12 +1854,28 @@ export default function LoadHunterTab() {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         // Get midnight ET for today (skipped/bids only show today's matches)
+        // Use proper America/New_York timezone handling (auto-handles EST/EDT)
         const now = new Date();
-        const etOffset = -5; // EST offset (use -4 for EDT)
-        const utcHour = now.getUTCHours();
-        const etHour = (utcHour + 24 + etOffset) % 24;
-        const midnightET = new Date(now);
-        midnightET.setUTCHours(utcHour - etHour, 0, 0, 0);
+        
+        // Get the current date in Eastern timezone
+        const easternFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'America/New_York',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+        const parts = easternFormatter.formatToParts(now);
+        const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
+        
+        // Construct midnight in Eastern timezone as a UTC date
+        // Format: YYYY-MM-DDT00:00:00 in ET, converted to UTC
+        const easternDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}T00:00:00`;
+        
+        // Create a date at midnight Eastern by parsing in the Eastern timezone
+        // JavaScript doesn't have native timezone support, so we calculate the offset
+        const tempDate = new Date(easternDateStr + 'Z'); // Pretend it's UTC first
+        const easternOffset = getEasternTimezoneOffset(now); // Get current ET offset in hours (-5 or -4)
+        const midnightET = new Date(tempDate.getTime() - easternOffset * 60 * 60 * 1000);
         const midnightETIso = midnightET.toISOString();
 
         // CRITICAL: Now uses direct tenant_id column (added via migration) - no join needed
@@ -2245,88 +2289,37 @@ export default function LoadHunterTab() {
   };
 
   // Mark matches as expired when their load's actual expiration time has passed
+  // Call server-side expiration function to avoid client timezone issues
+  // The server uses proper UTC comparison for consistent expiration across all clients
   const deactivateStaleMatches = async () => {
     try {
-      // Get current time in UTC for database comparison
-      const nowUtc = new Date().toISOString();
+      console.log('🔄 Calling server-side expire-stale-matches function...');
       
-      // Find active OR undecided matches where the load has actually expired
-      // We need to join with load_emails to check the parsed expires_at
-      const { data: staleMatches, error: fetchError } = await supabase
-        .from('load_hunt_matches')
-        .select(`
-          id, match_status, matched_at,
-          load_emails!inner (
-            id,
-            expires_at,
-            parsed_data
-          )
-        `)
-        .in('match_status', ['active', 'undecided']);
-
-      if (fetchError) {
-        console.error('Error fetching matches for expiration check:', fetchError);
-        return;
+      // Call the edge function with tenant filter for efficiency
+      const params: Record<string, string> = {};
+      if (tenantId) {
+        params.tenant_id = tenantId;
       }
-
-      if (!staleMatches || staleMatches.length === 0) {
-        return;
-      }
-
-      // Filter to only matches where the load has actually expired
-      const expiredMatches = staleMatches.filter(match => {
-        const loadEmail = match.load_emails as any;
-        if (!loadEmail) return false;
-        
-        // Check expires_at from the load_emails table first
-        let expiresAt = loadEmail.expires_at;
-        
-        // Fall back to parsed_data.expires_at if not set
-        if (!expiresAt && loadEmail.parsed_data?.expires_at) {
-          expiresAt = loadEmail.parsed_data.expires_at;
-        }
-        
-        if (!expiresAt) {
-          // If no expiration time, fall back to 40 min from matched_at as safety
-          const matchedAt = new Date(match.matched_at);
-          const fortyMinLater = new Date(matchedAt.getTime() + 40 * 60 * 1000);
-          return new Date() > fortyMinLater;
-        }
-        
-        // Compare current time to load's expiration time
-        const expirationTime = new Date(expiresAt);
-        return new Date() > expirationTime;
+      
+      const queryString = new URLSearchParams(params).toString();
+      const { data, error } = await supabase.functions.invoke('expire-stale-matches', {
+        body: {},
       });
 
-      if (expiredMatches.length === 0) {
+      if (error) {
+        console.error('Error calling expire-stale-matches:', error);
         return;
       }
 
-      const activeCount = expiredMatches.filter(m => m.match_status === 'active').length;
-      const undecidedCount = expiredMatches.filter(m => m.match_status === 'undecided').length;
-      console.log(`🕐 Found ${expiredMatches.length} matches with expired loads - MARKING AS EXPIRED (${activeCount} active, ${undecidedCount} undecided)`);
-
-      // UPDATE to 'expired' in batches of 50 to avoid URL length limits
-      const BATCH_SIZE = 50;
-      for (let i = 0; i < expiredMatches.length; i += BATCH_SIZE) {
-        const batch = expiredMatches.slice(i, i + BATCH_SIZE);
-        const batchIds = batch.map(m => m.id);
+      if (data?.expired > 0) {
+        console.log(`✅ Server expired ${data.expired} matches (checked ${data.checked})`);
         
-        const { error: updateError } = await supabase
-          .from('load_hunt_matches')
-          .update({ match_status: 'expired' })
-          .in('id', batchIds);
-
-        if (updateError) {
-          console.error(`Error expiring batch ${i / BATCH_SIZE + 1}:`, updateError);
-        }
+        // Reload matches to reflect changes
+        await loadUnreviewedMatches();
+        await loadHuntMatches();
+      } else {
+        console.log(`✅ No matches expired (checked ${data?.checked || 0})`);
       }
-
-      console.log(`✅ Marked ${expiredMatches.length} matches as expired (load expiration passed)`);
-      
-      // Reload matches
-      await loadUnreviewedMatches();
-      await loadHuntMatches();
     } catch (err) {
       console.error('Error in deactivateStaleMatches:', err);
     }

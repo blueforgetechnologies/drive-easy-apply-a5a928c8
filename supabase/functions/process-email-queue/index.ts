@@ -1489,10 +1489,25 @@ serve(async (req) => {
         let bodyText = '';
         let bodyHtml = '';
         const extractBody = (part: any, mimeType: string): string => {
+          // Guard against undefined/null parts (prevents "Cannot read properties of undefined (reading 'mimeType')")
+          if (!part || typeof part !== 'object') return '';
+          
+          // Guard against missing mimeType property
+          if (typeof part.mimeType !== 'string') {
+            // Still check nested parts if they exist
+            if (part.parts && Array.isArray(part.parts)) {
+              for (const p of part.parts) {
+                const text = extractBody(p, mimeType);
+                if (text) return text;
+              }
+            }
+            return '';
+          }
+          
           if (part.mimeType === mimeType && part.body?.data) {
             return atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
           }
-          if (part.parts) {
+          if (part.parts && Array.isArray(part.parts)) {
             for (const p of part.parts) {
               const text = extractBody(p, mimeType);
               if (text) return text;
