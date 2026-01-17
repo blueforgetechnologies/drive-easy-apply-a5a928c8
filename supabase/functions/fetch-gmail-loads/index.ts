@@ -1467,6 +1467,10 @@ serve(async (req) => {
           bodyText = decodeBase64Utf8(fullMessage.payload.body.data);
         } else if (fullMessage.payload?.parts) {
           for (const part of fullMessage.payload.parts) {
+            // Guard against undefined/null parts (prevents "Cannot read properties of undefined (reading 'mimeType')")
+            if (!part || typeof part !== 'object') continue;
+            if (typeof part.mimeType !== 'string') continue;
+            
             if (part.mimeType === 'text/plain' && part.body?.data) {
               bodyText += decodeBase64Utf8(part.body.data);
             }
