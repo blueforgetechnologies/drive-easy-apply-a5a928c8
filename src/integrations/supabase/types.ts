@@ -6321,6 +6321,22 @@ export type Database = {
           to_email: string
         }[]
       }
+      claim_inbound_email_queue_batch: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          attempts: number
+          body_html: string
+          body_text: string
+          from_email: string
+          gmail_history_id: string
+          gmail_message_id: string
+          id: string
+          payload_url: string
+          queued_at: string
+          subject: string
+          tenant_id: string
+        }[]
+      }
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
       cleanup_tenant_rate_limits: { Args: never; Returns: number }
