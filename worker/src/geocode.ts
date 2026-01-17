@@ -99,7 +99,7 @@ export async function lookupCityFromZip(
         let foundState = state || '';
 
         for (const ctx of feature.context || []) {
-          if (ctx.id?.startsWith('place.')) {
+          if (ctx.id?.startsWith('place.') && ctx.text) {
             city = ctx.text;
           }
           if (ctx.id?.startsWith('region.') && ctx.short_code) {
