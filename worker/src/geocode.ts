@@ -45,7 +45,7 @@ export async function geocodeLocation(
     );
 
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json() as { features?: Array<{ center?: [number, number] }> };
       if (data.features?.[0]?.center) {
         const coords: Coordinates = {
           lng: data.features[0].center[0],
@@ -92,7 +92,7 @@ export async function lookupCityFromZip(
     );
 
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json() as { features?: Array<{ place_name?: string; context?: Array<{ id?: string; text?: string; short_code?: string }> }> };
       if (data.features?.[0]) {
         const feature = data.features[0];
         let city = '';
