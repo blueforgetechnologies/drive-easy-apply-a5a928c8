@@ -33,6 +33,8 @@ export interface ParsedEmailData {
   loaded_miles?: number;
   expires_datetime?: string;
   expires_at?: string;
+  posted_datetime?: string;
+  posted_at?: string;
   notes?: string;
   customer?: string;
   mc_number?: string;
@@ -218,16 +220,8 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Expiration
-  const expirationMatch = bodyText?.match(/Expires?[:\s]*(?:<[^>]*>)*\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
-  if (expirationMatch) {
-    const dateStr = expirationMatch[1];
-    const timeStr = expirationMatch[2];
-    const ampm = expirationMatch[3] || '';
-    const timezone = expirationMatch[4] || 'EST';
-
-    data.expires_datetime = `${dateStr} ${timeStr} ${ampm} ${timezone}`.trim();
-
+  // Helper to parse MM/DD/YYYY HH:MM AM/PM TZ format
+  const parseDateTimeString = (dateStr: string, timeStr: string, ampm: string, timezone: string): Date | null => {
     try {
       const dateParts = dateStr.split('/');
       let year = parseInt(dateParts[2]);
@@ -247,12 +241,51 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
       };
       const offset = tzOffsets[timezone.toUpperCase()] || -5;
 
-      const expiresDate = new Date(Date.UTC(year, month, day, hours - offset, minutes, 0));
-      if (!isNaN(expiresDate.getTime())) {
-        data.expires_at = expiresDate.toISOString();
-      }
-    } catch (e) {
-      // Ignore parsing errors
+      const result = new Date(Date.UTC(year, month, day, hours - offset, minutes, 0));
+      return isNaN(result.getTime()) ? null : result;
+    } catch {
+      return null;
+    }
+  };
+
+  // Posted time - parse "Posted:" field
+  const postedMatch = bodyText?.match(/Posted[:\s]*(?:<[^>]*>)*\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  if (postedMatch) {
+    const dateStr = postedMatch[1];
+    const timeStr = postedMatch[2];
+    const ampm = postedMatch[3] || '';
+    const timezone = postedMatch[4] || 'EST';
+
+    data.posted_datetime = `${dateStr} ${timeStr} ${ampm} ${timezone}`.trim();
+    const postedDate = parseDateTimeString(dateStr, timeStr, ampm, timezone);
+    if (postedDate) {
+      data.posted_at = postedDate.toISOString();
+    }
+  }
+
+  // Expiration
+  const expirationMatch = bodyText?.match(/Expires?[:\s]*(?:<[^>]*>)*\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(AM|PM)?\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  if (expirationMatch) {
+    const dateStr = expirationMatch[1];
+    const timeStr = expirationMatch[2];
+    const ampm = expirationMatch[3] || '';
+    const timezone = expirationMatch[4] || 'EST';
+
+    data.expires_datetime = `${dateStr} ${timeStr} ${ampm} ${timezone}`.trim();
+    const expiresDate = parseDateTimeString(dateStr, timeStr, ampm, timezone);
+    if (expiresDate) {
+      data.expires_at = expiresDate.toISOString();
+    }
+  }
+
+  // RULE: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
+  if (data.posted_at && data.expires_at) {
+    const postedTime = new Date(data.posted_at).getTime();
+    const expiresTime = new Date(data.expires_at).getTime();
+    if (expiresTime <= postedTime) {
+      const correctedExpires = new Date(postedTime + 40 * 60 * 1000);
+      data.expires_at = correctedExpires.toISOString();
+      console.log(`[sylectus] Corrected expires_at: was before posted_at, now posted_at + 40min`);
     }
   }
 

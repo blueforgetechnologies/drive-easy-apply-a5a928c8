@@ -2507,6 +2507,7 @@ export type Database = {
           parent_email_id: string | null
           parsed_data: Json | null
           parsed_load_fingerprint: string | null
+          posted_at: string | null
           raw_payload_url: string | null
           received_at: string
           status: string
@@ -2545,6 +2546,7 @@ export type Database = {
           parent_email_id?: string | null
           parsed_data?: Json | null
           parsed_load_fingerprint?: string | null
+          posted_at?: string | null
           raw_payload_url?: string | null
           received_at: string
           status?: string
@@ -2583,6 +2585,7 @@ export type Database = {
           parent_email_id?: string | null
           parsed_data?: Json | null
           parsed_load_fingerprint?: string | null
+          posted_at?: string | null
           raw_payload_url?: string | null
           received_at?: string
           status?: string

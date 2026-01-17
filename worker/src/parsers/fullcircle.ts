@@ -181,17 +181,8 @@ export function parseFullCircleTMSEmail(
     data.has_multiple_stops = stops.length > 2;
   }
 
-  // Parse expiration
-  const expiresMatch = bodyText?.match(
-    /This posting expires:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)(?:\s*\(UTC([+-]\d{4})\))?/i
-  );
-  if (expiresMatch) {
-    const dateStr = expiresMatch[1];
-    const timeStr = expiresMatch[2];
-    const timezone = expiresMatch[3];
-
-    data.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
-
+  // Helper to parse YYYY-MM-DD HH:MM TZ format (Full Circle style)
+  const parseFCDateTime = (dateStr: string, timeStr: string, timezone: string): Date | null => {
     try {
       const tzOffsets: Record<string, number> = {
         EST: -5, EDT: -4, CST: -6, CDT: -5,
@@ -202,12 +193,53 @@ export function parseFullCircleTMSEmail(
       const [year, month, day] = dateStr.split('-').map(Number);
       const [hours, minutes] = timeStr.split(':').map(Number);
 
-      const expiresDate = new Date(Date.UTC(year, month - 1, day, hours - offset, minutes, 0));
-      if (!isNaN(expiresDate.getTime())) {
-        data.expires_at = expiresDate.toISOString();
-      }
-    } catch (e) {
-      // Ignore parsing errors
+      const result = new Date(Date.UTC(year, month - 1, day, hours - offset, minutes, 0));
+      return isNaN(result.getTime()) ? null : result;
+    } catch {
+      return null;
+    }
+  };
+
+  // Posted time - parse "Load posted:" or similar
+  const postedMatch = bodyText?.match(
+    /(?:Load posted|Posted)[:\s]*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/i
+  );
+  if (postedMatch) {
+    const dateStr = postedMatch[1];
+    const timeStr = postedMatch[2];
+    const timezone = postedMatch[3];
+
+    data.posted_datetime = `${dateStr} ${timeStr} ${timezone}`;
+    const postedDate = parseFCDateTime(dateStr, timeStr, timezone);
+    if (postedDate) {
+      data.posted_at = postedDate.toISOString();
+    }
+  }
+
+  // Parse expiration
+  const expiresMatch = bodyText?.match(
+    /This posting expires:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)(?:\s*\(UTC([+-]\d{4})\))?/i
+  );
+  if (expiresMatch) {
+    const dateStr = expiresMatch[1];
+    const timeStr = expiresMatch[2];
+    const timezone = expiresMatch[3];
+
+    data.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
+    const expiresDate = parseFCDateTime(dateStr, timeStr, timezone);
+    if (expiresDate) {
+      data.expires_at = expiresDate.toISOString();
+    }
+  }
+
+  // RULE: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
+  if (data.posted_at && data.expires_at) {
+    const postedTime = new Date(data.posted_at).getTime();
+    const expiresTime = new Date(data.expires_at).getTime();
+    if (expiresTime <= postedTime) {
+      const correctedExpires = new Date(postedTime + 40 * 60 * 1000);
+      data.expires_at = correctedExpires.toISOString();
+      console.log(`[fullcircle] Corrected expires_at: was before posted_at, now posted_at + 40min`);
     }
   }
 
