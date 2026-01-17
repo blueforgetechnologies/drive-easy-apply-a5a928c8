@@ -127,6 +127,7 @@ export default function LoadHunterTab() {
   const [bookedMatches, setBookedMatches] = useState<any[]>([]); // Matches that were booked (match_status = 'booked')
   const [undecidedMatches, setUndecidedMatches] = useState<any[]>([]); // Matches viewed but no action (match_status = 'undecided')
   const [waitlistMatches, setWaitlistMatches] = useState<any[]>([]); // Matches moved to waitlist (match_status = 'waitlist')
+  const [expiredMatches, setExpiredMatches] = useState<any[]>([]); // Expired matches (match_status = 'expired')
   const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
   const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
   const [allDispatchers, setAllDispatchers] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
@@ -720,6 +721,9 @@ export default function LoadHunterTab() {
   const filteredMissedHistory = filterVehicleId 
     ? missedHistory.filter(m => m.vehicle_id === filterVehicleId)
     : missedHistory;
+  const filteredExpiredMatches = filterVehicleId 
+    ? expiredMatches.filter(m => m.vehicle_id === filterVehicleId)
+    : expiredMatches;
   
   // Debug logging for filtered results
   if (activeFilter === 'unreviewed') {
@@ -750,6 +754,7 @@ export default function LoadHunterTab() {
   const bidCount = filterByAssignedVehicles(bidMatches).length;
   const bookedCount = filterByAssignedVehicles(bookedMatches).length;
   const undecidedCount = filterByAssignedVehicles(undecidedMatches).length;
+  const expiredCount = filterByAssignedVehicles(expiredMatches).length;
   const issuesCount = loadEmails.filter(e => e.has_issues === true).length;
 
   // Search archived matches
@@ -1930,8 +1935,25 @@ export default function LoadHunterTab() {
         }
         const { data: bookedData, error: bookedError } = await bookedQuery;
 
-        if (activeError || skippedError || bidError || undecidedError || waitlistError || bookedError) {
-          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError || bookedError);
+        // Fetch expired matches (match_status = 'expired', last 24h) - include email data
+        let expiredQuery = supabase
+          .from("load_hunt_matches")
+          .select(`
+            *,
+            load_emails (
+              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
+              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
+            )
+          `)
+          .eq('match_status', 'expired')
+          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+        if (shouldFilter && tenantId) {
+          expiredQuery = expiredQuery.eq('tenant_id', tenantId);
+        }
+        const { data: expiredData, error: expiredError } = await expiredQuery;
+
+        if (activeError || skippedError || bidError || undecidedError || waitlistError || bookedError || expiredError) {
+          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError || bookedError || expiredError);
           if (attempt === retries) {
             toast.error('Failed to load hunt matches - please refresh');
             return;
@@ -1952,8 +1974,9 @@ export default function LoadHunterTab() {
         const undecided = undecidedData || [];
         const waitlist = waitlistData || [];
         const booked = bookedData || [];
+        const expired = expiredData || [];
 
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked (tenant: ${tenantId}, reqId: ${myReqId})`);
+        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked, ${expired.length} expired (tenant: ${tenantId}, reqId: ${myReqId})`);
         
         setLoadMatches(active);
         setSkippedMatches(skipped);
@@ -1961,6 +1984,7 @@ export default function LoadHunterTab() {
         setUndecidedMatches(undecided);
         setWaitlistMatches(waitlist);
         setBookedMatches(booked);
+        setExpiredMatches(expired);
         
         const huntMap = new Map<string, string>();
         const distances = new Map<string, number>();
@@ -3577,6 +3601,25 @@ export default function LoadHunterTab() {
               variant="ghost"
               size="sm" 
               className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
+                activeFilter === 'expired' 
+                  ? 'btn-glossy-dark text-white' 
+                  : 'btn-glossy text-gray-700'
+              }`}
+              onClick={() => {
+                setActiveFilter('expired');
+                setFilterVehicleId(null);
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              Expired
+              <span className="badge-inset text-[10px] h-5">{expiredCount}</span>
+            </Button>
+            
+            <Button 
+              variant="ghost"
+              size="sm" 
+              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
                 activeFilter === 'mybids' 
                   ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-700'
@@ -5022,6 +5065,7 @@ export default function LoadHunterTab() {
                   : activeFilter === 'booked' ? bookedMatches.length === 0
                   : activeFilter === 'undecided' ? undecidedMatches.length === 0
                   : activeFilter === 'waitlist' ? waitlistMatches.length === 0
+                  : activeFilter === 'expired' ? expiredMatches.length === 0
                   : filteredEmails.length === 0) ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
                     {activeFilter === 'skipped' 
@@ -5038,6 +5082,8 @@ export default function LoadHunterTab() {
                       ? 'No undecided loads. Loads you viewed but took no action on will appear here.'
                       : activeFilter === 'waitlist'
                       ? 'No waitlisted loads yet. Click Wait on a load to add it here.'
+                      : activeFilter === 'expired'
+                      ? 'No expired matches yet. Matches that expire without action appear here.'
                       : 'No load emails found yet. Click "Refresh Loads" to start monitoring your inbox.'}
                   </div>
                 ) : (
@@ -5109,14 +5155,15 @@ export default function LoadHunterTab() {
                           : activeFilter === 'booked' ? [...bookedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'undecided' ? undecidedMatches
                           : activeFilter === 'waitlist' ? [...waitlistMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
+                          : activeFilter === 'expired' ? [...filteredExpiredMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'missed' ? filteredMissedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((item) => {
                           // For unreviewed, item is from view with email data included
-                          // For skipped/mybids/booked/undecided/waitlist, item is a match that needs email lookup
+                          // For skipped/mybids/booked/undecided/waitlist/expired, item is a match that needs email lookup
                           // For missed, item is from missedHistory with email data
                           // For others, item is an email
-                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'missed' || activeFilter === 'undecided' || activeFilter === 'waitlist';
+                          const viewingMatches = activeFilter === 'unreviewed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'missed' || activeFilter === 'undecided' || activeFilter === 'waitlist' || activeFilter === 'expired';
                           
                           // Get email data - from view (unreviewed) or lookup (skipped/mybids/booked/undecided/waitlist) or missedHistory (missed) or item itself (other)
                           let email: any;
@@ -5136,8 +5183,8 @@ export default function LoadHunterTab() {
                               is_update: (item as any).is_update,
                               parent_email_id: (item as any).parent_email_id,
                             };
-                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') {
-                            // Skipped/bid/booked/undecided/waitlist matches now include email data from the join
+                          } else if (activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist' || activeFilter === 'expired') {
+                            // Skipped/bid/booked/undecided/waitlist/expired matches now include email data from the join
                             const matchItem = item as any;
                             email = matchItem.load_emails || loadEmails.find(e => e.id === matchItem.load_email_id);
                           } else if (activeFilter === 'missed') {
@@ -5816,6 +5863,7 @@ export default function LoadHunterTab() {
                             : activeFilter === 'undecided' ? undecidedMatches.length
                             : activeFilter === 'waitlist' ? waitlistMatches.length
                             : activeFilter === 'missed' ? missedHistory.length
+                            : activeFilter === 'expired' ? expiredMatches.length
                             : filteredEmails.length;
                           return totalItems === 0 ? '0 - 0 of 0' : `${Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - ${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems}`;
                         })()}
@@ -5845,6 +5893,7 @@ export default function LoadHunterTab() {
                             : activeFilter === 'undecided' ? undecidedMatches.length
                             : activeFilter === 'waitlist' ? waitlistMatches.length
                             : activeFilter === 'missed' ? missedHistory.length
+                            : activeFilter === 'expired' ? expiredMatches.length
                             : filteredEmails.length;
                           setCurrentPage(Math.min(Math.ceil(totalItems / itemsPerPage), currentPage + 1));
                         }}
@@ -5855,6 +5904,7 @@ export default function LoadHunterTab() {
                             : activeFilter === 'undecided' ? undecidedMatches.length
                             : activeFilter === 'waitlist' ? waitlistMatches.length
                             : activeFilter === 'missed' ? missedHistory.length
+                            : activeFilter === 'expired' ? expiredMatches.length
                             : filteredEmails.length;
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
                         })()}
@@ -5870,6 +5920,7 @@ export default function LoadHunterTab() {
                             : activeFilter === 'undecided' ? undecidedMatches.length
                             : activeFilter === 'waitlist' ? waitlistMatches.length
                             : activeFilter === 'missed' ? missedHistory.length
+                            : activeFilter === 'expired' ? expiredMatches.length
                             : filteredEmails.length;
                           setCurrentPage(Math.ceil(totalItems / itemsPerPage));
                         }}
@@ -5880,6 +5931,7 @@ export default function LoadHunterTab() {
                             : activeFilter === 'undecided' ? undecidedMatches.length
                             : activeFilter === 'waitlist' ? waitlistMatches.length
                             : activeFilter === 'missed' ? missedHistory.length
+                            : activeFilter === 'expired' ? expiredMatches.length
                             : filteredEmails.length;
                           return currentPage >= Math.ceil(totalItems / itemsPerPage);
                         })()}
