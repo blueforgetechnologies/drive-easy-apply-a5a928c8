@@ -744,19 +744,19 @@ serve(async (req) => {
     // Fetch full metadata for each message to get all routing headers
     const messageDetailsPromises = messages.map(async (m: any) => {
       try {
-        // Request all relevant headers for routing
+        // Request FULL message (format=full) to get body for VPS worker parsing
         const detailResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Delivered-To&metadataHeaders=X-Original-To&metadataHeaders=Envelope-To&metadataHeaders=To&metadataHeaders=From&metadataHeaders=Subject`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         
         if (!detailResponse.ok) {
           console.warn(`Failed to fetch details for message ${m.id}`);
-          return { message: m, headers: [], fromEmail: null, subject: null };
+          return { message: m, fullMessage: null, headers: [], fromEmail: null, subject: null };
         }
         
-        const detail = await detailResponse.json();
-        const headers = detail.payload?.headers || [];
+        const fullMessage = await detailResponse.json();
+        const headers = fullMessage.payload?.headers || [];
         
         // Extract From and Subject for logging
         const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
@@ -764,13 +764,14 @@ serve(async (req) => {
         
         return { 
           message: m, 
+          fullMessage, // Store full message for VPS worker
           headers,
           fromEmail: fromHeader?.value || null,
           subject: subjectHeader?.value || null,
         };
       } catch (err) {
         console.error(`Error fetching message ${m.id}:`, err);
-        return { message: m, headers: [], fromEmail: null, subject: null };
+        return { message: m, fullMessage: null, headers: [], fromEmail: null, subject: null };
       }
     });
 
@@ -781,7 +782,7 @@ serve(async (req) => {
     let skippedCount = 0;
     let quarantinedCount = 0;
 
-    for (const { message, headers, fromEmail, subject } of messageDetails) {
+    for (const { message, fullMessage, headers, fromEmail, subject } of messageDetails) {
       // Extract alias using priority-ordered header extraction
       const headerResult = extractAliasFromHeaders(headers);
       
@@ -833,16 +834,24 @@ serve(async (req) => {
       // Detect provider from sender
       const provider = detectProvider(fromEmail);
       
-      // Build raw payload for storage
-      const rawPayload = {
-        messageId: message.id,
+      // Build raw payload for storage - FULL MESSAGE for VPS worker parsing
+      // Include complete Gmail API message structure so worker can extract body
+      const rawPayload = fullMessage || {
+        id: message.id,
         threadId: message.threadId,
-        historyId,
-        receivedAt: new Date().toISOString(),
-        tenantId: tenantInfo.tenantId,
-        headerExtraction: headerResult,
-        fromEmail,
-        subject,
+        internalDate: String(Date.now()),
+        payload: {
+          headers,
+        },
+        // Fallback metadata
+        _metadata: {
+          historyId,
+          receivedAt: new Date().toISOString(),
+          tenantId: tenantInfo.tenantId,
+          headerExtraction: headerResult,
+          fromEmail,
+          subject,
+        }
       };
       
       // ========================================================================
