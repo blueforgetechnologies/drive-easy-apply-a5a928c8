@@ -194,7 +194,7 @@ Options:
 ## Migration Strategy
 
 ### Existing Tenants
-1. Default Tenant → Internal (free, all features)
+1. Dev Lab → Internal (free, all features)
 2. Talbi Logistics LLC → Pilot (free trial of Professional)
 3. New tenants → Starter (free trial, upgrade prompt)
 

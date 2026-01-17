@@ -21,7 +21,7 @@ Each stage has verification gates before promotion.
 
 | Channel | Purpose | Soak Time | Tenants |
 |---------|---------|-----------|---------|
-| **internal** | Development & debugging | Immediate | Default Tenant |
+| **internal** | Development & debugging | Immediate | Dev Lab |
 | **pilot** | Early adopter testing | 1-2 weeks | Talbi Logistics LLC |
 | **general** | Production release | After pilot success | All new tenants |
 
@@ -89,7 +89,7 @@ tenant_feature_access (
    - `pilot` → `enabled: false`
    - `general` → `enabled: false`
 4. Deploy to Lovable preview
-5. Test as Default Tenant (internal channel)
+5. Test as Dev Lab (internal channel)
 
 ### Step 2: Verify in Internal
 

@@ -53,7 +53,7 @@ export function EmailRoutingOverview() {
         }
 
         // Find the default tenant for connecting Gmail
-        const defaultTenant = tenants.find(t => t.slug === 'default' || t.name === 'Default Tenant');
+        const defaultTenant = tenants.find(t => t.slug === 'default');
         if (defaultTenant) {
           setDefaultTenantId(defaultTenant.id);
         }
@@ -73,16 +73,11 @@ export function EmailRoutingOverview() {
         setConfigs(configList);
         
         // The OAuth owner is the "Central Mail Hub" - shown at top
-        // All tenants (including Default Tenant renamed to "Dev Lab") go in the list below
         const owner = configList.find(c => c.has_connection);
         setOauthOwner(owner || null);
         
-        // Include all tenants in the routing list, renaming "Default Tenant" to "Dev Lab"
-        const allTenants = configList.map(c => ({
-          ...c,
-          tenant_name: c.tenant_name === 'Default Tenant' ? 'Dev Lab' : c.tenant_name
-        }));
-        setOtherTenants(allTenants);
+        // Include all tenants in the routing list
+        setOtherTenants(configList);
       }
     } catch (error) {
       console.error("Error loading email routing config:", error);

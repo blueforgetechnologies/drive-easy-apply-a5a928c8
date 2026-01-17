@@ -109,7 +109,7 @@ const { isAccessible, isLoading } = useFeatureGate({
 ### Internal Channel (Development)
 - All features enabled for testing
 - Platform admin access to all tools
-- Default Tenant uses this channel
+- Dev Lab uses this channel
 
 ### Pilot Channel (Early Adopters)
 - Core features enabled
