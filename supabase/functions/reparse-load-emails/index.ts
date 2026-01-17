@@ -1,22 +1,114 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-function parseLoadEmail(subject: string, bodyText: string): any {
-  const parsed: any = {};
+type ParsedData = Record<string, unknown>;
 
-  // Extract vehicle type (first word)
-  const vehicleTypeMatch = subject.match(/^([A-Z\s]+)\s+from/i);
-  if (vehicleTypeMatch) {
+type GmailHeader = { name?: string; value?: string };
+type GmailPart = {
+  mimeType?: string;
+  filename?: string;
+  headers?: GmailHeader[];
+  body?: { data?: string; attachmentId?: string; size?: number };
+  parts?: GmailPart[];
+};
+
+type GmailMessage = {
+  id?: string;
+  threadId?: string;
+  internalDate?: string;
+  payload?: GmailPart;
+};
+
+function getHeaderValue(headers: GmailHeader[] | undefined, name: string): string {
+  if (!headers) return "";
+  const found = headers.find((h) => (h.name || "").toLowerCase() === name.toLowerCase());
+  return found?.value || "";
+}
+
+function base64UrlToUint8Array(data: string): Uint8Array {
+  // Gmail uses base64url (RFC 4648 §5)
+  const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "===".slice((base64.length + 3) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function decodeBase64UrlToString(data: string): string {
+  try {
+    const bytes = base64UrlToUint8Array(data);
+    return new TextDecoder("utf-8").decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
+function extractFirstBody(part: GmailPart | undefined, mimeType: string): string {
+  if (!part) return "";
+
+  if (part.mimeType === mimeType && part.body?.data) {
+    return decodeBase64UrlToString(part.body.data);
+  }
+
+  if (Array.isArray(part.parts)) {
+    for (const p of part.parts) {
+      const found = extractFirstBody(p, mimeType);
+      if (found) return found;
+    }
+  }
+
+  return "";
+}
+
+function extractBodiesFromMessage(message: GmailMessage): { textPlain: string; textHtml: string } {
+  const payload = message.payload;
+  const textPlain = extractFirstBody(payload, "text/plain");
+  const textHtml = extractFirstBody(payload, "text/html");
+
+  // Some messages have only one part. If so, try the other mime type as fallback.
+  const fallback = textPlain || textHtml || "";
+  return {
+    textPlain: textPlain || (textHtml ? textHtml.replace(/<[^>]*>/g, " ") : ""),
+    textHtml: textHtml || "",
+  };
+}
+
+async function loadMessageFromStorage(rawPayloadUrl: string): Promise<GmailMessage | null> {
+  try {
+    const { data, error } = await supabase.storage.from("email-payloads").download(rawPayloadUrl);
+    if (error) {
+      console.log(`[reparse] storage download failed: ${rawPayloadUrl} - ${error.message}`);
+      return null;
+    }
+    const text = await data.text();
+    return JSON.parse(text) as GmailMessage;
+  } catch (e) {
+    console.log(`[reparse] storage payload parse failed: ${rawPayloadUrl} - ${e instanceof Error ? e.message : String(e)}`);
+    return null;
+  }
+}
+
+function parseLoadEmail(subjectRaw: string, bodyRaw: string): ParsedData {
+  const subject = (subjectRaw || "").trim();
+  const bodyText = bodyRaw || "";
+
+  const parsed: Record<string, unknown> = {};
+
+  // Vehicle type: anything before " from" (handles "SPRINTER", "E 26 FOOT", "Cargo Van", etc.)
+  const vehicleTypeMatch = subject.match(/^(.+?)\s+from\s+/i);
+  if (vehicleTypeMatch?.[1]) {
     parsed.vehicle_type = vehicleTypeMatch[1].trim();
   }
 
@@ -29,390 +121,228 @@ function parseLoadEmail(subject: string, bodyText: string): any {
     parsed.destination_state = routeMatch[4].trim();
   }
 
-  // Extract miles from subject
+  // Miles
   const milesMatch = subject.match(/:\s*(\d+)\s*miles/i);
-  if (milesMatch) {
-    parsed.loaded_miles = parseInt(milesMatch[1]);
-  }
+  if (milesMatch) parsed.loaded_miles = parseInt(milesMatch[1], 10);
 
-  // Extract weight from subject
+  // Weight
   const weightMatch = subject.match(/(\d+)\s*lbs/i);
-  if (weightMatch) {
-    parsed.weight = weightMatch[1];
-  }
+  if (weightMatch) parsed.weight = weightMatch[1];
 
-  // Extract customer/poster from subject
-  const postedByMatch = subject.match(/Posted by\s+([^(]+)/i);
-  if (postedByMatch) {
-    parsed.customer = postedByMatch[1].trim();
-  }
+  // Posted by
+  const postedByMatch = subject.match(/Posted by\s+([^\(]+)/i);
+  if (postedByMatch) parsed.customer = postedByMatch[1].trim();
 
-  // Extract Order Number from body text (e.g., "Bid on Order #206389")
+  // Order Number in body
   const orderNumberMatch = bodyText.match(/Bid on Order #(\d+)/i);
-  if (orderNumberMatch) {
-    parsed.order_number = orderNumberMatch[1];
-  }
+  if (orderNumberMatch) parsed.order_number = orderNumberMatch[1];
 
-  // Extract from HTML structure using <strong> tags
-  const piecesHtmlMatch = bodyText.match(/<strong>Pieces?:\s*<\/strong>\s*(\d+)/i);
-  if (piecesHtmlMatch) {
-    parsed.pieces = parseInt(piecesHtmlMatch[1]);
-  }
-
-  const dimsHtmlMatch = bodyText.match(/<strong>Dimensions?:\s*<\/strong>\s*(\d+)L?\s*[xX]\s*(\d+)W?\s*[xX]\s*(\d+)H?/i);
-  if (dimsHtmlMatch) {
-    parsed.dimensions = `${dimsHtmlMatch[1]}x${dimsHtmlMatch[2]}x${dimsHtmlMatch[3]}`;
-  }
-
-  const expiresHtmlMatch = bodyText.match(/<strong>Expires?:\s*<\/strong>\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*([A-Z]{2,3}T?)/i);
-  if (expiresHtmlMatch) {
-    const dateStr = expiresHtmlMatch[1];
-    const timeStr = expiresHtmlMatch[2];
-    const timezone = expiresHtmlMatch[3];
-    parsed.expires_datetime = `${dateStr} ${timeStr} ${timezone}`;
-    
-    // Convert to ISO timestamp with proper timezone handling
-    try {
-      const dateParts = dateStr.split('/');
-      const month = dateParts[0].padStart(2, '0');
-      const day = dateParts[1].padStart(2, '0');
-      let year = dateParts[2];
-      
-      if (year.length === 2) {
-        year = '20' + year;
-      }
-      
-      const timeParts = timeStr.split(':');
-      const hour = timeParts[0].padStart(2, '0');
-      const minute = timeParts[1].padStart(2, '0');
-      
-      // Map timezone abbreviations to UTC offsets
-      const timezoneOffsets: { [key: string]: string } = {
-        'EST': '-05:00',
-        'EDT': '-04:00',
-        'CST': '-06:00',
-        'CDT': '-05:00',
-        'MST': '-07:00',
-        'MDT': '-06:00',
-        'PST': '-08:00',
-        'PDT': '-07:00',
-        'CEN': '-06:00',
-        'CENT': '-06:00',
-      };
-      
-      const offset = timezoneOffsets[timezone.toUpperCase()] || '-05:00';
-      const isoString = `${year}-${month}-${day}T${hour}:${minute}:00${offset}`;
-      const expiresDate = new Date(isoString);
-      
-      if (!isNaN(expiresDate.getTime())) {
-        parsed.expires_at = expiresDate.toISOString();
-      }
-    } catch (e) {
-      console.error('Error parsing expires date:', e);
-    }
-  }
-
-  // Clean HTML for text-based parsing
-  let cleanText = bodyText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
-
-  // Extract pickup date and time from HTML structure
-  // Look for the second <p> tag inside leginfo within pickup-box
-  const pickupBoxMatch = bodyText.match(/<div class=['"]pickup-box['"]>[\s\S]*?<div class=['"]leginfo['"]>([\s\S]*?)<\/div>/i);
-  if (pickupBoxMatch) {
-    const leginfoContent = pickupBoxMatch[1];
-    // Extract all <p> tags from leginfo
-    const pTags = leginfoContent.match(/<p[^>]*>(.*?)<\/p>/gi);
-    if (pTags && pTags.length >= 2) {
-      // Second <p> tag should contain the date/time or instruction
-      const secondP = pTags[1].replace(/<[^>]*>/g, '').trim();
-      
-      // First, try to match date + time together (e.g., "11/30/25 10:00 EST")
-      const dateTimeMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-      if (dateTimeMatch) {
-        // Found both date and time - use them
-        parsed.pickup_date = dateTimeMatch[1];
-        parsed.pickup_time = dateTimeMatch[2];
-      } else {
-        // No date/time found, check if it's a valid instruction text (not a location fragment)
-        // Valid instructions: ASAP, Deliver Direct, or similar short phrases
-        // Exclude if it looks like a location (contains state abbreviations at end)
-        const isLocationFragment = /\b[A-Z]{2}$/.test(secondP); // Ends with state code like "IN", "OH"
-        if (!isLocationFragment && secondP.length > 0 && secondP.length < 50) {
-          // It's likely a timing instruction like "ASAP" or "Deliver Direct"
-          parsed.pickup_time = secondP;
-        }
-      }
-    }
-  }
-  
-  // Fallback to text-based extraction if nothing found
-  if (!parsed.pickup_date && !parsed.pickup_time) {
-    const pickupMatch = cleanText.match(/Pick.*?Up.*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-    if (pickupMatch) {
-      parsed.pickup_date = pickupMatch[1];
-      parsed.pickup_time = pickupMatch[2];
-    }
-  }
-
-  // Extract delivery date and time from HTML structure
-  // Look for the second <p> tag inside leginfo within delivery-box
-  const deliveryBoxMatch = bodyText.match(/<div class=['"]delivery-box['"]>[\s\S]*?<div class=['"]leginfo['"]>([\s\S]*?)<\/div>/i);
-  if (deliveryBoxMatch) {
-    const leginfoContent = deliveryBoxMatch[1];
-    // Extract all <p> tags from leginfo
-    const pTags = leginfoContent.match(/<p[^>]*>(.*?)<\/p>/gi);
-    if (pTags && pTags.length >= 2) {
-      // Second <p> tag should contain the date/time or instruction
-      const secondP = pTags[1].replace(/<[^>]*>/g, '').trim();
-      
-      // First, try to match date + time together (e.g., "11/30/25 10:00 EST")
-      const dateTimeMatch = secondP.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-      if (dateTimeMatch) {
-        // Found both date and time - use them
-        parsed.delivery_date = dateTimeMatch[1];
-        parsed.delivery_time = dateTimeMatch[2];
-      } else {
-        // No date/time found, check if it's a valid instruction text (not a location fragment)
-        // Valid instructions: ASAP, Deliver Direct, or similar short phrases
-        // Exclude if it looks like a location (contains state abbreviations at end)
-        const isLocationFragment = /\b[A-Z]{2}$/.test(secondP); // Ends with state code like "IN", "OH"
-        if (!isLocationFragment && secondP.length > 0 && secondP.length < 50) {
-          // It's likely a timing instruction like "ASAP" or "Deliver Direct"
-          parsed.delivery_time = secondP;
-        }
-      }
-    }
-  }
-  
-  // Fallback to text-based extraction if nothing found
-  if (!parsed.delivery_date && !parsed.delivery_time) {
-    const deliveryMatch = cleanText.match(/Delivery.*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})/i);
-    if (deliveryMatch) {
-      parsed.delivery_date = deliveryMatch[1];
-      parsed.delivery_time = deliveryMatch[2];
-    }
-  }
-
-  // Extract rate if available
-  const rateMatch = cleanText.match(/(?:rate|pay).*?\$\s*([\d,]+(?:\.\d{2})?)/i);
-  if (rateMatch) {
-    parsed.rate = parseFloat(rateMatch[1].replace(/,/g, ''));
-  }
-
-  // Fallback: Extract pieces from plain text
-  if (!parsed.pieces) {
-    const piecesMatch = cleanText.match(/(\d+)\s*(?:pieces?|pcs?|pallets?|plts?|plt|skids?)/i);
-    if (piecesMatch) {
-      parsed.pieces = parseInt(piecesMatch[1]);
-    }
-  }
-
-  // Fallback: Extract dimensions from plain text
-  if (!parsed.dimensions) {
-    const dimsSectionMatch = cleanText.match(/dimensions?[:\s-]*([0-9"' xX]+)/i);
-    if (dimsSectionMatch) {
-      const dimsInner = dimsSectionMatch[1];
-      const dimsPattern = /(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+)/;
-      const innerMatch = dimsInner.match(dimsPattern);
-      if (innerMatch) {
-        parsed.dimensions = `${innerMatch[1]}x${innerMatch[2]}x${innerMatch[3]}`;
-      }
-    }
-  }
-
-  // Extract notes from HTML structure (notes-section class)
-  const notesMatch = bodyText.match(/<div[^>]*class=['"]notes-section['"][^>]*>([\s\S]*?)<\/div>/i);
-  if (notesMatch) {
-    const notesContent = notesMatch[1];
-    // Extract text from <p> tags, join with comma
-    const notesPTags = notesContent.match(/<p[^>]*>(.*?)<\/p>/gi);
-    if (notesPTags && notesPTags.length > 0) {
-      const notesText = notesPTags
-        .map(tag => tag.replace(/<[^>]*>/g, '').trim())
-        .filter(text => text.length > 0)
-        .join(', ');
-      if (notesText) {
-        parsed.notes = notesText;
-      }
-    }
-  }
-
-  // Extract broker information from HTML structure
-  // Remove line breaks and extra whitespace for better regex matching
-  const cleanedHtml = bodyText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
-  
-  // Broker Name: <strong>Broker Name: </strong>VALUE (text or inside tags)
-  const brokerNameMatch = cleanedHtml.match(/<strong>Broker Name:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (brokerNameMatch) {
-    parsed.broker_name = brokerNameMatch[1].trim();
-  }
-
-  // Broker Company: <strong>Broker Company: </strong>VALUE (text or inside tags)
-  const brokerCompanyMatch = cleanedHtml.match(/<strong>Broker Company:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (brokerCompanyMatch) {
-    parsed.broker_company = brokerCompanyMatch[1].trim();
-  }
-
-  // Broker Phone: <strong>Broker Phone: </strong>VALUE (text or inside tags)
-  const brokerPhoneMatch = cleanedHtml.match(/<strong>Broker Phone:\s*<\/strong>\s*(?:<[^>]+>)?([^<]+)/i);
-  if (brokerPhoneMatch) {
-    parsed.broker_phone = brokerPhoneMatch[1].trim();
-  }
-
-  // Email can be in multiple places:
-  // 1. <strong>Email: </strong>VALUE (direct text)
-  let brokerEmailMatch1 = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*([^<]+)/i);
-  if (brokerEmailMatch1 && brokerEmailMatch1[1].trim()) {
-    parsed.broker_email = brokerEmailMatch1[1].trim();
-  }
-  
-  // 2. <strong>Email: </strong><a ...>VALUE</a> (inside link tag)
-  if (!parsed.broker_email) {
-    const emailInLinkMatch = cleanedHtml.match(/<strong>Email:\s*<\/strong>\s*<a[^>]*>([^<]+)<\/a>/i);
-    if (emailInLinkMatch) {
-      parsed.broker_email = emailInLinkMatch[1].trim();
-    }
-  }
-  
-  // 3. In subject line after poster name in parentheses: (email@domain.com)
-  if (!parsed.broker_email) {
-    const emailInSubject = subject.match(/\(([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)\)/);
-    if (emailInSubject) {
-      parsed.broker_email = emailInSubject[1].trim();
-    }
-  }
+  // Broker email: try to find any email address in body
+  const emailMatch = bodyText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  if (emailMatch) parsed.broker_email = emailMatch[1];
 
   return parsed;
 }
 
+function buildIssueNotes(parsedData: ParsedData): { has_issues: boolean; issue_notes: string | null } {
+  const originCity = typeof parsedData.origin_city === "string" ? parsedData.origin_city : "";
+  const vehicleType = typeof parsedData.vehicle_type === "string" ? parsedData.vehicle_type : "";
+  const brokerEmail = typeof parsedData.broker_email === "string" ? parsedData.broker_email : "";
+
+  const notes = [
+    !brokerEmail ? "Missing broker email" : null,
+    !originCity ? "Missing origin location" : null,
+    !vehicleType ? "Missing vehicle type" : null,
+  ].filter(Boolean) as string[];
+
+  return {
+    has_issues: notes.length > 0,
+    issue_notes: notes.length ? notes.join("; ") : null,
+  };
+}
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Starting reparse of all load emails...');
+    // ---- Auth: require the caller to be a member of the tenant they request ----
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Get request body for filtering
+    // ---- Request params ----
     let tenantId: string | null = null;
     let onlyMissing = false;
-    let limit = 1000;
-    
+    let limit = 500;
+
     try {
       const body = await req.json();
       tenantId = body.tenant_id || null;
       onlyMissing = body.only_missing === true;
-      limit = body.limit || 1000;
+      limit = Math.min(Math.max(body.limit || 500, 1), 2000);
     } catch {
-      // No body or invalid JSON, use defaults
+      // ignore
     }
 
-    console.log(`Starting reparse: tenant=${tenantId}, only_missing=${onlyMissing}, limit=${limit}`);
-
-    // Build query
-    let query = supabase
-      .from('load_emails')
-      .select('id, subject, body_html, body_text, raw_payload_url');
-    
-    if (tenantId) {
-      query = query.eq('tenant_id', tenantId);
-    }
-    
-    if (onlyMissing) {
-      // Only emails with missing origin/destination in parsed_data
-      query = query.or('parsed_data.is.null,parsed_data->>origin_city.is.null');
-    }
-    
-    query = query.order('received_at', { ascending: false }).limit(limit);
-    
-    const { data: emails, error: fetchError } = await query;
-
-    if (fetchError) {
-      throw fetchError;
+    if (!tenantId) {
+      return new Response(JSON.stringify({ error: "tenant_id is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`Found ${emails?.length || 0} emails to reparse`);
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    let successCount = 0;
-    let errorCount = 0;
-    let skippedCount = 0;
+    const { data: membership } = await supabase
+      .from("tenant_users")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("user_id", userData.user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Not allowed for this tenant" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`[reparse] start tenant=${tenantId} only_missing=${onlyMissing} limit=${limit}`);
+
+    const { data: emails, error: fetchError } = await supabase
+      .from("load_emails")
+      .select("id, tenant_id, subject, body_html, body_text, raw_payload_url, parsed_data, received_at")
+      .eq("tenant_id", tenantId)
+      .order("received_at", { ascending: false })
+      .limit(limit);
+
+    if (fetchError) throw fetchError;
+
+    let success = 0;
+    let errors = 0;
+    let skippedMissing = 0;
+    let skippedNoParse = 0;
+    let skippedNotMissing = 0;
 
     for (const email of emails || []) {
       try {
-        // Use body_text if body_html is missing (worker saves body_text, not body_html)
-        const bodyContent = email.body_html || email.body_text || '';
-        
-        if (!bodyContent) {
-          console.log(`Skipping email ${email.id} - missing body content`);
-          skippedCount++;
+        const currentParsed = (email as any).parsed_data as ParsedData | null;
+
+        if (onlyMissing) {
+          const originCity = currentParsed && typeof currentParsed.origin_city === "string" ? currentParsed.origin_city : null;
+          const vehicleType = currentParsed && typeof currentParsed.vehicle_type === "string" ? currentParsed.vehicle_type : null;
+          if (originCity && vehicleType) {
+            skippedNotMissing++;
+            continue;
+          }
+        }
+
+        let subject = ((email as any).subject || "").trim();
+        let bodyText = (email as any).body_text || "";
+        let bodyHtml = (email as any).body_html || "";
+
+        // If we don't have enough stored content, fall back to the raw Gmail payload.
+        const rawPayloadUrl = (email as any).raw_payload_url as string | null;
+        if ((!subject || (!bodyText && !bodyHtml)) && rawPayloadUrl) {
+          const message = await loadMessageFromStorage(rawPayloadUrl);
+          if (message) {
+            const headers = message.payload?.headers || [];
+            subject = subject || getHeaderValue(headers, "Subject");
+            const bodies = extractBodiesFromMessage(message);
+            bodyText = bodyText || bodies.textPlain;
+            bodyHtml = bodyHtml || bodies.textHtml;
+          }
+        }
+
+        const bodyForParsing = bodyHtml || bodyText || "";
+
+        if (!subject && !bodyForParsing) {
+          console.log(`[reparse] Skipping email ${(email as any).id} - missing subject and body`);
+          skippedMissing++;
           continue;
         }
 
-        // If no subject, try to extract from body or use empty string
-        const emailSubject = email.subject || '';
+        const reparsed = parseLoadEmail(subject, bodyForParsing);
 
-        // Reparse the email using body content
-        const parsedData = parseLoadEmail(emailSubject, bodyContent);
-
-        // Only update if we got meaningful data
-        if (!parsedData.origin_city && !parsedData.vehicle_type) {
-          console.log(`Skipping email ${email.id} - no parseable data found`);
-          skippedCount++;
+        // If we still couldn't extract anything useful, skip.
+        const originCity = typeof reparsed.origin_city === "string" ? reparsed.origin_city : "";
+        const vehicleType = typeof reparsed.vehicle_type === "string" ? reparsed.vehicle_type : "";
+        if (!originCity && !vehicleType) {
+          console.log(`[reparse] Skipping email ${(email as any).id} - no parseable data found`);
+          skippedNoParse++;
           continue;
         }
 
-        // Update the database
+        const mergedParsed: ParsedData = {
+          ...(currentParsed || {}),
+          ...reparsed,
+        };
+
+        const { has_issues, issue_notes } = buildIssueNotes(mergedParsed);
+
         const { error: updateError } = await supabase
-          .from('load_emails')
+          .from("load_emails")
           .update({
-            parsed_data: parsedData,
-            expires_at: parsedData.expires_at || null,
-            subject: emailSubject || null,
-            has_issues: !parsedData.origin_city || !parsedData.vehicle_type,
-            issue_notes: [
-              !parsedData.broker_email ? 'Missing broker email' : null,
-              !parsedData.origin_city ? 'Missing origin location' : null,
-              !parsedData.vehicle_type ? 'Missing vehicle type' : null,
-            ].filter(Boolean).join('; ') || null,
+            subject: subject || null,
+            // Keep stored body_html null (worker design); store body_text when available
+            body_text: bodyText ? String(bodyText).slice(0, 50000) : null,
+            parsed_data: mergedParsed,
+            has_issues,
+            issue_notes,
           })
-          .eq('id', email.id);
+          .eq("id", (email as any).id);
 
         if (updateError) {
-          console.error(`Error updating email ${email.id}:`, updateError);
-          errorCount++;
+          console.log(`[reparse] update error ${(email as any).id}: ${updateError.message}`);
+          errors++;
         } else {
-          successCount++;
+          success++;
         }
-      } catch (error) {
-        console.error(`Error processing email ${email.id}:`, error);
-        errorCount++;
+      } catch (e) {
+        console.log(`[reparse] error processing: ${e instanceof Error ? e.message : String(e)}`);
+        errors++;
       }
     }
 
-    console.log(`Reparse complete: ${successCount} success, ${errorCount} errors, ${skippedCount} skipped`);
+    console.log(
+      `[reparse] done success=${success} errors=${errors} skipped_missing=${skippedMissing} skipped_no_parse=${skippedNoParse} skipped_not_missing=${skippedNotMissing}`,
+    );
 
     return new Response(
-      JSON.stringify({ 
-        message: 'Reparse complete', 
-        success: successCount,
-        errors: errorCount,
-        skipped: skippedCount,
-        total: emails?.length || 0
+      JSON.stringify({
+        message: "Reparse complete",
+        success,
+        errors,
+        skipped_missing: skippedMissing,
+        skipped_no_parse: skippedNoParse,
+        skipped_not_missing: skippedNotMissing,
+        total: emails?.length || 0,
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   } catch (error) {
-    console.error('Error in reparse-load-emails:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    );
+    console.error("Error in reparse-load-emails:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
