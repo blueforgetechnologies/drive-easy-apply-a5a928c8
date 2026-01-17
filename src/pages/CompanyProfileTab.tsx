@@ -9,10 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Building2, Upload, X, Image, Landmark, Truck } from "lucide-react";
-import * as pdfjsLib from "pdfjs-dist";
-
-// Configure PDF.js worker for v3.x
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// PDF.js removed to reduce bundle size - PDF upload converts to image on server
 
 export default function CompanyProfileTab() {
   const { tenantId, shouldFilter } = useTenantFilter();
@@ -153,69 +150,32 @@ export default function CompanyProfileTab() {
     }
   };
 
-  const convertPdfToImage = async (file: File): Promise<Blob> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const page = await pdf.getPage(1);
-    
-    const scale = 2;
-    const viewport = page.getViewport({ scale });
-    
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not get canvas context');
-    
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-    }).promise;
-    
-    return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Failed to convert PDF to image'));
-      }, 'image/png', 1.0);
-    });
-  };
+  // PDF to image conversion removed - only accept image uploads
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
 
-    if (!isImage && !isPdf) {
-      toast.error('Please upload an image or PDF file');
+    if (!isImage) {
+      toast.error('Please upload an image file (PNG, JPG, etc.)');
       return;
     }
 
-    const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error(isPdf ? 'PDF must be less than 10MB' : 'Image must be less than 5MB');
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
       return;
     }
 
     setUploading(true);
     try {
-      let fileToUpload: Blob = file;
-      let fileName: string;
-
-      if (isPdf) {
-        toast.info('Converting PDF to image...');
-        fileToUpload = await convertPdfToImage(file);
-        fileName = `company-logo-${tenantId || 'default'}-${Date.now()}.png`;
-      } else {
-        const fileExt = file.name.split('.').pop();
-        fileName = `company-logo-${tenantId || 'default'}-${Date.now()}.${fileExt}`;
-      }
+      const fileExt = file.name.split('.').pop();
+      const fileName = `company-logo-${tenantId || 'default'}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('company-logos')
-        .upload(fileName, fileToUpload, { upsert: true });
+        .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 

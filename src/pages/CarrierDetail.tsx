@@ -15,10 +15,7 @@ import {
   ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, 
   Upload, X, Image, Building2, Phone, Mail, Shield, Users, Truck, FileText, DollarSign
 } from "lucide-react";
-import * as pdfjsLib from "pdfjs-dist";
-
-// Configure PDF.js worker for v3.x
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// PDF.js removed to reduce bundle size
 
 interface CarrierData {
   id: string;
@@ -184,56 +181,30 @@ export default function CarrierDetail() {
     }
   };
 
-  const convertPdfToImage = async (file: File): Promise<Blob> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const page = await pdf.getPage(1);
-    
-    const scale = 2;
-    const viewport = page.getViewport({ scale });
-    
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not get canvas context');
-    
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    
-    await page.render({ canvasContext: context, viewport }).promise;
-    
-    return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Failed to convert canvas to blob'));
-      }, 'image/png');
-    });
-  };
+  // PDF to image conversion removed - only accept image uploads
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !carrier) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File size must be less than 10MB");
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file (PNG, JPG, etc.)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
       return;
     }
 
     setUploading(true);
     try {
-      let uploadFile: File | Blob = file;
-      let fileName = `${carrier.id}-logo-${Date.now()}`;
-      
-      if (file.type === 'application/pdf') {
-        uploadFile = await convertPdfToImage(file);
-        fileName += '.png';
-      } else {
-        const ext = file.name.split('.').pop() || 'png';
-        fileName += `.${ext}`;
-      }
+      const ext = file.name.split('.').pop() || 'png';
+      const fileName = `${carrier.id}-logo-${Date.now()}.${ext}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('carrier-logos')
-        .upload(fileName, uploadFile, { upsert: true });
+        .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
