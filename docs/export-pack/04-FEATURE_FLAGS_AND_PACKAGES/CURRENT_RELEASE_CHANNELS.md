@@ -8,7 +8,7 @@
 
 | Channel | Purpose | Current Tenants |
 |---------|---------|-----------------|
-| `internal` | Development, debugging, all features | Default Tenant |
+| `internal` | Development, debugging, all features | Dev Lab |
 | `pilot` | Early adopter testing, stable features | Talbi Logistics LLC |
 | `general` | Production release, proven features | (None yet) |
 
@@ -32,7 +32,7 @@ tenants (
 ```
 | Tenant Name          | Slug                 | Channel  | Status |
 |---------------------|----------------------|----------|--------|
-| Default Tenant       | default              | internal | trial  |
+| Dev Lab              | default              | internal | trial  |
 | Talbi Logistics LLC  | talbi-logistics-llc  | pilot    | trial  |
 ```
 
