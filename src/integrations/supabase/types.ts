@@ -537,6 +537,7 @@ export type Database = {
           notes: string | null
           old_payload: number | null
           old_rate: number | null
+          tenant_id: string | null
         }
         Insert: {
           changed_at?: string
@@ -549,6 +550,7 @@ export type Database = {
           notes?: string | null
           old_payload?: number | null
           old_rate?: number | null
+          tenant_id?: string | null
         }
         Update: {
           changed_at?: string
@@ -561,6 +563,7 @@ export type Database = {
           notes?: string | null
           old_payload?: number | null
           old_rate?: number | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -568,6 +571,13 @@ export type Database = {
             columns: ["load_id"]
             isOneToOne: false
             referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_rate_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -2141,6 +2151,7 @@ export type Database = {
           id: string
           invoice_id: string | null
           load_id: string | null
+          tenant_id: string | null
         }
         Insert: {
           amount?: number | null
@@ -2148,6 +2159,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           load_id?: string | null
+          tenant_id?: string | null
         }
         Update: {
           amount?: number | null
@@ -2155,6 +2167,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           load_id?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -2169,6 +2182,13 @@ export type Database = {
             columns: ["load_id"]
             isOneToOne: false
             referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_loads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -4601,6 +4621,7 @@ export type Database = {
           miles: number | null
           rate: number | null
           settlement_id: string | null
+          tenant_id: string | null
         }
         Insert: {
           driver_pay?: number | null
@@ -4609,6 +4630,7 @@ export type Database = {
           miles?: number | null
           rate?: number | null
           settlement_id?: string | null
+          tenant_id?: string | null
         }
         Update: {
           driver_pay?: number | null
@@ -4617,6 +4639,7 @@ export type Database = {
           miles?: number | null
           rate?: number | null
           settlement_id?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -4631,6 +4654,13 @@ export type Database = {
             columns: ["settlement_id"]
             isOneToOne: false
             referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlement_loads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
