@@ -49,25 +49,15 @@ export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
 }
 
 /**
- * Claim a batch of INBOUND email queue items for parsing.
- * INBOUND = has payload_url AND (subject IS NULL OR body_html IS NULL)
+ * Atomically claim a batch of INBOUND email queue items for parsing.
+ * Uses FOR UPDATE SKIP LOCKED to prevent race conditions between workers.
+ * INBOUND = has payload_url AND subject IS NULL (not yet parsed)
  * These are load emails from Gmail that need parsing, NOT outbound sends.
  */
 export async function claimInboundBatch(batchSize: number = 50): Promise<InboundQueueItem[]> {
-  // Query for inbound emails:
-  // - have payload_url (stored raw email)
-  // - subject IS NULL (not yet parsed) OR body_html IS NULL
-  // - status = pending
-  // - attempts < 50 (prevent infinite loops)
-  const { data, error } = await supabase
-    .from('email_queue')
-    .select('id, tenant_id, gmail_message_id, gmail_history_id, payload_url, attempts, queued_at, subject, from_email, body_html, body_text')
-    .eq('status', 'pending')
-    .not('payload_url', 'is', null)
-    .is('subject', null)  // Key indicator: no subject = needs parsing
-    .lt('attempts', 50)   // Prevent infinite loops
-    .order('queued_at', { ascending: true })
-    .limit(batchSize);
+  const { data, error } = await supabase.rpc('claim_inbound_email_queue_batch', {
+    p_batch_size: batchSize,
+  });
 
   if (error) {
     console.error('[claim] Error claiming inbound batch:', error);
@@ -78,23 +68,8 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
     return [];
   }
 
-  // Mark as processing atomically
-  const ids = data.map(item => item.id);
-  const { error: updateError } = await supabase
-    .from('email_queue')
-    .update({ 
-      status: 'processing', 
-      processing_started_at: new Date().toISOString()
-    })
-    .in('id', ids);
-
-  if (updateError) {
-    console.error('[claim] Error marking inbound items as processing:', updateError);
-    return [];
-  }
-
   console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
-  return data as InboundQueueItem[];
+  return (data || []) as InboundQueueItem[];
 }
 
 /**
