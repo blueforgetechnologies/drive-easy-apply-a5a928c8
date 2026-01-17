@@ -5,7 +5,7 @@ import {
   User, Phone, Mail, MapPin, Calendar, Shield, 
   Briefcase, GraduationCap, AlertTriangle, FileCheck,
   CreditCard, Building2, Heart, ClipboardCheck,
-  CheckCircle2, XCircle, Clock
+  CheckCircle2, XCircle, Clock, FileImage, File
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -27,6 +27,7 @@ export const ApplicationViewer = ({ data }: ApplicationViewerProps) => {
   const safeDrivingPolicy = data.safe_driving_policy || {};
   const payrollPolicy = data.payroll_policy || {};
   const whyHireYou = data.why_hire_you || {};
+  const documentUpload = data.document_upload || {};
 
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return "—";
@@ -389,6 +390,127 @@ export const ApplicationViewer = ({ data }: ApplicationViewerProps) => {
               <p className="text-xs text-muted-foreground mt-2">
                 Signed by {contractorAgreement.contractorName} on {formatDate(contractorAgreement.date)}
               </p>
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Uploaded Documents */}
+      <SectionCard title="Uploaded Documents" icon={FileImage} variant="info">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Social Security Card */}
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-sm">Social Security Card</span>
+            </div>
+            {documentUpload.socialSecurity ? (
+              <div className="mt-2">
+                {typeof documentUpload.socialSecurity === 'string' && documentUpload.socialSecurity.startsWith('data:image') ? (
+                  <img 
+                    src={documentUpload.socialSecurity} 
+                    alt="Social Security Card" 
+                    className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                    onClick={() => window.open(documentUpload.socialSecurity, '_blank')}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <File className="w-4 h-4" />
+                    <span>Document uploaded</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-rose-500" />
+                Not uploaded
+              </p>
+            )}
+          </div>
+
+          {/* Driver's License */}
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <div className="flex items-center gap-2 mb-2">
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-sm">Driver's License</span>
+            </div>
+            {documentUpload.driversLicense ? (
+              <div className="mt-2">
+                {typeof documentUpload.driversLicense === 'string' && documentUpload.driversLicense.startsWith('data:image') ? (
+                  <img 
+                    src={documentUpload.driversLicense} 
+                    alt="Driver's License" 
+                    className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                    onClick={() => window.open(documentUpload.driversLicense, '_blank')}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <File className="w-4 h-4" />
+                    <span>Document uploaded</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-rose-500" />
+                Not uploaded
+              </p>
+            )}
+          </div>
+
+          {/* Medical Card */}
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Heart className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-sm">Medical Card</span>
+            </div>
+            {documentUpload.medicalCard ? (
+              <div className="mt-2">
+                {typeof documentUpload.medicalCard === 'string' && documentUpload.medicalCard.startsWith('data:image') ? (
+                  <img 
+                    src={documentUpload.medicalCard} 
+                    alt="Medical Card" 
+                    className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                    onClick={() => window.open(documentUpload.medicalCard, '_blank')}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <File className="w-4 h-4" />
+                    <span>Document uploaded</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-rose-500" />
+                Not uploaded
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Other Documents */}
+        {documentUpload.other && documentUpload.other.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <h4 className="font-medium text-sm mb-3">Additional Documents ({documentUpload.other.length})</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {documentUpload.other.map((doc: any, index: number) => (
+                <div key={index} className="border rounded-lg p-3 bg-muted/30">
+                  {typeof doc === 'string' && doc.startsWith('data:image') ? (
+                    <img 
+                      src={doc} 
+                      alt={`Document ${index + 1}`} 
+                      className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition"
+                      onClick={() => window.open(doc, '_blank')}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <File className="w-4 h-4" />
+                      <span>Document {index + 1}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

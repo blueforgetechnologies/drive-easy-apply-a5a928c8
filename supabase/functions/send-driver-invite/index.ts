@@ -68,6 +68,23 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Get the user's tenant_id
+    const { data: tenantData, error: tenantError } = await supabaseService
+      .from('tenant_users')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (tenantError || !tenantData?.tenant_id) {
+      console.error('Error getting tenant:', tenantError);
+      return new Response(JSON.stringify({ error: 'Could not determine tenant' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tenantId = tenantData.tenant_id;
+
     // Insert invite record into database
     const { data: inviteData, error: inviteError } = await supabaseService
       .from('driver_invites')
@@ -75,6 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
         email,
         name,
         invited_by: user.id,
+        tenant_id: tenantId,
       })
       .select()
       .single();
@@ -85,6 +103,43 @@ const handler = async (req: Request): Promise<Response> => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Create a pending driver/application record immediately
+    const { data: applicationData, error: appError } = await supabaseService
+      .from('applications')
+      .insert({
+        invite_id: inviteData.id,
+        tenant_id: tenantId,
+        personal_info: {
+          firstName: name?.split(' ')[0] || '',
+          lastName: name?.split(' ').slice(1).join(' ') || '',
+          email: email,
+        },
+        driver_status: 'pending',
+        status: 'invited',
+        // Initialize required JSONB fields with empty objects
+        payroll_policy: {},
+        license_info: {},
+        driving_history: {},
+        employment_history: {},
+        document_upload: {},
+        drug_alcohol_policy: {},
+        driver_dispatch_sheet: {},
+        no_rider_policy: {},
+        safe_driving_policy: {},
+        contractor_agreement: {},
+        direct_deposit: {},
+        why_hire_you: {},
+      })
+      .select()
+      .single();
+
+    if (appError) {
+      console.error('Error creating pending driver record:', appError);
+      // Continue anyway - invite was created, driver record is optional
+    } else {
+      console.log('Created pending driver record:', applicationData.id);
     }
 
     // Use the production app URL
