@@ -2244,20 +2244,28 @@ export default function LoadHunterTab() {
     }
   };
 
-  // DELETE matches that are 40+ minutes old (completely remove from Unreviewed AND Undecided)
+  // Mark matches as expired when their load's actual expiration time has passed
   const deactivateStaleMatches = async () => {
     try {
-      const fortyMinutesAgo = new Date(Date.now() - 40 * 60 * 1000).toISOString();
+      // Get current time in UTC for database comparison
+      const nowUtc = new Date().toISOString();
       
-      // Find active OR undecided matches older than 40 minutes (based on matched_at)
+      // Find active OR undecided matches where the load has actually expired
+      // We need to join with load_emails to check the parsed expires_at
       const { data: staleMatches, error: fetchError } = await supabase
         .from('load_hunt_matches')
-        .select('id, match_status')
-        .in('match_status', ['active', 'undecided'])
-        .lt('matched_at', fortyMinutesAgo);
+        .select(`
+          id, match_status, matched_at,
+          load_emails!inner (
+            id,
+            expires_at,
+            parsed_data
+          )
+        `)
+        .in('match_status', ['active', 'undecided']);
 
       if (fetchError) {
-        console.error('Error fetching stale matches:', fetchError);
+        console.error('Error fetching matches for expiration check:', fetchError);
         return;
       }
 
@@ -2265,14 +2273,43 @@ export default function LoadHunterTab() {
         return;
       }
 
-      const activeCount = staleMatches.filter(m => m.match_status === 'active').length;
-      const undecidedCount = staleMatches.filter(m => m.match_status === 'undecided').length;
-      console.log(`🕐 Found ${staleMatches.length} stale matches (40+ min old) - MARKING AS EXPIRED (${activeCount} active, ${undecidedCount} undecided)`);
+      // Filter to only matches where the load has actually expired
+      const expiredMatches = staleMatches.filter(match => {
+        const loadEmail = match.load_emails as any;
+        if (!loadEmail) return false;
+        
+        // Check expires_at from the load_emails table first
+        let expiresAt = loadEmail.expires_at;
+        
+        // Fall back to parsed_data.expires_at if not set
+        if (!expiresAt && loadEmail.parsed_data?.expires_at) {
+          expiresAt = loadEmail.parsed_data.expires_at;
+        }
+        
+        if (!expiresAt) {
+          // If no expiration time, fall back to 40 min from matched_at as safety
+          const matchedAt = new Date(match.matched_at);
+          const fortyMinLater = new Date(matchedAt.getTime() + 40 * 60 * 1000);
+          return new Date() > fortyMinLater;
+        }
+        
+        // Compare current time to load's expiration time
+        const expirationTime = new Date(expiresAt);
+        return new Date() > expirationTime;
+      });
+
+      if (expiredMatches.length === 0) {
+        return;
+      }
+
+      const activeCount = expiredMatches.filter(m => m.match_status === 'active').length;
+      const undecidedCount = expiredMatches.filter(m => m.match_status === 'undecided').length;
+      console.log(`🕐 Found ${expiredMatches.length} matches with expired loads - MARKING AS EXPIRED (${activeCount} active, ${undecidedCount} undecided)`);
 
       // UPDATE to 'expired' in batches of 50 to avoid URL length limits
       const BATCH_SIZE = 50;
-      for (let i = 0; i < staleMatches.length; i += BATCH_SIZE) {
-        const batch = staleMatches.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < expiredMatches.length; i += BATCH_SIZE) {
+        const batch = expiredMatches.slice(i, i + BATCH_SIZE);
         const batchIds = batch.map(m => m.id);
         
         const { error: updateError } = await supabase
@@ -2285,7 +2322,7 @@ export default function LoadHunterTab() {
         }
       }
 
-      console.log(`✅ Marked ${staleMatches.length} stale matches as expired`);
+      console.log(`✅ Marked ${expiredMatches.length} matches as expired (load expiration passed)`);
       
       // Reload matches
       await loadUnreviewedMatches();
