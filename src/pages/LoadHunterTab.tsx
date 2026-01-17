@@ -120,6 +120,7 @@ export default function LoadHunterTab() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [loadEmails, setLoadEmails] = useState<any[]>([]);
+  const [failedQueueItems, setFailedQueueItems] = useState<any[]>([]); // Failed emails from queue that never processed
   const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (match_status = 'active')
   const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Manually skipped matches (match_status = 'skipped')
   const [bidMatches, setBidMatches] = useState<any[]>([]); // Matches with bids placed (match_status = 'bid')
@@ -611,8 +612,38 @@ export default function LoadHunterTab() {
   
   // Filter based on active filter - for unreviewed, use matches instead of emails
   // IMPORTANT: Matched emails should ONLY appear in Unreviewed tab, nowhere else
+  // For "All" tab, combine processed emails AND failed queue items
+  const allEmailsAndFailed = activeFilter === 'all' 
+    ? [
+        ...loadEmails.map(e => ({ ...e, _source: 'processed' as const })),
+        ...failedQueueItems.map(q => ({
+          id: q.id,
+          email_id: q.gmail_message_id,
+          subject: q.subject || '[Processing Failed]',
+          from_email: q.from_email,
+          from_name: q.from_name,
+          received_at: q.queued_at,
+          created_at: q.queued_at,
+          parsed_data: {},
+          status: 'failed',
+          has_issues: true,
+          issue_notes: q.last_error,
+          _source: 'failed' as const,
+          _queueItem: q,
+        }))
+      ].sort((a, b) => new Date(b.received_at || b.created_at).getTime() - new Date(a.received_at || a.created_at).getTime())
+    : [];
+
   const filteredEmails = activeFilter === 'unreviewed' 
     ? [] // Don't use emails for unreviewed - use filteredMatches instead
+    : activeFilter === 'all'
+    ? allEmailsAndFailed.filter(email => {
+        // For All tab, show everything including failed - just exclude active matches
+        if (matchedLoadIds.has(email.id)) {
+          return false;
+        }
+        return true;
+      })
     : loadEmails.filter(email => {
         // Exclude emails that have active matches - they belong in Unreviewed only
         if (matchedLoadIds.has(email.id)) {
@@ -623,7 +654,6 @@ export default function LoadHunterTab() {
         if (email.status === 'skipped' || email.status === 'waitlist') {
           if (activeFilter === 'skipped') return email.status === 'skipped';
           if (activeFilter === 'waitlist') return email.status === 'waitlist';
-          if (activeFilter === 'all') return true;
           return false;
         }
         
@@ -634,13 +664,12 @@ export default function LoadHunterTab() {
         if (activeFilter === 'issues') {
           return email.has_issues === true;
         }
-        if (activeFilter === 'all') return true;
         return true;
       });
 
   // Debug: Log filtered emails count for all filter
   if (activeFilter === 'all') {
-    console.log(`📧 All filter: ${filteredEmails.length} emails (from ${loadEmails.length} total loadEmails)`);
+    console.log(`📧 All filter: ${filteredEmails.length} emails (${loadEmails.length} processed + ${failedQueueItems.length} failed)`);
   }
 
   // Get filtered matches for unreviewed - USE SERVER-SIDE VIEW DATA for scalability
@@ -1650,7 +1679,19 @@ export default function LoadHunterTab() {
           query = query.eq("tenant_id", tenantId);
         }
 
-        const { data, error } = await query;
+        // Also fetch failed queue items (emails that couldn't be processed)
+        let failedQuery = supabase
+          .from("email_queue")
+          .select("*")
+          .eq("status", "failed")
+          .order("queued_at", { ascending: false })
+          .limit(200);
+
+        if (shouldFilter && tenantId) {
+          failedQuery = failedQuery.eq("tenant_id", tenantId);
+        }
+
+        const [emailsResult, failedResult] = await Promise.all([query, failedQuery]);
 
         // REQUEST ID GUARD: Only update state if this is still the latest request
         if (myReqId !== loadEmailsReqIdRef.current) {
@@ -1658,8 +1699,8 @@ export default function LoadHunterTab() {
           return;
         }
 
-        if (error) {
-          console.error(`📧 Attempt ${attempt} failed:`, error);
+        if (emailsResult.error) {
+          console.error(`📧 Attempt ${attempt} failed:`, emailsResult.error);
           if (attempt === retries) {
             toast.error('Failed to load emails - please refresh');
             return;
@@ -1667,8 +1708,9 @@ export default function LoadHunterTab() {
           await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
           continue;
         }
-        console.log(`✅ Loaded ${data?.length || 0} emails (tenant: ${tenantId}, reqId: ${myReqId})`);
-        setLoadEmails(data || []);
+        console.log(`✅ Loaded ${emailsResult.data?.length || 0} emails, ${failedResult.data?.length || 0} failed (tenant: ${tenantId}, reqId: ${myReqId})`);
+        setLoadEmails(emailsResult.data || []);
+        setFailedQueueItems(failedResult.data || []);
         return;
       } catch (err) {
         console.error(`📧 Attempt ${attempt} error:`, err);
@@ -3402,7 +3444,7 @@ export default function LoadHunterTab() {
                   }}
                 >
                   All
-                  <span className={`badge-inset text-[10px] h-5 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length}</span>
+                  <span className={`badge-inset text-[10px] h-5 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length + failedQueueItems.length}</span>
                 </Button>
               )}
               
@@ -5123,6 +5165,7 @@ export default function LoadHunterTab() {
                           // Get the hunt plan for this match to access availableFeet
                           const matchHuntPlan = match ? huntPlans.find(hp => hp.id === (item as any).hunt_plan_id) : null;
                           const data = email.parsed_data || {};
+                          const isFailed = email._source === 'failed' || email.status === 'failed';
                           // Use created_at (when WE processed the email) for time display
                           const processedDate = new Date(email.created_at);
                           const receivedDate = new Date(email.received_at);
@@ -5131,7 +5174,7 @@ export default function LoadHunterTab() {
                           // Calculate time since we processed the email (for NEW badge)
                           const diffMs = now.getTime() - processedDate.getTime();
                           const diffMins = Math.floor(diffMs / 60000);
-                          const isNewlyProcessed = diffMins <= 2;
+                          const isNewlyProcessed = diffMins <= 2 && !isFailed;
                           
                           // Calculate time since email was RECEIVED (for display)
                           const receivedDiffMs = now.getTime() - receivedDate.getTime();
@@ -5286,8 +5329,19 @@ export default function LoadHunterTab() {
                           return (
                           <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
-                              className={`h-11 cursor-pointer transition-all duration-150 border-b border-border/50 ${isNewlyProcessed ? 'bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20' : 'hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 even:bg-muted/30'}`}
+                              className={`h-11 cursor-pointer transition-all duration-150 border-b border-border/50 ${
+                                isFailed 
+                                  ? 'bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 hover:from-red-100 hover:to-red-150' 
+                                  : isNewlyProcessed 
+                                    ? 'bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20' 
+                                    : 'hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 even:bg-muted/30'
+                              }`}
                               onClick={async () => {
+                                // Don't open failed items for detail view
+                                if (isFailed) {
+                                  toast.error(`Processing failed: ${email.issue_notes || 'Unknown error'}`);
+                                  return;
+                                }
                                 // Check if this load has multiple matches
                                 const matchesForLoad = loadMatches.filter(m => m.load_email_id === email.id);
                                 
@@ -5328,14 +5382,26 @@ export default function LoadHunterTab() {
                                 }
                               }}
                             >
-                              {/* Expand/collapse placeholder cell */}
-                              <TableCell className="p-0 w-0" />
+                              {/* Expand/collapse placeholder cell - show FAILED badge for failed items */}
+                              <TableCell className="p-0 w-0">
+                                {isFailed && (
+                                  <Badge variant="destructive" className="text-[9px] px-1 py-0 ml-1">
+                                    FAILED
+                                  </Badge>
+                                )}
+                              </TableCell>
                               {showIdColumns && (
                                 <>
                                   {/* Order Number from Sylectus */}
                                   <TableCell className="py-1">
                                     <div className="text-[13px] font-semibold leading-tight whitespace-nowrap">
-                                      {data.order_number ? `#${data.order_number}` : '—'}
+                                      {isFailed ? (
+                                        <span className="text-red-600" title={email.issue_notes}>
+                                          {email.subject?.substring(0, 30) || 'Processing Error'}...
+                                        </span>
+                                      ) : (
+                                        data.order_number ? `#${data.order_number}` : '—'
+                                      )}
                                     </div>
                                   </TableCell>
                                   {/* Our internal Load ID */}
