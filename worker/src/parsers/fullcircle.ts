@@ -232,26 +232,26 @@ export function parseFullCircleTMSEmail(
     }
   }
 
-  // RULE 1: If expires_at is before posted_at, set expires_at = posted_at + 40 minutes
+  // RULE 1: If expires_at is before posted_at, set expires_at = posted_at + 30 minutes
   if (data.posted_at && data.expires_at) {
     const postedTime = new Date(data.posted_at).getTime();
     const expiresTime = new Date(data.expires_at).getTime();
     if (expiresTime <= postedTime) {
-      const correctedExpires = new Date(postedTime + 40 * 60 * 1000);
+      const correctedExpires = new Date(postedTime + 30 * 60 * 1000);
       data.expires_at = correctedExpires.toISOString();
-      console.log(`[fullcircle] Corrected expires_at: was before posted_at, now posted_at + 40min`);
+      console.log(`[fullcircle] Corrected expires_at: was before posted_at, now posted_at + 30min`);
     }
   }
   
-  // RULE 2: If expires_at is in the past (already expired on arrival), extend to now + 40 minutes
+  // RULE 2: If expires_at is in the past (already expired on arrival), extend to now + 30 minutes
   // This handles loads that arrive after their expiration time
   if (data.expires_at) {
     const now = Date.now();
     const expiresTime = new Date(data.expires_at).getTime();
     if (expiresTime < now) {
-      const correctedExpires = new Date(now + 40 * 60 * 1000);
+      const correctedExpires = new Date(now + 30 * 60 * 1000);
       data.expires_at = correctedExpires.toISOString();
-      console.log(`[fullcircle] Corrected expires_at: was already expired on arrival, now now() + 40min -> ${data.expires_at}`);
+      console.log(`[fullcircle] Corrected expires_at: was already expired on arrival, now now() + 30min -> ${data.expires_at}`);
     }
   }
 

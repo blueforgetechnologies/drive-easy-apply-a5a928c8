@@ -548,6 +548,19 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       ? 'success' 
       : (geocodingWasAttempted ? 'failed' : 'pending');
     
+    // FAILSAFE: Correct expires_at if already expired on arrival
+    // This ensures we never lose loads due to stale expiration times
+    if (parsedData.expires_at) {
+      const now = Date.now();
+      const expiresTime = new Date(parsedData.expires_at).getTime();
+      if (expiresTime < now) {
+        // Extend to now + 30 minutes per user requirement
+        const correctedExpires = new Date(now + 30 * 60 * 1000);
+        console.log(`[inbound] FAILSAFE: expires_at was already expired (${parsedData.expires_at}), extending to now + 30min -> ${correctedExpires.toISOString()}`);
+        parsedData.expires_at = correctedExpires.toISOString();
+      }
+    }
+    
     // Insert into load_emails
     const { data: insertedEmail, error: insertError } = await supabase
       .from('load_emails')
