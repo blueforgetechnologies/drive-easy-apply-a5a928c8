@@ -6429,6 +6429,7 @@ export type Database = {
           match_count: number
         }[]
       }
+      get_storage_tenant_id: { Args: never; Returns: string }
       get_tenant_integrations_safe: {
         Args: { p_tenant_id: string }
         Returns: {
