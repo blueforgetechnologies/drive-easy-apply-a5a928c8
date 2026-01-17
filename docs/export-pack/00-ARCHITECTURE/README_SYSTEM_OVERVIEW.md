@@ -85,7 +85,7 @@
 
 | Channel | Purpose | Tenants |
 |---------|---------|---------|
-| `internal` | Development/testing | Default Tenant |
+| `internal` | Development/testing | Dev Lab |
 | `pilot` | Early adopter testing | Talbi Logistics LLC |
 | `general` | Production release | Future tenants |
 

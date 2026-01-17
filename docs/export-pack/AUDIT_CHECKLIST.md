@@ -53,7 +53,7 @@
 ## 4. Rollout Verification Steps
 
 ### Internal → Pilot
-1. [ ] Feature tested in Default Tenant (internal)
+1. [ ] Feature tested in Dev Lab (internal)
 2. [ ] No console errors
 3. [ ] Edge function logs clean
 4. [ ] Add channel default: `pilot` → `enabled: true`
