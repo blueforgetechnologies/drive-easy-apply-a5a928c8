@@ -312,6 +312,12 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       throw new Error('No stored payload available and VPS cannot access Gmail API directly');
     }
     
+    // Guard: Validate message structure before processing
+    if (!message.payload || typeof message.payload !== 'object') {
+      console.error(`[inbound] Invalid message structure for ${item.gmail_message_id}: missing or invalid payload`);
+      throw new Error('Invalid email payload structure: missing payload object');
+    }
+    
     // Extract email data
     const headers = message.payload?.headers || [];
     const getHeader = (name: string) => headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value;
@@ -324,7 +330,21 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     // Extract body - with defensive checks for missing payload structure
     const extractBody = (part: any, mimeType: string): string => {
-      if (!part) return '';
+      // Guard against undefined/null parts
+      if (!part || typeof part !== 'object') return '';
+      
+      // Guard against missing mimeType property
+      if (typeof part.mimeType !== 'string') {
+        // Still check nested parts if they exist
+        if (part.parts && Array.isArray(part.parts)) {
+          for (const p of part.parts) {
+            const text = extractBody(p, mimeType);
+            if (text) return text;
+          }
+        }
+        return '';
+      }
+      
       if (part.mimeType === mimeType && part.body?.data) {
         return Buffer.from(part.body.data, 'base64').toString('utf-8');
       }
