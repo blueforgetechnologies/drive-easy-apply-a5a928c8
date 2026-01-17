@@ -138,6 +138,7 @@ export default function Inspector() {
   const [loadHunterHealth, setLoadHunterHealth] = useState<LoadHunterHealth | null>(null);
   const [fetchingHealth, setFetchingHealth] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
+  const [retryingFailed, setRetryingFailed] = useState(false);
 
   // UI Actions state
   const [uiActions, setUIActions] = useState<UIActionHealth[]>([]);
@@ -351,6 +352,41 @@ export default function Inspector() {
   function handleHealthTenantSelect(tenantId: string) {
     setSelectedHealthTenantId(tenantId);
     fetchLoadHunterHealth(tenantId || undefined);
+  }
+
+  async function retryFailedEmails() {
+    setRetryingFailed(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("retry-failed-emails", {
+        body: { error_filter: "mimeType", limit: 200 },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) {
+        toast.error(`Failed to retry emails: ${error.message}`);
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success(`Reset ${data.reset_count} failed emails for retry`);
+      // Refresh health data
+      fetchLoadHunterHealth(selectedHealthTenantId || undefined);
+    } catch (err) {
+      console.error("Error retrying failed emails:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setRetryingFailed(false);
+    }
   }
 
   function getEmailHealthBadge(status: string | null) {
@@ -1062,11 +1098,28 @@ export default function Inspector() {
                         <TableRow>
                           <TableCell className="font-medium">Failed Items</TableCell>
                           <TableCell className="text-right">
-                            {loadHunterHealth.queue_failed_count > 0 ? (
-                              <Badge variant="destructive">{loadHunterHealth.queue_failed_count}</Badge>
-                            ) : (
-                              <Badge variant="outline">0</Badge>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {loadHunterHealth.queue_failed_count > 0 ? (
+                                <>
+                                  <Badge variant="destructive">{loadHunterHealth.queue_failed_count}</Badge>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={retryFailedEmails}
+                                    disabled={retryingFailed}
+                                    className="h-6 text-xs"
+                                  >
+                                    {retryingFailed ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      "Retry"
+                                    )}
+                                  </Button>
+                                </>
+                              ) : (
+                                <Badge variant="outline">0</Badge>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                         <TableRow>

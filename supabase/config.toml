@@ -227,3 +227,9 @@ verify_jwt = true
 
 [functions.expire-stale-matches]
 verify_jwt = false
+
+[functions.retry-failed-emails]
+verify_jwt = true
+
+[functions.backfill-posted-expires]
+verify_jwt = true

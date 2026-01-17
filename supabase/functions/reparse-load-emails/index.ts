@@ -56,7 +56,20 @@ function decodeBase64UrlToString(data: string): string {
 }
 
 function extractFirstBody(part: GmailPart | undefined, mimeType: string): string {
-  if (!part) return "";
+  // Guard against undefined/null parts (prevents "Cannot read properties of undefined (reading 'mimeType')")
+  if (!part || typeof part !== 'object') return "";
+  
+  // Guard against missing mimeType property
+  if (typeof part.mimeType !== 'string') {
+    // Still check nested parts if they exist
+    if (Array.isArray(part.parts)) {
+      for (const p of part.parts) {
+        const found = extractFirstBody(p, mimeType);
+        if (found) return found;
+      }
+    }
+    return "";
+  }
 
   if (part.mimeType === mimeType && part.body?.data) {
     return decodeBase64UrlToString(part.body.data);
