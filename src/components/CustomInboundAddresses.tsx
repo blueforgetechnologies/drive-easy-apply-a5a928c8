@@ -183,6 +183,12 @@ export default function CustomInboundAddresses({
       return;
     }
 
+    // ALIAS-ONLY ROUTING: Warn that base emails are no longer used for routing
+    if (!trimmedEmail.includes("+")) {
+      toast.error("Base emails without +alias are no longer routed. Please use the tenant's +alias instead (e.g., p.d+tenantslug@domain.com)");
+      return;
+    }
+
     addMutation.mutate({ email: trimmedEmail, notes: newNotes });
   };
 
@@ -212,14 +218,14 @@ export default function CustomInboundAddresses({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Info Alert */}
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>When to use</AlertTitle>
+        {/* Deprecation Warning */}
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Alias-Only Routing Active</AlertTitle>
           <AlertDescription className="text-sm">
-            Use this if your loadboard provider sends to a custom domain email (e.g., <code className="bg-muted px-1 rounded">p.d@customdomain.com</code>) 
-            that forwards to Gmail. The forwarding often strips the plus-address, so add the forwarding address here 
-            to ensure emails are properly routed.
+            <strong>Base email addresses are no longer used for routing.</strong> All tenants must use <code className="bg-muted px-1 rounded">+alias</code> addressing 
+            (e.g., <code className="bg-muted px-1 rounded">p.d+{tenantName.toLowerCase().replace(/\s+/g, '')}@domain.com</code>). 
+            Emails without a valid +alias will be quarantined. This ensures strict tenant isolation.
           </AlertDescription>
         </Alert>
 
