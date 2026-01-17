@@ -54,6 +54,52 @@ interface OptimizationResult {
   };
 }
 
+/**
+ * SECURITY: Derive tenant_id from user's JWT to prevent cross-tenant data access
+ */
+async function deriveTenantFromAuth(authHeader: string | null): Promise<{ tenantId: string | null; userId: string | null; error?: Response }> {
+  if (!authHeader) {
+    return { tenantId: null, userId: null };
+  }
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  // Verify user with anon client
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: { user }, error: userError } = await anonClient.auth.getUser();
+  if (userError || !user) {
+    console.error('[optimize-route] Auth failed:', userError?.message);
+    return {
+      tenantId: null,
+      userId: null,
+      error: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }),
+    };
+  }
+
+  // Look up tenant membership
+  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: membership } = await serviceClient
+    .from('tenant_users')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    tenantId: membership?.tenant_id ?? null,
+    userId: user.id,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -97,7 +143,14 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Optimizing route for ${stops.length} stops`);
+    // SECURITY: Derive tenant from user's auth context for vehicle lookup
+    const authHeader = req.headers.get('authorization');
+    const { tenantId, userId, error: authError } = await deriveTenantFromAuth(authHeader);
+    if (authError) {
+      return authError;
+    }
+
+    console.log(`[optimize-route] User=${userId}, Tenant=${tenantId}, Stops=${stops.length}`);
 
     // Initialize Supabase client for cache access
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -225,32 +278,36 @@ serve(async (req) => {
     const hosAnalysis = calculateHOSCompliance(optimizedSequence, optimizedMetrics, isTeam);
     
     // Step 7: Calculate fuel costs and emissions if vehicle data is available
+    // SECURITY: Only fetch vehicle if it belongs to user's tenant
     let fuelEmissions: FuelEmissionsData | undefined;
-    if (vehicleId) {
+    if (vehicleId && tenantId) {
       try {
-        const vehicleResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/vehicles?id=eq.${vehicleId}&select=fuel_type,fuel_efficiency_mpg,asset_type`,
-          {
-            headers: {
-              'apikey': SUPABASE_SERVICE_ROLE_KEY,
-              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
-            }
-          }
-        );
-        const vehicleData = await vehicleResponse.json();
+        // Use tenant-scoped query to prevent cross-tenant vehicle access
+        const { data: vehicleData, error: vehicleError } = await supabase
+          .from('vehicles')
+          .select('fuel_type, fuel_efficiency_mpg, asset_type, tenant_id')
+          .eq('id', vehicleId)
+          .eq('tenant_id', tenantId) // SECURITY: Enforce tenant isolation
+          .maybeSingle();
         
-        if (vehicleData && vehicleData.length > 0) {
-          const vehicle = vehicleData[0];
+        if (vehicleError) {
+          console.error('[optimize-route] Vehicle query error:', vehicleError);
+        } else if (vehicleData) {
+          console.log(`[optimize-route] Vehicle ${vehicleId} verified for tenant ${tenantId}`);
           fuelEmissions = calculateFuelEmissions(
             optimizedMetrics.distance,
-            vehicle.fuel_type || 'diesel',
-            vehicle.fuel_efficiency_mpg || 6.5,
-            vehicle.asset_type || 'truck'
+            vehicleData.fuel_type || 'diesel',
+            vehicleData.fuel_efficiency_mpg || 6.5,
+            vehicleData.asset_type || 'truck'
           );
+        } else {
+          console.warn(`[optimize-route] Vehicle ${vehicleId} not found for tenant ${tenantId} - possible cross-tenant attempt`);
         }
       } catch (error) {
         console.error('Error fetching vehicle data:', error);
       }
+    } else if (vehicleId && !tenantId) {
+      console.warn(`[optimize-route] Vehicle lookup skipped - no tenant context for vehicleId=${vehicleId}`);
     }
     
     // Step 8: Calculate original route metrics for comparison
