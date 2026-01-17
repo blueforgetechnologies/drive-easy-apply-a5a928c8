@@ -293,10 +293,39 @@ serve(async (req) => {
   try {
     console.log('Starting reparse of all load emails...');
 
-    // Fetch all emails
-    const { data: emails, error: fetchError } = await supabase
+    // Get request body for filtering
+    let tenantId: string | null = null;
+    let onlyMissing = false;
+    let limit = 1000;
+    
+    try {
+      const body = await req.json();
+      tenantId = body.tenant_id || null;
+      onlyMissing = body.only_missing === true;
+      limit = body.limit || 1000;
+    } catch {
+      // No body or invalid JSON, use defaults
+    }
+
+    console.log(`Starting reparse: tenant=${tenantId}, only_missing=${onlyMissing}, limit=${limit}`);
+
+    // Build query
+    let query = supabase
       .from('load_emails')
-      .select('id, subject, body_html');
+      .select('id, subject, body_html, body_text, raw_payload_url');
+    
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+    
+    if (onlyMissing) {
+      // Only emails with missing origin/destination in parsed_data
+      query = query.or('parsed_data.is.null,parsed_data->>origin_city.is.null');
+    }
+    
+    query = query.order('received_at', { ascending: false }).limit(limit);
+    
+    const { data: emails, error: fetchError } = await query;
 
     if (fetchError) {
       throw fetchError;
@@ -306,16 +335,31 @@ serve(async (req) => {
 
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
 
     for (const email of emails || []) {
       try {
-        if (!email.body_html || !email.subject) {
-          console.log(`Skipping email ${email.id} - missing body or subject`);
+        // Use body_text if body_html is missing (worker saves body_text, not body_html)
+        const bodyContent = email.body_html || email.body_text || '';
+        
+        if (!bodyContent) {
+          console.log(`Skipping email ${email.id} - missing body content`);
+          skippedCount++;
           continue;
         }
 
-        // Reparse the email
-        const parsedData = parseLoadEmail(email.subject, email.body_html);
+        // If no subject, try to extract from body or use empty string
+        const emailSubject = email.subject || '';
+
+        // Reparse the email using body content
+        const parsedData = parseLoadEmail(emailSubject, bodyContent);
+
+        // Only update if we got meaningful data
+        if (!parsedData.origin_city && !parsedData.vehicle_type) {
+          console.log(`Skipping email ${email.id} - no parseable data found`);
+          skippedCount++;
+          continue;
+        }
 
         // Update the database
         const { error: updateError } = await supabase
@@ -323,6 +367,13 @@ serve(async (req) => {
           .update({
             parsed_data: parsedData,
             expires_at: parsedData.expires_at || null,
+            subject: emailSubject || null,
+            has_issues: !parsedData.origin_city || !parsedData.vehicle_type,
+            issue_notes: [
+              !parsedData.broker_email ? 'Missing broker email' : null,
+              !parsedData.origin_city ? 'Missing origin location' : null,
+              !parsedData.vehicle_type ? 'Missing vehicle type' : null,
+            ].filter(Boolean).join('; ') || null,
           })
           .eq('id', email.id);
 
@@ -338,13 +389,14 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Reparse complete: ${successCount} success, ${errorCount} errors`);
+    console.log(`Reparse complete: ${successCount} success, ${errorCount} errors, ${skippedCount} skipped`);
 
     return new Response(
       JSON.stringify({ 
         message: 'Reparse complete', 
         success: successCount,
         errors: errorCount,
+        skipped: skippedCount,
         total: emails?.length || 0
       }),
       { 
