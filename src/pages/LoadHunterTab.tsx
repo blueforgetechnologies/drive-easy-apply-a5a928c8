@@ -666,13 +666,7 @@ export default function LoadHunterTab() {
   const filteredEmails = activeFilter === 'unreviewed' 
     ? [] // Don't use emails for unreviewed - use filteredMatches instead
     : activeFilter === 'all'
-    ? allEmailsAndFailed.filter(email => {
-        // For All tab, show everything including failed - just exclude active matches
-        if (matchedLoadIds.has(email.id)) {
-          return false;
-        }
-        return true;
-      })
+    ? allEmailsAndFailed // Show ALL emails for debugging - no exclusions
     : loadEmails.filter(email => {
         // Exclude emails that have active matches - they belong in Unreviewed only
         if (matchedLoadIds.has(email.id)) {
