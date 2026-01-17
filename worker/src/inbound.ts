@@ -562,6 +562,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         received_at: receivedAt.toISOString(),
         parsed_data: parsedData,
         expires_at: parsedData.expires_at || null,
+        posted_at: parsedData.posted_at || null,
         status: isDuplicate ? 'duplicate' : (isUpdate ? 'update' : 'new'),
         has_issues: hasIssues,
         issue_notes: issueNotes.length > 0 ? issueNotes.join('; ') : null,
