@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTenantId } from "./useTenantId";
 
 export interface PaymentFormula {
   id?: string;
   formula_name: string;
   add_columns: string[];
   subtract_columns: string[];
+  tenant_id?: string | null; // null = global default
 }
 
 export interface PaymentFormulasState {
@@ -33,6 +35,7 @@ export const AVAILABLE_FORMULA_COLUMNS = [
 ];
 
 export function usePaymentFormulas() {
+  const tenantId = useTenantId();
   const [formulas, setFormulas] = useState<PaymentFormulasState>({
     carr_net: null,
     my_net: null,
@@ -41,10 +44,11 @@ export function usePaymentFormulas() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Fetch formulas from database
+  // Fetch formulas from database - tenant-specific override global defaults
   const fetchFormulas = useCallback(async () => {
     setLoading(true);
     try {
+      // RLS policy allows: tenant_id IS NULL (defaults) OR can_access_tenant()
       const { data, error } = await supabase
         .from("payment_formulas")
         .select("*");
@@ -57,15 +61,24 @@ export function usePaymentFormulas() {
         brokering_net: null,
       };
 
+      // Process formulas: tenant-specific overrides global defaults
       data?.forEach((formula) => {
         const key = formula.formula_name as keyof PaymentFormulasState;
         if (key in formulaMap) {
-          formulaMap[key] = {
-            id: formula.id,
-            formula_name: formula.formula_name,
-            add_columns: formula.add_columns || [],
-            subtract_columns: formula.subtract_columns || [],
-          };
+          const existing = formulaMap[key];
+          // Tenant-specific formula takes priority over global default
+          const isTenantSpecific = formula.tenant_id === tenantId;
+          const isGlobalDefault = formula.tenant_id === null;
+          
+          if (!existing || (isTenantSpecific && existing.tenant_id === null)) {
+            formulaMap[key] = {
+              id: formula.id,
+              formula_name: formula.formula_name,
+              add_columns: formula.add_columns || [],
+              subtract_columns: formula.subtract_columns || [],
+              tenant_id: formula.tenant_id,
+            };
+          }
         }
       });
 
@@ -75,20 +88,26 @@ export function usePaymentFormulas() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => {
     fetchFormulas();
   }, [fetchFormulas]);
 
-  // Save or update a formula
+  // Save or update a formula (always tenant-specific)
   const saveFormula = useCallback(async (formula: PaymentFormula) => {
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+    
     setSaving(true);
     try {
       const existing = formulas[formula.formula_name as keyof PaymentFormulasState];
       
-      if (existing?.id) {
-        // Update existing
+      // Only update if it's a tenant-specific formula (not global default)
+      if (existing?.id && existing.tenant_id === tenantId) {
+        // Update existing tenant-specific formula
         const { error } = await supabase
           .from("payment_formulas")
           .update({
@@ -99,13 +118,14 @@ export function usePaymentFormulas() {
 
         if (error) throw error;
       } else {
-        // Insert new
+        // Insert new tenant-specific formula (creates override for this tenant)
         const { error } = await supabase
           .from("payment_formulas")
           .insert({
             formula_name: formula.formula_name,
             add_columns: formula.add_columns,
             subtract_columns: formula.subtract_columns,
+            tenant_id: tenantId, // Required for tenant-specific formulas
           });
 
         if (error) throw error;
@@ -119,7 +139,7 @@ export function usePaymentFormulas() {
     } finally {
       setSaving(false);
     }
-  }, [formulas, fetchFormulas]);
+  }, [formulas, fetchFormulas, tenantId]);
 
   // Check if a formula is configured
   const isConfigured = useCallback((formulaName: keyof PaymentFormulasState) => {

@@ -4106,6 +4106,7 @@ export type Database = {
           formula_name: string
           id: string
           subtract_columns: string[]
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4114,6 +4115,7 @@ export type Database = {
           formula_name: string
           id?: string
           subtract_columns?: string[]
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4122,9 +4124,18 @@ export type Database = {
           formula_name?: string
           id?: string
           subtract_columns?: string[]
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_formulas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permissions: {
         Row: {
