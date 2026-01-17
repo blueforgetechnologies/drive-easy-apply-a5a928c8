@@ -50,16 +50,22 @@ export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
 
 /**
  * Claim a batch of INBOUND email queue items for parsing.
- * These are emails with payload_url but no to_email (load emails from Gmail).
+ * INBOUND = has payload_url AND (subject IS NULL OR body_html IS NULL)
+ * These are load emails from Gmail that need parsing, NOT outbound sends.
  */
 export async function claimInboundBatch(batchSize: number = 50): Promise<InboundQueueItem[]> {
-  // Query for inbound emails: have payload_url, no to_email, status=pending
+  // Query for inbound emails:
+  // - have payload_url (stored raw email)
+  // - subject IS NULL (not yet parsed) OR body_html IS NULL
+  // - status = pending
+  // - attempts < 50 (prevent infinite loops)
   const { data, error } = await supabase
     .from('email_queue')
     .select('id, tenant_id, gmail_message_id, gmail_history_id, payload_url, attempts, queued_at, subject, from_email, body_html, body_text')
     .eq('status', 'pending')
     .not('payload_url', 'is', null)
-    .is('to_email', null)
+    .is('subject', null)  // Key indicator: no subject = needs parsing
+    .lt('attempts', 50)   // Prevent infinite loops
     .order('queued_at', { ascending: true })
     .limit(batchSize);
 
@@ -78,18 +84,65 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
     .from('email_queue')
     .update({ 
       status: 'processing', 
-      processing_started_at: new Date().toISOString() 
+      processing_started_at: new Date().toISOString(),
+      attempts: supabase.raw ? undefined : undefined // Will increment in processInboundEmail
     })
     .in('id', ids);
 
   if (updateError) {
     console.error('[claim] Error marking inbound items as processing:', updateError);
-    // Return empty - items weren't locked
     return [];
   }
 
   console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
   return data as InboundQueueItem[];
+}
+
+/**
+ * Check for stuck emails (too many attempts) and mark them as failed.
+ * Returns count of emails marked as failed.
+ */
+export async function markStuckEmailsAsFailed(maxAttempts: number = 50): Promise<number> {
+  const { data, error } = await supabase
+    .from('email_queue')
+    .update({ 
+      status: 'failed', 
+      last_error: `Exceeded ${maxAttempts} attempts - marked as stuck`,
+      processing_started_at: null 
+    })
+    .gte('attempts', maxAttempts)
+    .neq('status', 'failed')
+    .neq('status', 'completed')
+    .select('id');
+
+  if (error) {
+    console.error('[claim] Error marking stuck emails as failed:', error);
+    return 0;
+  }
+
+  return data?.length || 0;
+}
+
+/**
+ * Get count of potentially stuck emails (high attempt count).
+ */
+export async function getStuckEmailCount(threshold: number = 10): Promise<{ count: number; maxAttempts: number }> {
+  const { data, error } = await supabase
+    .from('email_queue')
+    .select('attempts')
+    .gte('attempts', threshold)
+    .neq('status', 'failed')
+    .neq('status', 'completed');
+
+  if (error) {
+    console.error('[claim] Error getting stuck email count:', error);
+    return { count: 0, maxAttempts: 0 };
+  }
+
+  const count = data?.length || 0;
+  const maxAttempts = data?.reduce((max, item) => Math.max(max, item.attempts || 0), 0) || 0;
+  
+  return { count, maxAttempts };
 }
 
 /**

@@ -19,7 +19,7 @@
 
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { claimBatch, claimInboundBatch, completeItem, failItem, resetStaleItems } from './claim.js';
+import { claimBatch, claimInboundBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
 import { processQueueItem } from './process.js';
 import { processInboundEmail } from './inbound.js';
 import { supabase } from './supabase.js';
@@ -463,13 +463,30 @@ async function workerLoop(): Promise<void> {
       METRICS.loopCount++;
       METRICS.isHealthy = true;
 
-      // Reset stale items periodically
+      // Reset stale items and check for stuck emails periodically
       if (Date.now() - lastStaleReset >= STATIC_CONFIG.STALE_RESET_INTERVAL_MS) {
         const resetCount = await resetStaleItems();
         if (resetCount > 0) {
           log('warn', `Reset stale items`, { count: resetCount });
           METRICS.staleResetCount += resetCount;
         }
+        
+        // Check for and handle stuck emails (infinite loop prevention)
+        const stuckInfo = await getStuckEmailCount(10);
+        if (stuckInfo.count > 0) {
+          log('error', `⚠️ STUCK EMAILS DETECTED`, { 
+            count: stuckInfo.count, 
+            maxAttempts: stuckInfo.maxAttempts,
+            action: 'Will mark as failed if attempts >= 50'
+          });
+        }
+        
+        // Mark emails with 50+ attempts as permanently failed
+        const failedCount = await markStuckEmailsAsFailed(50);
+        if (failedCount > 0) {
+          log('error', `🛑 Marked stuck emails as FAILED`, { count: failedCount });
+        }
+        
         lastStaleReset = Date.now();
       }
 
@@ -544,14 +561,14 @@ async function workerLoop(): Promise<void> {
               const result = await processQueueItem(item);
 
               if (result.success) {
-                // Check if this was a skipped inbound email
-                if (result.error === 'inbound_email_skipped') {
-                  // Don't count as sent, just mark as pending for Edge Function
-                  // Actually, leave it in 'processing' state - the Edge Function cron will pick it up
-                  // Or mark as a special status
-                  log('debug', `Skipped inbound email`, { id: item.id.substring(0, 8) });
-                  // Reset to pending so the Edge Function can process it
-                  await supabase.from('email_queue').update({ status: 'pending', processing_started_at: null }).eq('id', item.id);
+                // Check if this was a misrouted inbound email
+                if (result.error === 'inbound_email_misrouted' || result.error === 'inbound_email_skipped') {
+                  // Reset to pending so the inbound processor can pick it up
+                  log('warn', `Misrouted inbound email, resetting to pending`, { id: item.id.substring(0, 8) });
+                  await supabase.from('email_queue').update({ 
+                    status: 'pending', 
+                    processing_started_at: null 
+                  }).eq('id', item.id);
                 } else {
                   await completeItem(item.id, 'sent');
                   METRICS.emailsSent++;
