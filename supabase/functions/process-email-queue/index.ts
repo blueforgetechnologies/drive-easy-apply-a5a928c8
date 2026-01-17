@@ -1427,7 +1427,7 @@ serve(async (req) => {
           try {
             const { data: payloadData, error: storageError } = await supabase
               .storage
-              .from('raw-email-payloads')
+              .from('email-payloads')
               .download(item.payload_url);
             
             if (storageError) {

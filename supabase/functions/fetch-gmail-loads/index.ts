@@ -34,7 +34,7 @@ let effectiveTenantId: string | null = null;
 // Extract gmail alias from email address (e.g., p.d+talbi@... -> +talbi)
 function extractGmailAlias(email: string | null): string | null {
   if (!email) return null;
-  
+
   // Match the pattern: anything+alias@domain
   const match = email.match(/([^@]+)\+([^@]+)@/);
   if (match && match[2]) {
@@ -43,14 +43,61 @@ function extractGmailAlias(email: string | null): string | null {
   return null;
 }
 
+// Extract first email address from header value that may contain "Name <email>" or multiple recipients
+function extractFirstEmail(headerValue: string): string | null {
+  if (!headerValue) return null;
+
+  const angleMatch = headerValue.match(/<([^>]+@[^>]+)>/);
+  if (angleMatch) {
+    return angleMatch[1].toLowerCase().trim();
+  }
+
+  const plainMatch = headerValue.split(',')[0].trim();
+  if (plainMatch.includes('@')) {
+    return plainMatch.toLowerCase().trim();
+  }
+
+  return null;
+}
+
+// Fallback routing: map a full inbound address (no +alias) to a tenant
+async function getTenantByInboundAddress(rawHeaderValue: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
+  const email = extractFirstEmail(rawHeaderValue);
+  if (!email) return { tenantId: null, tenantName: null };
+
+  const { data: mappings, error } = await supabase
+    .from('tenant_inbound_addresses')
+    .select('tenant_id, tenants!inner(id, name)')
+    .eq('is_active', true)
+    .ilike('email_address', email);
+
+  if (error) {
+    console.error(`[fetch-gmail-loads] Inbound address lookup error:`, error);
+    return { tenantId: null, tenantName: null };
+  }
+
+  // FAIL-CLOSED: reject ambiguous routing (should never happen due to unique index)
+  if (mappings && mappings.length > 1) {
+    console.error(`[fetch-gmail-loads] ❌ AMBIGUOUS ROUTING: ${email} matched ${mappings.length} tenants - failing closed`);
+    return { tenantId: null, tenantName: null };
+  }
+
+  if (mappings && mappings.length === 1) {
+    const tenant = (mappings[0] as any).tenants as any;
+    return { tenantId: tenant.id, tenantName: tenant.name };
+  }
+
+  return { tenantId: null, tenantName: null };
+}
+
 // Get tenant by alias from tenants table
 async function getTenantByAlias(alias: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
-  const { data: tenant, error } = await supabase
+  const { data: tenant } = await supabase
     .from('tenants')
     .select('id, name')
     .eq('gmail_alias', alias)
     .maybeSingle();
-  
+
   if (tenant) {
     return { tenantId: tenant.id, tenantName: tenant.name };
   }
@@ -61,7 +108,8 @@ async function getTenantByAlias(alias: string): Promise<{ tenantId: string | nul
 async function routeEmailToTenant(headers: any[]): Promise<{ tenantId: string | null; tenantName: string | null; alias: string | null; routingMethod: string | null }> {
   // Priority order for header extraction (same as gmail-webhook)
   const headerPriority = ['Delivered-To', 'X-Original-To', 'Envelope-To', 'To'];
-  
+
+  // 1) +alias routing
   for (const headerName of headerPriority) {
     const header = headers.find((h: any) => h.name.toLowerCase() === headerName.toLowerCase());
     if (header?.value) {
@@ -76,7 +124,19 @@ async function routeEmailToTenant(headers: any[]): Promise<{ tenantId: string | 
       }
     }
   }
-  
+
+  // 2) Fallback: custom inbound address routing (no +alias)
+  for (const headerName of headerPriority) {
+    const header = headers.find((h: any) => h.name.toLowerCase() === headerName.toLowerCase());
+    if (header?.value) {
+      const result = await getTenantByInboundAddress(header.value);
+      if (result.tenantId) {
+        console.log(`[fetch-gmail-loads] ✅ Routed to "${result.tenantName}" via custom inbound address from ${headerName}`);
+        return { ...result, alias: null, routingMethod: headerName };
+      }
+    }
+  }
+
   // FAIL-CLOSED: No fallback to default tenant
   return { tenantId: null, tenantName: null, alias: null, routingMethod: null };
 }
