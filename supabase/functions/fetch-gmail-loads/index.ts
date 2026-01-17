@@ -60,35 +60,9 @@ function extractFirstEmail(headerValue: string): string | null {
   return null;
 }
 
-// Fallback routing: map a full inbound address (no +alias) to a tenant
-async function getTenantByInboundAddress(rawHeaderValue: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
-  const email = extractFirstEmail(rawHeaderValue);
-  if (!email) return { tenantId: null, tenantName: null };
-
-  const { data: mappings, error } = await supabase
-    .from('tenant_inbound_addresses')
-    .select('tenant_id, tenants!inner(id, name)')
-    .eq('is_active', true)
-    .ilike('email_address', email);
-
-  if (error) {
-    console.error(`[fetch-gmail-loads] Inbound address lookup error:`, error);
-    return { tenantId: null, tenantName: null };
-  }
-
-  // FAIL-CLOSED: reject ambiguous routing (should never happen due to unique index)
-  if (mappings && mappings.length > 1) {
-    console.error(`[fetch-gmail-loads] ❌ AMBIGUOUS ROUTING: ${email} matched ${mappings.length} tenants - failing closed`);
-    return { tenantId: null, tenantName: null };
-  }
-
-  if (mappings && mappings.length === 1) {
-    const tenant = (mappings[0] as any).tenants as any;
-    return { tenantId: tenant.id, tenantName: tenant.name };
-  }
-
-  return { tenantId: null, tenantName: null };
-}
+// NOTE: getTenantByInboundAddress has been REMOVED as part of alias-only routing.
+// Base email addresses are no longer routed to tenants.
+// Only +alias routing is supported for strict tenant isolation.
 
 // Get tenant by alias from tenants table
 async function getTenantByAlias(alias: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
@@ -105,11 +79,13 @@ async function getTenantByAlias(alias: string): Promise<{ tenantId: string | nul
 }
 
 // Route email to correct tenant based on Delivered-To header alias
+// ALIAS-ONLY ROUTING: Only +alias emails are routed, base emails are rejected
+// This ensures strict tenant isolation for multi-tenant deployments
 async function routeEmailToTenant(headers: any[]): Promise<{ tenantId: string | null; tenantName: string | null; alias: string | null; routingMethod: string | null }> {
   // Priority order for header extraction (same as gmail-webhook)
   const headerPriority = ['Delivered-To', 'X-Original-To', 'Envelope-To', 'To'];
 
-  // 1) +alias routing
+  // ALIAS-ONLY: Only route via +alias, no fallback to base emails
   for (const headerName of headerPriority) {
     const header = headers.find((h: any) => h.name.toLowerCase() === headerName.toLowerCase());
     if (header?.value) {
@@ -125,15 +101,13 @@ async function routeEmailToTenant(headers: any[]): Promise<{ tenantId: string | 
     }
   }
 
-  // 2) Fallback: custom inbound address routing (no +alias)
-  for (const headerName of headerPriority) {
-    const header = headers.find((h: any) => h.name.toLowerCase() === headerName.toLowerCase());
-    if (header?.value) {
-      const result = await getTenantByInboundAddress(header.value);
-      if (result.tenantId) {
-        console.log(`[fetch-gmail-loads] ✅ Routed to "${result.tenantName}" via custom inbound address from ${headerName}`);
-        return { ...result, alias: null, routingMethod: headerName };
-      }
+  // NO FALLBACK: Base emails (without +alias) are NOT routed
+  // This prevents cross-tenant leakage in multi-tenant deployments
+  const deliveredTo = headers.find((h: any) => h.name.toLowerCase() === 'delivered-to');
+  if (deliveredTo?.value) {
+    const baseEmail = extractFirstEmail(deliveredTo.value);
+    if (baseEmail) {
+      console.log(`[fetch-gmail-loads] 🚫 ALIAS-ONLY: Rejecting base email ${baseEmail} - no +alias found`);
     }
   }
 

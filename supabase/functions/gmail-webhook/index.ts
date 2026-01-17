@@ -127,59 +127,15 @@ function extractFirstEmail(headerValue: string): string | null {
   return null;
 }
 
-// Lookup tenant by custom inbound address (fallback when no +alias)
-// Uses case-insensitive match via ilike on the stored email_address
-// UNIQUENESS: idx_tenant_inbound_addresses_email_unique enforces one tenant per address globally
-// FAIL-CLOSED: If query returns multiple (shouldn't happen), we reject routing
-async function getTenantByInboundAddress(rawHeaderValue: string): Promise<TenantInfo> {
-  const defaultResult: TenantInfo = { tenantId: null, isPaused: false, rateLimitPerMinute: 60, rateLimitPerDay: 10000, tenantName: null };
-  
-  // Extract actual email from header (handles "Name <email>" format)
-  const email = extractFirstEmail(rawHeaderValue);
-  if (!email) {
-    console.log(`[gmail-webhook] Could not extract email from header value: ${rawHeaderValue.substring(0, 50)}`);
-    return defaultResult;
-  }
-  
-  // Case-insensitive lookup - DB has unique index on lower(trim(email_address))
-  // but stored value might have original case, so we use ilike for matching
-  const { data: mappings, error } = await supabase
-    .from('tenant_inbound_addresses')
-    .select('tenant_id, tenants!inner(id, name, is_paused, rate_limit_per_minute, rate_limit_per_day)')
-    .eq('is_active', true)
-    .ilike('email_address', email);
-  
-  if (error) {
-    console.error(`[gmail-webhook] Inbound address lookup error:`, error);
-    return defaultResult;
-  }
-  
-  // FAIL-CLOSED: Reject ambiguous routing (should never happen due to unique index)
-  if (mappings && mappings.length > 1) {
-    console.error(`[gmail-webhook] ❌ AMBIGUOUS ROUTING: ${email} matched ${mappings.length} tenants - failing closed`);
-    return defaultResult;
-  }
-  
-  if (mappings && mappings.length === 1) {
-    const mapping = mappings[0];
-    const tenant = mapping.tenants as any;
-    console.log(`[gmail-webhook] ✅ Routed to tenant "${tenant.name}" via custom inbound address ${email}`);
-    return {
-      tenantId: tenant.id,
-      isPaused: tenant.is_paused || false,
-      rateLimitPerMinute: tenant.rate_limit_per_minute || 60,
-      rateLimitPerDay: tenant.rate_limit_per_day || 10000,
-      tenantName: tenant.name,
-    };
-  }
-  
-  return defaultResult;
-}
+// NOTE: getTenantByInboundAddress has been REMOVED as part of alias-only routing.
+// Base email addresses are no longer routed to tenants.
+// Only +alias routing is supported for strict tenant isolation.
 
-// Get tenant ID from gmail alias (fail-closed: no fallback to default)
-// Routing order: 1) +alias match, 2) custom inbound address lookup, 3) quarantine
+// Get tenant ID from gmail alias (ALIAS-ONLY ROUTING)
+// Routing: +alias match ONLY - no fallback to base email addresses
+// This ensures strict tenant isolation for multi-tenant deployments
 async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtractionResult): Promise<TenantInfo> {
-  // STEP 1: Try +alias match first (primary routing method)
+  // ALIAS-ONLY: Only route if we have a valid +alias
   if (gmailAlias) {
     const { data: tenant, error } = await supabase
       .from('tenants')
@@ -200,26 +156,17 @@ async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtra
     console.warn(`[gmail-webhook] ⚠️ No tenant found for alias ${gmailAlias}`);
   }
 
-  // STEP 2: Fallback - lookup by custom inbound address (when no +alias found)
-  // Try headers in priority order: Delivered-To, X-Original-To, Envelope-To, To
+  // NO FALLBACK: Base emails (without +alias) are NOT routed
+  // This prevents cross-tenant leakage in multi-tenant deployments
+  // Emails without a valid +alias will be quarantined
   if (headerResult) {
-    const addressesToTry = [
-      headerResult.deliveredTo,
-      headerResult.xOriginalTo,
-      headerResult.envelopeTo,
-      headerResult.to,
-    ].filter(Boolean) as string[];
-    
-    for (const address of addressesToTry) {
-      const result = await getTenantByInboundAddress(address);
-      if (result.tenantId) {
-        return result;
-      }
+    const baseEmail = extractFirstEmail(headerResult.deliveredTo || headerResult.to || '');
+    if (baseEmail) {
+      console.log(`[gmail-webhook] 🚫 ALIAS-ONLY: Rejecting base email ${baseEmail} - no +alias found`);
     }
   }
 
-  // STEP 3: FAIL-CLOSED - No fallback to default tenant
-  // Return null tenantId to trigger quarantine
+  // FAIL-CLOSED - Return null to trigger quarantine
   return { 
     tenantId: null, 
     isPaused: false,
