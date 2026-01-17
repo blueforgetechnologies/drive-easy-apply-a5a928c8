@@ -37,9 +37,13 @@ export function parseFullCircleTMSEmail(
     }
   }
 
-  // Extract stops from HTML table
+  // Extract stops from HTML table - strict datetime format
   const htmlStopsPattern =
     /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>([A-Z0-9]*)<\/td>\s*<td[^>]*>(USA|CAN)<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?<\/td>/gi;
+
+  // Also match flexible times like ASAP, Direct
+  const htmlStopsFlexiblePattern =
+    /<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(Pick Up|Delivery)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([A-Z]{2})<\/td>\s*<td[^>]*>([A-Z0-9]*)<\/td>\s*<td[^>]*>(USA|CAN)<\/td>\s*<td[^>]*>([^<]+)<\/td>/gi;
 
   const stops: Array<{
     type: string;
@@ -53,6 +57,7 @@ export function parseFullCircleTMSEmail(
   }> = [];
 
   let match;
+  // First try strict datetime pattern
   while ((match = htmlStopsPattern.exec(bodyText)) !== null) {
     stops.push({
       sequence: parseInt(match[1]),
@@ -66,7 +71,31 @@ export function parseFullCircleTMSEmail(
     });
   }
 
-  // Plain text fallback
+  // If no strict matches, try flexible pattern that captures ASAP/Direct times
+  if (stops.length === 0) {
+    while ((match = htmlStopsFlexiblePattern.exec(bodyText)) !== null) {
+      const datetimeRaw = match[7].trim();
+      // Check if it's a valid datetime or instruction-style time
+      const isStrictDatetime = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(datetimeRaw);
+      const isInstructionTime = /^(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i.test(datetimeRaw);
+      const hasDateWithInstruction = /^(\d{4}-\d{2}-\d{2})\s+(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i.test(datetimeRaw);
+      
+      if (isStrictDatetime || isInstructionTime || hasDateWithInstruction) {
+        stops.push({
+          sequence: parseInt(match[1]),
+          type: match[2].toLowerCase(),
+          city: match[3].trim(),
+          state: match[4],
+          zip: match[5] || '',
+          country: match[6],
+          datetime: datetimeRaw,
+          tz: 'EST', // Default timezone for instruction times
+        });
+      }
+    }
+  }
+
+  // Plain text fallback - strict pattern
   if (stops.length === 0) {
     const plainStopsPattern =
       /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+([A-Z0-9]*)\s+(USA|CAN)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)/gi;
@@ -84,14 +113,55 @@ export function parseFullCircleTMSEmail(
     }
   }
 
+  // Plain text fallback - flexible pattern for ASAP/Direct
+  if (stops.length === 0) {
+    const plainStopsFlexiblePattern =
+      /(\d+)\s+(Pick Up|Delivery)\s+([A-Za-z\s]+)\s+([A-Z]{2})\s+([A-Z0-9]*)\s+(USA|CAN)\s+((?:\d{4}-\d{2}-\d{2}\s+)?(?:ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call))/gi;
+    while ((match = plainStopsFlexiblePattern.exec(bodyText)) !== null) {
+      stops.push({
+        sequence: parseInt(match[1]),
+        type: match[2].toLowerCase(),
+        city: match[3].trim(),
+        state: match[4],
+        zip: match[5] || '',
+        country: match[6],
+        datetime: match[7].trim(),
+        tz: 'EST',
+      });
+    }
+  }
+
+  // Helper to parse datetime which may be strict format or instruction-style
+  const parseDatetime = (datetime: string, tz: string): { date: string; time: string } => {
+    const parts = datetime.split(' ');
+    const isInstructionTime = /^(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i.test(datetime);
+    
+    if (isInstructionTime) {
+      // Pure instruction time like "ASAP" - no date
+      return { date: '', time: datetime.trim() };
+    } else if (parts.length >= 2 && /^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
+      // Has date, check if second part is time or instruction
+      const hasNumericTime = /^\d{2}:\d{2}$/.test(parts[1]);
+      if (hasNumericTime) {
+        return { date: parts[0], time: parts[1] + ' ' + tz };
+      } else {
+        // Date + instruction time like "2026-01-18 ASAP"
+        return { date: parts[0], time: parts.slice(1).join(' ') };
+      }
+    }
+    // Default: try to split
+    return { date: parts[0] || '', time: (parts[1] || '') + (tz ? ' ' + tz : '') };
+  };
+
   // Set origin from first pickup
   const firstPickup = stops.find((s) => s.type === 'pick up');
   if (firstPickup) {
     data.origin_city = firstPickup.city;
     data.origin_state = firstPickup.state;
     data.origin_zip = firstPickup.zip;
-    data.pickup_date = firstPickup.datetime.split(' ')[0];
-    data.pickup_time = firstPickup.datetime.split(' ')[1] + ' ' + firstPickup.tz;
+    const parsed = parseDatetime(firstPickup.datetime, firstPickup.tz);
+    data.pickup_date = parsed.date;
+    data.pickup_time = parsed.time;
   }
 
   // Set destination from first delivery
@@ -100,8 +170,9 @@ export function parseFullCircleTMSEmail(
     data.destination_city = firstDelivery.city;
     data.destination_state = firstDelivery.state;
     data.destination_zip = firstDelivery.zip;
-    data.delivery_date = firstDelivery.datetime.split(' ')[0];
-    data.delivery_time = firstDelivery.datetime.split(' ')[1] + ' ' + firstDelivery.tz;
+    const parsed = parseDatetime(firstDelivery.datetime, firstDelivery.tz);
+    data.delivery_date = parsed.date;
+    data.delivery_time = parsed.time;
   }
 
   if (stops.length > 0) {

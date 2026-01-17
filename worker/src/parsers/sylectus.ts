@@ -138,18 +138,42 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Parse pickup datetime
+  // Parse pickup datetime - try strict format first, then flexible
   const pickupSection = bodyText?.match(/Pick-Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (pickupSection) {
     data.pickup_date = pickupSection[1];
     data.pickup_time = pickupSection[2] + (pickupSection[3] ? ' ' + pickupSection[3] : '');
+  } else {
+    // Try to extract date and flexible time (ASAP, Direct, etc.)
+    const pickupDateOnly = bodyText?.match(/Pick-Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    if (pickupDateOnly) {
+      data.pickup_date = pickupDateOnly[1];
+      // Look for instruction-style time after the date
+      const afterDate = bodyText?.substring(bodyText.indexOf(pickupDateOnly[0]) + pickupDateOnly[0].length);
+      const instructionMatch = afterDate?.match(/^\s*(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i);
+      if (instructionMatch) {
+        data.pickup_time = instructionMatch[1].trim();
+      }
+    }
   }
 
-  // Parse delivery datetime
+  // Parse delivery datetime - try strict format first, then flexible
   const deliverySection = bodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (deliverySection) {
     data.delivery_date = deliverySection[1];
     data.delivery_time = deliverySection[2] + (deliverySection[3] ? ' ' + deliverySection[3] : '');
+  } else {
+    // Try to extract date and flexible time (ASAP, Direct, etc.)
+    const deliveryDateOnly = bodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    if (deliveryDateOnly) {
+      data.delivery_date = deliveryDateOnly[1];
+      // Look for instruction-style time after the date
+      const afterDate = bodyText?.substring(bodyText.indexOf(deliveryDateOnly[0]) + deliveryDateOnly[0].length);
+      const instructionMatch = afterDate?.match(/^\s*(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i);
+      if (instructionMatch) {
+        data.delivery_time = instructionMatch[1].trim();
+      }
+    }
   }
 
   // Vehicle type detection
