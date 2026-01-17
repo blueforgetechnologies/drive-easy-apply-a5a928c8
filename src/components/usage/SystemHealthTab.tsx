@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { StuckEmailsAlert } from "@/components/StuckEmailsAlert";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -323,6 +324,9 @@ export function SystemHealthTab() {
           </Button>
         </div>
       </div>
+
+      {/* Stuck Emails Warning */}
+      <StuckEmailsAlert />
 
       {/* VPS Worker Status */}
       <Card className="border-primary/30">
