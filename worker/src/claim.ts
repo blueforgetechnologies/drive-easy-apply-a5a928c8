@@ -84,8 +84,7 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
     .from('email_queue')
     .update({ 
       status: 'processing', 
-      processing_started_at: new Date().toISOString(),
-      attempts: supabase.raw ? undefined : undefined // Will increment in processInboundEmail
+      processing_started_at: new Date().toISOString()
     })
     .in('id', ids);
 
