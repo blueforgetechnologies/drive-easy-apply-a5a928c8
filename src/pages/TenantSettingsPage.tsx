@@ -120,8 +120,10 @@ export default function TenantSettingsPage() {
     return defaultEnabled;
   };
 
-  const hasOverride = (flagId: string): boolean => {
-    return tenantFeatureFlags.some(tf => tf.feature_flag_id === flagId);
+  const hasOverride = (flagId: string, defaultEnabled: boolean): boolean => {
+    const override = tenantFeatureFlags.find(tf => tf.feature_flag_id === flagId);
+    // Only show "Override" if the tenant's value differs from the default
+    return override ? override.enabled !== defaultEnabled : false;
   };
 
   const [updatingFlag, setUpdatingFlag] = useState<string | null>(null);
@@ -444,7 +446,7 @@ export default function TenantSettingsPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {featureFlags.map((flag) => {
               const isEnabled = getTenantFlagEnabled(flag.id, flag.default_enabled);
-              const isOverridden = hasOverride(flag.id);
+              const isOverridden = hasOverride(flag.id, flag.default_enabled);
               const isUpdating = updatingFlag === flag.id;
               
               return (
