@@ -15,7 +15,7 @@ import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
 import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X, Download, Upload } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-import { exportToExcel } from "@/lib/excel-utils";
+import { exportToExcel, mapExcelRowToEntity } from "@/lib/excel-utils";
 import { ExcelImportDialog } from "@/components/ExcelImportDialog";
 interface Application {
   id: string;
@@ -451,8 +451,12 @@ export default function DriversTab() {
 
     for (const item of data) {
       try {
-        const firstName = normalizeValue(item['personal_info.firstName'] || item.firstName || item['First Name']);
-        const lastName = normalizeValue(item['personal_info.lastName'] || item.lastName || item['Last Name']);
+        // Use mapExcelRowToEntity to properly map exported headers to fields
+        const mapped = mapExcelRowToEntity(item, "drivers");
+        
+        // Get names from mapped data or raw item
+        const firstName = normalizeValue(mapped.personal_info?.firstName || item['First Name'] || item.firstName || "");
+        const lastName = normalizeValue(mapped.personal_info?.lastName || item['Last Name'] || item.lastName || "");
         
         if (!firstName && !lastName) {
           errors.push(`Missing name for row`);
@@ -462,14 +466,14 @@ export default function DriversTab() {
         const personalInfo = {
           firstName: firstName,
           lastName: lastName,
-          email: normalizeValue(item['personal_info.email'] || item.email || item['Email']),
-          phone: normalizeValue(item.cell_phone || item['Phone']),
+          email: normalizeValue(mapped.personal_info?.email || item['Email'] || item.email || ""),
+          phone: normalizeValue(mapped.cell_phone || item['Phone'] || item.cell_phone || ""),
         };
 
         const licenseInfo = {
-          licenseNumber: normalizeValue(item['license_info.licenseNumber'] || item['License Number']),
-          licenseState: normalizeValue(item['license_info.licenseState'] || item['License State']),
-          licenseExpiry: normalizeValue(item['license_info.licenseExpiry'] || item['License Expiry']),
+          licenseNumber: normalizeValue(mapped.license_info?.licenseNumber || item['License Number'] || ""),
+          licenseState: normalizeValue(mapped.license_info?.licenseState || item['License State'] || ""),
+          licenseExpiry: normalizeValue(mapped.license_info?.licenseExpiry || item['License Expiry'] || ""),
         };
 
         // Check for existing driver by name
@@ -481,18 +485,18 @@ export default function DriversTab() {
           const updateData: any = {
             personal_info: personalInfo,
             license_info: licenseInfo,
-            driver_status: normalizeValue(item.driver_status || item['Status']) || undefined,
-            cell_phone: normalizeValue(item.cell_phone || item['Phone']) || undefined,
-            driver_address: normalizeValue(item.driver_address || item['Address']) || undefined,
-            medical_card_expiry: normalizeValue(item.medical_card_expiry || item['Medical Card Expiry']) || null,
-            hired_date: normalizeValue(item.hired_date || item['Hired Date']) || null,
-            pay_method: normalizeValue(item.pay_method || item['Pay Method']) || undefined,
-            base_salary: item.base_salary ? parseFloat(String(item.base_salary)) : undefined,
-            hourly_rate: item.hourly_rate ? parseFloat(String(item.hourly_rate)) : undefined,
-            pay_per_mile: item.pay_per_mile ? parseFloat(String(item.pay_per_mile)) : undefined,
-            bank_name: normalizeValue(item.bank_name || item['Bank Name']) || undefined,
-            routing_number: normalizeValue(item.routing_number || item['Routing Number']) || undefined,
-            checking_number: normalizeValue(item.checking_number || item['Account Number']) || undefined,
+            driver_status: normalizeValue(mapped.driver_status || item['Status'] || "") || undefined,
+            cell_phone: normalizeValue(mapped.cell_phone || item['Phone'] || "") || undefined,
+            driver_address: normalizeValue(mapped.driver_address || item['Address'] || "") || undefined,
+            medical_card_expiry: normalizeValue(mapped.medical_card_expiry || item['Medical Card Expiry'] || "") || null,
+            hired_date: normalizeValue(mapped.hired_date || item['Hired Date'] || "") || null,
+            pay_method: normalizeValue(mapped.pay_method || item['Pay Method'] || "") || undefined,
+            base_salary: mapped.base_salary ? parseFloat(String(mapped.base_salary)) : undefined,
+            hourly_rate: mapped.hourly_rate ? parseFloat(String(mapped.hourly_rate)) : undefined,
+            pay_per_mile: mapped.pay_per_mile ? parseFloat(String(mapped.pay_per_mile)) : undefined,
+            bank_name: normalizeValue(mapped.bank_name || item['Bank Name'] || "") || undefined,
+            routing_number: normalizeValue(mapped.routing_number || item['Routing Number'] || "") || undefined,
+            checking_number: normalizeValue(mapped.checking_number || item['Account Number'] || "") || undefined,
           };
 
           // Remove undefined values
@@ -511,18 +515,18 @@ export default function DriversTab() {
           const rowData: any = {
             personal_info: personalInfo,
             license_info: licenseInfo,
-            driver_status: normalizeValue(item.driver_status || item['Status']) || "active",
-            cell_phone: normalizeValue(item.cell_phone || item['Phone']),
-            driver_address: normalizeValue(item.driver_address || item['Address']),
-            medical_card_expiry: normalizeValue(item.medical_card_expiry || item['Medical Card Expiry']) || null,
-            hired_date: normalizeValue(item.hired_date || item['Hired Date']) || null,
-            pay_method: normalizeValue(item.pay_method || item['Pay Method']) || null,
-            base_salary: item.base_salary ? parseFloat(String(item.base_salary)) : null,
-            hourly_rate: item.hourly_rate ? parseFloat(String(item.hourly_rate)) : null,
-            pay_per_mile: item.pay_per_mile ? parseFloat(String(item.pay_per_mile)) : null,
-            bank_name: normalizeValue(item.bank_name || item['Bank Name']) || null,
-            routing_number: normalizeValue(item.routing_number || item['Routing Number']) || null,
-            checking_number: normalizeValue(item.checking_number || item['Account Number']) || null,
+            driver_status: normalizeValue(mapped.driver_status || item['Status'] || "") || "active",
+            cell_phone: normalizeValue(mapped.cell_phone || item['Phone'] || ""),
+            driver_address: normalizeValue(mapped.driver_address || item['Address'] || ""),
+            medical_card_expiry: normalizeValue(mapped.medical_card_expiry || item['Medical Card Expiry'] || "") || null,
+            hired_date: normalizeValue(mapped.hired_date || item['Hired Date'] || "") || null,
+            pay_method: normalizeValue(mapped.pay_method || item['Pay Method'] || "") || null,
+            base_salary: mapped.base_salary ? parseFloat(String(mapped.base_salary)) : null,
+            hourly_rate: mapped.hourly_rate ? parseFloat(String(mapped.hourly_rate)) : null,
+            pay_per_mile: mapped.pay_per_mile ? parseFloat(String(mapped.pay_per_mile)) : null,
+            bank_name: normalizeValue(mapped.bank_name || item['Bank Name'] || "") || null,
+            routing_number: normalizeValue(mapped.routing_number || item['Routing Number'] || "") || null,
+            checking_number: normalizeValue(mapped.checking_number || item['Account Number'] || "") || null,
             status: "submitted",
             contractor_agreement: { signed: false },
             direct_deposit: { enrolled: false },
