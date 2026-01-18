@@ -122,6 +122,16 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
     return `${dispatcher.first_name} ${dispatcher.last_name}`;
   };
 
+  // Get carrier name - carrier field might be an ID or a name
+  const getCarrierName = (carrier: string | null) => {
+    if (!carrier) return "";
+    // Check if it's a UUID (carrier ID)
+    const carrierById = carriers.find(c => c.id === carrier);
+    if (carrierById) return carrierById.name;
+    // Otherwise it's already a name
+    return carrier;
+  };
+
   const handleDispatcherChange = async (vehicleId: string, newDispatcherId: string) => {
     const newValue = newDispatcherId === "unassigned" ? null : newDispatcherId;
     
@@ -247,7 +257,7 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
                       </div>
                     </TableCell>
                     <TableCell className="text-sm py-2">
-                      {vehicle.carrier || "—"}
+                      {getCarrierName(vehicle.carrier) || "—"}
                     </TableCell>
                     <TableCell className="py-2">
                       <Select
