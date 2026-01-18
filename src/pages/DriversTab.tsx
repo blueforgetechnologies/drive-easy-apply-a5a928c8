@@ -58,6 +58,7 @@ export default function DriversTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const ROWS_PER_PAGE = 50;
   const { tenantId, shouldFilter } = useTenantFilter();
 
@@ -409,6 +410,98 @@ export default function DriversTab() {
     setSelectedDrivers(new Set());
   }, [filter, searchQuery]);
 
+  // Export drivers to Excel
+  const handleExportDrivers = () => {
+    if (applications.length === 0) {
+      toast.error("No drivers to export");
+      return;
+    }
+    exportToExcel(applications, "drivers", `drivers_export_${format(new Date(), "yyyy-MM-dd")}`);
+    toast.success(`Exported ${applications.length} drivers`);
+  };
+
+  // Import drivers from Excel
+  const handleImportDrivers = async (data: any[]): Promise<{ success: number; errors: string[] }> => {
+    if (!tenantId) {
+      return { success: 0, errors: ["No tenant selected"] };
+    }
+
+    let success = 0;
+    const errors: string[] = [];
+
+    const normalizeValue = (val: any) => String(val || "").trim();
+
+    for (const item of data) {
+      try {
+        const firstName = normalizeValue(item['personal_info.firstName'] || item.firstName || item['First Name']);
+        const lastName = normalizeValue(item['personal_info.lastName'] || item.lastName || item['Last Name']);
+        
+        if (!firstName && !lastName) {
+          errors.push(`Missing name for row`);
+          continue;
+        }
+
+        const personalInfo = {
+          firstName: firstName,
+          lastName: lastName,
+          email: normalizeValue(item['personal_info.email'] || item.email || item['Email']),
+          phone: normalizeValue(item.cell_phone || item['Phone']),
+        };
+
+        const licenseInfo = {
+          licenseNumber: normalizeValue(item['license_info.licenseNumber'] || item['License Number']),
+          licenseState: normalizeValue(item['license_info.licenseState'] || item['License State']),
+          licenseExpiry: normalizeValue(item['license_info.licenseExpiry'] || item['License Expiry']),
+        };
+
+        const rowData: any = {
+          personal_info: personalInfo,
+          license_info: licenseInfo,
+          driver_status: normalizeValue(item.driver_status || item['Status']) || "active",
+          cell_phone: normalizeValue(item.cell_phone || item['Phone']),
+          driver_address: normalizeValue(item.driver_address || item['Address']),
+          medical_card_expiry: normalizeValue(item.medical_card_expiry || item['Medical Card Expiry']) || null,
+          hired_date: normalizeValue(item.hired_date || item['Hired Date']) || null,
+          pay_method: normalizeValue(item.pay_method || item['Pay Method']) || null,
+          base_salary: item.base_salary ? parseFloat(String(item.base_salary)) : null,
+          hourly_rate: item.hourly_rate ? parseFloat(String(item.hourly_rate)) : null,
+          pay_per_mile: item.pay_per_mile ? parseFloat(String(item.pay_per_mile)) : null,
+          bank_name: normalizeValue(item.bank_name || item['Bank Name']) || null,
+          routing_number: normalizeValue(item.routing_number || item['Routing Number']) || null,
+          checking_number: normalizeValue(item.checking_number || item['Account Number']) || null,
+          status: "submitted",
+          contractor_agreement: {},
+          direct_deposit: {},
+          document_upload: {},
+          driver_dispatch_sheet: {},
+          driving_history: {},
+          drug_alcohol_policy: {},
+          employment_history: {},
+          no_rider_policy: {},
+          payroll_policy: {},
+          safe_driving_policy: {},
+          why_hire_you: {},
+          tenant_id: tenantId,
+        };
+
+        const { error } = await supabase.from("applications").insert(rowData);
+        if (error) {
+          errors.push(`${firstName} ${lastName}: ${error.message}`);
+        } else {
+          success++;
+        }
+      } catch (err: any) {
+        errors.push(`Row error: ${err.message}`);
+      }
+    }
+
+    if (success > 0) {
+      loadData();
+    }
+
+    return { success, errors };
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -419,6 +512,24 @@ export default function DriversTab() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold">Driver Management</h2>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={handleExportDrivers}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Import
+          </Button>
           <AddDriverDialog onDriverAdded={loadData} />
           <InviteDriverDialog />
         </div>
@@ -843,6 +954,15 @@ export default function DriversTab() {
       )}
 
       {filter === "active" && <DraftApplications />}
+
+      {/* Import Dialog */}
+      <ExcelImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        entityType="drivers"
+        entityLabel="Drivers"
+        onImport={handleImportDrivers}
+      />
     </div>
   );
 }
