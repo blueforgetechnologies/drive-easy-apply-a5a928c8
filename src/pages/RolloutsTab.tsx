@@ -735,16 +735,25 @@ export default function RolloutsTab() {
             Configure which features are enabled for each release channel
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-[280px] min-w-[280px]">Feature</TableHead>
-                <TableHead className="w-[140px] min-w-[140px] text-center">Global Default</TableHead>
-                <TableHead className="w-[120px] min-w-[120px] text-center">Internal</TableHead>
-                <TableHead className="w-[120px] min-w-[120px] text-center">Pilot</TableHead>
-                <TableHead className="w-[120px] min-w-[120px] text-center">General</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[40%] pl-4">Feature</TableHead>
+                <TableHead className="w-[12%] text-center">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
+                      Global
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-[200px]">Fallback when no channel or tenant override is set. Usually kept OFF for new features.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
+                <TableHead className="w-[12%] text-center">Internal</TableHead>
+                <TableHead className="w-[12%] text-center">Pilot</TableHead>
+                <TableHead className="w-[12%] text-center">General</TableHead>
+                <TableHead className="w-[40px] pr-2"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -756,41 +765,31 @@ export default function RolloutsTab() {
                 
                 return (
                   <Fragment key={flag.id}>
-                    <TableRow className={isExpanded ? 'bg-muted/50' : ''}>
-                      <TableCell className="w-[280px] min-w-[280px]">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{flag.name}</p>
+                    <TableRow className={`${isExpanded ? 'bg-muted/50' : ''} group`}>
+                      <TableCell className="pl-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-sm truncate">{flag.name}</p>
                               {flag.is_killswitch && (
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Badge variant="destructive" className="text-xs">Kill</Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Killswitch: Can globally disable this feature</TooltipContent>
-                                </Tooltip>
+                                <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">Kill</Badge>
+                              )}
+                              {hasOverrides && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-purple-500 text-purple-600">T</Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">{flag.key}</p>
-                            {flag.description && (
-                              <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
-                                {flag.description}
-                              </p>
-                            )}
+                            <p className="text-[11px] text-muted-foreground truncate">{flag.key}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="w-[140px] min-w-[140px] text-center">
-                        <div className="flex flex-col items-center gap-1">
+                      <TableCell className="text-center py-2">
+                        <div className="flex flex-col items-center">
                           <Switch
                             checked={flag.default_enabled}
                             onCheckedChange={() => toggleGlobalDefault(flag.id, flag.default_enabled)}
                             disabled={isUpdatingGlobal}
-                            className="data-[state=checked]:bg-green-600 transition-all duration-200"
+                            className="data-[state=checked]:bg-green-600 transition-all duration-200 scale-90"
                           />
-                          <span className={`text-[10px] transition-colors duration-200 ${flag.default_enabled ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
-                            {flag.default_enabled ? 'ON' : 'OFF'}
-                          </span>
                         </div>
                       </TableCell>
                       {channels.map(channel => {
@@ -799,26 +798,26 @@ export default function RolloutsTab() {
                         const isUpdating = updating === `${flag.id}-${channel}`;
                         
                         return (
-                          <TableCell key={channel} className="w-[120px] min-w-[120px] text-center">
-                            <div className="flex flex-col items-center gap-1">
+                          <TableCell key={channel} className="text-center py-2">
+                            <div className="flex flex-col items-center">
                               <Switch
                                 checked={effective}
                                 onCheckedChange={() => toggleChannelDefault(flag.id, channel, effective)}
                                 disabled={isUpdating || (flag.is_killswitch && !flag.default_enabled)}
-                                className="data-[state=checked]:bg-green-600 transition-all duration-200"
+                                className="data-[state=checked]:bg-green-600 transition-all duration-200 scale-90"
                               />
                               {channelDefault !== null && (
-                                <span className={`text-[10px] transition-colors duration-200 ${effective ? 'text-green-600' : 'text-muted-foreground'}`}>Override</span>
+                                <span className="text-[9px] text-muted-foreground mt-0.5">override</span>
                               )}
                             </div>
                           </TableCell>
                         );
                       })}
-                      <TableCell className="w-[50px]">
+                      <TableCell className="pr-2 py-2">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8"
+                          className="h-7 w-7 opacity-50 group-hover:opacity-100 transition-opacity"
                           onClick={() => toggleFlagExpanded(flag.id)}
                         >
                           {isExpanded ? (
@@ -831,7 +830,7 @@ export default function RolloutsTab() {
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${flag.id}-details`} className="bg-muted/30 animate-fade-in">
-                        <TableCell colSpan={6} className="py-4">
+                        <TableCell colSpan={6} className="py-3 px-4">
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* LEFT COLUMN - Educational Content */}
                             <div className="space-y-4">
