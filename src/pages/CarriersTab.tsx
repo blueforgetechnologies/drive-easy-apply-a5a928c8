@@ -216,6 +216,107 @@ export default function CarriersTab() {
     }
   };
 
+  // Import carriers from Excel/CSV
+  const handleImportCarriers = async (data: any[]): Promise<{ success: number; errors: string[] }> => {
+    if (!tenantId) {
+      return { success: 0, errors: ["No tenant selected"] };
+    }
+
+    let success = 0;
+    const errors: string[] = [];
+
+    const normalizeName = (name: any) => String(name || "").trim().toLowerCase();
+    const normalizeValue = (val: any) => String(val || "").trim();
+
+    // Load existing carriers for upsert matching
+    const { data: existingCarriers, error: existingError } = await supabase
+      .from("carriers")
+      .select("id, name, mc_number, dot_number")
+      .eq("tenant_id", tenantId);
+
+    if (existingError) {
+      errors.push(`Failed to load existing carriers: ${existingError.message}`);
+    }
+
+    const existingByName = new Map<string, string>();
+    const existingByMC = new Map<string, string>();
+    const existingByDOT = new Map<string, string>();
+    
+    (existingCarriers || []).forEach((c: any) => {
+      const name = normalizeName(c.name);
+      const mc = normalizeValue(c.mc_number);
+      const dot = normalizeValue(c.dot_number);
+      if (name) existingByName.set(name, c.id);
+      if (mc) existingByMC.set(mc, c.id);
+      if (dot) existingByDOT.set(dot, c.id);
+    });
+
+    for (const item of data) {
+      try {
+        const name = normalizeValue(item.name);
+        if (!name) {
+          errors.push(`Missing Name for row`);
+          continue;
+        }
+
+        const rowData: any = {
+          name: name,
+          status: normalizeValue(item.status) || "active",
+          mc_number: normalizeValue(item.mc_number) || null,
+          dot_number: normalizeValue(item.dot_number) || null,
+          contact_name: normalizeValue(item.contact_name) || null,
+          email: normalizeValue(item.email) || null,
+          phone: normalizeValue(item.phone) || null,
+          address: normalizeValue(item.address) || null,
+          safer_status: normalizeValue(item.safer_status) || null,
+          safety_rating: normalizeValue(item.safety_rating) || null,
+          dispatch_name: normalizeValue(item.dispatch_name) || null,
+          dispatch_phone: normalizeValue(item.dispatch_phone) || null,
+          dispatch_email: normalizeValue(item.dispatch_email) || null,
+          after_hours_phone: normalizeValue(item.after_hours_phone) || null,
+          emergency_contact_name: normalizeValue(item.emergency_contact_name) || null,
+          emergency_contact_cell_phone: normalizeValue(item.emergency_contact_cell_phone) || null,
+          show_in_fleet_financials: item.show_in_fleet_financials === true || item.show_in_fleet_financials === "Yes",
+          tenant_id: tenantId,
+        };
+
+        // Find existing carrier by MC#, DOT#, or name
+        const mc = normalizeValue(item.mc_number);
+        const dot = normalizeValue(item.dot_number);
+        const existingId = (mc && existingByMC.get(mc)) || 
+                          (dot && existingByDOT.get(dot)) || 
+                          existingByName.get(normalizeName(name));
+
+        if (existingId) {
+          // Update existing carrier
+          delete rowData.tenant_id; // Don't update tenant_id
+          const { error } = await supabase.from("carriers").update(rowData).eq("id", existingId);
+          if (error) {
+            errors.push(`${name}: ${error.message}`);
+          } else {
+            success++;
+          }
+        } else {
+          // Insert new carrier
+          const { error } = await supabase.from("carriers").insert(rowData);
+          if (error) {
+            errors.push(`${name}: ${error.message}`);
+          } else {
+            success++;
+          }
+        }
+      } catch (err: any) {
+        errors.push(`Row error: ${err.message}`);
+      }
+    }
+
+    if (success > 0) {
+      loadData();
+    }
+
+    return { success, errors };
+  };
+
   const toggleSelectAll = () => {
     if (selectedCarriers.length === filteredCarriers.length) {
       setSelectedCarriers([]);
@@ -794,6 +895,15 @@ export default function CarriersTab() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Import Dialog */}
+      <ExcelImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        entityType="carriers"
+        entityLabel="Carriers"
+        onImport={handleImportCarriers}
+      />
     </div>
   );
 }
