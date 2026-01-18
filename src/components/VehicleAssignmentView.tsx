@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface VehicleAssignmentViewProps {
   vehicles: any[];
@@ -15,6 +16,7 @@ interface VehicleAssignmentViewProps {
 }
 
 export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: VehicleAssignmentViewProps) {
+  const { tenantId, shouldFilter } = useTenantFilter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "unassigned" | "active" | "inactive">("all");
   const [selectedCarrier, setSelectedCarrier] = useState<string>("all");
@@ -30,15 +32,21 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
   useEffect(() => {
     loadCarriers();
     loadDispatchers();
-  }, []);
+  }, [tenantId, shouldFilter]);
 
   const loadCarriers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("carriers")
         .select("id, name")
         .eq("status", "active")
         .order("name");
+
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setCarriers(data || []);
@@ -49,11 +57,17 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
 
   const loadDispatchers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("dispatchers")
         .select("*")
         .eq("status", "active")
         .order("first_name");
+
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setDispatchers(data || []);
