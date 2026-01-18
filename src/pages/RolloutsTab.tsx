@@ -831,154 +831,148 @@ export default function RolloutsTab() {
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${flag.id}-details`} className="bg-muted/30 animate-fade-in">
-                        <TableCell colSpan={6} className="py-6">
-                          <div className="space-y-6">
-                            {/* Feature Description Section */}
-                            <div className="bg-background/50 rounded-lg p-4 border">
-                              <div className="flex items-start gap-3">
-                                <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                <div>
-                                  <h4 className="font-medium text-sm mb-1">About This Feature</h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    {flag.description || 'This feature controls specific functionality within the application. When enabled, users in the applicable release channels will have access to this feature.'}
-                                  </p>
-                                  <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                                    <span className="font-mono bg-muted px-2 py-1 rounded">{flag.key}</span>
-                                    {flag.is_killswitch && (
-                                      <Badge variant="destructive" className="text-xs">Killswitch Enabled</Badge>
-                                    )}
+                        <TableCell colSpan={6} className="py-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* LEFT COLUMN - Educational Content */}
+                            <div className="space-y-4">
+                              {/* About This Feature */}
+                              <div className="bg-background/50 rounded-lg p-4 border h-full">
+                                <div className="flex items-start gap-3">
+                                  <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                  <div>
+                                    <h4 className="font-medium text-sm mb-1">About This Feature</h4>
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                      {flag.description || 'This feature controls specific functionality within the application. When enabled, users in the applicable release channels will have access to this feature.'}
+                                    </p>
+                                    <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                                      <span className="font-mono bg-muted px-2 py-1 rounded">{flag.key}</span>
+                                      {flag.is_killswitch && (
+                                        <Badge variant="destructive" className="text-xs">Killswitch</Badge>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Compact Resolution Priority */}
+                                    <div className="mt-4 pt-3 border-t">
+                                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                                        <GitBranch className="h-3 w-3" /> Resolution Priority
+                                      </p>
+                                      <div className="flex flex-wrap gap-1.5 text-xs">
+                                        <span className="bg-red-500/10 text-red-600 px-2 py-0.5 rounded border border-red-500/20">1. Killswitch</span>
+                                        <span className="text-muted-foreground">→</span>
+                                        <span className="bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded border border-purple-500/20">2. Tenant</span>
+                                        <span className="text-muted-foreground">→</span>
+                                        <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded border border-blue-500/20">3. Channel</span>
+                                        <span className="text-muted-foreground">→</span>
+                                        <span className="bg-gray-500/10 px-2 py-0.5 rounded border border-gray-500/20">4. Global</span>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
 
-                            {/* How Feature Flags Work */}
-                            <div className="bg-background/50 rounded-lg p-4 border">
-                              <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                                <GitBranch className="h-4 w-4 text-primary" />
-                                How Feature Resolution Works
-                              </h4>
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                                <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/20">
-                                  <p className="font-semibold text-red-600 mb-1">1. Killswitch</p>
-                                  <p className="text-muted-foreground">If killswitch is OFF, feature is disabled for everyone regardless of other settings.</p>
-                                </div>
-                                <div className="bg-purple-500/10 rounded-lg p-3 border border-purple-500/20">
-                                  <p className="font-semibold text-purple-600 mb-1">2. Tenant Override</p>
-                                  <p className="text-muted-foreground">Specific tenant settings override channel defaults. Use for individual customer needs.</p>
-                                </div>
-                                <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
-                                  <p className="font-semibold text-blue-600 mb-1">3. Channel Default</p>
-                                  <p className="text-muted-foreground">Settings per release channel (Internal → Pilot → General). Controls rollout stages.</p>
-                                </div>
-                                <div className="bg-gray-500/10 rounded-lg p-3 border border-gray-500/20">
-                                  <p className="font-semibold text-foreground mb-1">4. Global Default</p>
-                                  <p className="text-muted-foreground">Fallback when no channel or tenant settings exist. Usually OFF for new features.</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Channel Defaults Section */}
-                            <div className="bg-background/50 rounded-lg p-4 border">
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <h4 className="font-medium text-sm flex items-center gap-2">
+                            {/* RIGHT COLUMN - Controls */}
+                            <div className="space-y-4">
+                              {/* Channel Defaults */}
+                              <div className="bg-background/50 rounded-lg p-4 border">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
                                     <Zap className="h-4 w-4 text-primary" />
-                                    Channel Defaults
-                                  </h4>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Override the global default for specific release channels. Use this to gradually roll out features.
-                                  </p>
-                                </div>
-                                {hasChannelDefaults && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => clearAllChannelDefaults(flag.id)}
-                                    disabled={updating?.startsWith('clear-')}
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-1" />
-                                    Clear All
-                                  </Button>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {['internal', 'pilot', 'general'].map(channel => {
-                                  const channelDefault = getChannelDefault(flag.id, channel);
-                                  if (channelDefault === null) return null;
-                                  return (
-                                    <Badge 
-                                      key={channel}
-                                      variant={channelDefault ? 'default' : 'secondary'}
-                                      className={`capitalize ${channelDefault ? 'bg-green-600' : ''}`}
+                                    <h4 className="font-medium text-sm">Channel Defaults</h4>
+                                  </div>
+                                  {hasChannelDefaults && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={() => clearAllChannelDefaults(flag.id)}
+                                      disabled={updating?.startsWith('clear-')}
                                     >
-                                      {channel}: {channelDefault ? 'ON' : 'OFF'}
-                                    </Badge>
-                                  );
-                                })}
-                                {!hasChannelDefaults && (
-                                  <span className="text-xs text-muted-foreground italic">
-                                    No channel overrides set — using global default ({flag.default_enabled ? 'ON' : 'OFF'})
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Tenant Overrides Section */}
-                            <div className="bg-background/50 rounded-lg p-4 border">
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <h4 className="font-medium text-sm flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-primary" />
-                                    Tenant Overrides
-                                  </h4>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Force enable or disable this feature for specific tenants, regardless of their channel settings.
-                                  </p>
+                                      <Trash2 className="h-3 w-3 mr-1" />
+                                      Clear
+                                    </Button>
+                                  )}
                                 </div>
-                                {hasOverrides && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => clearAllTenantOverrides(flag.id)}
-                                    disabled={updating?.startsWith('clear-')}
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-1" />
-                                    Clear All
-                                  </Button>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {data.tenants.map(tenant => {
-                                  const override = getTenantOverride(flag.id, tenant.id);
-                                  const isUpdating = updating === `${flag.id}-${tenant.id}` || updating === `${flag.id}-${tenant.id}-remove`;
-                                  
-                                  if (override === null) return null;
-                                  
-                                  return (
-                                    <Badge 
-                                      key={tenant.id} 
-                                      variant={override ? 'default' : 'secondary'}
-                                      className={`gap-1 pr-1 ${override ? 'bg-green-600' : ''}`}
-                                    >
-                                      {tenant.name}: {override ? 'ON' : 'OFF'}
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-4 w-4 ml-1 hover:bg-destructive/20"
-                                        onClick={() => removeTenantOverride(flag.id, tenant.id)}
-                                        disabled={isUpdating}
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  Override global default per release channel for staged rollouts.
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {['internal', 'pilot', 'general'].map(channel => {
+                                    const channelDefault = getChannelDefault(flag.id, channel);
+                                    if (channelDefault === null) return null;
+                                    return (
+                                      <Badge 
+                                        key={channel}
+                                        variant={channelDefault ? 'default' : 'secondary'}
+                                        className={`capitalize text-xs ${channelDefault ? 'bg-green-600' : ''}`}
                                       >
-                                        <X className="h-3 w-3" />
-                                      </Button>
-                                    </Badge>
-                                  );
-                                })}
-                                {!hasOverrides && (
-                                  <span className="text-xs text-muted-foreground italic">
-                                    No tenant overrides — all tenants follow their channel settings
-                                  </span>
-                                )}
+                                        {channel}: {channelDefault ? 'ON' : 'OFF'}
+                                      </Badge>
+                                    );
+                                  })}
+                                  {!hasChannelDefaults && (
+                                    <span className="text-xs text-muted-foreground italic">
+                                      Using global default ({flag.default_enabled ? 'ON' : 'OFF'})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Tenant Overrides */}
+                              <div className="bg-background/50 rounded-lg p-4 border">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-primary" />
+                                    <h4 className="font-medium text-sm">Tenant Overrides</h4>
+                                  </div>
+                                  {hasOverrides && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={() => clearAllTenantOverrides(flag.id)}
+                                      disabled={updating?.startsWith('clear-')}
+                                    >
+                                      <Trash2 className="h-3 w-3 mr-1" />
+                                      Clear
+                                    </Button>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  Force enable/disable for specific tenants, ignoring channel settings.
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {data.tenants.map(tenant => {
+                                    const override = getTenantOverride(flag.id, tenant.id);
+                                    const isUpdating = updating === `${flag.id}-${tenant.id}` || updating === `${flag.id}-${tenant.id}-remove`;
+                                    
+                                    if (override === null) return null;
+                                    
+                                    return (
+                                      <Badge 
+                                        key={tenant.id} 
+                                        variant={override ? 'default' : 'secondary'}
+                                        className={`gap-1 pr-1 text-xs ${override ? 'bg-green-600' : ''}`}
+                                      >
+                                        {tenant.name}: {override ? 'ON' : 'OFF'}
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-4 w-4 ml-0.5 hover:bg-destructive/20"
+                                          onClick={() => removeTenantOverride(flag.id, tenant.id)}
+                                          disabled={isUpdating}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </Badge>
+                                    );
+                                  })}
+                                  {!hasOverrides && (
+                                    <span className="text-xs text-muted-foreground italic">
+                                      All tenants follow channel settings
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
