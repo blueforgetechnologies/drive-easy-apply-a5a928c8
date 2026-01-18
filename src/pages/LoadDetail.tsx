@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import DOMPurify from 'dompurify';
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -774,7 +775,14 @@ export default function LoadDetail() {
                     {originalEmail.body_html ? (
                       <div 
                         className="bg-white rounded-lg p-4 border max-h-[500px] overflow-y-auto"
-                        dangerouslySetInnerHTML={{ __html: originalEmail.body_html }}
+                        dangerouslySetInnerHTML={{ 
+                          __html: DOMPurify.sanitize(originalEmail.body_html, {
+                            ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'ul', 'ol', 'li', 'img', 'hr', 'pre', 'code', 'blockquote'],
+                            ALLOWED_ATTR: ['href', 'style', 'class', 'src', 'alt', 'width', 'height', 'target', 'rel'],
+                            FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
+                            FORBID_ATTR: ['onclick', 'onerror', 'onload', 'onmouseover', 'onfocus', 'onblur']
+                          })
+                        }}
                       />
                     ) : (
                       <div className="bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
