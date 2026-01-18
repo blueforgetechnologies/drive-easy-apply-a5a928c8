@@ -1736,6 +1736,53 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          feature_flag_key: string
+          feature_id: string
+          id: string
+          notes: string | null
+          promoted_at: string | null
+          scaffold_prompt: string | null
+          status: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          feature_flag_key: string
+          feature_id: string
+          id?: string
+          notes?: string | null
+          promoted_at?: string | null
+          scaffold_prompt?: string | null
+          status?: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          feature_flag_key?: string
+          feature_id?: string
+          id?: string
+          notes?: string | null
+          promoted_at?: string | null
+          scaffold_prompt?: string | null
+          status?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_versions_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "versionable_features"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gcp_usage_baselines: {
         Row: {
           created_at: string
@@ -6081,6 +6128,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      versionable_features: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_key: string
+          feature_name: string
+          id: string
+          isolation_notes: string | null
+          updated_at: string
+          v1_files: Json
+          v2_files_pattern: Json | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          id?: string
+          isolation_notes?: string | null
+          updated_at?: string
+          v1_files?: Json
+          v2_files_pattern?: Json | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          id?: string
+          isolation_notes?: string | null
+          updated_at?: string
+          v1_files?: Json
+          v2_files_pattern?: Json | null
+        }
+        Relationships: []
       }
       worker_config: {
         Row: {
