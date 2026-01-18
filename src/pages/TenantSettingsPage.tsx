@@ -72,7 +72,7 @@ export default function TenantSettingsPage() {
   const [rateLimitMinute, setRateLimitMinute] = useState(60);
   const [rateLimitDay, setRateLimitDay] = useState(10000);
   const [isPaused, setIsPaused] = useState(false);
-  const [pendingFlagChanges, setPendingFlagChanges] = useState<Map<string, boolean>>(new Map());
+  
 
   useEffect(() => {
     if (tenantId) {
@@ -117,23 +117,57 @@ export default function TenantSettingsPage() {
   const getTenantFlagEnabled = (flagId: string, defaultEnabled: boolean): boolean => {
     const override = tenantFeatureFlags.find(tf => tf.feature_flag_id === flagId);
     if (override) return override.enabled;
-    
-    // Check pending changes
-    if (pendingFlagChanges.has(flagId)) {
-      return pendingFlagChanges.get(flagId)!;
-    }
-    
     return defaultEnabled;
   };
 
   const hasOverride = (flagId: string): boolean => {
-    return tenantFeatureFlags.some(tf => tf.feature_flag_id === flagId) || pendingFlagChanges.has(flagId);
+    return tenantFeatureFlags.some(tf => tf.feature_flag_id === flagId);
   };
 
-  const handleToggleFlag = (flagId: string, currentEnabled: boolean) => {
-    const newChanges = new Map(pendingFlagChanges);
-    newChanges.set(flagId, !currentEnabled);
-    setPendingFlagChanges(newChanges);
+  const [updatingFlag, setUpdatingFlag] = useState<string | null>(null);
+
+  const handleToggleFlag = async (flagId: string, currentEnabled: boolean) => {
+    if (!tenant) return;
+    
+    setUpdatingFlag(flagId);
+    const newEnabled = !currentEnabled;
+    
+    try {
+      const existing = tenantFeatureFlags.find(tf => tf.feature_flag_id === flagId);
+      
+      if (existing) {
+        const { error } = await supabase
+          .from("tenant_feature_flags")
+          .update({ enabled: newEnabled })
+          .eq("id", existing.id);
+        if (error) throw error;
+        
+        // Update local state
+        setTenantFeatureFlags(prev => 
+          prev.map(tf => tf.id === existing.id ? { ...tf, enabled: newEnabled } : tf)
+        );
+      } else {
+        const { data, error } = await supabase
+          .from("tenant_feature_flags")
+          .insert({
+            tenant_id: tenant.id,
+            feature_flag_id: flagId,
+            enabled: newEnabled
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        
+        // Add to local state
+        setTenantFeatureFlags(prev => [...prev, data as TenantFeatureFlag]);
+      }
+      
+      toast.success("Feature flag updated");
+    } catch (error: any) {
+      toast.error("Failed to update: " + error.message);
+    } finally {
+      setUpdatingFlag(null);
+    }
   };
 
   const handleSave = async () => {
@@ -154,28 +188,7 @@ export default function TenantSettingsPage() {
 
       if (tenantError) throw tenantError;
 
-      // Apply pending flag changes
-      for (const [flagId, enabled] of pendingFlagChanges) {
-        const existing = tenantFeatureFlags.find(tf => tf.feature_flag_id === flagId);
-        
-        if (existing) {
-          await supabase
-            .from("tenant_feature_flags")
-            .update({ enabled })
-            .eq("id", existing.id);
-        } else {
-          await supabase
-            .from("tenant_feature_flags")
-            .insert({
-              tenant_id: tenant.id,
-              feature_flag_id: flagId,
-              enabled
-            });
-        }
-      }
-
       toast.success("Tenant settings saved successfully");
-      setPendingFlagChanges(new Map());
       await loadTenantData(); // Refresh data
     } catch (error: any) {
       toast.error("Failed to save: " + error.message);
@@ -190,8 +203,7 @@ export default function TenantSettingsPage() {
       gmailAlias !== (tenant.gmail_alias || "") ||
       rateLimitMinute !== (tenant.rate_limit_per_minute || 60) ||
       rateLimitDay !== (tenant.rate_limit_per_day || 10000) ||
-      isPaused !== (tenant.is_paused || false) ||
-      pendingFlagChanges.size > 0
+      isPaused !== (tenant.is_paused || false)
     );
   };
 
@@ -432,13 +444,13 @@ export default function TenantSettingsPage() {
             {featureFlags.map((flag) => {
               const isEnabled = getTenantFlagEnabled(flag.id, flag.default_enabled);
               const isOverridden = hasOverride(flag.id);
-              const hasPendingChange = pendingFlagChanges.has(flag.id);
+              const isUpdating = updatingFlag === flag.id;
               
               return (
                 <div 
                   key={flag.id}
                   className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                    hasPendingChange ? 'border-primary bg-primary/5' : ''
+                    isUpdating ? 'border-primary bg-primary/5' : ''
                   }`}
                 >
                   <div className="flex-1 min-w-0">
@@ -456,6 +468,7 @@ export default function TenantSettingsPage() {
                   <Switch
                     checked={isEnabled}
                     onCheckedChange={() => handleToggleFlag(flag.id, isEnabled)}
+                    disabled={isUpdating}
                     className="ml-2 shrink-0"
                   />
                 </div>
