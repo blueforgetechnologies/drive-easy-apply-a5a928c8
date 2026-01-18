@@ -3378,8 +3378,6 @@ export default function LoadHunterTab() {
     <div className="flex flex-col flex-1 min-h-0">
       {/* Filter Bar - Full Width - Always Visible */}
       <div className="flex items-center gap-2 py-2 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
-          {/* Tenant Debug Badge - TEMPORARY for isolation testing */}
-          <TenantDebugBadge showFull className="mr-2" />
           
           {/* Mode Buttons - Merged Toggle */}
           <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
