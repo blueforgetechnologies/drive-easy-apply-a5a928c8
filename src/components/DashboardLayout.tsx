@@ -50,30 +50,50 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
   const { isPlatformAdmin, isImpersonating, effectiveTenant } = useTenantContext();
   
-  // Use unified feature gate for Analytics - combines tenant enablement + user access
+  // Use unified feature gates for all gated modules
   const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
+  const accountingGate = useFeatureGate({ featureKey: "accounting_module", requiresUserGrant: false });
+  const fleetFinancialsGate = useFeatureGate({ featureKey: "fleet_financials", requiresUserGrant: false });
+  const carrierDashboardGate = useFeatureGate({ featureKey: "carrier_dashboard", requiresUserGrant: false });
+  const maintenanceGate = useFeatureGate({ featureKey: "maintenance_module", requiresUserGrant: false });
+  const mapGate = useFeatureGate({ featureKey: "map_view", requiresUserGrant: false });
+  const loadHunterGate = useFeatureGate({ featureKey: "load_hunter_enabled", requiresUserGrant: false });
+  const developmentGate = useFeatureGate({ featureKey: "development_tools", requiresUserGrant: false });
+  const operationsGate = useFeatureGate({ featureKey: "operations_module", requiresUserGrant: false });
 
-  const showAnalytics =
-    !analyticsGate.isLoading &&
-    analyticsGate.isEnabledForTenant === true &&
-    analyticsGate.canUserAccess === true;
+  // Compute visibility for each gated feature
+  const showAnalytics = !analyticsGate.isLoading && analyticsGate.isEnabledForTenant && analyticsGate.canUserAccess;
+  const showAccounting = !accountingGate.isLoading && accountingGate.isEnabledForTenant;
+  const showFleetFinancials = !fleetFinancialsGate.isLoading && fleetFinancialsGate.isEnabledForTenant;
+  const showCarrierDashboard = !carrierDashboardGate.isLoading && carrierDashboardGate.isEnabledForTenant;
+  const showMaintenance = !maintenanceGate.isLoading && maintenanceGate.isEnabledForTenant;
+  const showMap = !mapGate.isLoading && mapGate.isEnabledForTenant;
+  const showLoadHunter = !loadHunterGate.isLoading && loadHunterGate.isEnabledForTenant;
+  const showDevelopment = !developmentGate.isLoading && developmentGate.isEnabledForTenant;
+  const showOperations = !operationsGate.isLoading && operationsGate.isEnabledForTenant;
 
   // Debug: log analytics gate resolution for nav gating verification
   useEffect(() => {
     if (!analyticsGate.isLoading) {
-      console.log("[DashboardLayout] Analytics gate resolved:", {
-        isEnabledForTenant: analyticsGate.isEnabledForTenant,
-        canUserAccess: analyticsGate.canUserAccess,
-        isAccessible: analyticsGate.isAccessible,
-        resolution: analyticsGate.resolution,
+      console.log("[DashboardLayout] Feature gates resolved:", {
+        analytics: showAnalytics,
+        accounting: showAccounting,
+        fleetFinancials: showFleetFinancials,
+        carrierDashboard: showCarrierDashboard,
+        maintenance: showMaintenance,
+        map: showMap,
+        loadHunter: showLoadHunter,
+        development: showDevelopment,
+        operations: showOperations,
         tenantName: effectiveTenant?.name,
         releaseChannel: effectiveTenant?.release_channel,
       });
     }
   }, [
     analyticsGate.isLoading,
-    analyticsGate.isEnabledForTenant,
-    analyticsGate.canUserAccess,
+    showAnalytics,
+    showAccounting,
+    showFleetFinancials,
     effectiveTenant?.name,
     effectiveTenant?.release_channel,
   ]);
@@ -287,22 +307,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  // Primary nav items - most frequently used
-  // Analytics is configurable - show only when tenant-level enablement is ON AND user has access
+  // Primary nav items - feature-gated based on tenant settings
+  // Items only show when their corresponding feature flag is enabled for the tenant
   const primaryNavItems = [
-    { value: "map", icon: Map, label: "Map" },
-    { value: "load-hunter", icon: Target, label: "Load Hunter" },
+    // Map - gated
+    ...(showMap ? [{ value: "map", icon: Map, label: "Map" }] : []),
+    // Load Hunter - gated
+    ...(showLoadHunter ? [{ value: "load-hunter", icon: Target, label: "Load Hunter" }] : []),
+    // Loads - always visible (core feature)
     { value: "loads", icon: Package, label: "Loads" },
-    { value: "fleet-financials", icon: Wallet, label: "Fleet $" },
-    { value: "carrier-dashboard", icon: Briefcase, label: "Carrier's Dashboard" },
-    { value: "business", icon: Briefcase, label: "Operations", badge: alertCount },
-    { value: "accounting", icon: Calculator, label: "Accounting" },
-    // Analytics - hide unless fully accessible (no nav leak / no flicker while loading)
+    // Fleet Financials - gated
+    ...(showFleetFinancials ? [{ value: "fleet-financials", icon: Wallet, label: "Fleet $" }] : []),
+    // Carrier Dashboard - gated
+    ...(showCarrierDashboard ? [{ value: "carrier-dashboard", icon: Briefcase, label: "Carrier's Dashboard" }] : []),
+    // Operations - gated
+    ...(showOperations ? [{ value: "business", icon: Briefcase, label: "Operations", badge: alertCount }] : []),
+    // Accounting - gated
+    ...(showAccounting ? [{ value: "accounting", icon: Calculator, label: "Accounting" }] : []),
+    // Analytics - gated with user-level access check
     ...(showAnalytics ? [{ value: "analytics", icon: TrendingUp, label: "Analytics" }] : []),
-    { value: "maintenance", icon: Wrench, label: "Maintenance" },
-    // Usage is internal-only - only show for platform admins  
+    // Maintenance - gated
+    ...(showMaintenance ? [{ value: "maintenance", icon: Wrench, label: "Maintenance" }] : []),
+    // Usage - internal only (platform admins)
     ...(isPlatformAdmin ? [{ value: "usage", icon: DollarSign, label: "Usage" }] : []),
-    { value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount },
+    // Development - gated
+    ...(showDevelopment ? [{ value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount }] : []),
   ];
 
   // Combined for mobile menu (includes items from user dropdown)
