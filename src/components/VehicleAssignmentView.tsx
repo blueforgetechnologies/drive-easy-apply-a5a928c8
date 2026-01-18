@@ -354,7 +354,6 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
                         {(vehicle.secondary_dispatcher_ids || []).map((dispatcherId: string) => (
                           <Badge 
                             key={dispatcherId} 
-                            variant="secondary"
                             className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 text-xs px-2 py-0.5"
                           >
                             {getDispatcherName(dispatcherId)}
