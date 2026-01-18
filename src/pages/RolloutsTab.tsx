@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { 
   RefreshCw, Check, X, Settings2, Shield, 
   ChevronDown, ChevronRight, ToggleLeft, ToggleRight,
-  Building2, Zap, AlertTriangle, Info, Trash2, Power
+  Building2, Zap, AlertTriangle, Info, Trash2, Power, GitBranch
 } from 'lucide-react';
+import V2PromptGenerator from '@/components/V2PromptGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -733,6 +734,9 @@ export default function RolloutsTab() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* V2 Prompt Generator */}
+      <V2PromptGenerator />
 
       {/* Tenant List */}
       <Card>
