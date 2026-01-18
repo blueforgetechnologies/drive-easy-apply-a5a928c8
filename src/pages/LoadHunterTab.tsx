@@ -695,9 +695,8 @@ export default function LoadHunterTab() {
     console.log(`📧 All filter: ${filteredEmails.length} emails (${loadEmails.length} processed + ${failedQueueItems.length} failed)`);
   }
 
-  // DISPATCH MODE BYPASS: If no dispatcher/vehicles assigned, show ALL matches (don't hide everything)
-  // This prevents the confusing "0 matches" when the user just isn't set up as a dispatcher
-  const shouldBypassVehicleFilter = activeMode === 'dispatch' && myVehicleIds.length === 0;
+  // DISPATCH MODE: In "My Trucks" mode, only show matches for assigned vehicles
+  // If no vehicles assigned, show nothing (0 counts) - user needs to be assigned trucks first
   
   // Get filtered matches for unreviewed - USE SERVER-SIDE VIEW DATA for scalability
   const filteredMatches = activeFilter === 'unreviewed'
@@ -706,8 +705,7 @@ export default function LoadHunterTab() {
           // Filter by specific vehicle if filterVehicleId is set (badge click)
           if (filterVehicleId && match.vehicle_id !== filterVehicleId) return false;
           // Filter by dispatcher's vehicles when in MY TRUCKS mode
-          // BYPASS: If no vehicles assigned, show all matches instead of hiding everything
-          if (activeMode === 'dispatch' && !shouldBypassVehicleFilter) {
+          if (activeMode === 'dispatch') {
             if (!myVehicleIds.includes(match.vehicle_id)) return false;
           }
           // Filter by email source - if no sources selected, show nothing
@@ -757,17 +755,17 @@ export default function LoadHunterTab() {
   }
 
   // Count uses server-side view data for accuracy
-  // BYPASS: If no vehicles assigned in dispatch mode, count ALL matches
+  // In dispatch mode, only count matches for assigned vehicles (show 0 if none assigned)
   const unreviewedCount = unreviewedViewData.filter(match => {
-    if (activeMode === 'dispatch' && !shouldBypassVehicleFilter) {
+    if (activeMode === 'dispatch') {
       if (!myVehicleIds.includes(match.vehicle_id)) return false;
     }
     return true;
   }).length;
   
-  // Filter helper for dispatch mode - BYPASS when no vehicles assigned
+  // Filter helper for dispatch mode - only show matches for assigned vehicles
   const filterByAssignedVehicles = <T extends { vehicle_id?: string | null }>(items: T[]) => {
-    if (activeMode === 'dispatch' && !shouldBypassVehicleFilter) {
+    if (activeMode === 'dispatch') {
       return items.filter(item => item.vehicle_id && myVehicleIds.includes(item.vehicle_id));
     }
     return items;
