@@ -788,7 +788,7 @@ export default function RolloutsTab() {
                                       <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-purple-500 text-purple-600">T</Badge>
                                     )}
                                   </div>
-                                  <p className="text-[11px] text-muted-foreground truncate">{flag.key}</p>
+                                  <p className="text-[11px] text-muted-foreground line-clamp-2" title={flag.description}>{flag.description}</p>
                                 </div>
                               </div>
                             </TableCell>
