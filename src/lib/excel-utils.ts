@@ -159,8 +159,9 @@ export function exportToExcel(data: any[], entityType: EntityType, filename?: st
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, entityType.charAt(0).toUpperCase() + entityType.slice(1));
 
-  // Generate filename
-  const exportFilename = filename || `${entityType}_export_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+  // Generate filename - ensure .xlsx extension
+  const baseFilename = filename || `${entityType}_export_${format(new Date(), 'yyyy-MM-dd')}`;
+  const exportFilename = baseFilename.endsWith('.xlsx') ? baseFilename : `${baseFilename}.xlsx`;
 
   // Download
   XLSX.writeFile(wb, exportFilename);
