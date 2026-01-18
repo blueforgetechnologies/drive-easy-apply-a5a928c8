@@ -3402,7 +3402,13 @@ export default function LoadHunterTab() {
                   ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-700'
               }`}
-              onClick={() => setActiveMode('dispatch')}
+              onClick={() => {
+                setActiveMode('dispatch');
+                // If on "All" tab, switch to "unreviewed" since "All" is only available in Admin mode
+                if (activeFilter === 'all') {
+                  setActiveFilter('unreviewed');
+                }
+              }}
             >
               MY TRUCKS
             </Button>
@@ -3490,7 +3496,8 @@ export default function LoadHunterTab() {
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* Merged button group: All, Unreviewed, Sound */}
             <div className="flex items-center overflow-hidden rounded-full">
-              {showAllTabEnabled && (
+              {/* All tab only visible in Admin mode when showAllTabEnabled */}
+              {showAllTabEnabled && activeMode === 'admin' && (
                 <Button 
                   variant="ghost"
                   size="sm" 
@@ -3515,7 +3522,7 @@ export default function LoadHunterTab() {
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
-                  !showAllTabEnabled ? '!rounded-l-full' : ''
+                  !(showAllTabEnabled && activeMode === 'admin') ? '!rounded-l-full' : ''
                 } ${
                   activeFilter === 'unreviewed' 
                     ? 'btn-glossy-primary text-white' 
