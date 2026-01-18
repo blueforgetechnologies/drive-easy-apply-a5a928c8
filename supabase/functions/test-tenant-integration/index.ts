@@ -142,7 +142,7 @@ async function testOtrSolutions(credentials: Record<string, string>): Promise<{ 
     formData.append('username', otrUsername);
     formData.append('password', otrPassword);
     
-    const authResponse = await fetch('https://servicesstg.otrsolutions.com/carrier-tms/2/auth/token', {
+    const authResponse = await fetch('https://services.otrsolutions.com/carrier-tms/2/auth/token', {
       method: 'POST',
       headers: { 
         'Accept': 'application/json',
@@ -166,7 +166,7 @@ async function testOtrSolutions(credentials: Record<string, string>): Promise<{ 
     }
     
     // Now test a broker check with the token
-    const checkResponse = await fetch('https://servicesstg.otrsolutions.com/carrier-tms/2/broker-check/123456', {
+    const checkResponse = await fetch('https://services.otrsolutions.com/carrier-tms/2/broker-check/123456', {
       method: 'GET',
       headers: { 
         'Accept': 'application/json',

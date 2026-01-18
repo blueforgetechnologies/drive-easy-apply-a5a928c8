@@ -7,8 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// OTR Solutions API configuration
-const OTR_API_BASE_URL = 'https://servicesstg.otrsolutions.com/carrier-tms/2';
+// OTR Solutions API configuration - Production URL
+const OTR_API_BASE_URL = 'https://services.otrsolutions.com/carrier-tms/2';
 
 interface OtrBrokerCheckResponse {
   brokerMc?: string;
