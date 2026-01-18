@@ -1148,10 +1148,11 @@ export default function LoadHunterTab() {
     const dispatcherId = currentDispatcherIdRef.current;
     if (!dispatcherId) return;
     
+    // Get vehicles where dispatcher is primary OR in secondary_dispatcher_ids array
     let query = supabase
       .from('vehicles')
       .select('id, vehicle_number')
-      .eq('primary_dispatcher_id', dispatcherId);
+      .or(`primary_dispatcher_id.eq.${dispatcherId},secondary_dispatcher_ids.cs.{${dispatcherId}}`);
     
     // Apply tenant filter
     if (shouldFilter && tenantId) {
@@ -1162,7 +1163,7 @@ export default function LoadHunterTab() {
     
     if (assignedVehicles) {
       setMyVehicleIds(assignedVehicles.map(v => v.id));
-      console.log('✅ Refreshed my vehicle IDs:', assignedVehicles.map(v => v.id));
+      console.log('✅ Refreshed my vehicle IDs (primary + secondary):', assignedVehicles.map(v => v.id));
     }
   };
   
@@ -1216,14 +1217,14 @@ export default function LoadHunterTab() {
         currentDispatcherIdRef.current = dispatcher.id;
         console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
         
-        // Get vehicles assigned to this dispatcher
+        // Get vehicles assigned to this dispatcher (primary OR secondary)
         const { data: assignedVehicles, error: vehiclesError } = await supabase
           .from('vehicles')
           .select('id, vehicle_number')
-          .eq('primary_dispatcher_id', dispatcher.id)
+          .or(`primary_dispatcher_id.eq.${dispatcher.id},secondary_dispatcher_ids.cs.{${dispatcher.id}}`)
           .eq('tenant_id', tenantId);
         
-        console.log('🔍 Assigned vehicles:', { assignedVehicles, error: vehiclesError });
+        console.log('🔍 Assigned vehicles (primary + secondary):', { assignedVehicles, error: vehiclesError });
         
         if (assignedVehicles && assignedVehicles.length > 0) {
           setMyVehicleIds(assignedVehicles.map(v => v.id));
