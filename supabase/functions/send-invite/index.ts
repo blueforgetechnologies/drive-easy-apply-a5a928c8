@@ -72,7 +72,7 @@ const handler = async (req: Request): Promise<Response> => {
     const signupUrl = `${appUrl}/auth`;
 
     const emailResponse = await resend.emails.send({
-      from: "Driver Application <noreply@nexustechsolution.com>",
+      from: "Blueforge Technologies <noreply@nexustechsolution.com>",
       to: [email],
       subject: `You've been invited to join the admin team`,
       html: `
