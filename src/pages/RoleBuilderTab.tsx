@@ -138,7 +138,10 @@ export default function RoleBuilderTab() {
       maintenance: "Maintenance",
       development: "Development",
       changelog: "Changelog",
-      roles: "Roles"
+      roles: "Roles",
+      fleet_financials: "Fleet Financials",
+      carrier_dashboard: "Carrier Dashboard",
+      usage: "Usage & Costs"
     };
     return labels[category] || category;
   };
