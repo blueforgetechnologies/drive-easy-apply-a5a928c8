@@ -21,6 +21,7 @@ interface TenantUser {
   role: string;
   is_active: boolean;
   created_at: string;
+  allRoles?: string[]; // All roles from user_roles table
   profile?: {
     id: string;
     email: string;
@@ -128,8 +129,10 @@ export default function UsersTab() {
     const userIds = Array.from(new Set((tenantUsers || []).map((tu) => tu.user_id)));
 
     const profilesById: Record<string, TenantUser["profile"]> = {};
+    const rolesByUserId: Record<string, string[]> = {};
 
     if (userIds.length > 0) {
+      // Fetch profiles
       const { data: profileRows, error: profilesError } = await supabase
         .from("profiles")
         .select("id,email,full_name")
@@ -142,11 +145,27 @@ export default function UsersTab() {
       (profileRows || []).forEach((p) => {
         profilesById[p.id] = { id: p.id, email: p.email, full_name: p.full_name };
       });
+
+      // Fetch all roles from user_roles table
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds);
+
+      if (!rolesError && rolesData) {
+        rolesData.forEach((r) => {
+          if (!rolesByUserId[r.user_id]) {
+            rolesByUserId[r.user_id] = [];
+          }
+          rolesByUserId[r.user_id].push(r.role);
+        });
+      }
     }
 
     return (tenantUsers || []).map((tu) => ({
       ...tu,
       profile: profilesById[tu.user_id],
+      allRoles: rolesByUserId[tu.user_id] || [tu.role],
     }));
   };
 
@@ -513,17 +532,24 @@ export default function UsersTab() {
                             <TableCell className="font-medium">{user.profile?.full_name || "N/A"}</TableCell>
                             <TableCell>{user.profile?.email || "N/A"}</TableCell>
                             <TableCell>
-                              <Badge 
-                                className={
-                                  user.role === "owner" 
-                                    ? "badge-glossy-primary" 
-                                    : user.role === "admin" 
-                                    ? "badge-glossy-success"
-                                    : "badge-glossy-muted"
-                                }
-                              >
-                                {user.role}
-                              </Badge>
+                              <div className="flex flex-wrap gap-1">
+                                {(user.allRoles || [user.role]).map((role) => (
+                                  <Badge 
+                                    key={role}
+                                    className={
+                                      role === "owner" 
+                                        ? "badge-glossy-primary" 
+                                        : role === "admin" 
+                                        ? "badge-glossy-success"
+                                        : role === "dispatcher"
+                                        ? "badge-glossy-warning"
+                                        : "badge-glossy-muted"
+                                    }
+                                  >
+                                    {role}
+                                  </Badge>
+                                ))}
+                              </div>
                             </TableCell>
                             <TableCell>
                               {format(new Date(user.created_at), "MM/dd/yyyy")}
