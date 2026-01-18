@@ -6,16 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
+// Minimum distance in degrees to consider as "moved" (~111 meters per 0.001°)
+const MIN_DISTANCE_THRESHOLD = 0.001;
+// Maximum time between writes for parked vehicles (1 hour)
+const MAX_PARKED_INTERVAL_MS = 60 * 60 * 1000;
+// Speed threshold to consider vehicle as "moving"
+const MOVING_SPEED_THRESHOLD = 2; // mph
+
+// Calculate distance between two points (simple Euclidean for small distances)
+function hasMovedSignificantly(
+  lat1: number, lng1: number, 
+  lat2: number, lng2: number
+): boolean {
+  const latDiff = Math.abs(lat1 - lat2);
+  const lngDiff = Math.abs(lng1 - lng2);
+  return latDiff > MIN_DISTANCE_THRESHOLD || lngDiff > MIN_DISTANCE_THRESHOLD;
+}
+
 // Validate request - accepts either CRON_SECRET header or valid JWT from pg_cron
 function validateRequest(req: Request): boolean {
-  // Check for cron secret header first
   const cronSecret = Deno.env.get('CRON_SECRET');
   const providedSecret = req.headers.get('x-cron-secret');
   if (cronSecret && providedSecret === cronSecret) {
     return true;
   }
   
-  // Also allow requests with valid Authorization header (from pg_cron with JWT)
   const authHeader = req.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return true;
@@ -30,7 +45,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate request for security
   if (!validateRequest(req)) {
     return new Response(
       JSON.stringify({ error: 'Unauthorized' }),
@@ -45,7 +59,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Starting vehicle location capture...');
+    console.log('🚛 Starting smart vehicle location capture...');
 
     // Fetch all vehicles with their current location data
     const { data: vehicles, error: vehiclesError } = await supabase
@@ -58,9 +72,36 @@ serve(async (req) => {
       throw vehiclesError;
     }
 
-    console.log(`Found ${vehicles?.length || 0} vehicles with location data`);
+    const vehicleIds = vehicles?.map(v => v.id) || [];
+    
+    // Fetch the LAST recorded location for each vehicle to compare
+    const { data: lastLocations, error: lastLocError } = await supabase
+      .from('vehicle_location_history')
+      .select('vehicle_id, latitude, longitude, speed, recorded_at')
+      .in('vehicle_id', vehicleIds)
+      .order('recorded_at', { ascending: false });
 
-    // If Samsara is available, try to fetch fresh data first
+    if (lastLocError) {
+      console.warn('Error fetching last locations:', lastLocError);
+    }
+
+    // Build a map of vehicle_id -> last location (most recent only)
+    const lastLocationMap = new Map<string, {
+      latitude: number;
+      longitude: number;
+      speed: number | null;
+      recorded_at: string;
+    }>();
+    
+    for (const loc of lastLocations || []) {
+      if (!lastLocationMap.has(loc.vehicle_id)) {
+        lastLocationMap.set(loc.vehicle_id, loc);
+      }
+    }
+
+    console.log(`Found ${vehicles?.length || 0} vehicles, ${lastLocationMap.size} with history`);
+
+    // If Samsara is available, fetch fresh data
     let samsaraData: Record<string, any> = {};
     if (samsaraApiKey) {
       try {
@@ -76,42 +117,37 @@ serve(async (req) => {
 
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
-          console.log(`Fetched ${statsData.data?.length || 0} vehicles from Samsara`);
+          console.log(`📡 Fetched ${statsData.data?.length || 0} vehicles from Samsara`);
           
-          // Index by VIN and provider ID for easy lookup
           for (const vehicle of statsData.data || []) {
-            if (vehicle.vin) {
-              samsaraData[vehicle.vin] = vehicle;
-            }
-            if (vehicle.id) {
-              samsaraData[vehicle.id] = vehicle;
-            }
+            if (vehicle.vin) samsaraData[vehicle.vin] = vehicle;
+            if (vehicle.id) samsaraData[vehicle.id] = vehicle;
           }
-        } else {
-          console.warn('Samsara API returned non-OK status:', statsResponse.status);
         }
       } catch (samsaraError) {
-        console.warn('Samsara API temporarily unavailable, using cached data:', samsaraError);
+        console.warn('Samsara API temporarily unavailable:', samsaraError);
       }
     }
 
     const locationsToInsert: any[] = [];
-    const now = new Date().toISOString();
+    const skippedVehicles: string[] = [];
+    const now = new Date();
+    const nowISO = now.toISOString();
 
     for (const vehicle of vehicles || []) {
-      // Parse lat/lng from last_location string (format: "lat, lng")
       let latitude: number | null = null;
       let longitude: number | null = null;
-      let speed = vehicle.speed;
+      let speed = vehicle.speed || 0;
       let odometer = vehicle.odometer;
 
+      // Parse current location
       if (vehicle.last_location) {
         const [latStr, lngStr] = vehicle.last_location.split(',').map((s: string) => s.trim());
         latitude = parseFloat(latStr);
         longitude = parseFloat(lngStr);
       }
 
-      // Check if we have fresh Samsara data for this vehicle
+      // Check for fresh Samsara data
       const samsaraVehicle = samsaraData[vehicle.vin] || samsaraData[vehicle.provider_id];
       if (samsaraVehicle) {
         const gps = samsaraVehicle.gps;
@@ -121,11 +157,40 @@ serve(async (req) => {
           speed = gps.speedMilesPerHour || speed;
         }
         if (samsaraVehicle.obdOdometerMeters?.value) {
-          odometer = samsaraVehicle.obdOdometerMeters.value * 0.000621371; // Convert meters to miles
+          odometer = samsaraVehicle.obdOdometerMeters.value * 0.000621371;
         }
       }
 
-      if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        continue;
+      }
+
+      // SMART FILTERING: Decide whether to write
+      const lastLoc = lastLocationMap.get(vehicle.id);
+      let shouldWrite = true;
+      let reason = 'new_vehicle';
+
+      if (lastLoc) {
+        const timeSinceLastWrite = now.getTime() - new Date(lastLoc.recorded_at).getTime();
+        const hasMoved = hasMovedSignificantly(latitude, longitude, lastLoc.latitude, lastLoc.longitude);
+        const isMoving = speed > MOVING_SPEED_THRESHOLD;
+        const wasMoving = (lastLoc.speed || 0) > MOVING_SPEED_THRESHOLD;
+        const statusChanged = isMoving !== wasMoving;
+
+        if (hasMoved) {
+          reason = 'moved';
+        } else if (statusChanged) {
+          reason = 'status_change';
+        } else if (timeSinceLastWrite > MAX_PARKED_INTERVAL_MS) {
+          reason = 'max_interval';
+        } else {
+          // Vehicle hasn't moved, status same, and within interval - SKIP
+          shouldWrite = false;
+          skippedVehicles.push(vehicle.vehicle_number);
+        }
+      }
+
+      if (shouldWrite) {
         locationsToInsert.push({
           vehicle_id: vehicle.id,
           latitude,
@@ -133,12 +198,15 @@ serve(async (req) => {
           speed,
           odometer,
           heading: null,
-          recorded_at: now,
+          recorded_at: nowISO,
         });
       }
     }
 
-    console.log(`Inserting ${locationsToInsert.length} location records`);
+    console.log(`✅ Writing ${locationsToInsert.length} locations, ⏭️ skipped ${skippedVehicles.length} (parked/unchanged)`);
+    if (skippedVehicles.length > 0) {
+      console.log(`   Skipped vehicles: ${skippedVehicles.join(', ')}`);
+    }
 
     if (locationsToInsert.length > 0) {
       const { error: insertError } = await supabase
@@ -151,7 +219,7 @@ serve(async (req) => {
       }
     }
 
-    // Clean up old data (keep 8 days to reduce costs)
+    // Clean up old data (keep 8 days)
     const eightDaysAgo = new Date();
     eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
     
@@ -168,7 +236,9 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         captured: locationsToInsert.length,
-        timestamp: now,
+        skipped: skippedVehicles.length,
+        total_vehicles: vehicles?.length || 0,
+        timestamp: nowISO,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
