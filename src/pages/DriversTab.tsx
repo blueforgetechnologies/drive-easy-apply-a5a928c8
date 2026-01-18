@@ -451,9 +451,11 @@ export default function DriversTab() {
 
     for (const item of data) {
       try {
-        // Use mapExcelRowToEntity to properly map exported headers to fields
-        const mapped = mapExcelRowToEntity(item, "drivers");
-        
+        // ExcelImportDialog already maps rows via mapExcelRowToEntity; if raw rows are provided, map them here.
+        const mapped =
+          item && typeof item === "object" && ("personal_info" in item || "driver_status" in item || "license_info" in item)
+            ? item
+            : mapExcelRowToEntity(item, "drivers");
         // Get names from mapped data or raw item
         const firstName = normalizeValue(mapped.personal_info?.firstName || item['First Name'] || item.firstName || "");
         const lastName = normalizeValue(mapped.personal_info?.lastName || item['Last Name'] || item.lastName || "");

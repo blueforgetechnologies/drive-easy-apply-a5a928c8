@@ -241,9 +241,6 @@ export function mapExcelRowToEntity(row: any, entityType: EntityType): any {
     rowKeyMap[headerKey(key)] = key;
   });
   
-  console.log('Row keys:', Object.keys(row));
-  console.log('Row key map:', rowKeyMap);
-  
   columns.forEach(col => {
     const colKey = headerKey(col.header);
     const actualKey = rowKeyMap[colKey];
@@ -266,8 +263,7 @@ export function mapExcelRowToEntity(row: any, entityType: EntityType): any {
       }
     }
   });
-  
-  console.log('Mapped result:', result);
+
   return result;
 }
 
