@@ -90,9 +90,18 @@ export default function UserDetail() {
         .from("profiles")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
+      
+      // If no profile exists, user may be in tenant_users without a profile record
+      if (!profileData) {
+        setUser(null);
+        setEditedUser(null);
+        setLoading(false);
+        return;
+      }
+      
       setUser(profileData);
       setEditedUser(profileData);
 
