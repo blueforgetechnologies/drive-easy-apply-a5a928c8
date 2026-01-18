@@ -152,7 +152,8 @@ export default function TenantSettingsPage() {
           .insert({
             tenant_id: tenant.id,
             feature_flag_id: flagId,
-            enabled: newEnabled
+            enabled: newEnabled,
+            enabled_at: new Date().toISOString()
           })
           .select()
           .single();
