@@ -760,9 +760,9 @@ export default function RolloutsTab() {
                           </TooltipContent>
                         </Tooltip>
                       </TableHead>
-                      <TableHead className="text-center w-16">Int</TableHead>
+                      <TableHead className="text-center w-20">Internal</TableHead>
                       <TableHead className="text-center w-16">Pilot</TableHead>
-                      <TableHead className="text-center w-16">Gen</TableHead>
+                      <TableHead className="text-center w-20">General</TableHead>
                       <TableHead className="w-10 pr-2"></TableHead>
                     </TableRow>
                   </TableHeader>
