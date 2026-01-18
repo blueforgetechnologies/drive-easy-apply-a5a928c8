@@ -113,8 +113,11 @@ export default function RolloutsTab() {
     }
   }, [isPlatformAdmin]);
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(isInitial = true) {
+    // Only show loading spinner on initial load, not on refreshes
+    if (isInitial && !data) {
+      setLoading(true);
+    }
     try {
       const [flagsRes, channelDefaultsRes, tenantOverridesRes, tenantsRes] = await Promise.all([
         supabase.from('feature_flags').select('*').order('key'),
@@ -140,6 +143,95 @@ export default function RolloutsTab() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Optimistic update helpers
+  function optimisticUpdateGlobalDefault(flagId: string, enabled: boolean) {
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        flags: prev.flags.map(f => 
+          f.id === flagId ? { ...f, default_enabled: enabled } : f
+        ),
+      };
+    });
+  }
+
+  function optimisticUpdateChannelDefault(flagId: string, channel: string, enabled: boolean) {
+    setData(prev => {
+      if (!prev) return prev;
+      const existingIndex = prev.channelDefaults.findIndex(
+        cd => cd.feature_flag_id === flagId && cd.release_channel === channel
+      );
+      
+      if (existingIndex >= 0) {
+        // Update existing
+        return {
+          ...prev,
+          channelDefaults: prev.channelDefaults.map((cd, i) => 
+            i === existingIndex ? { ...cd, enabled } : cd
+          ),
+        };
+      } else {
+        // Add new
+        return {
+          ...prev,
+          channelDefaults: [
+            ...prev.channelDefaults,
+            {
+              id: `temp-${Date.now()}`,
+              feature_flag_id: flagId,
+              release_channel: channel,
+              enabled,
+            },
+          ],
+        };
+      }
+    });
+  }
+
+  function optimisticUpdateTenantOverride(flagId: string, tenantId: string, enabled: boolean) {
+    setData(prev => {
+      if (!prev) return prev;
+      const existingIndex = prev.tenantOverrides.findIndex(
+        to => to.feature_flag_id === flagId && to.tenant_id === tenantId
+      );
+      
+      if (existingIndex >= 0) {
+        return {
+          ...prev,
+          tenantOverrides: prev.tenantOverrides.map((to, i) => 
+            i === existingIndex ? { ...to, enabled } : to
+          ),
+        };
+      } else {
+        return {
+          ...prev,
+          tenantOverrides: [
+            ...prev.tenantOverrides,
+            {
+              id: `temp-${Date.now()}`,
+              feature_flag_id: flagId,
+              tenant_id: tenantId,
+              enabled,
+            },
+          ],
+        };
+      }
+    });
+  }
+
+  function optimisticRemoveTenantOverride(flagId: string, tenantId: string) {
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tenantOverrides: prev.tenantOverrides.filter(
+          to => !(to.feature_flag_id === flagId && to.tenant_id === tenantId)
+        ),
+      };
+    });
   }
 
   function getChannelDefault(flagId: string, channel: string): boolean | null {
@@ -170,6 +262,10 @@ export default function RolloutsTab() {
 
   // ==================== GLOBAL DEFAULT CONTROLS ====================
   async function toggleGlobalDefault(flagId: string, currentValue: boolean) {
+    const newValue = !currentValue;
+    
+    // Optimistic update - instant UI response
+    optimisticUpdateGlobalDefault(flagId, newValue);
     setUpdating(`global-${flagId}`);
     
     try {
@@ -177,18 +273,23 @@ export default function RolloutsTab() {
         body: {
           action: 'set_global_default',
           feature_flag_id: flagId,
-          enabled: !currentValue,
+          enabled: newValue,
         },
       });
 
       if (error || result?.error) {
+        // Revert optimistic update on failure
+        optimisticUpdateGlobalDefault(flagId, currentValue);
         toast.error(error?.message || result?.error || 'Failed to update global default');
         return;
       }
       
-      toast.success(`Global default ${!currentValue ? 'enabled' : 'disabled'}`);
-      await loadData();
+      toast.success(`Global default ${newValue ? 'enabled' : 'disabled'}`);
+      // Background sync to ensure consistency
+      loadData(false);
     } catch (err) {
+      // Revert optimistic update on error
+      optimisticUpdateGlobalDefault(flagId, currentValue);
       console.error('Error updating global default:', err);
       toast.error('Failed to update global default');
     } finally {
@@ -199,6 +300,15 @@ export default function RolloutsTab() {
   async function setAllGlobalDefaultsOff() {
     setUpdating('all-off');
     
+    // Optimistic update - set all flags to off immediately
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        flags: prev.flags.map(f => ({ ...f, default_enabled: false })),
+      };
+    });
+    
     try {
       const { data: result, error } = await supabase.functions.invoke('platform-rollout-control', {
         body: { action: 'set_all_global_defaults_off' },
@@ -206,15 +316,17 @@ export default function RolloutsTab() {
 
       if (error || result?.error) {
         toast.error(error?.message || result?.error || 'Failed to set all global defaults OFF');
+        loadData(false);
         return;
       }
       
       toast.success(`Set ${result.updated_count} global defaults to OFF`);
       setAllOffDialogOpen(false);
-      await loadData();
+      loadData(false);
     } catch (err) {
       console.error('Error setting all global defaults OFF:', err);
       toast.error('Failed to set all global defaults OFF');
+      loadData(false);
     } finally {
       setUpdating(null);
     }
@@ -222,8 +334,10 @@ export default function RolloutsTab() {
 
   // ==================== CHANNEL DEFAULT CONTROLS ====================
   async function toggleChannelDefault(flagId: string, channel: string, effectiveValue: boolean) {
-    // Always toggle based on what the user sees (effective value)
     const newValue = !effectiveValue;
+    
+    // Optimistic update - instant UI response
+    optimisticUpdateChannelDefault(flagId, channel, newValue);
     setUpdating(`${flagId}-${channel}`);
     
     try {
@@ -237,13 +351,15 @@ export default function RolloutsTab() {
       });
 
       if (error || result?.error) {
+        optimisticUpdateChannelDefault(flagId, channel, effectiveValue);
         toast.error(error?.message || result?.error || 'Failed to update channel default');
         return;
       }
       
       toast.success(`Channel default updated to ${newValue ? 'ON' : 'OFF'}`);
-      await loadData();
+      loadData(false);
     } catch (err) {
+      optimisticUpdateChannelDefault(flagId, channel, effectiveValue);
       console.error('Error updating channel default:', err);
       toast.error('Failed to update channel default');
     } finally {
@@ -252,6 +368,17 @@ export default function RolloutsTab() {
   }
 
   async function clearChannelDefault(flagId: string, channel: string) {
+    // Optimistic: remove the channel default from local state
+    const prevData = data;
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        channelDefaults: prev.channelDefaults.filter(
+          cd => !(cd.feature_flag_id === flagId && cd.release_channel === channel)
+        ),
+      };
+    });
     setUpdating(`clear-${flagId}-${channel}`);
     
     try {
@@ -264,13 +391,15 @@ export default function RolloutsTab() {
       });
 
       if (error || result?.error) {
+        setData(prevData);
         toast.error(error?.message || result?.error || 'Failed to clear channel default');
         return;
       }
       
       toast.success('Channel default cleared');
-      await loadData();
+      loadData(false);
     } catch (err) {
+      setData(prevData);
       console.error('Error clearing channel default:', err);
       toast.error('Failed to clear channel default');
     } finally {
@@ -279,6 +408,14 @@ export default function RolloutsTab() {
   }
 
   async function clearAllChannelDefaults(flagId: string) {
+    const prevData = data;
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        channelDefaults: prev.channelDefaults.filter(cd => cd.feature_flag_id !== flagId),
+      };
+    });
     setUpdating(`clear-all-channels-${flagId}`);
     
     try {
@@ -290,13 +427,15 @@ export default function RolloutsTab() {
       });
 
       if (error || result?.error) {
+        setData(prevData);
         toast.error(error?.message || result?.error || 'Failed to clear channel defaults');
         return;
       }
       
       toast.success(`Cleared ${result.cleared_count} channel defaults`);
-      await loadData();
+      loadData(false);
     } catch (err) {
+      setData(prevData);
       console.error('Error clearing channel defaults:', err);
       toast.error('Failed to clear channel defaults');
     } finally {
@@ -308,6 +447,9 @@ export default function RolloutsTab() {
   async function toggleTenantOverride(flagId: string, tenantId: string, currentValue: boolean | null) {
     const tenantName = data?.tenants.find(t => t.id === tenantId)?.name || 'tenant';
     const newValue = currentValue === null ? true : !currentValue;
+    
+    // Optimistic update
+    optimisticUpdateTenantOverride(flagId, tenantId, newValue);
     setUpdating(`${flagId}-${tenantId}`);
     
     try {
@@ -321,13 +463,24 @@ export default function RolloutsTab() {
       });
 
       if (error || result?.error) {
+        // Revert
+        if (currentValue === null) {
+          optimisticRemoveTenantOverride(flagId, tenantId);
+        } else {
+          optimisticUpdateTenantOverride(flagId, tenantId, currentValue);
+        }
         toast.error(error?.message || result?.error || 'Failed to update tenant override');
         return;
       }
       
       toast.success(currentValue === null ? `Override created for ${tenantName}` : `Override updated for ${tenantName}`);
-      await loadData();
+      loadData(false);
     } catch (err) {
+      if (currentValue === null) {
+        optimisticRemoveTenantOverride(flagId, tenantId);
+      } else {
+        optimisticUpdateTenantOverride(flagId, tenantId, currentValue);
+      }
       console.error('Error updating tenant override:', err);
       toast.error('Failed to update tenant override');
     } finally {
@@ -337,6 +490,10 @@ export default function RolloutsTab() {
 
   async function removeTenantOverride(flagId: string, tenantId: string) {
     const tenantName = data?.tenants.find(t => t.id === tenantId)?.name || 'tenant';
+    const prevData = data;
+    
+    // Optimistic update
+    optimisticRemoveTenantOverride(flagId, tenantId);
     setUpdating(`${flagId}-${tenantId}-remove`);
     
     try {
@@ -349,13 +506,15 @@ export default function RolloutsTab() {
       });
 
       if (error || result?.error) {
+        setData(prevData);
         toast.error(error?.message || result?.error || 'Failed to remove override');
         return;
       }
       
       toast.success(`Override removed for ${tenantName}`);
-      await loadData();
+      loadData(false);
     } catch (err) {
+      setData(prevData);
       console.error('Error removing tenant override:', err);
       toast.error('Failed to remove override');
     } finally {
@@ -364,6 +523,14 @@ export default function RolloutsTab() {
   }
 
   async function clearAllTenantOverrides(flagId: string) {
+    const prevData = data;
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tenantOverrides: prev.tenantOverrides.filter(to => to.feature_flag_id !== flagId),
+      };
+    });
     setUpdating(`clear-all-overrides-${flagId}`);
     
     try {
@@ -375,13 +542,15 @@ export default function RolloutsTab() {
       });
 
       if (error || result?.error) {
+        setData(prevData);
         toast.error(error?.message || result?.error || 'Failed to clear tenant overrides');
         return;
       }
       
       toast.success(`Cleared ${result.cleared_count} tenant overrides`);
-      await loadData();
+      loadData(false);
     } catch (err) {
+      setData(prevData);
       console.error('Error clearing tenant overrides:', err);
       toast.error('Failed to clear tenant overrides');
     } finally {
@@ -474,7 +643,7 @@ export default function RolloutsTab() {
       <div className="p-8 text-center">
         <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
         <p className="text-destructive">Failed to load rollout data</p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={loadData}>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => loadData()}>
           Retry
         </Button>
       </div>
@@ -508,7 +677,7 @@ export default function RolloutsTab() {
             <Power className="h-4 w-4 mr-2" />
             All Global OFF
           </Button>
-          <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => loadData()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -617,9 +786,9 @@ export default function RolloutsTab() {
                             checked={flag.default_enabled}
                             onCheckedChange={() => toggleGlobalDefault(flag.id, flag.default_enabled)}
                             disabled={isUpdatingGlobal}
-                            className="data-[state=checked]:bg-green-600"
+                            className="data-[state=checked]:bg-green-600 transition-all duration-200"
                           />
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className={`text-[10px] transition-colors duration-200 ${flag.default_enabled ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
                             {flag.default_enabled ? 'ON' : 'OFF'}
                           </span>
                         </div>
@@ -636,10 +805,10 @@ export default function RolloutsTab() {
                                 checked={effective}
                                 onCheckedChange={() => toggleChannelDefault(flag.id, channel, effective)}
                                 disabled={isUpdating || (flag.is_killswitch && !flag.default_enabled)}
-                                className="data-[state=checked]:bg-green-600"
+                                className="data-[state=checked]:bg-green-600 transition-all duration-200"
                               />
                               {channelDefault !== null && (
-                                <span className="text-[10px] text-muted-foreground">Override</span>
+                                <span className={`text-[10px] transition-colors duration-200 ${effective ? 'text-green-600' : 'text-muted-foreground'}`}>Override</span>
                               )}
                             </div>
                           </TableCell>
