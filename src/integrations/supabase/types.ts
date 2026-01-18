@@ -4992,6 +4992,7 @@ export type Database = {
           id: string
           notes: string | null
           tenant_id: string
+          updated_at: string
         }
         Insert: {
           enabled: boolean
@@ -5002,6 +5003,7 @@ export type Database = {
           id?: string
           notes?: string | null
           tenant_id: string
+          updated_at?: string
         }
         Update: {
           enabled?: boolean
@@ -5012,6 +5014,7 @@ export type Database = {
           id?: string
           notes?: string | null
           tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
