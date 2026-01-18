@@ -5882,6 +5882,7 @@ export type Database = {
           requires_load_approval: boolean | null
           return_date: string | null
           return_odometer: number | null
+          secondary_dispatcher_ids: string[] | null
           speed: number | null
           status: string | null
           stopped_status: string | null
@@ -5985,6 +5986,7 @@ export type Database = {
           requires_load_approval?: boolean | null
           return_date?: string | null
           return_odometer?: number | null
+          secondary_dispatcher_ids?: string[] | null
           speed?: number | null
           status?: string | null
           stopped_status?: string | null
@@ -6088,6 +6090,7 @@ export type Database = {
           requires_load_approval?: boolean | null
           return_date?: string | null
           return_odometer?: number | null
+          secondary_dispatcher_ids?: string[] | null
           speed?: number | null
           status?: string | null
           stopped_status?: string | null

@@ -4,9 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { X } from "lucide-react";
 
 interface VehicleAssignmentViewProps {
   vehicles: any[];
@@ -23,6 +26,7 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
   const [carriers, setCarriers] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
   const [localVehicles, setLocalVehicles] = useState(vehicles);
+  const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
 
   // Sync local vehicles when prop changes
   useEffect(() => {
@@ -160,6 +164,73 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
     }
   };
 
+  const handleAddSecondaryDispatcher = async (vehicleId: string, dispatcherId: string) => {
+    const vehicle = localVehicles.find(v => v.id === vehicleId);
+    const currentSecondary = vehicle?.secondary_dispatcher_ids || [];
+    
+    // Don't add if already in list
+    if (currentSecondary.includes(dispatcherId)) {
+      toast.error("Dispatcher already assigned");
+      return;
+    }
+    
+    const newSecondary = [...currentSecondary, dispatcherId];
+    
+    // Optimistic update
+    setLocalVehicles(prev => prev.map(v => 
+      v.id === vehicleId ? { ...v, secondary_dispatcher_ids: newSecondary } : v
+    ));
+    setOpenPopoverId(null);
+    
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ secondary_dispatcher_ids: newSecondary })
+        .eq("id", vehicleId);
+
+      if (error) throw error;
+      toast.success("Secondary dispatcher added");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Failed to add secondary dispatcher", error);
+      toast.error("Failed to add secondary dispatcher");
+      setLocalVehicles(vehicles);
+    }
+  };
+
+  const handleRemoveSecondaryDispatcher = async (vehicleId: string, dispatcherId: string) => {
+    const vehicle = localVehicles.find(v => v.id === vehicleId);
+    const currentSecondary = vehicle?.secondary_dispatcher_ids || [];
+    const newSecondary = currentSecondary.filter((id: string) => id !== dispatcherId);
+    
+    // Optimistic update
+    setLocalVehicles(prev => prev.map(v => 
+      v.id === vehicleId ? { ...v, secondary_dispatcher_ids: newSecondary } : v
+    ));
+    
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ secondary_dispatcher_ids: newSecondary })
+        .eq("id", vehicleId);
+
+      if (error) throw error;
+      toast.success("Secondary dispatcher removed");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Failed to remove secondary dispatcher", error);
+      toast.error("Failed to remove secondary dispatcher");
+      setLocalVehicles(vehicles);
+    }
+  };
+
+  // Get dispatchers available to add as secondary (not already assigned)
+  const getAvailableSecondaryDispatchers = (vehicle: any) => {
+    const primaryId = vehicle.primary_dispatcher_id;
+    const secondaryIds = vehicle.secondary_dispatcher_ids || [];
+    return dispatchers.filter(d => d.id !== primaryId && !secondaryIds.includes(d.id));
+  };
+
   return (
     <div className="flex-1 overflow-y-auto flex flex-col">
       <Card className="flex-1 flex flex-col m-2">
@@ -235,6 +306,7 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
                   <TableHead className="font-bold text-xs py-2">Drivers</TableHead>
                   <TableHead className="font-bold text-xs py-2">Carrier</TableHead>
                   <TableHead className="font-bold text-xs py-2">Primary Dispatcher</TableHead>
+                  <TableHead className="font-bold text-xs py-2">Dispatchers</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -276,6 +348,56 @@ export function VehicleAssignmentView({ vehicles, drivers, onBack, onRefresh }: 
                           ))}
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(vehicle.secondary_dispatcher_ids || []).map((dispatcherId: string) => (
+                          <Badge 
+                            key={dispatcherId} 
+                            variant="secondary"
+                            className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 text-xs px-2 py-0.5"
+                          >
+                            {getDispatcherName(dispatcherId)}
+                            <button
+                              onClick={() => handleRemoveSecondaryDispatcher(vehicle.id, dispatcherId)}
+                              className="ml-1 hover:bg-blue-800 rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        <Popover 
+                          open={openPopoverId === vehicle.id} 
+                          onOpenChange={(open) => setOpenPopoverId(open ? vehicle.id : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              className="h-6 text-xs px-2 bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              ADD NEW
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-2" align="start">
+                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                              {getAvailableSecondaryDispatchers(vehicle).length === 0 ? (
+                                <p className="text-sm text-muted-foreground p-2">No dispatchers available</p>
+                              ) : (
+                                getAvailableSecondaryDispatchers(vehicle).map((dispatcher) => (
+                                  <Button
+                                    key={dispatcher.id}
+                                    variant="ghost"
+                                    className="w-full justify-start text-sm h-8"
+                                    onClick={() => handleAddSecondaryDispatcher(vehicle.id, dispatcher.id)}
+                                  >
+                                    {dispatcher.first_name} {dispatcher.last_name}
+                                  </Button>
+                                ))
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
