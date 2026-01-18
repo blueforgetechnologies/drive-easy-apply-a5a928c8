@@ -31,7 +31,6 @@ export function ExcelImportDialog({
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    console.log('File selected:', selectedFile?.name, selectedFile?.type, selectedFile?.size);
     if (!selectedFile) return;
 
     setError(null);
@@ -39,28 +38,21 @@ export function ExcelImportDialog({
 
     try {
       const data = await parseExcelFile(selectedFile);
-      console.log('Raw parsed data:', data);
-      
+
       if (data.length === 0) {
         setError("The file is empty or has no valid data rows");
         setPreviewData([]);
         return;
       }
-      
+
       // Map Excel data to entity format
-      const mappedData = data.map(row => {
-        const mapped = mapExcelRowToEntity(row, entityType);
-        console.log('Mapped row:', row, '->', mapped);
-        return mapped;
-      });
-      
+      const mappedData = data.map((row) => mapExcelRowToEntity(row, entityType));
+
       // Filter out empty rows
-      const validData = mappedData.filter(row => Object.keys(row).length > 0);
-      console.log('Valid mapped data:', validData);
-      
+      const validData = mappedData.filter((row) => Object.keys(row).length > 0);
+
       setPreviewData(validData);
-    } catch (err) {
-      console.error('Excel parse error:', err);
+    } catch {
       setError("Failed to parse Excel file. Please ensure it's a valid .xlsx or .xls file.");
       setPreviewData([]);
     }
