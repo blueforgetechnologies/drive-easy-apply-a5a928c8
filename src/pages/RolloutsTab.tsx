@@ -569,7 +569,7 @@ export default function RolloutsTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px] min-w-[200px]">Feature</TableHead>
+                <TableHead className="w-[280px] min-w-[280px]">Feature</TableHead>
                 <TableHead className="w-[140px] min-w-[140px] text-center">Global Default</TableHead>
                 <TableHead className="w-[120px] min-w-[120px] text-center">Internal</TableHead>
                 <TableHead className="w-[120px] min-w-[120px] text-center">Pilot</TableHead>
@@ -587,20 +587,27 @@ export default function RolloutsTab() {
                 return (
                   <Fragment key={flag.id}>
                     <TableRow className={isExpanded ? 'bg-muted/50' : ''}>
-                      <TableCell className="w-[200px] min-w-[200px]">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <p className="font-medium">{flag.name}</p>
+                      <TableCell className="w-[280px] min-w-[280px]">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{flag.name}</p>
+                              {flag.is_killswitch && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge variant="destructive" className="text-xs">Kill</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Killswitch: Can globally disable this feature</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{flag.key}</p>
+                            {flag.description && (
+                              <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
+                                {flag.description}
+                              </p>
+                            )}
                           </div>
-                          {flag.is_killswitch && (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Badge variant="destructive" className="text-xs">Kill</Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>Killswitch: Can globally disable this feature</TooltipContent>
-                            </Tooltip>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell className="w-[140px] min-w-[140px] text-center">
