@@ -431,6 +431,24 @@ export default function DriversTab() {
 
     const normalizeValue = (val: any) => String(val || "").trim();
 
+    // Load existing drivers for upsert matching
+    const { data: existingDrivers, error: existingError } = await supabase
+      .from("applications")
+      .select("id, personal_info")
+      .eq("tenant_id", tenantId);
+
+    if (existingError) {
+      errors.push(`Failed to load existing drivers: ${existingError.message}`);
+    }
+
+    // Build a map of existing drivers by first+last name (lowercased)
+    const existingByName = new Map<string, string>();
+    (existingDrivers || []).forEach((d: any) => {
+      const pi = d.personal_info || {};
+      const key = `${(pi.firstName || "").toLowerCase()}_${(pi.lastName || "").toLowerCase()}`;
+      if (key !== "_") existingByName.set(key, d.id);
+    });
+
     for (const item of data) {
       try {
         const firstName = normalizeValue(item['personal_info.firstName'] || item.firstName || item['First Name']);
@@ -454,41 +472,78 @@ export default function DriversTab() {
           licenseExpiry: normalizeValue(item['license_info.licenseExpiry'] || item['License Expiry']),
         };
 
-        const rowData: any = {
-          personal_info: personalInfo,
-          license_info: licenseInfo,
-          driver_status: normalizeValue(item.driver_status || item['Status']) || "active",
-          cell_phone: normalizeValue(item.cell_phone || item['Phone']),
-          driver_address: normalizeValue(item.driver_address || item['Address']),
-          medical_card_expiry: normalizeValue(item.medical_card_expiry || item['Medical Card Expiry']) || null,
-          hired_date: normalizeValue(item.hired_date || item['Hired Date']) || null,
-          pay_method: normalizeValue(item.pay_method || item['Pay Method']) || null,
-          base_salary: item.base_salary ? parseFloat(String(item.base_salary)) : null,
-          hourly_rate: item.hourly_rate ? parseFloat(String(item.hourly_rate)) : null,
-          pay_per_mile: item.pay_per_mile ? parseFloat(String(item.pay_per_mile)) : null,
-          bank_name: normalizeValue(item.bank_name || item['Bank Name']) || null,
-          routing_number: normalizeValue(item.routing_number || item['Routing Number']) || null,
-          checking_number: normalizeValue(item.checking_number || item['Account Number']) || null,
-          status: "submitted",
-          contractor_agreement: {},
-          direct_deposit: {},
-          document_upload: {},
-          driver_dispatch_sheet: {},
-          driving_history: {},
-          drug_alcohol_policy: {},
-          employment_history: {},
-          no_rider_policy: {},
-          payroll_policy: {},
-          safe_driving_policy: {},
-          why_hire_you: {},
-          tenant_id: tenantId,
-        };
+        // Check for existing driver by name
+        const nameKey = `${firstName.toLowerCase()}_${lastName.toLowerCase()}`;
+        const existingId = existingByName.get(nameKey);
 
-        const { error } = await supabase.from("applications").insert(rowData);
-        if (error) {
-          errors.push(`${firstName} ${lastName}: ${error.message}`);
+        if (existingId) {
+          // Update existing driver
+          const updateData: any = {
+            personal_info: personalInfo,
+            license_info: licenseInfo,
+            driver_status: normalizeValue(item.driver_status || item['Status']) || undefined,
+            cell_phone: normalizeValue(item.cell_phone || item['Phone']) || undefined,
+            driver_address: normalizeValue(item.driver_address || item['Address']) || undefined,
+            medical_card_expiry: normalizeValue(item.medical_card_expiry || item['Medical Card Expiry']) || null,
+            hired_date: normalizeValue(item.hired_date || item['Hired Date']) || null,
+            pay_method: normalizeValue(item.pay_method || item['Pay Method']) || undefined,
+            base_salary: item.base_salary ? parseFloat(String(item.base_salary)) : undefined,
+            hourly_rate: item.hourly_rate ? parseFloat(String(item.hourly_rate)) : undefined,
+            pay_per_mile: item.pay_per_mile ? parseFloat(String(item.pay_per_mile)) : undefined,
+            bank_name: normalizeValue(item.bank_name || item['Bank Name']) || undefined,
+            routing_number: normalizeValue(item.routing_number || item['Routing Number']) || undefined,
+            checking_number: normalizeValue(item.checking_number || item['Account Number']) || undefined,
+          };
+
+          // Remove undefined values
+          Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined) delete updateData[key];
+          });
+
+          const { error } = await supabase.from("applications").update(updateData).eq("id", existingId);
+          if (error) {
+            errors.push(`${firstName} ${lastName}: ${error.message}`);
+          } else {
+            success++;
+          }
         } else {
-          success++;
+          // Insert new driver
+          const rowData: any = {
+            personal_info: personalInfo,
+            license_info: licenseInfo,
+            driver_status: normalizeValue(item.driver_status || item['Status']) || "active",
+            cell_phone: normalizeValue(item.cell_phone || item['Phone']),
+            driver_address: normalizeValue(item.driver_address || item['Address']),
+            medical_card_expiry: normalizeValue(item.medical_card_expiry || item['Medical Card Expiry']) || null,
+            hired_date: normalizeValue(item.hired_date || item['Hired Date']) || null,
+            pay_method: normalizeValue(item.pay_method || item['Pay Method']) || null,
+            base_salary: item.base_salary ? parseFloat(String(item.base_salary)) : null,
+            hourly_rate: item.hourly_rate ? parseFloat(String(item.hourly_rate)) : null,
+            pay_per_mile: item.pay_per_mile ? parseFloat(String(item.pay_per_mile)) : null,
+            bank_name: normalizeValue(item.bank_name || item['Bank Name']) || null,
+            routing_number: normalizeValue(item.routing_number || item['Routing Number']) || null,
+            checking_number: normalizeValue(item.checking_number || item['Account Number']) || null,
+            status: "submitted",
+            contractor_agreement: { signed: false },
+            direct_deposit: { enrolled: false },
+            document_upload: { files: [] },
+            driver_dispatch_sheet: { completed: false },
+            driving_history: { entries: [] },
+            drug_alcohol_policy: { acknowledged: false },
+            employment_history: { entries: [] },
+            no_rider_policy: { acknowledged: false },
+            payroll_policy: { acknowledged: false },
+            safe_driving_policy: { acknowledged: false },
+            why_hire_you: { response: "" },
+            tenant_id: tenantId,
+          };
+
+          const { error } = await supabase.from("applications").insert(rowData);
+          if (error) {
+            errors.push(`${firstName} ${lastName}: ${error.message}`);
+          } else {
+            success++;
+          }
         }
       } catch (err: any) {
         errors.push(`Row error: ${err.message}`);
