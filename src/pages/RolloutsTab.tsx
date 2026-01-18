@@ -221,8 +221,9 @@ export default function RolloutsTab() {
   }
 
   // ==================== CHANNEL DEFAULT CONTROLS ====================
-  async function toggleChannelDefault(flagId: string, channel: string, currentValue: boolean | null) {
-    const newValue = currentValue === null ? true : !currentValue;
+  async function toggleChannelDefault(flagId: string, channel: string, effectiveValue: boolean) {
+    // Always toggle based on what the user sees (effective value)
+    const newValue = !effectiveValue;
     setUpdating(`${flagId}-${channel}`);
     
     try {
@@ -240,7 +241,7 @@ export default function RolloutsTab() {
         return;
       }
       
-      toast.success(`Channel default updated`);
+      toast.success(`Channel default updated to ${newValue ? 'ON' : 'OFF'}`);
       await loadData();
     } catch (err) {
       console.error('Error updating channel default:', err);
@@ -633,7 +634,7 @@ export default function RolloutsTab() {
                             <div className="flex flex-col items-center gap-1">
                               <Switch
                                 checked={effective}
-                                onCheckedChange={() => toggleChannelDefault(flag.id, channel, channelDefault)}
+                                onCheckedChange={() => toggleChannelDefault(flag.id, channel, effective)}
                                 disabled={isUpdating || (flag.is_killswitch && !flag.default_enabled)}
                                 className="data-[state=checked]:bg-green-600"
                               />
