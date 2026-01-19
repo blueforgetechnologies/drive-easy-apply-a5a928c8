@@ -3643,25 +3643,6 @@ export default function LoadHunterTab() {
               </Button>
             </div>
             
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                activeFilter === 'expired' 
-                  ? 'btn-glossy-dark text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('expired');
-                setFilterVehicleId(null);
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Expired
-              <span className="badge-inset text-[10px] h-5">{expiredCount}</span>
-            </Button>
-            
             {/* Merged button group: Bids, Booked */}
             <div className="flex items-center overflow-hidden rounded-full">
               <Button 
@@ -3779,6 +3760,24 @@ export default function LoadHunterTab() {
               </PopoverContent>
             </Popover>
             
+            {/* Metrics Button */}
+            <Button
+              variant="ghost"
+              size="sm" 
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
+                activeFilter === 'dispatcher-metrix' 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700'
+              }`}
+              onClick={() => {
+                setActiveFilter('dispatcher-metrix');
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              Metrics
+            </Button>
+            
             {/* More Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -3818,6 +3817,17 @@ export default function LoadHunterTab() {
                 </DropdownMenuItem>
                 <div className="h-px bg-border my-1" />
                 <DropdownMenuItem
+                  className={activeFilter === 'expired' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => {
+                    setActiveFilter('expired');
+                    setFilterVehicleId(null);
+                    setSelectedVehicle(null);
+                    setSelectedEmailForDetail(null);
+                  }}
+                >
+                  Expired ({expiredCount})
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   className={activeFilter === 'vehicle-assignment' ? 'bg-primary/10 text-primary' : ''}
                   onClick={() => {
                     setActiveFilter('vehicle-assignment');
@@ -3826,16 +3836,6 @@ export default function LoadHunterTab() {
                   }}
                 >
                   Assign
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={activeFilter === 'dispatcher-metrix' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => {
-                    setActiveFilter('dispatcher-metrix');
-                    setSelectedVehicle(null);
-                    setSelectedEmailForDetail(null);
-                  }}
-                >
-                  Metrics
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={async () => {
