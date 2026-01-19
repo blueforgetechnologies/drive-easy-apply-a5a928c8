@@ -29,7 +29,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, Plus, Minus } from "lucide-react";
+import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, Plus, Minus, Menu } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import mapboxgl from 'mapbox-gl';
@@ -3788,69 +3789,66 @@ export default function LoadHunterTab() {
               </SelectContent>
             </Select>
             
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'vehicle-assignment' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('vehicle-assignment');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Assign
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'dispatcher-metrix' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('dispatcher-metrix');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Metrics
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 h-7 text-xs px-3.5 rounded-full border-0 btn-glossy text-gray-700 font-medium"
-              onClick={async () => {
-                setRefreshing(true);
-                try {
-                  await handleRefreshLoads();
-                  const enabledHunts = huntPlans.filter(h => h.enabled);
-                  if (enabledHunts.length > 0) {
-                    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-                    const recentLoads = loadEmails.filter(email => {
-                      const receivedAt = new Date(email.received_at);
-                      return receivedAt >= thirtyMinutesAgo && email.status === 'new';
-                    });
-                    toast.success(`Refreshed ${recentLoads.length} loads against ${enabledHunts.length} active hunt(s)`);
-                  }
-                } catch (error) {
-                  console.error("Error refreshing:", error);
-                  toast.error("Failed to refresh");
-                } finally {
-                  setRefreshing(false);
-                }
-              }}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+            {/* More Actions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 rounded-full border-0 btn-glossy text-gray-700"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 bg-background z-50">
+                <DropdownMenuItem
+                  className={activeFilter === 'vehicle-assignment' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => {
+                    setActiveFilter('vehicle-assignment');
+                    setSelectedVehicle(null);
+                    setSelectedEmailForDetail(null);
+                  }}
+                >
+                  Assign
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={activeFilter === 'dispatcher-metrix' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => {
+                    setActiveFilter('dispatcher-metrix');
+                    setSelectedVehicle(null);
+                    setSelectedEmailForDetail(null);
+                  }}
+                >
+                  Metrics
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    setRefreshing(true);
+                    try {
+                      await handleRefreshLoads();
+                      const enabledHunts = huntPlans.filter(h => h.enabled);
+                      if (enabledHunts.length > 0) {
+                        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+                        const recentLoads = loadEmails.filter(email => {
+                          const receivedAt = new Date(email.received_at);
+                          return receivedAt >= thirtyMinutesAgo && email.status === 'new';
+                        });
+                        toast.success(`Refreshed ${recentLoads.length} loads against ${enabledHunts.length} active hunt(s)`);
+                      }
+                    } catch (error) {
+                      console.error("Error refreshing:", error);
+                      toast.error("Failed to refresh");
+                    } finally {
+                      setRefreshing(false);
+                    }
+                  }}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+                  Refresh
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
