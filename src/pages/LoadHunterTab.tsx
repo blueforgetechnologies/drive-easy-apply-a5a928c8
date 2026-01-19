@@ -3747,13 +3747,13 @@ export default function LoadHunterTab() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-3 text-xs font-medium gap-1.5 rounded-full border-0 bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md hover:from-violet-600 hover:to-purple-700 hover:shadow-lg transition-all duration-200"
+                  className="h-8 px-4 text-xs font-semibold gap-2 rounded-full border border-white/40 bg-gradient-to-br from-violet-500/90 via-purple-500/90 to-fuchsia-500/90 text-white shadow-[0_4px_20px_-2px_rgba(139,92,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-md hover:shadow-[0_6px_28px_-2px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                 >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="h-3.5 w-3.5 drop-shadow-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Source
-                  <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
+                  <span className="flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-[10px] font-bold bg-white/25 backdrop-blur-sm rounded-full border border-white/40 shadow-inner">
                     {selectedSources.length}
                   </span>
                 </Button>
